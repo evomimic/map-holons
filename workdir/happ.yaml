@@ -1,0 +1,19 @@
+---
+manifest_version: "1"
+name: map-holons
+description: ~
+roles:
+  - name: map_holons
+    provisioning:
+      strategy: create
+      deferred: false
+    dna:
+      bundled: "../dnas/map_holons/workdir/map_holons.dna"
+      modifiers:
+        network_seed: ~
+        properties: ~
+        origin_time: ~
+        quantum_time: ~
+      installed_hash: ~
+      _version: ~
+      clone_limit: 0

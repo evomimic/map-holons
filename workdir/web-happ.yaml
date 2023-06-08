@@ -1,0 +1,7 @@
+---
+manifest_version: "1"
+name: map-holons
+ui:
+  bundled: "../ui/dist.zip"
+happ_manifest:
+  bundled: "./map-holons.happ"
