@@ -10,3 +10,5 @@
 .hc*
 .hc
 .running
+Cargo.lock
+.idea
