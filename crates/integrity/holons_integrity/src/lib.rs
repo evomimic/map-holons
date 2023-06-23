@@ -1,5 +1,6 @@
-pub mod holon;
-pub use holon::*;
+pub mod holon_validators;
+pub use shared_types_holon::holon::{Holon};
+use crate::holon_validators::{validate_create_holon, validate_create_link_all_holons, validate_create_link_holon_updates, validate_delete_holon, validate_delete_link_all_holons, validate_delete_link_holon_updates, validate_update_holon};
 use hdi::prelude::*;
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]

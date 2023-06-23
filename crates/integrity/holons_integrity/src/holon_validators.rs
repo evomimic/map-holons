@@ -1,9 +1,6 @@
 use hdi::prelude::*;
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq)]
-pub struct Holon {
-    pub descriptor: ActionHash,
-}
+use shared_types_holon::holon::Holon;
+
 pub fn validate_create_holon(
     _action: EntryCreationAction,
     _holon: Holon,

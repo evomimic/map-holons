@@ -8,12 +8,12 @@ integrity:
   zomes:
     - name: holons_integrity
       hash: ~
-      bundled: "../../../target/wasm32-unknown-unknown/release/holons_integrity.wasm"
+      bundled: "../../target/wasm32-unknown-unknown/release/holons_integrity.wasm"
       dependencies: ~
 coordinator:
   zomes:
     - name: holons
       hash: ~
-      bundled: "../../../target/wasm32-unknown-unknown/release/holons.wasm"
+      bundled: "../../target/wasm32-unknown-unknown/release/holons.wasm"
       dependencies:
         - name: holons_integrity

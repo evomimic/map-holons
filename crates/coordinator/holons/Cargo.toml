@@ -1,0 +1,25 @@
+[package]
+name = "holons"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "holons"
+
+[dependencies]
+hdk = { workspace = true }
+holochain_integrity_types = { workspace = true }
+
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+holons_integrity = { workspace = true }
+shared_types_holon = {workspace = true}
+
+[dev-dependencies]
+holochain = { default-features = false, features = [
+    "test_utils",
+] }
+tokio = { version = "1.3", features = ["full"] }
+futures = { version = "0.3.1", default-features = false }

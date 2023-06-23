@@ -5,16 +5,24 @@ opt-level = "z"
 opt-level = "z"
 
 [workspace]
-members = ["dnas/*/zomes/coordinator/*", "dnas/*/zomes/integrity/*"]
+members = ["crates/coordinator/holons",
+    "crates/integrity/holons_integrity",
+    "crates/shared_types/holon",
+]
 
 [workspace.dependencies]
 hdi = "=0.2.3-beta-rc.0"
 hdk = "=0.1.3-beta-rc.1"
 holochain_integrity_types = "=0.1.3-beta-rc.0"
+derive-new = "0.5"
 serde = "1"
+thiserror = "1"
 
 [workspace.dependencies.holons]
-path = "dnas/map_holons/zomes/coordinator/holons"
+path = "crates/coordinator/holons"
 
 [workspace.dependencies.holons_integrity]
-path = "dnas/map_holons/zomes/integrity/holons"
+path = "crates/integrity/holons_integrity"
+
+[workspace.dependencies.shared_types_holon]
+path = "crates/shared_types/holon"
