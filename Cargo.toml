@@ -5,18 +5,25 @@ opt-level = "z"
 opt-level = "z"
 
 [workspace]
+resolver = "2"
 members = ["crates/coordinator/holons",
     "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
 ]
 
 [workspace.dependencies]
-hdi = "=0.2.3-beta-rc.0"
-hdk = "=0.1.3-beta-rc.1"
-holochain_integrity_types = "=0.1.3-beta-rc.0"
-derive-new = "0.5"
+hdi = "0.2"
+hdk = "0.1"
+# holochain_integrity_types = "0.2"
 serde = "1"
+derive-new = "0.5"
 thiserror = "1"
+shared_types_descriptor = { git = "https://github.com/evomimic/map-descriptors2.git"}
+#map_descriptors = { git = "https://github.com/evomimic/map-descriptors2.git"}
+#map_descriptors = { git ="https://github.com/evomimic/map-descriptors2/tree/main/crates/shared_types/descriptor", branch = "16-make-map-descriptors-accessible-as-a-package"}
+#map_descriptors = { git ="https://github.com/evomimic/map-descriptors2/crates/shared_types/descriptor", branch = "16-make-map-descriptors-accessible-as-a-package"}
+#map_descriptors = { git ="https://github.com/evomimic/map-descriptors2/crates/shared_types/descriptor"}
+#group = {git = "https://github.com/lightningrodlabs/we/tree/main/dnas/group/zomes/coordinator/group"}
 
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
@@ -26,3 +33,4 @@ path = "crates/integrity/holons_integrity"
 
 [workspace.dependencies.shared_types_holon]
 path = "crates/shared_types/holon"
+
