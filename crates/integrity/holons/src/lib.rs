@@ -1,18 +1,27 @@
-pub mod holon;
-pub use holon::*;
 use hdi::prelude::*;
+use shared_types_holon::holon_node::{HolonNode};
+pub mod smartlink;
+pub use smartlink::*;
+pub mod holon_node;
+pub use holon_node::*;
+
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[hdk_entry_defs]
 #[unit_enum(UnitEntryTypes)]
 pub enum EntryTypes {
-    Holon(Holon),
+//    Holon(Holon),
+    HolonNode(HolonNode),
 }
 #[derive(Serialize, Deserialize)]
 #[hdk_link_types]
 pub enum LinkTypes {
-    HolonUpdates,
-    AllHolons,
+//    HolonUpdates,
+//    AllHolons,
+    HolonNodeUpdates,
+    SmartLink,
+    AllHolonNodes,
 }
 #[hdk_extern]
 pub fn genesis_self_check(
@@ -33,20 +42,20 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             match store_entry {
                 OpEntry::CreateEntry { app_entry, action } => {
                     match app_entry {
-                        EntryTypes::Holon(holon) => {
-                            validate_create_holon(
+                        EntryTypes::HolonNode(holon_node) => {
+                            validate_create_holon_node(
                                 EntryCreationAction::Create(action),
-                                holon,
+                                holon_node,
                             )
                         }
                     }
                 }
                 OpEntry::UpdateEntry { app_entry, action, .. } => {
                     match app_entry {
-                        EntryTypes::Holon(holon) => {
-                            validate_create_holon(
+                        EntryTypes::HolonNode(holon_node) => {
+                            validate_create_holon_node(
                                 EntryCreationAction::Update(action),
-                                holon,
+                                holon_node,
                             )
                         }
                     }
@@ -63,12 +72,15 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     action,
                 } => {
                     match (app_entry, original_app_entry) {
-                        (EntryTypes::Holon(holon), EntryTypes::Holon(original_holon)) => {
-                            validate_update_holon(
+                        (
+                            EntryTypes::HolonNode(holon_node),
+                            EntryTypes::HolonNode(original_holon_node),
+                        ) => {
+                            validate_update_holon_node(
                                 action,
-                                holon,
+                                holon_node,
                                 original_action,
-                                original_holon,
+                                original_holon_node,
                             )
                         }
                         _ => {
@@ -88,8 +100,12 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             match delete_entry {
                 OpDelete::Entry { original_action, original_app_entry, action } => {
                     match original_app_entry {
-                        EntryTypes::Holon(holon) => {
-                            validate_delete_holon(action, original_action, holon)
+                        EntryTypes::HolonNode(holon_node) => {
+                            validate_delete_holon_node(
+                                action,
+                                original_action,
+                                holon_node,
+                            )
                         }
                     }
                 }
@@ -104,16 +120,24 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             action,
         } => {
             match link_type {
-                LinkTypes::HolonUpdates => {
-                    validate_create_link_holon_updates(
+                LinkTypes::HolonNodeUpdates => {
+                    validate_create_link_holon_node_updates(
                         action,
                         base_address,
                         target_address,
                         tag,
                     )
                 }
-                LinkTypes::AllHolons => {
-                    validate_create_link_all_holons(
+                LinkTypes::SmartLink => {
+                    validate_create_smartlink(
+                        action,
+                        base_address,
+                        target_address,
+                        tag,
+                    )
+                }
+                LinkTypes::AllHolonNodes => {
+                    validate_create_link_all_holon_nodes(
                         action,
                         base_address,
                         target_address,
@@ -131,8 +155,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             action,
         } => {
             match link_type {
-                LinkTypes::HolonUpdates => {
-                    validate_delete_link_holon_updates(
+                LinkTypes::HolonNodeUpdates => {
+                    validate_delete_link_holon_node_updates(
                         action,
                         original_action,
                         base_address,
@@ -140,8 +164,17 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         tag,
                     )
                 }
-                LinkTypes::AllHolons => {
-                    validate_delete_link_all_holons(
+                LinkTypes::SmartLink => {
+                    validate_delete_smartlink(
+                        action,
+                        original_action,
+                        base_address,
+                        target_address,
+                        tag,
+                    )
+                }
+                LinkTypes::AllHolonNodes => {
+                    validate_delete_link_all_holon_nodes(
                         action,
                         original_action,
                         base_address,
@@ -155,10 +188,10 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             match store_record {
                 OpRecord::CreateEntry { app_entry, action } => {
                     match app_entry {
-                        EntryTypes::Holon(holon) => {
-                            validate_create_holon(
+                        EntryTypes::HolonNode(holon_node) => {
+                            validate_create_holon_node(
                                 EntryCreationAction::Create(action),
-                                holon,
+                                holon_node,
                             )
                         }
                     }
@@ -184,18 +217,18 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         }
                     };
                     match app_entry {
-                        EntryTypes::Holon(holon) => {
-                            let result = validate_create_holon(
+                        EntryTypes::HolonNode(holon_node) => {
+                            let result = validate_create_holon_node(
                                 EntryCreationAction::Update(action.clone()),
-                                holon.clone(),
+                                holon_node.clone(),
                             )?;
                             if let ValidateCallbackResult::Valid = result {
-                                let original_holon: Option<Holon> = original_record
+                                let original_holon_node: Option<HolonNode> = original_record
                                     .entry()
                                     .to_app_option()
                                     .map_err(|e| wasm_error!(e))?;
-                                let original_holon = match original_holon {
-                                    Some(holon) => holon,
+                                let original_holon_node = match original_holon_node {
+                                    Some(holon_node) => holon_node,
                                     None => {
                                         return Ok(
                                             ValidateCallbackResult::Invalid(
@@ -205,11 +238,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                         );
                                     }
                                 };
-                                validate_update_holon(
+                                validate_update_holon_node(
                                     action,
-                                    holon,
+                                    holon_node,
                                     original_action,
-                                    original_holon,
+                                    original_holon_node,
                                 )
                             } else {
                                 Ok(result)
@@ -269,11 +302,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         }
                     };
                     match original_app_entry {
-                        EntryTypes::Holon(original_holon) => {
-                            validate_delete_holon(
+                        EntryTypes::HolonNode(original_holon_node) => {
+                            validate_delete_holon_node(
                                 action,
                                 original_action,
-                                original_holon,
+                                original_holon_node,
                             )
                         }
                     }
@@ -286,16 +319,24 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     action,
                 } => {
                     match link_type {
-                        LinkTypes::HolonUpdates => {
-                            validate_create_link_holon_updates(
+                        LinkTypes::HolonNodeUpdates => {
+                            validate_create_link_holon_node_updates(
                                 action,
                                 base_address,
                                 target_address,
                                 tag,
                             )
                         }
-                        LinkTypes::AllHolons => {
-                            validate_create_link_all_holons(
+                        LinkTypes::SmartLink => {
+                            validate_create_smartlink(
+                                action,
+                                base_address,
+                                target_address,
+                                tag,
+                            )
+                        }
+                        LinkTypes::AllHolonNodes => {
+                            validate_create_link_all_holon_nodes(
                                 action,
                                 base_address,
                                 target_address,
@@ -327,8 +368,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         }
                     };
                     match link_type {
-                        LinkTypes::HolonUpdates => {
-                            validate_delete_link_holon_updates(
+                        LinkTypes::HolonNodeUpdates => {
+                            validate_delete_link_holon_node_updates(
                                 action,
                                 create_link.clone(),
                                 base_address,
@@ -336,8 +377,17 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                 create_link.tag,
                             )
                         }
-                        LinkTypes::AllHolons => {
-                            validate_delete_link_all_holons(
+                        LinkTypes::SmartLink => {
+                            validate_delete_smartlink(
+                                action,
+                                create_link.clone(),
+                                base_address,
+                                create_link.target_address,
+                                create_link.tag,
+                            )
+                        }
+                        LinkTypes::AllHolonNodes => {
+                            validate_delete_link_all_holon_nodes(
                                 action,
                                 create_link.clone(),
                                 base_address,

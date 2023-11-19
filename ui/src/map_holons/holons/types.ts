@@ -36,12 +36,21 @@ export type HolonsSignal = {
 };
 
 export type EntryTypes =
+ | ({ type: 'HolonNode'; } & HolonNode)
  | ({  type: 'Holon'; } & Holon);
 
 
 
 export interface Holon { 
   descriptor: ActionHash;
+}
+
+
+
+
+
+export interface HolonNode { 
+  dummy_field: string;
 }
 
 

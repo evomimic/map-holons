@@ -20,3 +20,22 @@ export async function createHolon(cell: CallableCell, holon = undefined): Promis
     });
 }
 
+
+
+export async function sampleHolonNode(cell: CallableCell, partialHolonNode = {}) {
+    return {
+        ...{
+	  dummy_field: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+        },
+        ...partialHolonNode
+    };
+}
+
+export async function createHolonNode(cell: CallableCell, holonNode = undefined): Promise<Record> {
+    return cell.callZome({
+      zome_name: "holons",
+      fn_name: "create_holon_node",
+      payload: holonNode || await sampleHolonNode(cell),
+    });
+}
+
