@@ -1,10 +1,11 @@
 pub mod all_holon_nodes;
 pub mod smartlink;
-pub mod holon;
 pub mod holon_node;
 pub mod helpers;
 pub mod holon_reference;
 pub mod holon_errors;
+mod holon_api;
+mod holon;
 
 
 use hdk::prelude::*;

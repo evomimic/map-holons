@@ -25,3 +25,9 @@ impl From<WasmError> for HolonError {
         HolonError::WasmError(e.to_string())
     }
 }
+
+impl Into<WasmError> for HolonError {
+    fn into(self) -> WasmError {
+        wasm_error!("HolonError {:?}", self.to_string())
+    }
+}
