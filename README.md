@@ -1,4 +1,5 @@
 # Map Holons
+MAP Holons provides the foundational layer of the Memetic Activation Platform (MAP). This component is still in early proof-of-concept prototype stages. The prototype architecture and design is specified in the [MAP Holons wiki](https://github.com/evomimic/map-holons/wiki). The prototype development sequence is described in [MAP Prototype Development Plan](https://github.com/evomimic/map-holons/wiki/MAP-Holons-Prototype-Development-Plan).
 
 ## Environment Setup
 
