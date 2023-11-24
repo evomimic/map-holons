@@ -1,6 +1,7 @@
 use thiserror::Error;
 use hdk::prelude::*;
-#[derive(Error, Debug, Eq, PartialEq)]
+#[hdk_entry_helper]
+#[derive(Error, Eq, PartialEq)]
 pub enum HolonError {
     #[error("{0} field is missing")]
     EmptyField(String),

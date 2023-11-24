@@ -4,12 +4,10 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::{PropertyName, PropertyValue};
 use crate::holon_node::delete_holon_node;
 use crate::holon::Holon;
-// se crate::holon::*;
+// use crate::holon::*;
 
 #[hdk_extern]
-pub fn new_holon(_:()) -> ExternResult<Holon> {
-    Ok(Holon::new())
-}
+pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddPropertyInput {
     holon: Holon,
@@ -58,13 +56,38 @@ pub fn get_holon(
             Err(holon_error.into())
         }
     }
+}
+
+#[hdk_extern]
+pub fn get_all_holons(
+   _: (),
+) -> ExternResult<Vec<Holon>> {
+    println!("Trace Entry: holon_api: get_all_holons");
+    // dummy up a result for debugging purposes
+    let result = vec![Holon::new()];
+    Ok(result)
+    // TODO: Replace the above stubbed result with the following code
+    // match Holon::get_all_holons() {
+    //     Ok(result)=>  Ok(result),
+    //     Err(holon_error) => {
+    //         Err(holon_error.into())
+    //     }
+    // }
 
 }
 #[hdk_extern]
 pub fn delete_holon(
     target_holon_id: ActionHash,
 ) -> ExternResult<ActionHash> {
-    delete_holon_node(target_holon_id)
+
+    match delete_holon_node(target_holon_id) {
+        Ok(result)=> Ok(result),
+        Err(holon_error) => {
+            Err(holon_error.into())
+        }
+    }
+
+
 }
 
 

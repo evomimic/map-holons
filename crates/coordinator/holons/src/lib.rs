@@ -4,8 +4,8 @@ pub mod holon_node;
 pub mod helpers;
 pub mod holon_reference;
 pub mod holon_errors;
-mod holon_api;
-mod holon;
+pub mod holon_api;
+pub mod holon;
 
 
 use hdk::prelude::*;
