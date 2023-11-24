@@ -109,10 +109,7 @@ async fn rstest_holon_capabilities(
         let action_hash: ActionHash = created_holon.get_id();
         created_action_hashes.push(action_hash.clone());
 
-        let created_holon: Holon  = conductor
-            .call(&cell.zome("holons"), "commit", builder_holon.clone())
-            .await;
-
+        println!("Fetching created holon");
         let fetched_holon: Holon  = conductor
             .call(&cell.zome("holons"), "get_holon", action_hash)
             .await;
