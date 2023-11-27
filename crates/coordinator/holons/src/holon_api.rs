@@ -8,11 +8,11 @@ use crate::holon::Holon;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AddPropertyInput {
-    holon: Holon,
-    property_name:PropertyName,
-    value: PropertyValue,
+    pub holon: Holon,
+    pub property_name:PropertyName,
+    pub value: PropertyValue,
 }
 
 #[hdk_extern]
@@ -25,8 +25,8 @@ pub fn add_property_value(input: AddPropertyInput) -> ExternResult<Holon> {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RemovePropertyInput {
-    holon: Holon,
-    property_name:PropertyName,
+    pub holon: Holon,
+    pub property_name:PropertyName,
 }
 #[hdk_extern]
 pub fn remove_property_value(input: RemovePropertyInput) -> ExternResult<Holon> {
@@ -64,7 +64,14 @@ pub fn get_all_holons(
 ) -> ExternResult<Vec<Holon>> {
     println!("Trace Entry: holon_api: get_all_holons");
     // dummy up a result for debugging purposes
+
+    // let mut dummy_holon = Holon::new();
+    // dummy_holon.add_property_value(
+    //     "description".to_string(),
+    //     PropertyValue::StringValue("Provides description of a ValueType".to_string())
+    // );
     let result = vec![Holon::new()];
+    // result.push(dummy_holon);
     Ok(result)
     // TODO: Replace the above stubbed result with the following code
     // match Holon::get_all_holons() {
