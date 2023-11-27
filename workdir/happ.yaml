@@ -1,6 +1,6 @@
 ---
 manifest_version: "1"
-name: map-holons
+name: map-holons_integrity
 description: ~
 roles:
   - name: map_holons
@@ -8,7 +8,9 @@ roles:
       strategy: create
       deferred: false
     dna:
+
       bundled: "map_holons.dna"
+
       modifiers:
         network_seed: ~
         properties: ~
