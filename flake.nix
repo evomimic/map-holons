@@ -9,6 +9,7 @@
 
     nixpkgs.follows = "holochain-flake/nixpkgs";
     flake-parts.follows = "holochain-flake/flake-parts";
+
   };
 
   outputs = inputs:

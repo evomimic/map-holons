@@ -1,7 +1,16 @@
-pub mod all_holons;
+pub mod all_holon_nodes;
+pub mod smartlink;
+pub mod holon_node;
+pub mod helpers;
+pub mod holon_reference;
+pub mod holon_errors;
+pub mod holon_api;
 pub mod holon;
+
+
 use hdk::prelude::*;
 use holons_integrity::*;
+
 #[hdk_extern]
 pub fn init(_: ()) -> ExternResult<InitCallbackResult> {
     Ok(InitCallbackResult::Pass)

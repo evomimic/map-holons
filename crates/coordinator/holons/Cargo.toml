@@ -9,18 +9,22 @@ name = "holons"
 
 [dependencies]
 hdk = { workspace = true }
-# holochain_integrity_types = { workspace = true }
-
-serde = { workspace = true }
-thiserror = { workspace = true }
+hdi = { workspace = true}
+holochain_integrity_types = { workspace = true }
 
 holons_integrity = { workspace = true }
+serde = { workspace = true }
+derive-new = { workspace = true }
+thiserror = { workspace = true }
+
+#shared_types_holon = {workspace = true}
+
+
 shared_types_holon = {workspace = true}
-shared_types_descriptor = {workspace = true}
 
 [dev-dependencies]
-holochain = { default-features = false, features = [
-    "test_utils",
-] }
+holochain = {version = "0.1.7", default-features = false, features = ["test_utils"] }
 tokio = { version = "1.3", features = ["full"] }
 futures = { version = "0.3.1", default-features = false }
+rstest = "0.18.1"
+async-std = "1.1.12"
