@@ -11,4 +11,5 @@
 .hc
 .running
 Cargo.lock
+flake.lock
 .idea

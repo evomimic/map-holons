@@ -62,17 +62,17 @@ pub fn get_holon(
 pub fn get_all_holons(
    _: (),
 ) -> ExternResult<Vec<Holon>> {
-    println!("Trace Entry: holon_api: get_all_holons");
-    // dummy up a result for debugging purposes
-    let result = vec![Holon::new()];
-    Ok(result)
-    // TODO: Replace the above stubbed result with the following code
-    // match Holon::get_all_holons() {
-    //     Ok(result)=>  Ok(result),
-    //     Err(holon_error) => {
-    //         Err(holon_error.into())
-    //     }
-    // }
+    // println!("Trace Entry: holon_api: get_all_holons");
+    // // dummy up a result for debugging purposes
+    // let result = Ok(vec![Holon::new()]);
+    // Ok(result)
+    //TODO: Replace the above stubbed result with the following code
+    match Holon::get_all_holons() {
+        Ok(result)=>  Ok(result),
+        Err(holon_error) => {
+            Err(holon_error.into())
+        }
+    }
 
 }
 #[hdk_extern]
