@@ -1,6 +1,6 @@
 ---
 manifest_version: "1"
-name: map-holons_integrity
+name: map-holons
 description: ~
 roles:
   - name: map_holons

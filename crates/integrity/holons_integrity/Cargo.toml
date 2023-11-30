@@ -9,7 +9,7 @@ name = "holons_integrity"
 
 [dependencies]
 hdi = { workspace = true }
-# holochain_integrity_types = { workspace = true }
+holochain_integrity_types = { workspace = true }
 
 serde = { workspace = true }
 derive-new = { workspace = true }

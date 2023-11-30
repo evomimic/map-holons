@@ -63,27 +63,27 @@ pub fn get_all_holons(
    _: (),
 ) -> ExternResult<Vec<Holon>> {
     match Holon::get_all_holons() {
-        Ok(result)=>  Ok(result),
+        Ok(result) => Ok(result),
         Err(holon_error) => {
             Err(holon_error.into())
         }
-
+    }
 
 }
 #[hdk_extern]
 pub fn delete_holon(
     target_holon_id: ActionHash,
 ) -> ExternResult<ActionHash> {
-
     match delete_holon_node(target_holon_id) {
-        Ok(result)=> Ok(result),
+        Ok(result) => Ok(result),
         Err(holon_error) => {
             Err(holon_error.into())
         }
     }
-
-
 }
+
+
+
 
 
 /*

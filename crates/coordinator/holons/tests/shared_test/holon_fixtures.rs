@@ -1,7 +1,7 @@
 // Test Dataset Creator
 //
 // This file is used to create data used to test the following capabilities:
-// - get all holons
+// - get all holons_integrity
 // - build new holon
 // - create holon
 // - get holon
