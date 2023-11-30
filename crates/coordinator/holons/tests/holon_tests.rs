@@ -31,7 +31,7 @@ use shared_types_holon::holon_node::{PropertyName, PropertyMap, PropertyValue};
 ///
 /// Test Outline:
 /// 1. After initial setup, perform a `get_all_holons`, with an expectation of an empty result
-/// 2. For each test_holon in the `holons` vector, 
+/// 2. For each test_holon in the `holons_integrity` vector,
 ///      * create a new holon (to serve as builder)
 ///      * iterate through the test_holon's properties, invoking external app_property_value for each.
 ///      * commit the holon
@@ -39,10 +39,10 @@ use shared_types_holon::holon_node::{PropertyName, PropertyMap, PropertyValue};
 /// /// 3. Once all data has been created in DHT, perform `get_all_holons` and verify the result.
 ///
 /// Note that this will exercise, create, get, and get_all capabilities across a variety of
-/// holons
+/// holons_integrity
 ///
 /// To selectively run JUST THE TESTS in this file, use:
-///      cargo test -p holons --test holon_tests  -- --show-output
+///      cargo test -p holons_integrity --test holon_tests  -- --show-output
 ///
 #[rstest]
 #[case::create_value_descriptor_holon(new_holons_fixture())]
@@ -63,31 +63,23 @@ async fn rstest_holon_capabilities(
 
     println!("******* STARTING TESTS WITH {h_count} HOLONS ***************************");
 
-    // println!("Performing get_all_holons here to ensure initial DB state is empty");
-    // //let dummy = String::from("dummy");
-    // let fetched_holons : ExternResult<Vec<Holon>> = conductor
-    //     .call(
-    //         &cell.zome("holons"),
-    //         "get_all_holons",
-    //         (),
-    //     )
-    //     .await;
-    //
-    // match fetched_holons {
-    //     Ok(result) => {
-    //         assert_eq!(0, result.len());
-    //         println!("Success! Initial DB state has no Holons");
-    //     }
-    //     Err(e) => {
-    //         println!("Error: {:#?}", e);
-    //         assert!(false);
-    //     }
-    // }
+    println!("Performing get_all_holons here to ensure initial DB state is empty...");
+    // let dummy = String::from("dummy");
+    let fetched_holons : Vec<Holon> = conductor
+        .call(
+            &cell.zome("holons"),
+            "get_all_holons",
+            (),
+        )
+        .await;
+    assert_eq!(0, fetched_holons.len());
+
+    println!("Success! Initial DB state has no Holons");
 
     let mut created_action_hashes: Vec<ActionHash> = Vec::new();
 
-    // Iterate through the vector of test holons, building & creating each holon,
-    // then get the created holon and comparing it to the generated descriptor.
+    // Iterate through the vector of test holons_integrity, building & creating each holon,
+    // then get the created holon and compare it to the generated descriptor.
     for test_holon in test_holons.clone() {
         let p_count = test_holon.property_map.len();
         println!();
@@ -132,55 +124,40 @@ async fn rstest_holon_capabilities(
         println!("{:#?}", fetched_holon);
     }
 
-    // println!("All Holon Descriptors Created... do a get_all_holon_types and compare result with test data...");
-    // let fetched_holons : ExternResult<Vec<Holon>> = conductor
-    //     .call(
-    //         &cell.zome("holons"),
-    //         "get_all_holons",
-    //         (),
-    //     )
-    //     .await;
-    //
-    // match fetched_holons {
-    //     Ok(result) => {
-    //         assert_eq!(h_count, result.len());
-    //         println!("As expected, get_all_holons returned {h_count} Holons");
-    //         //fetched_entries.sort_by(|a, b| a.header.type_name.cmp(&b.header.type_name));
-    //         //assert_eq!(holons, fetched_entries);
-    //
-    //     }
-    //     Err(e) => {
-    //         println!("Error: {:#?}", e);
-    //         assert!(false);
-    //     }
-    // }
+    println!("All Holon Descriptors Created... do a get_all_holon_types and compare result with test data...");
+    let fetched_holons : Vec<Holon> = conductor
+        .call(
+            &cell.zome("holons"),
+            "get_all_holons",
+            (),
+        )
+        .await;
+    assert_eq!(h_count, fetched_holons.len());
 
-    // TESTING DELETES //
+        // TESTING DELETES //
     println!("\n\n *********** TESTING DELETES *******************\n");
 
     for hash in created_action_hashes {
-          let _ = Holon::delete_holon(hash);
+        let deleted_hash : ActionHash = conductor
+            .call(
+                &cell.zome("holons"),
+                "delete_holon",
+                hash.clone(),
+            )
+            .await;
     }
 
-    // debug!("Performing get_all_holons here to ensure all holons have been deleted.\n");
-    //
-    // let fetched_holons : ExternResult<Vec<Holon>> = conductor
-    //     .call(
-    //         &cell.zome("holons"),
-    //         "get_all_holons",
-    //         (),
-    //     )
-    //     .await;
-    //
-    // match fetched_holons {
-    //     Ok(result) => {
-    //         assert_eq!(0, result.len());
-    //         println!("Success! DB has no Holons");
-    //     }
-    //     Err(e) => {
-    //         println!("Error: {:#?}", e);
-    //         assert!(false);
-    //     }
-    // }
+    debug!("Performing get_all_holons here to ensure all holons_integrity have been deleted.\n");
+
+    let fetched_holons : Vec<Holon> = conductor
+        .call(
+            &cell.zome("holons"),
+            "get_all_holons",
+            (),
+        )
+        .await;
+
+    assert_eq!(0, fetched_holons.len());
+    println!("...Success! All holons_integrity have been deleted. \n");
 }
 

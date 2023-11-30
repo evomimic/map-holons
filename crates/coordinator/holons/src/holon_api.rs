@@ -4,7 +4,7 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::{PropertyName, PropertyValue};
 use crate::holon_node::delete_holon_node;
 use crate::holon::Holon;
-// use crate::holon::*;
+use crate::holon::*;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
@@ -62,40 +62,28 @@ pub fn get_holon(
 pub fn get_all_holons(
    _: (),
 ) -> ExternResult<Vec<Holon>> {
-    println!("Trace Entry: holon_api: get_all_holons");
-    // dummy up a result for debugging purposes
-
-    // let mut dummy_holon = Holon::new();
-    // dummy_holon.add_property_value(
-    //     "description".to_string(),
-    //     PropertyValue::StringValue("Provides description of a ValueType".to_string())
-    // );
-    let result = vec![Holon::new()];
-    // result.push(dummy_holon);
-    Ok(result)
-    // TODO: Replace the above stubbed result with the following code
-    // match Holon::get_all_holons() {
-    //     Ok(result)=>  Ok(result),
-    //     Err(holon_error) => {
-    //         Err(holon_error.into())
-    //     }
-    // }
+    match Holon::get_all_holons() {
+        Ok(result) => Ok(result),
+        Err(holon_error) => {
+            Err(holon_error.into())
+        }
+    }
 
 }
 #[hdk_extern]
 pub fn delete_holon(
     target_holon_id: ActionHash,
 ) -> ExternResult<ActionHash> {
-
     match delete_holon_node(target_holon_id) {
-        Ok(result)=> Ok(result),
+        Ok(result) => Ok(result),
         Err(holon_error) => {
             Err(holon_error.into())
         }
     }
-
-
 }
+
+
+
 
 
 /*
