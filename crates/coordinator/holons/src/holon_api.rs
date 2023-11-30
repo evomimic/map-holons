@@ -4,7 +4,7 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::{PropertyName, PropertyValue};
 use crate::holon_node::delete_holon_node;
 use crate::holon::Holon;
-// use crate::holon::*;
+use crate::holon::*;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
@@ -62,11 +62,6 @@ pub fn get_holon(
 pub fn get_all_holons(
    _: (),
 ) -> ExternResult<Vec<Holon>> {
-    // println!("Trace Entry: holon_api: get_all_holons");
-    // // dummy up a result for debugging purposes
-    // let result = Ok(vec![Holon::new()]);
-    // Ok(result)
-    //TODO: Replace the above stubbed result with the following code
     match Holon::get_all_holons() {
         Ok(result)=>  Ok(result),
         Err(holon_error) => {

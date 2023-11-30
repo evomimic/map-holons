@@ -38,7 +38,7 @@ pub struct Holon {
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
     // pub outbound_relationships: RelationshipMap,
-    //
+    // pub dances : DanceMap,
 }
 // impl fmt::Display for Holon {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -161,13 +161,11 @@ impl Holon {
     }
 
     pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
-        println!("Trace Entry: Holon::get_all_holons()");
         let records = get_all_holon_nodes(());
         match records {
             Ok(records) => {
                 let mut holons = Vec::<Holon>::new();
                 for holon_node_record in records.clone() {
-                    debug!("get_all_holons: holon: {:#?}", holon_node_record.clone());
                     let holon = Holon::try_from_node(holon_node_record.clone())?;
                     holons.push(holon);
                 }
