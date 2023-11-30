@@ -84,12 +84,24 @@ async fn rstest_holon_capabilities(
         let p_count = test_holon.property_map.len();
         println!();
         println!("****** Starting create/get test for the following Holon");
-        println!("{:#?}", test_holon);
+        println!("{:#?}", test_holon.clone());
 
         let mut builder_holon = Holon::new();
+
         for property_name in test_holon.property_map.keys() {
-            let property_value = test_holon.property_map.get(property_name).unwrap();
-            builder_holon.add_property_value(property_name.clone(), property_value.clone());
+            let property_value = test_holon.property_map.get(property_name).unwrap().clone();
+            let input = AddPropertyInput {
+                holon: builder_holon.clone(),
+                property_name: property_name.clone(),
+                value: property_value,
+            };
+            builder_holon = conductor
+                .call(
+                    &cell.zome("holons"),
+                    "add_property_value",
+                    input,
+                )
+                .await;
         }
         let created_holon: Holon = conductor
             .call(

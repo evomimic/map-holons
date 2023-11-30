@@ -6,21 +6,22 @@ opt-level = "z"
 
 [workspace]
 resolver = "2"
-members = ["crates/coordinator/*",
-    "crates/integrity/*",
+
+members = ["crates/coordinator/holons",
+    "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
 ]
 
 [workspace.dependencies]
-#hdi = "=0.2.3-beta-rc.0"
-#hdk = "=0.1.3-beta-rc.1"
-#holochain_integrity_types = "=0.1.3-beta-rc.0"
+
+holochain_integrity_types = "0.2"
 hdi = "0.2"
 hdk = "0.1"
 holochain_integrity_types = "0.2"
 serde = "1"
 derive-new = "0.5"
 thiserror = "1"
+
 
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
@@ -30,3 +31,4 @@ path = "crates/integrity/holons"
 
 [workspace.dependencies.shared_types_holon]
 path = "crates/shared_types/holon"
+

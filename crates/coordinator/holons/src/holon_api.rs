@@ -8,11 +8,11 @@ use crate::holon::*;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct AddPropertyInput {
-    holon: Holon,
-    property_name:PropertyName,
-    value: PropertyValue,
+    pub holon: Holon,
+    pub property_name:PropertyName,
+    pub value: PropertyValue,
 }
 
 #[hdk_extern]
@@ -25,8 +25,8 @@ pub fn add_property_value(input: AddPropertyInput) -> ExternResult<Holon> {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RemovePropertyInput {
-    holon: Holon,
-    property_name:PropertyName,
+    pub holon: Holon,
+    pub property_name:PropertyName,
 }
 #[hdk_extern]
 pub fn remove_property_value(input: RemovePropertyInput) -> ExternResult<Holon> {
@@ -67,7 +67,7 @@ pub fn get_all_holons(
         Err(holon_error) => {
             Err(holon_error.into())
         }
-    }
+
 
 }
 #[hdk_extern]
