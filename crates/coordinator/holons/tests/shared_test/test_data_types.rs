@@ -1,4 +1,4 @@
-use holons::holon::Holon;
+use holons::holon_types::Holon;
 
 #[derive(Clone, Debug)]
 pub enum HolonTestCase {

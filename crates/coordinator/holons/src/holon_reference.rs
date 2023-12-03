@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use crate::holon_errors::HolonError;
-use crate::holon::Holon;
+use crate::holon_types::Holon;
 // use crate::holon::*;
 
 

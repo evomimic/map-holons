@@ -1,53 +1,12 @@
-use hdi::prelude::{ActionHash, Deserialize, Serialize};
-use derive_new::new;
-use std::fmt;
-//use holochain_integrity_types::Record;
+use hdi::prelude::{ActionHash};
 use crate::all_holon_nodes::*;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
 use crate::holon_node::*;
+use crate::holon_types::{Holon, HolonState};
 use hdk::entry::get;
 use hdk::prelude::*;
-use holons_integrity::{EntryTypes, LinkTypes};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
-pub enum HolonState {
-    New,
-    Fetched,
-    Changed,
-    // CreateInProgress,
-    // SaveInProgress,
-}
-impl fmt::Display for HolonState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            HolonState::New => write!(f, "New"),
-            HolonState::Fetched => write!(f, "Fetched"),
-            HolonState::Changed => write!(f, "Changed"),
-        }
-    }
-}
-
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
-pub struct Holon {
-    state: HolonState,
-    saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
-    pub property_map: PropertyMap,
-    // pub descriptor: HolonReference,
-    // pub holon_space: HolonReference,
-    // pub outbound_relationships: RelationshipMap,
-    // pub dances : DanceMap,
-}
-// impl fmt::Display for Holon {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "Holon: has state: {0}", self.state)
-//
-//     }
-// }
-
 
 impl Holon {
     pub fn new() -> Holon {
@@ -75,7 +34,7 @@ impl Holon {
 
     // TODO: add error checking and HolonError result
     // Possible Errors: Unrecognized Property Name
-    pub fn add_property_value(
+    pub fn with_property_value(
         &mut self,
         property: PropertyName,
         value: PropertyValue,
@@ -87,16 +46,16 @@ impl Holon {
         }
         self
     }
-    // TODO: add error checking and HolonError result
-    // Possible Errors: Unrecognized Property Name
-    pub fn remove_property_value(&mut self, property: PropertyName) -> &mut Self {
-        self.property_map.remove(&property);
-        match self.state {
-            HolonState::Fetched => self.state = HolonState::Changed,
-            _ => {}
-        }
-        self
-    }
+    // // TODO: add error checking and HolonError result
+    // // Possible Errors: Unrecognized Property Name
+    // pub fn remove_property_value(&mut self, property: PropertyName) -> &mut Self {
+    //     self.property_map.remove(&property);
+    //     match self.state {
+    //         HolonState::Fetched => self.state = HolonState::Changed,
+    //         _ => {}
+    //     }
+    //     self
+    // }
 
     pub fn get_id(&self) -> ActionHash {
         // TODO: Add better handling if saved_node is None

@@ -17,8 +17,6 @@ serde = { workspace = true }
 derive-new = { workspace = true }
 thiserror = { workspace = true }
 
-#shared_types_holon = {workspace = true}
-
 
 shared_types_holon = {workspace = true}
 
