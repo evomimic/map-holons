@@ -1,7 +1,7 @@
 /// This file defines the functions exposed via hdk_extern
 ///
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{PropertyName, PropertyValue};
+use shared_types_holon::holon_node::{PropertyName, BaseValue};
 use crate::holon_node::delete_holon_node;
 use crate::holon_types::Holon;
 
@@ -11,7 +11,7 @@ pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
 pub struct WithPropertyInput {
     pub holon: Holon,
     pub property_name:PropertyName,
-    pub value: PropertyValue,
+    pub value: BaseValue,
 }
 
 #[hdk_extern]

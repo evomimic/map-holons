@@ -6,7 +6,7 @@ use crate::holon_node::*;
 use crate::holon_types::{Holon, HolonState};
 use hdk::entry::get;
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, BaseValue};
 
 impl Holon {
     pub fn new() -> Holon {
@@ -37,7 +37,7 @@ impl Holon {
     pub fn with_property_value(
         &mut self,
         property: PropertyName,
-        value: PropertyValue,
+        value: BaseValue,
     ) -> &mut Self {
         self.property_map.insert(property, value);
         match self.state {

@@ -23,7 +23,7 @@ use holons::holon_errors::HolonError;
 use holons::holon_types::Holon;
 use holons::holon_api::*;
 
-use shared_types_holon::holon_node::{PropertyName, PropertyMap, PropertyValue};
+use shared_types_holon::holon_node::{PropertyName, PropertyMap, BaseValue};
 
 
 
@@ -82,8 +82,8 @@ async fn rstest_holon_capabilities(
     for test_holon in test_holons.clone() {
         let p_count = test_holon.property_map.len();
         println!();
-        println!("****** Starting create/get test for the following Holon");
-        println!("{:#?}", test_holon.clone());
+        println!("****** Starting create/get test for the following Holon:");
+        print_holon_without_saved_node(&test_holon);
 
         let mut builder_holon = Holon::new();
 
@@ -120,7 +120,7 @@ async fn rstest_holon_capabilities(
         assert_eq!(test_holon.into_node(), fetched_holon.clone().into_node());
 
         println!("\n...Success! Fetched holon matches generated holon ******");
-        println!("{:#?}", fetched_holon);
+        trace!("{:#?}", fetched_holon);
     }
 
     println!("All Holon Descriptors Created... do a get_all_holon_types and compare result with test data...");
@@ -158,5 +158,10 @@ async fn rstest_holon_capabilities(
 
     assert_eq!(0, fetched_holons.len());
     println!("...Success! All holons_integrity have been deleted. \n");
+    println!("To re-run just this test with output, use: 'cargo test -p holons --test holon_tests  -- --show-output'");
+}
+fn print_holon_without_saved_node(holon:&Holon) {
+    println!("{:#?} Holon: with property map: ",holon.state.clone());
+    println!("{:#?}", holon.property_map.clone());
 }
 

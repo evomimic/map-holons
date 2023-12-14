@@ -20,7 +20,7 @@ use rstest::*;
 use holons::helpers::*;
 use holons::holon_types::{Holon};
 use holons::holon_api::*;
-use shared_types_holon::holon_node::PropertyValue;
+use shared_types_holon::holon_node::BaseValue;
 
 
 use crate::descriptors::loader;
