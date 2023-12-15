@@ -9,6 +9,8 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, BaseValue};
 
 impl Holon {
+    // TODO: replace the following with a HolonConstructor on HolonSpace that takes HolonDescriptor as a parameter
+    //
     pub fn new() -> Holon {
         Holon {
             state: HolonState::New,

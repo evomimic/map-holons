@@ -10,6 +10,7 @@ use shared_types_holon::holon_node::{BaseValue};
 use crate::shared_test::descriptors::enum_descriptor::{define_enum_descriptor, define_enum_variant_descriptor};
 use crate::shared_test::descriptors::holon_descriptor::define_holon_descriptor;
 use crate::shared_test::descriptors::holon_space::{define_holon_space_descriptor, new_holon_space};
+use crate::shared_test::descriptors::relationship::define_relationship_descriptor;
 use crate::shared_test::descriptors::schema::define_schema;
 use crate::shared_test::descriptors::value_descriptor::{define_boolean_descriptor, define_integer_descriptor, define_string_descriptor};
 
@@ -23,6 +24,7 @@ pub fn load_type_system() -> Vec<Holon> {
     type_system.push(define_holon_space_descriptor());
     type_system.push(new_holon_space());
     type_system.push(define_schema());
+    type_system.push(define_relationship_descriptor());
 
     type_system.push(define_holon_descriptor());
     type_system.push(define_string_descriptor());

@@ -18,7 +18,7 @@ pub fn define_type_descriptor() -> Holon {
             "Describes the TypeDescriptor supertype".to_string()))
         .with_property_value("label".to_string(), BaseValue::StringValue("Type Descriptor".to_string()))
         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
-        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
+        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(true));
 
     // TODO: Add version Relationship to SemanticVersion as HolonReference
     // TODO: Add schema Relationship to SemanticVersion as HolonReference
@@ -27,44 +27,44 @@ pub fn define_type_descriptor() -> Holon {
 
 }
 
-pub fn define_integer_descriptor() -> Holon {
-
-    // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
-    let mut descriptor = Holon::new();
-
-    // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
-    descriptor.with_property_value("type_name".to_string(), BaseValue::StringValue("IntegerDescriptor".to_string()))
-        .with_property_value("description".to_string(), BaseValue::StringValue(
-            "Describes a MAP Integer Value Type".to_string()))
-        .with_property_value("label".to_string(), BaseValue::StringValue("Integer Descriptor".to_string()))
-        .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
-        .with_property_value("version".to_string(), BaseValue::StringValue("0.0.1".to_string()))
-        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
-
-
-    // TODO: Add Relationships to IntegerDescriptor for
-    // PropertyDescriptorMpa
-
-    descriptor
-
-}
-
-pub fn define_boolean_descriptor() -> Holon {
-
-    // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
-    let mut descriptor = Holon::new();
-
-    // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
-    descriptor.with_property_value("type_name".to_string(), BaseValue::StringValue("BooleanDescriptor".to_string()))
-        .with_property_value("description".to_string(), BaseValue::StringValue(
-            "Describes a basic MAP Boolean Value Type".to_string()))
-        .with_property_value("label".to_string(), BaseValue::StringValue("Boolean Descriptor".to_string()))
-        .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
-        .with_property_value("version".to_string(), BaseValue::StringValue("0.0.1".to_string()))
-        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
-
-    // TODO: Add Relationship to BooleanDescriptor
-
-    descriptor
-
-}
+// pub fn define_integer_descriptor() -> Holon {
+//
+//     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
+//     let mut descriptor = Holon::new();
+//
+//     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
+//     descriptor.with_property_value("type_name".to_string(), BaseValue::StringValue("IntegerDescriptor".to_string()))
+//         .with_property_value("description".to_string(), BaseValue::StringValue(
+//             "Describes a MAP Integer Value Type".to_string()))
+//         .with_property_value("label".to_string(), BaseValue::StringValue("Integer Descriptor".to_string()))
+//         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//         .with_property_value("version".to_string(), BaseValue::StringValue("0.0.1".to_string()))
+//         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
+//
+//
+//     // TODO: Add Relationships to IntegerDescriptor for
+//     // PropertyDescriptorMpa
+//
+//     descriptor
+//
+// }
+//
+// pub fn define_boolean_descriptor() -> Holon {
+//
+//     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
+//     let mut descriptor = Holon::new();
+//
+//     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
+//     descriptor.with_property_value("type_name".to_string(), BaseValue::StringValue("BooleanDescriptor".to_string()))
+//         .with_property_value("description".to_string(), BaseValue::StringValue(
+//             "Describes a basic MAP Boolean Value Type".to_string()))
+//         .with_property_value("label".to_string(), BaseValue::StringValue("Boolean Descriptor".to_string()))
+//         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//         .with_property_value("version".to_string(), BaseValue::StringValue("0.0.1".to_string()))
+//         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
+//
+//     // TODO: Add Relationship to BooleanDescriptor
+//
+//     descriptor
+//
+// }
