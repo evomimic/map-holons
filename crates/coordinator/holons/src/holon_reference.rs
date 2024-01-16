@@ -11,11 +11,28 @@ pub enum HolonReference {
 }
 pub trait HolonReferenceFns {
     fn get_holon(self)->Result<Holon,HolonError>;
+
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq )]
 pub struct LocalHolonReference {
-    holon_id: ActionHash,
+    holon_id: Option<ActionHash>,
+    holon: Option<Holon>,
+}
+
+impl LocalHolonReference {
+    pub fn new() -> LocalHolonReference {
+        LocalHolonReference {
+            holon_id : None,
+            holon: None,
+        }
+    }
+    pub fn with_holon(&mut self, holon:Holon) -> &mut Self{
+        self.holon = Some(holon);
+        self
+    }
+
+
 }
 
 // TODO: figure out why fetch_holon function can't be found in the following

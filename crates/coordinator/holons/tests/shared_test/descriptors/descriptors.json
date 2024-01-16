@@ -1,0 +1,25 @@
+{
+  "schema": {
+    "name": "MAP L0 Core",
+    "description": "The foundational MAP type descriptors for the L0 layer of the MAP Schema",
+      "descriptors": {
+        "Schema_Descriptor": {
+          "type_name": "SchemaDescriptor",
+          "description": "Describes the Schema HolonType",
+          "label": "Holon Collection",
+          "base_type": "BaseType::Holon",
+          "is_dependent": false,
+          "is_built_in": true
+        },
+        "HolonDescriptor": {
+          "type_name": "SchemaDescriptor",
+          "description": "Describes the Schema HolonType",
+          "label": "Holon Collection",
+          "base_type": "BaseType::Holon",
+          "is_dependent": false,
+          "is_built_in": true
+        }
+      }
+  }
+
+}

@@ -6,7 +6,6 @@ pub mod test_data_types;
 pub mod descriptors;
 
 
-
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 

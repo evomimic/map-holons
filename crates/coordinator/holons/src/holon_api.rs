@@ -1,7 +1,8 @@
 /// This file defines the functions exposed via hdk_extern
 ///
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{PropertyName, BaseValue};
+use shared_types_holon::holon_node::{PropertyName};
+use shared_types_holon::value_types::BaseValue;
 use crate::holon_node::delete_holon_node;
 use crate::holon_types::Holon;
 
@@ -22,18 +23,6 @@ pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
         input.value.clone());
     Ok(holon)
 }
-// TODO: Delete the following commented out code. I don't think remove_property_value is needed
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct RemovePropertyInput {
-//     pub holon: Holon,
-//     pub property_name:PropertyName,
-// }
-// #[hdk_extern]
-// pub fn remove_property_value(input: RemovePropertyInput) -> ExternResult<Holon> {
-//     let mut holon = input.holon.clone();
-//     holon.remove_property_value(input.property_name);
-//     Ok(holon)
-// }
 
 #[hdk_extern]
 pub fn commit(input: Holon) -> ExternResult<Holon> {

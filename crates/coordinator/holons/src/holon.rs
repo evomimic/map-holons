@@ -3,10 +3,12 @@ use crate::all_holon_nodes::*;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
 use crate::holon_node::*;
-use crate::holon_types::{Holon, HolonState};
+use crate::holon_types::{Holon, HolonState, StagedPropertyMap};
 use hdk::entry::get;
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, BaseValue};
+use shared_types_holon::holon_node::{HolonNode, PropertyName};
+use shared_types_holon::value_types::BaseValue;
+use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 
 impl Holon {
     // TODO: replace the following with a HolonConstructor on HolonSpace that takes HolonDescriptor as a parameter
@@ -15,25 +17,64 @@ impl Holon {
         Holon {
             state: HolonState::New,
             saved_node: None,
-            property_map: PropertyMap::new(),
+            property_map: StagedPropertyMap::new(),
+            relationship_map: RelationshipMap::new(),
         }
     }
-    // Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
+
+    /// When converting Holons to HolonNodes, only properties with values should be inserted
+    ///
     pub fn into_node(self) -> HolonNode {
+        let node_map = self.property_map
+            .iter()
+            .filter_map(|(name, target)| target.clone().map(|t| (name.clone(), t)))
+            .collect();
+
         HolonNode {
-            property_map: self.property_map.clone(),
+            property_map: node_map,
         }
     }
+    /// try_from_node inflates a Holon from a HolonNode. This requires first having the Holon's
+    /// Descriptor initializing its StagedPropertyMap. BUT HOW DO GET ITS DESCRIPTOR?
+    /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
         let holon_node = get_holon_node_from_record(holon_node_record.clone())?;
+        let staged_property_map = holon_node.property_map
+            .into_iter()
+            .map(|(name, target)| (name, Some(target)))
+            .collect();
         let holon = Holon {
             state: HolonState::Fetched,
             saved_node: Some(holon_node_record.clone()),
-            property_map: holon_node.property_map.clone(),
+            property_map: staged_property_map,
+            relationship_map: RelationshipMap::new(),
         };
+
         Ok(holon)
     }
+    // NOTE: this function doesn't check if supplied RelationshipName is a valid outbound
+    // relationship for the self holon. It probably  needs to be possible to suspend
+    // this checking while the type system is being bootstrapped, since the descriptors
+    // required by the validation may not yet exist.
+    // TODO: Add conditional validation checking when adding relationships
+    pub fn add_related_holon(
+        &mut self,
+        name: RelationshipName,
+        target: Option<RelationshipTarget>,
+    ) -> &mut Self {
 
+        self.relationship_map.insert(name, target);
+        match self.state {
+            HolonState::Fetched => self.state = HolonState::Changed,
+            _ => {}
+        }
+        self
+    }
+    // NOTE: this function doesn't check if supplied PropertyName is a valid property
+    // for the self holon. It probably needs to be possible to suspend
+    // this checking while the type system is being bootstrapped, since the descriptors
+    // required by the validation may not yet exist.
+    // TODO: Add conditional validation checking when adding properties
     // TODO: add error checking and HolonError result
     // Possible Errors: Unrecognized Property Name
     pub fn with_property_value(
@@ -41,7 +82,7 @@ impl Holon {
         property: PropertyName,
         value: BaseValue,
     ) -> &mut Self {
-        self.property_map.insert(property, value);
+        self.property_map.insert(property, Some(value));
         match self.state {
             HolonState::Fetched => self.state = HolonState::Changed,
             _ => {}

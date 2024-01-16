@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
 use derive_new::new;
 use std::fmt;
 use hdk::prelude::*;
-use shared_types_holon::{HolonId, PropertyMap};
+use shared_types_holon::{PropertyName};
+use shared_types_holon::value_types::BaseValue;
+use crate::relationship::RelationshipMap;
 
 
 #[hdk_entry_helper]
@@ -9,10 +12,11 @@ use shared_types_holon::{HolonId, PropertyMap};
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
-    pub property_map: PropertyMap,
+    pub property_map: StagedPropertyMap,
+    pub relationship_map: RelationshipMap,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
-    // pub outbound_relationships: RelationshipMap,
+
     // pub dances : DanceMap,
 }
 // impl fmt::Display for Holon {
@@ -21,7 +25,7 @@ pub struct Holon {
 //
 //     }
 // }
-
+pub type StagedPropertyMap = BTreeMap<PropertyName, Option<BaseValue>>;
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub enum HolonState {
@@ -40,17 +44,20 @@ impl fmt::Display for HolonState {
         }
     }
 }
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
-pub struct LocalHolonReference {
-    pub holon_id: HolonId,
-    pub holon: Option<Holon>,
-}
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
-pub enum HolonReference {
-    Local(LocalHolonReference),
-    //External(ExternalHolonReference),
-}
 
+
+// #[hdk_entry_helper]
+// #[derive(Clone, PartialEq, Eq)]
+// pub struct LocalHolonReference {
+//     pub holon_id: HolonId,
+//     pub holon: Option<Holon>,
+// }
+//
+// #[hdk_entry_helper]
+// #[derive(Clone, PartialEq, Eq)]
+// pub enum HolonReference {
+//     Local(LocalHolonReference),
+//     //External(ExternalHolonReference),
+// }
+//
