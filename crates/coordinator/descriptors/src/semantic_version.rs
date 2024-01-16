@@ -1,15 +1,15 @@
 use derive_new::new;
-use std::fmt;
+
 use hdk::prelude::*;
-use shared_types_holon::{HolonId, PropertyMap};
+
 
 use holons::holon_types::{Holon};
-use holons::relationship::RelationshipTarget;
+
 // use shared_types_holon::BaseType::*;
 
 // use shared_types_holon::holon_node::{BaseValue, BaseType};
-use shared_types_holon::value_types::{BaseType, BaseValue};
-use crate::type_descriptor::define_type_descriptor;
+use shared_types_holon::value_types::{BaseValue};
+
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]

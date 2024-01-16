@@ -12,14 +12,14 @@ pub fn define_relationship_descriptor(
     type_name: String,
     description: String,
     label: String, // Human readable name for this type
-    min_target_cardinality: MapInteger,
-    max_target_cardinality: MapInteger,
-    deletion_semantic: DeletionSemantic,
-    affinity: MapInteger,
+    _min_target_cardinality: MapInteger,
+    _max_target_cardinality: MapInteger,
+    _deletion_semantic: DeletionSemantic,
+    _affinity: MapInteger,
 
 ) -> Holon {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let mut descriptor = define_type_descriptor(
+    let descriptor = define_type_descriptor(
         schema,
         type_name,
         BaseTypeHolon,

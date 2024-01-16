@@ -8,8 +8,8 @@ pub mod descriptor_types;
 pub mod holon_descriptor;
 pub mod relationship_descriptor;
 
-use hdk::prelude::*;
-use holons_integrity::*;
+
+
 
 
 // pub fn add(left: usize, right: usize) -> usize {

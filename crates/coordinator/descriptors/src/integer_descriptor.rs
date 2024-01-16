@@ -8,12 +8,12 @@ pub fn define_integer_descriptor(
     type_name: String,
     description: String,
     label: String, // Human readable name for this type
-    min_length: i64,
-    max_length: i64,
+    _min_length: i64,
+    _max_length: i64,
 
 ) -> Holon {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let mut descriptor = define_type_descriptor(
+    let descriptor = define_type_descriptor(
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
         type_name,
         BaseType::Value(ValueType::Integer),

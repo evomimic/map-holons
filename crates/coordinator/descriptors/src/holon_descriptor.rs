@@ -11,7 +11,7 @@ pub fn define_holon_descriptor(
 
 ) -> Holon {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let mut descriptor = define_type_descriptor(
+    let descriptor = define_type_descriptor(
         schema,
         type_name,
         BaseTypeHolon,

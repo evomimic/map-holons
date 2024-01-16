@@ -12,8 +12,13 @@ integrity:
       dependencies: ~
 coordinator:
   zomes:
-    - name: holons_integrity
+    - name: holons
       hash: ~
-      bundled: "../../target/wasm32-unknown-unknown/release/holons_integrity.wasm"
+      bundled: "../../target/wasm32-unknown-unknown/release/holons.wasm"
+      dependencies:
+        - name: holons_integrity
+    - name: descriptors
+      hash: ~
+      bundled: "../../target/wasm32-unknown-unknown/release/descriptors.wasm"
       dependencies:
         - name: holons_integrity

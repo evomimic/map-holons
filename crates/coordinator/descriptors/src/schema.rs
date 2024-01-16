@@ -1,18 +1,18 @@
 
-use holons::helpers::define_local_target;
-use holons::holon_errors::HolonError;
+
+
 /// MAP Schema objects maintain a set of MAP Descriptors
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
 
 
 use holons::holon_types::{Holon};
-use holons::relationship::RelationshipTarget;
 
-use shared_types_holon::holon_node::{PropertyName};
+
+
 use shared_types_holon::value_types::{BaseValue, MapString};
-use crate::descriptor_types::{Schema, TYPE_META_DESCRIPTOR, TypeDescriptor};
-use crate::type_descriptor::define_type_descriptor;
+use crate::descriptor_types::{Schema};
+
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
