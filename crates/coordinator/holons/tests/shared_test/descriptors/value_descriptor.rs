@@ -2,9 +2,9 @@
 
 
 use holons::holon_types::{Holon};
-use shared_types_holon::BaseType::*;
+use shared_types_holon::value_types::BaseType;
 
-use shared_types_holon::holon_node::{BaseValue, BaseType};
+use shared_types_holon::holon_node::{BaseValue};
 // I don't think ValueDescriptor is needed as an intermediate supertype
 // between specific ValueDescriptors and TypeDescriptor --
 // pub fn define_value_type_descriptor() -> Holon {

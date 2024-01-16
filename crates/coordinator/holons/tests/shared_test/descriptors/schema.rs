@@ -4,12 +4,12 @@
 
 
 use holons::holon_types::{Holon};
-use shared_types_holon::BaseType::*;
+use shared_types_holon::value_types::BaseType;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_reference::HolonReference::Local;
 use holons::relationship::RelationshipTarget;
 use holons::helpers::*;
-use shared_types_holon::holon_node::{BaseValue, BaseType};
+use shared_types_holon::holon_node::{BaseValue};
 use crate::shared_test::descriptors::descriptor_types::TYPE_DESCRIPTION_TEMPLATE;
 use crate::shared_test::descriptors::holon_descriptor::*;
 use crate::shared_test::descriptors::property_descriptor::*;
@@ -94,13 +94,12 @@ pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
     let mut schema_type_descriptor = Holon::new();
 
     schema_type_descriptor.with_property_value("type_name".to_string(), BaseValue::StringValue("SchemaDescriptor".to_string()))
-    .with_property_value("description".to_string(), BaseValue::StringValue(
-    format!(TYPE_DESCRIPTION_TEMPLATE,"SchemaDescriptor".to_string()))
+    .with_property_value("description".to_string(), BaseValue::StringValue("Descriptor for Schema".to_string()))
     .with_property_value("label".to_string(), BaseValue::StringValue("Schema Descriptor".to_string()))
     .with_property_value("base_type".to_string(), BaseValue::EnumValue("BaseType::Holon".to_string()))
     .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(true));
 
-    schema_type_descriptor.add_related_holon("TypeDescriptor-INSTANCES->Schema".to_string(), schema_target);
+    schema_type_descriptor.add_related_holon("TypeDescriptor-INSTANCES->Schema".to_string(), Some(schema_target.clone()));
 
     let type_descriptor_target = define_local_target(&schema_type_descriptor);
 

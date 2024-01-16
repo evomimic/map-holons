@@ -3,7 +3,7 @@
 
 
 use holons::holon_types::{Holon};
-use shared_types_holon::BaseType;
+use shared_types_holon::value_types::BaseType;
 
 use shared_types_holon::holon_node::{BaseValue};
 use crate::shared_test::descriptors::enum_descriptor::{define_enum_descriptor, define_enum_variant_descriptor};

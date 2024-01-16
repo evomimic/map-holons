@@ -5,9 +5,9 @@ use holochain::prelude::VecOrSingle::Vec;
 
 use holons::holon_types::{Holon};
 use holons::relationship::RelationshipTarget;
-use shared_types_holon::BaseType::*;
+use shared_types_holon::value_types::BaseType;
 
-use shared_types_holon::holon_node::{BaseValue, BaseType};
+use shared_types_holon::holon_node::{BaseValue};
 
 
 pub fn define_relationship_type_descriptor() -> Holon {
