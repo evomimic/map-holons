@@ -1,14 +1,9 @@
 // This file creates an Holon Space Holon
 
-
-use holons::holon_types::{Holon};
-use shared_types_holon::value_types::BaseType;
-
-use shared_types_holon::holon_node::{BaseValue};
-
+use holons::holon_types::Holon;
+use shared_types_holon::value_types::{BaseType, BaseValue};
 
 pub fn new_holon_space() -> Holon {
-
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut holon_space = Holon::new();
 
@@ -16,14 +11,11 @@ pub fn new_holon_space() -> Holon {
         .with_property_value("description".to_string(), BaseValue::StringValue(
             "The top-level local container for local holons, relatioships, and proxies to/from external holon spaces".to_string()));
 
-
     // TODO: Add holons relationship to contained holons and descriptor relationship to the HolonSpaceDescriptor
 
     holon_space
-
 }
 pub fn define_holon_space_descriptor() -> Holon {
-
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
 
@@ -38,5 +30,4 @@ pub fn define_holon_space_descriptor() -> Holon {
     // TODO: Add Relationhips
 
     descriptor
-
 }

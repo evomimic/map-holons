@@ -13,36 +13,34 @@
 
 #![allow(dead_code)]
 
-
 use core::panic;
-use std::collections::btree_map::BTreeMap;
-use rstest::*;
 use holons::helpers::*;
-use holons::holon_types::{Holon};
 use holons::holon_api::*;
-use shared_types_holon::holon_node::BaseValue;
-
+use holons::holon_types::Holon;
+use rstest::*;
+use shared_types_holon::value_types::BaseValue;
+use std::collections::btree_map::BTreeMap;
 
 use crate::descriptors::loader;
 // use hdk::prelude::*;
 
-use crate::shared_test::test_data_types::{HolonCreatesTestCase};
+use crate::shared_test::test_data_types::HolonCreatesTestCase;
 // use crate::shared_test::fixture_helpers::{derive_label, derive_type_description, derive_type_name};
 // use crate::shared_test::property_descriptor_data_creators::{
 //     create_example_property_descriptors, create_example_updates_for_property_descriptors,
 // };
-use holons::holon_errors::HolonError;
 use crate::shared_test::descriptors::loader::load_type_system;
+use holons::holon_errors::HolonError;
 
 /// This function creates a rich test dataset by creating a vector of Holons of various
 /// kinds -- from simple to complex
 #[fixture]
 pub fn new_holons_fixture() -> Result<HolonCreatesTestCase, HolonError> {
-    let mut test_data_set =load_type_system();
+    let mut test_data_set = load_type_system();
 
-
-
-   Ok(HolonCreatesTestCase {creates: test_data_set})
+    Ok(HolonCreatesTestCase {
+        creates: test_data_set,
+    })
 }
 
 // #[cfg(test)]

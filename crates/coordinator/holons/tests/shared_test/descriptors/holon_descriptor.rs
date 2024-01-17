@@ -4,9 +4,8 @@ use holons::holon_reference::HolonReference::*;
 use holons::holon_types::{Holon};
 use holons::relationship::RelationshipTarget;
 use holons::relationship::RelationshipTarget::*;
-use shared_types_holon::value_types::BaseType;
+use shared_types_holon::value_types::{BaseType, BaseValue};
 
-use shared_types_holon::holon_node::{BaseValue};
 
 
 /// This file creates a HolonDescriptor Holon and its Associated Relationships

@@ -4,9 +4,7 @@
 
 use holons::holon_types::{Holon};
 
-
-use shared_types_holon::holon_node::{BaseValue};
-use shared_types_holon::value_types::BaseType;
+use shared_types_holon::value_types::{BaseType, BaseValue};
 
 
 pub fn define_enum_descriptor() -> Holon {

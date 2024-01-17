@@ -1,15 +1,14 @@
 // Shared types for Descriptors
 use holons::helpers::define_local_target;
-use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_reference::HolonReference::*;
-use holons::holon_types::{Holon};
+use holons::holon_reference::{HolonReference, LocalHolonReference};
+use holons::holon_types::Holon;
 use holons::relationship::RelationshipTarget;
 use holons::relationship::RelationshipTarget::*;
 
 use derive_new::*;
 
-
-use shared_types_holon::holon_node::{BaseValue};
+use shared_types_holon::value_types::BaseValue;
 // TODO: Is SemanticVersion struct needed, since SemanticVersion is just a Holon?
 //#[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -29,4 +28,4 @@ impl Default for SemanticVersion {
     }
 }
 
-pub const TYPE_DESCRIPTION_TEMPLATE: "Descriptor for {}";
+pub const TYPE_DESCRIPTION_TEMPLATE: &str = "Descriptor for {}";
