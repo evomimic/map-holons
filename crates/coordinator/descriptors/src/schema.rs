@@ -1,31 +1,26 @@
-
-
-
 /// MAP Schema objects maintain a set of MAP Descriptors
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
+use holons::holon_types::Holon;
 
-
-use holons::holon_types::{Holon};
-
-
-
+use crate::descriptor_types::Schema;
 use shared_types_holon::value_types::{BaseValue, MapString};
-use crate::descriptor_types::{Schema};
-
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
     pub fn new(name: String, description: String) -> Schema {
         let mut schema_holon = Holon::new();
-        let name_property_name: MapString = "name".to_string();
-        let description_property_name: MapString = "description".to_string();
+        let name_property_name: MapString = MapString("name".to_string());
+        let description_property_name: MapString = MapString("description".to_string());
 
-        schema_holon.with_property_value(name_property_name, BaseValue::StringValue(name))
-            .with_property_value(description_property_name, BaseValue::StringValue(description));
+        schema_holon
+            .with_property_value(name_property_name, BaseValue::StringValue(MapString(name)))
+            .with_property_value(
+                description_property_name,
+                BaseValue::StringValue(MapString(description)),
+            );
 
         Schema(schema_holon)
-
     }
     /// Downcasts a Schema to a Holon
     pub fn into_holon(self) -> Holon {
@@ -65,14 +60,4 @@ impl Schema {
     //     }
     //
     // }
-
-
 }
-
-
-
-
-
-
-
-

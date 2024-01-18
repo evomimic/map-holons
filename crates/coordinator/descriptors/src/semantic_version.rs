@@ -8,7 +8,7 @@ use holons::holon_types::{Holon};
 // use shared_types_holon::BaseType::*;
 
 // use shared_types_holon::holon_node::{BaseValue, BaseType};
-use shared_types_holon::value_types::{BaseValue};
+use shared_types_holon::value_types::{BaseValue,MapBoolean, MapString, MapInteger, MapEnumValue};
 
 
 #[hdk_entry_helper]
@@ -44,9 +44,9 @@ pub fn define_semantic_version(
     let mut version = Holon::new();
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
-    version.with_property_value("major".to_string(), BaseValue::IntegerValue(major))
-        .with_property_value("minor".to_string(), BaseValue::IntegerValue(minor))
-        .with_property_value("patch".to_string(), BaseValue::IntegerValue(patch));
+    version.with_property_value(MapString("major".to_string()), BaseValue::IntegerValue(MapInteger(major)))
+        .with_property_value(MapString("minor".to_string()), BaseValue::IntegerValue(MapInteger(minor)))
+        .with_property_value(MapString("patch".to_string()), BaseValue::IntegerValue(MapInteger(patch)));
 
     version
 

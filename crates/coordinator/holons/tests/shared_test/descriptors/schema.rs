@@ -11,7 +11,9 @@ use holons::holon_reference::{HolonReference, LocalHolonReference};
 /// of the MAP Ontology as well as the relationships between those descriptors
 use holons::holon_types::Holon;
 use holons::relationship::RelationshipTarget;
-use shared_types_holon::value_types::{BaseType, BaseValue};
+use shared_types_holon::value_types::{
+    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+};
 
 pub fn define_schema() -> Holon {
     // 1) Define the, initially undescribed, Schema Holon
@@ -22,15 +24,15 @@ pub fn define_schema() -> Holon {
 
     schema
         .with_property_value(
-            "name".to_string(),
-            BaseValue::StringValue("MAP L0 Core".to_string()),
+            MapString("name".to_string()),
+            BaseValue::StringValue(MapString("MAP L0 Core".to_string())),
         )
         .with_property_value(
-            "description".to_string(),
-            BaseValue::StringValue(
+            MapString("description".to_string()),
+            BaseValue::StringValue(MapString(
                 "The foundational MAP type descriptors for the L0 layer of the MAP Schema"
                     .to_string(),
-            ),
+            )),
         );
 
     // Define a RelationshipTarget for the Schema Holon
@@ -91,25 +93,28 @@ pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
 
     schema_type_descriptor
         .with_property_value(
-            "type_name".to_string(),
-            BaseValue::StringValue("SchemaDescriptor".to_string()),
+            MapString("type_name".to_string()),
+            BaseValue::StringValue(MapString("SchemaDescriptor".to_string())),
         )
         .with_property_value(
-            "description".to_string(),
-            BaseValue::StringValue("Descriptor for Schema".to_string()),
+            MapString("description".to_string()),
+            BaseValue::StringValue(MapString("Descriptor for Schema".to_string())),
         )
         .with_property_value(
-            "label".to_string(),
-            BaseValue::StringValue("Schema Descriptor".to_string()),
+            MapString("label".to_string()),
+            BaseValue::StringValue(MapString("Schema Descriptor".to_string())),
         )
         .with_property_value(
-            "base_type".to_string(),
-            BaseValue::EnumValue("BaseType::Holon".to_string()),
+            MapString("base_type".to_string()),
+            BaseValue::EnumValue(MapEnumValue(MapString(("BaseType::Holon".to_string())))),
         )
-        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(true));
+        .with_property_value(
+            MapString("is_dependent".to_string()),
+            BaseValue::BooleanValue(MapBoolean(true)),
+        );
 
     schema_type_descriptor.add_related_holon(
-        "TypeDescriptor-INSTANCES->Schema".to_string(),
+        MapString("TypeDescriptor-INSTANCES->Schema".to_string()),
         Some(schema_target.clone()),
     );
 
@@ -133,22 +138,27 @@ pub fn define_schema_relationship_descriptor(schema_target: &RelationshipTarget)
 
     schema_relationship_descriptor
         .with_property_value(
-            "type_name".to_string(),
-            BaseValue::StringValue("SchemaDescriptor".to_string()),
+            MapString("type_name".to_string()),
+            BaseValue::StringValue(MapString("SchemaDescriptor".to_string())),
         )
         .with_property_value(
-            "description".to_string(),
-            BaseValue::StringValue("Describes the TypeDescriptor supertype".to_string()),
+            MapString("description".to_string()),
+            BaseValue::StringValue(MapString(
+                "Describes the TypeDescriptor supertype".to_string(),
+            )),
         )
         .with_property_value(
-            "label".to_string(),
-            BaseValue::StringValue("Holon".to_string()),
+            MapString("label".to_string()),
+            BaseValue::StringValue(MapString("Holon".to_string())),
         )
         .with_property_value(
-            "base_type".to_string(),
-            BaseValue::StringValue("BaseType::Holon".to_string()),
+            MapString("base_type".to_string()),
+            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
         )
-        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(true));
+        .with_property_value(
+            MapString("is_dependent".to_string()),
+            BaseValue::BooleanValue(MapBoolean(true)),
+        );
 
     /* TODO: Define SemanticVersionDescriptor,
         define TypeDescriptor-VERSION->SemanticVersion RelationshipDescriptor
