@@ -1,6 +1,6 @@
+use derive_new::new;
 use hdi::prelude::*;
 use std::fmt;
-use derive_new::new;
 
 /// The MAP Value Type System is INTENDED to have  three layers.
 /// 1) Rust Layer: consisting of a subset of basic Rust datatypes
@@ -13,10 +13,22 @@ use derive_new::new;
 
 /// HOWEVER... for now we are using TypeAliases at level 2, instead of TupleStruct
 
-pub type MapString = String;
-pub type MapBoolean = bool;
-pub type MapInteger = i64;
-pub type MapEnumValue = MapString;
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct MapString(pub String);
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq)]
+pub struct MapBoolean(pub bool);
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq)]
+pub struct MapInteger(pub i64);
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq)]
+pub struct MapEnumValue(pub MapString);
+
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, new)]
 pub enum BaseValue {
@@ -42,7 +54,6 @@ pub enum BaseValue {
 //     }
 // }
 
-
 // pub struct MapBoolean(bool);
 // impl MapBoolean{
 //     pub fn to_boolean(&self)->bool {
@@ -57,14 +68,9 @@ pub enum BaseValue {
 //     }
 // }
 
-
-
-
-
-
-// #[hdk_entry_helper]
-// #[derive(new, Clone, PartialEq, Eq)]
-pub type EnumValue = String;
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq)]
+pub struct EnumValue(pub String);
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -90,7 +96,6 @@ pub enum ValueType {
     String,
 }
 
-
 impl fmt::Display for BaseType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -103,22 +108,18 @@ impl fmt::Display for BaseType {
             BaseType::String => write!(f, "String"),
             // BaseType::EnumValue => write!(f, "EnumValue"),
             // BaseType::EnumHolon => write!(f, "EnumHolon"),
-            BaseType::Value(value_type) => {
-                match value_type {
-                    ValueType::Boolean => write!(f, "BooleanValue"),
-                    ValueType::Enum => write!(f, "EnumValue"),
-                    ValueType::Integer => write!(f, "IntegerValue"),
-                    ValueType::String => write!(f, "StringValue"),
-                }
+            BaseType::Value(value_type) => match value_type {
+                ValueType::Boolean => write!(f, "BooleanValue"),
+                ValueType::Enum => write!(f, "EnumValue"),
+                ValueType::Integer => write!(f, "IntegerValue"),
+                ValueType::String => write!(f, "StringValue"),
             },
-            BaseType::ValueArray(value_type) => {
-                match value_type {
-                    ValueType::Boolean => write!(f, "Array of BooleanValue"),
-                    ValueType::Enum => write!(f, "Array of EnumValue"),
-                    ValueType::Integer => write!(f, "Array of IntegerValue"),
-                    ValueType::String => write!(f, "Array of StringValue"),
-                }
-            }
+            BaseType::ValueArray(value_type) => match value_type {
+                ValueType::Boolean => write!(f, "Array of BooleanValue"),
+                ValueType::Enum => write!(f, "Array of EnumValue"),
+                ValueType::Integer => write!(f, "Array of IntegerValue"),
+                ValueType::String => write!(f, "Array of StringValue"),
+            },
         }
     }
 }

@@ -3,30 +3,30 @@ use holochain::prelude::VecOrSingle::Vec;
 ///
 use holons::holon_types::Holon;
 use holons::relationship::RelationshipTarget;
-use shared_types_holon::value_types::{BaseType, BaseValue};
+use shared_types_holon::value_types::{BaseType, BaseValue, MapString, MapBoolean, MapInteger, MapEnumValue};
 
 pub fn define_relationship_type_descriptor() -> Holon {
     let mut type_descriptor = Holon::new();
 
     type_descriptor
         .with_property_value(
-            "type_name".to_string(),
-            BaseValue::StringValue("RelationshipDescriptor".to_string()),
+            MapString("type_name".to_string()),
+            BaseValue::StringValue(MapString("RelationshipDescriptor".to_string())),
         )
         .with_property_value(
-            "description".to_string(),
-            BaseValue::StringValue("Describes a relationship between two holons".to_string()),
+            MapString("description".to_string()),
+            BaseValue::StringValue(MapString("Describes a relationship between two holons".to_string())),
         )
         .with_property_value(
-            "label".to_string(),
-            BaseValue::StringValue("Relationship Descriptor".to_string()),
+            MapString("label".to_string()),
+            BaseValue::StringValue(MapString("Relationship Descriptor".to_string())),
         )
         .with_property_value(
-            "base_type".to_string(),
-            BaseValue::StringValue("BaseType::Holon".to_string()),
+            MapString("base_type".to_string()),
+            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
         )
-        .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false))
-        .with_property_value("is_built_in".to_string(), BaseValue::BooleanValue(true));
+        .with_property_value(MapString("is_dependent".to_string()), BaseValue::BooleanValue(MapBoolean(false)))
+        .with_property_value(MapString("is_built_in".to_string()), BaseValue::BooleanValue(MapBoolean(true)));
 
     type_descriptor
 }
@@ -36,14 +36,14 @@ pub fn define_relationship_descriptor() -> Holon {
 
     relationship_descriptor
         .with_property_value(
-            "min_target_cardinality".to_string(),
-            BaseValue::IntegerValue(0),
+            MapString("min_target_cardinality".to_string()),
+            BaseValue::IntegerValue(MapInteger(0)),
         )
         .with_property_value(
-            "max_target_cardinality".to_string(),
-            BaseValue::IntegerValue(262144),
+            MapString("max_target_cardinality".to_string()),
+            BaseValue::IntegerValue(MapInteger(262144)),
         )
-        .with_property_value("affinity".to_string(), BaseValue::IntegerValue(100));
+        .with_property_value(MapString("affinity".to_string()), BaseValue::IntegerValue(MapInteger(100)));
 
     relationship_descriptor
 }
