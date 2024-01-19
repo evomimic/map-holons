@@ -40,6 +40,8 @@ impl Holon {
             relationship_map: RelationshipMap::new(),
         };
 
+        // TODO: Populate RelationshipMap from links
+
         Ok(holon)
     }
     // NOTE: this function doesn't check if supplied RelationshipName is a valid outbound
