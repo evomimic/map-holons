@@ -28,8 +28,7 @@ impl Holon {
         }
     }
 
-    /// try_from_node inflates a Holon from a HolonNode. This requires first having the Holon's
-    /// Descriptor initializing its PropertyMap. BUT HOW DO GET ITS DESCRIPTOR?
+    /// try_from_node inflates a Holon from a HolonNode.
     /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
         let holon_node = get_holon_node_from_record(holon_node_record.clone())?;
