@@ -1,18 +1,17 @@
-use std::collections::BTreeMap;
-use derive_new::new;
-use std::fmt;
-use hdk::prelude::*;
-use shared_types_holon::{PropertyName};
-use shared_types_holon::value_types::BaseValue;
 use crate::relationship::RelationshipMap;
-
+use derive_new::new;
+use hdk::prelude::*;
+use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::{PropertyMap, PropertyName};
+use std::collections::BTreeMap;
+use std::fmt;
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
-    pub property_map: StagedPropertyMap,
+    pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
@@ -25,7 +24,7 @@ pub struct Holon {
 //
 //     }
 // }
-pub type StagedPropertyMap = BTreeMap<PropertyName, Option<BaseValue>>;
+
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub enum HolonState {
@@ -44,8 +43,6 @@ impl fmt::Display for HolonState {
         }
     }
 }
-
-
 
 // #[hdk_entry_helper]
 // #[derive(Clone, PartialEq, Eq)]

@@ -1,14 +1,13 @@
+use crate::type_descriptor::define_type_descriptor;
 use holons::holon_types::Holon;
 use holons::relationship::RelationshipTarget;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
-use crate::type_descriptor::define_type_descriptor;
 
 pub fn define_holon_descriptor(
     schema: &RelationshipTarget,
     type_name: String,
     description: String,
     label: String, // Human readable name for this type
-
 ) -> Holon {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let descriptor = define_type_descriptor(
@@ -21,9 +20,7 @@ pub fn define_holon_descriptor(
         false,
     );
 
-
-
-    /// instances: RelationshipTarget,
+    // instances: RelationshipTarget,
     // property_descriptors: RelationshipTarget,
     // supertype: RelationshipTarget,
     // source_for: RelationshipTarget,
@@ -32,8 +29,5 @@ pub fn define_holon_descriptor(
     // dances: RelationshipTarget,
     // constraints: RelationshipTarget,
 
-
-
     descriptor
-
 }

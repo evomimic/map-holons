@@ -79,12 +79,8 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
         let mut builder_holon = Holon::new();
 
         for property_name in test_holon.property_map.keys() {
-            let property_value: BaseValue = test_holon
-                .property_map
-                .get(property_name)
-                .unwrap()
-                .clone()
-                .unwrap();
+            let property_value: BaseValue =
+                test_holon.property_map.get(property_name).unwrap().clone();
             let input = WithPropertyInput {
                 holon: builder_holon.clone(),
                 property_name: property_name.clone(),
