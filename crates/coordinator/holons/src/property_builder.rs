@@ -2,7 +2,7 @@
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct PropertyBuilder {
     pub header: Option<TypeHeaderBuilder>,
-    pub descriptor_sharing: Option<PropertySharing>
+    pub descriptor_sharing: Option<PropertySharing>,
     pub details: Option<PropertyDetailsBuilder>,
 }
 
@@ -31,7 +31,7 @@ pub enum PropertyDescriptorDetailsBuilder {
 #[derive(new, Default, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct BooleanDescriptorBuilder {
-    pub is_fuzzy: Option<bool>,  // if true, this property has FuzzyBoolean value, otherwise just true or false
+    pub is_fuzzy: Option<bool>, // if true, this property has FuzzyBoolean value, otherwise just true or false
 }
 
 #[hdk_entry_helper]
@@ -73,7 +73,6 @@ pub struct StringDescriptorBuilder {
     pub max_length: Option<u32>,
     //pattern: Option<String>,
 }
-
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
