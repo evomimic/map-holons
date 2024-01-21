@@ -1,6 +1,7 @@
 use crate::all_holon_nodes::*;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
+use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::holon_types::{Holon, HolonState};
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
@@ -101,24 +102,42 @@ impl Holon {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
                 let result = create_holon_node(self.clone().into_node());
-                if let Ok(record) = result {
-                    self.saved_node = Some(record);
-                    self.state = HolonState::Fetched;
-                    return Ok(self);
-                } else if let Err(error) = result {
-                    return Err(HolonError::WasmError(error.to_string()));
-                } else {
-                    unreachable!()
-                };
+                match result {
+                    Ok(record) => {
+                        self.saved_node = Some(record);
+                        self.state = HolonState::Fetched;
+
+                        Ok(self)
+                    }
+                    Err(error) => Err(HolonError::from(error)),
+                }
             }
             HolonState::Fetched => {
                 // Holon hasn't been changed since it was fetched
                 return Ok(self);
             }
             HolonState::Changed => {
-                // TODO: request update
+                if let Some(node) = self.saved_node.clone() {
+                    let input = UpdateHolonNodeInput {
+                        // TEMP solution for original hash is to keep it the same //
+                        original_holon_node_hash: node.action_address().clone(), // TODO: find way to populate this correctly
+                        previous_holon_node_hash: node.action_address().clone(),
+                        updated_holon_node: self.clone().into_node(),
+                    };
+                    let result = update_holon_node(input);
+                    match result {
+                        Ok(record) => {
+                            self.saved_node = Some(record);
 
-                return Ok(self);
+                            Ok(self)
+                        }
+                        Err(error) => Err(HolonError::from(error)),
+                    }
+                } else {
+                    Err(HolonError::HolonNotFound(
+                        "Must have a saved node in order to update".to_string(),
+                    ))
+                }
             }
         }
     }
