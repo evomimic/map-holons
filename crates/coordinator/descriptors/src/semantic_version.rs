@@ -2,14 +2,11 @@ use derive_new::new;
 
 use hdk::prelude::*;
 
-
-use holons::holon_types::{Holon};
-
-// use shared_types_holon::BaseType::*;
+use holons::holon_types::Holon;
 
 // use shared_types_holon::holon_node::{BaseValue, BaseType};
-use shared_types_holon::value_types::{BaseValue,MapBoolean, MapString, MapInteger, MapEnumValue};
-
+use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -30,26 +27,30 @@ impl Default for SemanticVersion {
 }
 impl SemanticVersion {
     pub fn to_string(&self) -> String {
-        format!("{}.{}.{}", self.major,self.minor,self.patch)
+        format!("{}.{}.{}", self.major, self.minor, self.patch)
     }
 }
 
-pub fn define_semantic_version(
-    major: i64,
-    minor: i64,
-    patch: i64,
-
-) -> Holon {
+pub fn define_semantic_version(major: i64, minor: i64, patch: i64) -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut version = Holon::new();
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
-    version.with_property_value(MapString("major".to_string()), BaseValue::IntegerValue(MapInteger(major)))
-        .with_property_value(MapString("minor".to_string()), BaseValue::IntegerValue(MapInteger(minor)))
-        .with_property_value(MapString("patch".to_string()), BaseValue::IntegerValue(MapInteger(patch)));
+    version
+        .with_property_value(
+            PropertyName(MapString("major".to_string())),
+            BaseValue::IntegerValue(MapInteger(major)),
+        )
+        .with_property_value(
+            PropertyName(MapString("minor".to_string())),
+            BaseValue::IntegerValue(MapInteger(minor)),
+        )
+        .with_property_value(
+            PropertyName(MapString("patch".to_string())),
+            BaseValue::IntegerValue(MapInteger(patch)),
+        );
 
     version
-
 }
 
 // TODO: Implement and debug the following function

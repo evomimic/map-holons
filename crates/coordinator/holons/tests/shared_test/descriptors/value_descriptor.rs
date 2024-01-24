@@ -1,6 +1,7 @@
 // This file creates the descriptors for the built-in MAP Value Types
 
 use holons::holon_types::Holon;
+use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
@@ -32,29 +33,29 @@ pub fn define_string_type_descriptor() -> Holon {
     let mut type_descriptor = Holon::new();
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString("String Value Descriptor".to_string())),
+            PropertyName(MapString("type_name".to_string())),
+            BaseValue::StringValue(MapString("St)ring Value Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes the built-in String Value type".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
-            BaseValue::StringValue(MapString("String Descriptor".to_string())),
+            PropertyName(MapString("label".to_string())),
+            BaseValue::StringValue(MapString("St)ring Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            PropertyName(MapString("base_type".to_string())),
+            BaseValue::StringValue(MapString("Ba)seType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         )
         .with_property_value(
-            MapString("is_built_in_type".to_string()),
+            PropertyName(MapString("is_built_in_type".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
@@ -68,11 +69,11 @@ pub fn define_string_descriptor() -> Holon {
 
     descriptor
         .with_property_value(
-            MapString("min_length".to_string()),
+            PropertyName(MapString("min_length".to_string())),
             BaseValue::IntegerValue(MapInteger(0)),
         )
         .with_property_value(
-            MapString("max_length".to_string()),
+            PropertyName(MapString("max_length".to_string())),
             BaseValue::IntegerValue(MapInteger(8192)),
         );
 
@@ -86,33 +87,33 @@ pub fn define_integer_type_descriptor() -> Holon {
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString("IntegerDescriptor".to_string())),
+            PropertyName(MapString("type_name".to_string())),
+            BaseValue::StringValue(MapString("In)tegerDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes a builtin Integer Value Type".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
+            PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(MapString("Integer Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
+            PropertyName(MapString("base_type".to_string())),
             BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("version".to_string()),
+            PropertyName(MapString("version".to_string())),
             BaseValue::StringValue(MapString("0.0.1".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         )
         .with_property_value(
-            MapString("is_built_in_type".to_string()),
+            PropertyName(MapString("is_built_in_type".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
@@ -126,11 +127,11 @@ pub fn define_integer_descriptor() -> Holon {
 
     descriptor
         .with_property_value(
-            MapString("min_value".to_string()),
+            PropertyName(MapString("min_value".to_string())),
             BaseValue::IntegerValue(MapInteger(-9223372036854775808)),
         )
         .with_property_value(
-            MapString("max_value".to_string()),
+            PropertyName(MapString("max_value".to_string())),
             BaseValue::IntegerValue(MapInteger(9223372036854775807)),
         );
 
@@ -144,29 +145,29 @@ pub fn define_boolean_type_descriptor() -> Holon {
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString("BooleanDescriptor".to_string())),
+            PropertyName(MapString("type_name".to_string())),
+            BaseValue::StringValue(MapString("Bo)oleanDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes a basic MAP Boolean Value Type".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
-            BaseValue::StringValue(MapString("Boolean Descriptor".to_string())),
+            PropertyName(MapString("label".to_string())),
+            BaseValue::StringValue(MapString("Bo)olean Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            PropertyName(MapString("base_type".to_string())),
+            BaseValue::StringValue(MapString("Ba)seType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("version".to_string()),
-            BaseValue::StringValue(MapString("0.0.1".to_string())),
+            PropertyName(MapString("version".to_string())),
+            BaseValue::StringValue(MapString("0.)0.1".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         );
 
@@ -179,7 +180,7 @@ pub fn define_boolean_descriptor() -> Holon {
     let mut descriptor = Holon::new();
 
     descriptor.with_property_value(
-        MapString("is_fuzzy".to_string()),
+        PropertyName(MapString("is_fuzzy".to_string())),
         BaseValue::BooleanValue(MapBoolean(false)),
     );
 
@@ -190,27 +191,27 @@ pub fn define_enum_type_descriptor() -> Holon {
 
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString("EnumDescriptor".to_string())),
+            PropertyName(MapString("type_name".to_string())),
+            BaseValue::StringValue(MapString("En)umDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
-            BaseValue::StringValue(MapString("Describes a MAP Enum Value Type".to_string())),
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString("De)scribes a MAP Enum Value Type".to_string())),
         )
         .with_property_value(
-            MapString("label".to_string()),
-            BaseValue::StringValue(MapString("Enum Descriptor".to_string())),
+            PropertyName(MapString("label".to_string())),
+            BaseValue::StringValue(MapString("En)um Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            PropertyName(MapString("base_type".to_string())),
+            BaseValue::StringValue(MapString("Ba)seType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         )
         .with_property_value(
-            MapString("is_built_in".to_string()),
+            PropertyName(MapString("is_built_in".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
@@ -227,29 +228,29 @@ pub fn define_enum_variant_type_descriptor() -> Holon {
 
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString("EnumVariantDescriptor".to_string())),
+            PropertyName(MapString("type_name".to_string())),
+            BaseValue::StringValue(MapString("En)umVariantDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes a a specific variant of an Enum Value Type".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
-            BaseValue::StringValue(MapString("Enum Variant Descriptor".to_string())),
+            PropertyName(MapString("label".to_string())),
+            BaseValue::StringValue(MapString("En)um Variant Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
-            BaseValue::StringValue(MapString("BaseType::String".to_string())),
+            PropertyName(MapString("base_type".to_string())),
+            BaseValue::StringValue(MapString("Ba)seType::String".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         )
         .with_property_value(
-            MapString("is_built_in".to_string()),
+            PropertyName(MapString("is_built_in".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
@@ -268,33 +269,33 @@ pub fn define_value_array_type_descriptor() -> Holon {
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString("ValueArrayDescriptor".to_string())),
+            PropertyName(MapString("type_name".to_string())),
+            BaseValue::StringValue(MapString("Va)lueArrayDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes the builtin Value Array Type".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
-            BaseValue::StringValue(MapString("ValueArray Descriptor".to_string())),
+            PropertyName(MapString("label".to_string())),
+            BaseValue::StringValue(MapString("Va)lueArray Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            PropertyName(MapString("base_type".to_string())),
+            BaseValue::StringValue(MapString("Ba)seType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("version".to_string()),
-            BaseValue::StringValue(MapString("0.0.1".to_string())),
+            PropertyName(MapString("version".to_string())),
+            BaseValue::StringValue(MapString("0.)0.1".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         )
         .with_property_value(
-            MapString("is_built_in_type".to_string()),
+            PropertyName(MapString("is_built_in_type".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
@@ -307,7 +308,7 @@ pub fn define_value_array_descriptor() -> Holon {
     // NOTE: the min/max values on this builtin descriptor specify the min and max values of ANY MAP Integer
 
     descriptor.with_property_value(
-        MapString("max_items".to_string()),
+        PropertyName(MapString("max_items".to_string())),
         BaseValue::IntegerValue(MapInteger(1024)),
     );
 

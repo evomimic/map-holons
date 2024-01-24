@@ -10,7 +10,8 @@ use holons::holon_reference::{HolonReference, LocalHolonReference};
 /// This file creates a Schema Holon and all of its child descriptors comprising the L0 layer
 /// of the MAP Ontology as well as the relationships between those descriptors
 use holons::holon_types::Holon;
-use holons::relationship::RelationshipTarget;
+use holons::relationship::{RelationshipName, RelationshipTarget};
+use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
@@ -24,11 +25,11 @@ pub fn define_schema() -> Holon {
 
     schema
         .with_property_value(
-            MapString("name".to_string()),
+            PropertyName(MapString("name".to_string())),
             BaseValue::StringValue(MapString("MAP L0 Core".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "The foundational MAP type descriptors for the L0 layer of the MAP Schema"
                     .to_string(),
@@ -93,29 +94,29 @@ pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
 
     schema_type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
+            PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(MapString("SchemaDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString("Descriptor for Schema".to_string())),
         )
         .with_property_value(
-            MapString("label".to_string()),
+            PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(MapString("Schema Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
-            BaseValue::EnumValue(MapEnumValue(MapString(("BaseType::Holon".to_string())))),
+            PropertyName(MapString("base_type".to_string())),
+            BaseValue::EnumValue(MapEnumValue(MapString("BaseType::Holon".to_string()))),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
     schema_type_descriptor.add_related_holon(
-        MapString("TypeDescriptor-INSTANCES->Schema".to_string()),
-        Some(schema_target.clone()),
+        RelationshipName(MapString("TypeDescriptor-INSTANCES->Schema".to_string())),
+        schema_target.clone(),
     );
 
     let type_descriptor_target = define_local_target(&schema_type_descriptor);
@@ -138,25 +139,25 @@ pub fn define_schema_relationship_descriptor(schema_target: &RelationshipTarget)
 
     schema_relationship_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
+            PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(MapString("SchemaDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes the TypeDescriptor supertype".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
+            PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(MapString("Holon".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
+            PropertyName(MapString("base_type".to_string())),
             BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
