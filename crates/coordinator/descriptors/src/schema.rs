@@ -7,8 +7,9 @@ use holons::holon_types::Holon;
 use holons::relationship::RelationshipName;
 
 use crate::descriptor_types::{Schema, TypeDescriptor};
-use shared_types_holon::value_types::{BaseType, BaseValue, MapString};
 use crate::type_descriptor::define_type_descriptor;
+use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::value_types::{BaseType, BaseValue, MapString};
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
@@ -18,9 +19,12 @@ impl Schema {
         let description_property_name: MapString = MapString("description".to_string());
 
         schema_holon
-            .with_property_value(name_property_name, BaseValue::StringValue(MapString(name)))
             .with_property_value(
-                description_property_name,
+                PropertyName(name_property_name),
+                BaseValue::StringValue(MapString(name)),
+            )
+            .with_property_value(
+                PropertyName(description_property_name),
                 BaseValue::StringValue(MapString(description)),
             );
 

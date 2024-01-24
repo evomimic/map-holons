@@ -4,6 +4,7 @@ use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_types::Holon;
 use holons::relationship::RelationshipTarget;
 use holons::relationship::RelationshipTarget::*;
+use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
@@ -20,25 +21,25 @@ pub fn define_holon_type_descriptor() -> Holon {
 
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
+            PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(MapString("HolonDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
+            PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Describes the characteristics of Holons".to_string(),
             )),
         )
         .with_property_value(
-            MapString("label".to_string()),
+            PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(MapString("Holon Descriptor".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
+            PropertyName(MapString("base_type".to_string())),
             BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
         )
         .with_property_value(
-            MapString("is_dependent".to_string()),
+            PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
         );
 
@@ -60,32 +61,41 @@ pub fn define_collection_type_descriptor() -> Holon {
 
     type_descriptor
         .with_property_value(
-            MapString("type_name".to_string()),
+            PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(MapString("CollectionDescriptor".to_string())),
         )
         .with_property_value(
-            MapString("description".to_string()),
-            BaseValue::StringValue(
-                MapString("Describes the characteristics of Holon Collections".to_string()),
-            ),
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString(
+                "Describes the characteristics of Holon Collections".to_string(),
+            )),
         )
         .with_property_value(
-            MapString("label".to_string()),
+            PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(MapString("Holon Collection".to_string())),
         )
         .with_property_value(
-            MapString("base_type".to_string()),
+            PropertyName(MapString("base_type".to_string())),
             BaseValue::StringValue(MapString("BaseType::Collection".to_string())),
         )
-        .with_property_value(MapString("is_dependent".to_string()), BaseValue::BooleanValue(MapBoolean(false)))
-        .with_property_value(MapString("is_built_in".to_string()), BaseValue::BooleanValue(MapBoolean(true)));
+        .with_property_value(
+            PropertyName(MapString("is_dependent".to_string())),
+            BaseValue::BooleanValue(MapBoolean(false)),
+        )
+        .with_property_value(
+            PropertyName(MapString("is_built_in".to_string())),
+            BaseValue::BooleanValue(MapBoolean(true)),
+        );
 
     type_descriptor
 }
 // Defines the CollectionDescriptor details, defines the maximum size of any MAP Holon Collection
 pub fn define_collection_descriptor() -> Holon {
     let mut holon_descriptor = Holon::new();
-    holon_descriptor.with_property_value(MapString("max_items".to_string()), BaseValue::IntegerValue(MapInteger(262144)));
+    holon_descriptor.with_property_value(
+        PropertyName(MapString("max_items".to_string())),
+        BaseValue::IntegerValue(MapInteger(262144)),
+    );
 
     holon_descriptor
 }
