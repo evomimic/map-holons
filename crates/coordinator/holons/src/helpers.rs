@@ -33,4 +33,15 @@ pub fn define_local_target(holon:&Holon) ->RelationshipTarget {
     let target = RelationshipTarget::One(reference);
     target
 }
+// pub fn get_holon_from_target(target: &RelationshipTarget)-> Option<Holon> {
+//     match target {
+//         ZeroOrOne(option_holon_reference)=> {
+//             if let Some(holon_reference) = option_holon_reference {
+//
+//             }
+//         },
+//         One(holon_reference),
+//     }
+//
+// }
 

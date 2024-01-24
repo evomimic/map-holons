@@ -13,4 +13,4 @@ pub enum RelationshipTarget {
 
 }
 pub type RelationshipName = MapString;
-pub type RelationshipMap = BTreeMap<RelationshipName,Option<RelationshipTarget>>;
+pub type RelationshipMap = BTreeMap<RelationshipName,RelationshipTarget>;

@@ -53,7 +53,7 @@ impl Holon {
     pub fn add_related_holon(
         &mut self,
         name: RelationshipName,
-        target: Option<RelationshipTarget>,
+        target: RelationshipTarget,
     ) -> &mut Self {
         self.relationship_map.insert(name, target);
         match self.state {

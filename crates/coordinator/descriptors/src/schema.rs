@@ -1,10 +1,14 @@
+use holons::helpers::define_local_target;
+use holons::holon_errors::HolonError;
 /// MAP Schema objects maintain a set of MAP Descriptors
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
 use holons::holon_types::Holon;
+use holons::relationship::RelationshipName;
 
-use crate::descriptor_types::Schema;
-use shared_types_holon::value_types::{BaseValue, MapString};
+use crate::descriptor_types::{Schema, TypeDescriptor};
+use shared_types_holon::value_types::{BaseType, BaseValue, MapString};
+use crate::type_descriptor::define_type_descriptor;
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
@@ -26,15 +30,16 @@ impl Schema {
     pub fn into_holon(self) -> Holon {
         self.0
     }
+
     // /// Adds a TypeDescriptor to the Schema
     // pub fn add_descriptor(
     //     &mut self,
     //     descriptor: &TypeDescriptor,
     // )-> &mut Self {
     //     let descriptor_target = define_local_target(&descriptor.0);
-    //     self.into_holon().add_related_holon("COMPONENTS".to_string(), Some(descriptor_target));
+    //     self.into_holon().add_related_holon(MapString("COMPONENTS".to_string()), descriptor_target);
     //
-    //     &mut self
+    //     &self
     //
     // }
 
@@ -42,13 +47,13 @@ impl Schema {
     // /// Defining it first, if necessary
     // pub fn get_meta_type_descriptor(&self) ->Result<TypeDescriptor,HolonError> {
     //    // if let Some(meta_descriptor) = self.into_holon().relationship_map.get(TYPE_METADESCRIPTOR) {
-    //     if let Some(meta_descriptor) = self.into_holon().relationship_map.get("TypeMetadescriptor") {
+    //     if let Some(meta_descriptor) = self.into_holon().relationship_map.get(MapString(TYPE_METADESCRIPTOR.to_string())) {
     //         Ok(meta_descriptor.clone())
     //     } else {
     //         let schema_target = define_local_target(self.clone().into_holon());
     //         let meta_descriptor = define_type_descriptor(
-    //             &self,
-    //             TYPE_METADESCRIPTOR,
+    //             self,
+    //             MapString(TYPE_METADESCRIPTOR),
     //             BaseType::Holon,
     //             "Metadescriptor for the TypeDescriptor".to_string(),
     //             "Type Metadescriptor".to_string(),

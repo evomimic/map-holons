@@ -1,5 +1,6 @@
 
 use holons::holon_types::{Holon};
+use shared_types_holon::value_types::MapString;
 
 
 /// All MAP Descriptors are stored as TypeDescriptor Holons

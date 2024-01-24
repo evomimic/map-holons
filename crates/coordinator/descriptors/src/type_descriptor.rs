@@ -6,7 +6,7 @@ use holons::relationship::RelationshipTarget;
 
 use crate::semantic_version::define_semantic_version;
 use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+    BaseType, BaseValue, MapBoolean, MapEnumValue, MapString,
 };
 
 // This is a helper function for defining new TypeDescriptor holons
@@ -19,12 +19,13 @@ use shared_types_holon::value_types::{
 
 pub fn define_type_descriptor(
     schema: &RelationshipTarget,
-    type_name: String,
+    descriptor_name: MapString,
+    type_name: MapString,
     base_type: BaseType,
-    description: String,
-    label: String, // Human readable name for this type
-    is_dependent: bool,
-    is_value_descriptor: bool,
+    description: MapString,
+    label: MapString, // Human readable name for this type
+    is_dependent: MapBoolean,
+    is_value_descriptor: MapBoolean,
 ) -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
@@ -33,15 +34,19 @@ pub fn define_type_descriptor(
     descriptor
         .with_property_value(
             MapString("type_name".to_string()),
-            BaseValue::StringValue(MapString(type_name)),
+            BaseValue::StringValue(type_name),
+        )
+        .with_property_value(
+            MapString("descriptor_name".to_string()),
+            BaseValue::StringValue(descriptor_name),
         )
         .with_property_value(
             MapString("description".to_string()),
-            BaseValue::StringValue(MapString(description)),
+            BaseValue::StringValue(description),
         )
         .with_property_value(
             MapString("label".to_string()),
-            BaseValue::StringValue(MapString(label)),
+            BaseValue::StringValue(label),
         )
         .with_property_value(
             MapString("base_type".to_string()),
@@ -49,11 +54,11 @@ pub fn define_type_descriptor(
         )
         .with_property_value(
             MapString("is_dependent".to_string()),
-            BaseValue::BooleanValue(MapBoolean(is_dependent)),
+            BaseValue::BooleanValue(is_dependent),
         )
         .with_property_value(
             MapString("is_value_descriptor".to_string()),
-            BaseValue::BooleanValue(MapBoolean(is_value_descriptor)),
+            BaseValue::BooleanValue(is_value_descriptor),
         );
 
     // Define a default semantic_version
@@ -63,8 +68,12 @@ pub fn define_type_descriptor(
     let version_target = define_local_target(&version);
 
     descriptor
-        .add_related_holon(MapString("COMPONENT_OF".to_string()), Some(schema.clone()))
-        .add_related_holon(MapString("VERSION".to_string()), Some(version_target));
+        .add_related_holon(MapString("COMPONENT_OF".to_string()), schema.clone())
+        .add_related_holon(MapString("VERSION".to_string()), version_target);
 
     descriptor
+}
+
+pub fn derive_descriptor_name(type_name: &MapString)-> MapString {
+    MapString(format!("{}{}", type_name.0, "Descriptor".to_string()))
 }

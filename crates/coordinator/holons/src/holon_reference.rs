@@ -3,22 +3,33 @@ use crate::holon_errors::HolonError;
 use crate::holon_types::Holon;
 // use crate::holon::*;
 
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq )]
-pub enum HolonReference {
-    Local(LocalHolonReference),
-    // External(ExternalHolonReference),
-}
 pub trait HolonReferenceFns {
     fn get_holon(self)->Result<Holon,HolonError>;
 
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq )]
+pub enum HolonReference {
+    Local(LocalHolonReference),
+    // External(ExternalHolonReference),
+}
+//  TODO: implement HolonReferenceFns trait for HolonReference and LocalHolonReference
+
+
+
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq )]
 pub struct LocalHolonReference {
     holon_id: Option<ActionHash>,
     holon: Option<Holon>,
 }
+// TODO: implement this function
+// impl HolonReferenceFns for LocalHolonReference {
+//     /// get_holon will return the cached Holon, first retrieving it from the storage tier, if necessary
+//     pub fn get_holon(self) -> Result<Holon,HolonError> {
+//
+//     }
+// }
 
 impl LocalHolonReference {
     pub fn new() -> LocalHolonReference {
