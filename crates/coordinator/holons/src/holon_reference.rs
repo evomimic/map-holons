@@ -1,4 +1,3 @@
-use crate::holon::*;
 use crate::holon_errors::HolonError;
 use crate::holon_types::Holon;
 use hdk::prelude::*;
@@ -16,18 +15,7 @@ pub enum HolonReference {
 impl HolonReferenceFns for HolonReference {
     fn get_holon(&self) -> Result<Holon, HolonError> {
         match self {
-            HolonReference::Local(holon_reference) => {
-                if let Some(holon) = holon_reference.holon.clone() {
-                    Ok(holon)
-                } else {
-                    Err(HolonError::HolonNotFound(
-                        "Must contain a HolonReference to get a Holon".to_string(),
-                    ))
-                }
-            }
-            _ => Err(HolonError::TypeError(
-                "Wrong variant: matched on invalid type ".to_string(),
-            )),
+            HolonReference::Local(holon_reference) => holon_reference.get_holon(),
         }
     }
 }
@@ -68,14 +56,3 @@ impl LocalHolonReference {
         self
     }
 }
-
-// TODO: figure out why fetch_holon function can't be found in the following
-// impl HolonReferenceFns for LocalHolonReference {
-//     // get_holon retrieves the holon for a HolonReference
-//     // currently, always does a fetch,
-//     // future: retrieve from cache
-//     fn get_holon(self)->Result<Holon, HolonError> {
-//       fetch_holon(self.holon_id)
-
-//     }
-// }
