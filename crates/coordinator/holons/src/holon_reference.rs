@@ -1,7 +1,7 @@
+use crate::holon::*;
 use crate::holon_errors::HolonError;
 use crate::holon_types::Holon;
 use hdk::prelude::*;
-// use crate::holon::*;
 
 pub trait HolonReferenceFns {
     fn get_holon(&self) -> Result<Holon, HolonError>;
@@ -37,13 +37,24 @@ pub struct LocalHolonReference {
     holon_id: Option<ActionHash>,
     holon: Option<Holon>,
 }
-// TODO: implement this function
-// impl HolonReferenceFns for LocalHolonReference {
-//     /// get_holon will return the cached Holon, first retrieving it from the storage tier, if necessary
-//     pub fn get_holon(self) -> Result<Holon,HolonError> {
-//
-//     }
-// }
+
+impl HolonReferenceFns for LocalHolonReference {
+    /// get_holon will return the cached Holon, first retrieving it from the storage tier, if necessary
+    fn get_holon(&self) -> Result<Holon, HolonError> {
+        let holon_reference = self.clone();
+        if let Some(holon) = holon_reference.holon {
+            Ok(holon)
+        } else {
+            if let Some(id) = holon_reference.holon_id {
+                Holon::fetch_holon(id)
+            } else {
+                Err(HolonError::HolonNotFound(
+                    "LocalHolonReference is empty".to_string(),
+                ))
+            }
+        }
+    }
+}
 
 impl LocalHolonReference {
     pub fn new() -> LocalHolonReference {
@@ -65,6 +76,6 @@ impl LocalHolonReference {
 //     // future: retrieve from cache
 //     fn get_holon(self)->Result<Holon, HolonError> {
 //       fetch_holon(self.holon_id)
-//
+
 //     }
 // }
