@@ -1,5 +1,5 @@
 use holons::helpers::define_local_target;
-use crate::descriptor_types::{Schema, TypeDescriptor};
+use crate::descriptor_types::{Schema};
 
 
 

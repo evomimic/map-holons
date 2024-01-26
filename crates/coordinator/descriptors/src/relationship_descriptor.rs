@@ -3,7 +3,7 @@ use holons::holon_types::Holon;
 use holons::relationship::{RelationshipName, RelationshipTarget};
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString};
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use crate::descriptor_types::DeletionSemantic;
 
 
