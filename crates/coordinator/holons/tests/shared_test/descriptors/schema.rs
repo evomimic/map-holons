@@ -73,7 +73,7 @@ pub fn define_schema() -> Holon {
     let enum_variant_descriptor = define_enum_variant_descriptor();
 
     let property_type_descriptor = define_property_type_descriptor();
-    let property_descriptor = define_property_descriptor();
+   // let property_descriptor = define_property_descriptor();
 
     let value_array_type_descriptor = define_value_array_type_descriptor();
     let value_array_descriptor = define_value_array_descriptor();

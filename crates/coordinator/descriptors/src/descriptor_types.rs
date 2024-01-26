@@ -1,6 +1,6 @@
 
 use holons::holon_types::{Holon};
-use shared_types_holon::value_types::MapString;
+use shared_types_holon::value_types::{MapEnumValue, MapString};
 
 
 /// All MAP Descriptors are stored as TypeDescriptor Holons
@@ -40,6 +40,16 @@ pub enum DeletionSemantic {
     Block, // prevent deletion of source_holon if any target_holons are related
     Propagate, // if source_holon is deleted, then also delete any related target_holons
 
+}
+
+impl DeletionSemantic {
+    pub(crate) fn to_enum_variant(&self) -> MapEnumValue {
+        match self {
+            DeletionSemantic::Allow => MapEnumValue(MapString("Allow".to_string())),
+            DeletionSemantic::Block => MapEnumValue(MapString("Block".to_string())),
+            DeletionSemantic::Propagate => MapEnumValue(MapString("Propagate".to_string())),
+        }
+    }
 }
 /// The following constants specify the type_names for the L0 metadescriptors
 pub const TYPE_META_DESCRIPTOR: &str = "TypeMetaDescriptor";
