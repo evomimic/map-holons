@@ -7,9 +7,7 @@ pub mod integer_descriptor;
 pub mod descriptor_types;
 pub mod holon_descriptor;
 pub mod relationship_descriptor;
-
-
-
+pub mod property_descriptor;
 
 
 // pub fn add(left: usize, right: usize) -> usize {

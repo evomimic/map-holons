@@ -5,6 +5,7 @@ use shared_types_holon::holon_node::{PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use crate::holon_node::delete_holon_node;
 use crate::holon_types::Holon;
+use crate::holon::*;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}

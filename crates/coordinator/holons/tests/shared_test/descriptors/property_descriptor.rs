@@ -49,9 +49,4 @@ pub fn define_property_type_descriptor() -> Holon {
 
     type_descriptor
 }
-// Defines a HolonDescriptor (w/o any relationships)
-pub fn define_property_descriptor() -> Holon {
-    let mut descriptor = Holon::new();
 
-    descriptor
-}

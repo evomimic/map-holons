@@ -31,8 +31,8 @@ impl Schema {
         Schema(schema_holon)
     }
     /// Downcasts a Schema to a Holon
-    pub fn into_holon(self) -> Holon {
-        self.0
+    pub fn into_holon(&self) -> Holon {
+        self.0.clone()
     }
 
     // /// Adds a TypeDescriptor to the Schema

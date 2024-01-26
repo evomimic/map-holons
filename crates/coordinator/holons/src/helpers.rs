@@ -24,7 +24,7 @@ pub fn get_holon_node_from_record(
 
 /// This helper function returns a RelationshipTarget for the specified holon
 /// It assumes the holon is Local
-pub fn define_local_target(holon:&Holon) ->RelationshipTarget {
+pub fn define_local_target(holon:&Holon) -> RelationshipTarget {
     // Define a RelationshipTarget for the provided Holon
     let mut local_reference = LocalHolonReference::new();
     local_reference.with_holon(holon.clone());

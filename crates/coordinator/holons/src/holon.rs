@@ -12,8 +12,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 
 impl Holon {
-    // TODO: replace the following with a HolonConstructor on HolonSpace that takes HolonDescriptor as a parameter
-    //
+    /// Stages a new empty holon.
     pub fn new() -> Holon {
         Holon {
             state: HolonState::New,
@@ -142,6 +141,7 @@ impl Holon {
         }
     }
 
+
     /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash
     /// it then "inflates" the HolonNode into a Holon and returns it
     /// Not currently extern... because fetches will be mediated by the cache
@@ -182,6 +182,7 @@ impl Holon {
         }
     }
 }
+
 // =======
 // use hdk::prelude::*;
 // use holons_integrity::*;
