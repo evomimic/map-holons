@@ -1,23 +1,27 @@
 [package]
-name = "holons"
-version = "0.0.1"
+name = "hdm"
+version = "0.1.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name = "holons"
+name = "hdm"
 
 [dependencies]
-hdk = { workspace = true }
-hdi = { workspace = true}
-holochain_integrity_types = { workspace = true }
-
-holons_integrity = { workspace = true }
+# General Dependencies
 serde = { workspace = true }
 derive-new = { workspace = true }
 thiserror = { workspace = true }
 
+# Holochain Dependencies
+hdk = { workspace = true }
+hdi = { workspace = true}
+holochain_integrity_types = { workspace = true }
 
+# MAP Dependencies
+
+holons_integrity = { workspace = true }
+holons = {workspace = true}
 shared_types_holon = {workspace = true}
 
 [dev-dependencies]

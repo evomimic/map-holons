@@ -6,6 +6,8 @@ pub mod holon_reference;
 pub mod holon_errors;
 pub mod holon_api;
 pub mod holon;
+pub mod holon_types;
+pub mod relationship;
 
 
 use hdk::prelude::*;

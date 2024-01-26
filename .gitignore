@@ -12,3 +12,5 @@
 .running
 Cargo.lock
 .idea
+/package-lock.json
+settings.json

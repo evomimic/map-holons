@@ -3,6 +3,7 @@
 pub mod holon_fixtures;
 pub mod test_data_types;
 
+pub mod descriptors;
 
 
 use hdk::prelude::*;

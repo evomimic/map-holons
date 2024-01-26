@@ -1,37 +1,26 @@
 /// This file defines the functions exposed via hdk_extern
 ///
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{PropertyName, PropertyValue};
+use shared_types_holon::holon_node::{PropertyName};
+use shared_types_holon::value_types::BaseValue;
 use crate::holon_node::delete_holon_node;
-use crate::holon::Holon;
-use crate::holon::*;
+use crate::holon_types::Holon;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AddPropertyInput {
+pub struct WithPropertyInput {
     pub holon: Holon,
     pub property_name:PropertyName,
-    pub value: PropertyValue,
+    pub value: BaseValue,
 }
 
 #[hdk_extern]
-pub fn add_property_value(input: AddPropertyInput) -> ExternResult<Holon> {
+pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
     let mut holon = input.holon.clone();
-    holon.add_property_value(
+    holon.with_property_value(
         input.property_name.clone(),
         input.value.clone());
-    Ok(holon)
-}
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RemovePropertyInput {
-    pub holon: Holon,
-    pub property_name:PropertyName,
-}
-#[hdk_extern]
-pub fn remove_property_value(input: RemovePropertyInput) -> ExternResult<Holon> {
-    let mut holon = input.holon.clone();
-    holon.remove_property_value(input.property_name);
     Ok(holon)
 }
 
