@@ -9,6 +9,7 @@ use hdi::prelude::ActionHash;
 use hdk::entry::get;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
+use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
 
 impl Holon {
@@ -146,8 +147,8 @@ impl Holon {
     /// it then "inflates" the HolonNode into a Holon and returns it
     /// Not currently extern... because fetches will be mediated by the cache
 
-    pub fn fetch_holon(id: ActionHash) -> Result<Holon, HolonError> {
-        let holon_node_record = get(id.clone(), GetOptions::default())?;
+    pub fn fetch_holon(id: HolonId) -> Result<Holon, HolonError> {
+        let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         return if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
             holon.state = HolonState::Fetched;
@@ -155,12 +156,12 @@ impl Holon {
             Ok(holon)
         } else {
             // no holon_node fetched for specified holon_id
-            Err(HolonError::HolonNotFound(id.to_string()))
+            Err(HolonError::HolonNotFound(id.0.to_string()))
         };
     }
 
-    pub fn delete_holon(id: ActionHash) -> Result<ActionHash, HolonError> {
-        let result = delete_holon_node(id);
+    pub fn delete_holon(id: HolonId) -> Result<ActionHash, HolonError> {
+        let result = delete_holon_node(id.0);
         match result {
             Ok(result) => Ok(result),
             Err(error) => Err(HolonError::WasmError(error.to_string())),

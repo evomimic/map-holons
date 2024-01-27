@@ -40,7 +40,7 @@ pub fn commit(input: Holon) -> ExternResult<Holon> {
 pub fn get_holon(
     target_holon_id: ActionHash,
 ) -> ExternResult<Option<Holon>> {
-    match Holon::fetch_holon(target_holon_id) {
+    match Holon::fetch_holon(target_holon_id.into()) {
         Ok(result)=> Ok(Option::from(result)),
         Err(holon_error) => {
             Err(holon_error.into())

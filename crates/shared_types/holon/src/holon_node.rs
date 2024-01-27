@@ -10,9 +10,14 @@ pub struct HolonNode {
 }
 
 pub type PropertyMap = BTreeMap<PropertyName, BaseValue>;
-
+#[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]
 pub struct HolonId(pub ActionHash);
+impl From<ActionHash> for HolonId {
+    fn from(action_hash: ActionHash) -> Self {
+        HolonId(action_hash)
+    }
+}
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Ord, PartialOrd)]
