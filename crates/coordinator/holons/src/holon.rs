@@ -11,6 +11,24 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 
+pub trait HolonGetters {
+    // type Wrapper;
+
+    fn get_property_value(
+        &self,
+        property_name: PropertyName,
+    ) -> Result<Option<BaseValue>, HolonError>;
+}
+
+impl HolonGetters for Holon {
+    fn get_property_value(
+        &self,
+        property_name: PropertyName,
+    ) -> Result<Option<BaseValue>, HolonError> {
+        Ok(self.property_map.get(&property_name).cloned())
+    }
+}
+
 impl Holon {
     /// Stages a new empty holon.
     pub fn new() -> Holon {
@@ -140,7 +158,6 @@ impl Holon {
             }
         }
     }
-
 
     /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash
     /// it then "inflates" the HolonNode into a Holon and returns it
