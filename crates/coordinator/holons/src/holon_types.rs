@@ -2,7 +2,7 @@ use crate::relationship::RelationshipMap;
 use derive_new::new;
 use hdk::prelude::*;
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{PropertyMap, PropertyName};
+use shared_types_holon::{HolonId, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -44,17 +44,3 @@ impl fmt::Display for HolonState {
     }
 }
 
-// #[hdk_entry_helper]
-// #[derive(Clone, PartialEq, Eq)]
-// pub struct LocalHolonReference {
-//     pub holon_id: HolonId,
-//     pub holon: Option<Holon>,
-// }
-//
-// #[hdk_entry_helper]
-// #[derive(Clone, PartialEq, Eq)]
-// pub enum HolonReference {
-//     Local(LocalHolonReference),
-//     //External(ExternalHolonReference),
-// }
-//

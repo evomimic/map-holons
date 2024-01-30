@@ -5,6 +5,7 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::BaseValue;
 
+
 pub trait HolonReferenceFns {
     fn get_holon(&self) -> Result<Holon, HolonError>;
 }
@@ -35,7 +36,7 @@ impl HolonGetters for HolonReference {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LocalHolonReference {
-    holon_id: Option<ActionHash>,
+    holon_id: Option<HolonId>,
     holon: Option<Holon>,
 }
 
@@ -58,13 +59,27 @@ impl HolonReferenceFns for LocalHolonReference {
 }
 
 impl LocalHolonReference {
-    pub fn new() -> LocalHolonReference {
-        LocalHolonReference {
-            holon_id: None,
+
+    // Constructor function for creating from HolonId
+    pub fn from_holon_id(holon_id: HolonId) -> Self {
+        Self {
+            holon_id: Some(holon_id),
             holon: None,
         }
     }
-    pub fn with_holon(&mut self, holon: Holon) -> &mut Self {
+
+    // Constructor function for creating from Holon
+    pub fn from_holon(holon: Holon) -> Self {
+        Self {
+            holon_id: None,
+            holon: Some(holon),
+        }
+    }
+    pub fn add_holon_id(&mut self, holon_id: HolonId)-> &mut Self {
+        self.holon_id = Some(holon_id);
+        self
+    }
+    pub fn add_holon(&mut self, holon: Holon) -> &mut Self {
         self.holon = Some(holon);
         self
     }
