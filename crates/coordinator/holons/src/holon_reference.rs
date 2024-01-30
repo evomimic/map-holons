@@ -1,7 +1,10 @@
+use crate::holon::HolonGetters;
 use crate::holon_errors::HolonError;
 use crate::holon_types::Holon;
 use hdk::prelude::*;
-use shared_types_holon::HolonId;
+use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::value_types::BaseValue;
+
 
 pub trait HolonReferenceFns {
     fn get_holon(&self) -> Result<Holon, HolonError>;
@@ -18,6 +21,16 @@ impl HolonReferenceFns for HolonReference {
         match self {
             HolonReference::Local(holon_reference) => holon_reference.get_holon(),
         }
+    }
+}
+
+impl HolonGetters for HolonReference {
+    fn get_property_value(
+        &self,
+        property_name: PropertyName,
+    ) -> Result<Option<BaseValue>, HolonError> {
+        let holon = self.get_holon()?;
+        holon.get_property_value(property_name)
     }
 }
 
