@@ -1,13 +1,12 @@
-use holons::holon_errors::HolonError;
 /// MAP Schema objects maintain a set of MAP Descriptors
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
 use holons::holon_types::Holon;
 
-use crate::descriptor_types::{Schema, TypeDescriptor};
+use crate::descriptor_types::Schema;
 
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapString};
+use shared_types_holon::value_types::{BaseValue, MapString};
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
@@ -33,6 +32,7 @@ impl Schema {
         self.0.clone()
     }
 
+
     // /// Adds a TypeDescriptor to the Schema
     // pub fn add_descriptor(
     //     &mut self,
@@ -45,11 +45,11 @@ impl Schema {
     //
     // }
 
-    // /// Returns the singleton MetaTypeDescriptor instance for this Schema,
-    // /// Defining it first, if necessary
-    // pub fn get_meta_type_descriptor(&self) ->Result<TypeDescriptor,HolonError> {
-    //    // if let Some(meta_descriptor) = self.into_holon().relationship_map.get(TYPE_METADESCRIPTOR) {
-    //     if let Some(meta_descriptor) = self.into_holon().relationship_map.get(MapString(TYPE_METADESCRIPTOR.to_string())) {
+    // /// Returns the requested (singleton) MetaTypeDescriptor instance for this Schema,
+    // /// Or return an error if it is not defined.
+    // pub fn get_meta_type_descriptor(&self, descriptor_name: MapString) ->Result<TypeDescriptor,HolonError> {
+    //
+    //     if let Some(meta_descriptor) = self.into_holon().relationship_map.get(descriptor_name) {
     //         Ok(meta_descriptor.clone())
     //     } else {
     //         let schema_target = define_local_target(self.clone().into_holon());
@@ -67,4 +67,5 @@ impl Schema {
     //     }
     //
     // }
+
 }

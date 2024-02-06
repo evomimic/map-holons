@@ -15,6 +15,7 @@ pub struct Schema(pub Holon);
 pub struct TypeDescriptor(pub Holon);
 pub struct HolonDescriptor(pub Holon);
 pub struct RelationshipDescriptor(pub Holon);
+pub struct PropertyDescriptor(pub Holon);
 pub struct StringDescriptor(pub Holon);
 pub struct IntegerDescriptor(pub Holon);
 pub struct BooleanDescriptor(pub Holon);
@@ -52,19 +53,18 @@ impl DeletionSemantic {
     }
 }
 /// The following constants specify the type_names for the L0 metadescriptors
-pub const TYPE_META_DESCRIPTOR: &str = "TypeMetaDescriptor";
-pub const HOLON_META_DESCRIPTOR: &str = "HolonMetaDescriptor";
-pub const RELATIONSHIP_META_DESCRIPTOR: &str = "RelationshipMetaDescriptor";
-pub const PROPERTY_META_DESCRIPTOR: &str = "PropertyMetaDescriptor";
-pub const DANCE_META_DESCRIPTOR: &str = "DanceMetaDescriptor";
-pub const VALUE_META_DESCRIPTOR: &str = "ValueMetaDescriptor";
-pub const BOOLEAN_META_DESCRIPTOR: &str = "BooleanMetaDescriptor";
-pub const ENUM_META_DESCRIPTOR: &str = "EnumMetaDescriptor";
-pub const ENUM_VARIANT_META_DESCRIPTOR: &str = "MetaDescriptor";
-pub const INTEGER_META_DESCRIPTOR: &str = "IntegerMetaDescriptor";
-pub const STRING_META_DESCRIPTOR: &str
-= "StringMetaDescriptor";
-pub const VALUE_ARRAY_META_DESCRIPTOR: &str = "ValueArrayMetaDescriptor";
+pub const META_TYPE_DESCRIPTOR: &str = "MetaTypeDescriptor";
+pub const META_HOLON_DESCRIPTOR: &str = "MetaHolonDescriptor";
+pub const META_RELATIONSHIP_DESCRIPTOR: &str = "MetaRelationshipDescriptor";
+pub const META_PROPERTY_DESCRIPTOR: &str = "MetaPropertyDescriptor";
+pub const META_DANCE_DESCRIPTOR: &str = "MetaDanceDescriptor";
+pub const META_VALUE_DESCRIPTOR: &str = "MetaValueDescriptor";
+pub const META_BOOLEAN_DESCRIPTOR: &str = "MetaBooleanDescriptor";
+pub const META_ENUM_DESCRIPTOR: &str = "MetaEnumDescriptor";
+pub const META_ENUM_VARIANT_DESCRIPTOR: &str = "MetaEnumVariantDescriptor";
+pub const META_INTEGER_DESCRIPTOR: &str = "MetaIntegerDescriptor";
+pub const META_STRING_DESCRIPTOR: &str = "MetaStringDescriptor";
+pub const META_VALUE_ARRAY_DESCRIPTOR: &str = "MetaValueArrayDescriptor";
 
 
 

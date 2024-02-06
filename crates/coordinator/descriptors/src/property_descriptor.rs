@@ -1,9 +1,7 @@
-use holons::holon_reference::HolonReference;
-use holons::holon_types::Holon;
-use holons::relationship::{RelationshipName, RelationshipTarget};
+use holons::relationship::RelationshipTarget;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
-
+use crate::descriptor_types::{PropertyDescriptor, Schema, TypeDescriptor};
 
 
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
@@ -24,15 +22,15 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 ///
 ///
 pub fn define_property_descriptor(
-    schema: &RelationshipTarget,
+    schema: &Schema,
     property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
     description: MapString,
     label: MapString, // Human readable name for this property name
     property_of: RelationshipTarget, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
     value_type: RelationshipTarget, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    has_supertype: Option<HolonReference>,
-    described_by: Option<HolonReference>,
-) -> Holon {
+    has_supertype: Option<&TypeDescriptor>,
+    described_by: Option<&TypeDescriptor>,
+) -> PropertyDescriptor {
 
     let property_of_name = MapString("TODO: Extract type_name from the PROPERTY_OF HolonDescriptor".to_string());
 
@@ -54,20 +52,20 @@ pub fn define_property_descriptor(
 
     // Populate the relationships
 
-    descriptor
-        .add_related_holon(
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            schema.clone(),
-        )
-        .add_related_holon(
-            RelationshipName(MapString("PROPERTY_OF".to_string())),
-            property_of,
-        )
-        .add_related_holon(
-            RelationshipName(MapString("VALUE_TYPE".to_string())),
-            value_type,
-        );
+    // descriptor
+    //     .add_related_holon(
+    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
+    //         schema.clone(),
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("PROPERTY_OF".to_string())),
+    //         property_of,
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("VALUE_TYPE".to_string())),
+    //         value_type,
+    //     );
 
-    descriptor
+    PropertyDescriptor(descriptor.0)
 
 }

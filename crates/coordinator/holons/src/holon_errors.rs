@@ -11,6 +11,8 @@ pub enum HolonError {
     WasmError(String),
     #[error("Couldn't convert Record to {0}")]
     RecordConversion(String),
+    #[error("Invalid HolonReference, {0}")]
+    InvalidHolonReference(String),
     // #[error("Wrong type: {0}")]
     // TypeError(String),
 

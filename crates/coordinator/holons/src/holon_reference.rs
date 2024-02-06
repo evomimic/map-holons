@@ -3,6 +3,7 @@ use crate::holon_errors::HolonError;
 use crate::holon_types::Holon;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
 
 
