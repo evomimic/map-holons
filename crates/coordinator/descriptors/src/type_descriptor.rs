@@ -74,6 +74,7 @@ pub fn define_type_descriptor(
     // Define a default semantic_version
     let version = define_semantic_version(0, 0, 1);
 
+
     // Add the outbound relationships shared by all TypeDescriptors
     let version_target = define_local_target(&version);
 
