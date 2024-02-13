@@ -23,20 +23,20 @@ use shared_types_holon::MapString;
 //     pub error: HolonError,
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct CommitResponse {
     pub status: CommitRequestStatusCode,
     pub description: MapString,
     pub errors: Option<Vec<CommitError>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum CommitRequestStatusCode {
     Success,
     Error,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct CommitError {
     pub holon_key: MapString,
     pub error_code: HolonError,

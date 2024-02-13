@@ -10,24 +10,119 @@ use holons::commit_manager::{CommitError, CommitManager, CommitRequestStatusCode
 use holons::holon_errors::HolonError;
 use holons::holon_node::UpdateHolonNodeInput;
 use holons::holon_node::*;
+use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_types::{Holon, HolonState};
-use shared_types_holon::MapString;
+use holons::relationship::{RelationshipName, RelationshipTarget};
+use shared_types_holon::{BaseValue, MapBoolean, MapInteger, MapString, PropertyName};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_commit_manager() {
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
         setup_conductor().await;
 
-    let holon1 = Holon::new();
-    let holon2 = Holon::new();
+    let mut holon1 = Holon::new();
+    holon1.with_property_value(
+        PropertyName(MapString("Property Name A".to_string())),
+        BaseValue::StringValue(MapString("String Value A".to_string())),
+    );
+
+    let record1: Record = conductor
+        .call(
+            &cell.zome("holons"),
+            "create_holon_node",
+            holon1.clone().into_node(),
+        )
+        .await;
+
+    let fetched_holon1_record: Record = conductor
+        .call(
+            &cell.zome("holons"),
+            "get_holon_node",
+            record1.action_address(),
+        )
+        .await;
+
+    let fetched_holon1: Holon = Holon::try_from_node(fetched_holon1_record).unwrap();
+    assert_eq!(holon1.property_map, fetched_holon1.property_map);
+    assert_eq!(Some(record1), fetched_holon1.saved_node);
+    assert_eq!(HolonState::Fetched, fetched_holon1.state);
+
+    let mut holon2 = Holon::new();
+    holon2.with_property_value(
+        PropertyName(MapString("Property Name B".to_string())),
+        BaseValue::BooleanValue(MapBoolean(true)),
+    );
+    holon2.add_related_holon(
+        RelationshipName(MapString("B->A".to_string())),
+        RelationshipTarget::One(HolonReference::Local(LocalHolonReference {
+            holon_id: None,
+            holon: Some(holon1.clone()),
+        })),
+    );
+    assert_eq!(HolonState::New, holon2.state);
+
+    let mut holon3 = Holon::new();
+    holon3.with_property_value(
+        PropertyName(MapString("Property Name C - Example Change".to_string())),
+        BaseValue::IntegerValue(MapInteger(-1)),
+    );
+    holon3.with_property_value(
+        PropertyName(MapString("Zero Int Val".to_string())),
+        BaseValue::IntegerValue(MapInteger(0)),
+    );
+    holon3.add_related_holon(
+        RelationshipName(MapString("C->A".to_string())),
+        RelationshipTarget::One(HolonReference::Local(LocalHolonReference {
+            holon_id: None,
+            holon: Some(holon1.clone()),
+        })),
+    );
+    holon3.add_related_holon(
+        RelationshipName(MapString("C->B".to_string())),
+        RelationshipTarget::One(HolonReference::Local(LocalHolonReference {
+            holon_id: None,
+            holon: Some(holon2.clone()),
+        })),
+    );
+
+    let record3: Record = conductor
+        .call(
+            &cell.zome("holons"),
+            "create_holon_node",
+            holon3.clone().into_node(),
+        )
+        .await;
+
+    let fetched_holon3_record: Record = conductor
+        .call(
+            &cell.zome("holons"),
+            "get_holon_node",
+            record3.action_address(),
+        )
+        .await;
+
+    let mut changed_holon3: Holon = Holon::try_from_node(fetched_holon3_record).unwrap();
+    assert_eq!(holon3.property_map, changed_holon3.property_map);
+    assert_eq!(Some(record3), changed_holon3.saved_node);
+    assert_eq!(HolonState::Fetched, changed_holon3.state);
+
+    changed_holon3.with_property_value(
+        PropertyName(MapString("Property Name C - Example Change".to_string())),
+        BaseValue::IntegerValue(MapInteger(1)),
+    );
+    assert_eq!(HolonState::Changed, changed_holon3.state);
+
+    let holon4 = Holon::new();
 
     println!("Testing...");
     // let holon_map = BTreeMap::from([("A".to_string(), holon1), ("B".to_string(), holon2)]);
 
     let mut commit_manager = CommitManager::default();
 
-    commit_manager.stage("A".to_string(), holon1);
-    commit_manager.stage("B".to_string(), holon2);
+    commit_manager.stage("A - Fetched".to_string(), fetched_holon1);
+    commit_manager.stage("B - New".to_string(), holon2);
+    commit_manager.stage("C - Changed".to_string(), changed_holon3);
+    commit_manager.stage("D - New Empty".to_string(), holon4);
 
     println!("CommitManager: {:#?}", commit_manager);
 
@@ -35,13 +130,10 @@ async fn test_commit_manager() {
         test_helper_commit_manager_commit(&mut commit_manager, conductor, cell).await;
 
     println!("CommitResponse: {:#?}", commit_response);
-
-    // let fetched_holons: Vec<Holon> = conductor
-    //     .call(&cell.zome("holons"), "get_all_holons", ())
-    //     .await;
-    // assert_eq!(0, fetched_holons.len());
-
+    assert_eq!(CommitRequestStatusCode::Success, commit_response.status);
     println!("");
+    println!("Updated CommitManager: {:#?}", commit_manager);
+    assert_eq!(1, commit_manager.staged_holons.len());
 }
 
 // HELPERS //
@@ -84,7 +176,9 @@ pub async fn test_helper_holon_commit(
                     previous_holon_node_hash: node.action_address().clone(),
                     updated_holon_node: holon.clone().into_node(),
                 };
-                let result = update_holon_node(input);
+                let result = conductor
+                    .call_fallible(&cell.zome("holons"), "update_holon_node", input)
+                    .await;
                 match result {
                     Ok(record) => {
                         holon.saved_node = Some(record);
@@ -109,18 +203,20 @@ pub async fn test_helper_commit_manager_commit(
 ) -> CommitResponse {
     let mut errors: Vec<CommitError> = Vec::new();
     for (k, v) in commit_manager.clone().staged_holons.iter() {
-        let result = test_helper_holon_commit(v.clone(), &conductor, &cell).await;
-        match result {
-            Ok(_) => {
-                commit_manager.staged_holons.remove(k.into());
-            }
-            Err(e) => {
-                let commit_error = CommitError {
-                    holon_key: MapString(k.to_string()),
-                    error_code: e,
-                    // description: MapString("".to_string()),
-                };
-                errors.push(commit_error);
+        if v.state != HolonState::Fetched {
+            let result = test_helper_holon_commit(v.clone(), &conductor, &cell).await;
+            match result {
+                Ok(_) => {
+                    commit_manager.staged_holons.remove(k.into());
+                }
+                Err(e) => {
+                    let commit_error = CommitError {
+                        holon_key: MapString(k.to_string()),
+                        error_code: e,
+                        // description: MapString("".to_string()),
+                    };
+                    errors.push(commit_error);
+                }
             }
         }
     }

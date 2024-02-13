@@ -3,9 +3,8 @@ use crate::holon_errors::HolonError;
 use crate::holon_types::Holon;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
-
+use shared_types_holon::HolonId;
 
 pub trait HolonReferenceFns {
     fn get_holon(&self) -> Result<Holon, HolonError>;
@@ -37,8 +36,8 @@ impl HolonGetters for HolonReference {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LocalHolonReference {
-    holon_id: Option<HolonId>,
-    holon: Option<Holon>,
+    pub holon_id: Option<HolonId>,
+    pub holon: Option<Holon>,
 }
 
 impl HolonReferenceFns for LocalHolonReference {
@@ -60,7 +59,6 @@ impl HolonReferenceFns for LocalHolonReference {
 }
 
 impl LocalHolonReference {
-
     // Constructor function for creating from HolonId
     pub fn from_holon_id(holon_id: HolonId) -> Self {
         Self {
@@ -76,7 +74,7 @@ impl LocalHolonReference {
             holon: Some(holon),
         }
     }
-    pub fn add_holon_id(&mut self, holon_id: HolonId)-> &mut Self {
+    pub fn add_holon_id(&mut self, holon_id: HolonId) -> &mut Self {
         self.holon_id = Some(holon_id);
         self
     }
