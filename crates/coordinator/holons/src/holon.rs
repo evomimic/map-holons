@@ -9,8 +9,8 @@ use hdi::prelude::ActionHash;
 use hdk::entry::get;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::HolonId;
 
 pub trait HolonGetters {
     // type Wrapper;
@@ -115,15 +115,16 @@ impl Holon {
     /// commit() creates a HolonNode and SmartLinks if state = New,
     /// updates the HolonNode and SmartLinks if state = Changed,
     /// and just returns the Holon unchanged if state = Fetched,
-    pub fn commit(&mut self) -> Result<&mut Self, HolonError> {
+    pub fn commit(self) -> Result<Self, HolonError> {
+        let mut holon = self.clone();
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
                 let result = create_holon_node(self.clone().into_node());
                 match result {
                     Ok(record) => {
-                        self.saved_node = Some(record);
-                        self.state = HolonState::Fetched;
+                        holon.saved_node = Some(record);
+                        holon.state = HolonState::Fetched;
 
                         Ok(self)
                     }
@@ -145,7 +146,7 @@ impl Holon {
                     let result = update_holon_node(input);
                     match result {
                         Ok(record) => {
-                            self.saved_node = Some(record);
+                            holon.saved_node = Some(record);
 
                             Ok(self)
                         }

@@ -1,5 +1,7 @@
 use hdk::prelude::*;
+use holochain::conductor::api::error::ConductorApiError;
 use thiserror::Error;
+
 #[hdk_entry_helper]
 #[derive(Error, Eq, PartialEq)]
 pub enum HolonError {
@@ -15,12 +17,8 @@ pub enum HolonError {
     InvalidHolonReference(String),
     // #[error("Wrong type: {0}")]
     // TypeError(String),
-
-    // #[error("Element missing its Entry")]
-    // EntryMissing,
-
-    // #[error("Wasm Error {0}")]
-    // Wasm(WasmError),
+    #[error("ConductorApiError {0}")]
+    ConductorApiError(String),
 }
 
 impl From<WasmError> for HolonError {
@@ -32,5 +30,11 @@ impl From<WasmError> for HolonError {
 impl Into<WasmError> for HolonError {
     fn into(self) -> WasmError {
         wasm_error!("HolonError {:?}", self.to_string())
+    }
+}
+
+impl From<ConductorApiError> for HolonError {
+    fn from(e: ConductorApiError) -> Self {
+        HolonError::ConductorApiError(e.to_string())
     }
 }
