@@ -26,6 +26,7 @@ thiserror = "1"
 ahash ="=0.8.6"
 
 
+
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
 

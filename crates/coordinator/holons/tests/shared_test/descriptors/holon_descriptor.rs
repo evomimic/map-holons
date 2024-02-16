@@ -1,7 +1,7 @@
 use holons::helpers::define_local_target;
 use holons::holon_reference::HolonReference::*;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use holons::relationship::RelationshipTarget;
 use holons::relationship::RelationshipTarget::*;
 use shared_types_holon::holon_node::PropertyName;

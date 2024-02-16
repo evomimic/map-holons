@@ -1,10 +1,11 @@
-use crate::holon::HolonGetters;
+use std::cell::RefCell;
+use std::rc::Rc;
+use crate::holon::{Holon, HolonGetters};
 use crate::holon_errors::HolonError;
-use crate::holon_types::Holon;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::HolonId;
+use shared_types_holon::{HolonId, MapString};
 
 pub trait HolonReferenceFns {
     fn get_holon(&self) -> Result<Holon, HolonError>;
@@ -32,19 +33,24 @@ impl HolonGetters for HolonReference {
         let holon = self.get_holon()?;
         holon.get_property_value(property_name)
     }
+
+    fn get_key(&self) -> Option<MapString> {
+        let holon = self.get_holon()?;
+
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LocalHolonReference {
     pub holon_id: Option<HolonId>,
-    pub holon: Option<Holon>,
+    pub rc_holon: Option<Rc<RefCell<Holon>>>,
 }
 
 impl HolonReferenceFns for LocalHolonReference {
     /// get_holon will return the cached Holon, first retrieving it from the storage tier, if necessary
     fn get_holon(&self) -> Result<Holon, HolonError> {
         let holon_reference = self.clone();
-        if let Some(holon) = holon_reference.holon {
+        if let Some(holon) = holon_reference.rc_holon {
             Ok(holon)
         } else {
             if let Some(id) = holon_reference.holon_id {
@@ -63,7 +69,7 @@ impl LocalHolonReference {
     pub fn from_holon_id(holon_id: HolonId) -> Self {
         Self {
             holon_id: Some(holon_id),
-            holon: None,
+            rc_holon: None,
         }
     }
 
@@ -71,7 +77,7 @@ impl LocalHolonReference {
     pub fn from_holon(holon: Holon) -> Self {
         Self {
             holon_id: None,
-            holon: Some(holon),
+            rc_holon: Some(holon),
         }
     }
     pub fn add_holon_id(&mut self, holon_id: HolonId) -> &mut Self {
@@ -79,7 +85,7 @@ impl LocalHolonReference {
         self
     }
     pub fn add_holon(&mut self, holon: Holon) -> &mut Self {
-        self.holon = Some(holon);
+        self.rc_holon = Some(holon);
         self
     }
 }

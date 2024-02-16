@@ -1,11 +1,22 @@
 use crate::commit_manager::CommitManager;
-use std::rc::Rc;
 
 use derive_new::new;
 
 #[derive(new, Clone)]
-pub struct Context {
-    pub commit_manager: Option<Rc<CommitManager>>, // TODO: arc_swap
+pub struct HolonsContext {
+    pub commit_manager: CommitManager,
+}
+
+impl HolonsContext {
+    pub fn new() -> HolonsContext {
+        HolonsContext {
+            commit_manager: CommitManager::new()
+            }
+        }
+       pub fn set_commit_manager(&mut self, commit_manager: CommitManager) {
+        self.commit_manager = commit_manager.clone());
+        return
+    }
 }
 
 // impl Context {

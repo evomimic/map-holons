@@ -3,14 +3,50 @@ use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
-use crate::holon_types::{Holon, HolonState};
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use hdi::prelude::ActionHash;
 use hdk::entry::get;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::HolonId;
+use std::fmt;
+use derive_new::new;
+use shared_types_holon::{HolonId, MapString};
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq)]
+pub struct Holon {
+    pub state: HolonState,
+    pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
+    pub property_map: PropertyMap,
+    pub relationship_map: RelationshipMap,
+    key: Option<MapString>,
+    // pub descriptor: HolonReference,
+    // pub holon_space: HolonReference,
+
+    // pub dances : DanceMap,
+}
+
+#[hdk_entry_helper]
+#[derive(new, Clone, PartialEq, Eq)]
+pub enum HolonState {
+    New,
+    Fetched,
+    Changed,
+    // CreateInProgress,
+    // SaveInProgress,
+}
+
+impl fmt::Display for HolonState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            HolonState::New => write!(f, "New"),
+            HolonState::Fetched => write!(f, "Fetched"),
+            HolonState::Changed => write!(f, "Changed"),
+        }
+    }
+}
+
 
 pub trait HolonGetters {
     // type Wrapper;
@@ -19,6 +55,8 @@ pub trait HolonGetters {
         &self,
         property_name: PropertyName,
     ) -> Result<Option<BaseValue>, HolonError>;
+
+    fn get_key(&self)->Option<MapString>;
 }
 
 impl HolonGetters for Holon {
@@ -27,6 +65,9 @@ impl HolonGetters for Holon {
         property_name: PropertyName,
     ) -> Result<Option<BaseValue>, HolonError> {
         Ok(self.property_map.get(&property_name).cloned())
+    }
+    fn get_key(&self) -> Option<MapString> {
+        self.key.clone()
     }
 }
 
@@ -38,6 +79,7 @@ impl Holon {
             saved_node: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
+            key: None,
         }
     }
 
@@ -57,7 +99,9 @@ impl Holon {
             saved_node: Some(holon_node_record),
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
+            key: None,
         };
+        // TODO: populate `key` from the property map once we have Descriptors/Constraints available
 
         // TODO: Populate RelationshipMap from links
 
@@ -200,6 +244,9 @@ impl Holon {
             Err(error) => Err(HolonError::WasmError(error.to_string())),
         }
     }
+    pub fn set_key_manually(&mut self, key: MapString) {
+        self.key = Some(key);
+    }
 }
 
 // =======
@@ -261,3 +308,4 @@ impl Holon {
 //     delete_entry(original_holon_hash)
 //
 // }
+

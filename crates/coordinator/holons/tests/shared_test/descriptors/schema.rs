@@ -9,7 +9,7 @@ use holons::holon_reference::HolonReference::Local;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
 /// This file creates a Schema Holon and all of its child descriptors comprising the L0 layer
 /// of the MAP Ontology as well as the relationships between those descriptors
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use holons::relationship::{RelationshipName, RelationshipTarget};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{

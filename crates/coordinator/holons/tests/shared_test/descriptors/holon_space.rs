@@ -1,6 +1,6 @@
 // This file creates an Holon Space Holon
 
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,

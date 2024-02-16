@@ -1,6 +1,6 @@
 use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_reference::HolonReference::Local;
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use holons::relationship::RelationshipTarget;
 /// This helper function returns a RelationshipTarget for the specified holon
 /// It assumes the holon is Local

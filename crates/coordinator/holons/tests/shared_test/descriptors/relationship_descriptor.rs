@@ -1,7 +1,7 @@
 use holochain::prelude::VecOrSingle::Vec;
 /// This file defines the a RelationshipDescriptor
 ///
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use holons::relationship::RelationshipTarget;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{

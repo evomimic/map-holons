@@ -1,3 +1,4 @@
+use holons::context::HolonsContext;
 use holons::helpers::define_local_target;
 use holons::relationship::RelationshipName;
 use shared_types_holon::PropertyName;
@@ -6,6 +7,7 @@ use crate::descriptor_types::{IntegerDescriptor, Schema, TypeDescriptor};
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
 pub fn define_integer_descriptor(
+    context: &HolonsContext,
     schema: &Schema,
     type_name: MapString,
     description: MapString,
@@ -18,6 +20,7 @@ pub fn define_integer_descriptor(
 ) -> IntegerDescriptor {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
+        context,
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
         derive_descriptor_name(&type_name),
         type_name,

@@ -1,4 +1,4 @@
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use shared_types_holon::HolonId;
 
 /// Each DescriptorTestCase specifies a list of steps.

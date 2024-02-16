@@ -1,87 +1,79 @@
-// use hdk::prelude::*;
-
-use std::collections::BTreeMap;
-// use std::sync::Arc;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::holon_errors::HolonError;
-use crate::holon_types::Holon;
 use shared_types_holon::MapString;
+use crate::holon::{Holon, HolonGetters};
+
+pub struct CommitManager {
+    staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
+    index: HashMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CommitResponse {
-    pub status: CommitRequestStatusCode,
-    pub description: MapString,
-    pub errors: Option<Vec<CommitError>>,
+    pub status: CommitRequestStatus,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum CommitRequestStatusCode {
+pub enum CommitRequestStatus {
     Success,
-    Error,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct CommitError {
-    pub holon_key: MapString,
-    pub error_code: HolonError,
-}
-
-#[derive(Default, Clone, Debug)]
-pub struct CommitManager {
-    pub staged_holons: BTreeMap<MapString, Holon>,
-    // pub staged_holons: BTreeMap<String, Arc<Holon>>, // <Key, immutable reference>
+    Error(Vec<HolonError>),
 }
 
 impl CommitManager {
-    pub fn stage(&mut self, key: MapString, holon: Holon) {
-        self.staged_holons.insert(key, holon);
-    }
-
-    pub fn get_by_key(&self, key: MapString) -> Option<&Holon> {
-        self.staged_holons.get(&key)
-    }
-    /*
-    // pub fn get_by_key(&self, key: String) -> Option<Arc<Holon>> {
-    //     let fetch_option = self.staged_holons.get(&key);
-    //     if let Some(holon) = fetch_option {
-    //         Some(holon.clone())
-    //     }
-    //     else { None }
-    // }
-     */
-
-    // pub fn commit(&mut self) -> Result<Vec<HolonErrorCase>, CommitManagerError> {
-    pub fn commit(&mut self) -> CommitResponse {
-        let mut errors: Vec<CommitError> = Vec::new();
-        for (k, v) in self.clone().staged_holons.iter() {
-            let result = v.clone().commit();
-            match result {
-                Ok(_) => {
-                    self.staged_holons.remove(k.into());
-                }
-                Err(e) => {
-                    let commit_error = CommitError {
-                        holon_key: k.clone(),
-                        error_code: e,
-                    };
-                    errors.push(commit_error);
-                }
-            }
+    /// Stages the provided holon and returns a reference-counted reference to it
+    /// If the holon has a key, the function updates the index to allow the staged holon to be retrieved by key
+    fn stage_holon(&mut self, holon: Holon) -> Rc<RefCell<Holon>> {
+        let rc_holon = Rc::new(RefCell::new(holon.clone())); // Cloning the object for Rc
+        self.staged_holons.push(Rc::clone(&rc_holon));
+        if let Some(the_key) = holon.get_key() {
+            self.index.insert(the_key, self.staged_holons.len() - 1);
         }
-        let error_count = errors.len();
+        rc_holon
+    }
+
+    /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the specified key
+    /// NOTE: Only staged holons are searched and some holon types do not defined unique keys
+    /// This means that:
+    ///    (1) even if this function returns `None` a holon with the specified key may exist in the DHT
+    ///    (2) There might be some holons staged for update that you cannot find by key
+    ///
+    fn get_holon_by_key(&self, key: MapString) -> Option<Rc<RefCell<Holon>>> {
+        if let Some(&index) = self.index.get(&key) {
+            Some(Rc::clone(&self.staged_holons[index]))
+        } else {
+            None
+        }
+    }
+    fn clear_staged_objects(&mut self) {
+        self.staged_holons.clear();
+        self.index.clear();
+    }
+}
+    pub fn commit(commit_manager: &mut CommitManager) -> CommitResponse {
+        let mut errors: Vec<HolonError> = Vec::new();
+        for rc_holon in &commit_manager.staged_holons {
+            // Dereference the Rc and clone the RefCell to access the object
+            let holon = rc_holon.borrow().clone(); // Clone the object inside RefCell
+            let outcome = holon.commit();
+
+            if let Err(e) = outcome { errors.push(e) };
+        }
+
+       commit_manager.clear_staged_objects();
+
         let commit_response = if errors.is_empty() {
             CommitResponse {
-                status: CommitRequestStatusCode::Success,
-                description: MapString("All holons successfully committed".to_string()),
-                errors: None,
+                status: CommitRequestStatus::Success,
             }
         } else {
             CommitResponse {
-                status: CommitRequestStatusCode::Error,
-                description: MapString(format!("Error committing {:?} holons", error_count)),
-                errors: Some(errors),
+                status: CommitRequestStatus::Error(errors),
             }
         };
         commit_response
     }
-}
+
+

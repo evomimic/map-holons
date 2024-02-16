@@ -1,3 +1,4 @@
+use holons::context::HolonsContext;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipTarget;
 use shared_types_holon::PropertyName;
@@ -24,6 +25,7 @@ use crate::type_descriptor::{define_type_descriptor};
 ///
 ///
 pub fn define_relationship_descriptor(
+    context: &HolonsContext,
     schema: &Schema,
     relationship_name: MapString,
     description: MapString,
@@ -42,6 +44,7 @@ pub fn define_relationship_descriptor(
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_name= MapString(format!("{}-{}->{}", "source_for_type_name".to_string(), relationship_name.0,"target_for_type_name".to_string()));
     let mut descriptor = define_type_descriptor(
+        context,
         schema,
         MapString(format!("{}{}", type_name.0, "Descriptor".to_string())),
         type_name,

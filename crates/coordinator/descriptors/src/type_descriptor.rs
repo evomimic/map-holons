@@ -1,8 +1,9 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
+use holons::context::HolonsContext;
 use holons::helpers::define_local_target;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use holons::relationship::{RelationshipName, RelationshipTarget};
 
 use crate::semantic_version::define_semantic_version;
@@ -23,6 +24,7 @@ use crate::descriptor_types::{Schema, TypeDescriptor};
 ///
 ///
 pub fn define_type_descriptor(
+    context: &HolonsContext,
     schema: &Schema,
     descriptor_name: MapString,
     type_name: MapString,

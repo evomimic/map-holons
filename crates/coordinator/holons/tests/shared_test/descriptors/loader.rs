@@ -1,6 +1,6 @@
 /// This file loads the MAP Type System as a Vector of In-Memory Holons within a Test Fixture
 /// Since it is executing within a fixture, it cannot access any Conductor functions
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use shared_types_holon::value_types::{BaseType, BaseValue};
 
 use crate::shared_test::descriptors::enum_descriptor::{

@@ -1,4 +1,4 @@
-
+use holons::context::HolonsContext;
 use crate::type_descriptor::{define_type_descriptor};
 
 
@@ -19,6 +19,7 @@ use crate::descriptor_types::{HolonDescriptor, Schema, TypeDescriptor};
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
 ///
 pub fn define_holon_descriptor(
+    context: &HolonsContext,
     schema: &Schema,
     type_name: MapString,
     description: MapString,
@@ -30,6 +31,7 @@ pub fn define_holon_descriptor(
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     let descriptor = define_type_descriptor(
+        context,
         schema,
         MapString(format!("{}{}", type_name.0, "HolonDescriptor".to_string())),
         type_name,

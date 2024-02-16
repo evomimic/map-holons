@@ -1,6 +1,6 @@
 // This file creates a TypeDescriptor for the different MAP Value Types
 
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use holons::relationship::RelationshipTarget;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{

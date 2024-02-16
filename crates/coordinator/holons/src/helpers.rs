@@ -1,10 +1,10 @@
 use hdk::prelude::*;
 //use std::convert::Into;
 use shared_types_holon::holon_node::{HolonNode};
+use crate::holon::Holon;
 use crate::holon_errors::HolonError;
 use crate::holon_reference::{HolonReference, LocalHolonReference};
 use crate::holon_reference::HolonReference::Local;
-use crate::holon_types::Holon;
 use crate::relationship::RelationshipTarget;
 
 

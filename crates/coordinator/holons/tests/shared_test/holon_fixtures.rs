@@ -16,7 +16,7 @@
 use core::panic;
 use holons::helpers::*;
 use holons::holon_api::*;
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;

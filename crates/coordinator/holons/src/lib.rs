@@ -6,9 +6,9 @@ pub mod holon_api;
 pub mod holon_errors;
 pub mod holon_node;
 pub mod holon_reference;
-pub mod holon_types;
 pub mod relationship;
 pub mod smartlink;
+pub mod context;
 
 use hdk::prelude::*;
 use holons_integrity::*;

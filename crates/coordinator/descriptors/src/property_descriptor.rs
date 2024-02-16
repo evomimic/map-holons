@@ -1,3 +1,4 @@
+use holons::context::HolonsContext;
 use holons::relationship::RelationshipTarget;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
@@ -22,6 +23,7 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 ///
 ///
 pub fn define_property_descriptor(
+    context: &HolonsContext,
     schema: &Schema,
     property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
     description: MapString,
@@ -38,6 +40,7 @@ pub fn define_property_descriptor(
     let type_name = MapString(format!("{}_PROPERTY_OF_{}", property_name.0, property_of_name.0));
 
     let mut descriptor = define_type_descriptor(
+        context,
         schema,
         derive_descriptor_name(&property_name),
         type_name,

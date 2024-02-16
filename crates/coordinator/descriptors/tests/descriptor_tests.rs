@@ -19,7 +19,7 @@ use shared_test::*;
 // use shared_test::test;
 use holons::holon_api::*;
 use holons::holon_errors::HolonError;
-use holons::holon_types::Holon;
+use holons::holon::Holon;
 
 use shared_test::test_data_types::{DescriptorTestCase, DescriptorTestStep};
 use shared_types_holon::holon_node::{PropertyMap, PropertyName};
@@ -51,8 +51,7 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
         setup_conductor().await;
 
 
-    // The heavy lifting for this test is in the test data set creation. Rich descriptors can be
-    // built in the create_dummy_data fn to test a broad range of data structures
+    // The heavy lifting for this test is in the test data set creation.
 
     let mut test_steps: Vec<DescriptorTestStep> = input.unwrap().steps;
     let step_count = test_steps.len();

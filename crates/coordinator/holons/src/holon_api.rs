@@ -3,8 +3,9 @@
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{PropertyName};
 use shared_types_holon::value_types::BaseValue;
+use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
-use crate::holon_types::Holon;
+
 
 
 #[hdk_extern]
