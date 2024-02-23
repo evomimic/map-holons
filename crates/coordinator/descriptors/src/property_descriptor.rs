@@ -1,5 +1,6 @@
 use holons::context::HolonsContext;
 use holons::relationship::RelationshipTarget;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
 use crate::descriptor_types::{PropertyDescriptor, Schema, TypeDescriptor};
@@ -24,7 +25,7 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 ///
 pub fn define_property_descriptor(
     context: &HolonsContext,
-    schema: &Schema,
+    schema: StagedReference,
     property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
     description: MapString,
     label: MapString, // Human readable name for this property name

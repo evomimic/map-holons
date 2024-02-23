@@ -5,8 +5,8 @@ use crate::shared_test::descriptors::relationship_descriptor::*;
 use crate::shared_test::descriptors::type_descriptor::*;
 use crate::shared_test::descriptors::value_descriptor::*;
 use holons::helpers::*;
-use holons::holon_reference::HolonReference::Local;
-use holons::holon_reference::{HolonReference, LocalHolonReference};
+// use holons::holon_reference::HolonReference::Local;
+// use holons::holon_reference::{HolonReference, LocalHolonReference};
 /// This file creates a Schema Holon and all of its child descriptors comprising the L0 layer
 /// of the MAP Ontology as well as the relationships between those descriptors
 use holons::holon::Holon;
@@ -38,13 +38,13 @@ pub fn define_schema() -> Holon {
 
     // Define a RelationshipTarget for the Schema Holon
 
-    let schema_target = define_local_target(&schema);
+    // let schema_target = define_local_target(&schema);
 
     //
     // Now create all the Core L0 Descriptors
     //
 
-    let schema_descriptor = define_schema_descriptor(&schema_target);
+    let schema_descriptor = define_schema_descriptor();
     //let schema_descriptor = define_schema_descriptor();
 
     let holon_type_descriptor = define_holon_type_descriptor();
@@ -89,7 +89,7 @@ pub fn define_schema() -> Holon {
 //
 // }
 
-pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
+pub fn define_schema_descriptor() -> Holon {
     let mut schema_type_descriptor = Holon::new();
 
     schema_type_descriptor
@@ -114,12 +114,12 @@ pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
             BaseValue::BooleanValue(MapBoolean(true)),
         );
 
-    schema_type_descriptor.add_related_holon(
-        RelationshipName(MapString("TypeDescriptor-INSTANCES->Schema".to_string())),
-        schema_target.clone(),
-    );
+    // schema_type_descriptor.add_related_holon(
+    //     RelationshipName(MapString("TypeDescriptor-INSTANCES->Schema".to_string())),
+    //     schema_target.clone(),
+    // );
 
-    let type_descriptor_target = define_local_target(&schema_type_descriptor);
+    // let type_descriptor_target = define_local_target(&schema_type_descriptor);
 
     /* TODO: Define SemanticVersionDescriptor,
     define TypeDescriptor-VERSION->SemanticVersion RelationshipDescriptor

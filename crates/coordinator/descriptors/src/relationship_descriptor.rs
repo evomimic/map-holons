@@ -1,6 +1,7 @@
 use holons::context::HolonsContext;
-use holons::holon_reference::HolonReference;
+
 use holons::relationship::RelationshipTarget;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
@@ -26,7 +27,7 @@ use crate::type_descriptor::{define_type_descriptor};
 ///
 pub fn define_relationship_descriptor(
     context: &HolonsContext,
-    schema: &Schema,
+    schema: StagedReference,
     relationship_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
@@ -38,7 +39,7 @@ pub fn define_relationship_descriptor(
     target_for: RelationshipTarget, // TODO: switch type to HolonReference
     has_supertype: Option<&TypeDescriptor>,
     described_by: Option<&TypeDescriptor>,
-    has_inverse: Option<HolonReference>,
+    has_inverse: Option<StagedReference>,
 
 ) -> RelationshipDescriptor {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------

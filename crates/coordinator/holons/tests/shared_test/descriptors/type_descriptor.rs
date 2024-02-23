@@ -42,7 +42,7 @@ pub fn define_semantic_version_descriptor() -> Holon {
     descriptor
 }
 
-pub fn define_type_descriptor_to_semantic_version(schema_target: &RelationshipTarget) -> Holon {
+pub fn define_type_descriptor_to_semantic_version() -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
 

@@ -5,10 +5,11 @@ pub mod holon;
 pub mod holon_api;
 pub mod holon_errors;
 pub mod holon_node;
-pub mod holon_reference;
+// pub mod holon_reference;
 pub mod relationship;
 pub mod smartlink;
 pub mod context;
+pub mod staged_reference;
 
 use hdk::prelude::*;
 use holons_integrity::*;

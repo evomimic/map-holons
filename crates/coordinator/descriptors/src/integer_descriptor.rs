@@ -1,6 +1,7 @@
 use holons::context::HolonsContext;
-use holons::helpers::define_local_target;
+
 use holons::relationship::RelationshipName;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
 use crate::descriptor_types::{IntegerDescriptor, Schema, TypeDescriptor};
@@ -8,7 +9,7 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
 pub fn define_integer_descriptor(
     context: &HolonsContext,
-    schema: &Schema,
+    schema: StagedReference,
     type_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
@@ -45,12 +46,12 @@ pub fn define_integer_descriptor(
 
     // Populate the relationships
 
-    descriptor.0
-        .add_related_holon(
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            define_local_target(&schema.0.clone()),
-        );
-
+    // descriptor.0
+    //     .add_related_holon(
+    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
+    //         define_local_target(&schema.0.clone()),
+    //     );
+    //
 
     // TODO: Create PropertyDescriptors for min_length & max_length
     // TODO: get the (assumed to be existing HAS_PROPERTIES RelationshipDescriptor)

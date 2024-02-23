@@ -1,4 +1,5 @@
 use holons::context::HolonsContext;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
 use crate::descriptor_types::{Schema, StringDescriptor, TypeDescriptor};
@@ -8,7 +9,7 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
 pub fn define_string_descriptor(
     context: &HolonsContext,
-    schema: &Schema,
+    schema: StagedReference,
     type_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type

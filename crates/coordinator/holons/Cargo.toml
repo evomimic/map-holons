@@ -11,7 +11,7 @@ name = "holons"
 hdk = { workspace = true }
 hdi = { workspace = true }
 holochain_integrity_types = { workspace = true }
-holochain = "0.1.7"
+#holochain = "0.1.7"
 
 holons_integrity = { workspace = true }
 serde = { workspace = true }
@@ -21,11 +21,12 @@ thiserror = { workspace = true }
 
 shared_types_holon = { workspace = true }
 
-[dev-dependencies]
-holochain = { version = "0.1.7", default-features = false, features = [
-    "test_utils",
-] }
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+
+holochain = { version = "0.1.7", default-features = false, features = ["test_utils",] }
 tokio = { version = "1.35.1", features = ["full"] }
 futures = { version = "0.3.1", default-features = false }
 rstest = "0.18.1"
 async-std = "1.1.12"
+
+#[dev-dependencies]

@@ -1,17 +1,20 @@
+use std::cell::RefCell;
 use crate::all_holon_nodes::*;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
-use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
+//use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use hdi::prelude::ActionHash;
 use hdk::entry::get;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use std::fmt;
+use std::rc::Rc;
 use derive_new::new;
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::{HolonId, MapString, PropertyValue};
+use crate::context::HolonsContext;
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]
@@ -19,7 +22,7 @@ pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub property_map: PropertyMap,
-    pub relationship_map: RelationshipMap,
+    //pub relationship_map: RelationshipMap,
     key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
@@ -48,26 +51,24 @@ impl fmt::Display for HolonState {
 }
 
 
-pub trait HolonGetters {
+pub trait HolonFieldGettable {
     // type Wrapper;
-
-    fn get_property_value(
-        &self,
-        property_name: PropertyName,
-    ) -> Result<Option<BaseValue>, HolonError>;
-
-    fn get_key(&self)->Option<MapString>;
+    fn get_property_value(&self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError>;
+    fn get_property_names(&self, context: &HolonsContext) -> Result<Vec<PropertyName>, HolonError>;
+    fn get_key(&self, context: &HolonsContext)->Result<Option<MapString>,HolonError>;
 }
 
-impl HolonGetters for Holon {
-    fn get_property_value(
-        &self,
-        property_name: PropertyName,
-    ) -> Result<Option<BaseValue>, HolonError> {
-        Ok(self.property_map.get(&property_name).cloned())
+impl HolonFieldGettable for Holon {
+    fn get_property_value(&self, _context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
+        self.property_map.get(property_name).cloned().ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
-    fn get_key(&self) -> Option<MapString> {
-        self.key.clone()
+
+    fn get_property_names(&self, _context: &HolonsContext) -> Result<Vec<PropertyName>, HolonError> {
+        Ok(self.property_map.keys().cloned().collect())
+    }
+
+    fn get_key(&self, _context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+        Ok(self.key.clone())
     }
 }
 
@@ -78,7 +79,7 @@ impl Holon {
             state: HolonState::New,
             saved_node: None,
             property_map: PropertyMap::new(),
-            relationship_map: RelationshipMap::new(),
+            //relationship_map: RelationshipMap::new(),
             key: None,
         }
     }
@@ -98,7 +99,7 @@ impl Holon {
             state: HolonState::Fetched,
             saved_node: Some(holon_node_record),
             property_map: holon_node.property_map,
-            relationship_map: RelationshipMap::new(),
+            //relationship_map: RelationshipMap::new(),
             key: None,
         };
         // TODO: populate `key` from the property map once we have Descriptors/Constraints available
@@ -112,18 +113,18 @@ impl Holon {
     // this checking while the type system is being bootstrapped, since the descriptors
     // required by the validation may not yet exist.
     // TODO: Add conditional validation checking when adding relationships
-    pub fn add_related_holon(
-        &mut self,
-        name: RelationshipName,
-        target: RelationshipTarget,
-    ) -> &mut Self {
-        self.relationship_map.insert(name, target);
-        match self.state {
-            HolonState::Fetched => self.state = HolonState::Changed,
-            _ => {}
-        }
-        self
-    }
+    // pub fn add_related_holon(
+    //     &mut self,
+    //     name: RelationshipName,
+    //     target: RelationshipTarget,
+    // ) -> &mut Self {
+    //     self.relationship_map.insert(name, target);
+    //     match self.state {
+    //         HolonState::Fetched => self.state = HolonState::Changed,
+    //         _ => {}
+    //     }
+    //     self
+    // }
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors
@@ -205,17 +206,19 @@ impl Holon {
         }
     }
 
-    /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash
-    /// it then "inflates" the HolonNode into a Holon and returns it
+    /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash, it then
+    /// "inflates" the HolonNode into a Holon, stores it in the cache, and returns an Rc<RefCell<Holon>> for it
     /// Not currently extern... because fetches will be mediated by the cache
 
-    pub fn fetch_holon(id: HolonId) -> Result<Holon, HolonError> {
+    pub fn fetch_holon(context: &HolonsContext, id: HolonId) -> Result<Rc<RefCell<Holon>>, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         return if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
             holon.state = HolonState::Fetched;
-            // could go get relationship map, descriptor, holon_space here;
-            Ok(holon)
+            // consider getting get relationship map, descriptor, holon_space here;
+            // add to cache and get Rc<RefCell<Holon>> for it
+            // since cache hasn't been implemented yet, return error for now
+            Err(HolonError::NotImplemented("HolonCache".to_string()))
         } else {
             // no holon_node fetched for specified holon_id
             Err(HolonError::HolonNotFound(id.0.to_string()))

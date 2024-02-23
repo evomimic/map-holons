@@ -2,13 +2,13 @@ use hdk::prelude::*;
 use shared_types_holon::value_types::MapString;
 use std::collections::BTreeMap;
 
-use crate::holon_reference::HolonReference;
+use crate::staged_reference::StagedReference;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum RelationshipTarget {
     // Many(SmartCollection),
-    ZeroOrOne(Option<HolonReference>),
-    One(HolonReference),
+    ZeroOrOne(Option<StagedReference>),
+    One(StagedReference),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

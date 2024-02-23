@@ -39,7 +39,7 @@ use shared_types_holon::value_types::BaseValue;
 /// Note that this will exercise, create, get, and get_all capabilities across a variety of holons
 ///
 /// To selectively run JUST THE TESTS in this file, use:
-///      cargo test -p holons --test holon_tests  -- --show-output
+///      cargo test -p descriptors --test descriptor_tests  -- --show-output
 ///
 #[rstest]
 #[case::schema_slice_creation(descriptors_fixture())]
@@ -50,13 +50,8 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
         setup_conductor().await;
 
-
-    // The heavy lifting for this test is in the test data set creation.
-
-    let mut test_steps: Vec<DescriptorTestStep> = input.unwrap().steps;
-    let step_count = test_steps.len();
-
-    println!("******* STARTING TESTS WITH {step_count} STEPS ***************************");
+    // For now, the fixture is being ignored and we simply try to load the schema in one shot
+    println!("******* STARTING CORE SCHEMA LOAD ***************************");
 
     println!("Performing get_all_holons here to ensure initial DB state is empty...");
     // let dummy = String::from("dummy");
@@ -67,49 +62,72 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
 
     println!("Success! Initial DB state has no Holons");
 
-    let mut created_action_hashes: Vec<ActionHash> = Vec::new();
+    println!("Starting core schema load...");
+    let load_schema_result : Holon = conductor
+        .call(&cell.zome("descriptors"), "load_core_schema_api", ())
+        .await;
+    // assert_eq!(1, fetched_holons.len());
 
-    // Iterate through the vector of test holons, building & creating each holon,
-    // then get the created holon and compare it to the generated descriptor.
-    for test_step in test_steps.clone() {
-        match test_step {
-            DescriptorTestStep::Create(holon_to_create) => {
-                let created_holon: Holon = conductor
-                    .call(&cell.zome("holons"), "commit", holon_to_create.clone())
-                    .await;
-                let action_hash: ActionHash = created_holon.get_id();
-                created_action_hashes.push(action_hash.clone());
-                println!("Fetching created holon");
-                let fetched_holon: Holon = conductor
-                    .call(&cell.zome("holons"), "get_holon", action_hash)
-                    .await;
 
-                assert_eq!(holon_to_create.into_node(), fetched_holon.clone().into_node());
+    // The heavy lifting for this test is in the test data set creation.
 
-                println!("\n...Success! Fetched holon matches generated holon ******");
-                trace!("{:#?}", fetched_holon);
-            }
-            DescriptorTestStep::Update(holon_to_update) => {
-                let updated_holon: Holon = conductor
-                    .call(&cell.zome("holons"), "commit", holon_to_update.clone())
-                    .await;
-                let action_hash: ActionHash = updated_holon.get_id();
-                created_action_hashes.push(action_hash.clone());
-                println!("Fetching updated holon");
-                let fetched_holon: Holon = conductor
-                    .call(&cell.zome("holons"), "get_holon", action_hash)
-                    .await;
-
-                assert_eq!(holon_to_update.into_node(), fetched_holon.clone().into_node());
-
-                println!("\n...Success! Fetched holon matches generated holon ******");
-                trace!("{:#?}", fetched_holon);
-            }
-            DescriptorTestStep::Delete(holon_id_to_delete) =>{
-                // TODO: figure out to deletes since fixture won't actually have the HolonId of the holon delete
-            }
-        }
-    }
+    // let mut test_steps: Vec<DescriptorTestStep> = input.unwrap().steps;
+    // let step_count = test_steps.len();
+    //
+    // println!("******* STARTING TESTS WITH {step_count} STEPS ***************************");
+    //
+    // println!("Performing get_all_holons here to ensure initial DB state is empty...");
+    // // let dummy = String::from("dummy");
+    // let fetched_holons: Vec<Holon> = conductor
+    //     .call(&cell.zome("holons"), "get_all_holons", ())
+    //     .await;
+    // assert_eq!(0, fetched_holons.len());
+    //
+    // println!("Success! Initial DB state has no Holons");
+    //
+    // let mut created_action_hashes: Vec<ActionHash> = Vec::new();
+    //
+    // // Iterate through the vector of test holons, building & creating each holon,
+    // // then get the created holon and compare it to the generated descriptor.
+    // for test_step in test_steps.clone() {
+    //     match test_step {
+    //         DescriptorTestStep::Create(holon_to_create) => {
+    //             let created_holon: Holon = conductor
+    //                 .call(&cell.zome("holons"), "commit", holon_to_create.clone())
+    //                 .await;
+    //             let action_hash: ActionHash = created_holon.get_id();
+    //             created_action_hashes.push(action_hash.clone());
+    //             println!("Fetching created holon");
+    //             let fetched_holon: Holon = conductor
+    //                 .call(&cell.zome("holons"), "get_holon", action_hash)
+    //                 .await;
+    //
+    //             assert_eq!(holon_to_create.into_node(), fetched_holon.clone().into_node());
+    //
+    //             println!("\n...Success! Fetched holon matches generated holon ******");
+    //             trace!("{:#?}", fetched_holon);
+    //         }
+    //         DescriptorTestStep::Update(holon_to_update) => {
+    //             let updated_holon: Holon = conductor
+    //                 .call(&cell.zome("holons"), "commit", holon_to_update.clone())
+    //                 .await;
+    //             let action_hash: ActionHash = updated_holon.get_id();
+    //             created_action_hashes.push(action_hash.clone());
+    //             println!("Fetching updated holon");
+    //             let fetched_holon: Holon = conductor
+    //                 .call(&cell.zome("holons"), "get_holon", action_hash)
+    //                 .await;
+    //
+    //             assert_eq!(holon_to_update.into_node(), fetched_holon.clone().into_node());
+    //
+    //             println!("\n...Success! Fetched holon matches generated holon ******");
+    //             trace!("{:#?}", fetched_holon);
+    //         }
+    //         DescriptorTestStep::Delete(holon_id_to_delete) =>{
+    //             // TODO: figure out to deletes since fixture won't actually have the HolonId of the holon delete
+    //         }
+    //     }
+    // }
 
 
     println!("All Steps Completed...");

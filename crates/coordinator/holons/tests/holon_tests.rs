@@ -33,7 +33,7 @@ use shared_types_holon::value_types::BaseValue;
 ///      * iterate through the test_holon's properties, invoking external app_property_value for each.
 ///      * commit the holon
 ///      * check that the committed holon matches the test_holon
-/// /// 3. Once all data has been created in DHT, perform `get_all_holons` and verify the result.
+/// 3. Once all data has been created in DHT, perform `get_all_holons` and verify the result.
 ///
 /// Note that this will exercise, create, get, and get_all capabilities across a variety of holons
 ///

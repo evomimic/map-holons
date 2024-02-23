@@ -1,22 +1,23 @@
+use std::cell::RefCell;
 use crate::commit_manager::CommitManager;
 
 use derive_new::new;
 
-#[derive(new, Clone)]
+#[derive(Clone)]
 pub struct HolonsContext {
-    pub commit_manager: CommitManager,
+    pub commit_manager: RefCell<CommitManager>,
 }
 
 impl HolonsContext {
     pub fn new() -> HolonsContext {
         HolonsContext {
-            commit_manager: CommitManager::new()
+            commit_manager: CommitManager::new().into()
             }
         }
-       pub fn set_commit_manager(&mut self, commit_manager: CommitManager) {
-        self.commit_manager = commit_manager.clone());
-        return
-    }
+    // pub fn set_commit_manager(&mut self, commit_manager: CommitManager) {
+    //     self.commit_manager = commit_manager.clone();
+    //     return
+    // }
 }
 
 // impl Context {

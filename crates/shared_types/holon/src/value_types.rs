@@ -14,8 +14,14 @@ use std::fmt;
 /// HOWEVER... for now we are using TypeAliases at level 2, instead of TupleStruct
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct MapString(pub String);
+impl fmt::Display for MapString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // format the inner string
+        write!(f, "{}", self.0)
+    }
+}
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]

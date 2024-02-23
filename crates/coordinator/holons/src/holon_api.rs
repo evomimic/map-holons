@@ -5,6 +5,8 @@ use shared_types_holon::holon_node::{PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
+use crate::context::HolonsContext;
+use crate::commit_manager::CommitManager;
 
 
 
@@ -28,7 +30,7 @@ pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
 
 #[hdk_extern]
 pub fn commit(input: Holon) -> ExternResult<Holon> {
-    let mut holon = input.clone();
+    let holon = input.clone();
     match holon.commit() {
         Ok(result)=> Ok(result.clone()),
         Err(holon_error) => {
@@ -37,17 +39,20 @@ pub fn commit(input: Holon) -> ExternResult<Holon> {
     }
 
 }
-#[hdk_extern]
-pub fn get_holon(
-    target_holon_id: ActionHash,
-) -> ExternResult<Option<Holon>> {
-    match Holon::fetch_holon(target_holon_id.into()) {
-        Ok(result)=> Ok(Option::from(result)),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
-    }
-}
+// #[hdk_extern]
+// pub fn get_holon(
+//     target_holon_id: ActionHash,
+// ) -> ExternResult<Option<Holon>> {
+//     let mut context = HolonsContext {
+//         commit_manager: CommitManager::new(),
+//     };
+//     match Holon::fetch_holon(&context, target_holon_id.into()) {
+//         Ok(result)=> Ok(Option::from(result)),
+//         Err(holon_error) => {
+//             Err(holon_error.into())
+//         }
+//     }
+// }
 
 #[hdk_extern]
 pub fn get_all_holons(
