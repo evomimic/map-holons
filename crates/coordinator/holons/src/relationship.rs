@@ -6,7 +6,6 @@ use crate::staged_reference::StagedReference;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum RelationshipTarget {
-    // Many(SmartCollection),
     ZeroOrOne(Option<StagedReference>),
     One(StagedReference),
 }
