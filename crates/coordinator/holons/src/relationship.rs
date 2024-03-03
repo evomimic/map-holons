@@ -1,16 +1,18 @@
 use hdk::prelude::*;
 use shared_types_holon::value_types::MapString;
 use std::collections::BTreeMap;
+use derive_new::new;
+use crate::staged_collection::StagedCollection;
 
-use crate::staged_reference::StagedReference;
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum RelationshipTarget {
-    ZeroOrOne(Option<StagedReference>),
-    One(StagedReference),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[hdk_entry_helper]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct RelationshipName(pub MapString);
+
+#[hdk_entry_helper]
+#[derive(new, Clone )]
+pub enum RelationshipTarget{
+    Staged(StagedCollection), // Mutable collection
+    //ReadOnly(SmartCollection), // Immutable collection
+}
 
 pub type RelationshipMap = BTreeMap<RelationshipName, RelationshipTarget>;

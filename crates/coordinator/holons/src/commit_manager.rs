@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::holon_errors::HolonError;
 use shared_types_holon::MapString;
 use crate::context::HolonsContext;
-use crate::holon::{Holon, HolonFieldGettable};
+use crate::holon::{Holon};
 use crate::staged_reference::StagedReference;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -38,10 +38,13 @@ impl CommitManager {
     pub fn stage_holon(&mut self, context: &HolonsContext, holon: Holon) -> StagedReference {
         let rc_holon = Rc::new(RefCell::new(holon.clone())); // Cloning the object for Rc
         self.staged_holons.push(Rc::clone(&rc_holon));
-        if let Some(the_key) = holon.get_key(context).unwrap() {
+        let mut key: Option<MapString> = None;
+        if let Some(the_key) = holon.get_key().unwrap() {
+            key = Some(the_key.clone());
             self.index.insert(the_key, self.staged_holons.len() - 1);
         }
         StagedReference {
+            key,
             rc_holon
         }
     }

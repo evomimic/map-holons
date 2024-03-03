@@ -8,7 +8,7 @@ use crate::loader::*;
 
 #[hdk_extern]
 pub fn load_core_schema_api(_:()) -> ExternResult<Holon> {
-    let mut context = HolonsContext {
+    let context = HolonsContext {
         commit_manager: CommitManager::new().into()
     };
     match load_core_schema(&context) {
