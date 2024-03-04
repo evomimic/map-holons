@@ -26,8 +26,8 @@ impl StagedReference {
 
 
 impl HolonFieldGettable for StagedReference {
-    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
-        let mut holon = self.rc_holon.borrow();
+    fn get_property_value(&mut self, _context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
+        let holon = self.rc_holon.borrow();
         holon.get_property_value( property_name)
     }
 
@@ -35,13 +35,13 @@ impl HolonFieldGettable for StagedReference {
         todo!()
     }
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        let mut holon = self.rc_holon.borrow();
+    fn get_key(&mut self, _context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+        let holon = self.rc_holon.borrow();
         holon.get_key().clone()
     }
 }
 // Constructor function for creating from Holon Reference
-pub fn from_holon(rc_holon: Rc<RefCell<Holon>>, context: &HolonsContext) -> Result<StagedReference, HolonError> {
+pub fn from_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<StagedReference, HolonError> {
     let key = rc_holon.borrow().get_key()?;
 
     Ok(StagedReference {

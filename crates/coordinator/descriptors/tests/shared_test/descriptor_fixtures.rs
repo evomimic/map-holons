@@ -49,7 +49,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string()
     );
 
-    let rc_schema = context.commit_manager.borrow_mut().stage_holon(&context, schema.0); // Borrow_mut() allows mutation
+    let rc_schema = context.commit_manager.borrow_mut().stage_holon(schema.0); // Borrow_mut() allows mutation
 
     let mut steps:  Vec<DescriptorTestStep>= Vec::new();
 

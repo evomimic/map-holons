@@ -36,7 +36,7 @@ impl SmartReference {
 
     }
     // Constructor function for creating from Holon Reference
-    pub fn from_holon(rc_holon: Rc<Holon>, context: &HolonsContext) -> Result<SmartReference,HolonError> {
+    pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference,HolonError> {
         let id = rc_holon.get_id()?;
         let key = rc_holon.get_key()?;
 
@@ -44,7 +44,7 @@ impl SmartReference {
             holon_id: id,
             key,
             rc_holon: Some(rc_holon),
-            smart_property_values: None, // TODO: need fn to build smart_property_map
+            smart_property_values: None, // TODO: need fn to build smart_property_map, this requires descriptor
         })
     }
 
