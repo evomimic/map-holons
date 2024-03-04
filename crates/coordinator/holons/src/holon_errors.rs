@@ -32,3 +32,12 @@ impl Into<WasmError> for HolonError {
         wasm_error!("HolonError {:?}", self.to_string())
     }
 }
+
+use std::cell::BorrowError;
+
+impl From<BorrowError> for HolonError {
+    fn from(error: BorrowError) -> Self {
+        HolonError::InvalidHolonReference(format!("Failed to borrow Rc<RefCell<Holon>>: {}", error))
+    }
+}
+

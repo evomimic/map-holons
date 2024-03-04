@@ -1,33 +1,66 @@
 use std::cell::RefCell;
-use crate::all_holon_nodes::*;
-use crate::helpers::get_holon_node_from_record;
-use crate::holon_errors::HolonError;
-use crate::holon_node::UpdateHolonNodeInput;
-use crate::holon_node::*;
+use std::fmt;
+use std::rc::Rc;
+
+use derive_new::new;
 //use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use hdi::prelude::ActionHash;
 use hdk::entry::get;
 use hdk::prelude::*;
+
+use shared_types_holon::{HolonId, MapString, PropertyValue};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
-use std::fmt;
-use std::rc::Rc;
-use derive_new::new;
-use shared_types_holon::{HolonId, MapString, PropertyValue};
+
+use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
+use crate::helpers::get_holon_node_from_record;
+use crate::holon_errors::HolonError;
+use crate::holon_node::*;
+use crate::holon_node::UpdateHolonNodeInput;
+use crate::relationship::RelationshipMap;
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub property_map: PropertyMap,
-    //pub relationship_map: RelationshipMap,
+    pub relationship_map: RelationshipMap,
     key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
 
     // pub dances : DanceMap,
+}
+
+/// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
+/// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
+/// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
+/// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
+impl Eq for Holon {}
+
+impl PartialEq for Holon {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self.state, &other.state) {
+            (HolonState::Fetched, HolonState::Fetched) => {
+                if let (Some(self_address),
+                    Some(other_address)) =
+                    (self.saved_node.as_ref().map(|record| record.action_address()),
+                     other.saved_node.as_ref().map(|record| record.action_address())) {
+                    return self_address == other_address;
+                }
+                false // If action addresses are not present, they are not equal
+            }
+            (HolonState::Changed, HolonState::Changed) => {
+                self.saved_node == other.saved_node
+            }
+            (HolonState::New, HolonState::New) => {
+                self.property_map == other.property_map
+            }
+            _ => false, // In all other cases, Holons are not equal
+        }
+    }
 }
 
 #[hdk_entry_helper]
@@ -52,24 +85,9 @@ impl fmt::Display for HolonState {
 
 
 pub trait HolonFieldGettable {
-    // type Wrapper;
-    fn get_property_value(&self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError>;
-    fn get_property_names(&self, context: &HolonsContext) -> Result<Vec<PropertyName>, HolonError>;
-    fn get_key(&self, context: &HolonsContext)->Result<Option<MapString>,HolonError>;
-}
-
-impl HolonFieldGettable for Holon {
-    fn get_property_value(&self, _context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
-        self.property_map.get(property_name).cloned().ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
-    }
-
-    fn get_property_names(&self, _context: &HolonsContext) -> Result<Vec<PropertyName>, HolonError> {
-        Ok(self.property_map.keys().cloned().collect())
-    }
-
-    fn get_key(&self, _context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        Ok(self.key.clone())
-    }
+    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError>;
+    fn get_relationship_map(&mut self, context: &HolonsContext) -> Result<RelationshipMap, HolonError>;
+    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 }
 
 impl Holon {
@@ -79,10 +97,25 @@ impl Holon {
             state: HolonState::New,
             saved_node: None,
             property_map: PropertyMap::new(),
-            //relationship_map: RelationshipMap::new(),
+            relationship_map: RelationshipMap::new(),
             key: None,
         }
     }
+
+
+    pub fn get_property_value(&self, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
+        self.property_map.get(property_name).cloned().ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
+    }
+
+    pub fn get_relationship_map(&self) -> Result<RelationshipMap, HolonError> {
+        Ok(self.relationship_map.clone())
+    }
+
+    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+        Ok(self.key.clone())
+    }
+
+
 
     pub fn into_node(self) -> HolonNode {
         HolonNode {
@@ -99,7 +132,7 @@ impl Holon {
             state: HolonState::Fetched,
             saved_node: Some(holon_node_record),
             property_map: holon_node.property_map,
-            //relationship_map: RelationshipMap::new(),
+            relationship_map: RelationshipMap::new(),
             key: None,
         };
         // TODO: populate `key` from the property map once we have Descriptors/Constraints available
@@ -151,10 +184,10 @@ impl Holon {
     //     self
     // }
 
-    pub fn get_id(&self) -> ActionHash {
+    pub fn get_id(&self) -> Result<HolonId, HolonError> {
         // TODO: Add better handling if saved_node is None
         let node = self.saved_node.clone().unwrap();
-        node.as_ref().action_address().clone()
+        Ok(HolonId(node.as_ref().action_address().clone()))
     }
 
     /// commit() creates a HolonNode and SmartLinks if state = New,
@@ -210,7 +243,7 @@ impl Holon {
     /// "inflates" the HolonNode into a Holon, stores it in the cache, and returns an Rc<RefCell<Holon>> for it
     /// Not currently extern... because fetches will be mediated by the cache
 
-    pub fn fetch_holon(context: &HolonsContext, id: HolonId) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    pub fn fetch_holon(_context: &HolonsContext, id: HolonId) -> Result<Rc<RefCell<Holon>>, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         return if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;

@@ -15,7 +15,7 @@ pub fn define_type_descriptor() -> Holon {
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor.with_property_value(PropertyName(MapString("type_name".to_string())), BaseValue::StringValue(MapString("TypeDescriptor".to_string())))
-        .with_property_value(PropertyName(MapString("description".to_string())), BaseValue::StringValue(MapString(("A meta-descriptor that defines the properties, relationships and dances shared by all MAP descriptors (including itself).".to_string()))))
+        .with_property_value(PropertyName(MapString("description".to_string())), BaseValue::StringValue(MapString("A meta-descriptor that defines the properties, relationships and dances shared by all MAP descriptors (including itself).".to_string())))
         .with_property_value(PropertyName(MapString("label".to_string())), BaseValue::StringValue(MapString("Type Descriptor".to_string())))
         .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("BaseType::Holon".to_string())))
         .with_property_value(PropertyName(MapString("is_dependent".to_string())), BaseValue::BooleanValue(MapBoolean(false)))

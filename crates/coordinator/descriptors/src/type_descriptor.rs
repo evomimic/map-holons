@@ -1,9 +1,6 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use holons::context::HolonsContext;
-//use holons::helpers::define_local_target;
 use holons::staged_reference::{StagedReference};
 use holons::holon::Holon;
 // use holons::relationship::{RelationshipName, RelationshipTarget};

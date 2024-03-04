@@ -5,24 +5,24 @@
 // use futures::future;
 use std::collections::BTreeMap;
 
-mod shared_test;
-
+use async_std::task;
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-
-use async_std::task;
-
 use rstest::*;
-use shared_test::holon_fixtures::*;
-use shared_test::*;
+
+use holons::holon::Holon;
 // use shared_test::test;
 use holons::holon_api::*;
 use holons::holon_errors::HolonError;
-use holons::holon::Holon;
+use shared_test::*;
+use shared_test::holon_fixtures::*;
 use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
 use shared_types_holon::holon_node::{PropertyMap, PropertyName};
+use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
+
+mod shared_test;
 
 /// This function iterates through the Vec of Holons provided by the test fixture
 ///
@@ -66,7 +66,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
 
     println!("Success! Initial DB state has no Holons");
 
-    let mut created_action_hashes: Vec<ActionHash> = Vec::new();
+    let mut created_action_hashes: Vec<HolonId> = Vec::new();
 
     // Iterate through the vector of test holons, building & creating each holon,
     // then get the created holon and compare it to the generated descriptor.
@@ -93,18 +93,20 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
         let created_holon: Holon = conductor
             .call(&cell.zome("holons"), "commit", builder_holon.clone())
             .await;
-        let action_hash: ActionHash = created_holon.get_id();
-        created_action_hashes.push(action_hash.clone());
 
-        println!("Fetching created holon");
-        let fetched_holon: Holon = conductor
-            .call(&cell.zome("holons"), "get_holon", action_hash)
-            .await;
+        if let Ok(id) = created_holon.get_id() {
+            created_action_hashes.push(id.clone());
 
-        assert_eq!(test_holon.into_node(), fetched_holon.clone().into_node());
+            println!("Fetching created holon");
+            let fetched_holon: Holon = conductor
+                .call(&cell.zome("holons"), "get_holon", id)
+                .await;
 
-        println!("\n...Success! Fetched holon matches generated holon ******");
-        trace!("{:#?}", fetched_holon);
+            assert_eq!(test_holon.into_node(), fetched_holon.clone().into_node());
+
+            println!("\n...Success! Fetched holon matches generated holon ******");
+            trace!("{:#?}", fetched_holon);
+        }
     }
 
     println!("All Holon Descriptors Created... do a get_all_holon_types and compare result with test data...");
@@ -132,6 +134,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
     println!("...Success! All holons_integrity have been deleted. \n");
     println!("To re-run just this test with output, use: 'cargo test -p holons --test holon_tests  -- --show-output'");
 }
+
 fn print_holon_without_saved_node(holon: &Holon) {
     println!("{:#?} Holon: with property map: ", holon.state.clone());
     println!("{:#?}", holon.property_map.clone());
