@@ -16,6 +16,14 @@ pub enum HolonError {
     InvalidHolonReference(String),
     #[error("{0} Not Implemented")]
     NotImplemented(String),
+    #[error("{0} relationship is missing StagedCollection")]
+    MissingStagedCollection(String),
+    #[error("for {0}")]
+    FailedToBorrowMutably(String),
+    #[error("to {0}")]
+    UnableToAddHolons(String),
+    #[error("{0} is not a valid relationship for this source holon type {1}")]
+    InvalidRelationship(String, String),
     // #[error("Wrong type: {0}")]
     // TypeError(String),
 

@@ -3,7 +3,6 @@
 // use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon::Holon;
 use holons::relationship::RelationshipTarget;
-use holons::relationship::RelationshipTarget::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,

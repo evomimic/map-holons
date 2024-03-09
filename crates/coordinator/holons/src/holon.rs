@@ -86,8 +86,9 @@ impl fmt::Display for HolonState {
 
 pub trait HolonFieldGettable {
     fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError>;
-    fn get_relationship_map(&mut self, context: &HolonsContext) -> Result<RelationshipMap, HolonError>;
     fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
+
+    // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
 }
 
 impl Holon {
@@ -107,6 +108,7 @@ impl Holon {
         self.property_map.get(property_name).cloned().ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
 
+    // this method is probably not needed
     pub fn get_relationship_map(&self) -> Result<RelationshipMap, HolonError> {
         Ok(self.relationship_map.clone())
     }
@@ -141,6 +143,7 @@ impl Holon {
 
         Ok(holon)
     }
+
     // NOTE: this function doesn't check if supplied RelationshipName is a valid outbound
     // relationship for the self holon. It probably  needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors
@@ -283,6 +286,7 @@ impl Holon {
     pub fn set_key_manually(&mut self, key: MapString) {
         self.key = Some(key);
     }
+
 }
 
 // =======

@@ -14,6 +14,7 @@ pub mod staged_collection;
 pub mod holon_reference;
 pub mod property_map;
 pub mod smart_reference;
+pub mod smart_collection;
 
 use hdk::prelude::*;
 use holons_integrity::*;
