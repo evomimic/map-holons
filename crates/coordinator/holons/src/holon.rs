@@ -102,6 +102,19 @@ impl Holon {
             key: None,
         }
     }
+    /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
+    /// TODO: replace with cache aware function
+    pub fn get_holon(id: HolonId) -> Result<Option<Holon>, HolonError> {
+        let holon_node_record = get_holon_node(id.0.clone())?;
+        return if let Some(node) = holon_node_record {
+            let mut holon = Holon::try_from_node(node)?;
+            holon.state = HolonState::Fetched;
+            Ok(Some(holon))
+        } else {
+            // no holon_node fetched for specified holon_id
+            Err(HolonError::HolonNotFound(id.0.to_string()))
+        };
+    }
 
 
     pub fn get_property_value(&self, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
@@ -207,7 +220,7 @@ impl Holon {
                         holon.saved_node = Some(record);
                         holon.state = HolonState::Fetched;
 
-                        Ok(self)
+                        Ok(holon)
                     }
                     Err(error) => Err(HolonError::from(error)),
                 }
