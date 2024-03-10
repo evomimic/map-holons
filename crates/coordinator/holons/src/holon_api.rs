@@ -1,11 +1,15 @@
 /// This file defines the functions exposed via hdk_extern
 ///
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{PropertyName};
+
+use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
+
+use crate::commit_manager::CommitManager;
+use crate::context::HolonsContext;
 use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
-
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
@@ -23,6 +27,17 @@ pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
         input.property_name.clone(),
         input.value.clone());
     Ok(holon)
+}
+#[hdk_extern]
+pub fn get_holon(
+    id: HolonId,
+) -> ExternResult<Option<Holon>> {
+       match Holon::get_holon(id) {
+        Ok(result) => Ok(result),
+        Err(holon_error) => {
+            Err(holon_error.into())
+        }
+    }
 }
 
 #[hdk_extern]
