@@ -16,3 +16,4 @@ derive-new = { workspace = true }
 thiserror = { workspace = true }
 
 shared_types_holon = {workspace = true}
+shared_validation = {workspace = true}

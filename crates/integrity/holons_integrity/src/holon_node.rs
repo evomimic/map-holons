@@ -1,5 +1,8 @@
 use hdi::prelude::*;
-use shared_types_holon::holon_node::{HolonNode};
+use shared_types_holon::{HolonNode, ValidationError};
+use shared_validation::ValidationResult;
+use shared_validation::holon_validation::validate_holon_comprehensive;
+
 /*
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq)]
@@ -12,7 +15,19 @@ pub fn validate_create_holon_node(
     _action: EntryCreationAction,
     _holon_node: HolonNode,
 ) -> ExternResult<ValidateCallbackResult> {
-    Ok(ValidateCallbackResult::Valid)
+    match 
+        validate_holon_comprehensive(&_holon_node) {
+            ValidationResult::Valid => Ok(ValidateCallbackResult::Valid),
+            ValidationResult::Invalid(errors) => {
+                // Collect the error messages into a Vec of Strings
+                let error_messages: Vec<String> = errors
+                    .iter()
+                    .map(|error| error.message.clone())
+                    .collect();
+                // Join all the error messages into a single String
+                Ok(ValidateCallbackResult::Invalid(error_messages.join(", ")))
+            }
+        }  
 }
 pub fn validate_update_holon_node(
     _action: Update,

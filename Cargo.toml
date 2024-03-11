@@ -12,6 +12,7 @@ members = ["crates/coordinator/holons",
     "crates/coordinator/descriptors",
     "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
+    "crates/shared_validation",
 ]
 
 [workspace.dependencies]
@@ -39,3 +40,5 @@ path = "crates/integrity/holons_integrity"
 [workspace.dependencies.shared_types_holon]
 path = "crates/shared_types/holon"
 
+[workspace.dependencies.shared_validation]
+path = "crates/shared_validation"
