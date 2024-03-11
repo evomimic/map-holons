@@ -253,10 +253,7 @@ impl Holon {
     /// "inflates" the HolonNode into a Holon, stores it in the cache, and returns an Rc<RefCell<Holon>> for it
     /// Not currently extern... because fetches will be mediated by the cache
 
-    pub fn fetch_holon(
-        _context: &HolonsContext,
-        id: HolonId,
-    ) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    pub fn fetch_holon(_context: &HolonsContext, id: HolonId) -> Result<Rc<Holon>, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;

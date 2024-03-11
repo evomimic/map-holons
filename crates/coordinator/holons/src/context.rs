@@ -2,7 +2,6 @@ use crate::cache_manager::HolonCacheManager;
 use crate::commit_manager::CommitManager;
 use std::cell::RefCell;
 
-#[derive(Clone)]
 pub struct HolonsContext {
     pub commit_manager: RefCell<CommitManager>,
     pub cache_manager: RefCell<HolonCacheManager>,
