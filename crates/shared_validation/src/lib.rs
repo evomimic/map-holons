@@ -1,26 +1,16 @@
-// Private module, not exposed as part of the public API
-// mod utils;
+use shared_types_holon::ValidationError;
 
-// Public modules, part of the crate's public API
+// We may eventually want these modules to be private
 pub mod properties;
 pub mod relationships;
+
+// Public module, part of the crate's public API
 pub mod holon_validation;
 
 // Re-exporting key functions/types for ease of use
 pub use properties::validate_property;
-pub use relationships::{validate_relationship_cardinality, validate_relationship_target};
-pub use holon_validation::validate_holon;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ValidationError {
-    pub message: String,
-}
-
-impl ValidationError {
-    pub fn new(message: &str) -> Self {
-        Self { message: message.to_string() }
-    }
-}
+//pub use relationships::{validate_relationship_existence, validate_relationship_properties};
+pub use holon_validation::validate_holon_comprehensive;
 
 pub enum ValidationResult {
     Valid,

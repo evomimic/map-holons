@@ -18,3 +18,4 @@ impl fmt::Display for ValidationError {
         write!(f, "{}", self.message)
     }
 }
+
