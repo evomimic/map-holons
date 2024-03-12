@@ -17,7 +17,7 @@ holons_integrity = { workspace = true }
 serde = { workspace = true }
 derive-new = { workspace = true }
 thiserror = { workspace = true }
-
+quick_cache = { workspace = true }
 
 shared_types_holon = { workspace = true }
 
