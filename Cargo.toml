@@ -10,7 +10,6 @@ resolver = "2"
 
 members = ["crates/coordinator/holons",
     "crates/coordinator/descriptors",
-    "crates/coordinator/hdm",
     "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
 ]
@@ -33,9 +32,6 @@ path = "crates/coordinator/holons"
 
 [workspace.dependencies.descriptors]
 path = "crates/coordinator/descriptors"
-
-[workspace.dependencies.hdm]
-path = "crates/coordinator/hdm"
 
 [workspace.dependencies.holons_integrity]
 path = "crates/integrity/holons_integrity"

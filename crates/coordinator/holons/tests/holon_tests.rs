@@ -41,7 +41,7 @@ mod shared_test;
 ///      cargo test -p holons --test holon_tests  -- --show-output
 ///
 #[rstest]
-#[case::create_value_descriptor_holon(new_holons_fixture())]
+#[case::simple_undescribed_holons(undescribed_holons_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, HolonError>) {
     // Setup
@@ -49,8 +49,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
         setup_conductor().await;
 
-    // The heavy lifting for this test is in the test data set creation. Rich descriptors can be
-    // built in the create_dummy_data fn to test a broad range of data structures
+    // The heavy lifting for this test is in the test data set creation.
 
     let mut test_holons: Vec<Holon> = input.unwrap().creates;
     let h_count = test_holons.len();
@@ -72,8 +71,8 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
     // then get the created holon and compare it to the generated descriptor.
     for test_holon in test_holons.clone() {
         let p_count = test_holon.property_map.len();
-        println!();
-        println!("****** Starting create/get test for the following Holon:");
+
+        println!("\n****** Starting create/get test for the following Holon:");
         print_holon_without_saved_node(&test_holon);
 
         let mut builder_holon = Holon::new();
@@ -86,13 +85,17 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
                 property_name: property_name.clone(),
                 value: property_value,
             };
+
             builder_holon = conductor
                 .call(&cell.zome("holons"), "with_property_value", input)
                 .await;
         }
+        println!("Attempting to create holon");
         let created_holon: Holon = conductor
             .call(&cell.zome("holons"), "commit", builder_holon.clone())
             .await;
+        println!("Commit request returned this holon");
+        println!("{:#?}", created_holon);
 
         if let Ok(id) = created_holon.get_id() {
             created_action_hashes.push(id.clone());

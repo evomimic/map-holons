@@ -95,6 +95,8 @@ pub trait HolonFieldGettable {
         context: &HolonsContext,
     ) -> Result<RelationshipMap, HolonError>;
     fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
+
+    // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
 }
 
 impl Holon {
@@ -108,6 +110,19 @@ impl Holon {
             key: None,
         }
     }
+    /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
+    /// TODO: replace with cache aware function
+    pub fn get_holon(id: HolonId) -> Result<Option<Holon>, HolonError> {
+        let holon_node_record = get_holon_node(id.0.clone())?;
+        return if let Some(node) = holon_node_record {
+            let mut holon = Holon::try_from_node(node)?;
+            holon.state = HolonState::Fetched;
+            Ok(Some(holon))
+        } else {
+            // no holon_node fetched for specified holon_id
+            Err(HolonError::HolonNotFound(id.0.to_string()))
+        };
+    }
 
     pub fn get_property_value(
         &self,
@@ -119,6 +134,7 @@ impl Holon {
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
 
+    // this method is probably not needed
     pub fn get_relationship_map(&self) -> Result<RelationshipMap, HolonError> {
         Ok(self.relationship_map.clone())
     }
@@ -151,6 +167,7 @@ impl Holon {
 
         Ok(holon)
     }
+
     // NOTE: this function doesn't check if supplied RelationshipName is a valid outbound
     // relationship for the self holon. It probably  needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors
@@ -214,7 +231,7 @@ impl Holon {
                         holon.saved_node = Some(record);
                         holon.state = HolonState::Fetched;
 
-                        Ok(self)
+                        Ok(holon)
                     }
                     Err(error) => Err(HolonError::from(error)),
                 }
@@ -293,6 +310,7 @@ impl Holon {
     pub fn set_key_manually(&mut self, key: MapString) {
         self.key = Some(key);
     }
+
 }
 
 // =======
