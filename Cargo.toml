@@ -23,6 +23,7 @@ serde = "1"
 derive-new = "0.5"
 thiserror = "1"
 ahash ="=0.8.6"
+quick_cache = "0.4.1"
 
 
 

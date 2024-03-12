@@ -8,16 +8,16 @@ use hdi::prelude::ActionHash;
 use hdk::entry::get;
 use hdk::prelude::*;
 
-use shared_types_holon::{HolonId, MapString, PropertyValue};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::{HolonId, MapString, PropertyValue};
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
-use crate::holon_node::*;
 use crate::holon_node::UpdateHolonNodeInput;
+use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 
 #[hdk_entry_helper]
@@ -44,20 +44,21 @@ impl PartialEq for Holon {
     fn eq(&self, other: &Self) -> bool {
         match (&self.state, &other.state) {
             (HolonState::Fetched, HolonState::Fetched) => {
-                if let (Some(self_address),
-                    Some(other_address)) =
-                    (self.saved_node.as_ref().map(|record| record.action_address()),
-                     other.saved_node.as_ref().map(|record| record.action_address())) {
+                if let (Some(self_address), Some(other_address)) = (
+                    self.saved_node
+                        .as_ref()
+                        .map(|record| record.action_address()),
+                    other
+                        .saved_node
+                        .as_ref()
+                        .map(|record| record.action_address()),
+                ) {
                     return self_address == other_address;
                 }
                 false // If action addresses are not present, they are not equal
             }
-            (HolonState::Changed, HolonState::Changed) => {
-                self.saved_node == other.saved_node
-            }
-            (HolonState::New, HolonState::New) => {
-                self.property_map == other.property_map
-            }
+            (HolonState::Changed, HolonState::Changed) => self.saved_node == other.saved_node,
+            (HolonState::New, HolonState::New) => self.property_map == other.property_map,
             _ => false, // In all other cases, Holons are not equal
         }
     }
@@ -83,9 +84,16 @@ impl fmt::Display for HolonState {
     }
 }
 
-
 pub trait HolonFieldGettable {
-    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError>;
+    fn get_property_value(
+        &mut self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError>;
+    fn get_relationship_map(
+        &mut self,
+        context: &HolonsContext,
+    ) -> Result<RelationshipMap, HolonError>;
     fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
@@ -116,9 +124,14 @@ impl Holon {
         };
     }
 
-
-    pub fn get_property_value(&self, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
-        self.property_map.get(property_name).cloned().ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
+    pub fn get_property_value(
+        &self,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        self.property_map
+            .get(property_name)
+            .cloned()
+            .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
 
     // this method is probably not needed
@@ -129,8 +142,6 @@ impl Holon {
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         Ok(self.key.clone())
     }
-
-
 
     pub fn into_node(self) -> HolonNode {
         HolonNode {
@@ -259,9 +270,9 @@ impl Holon {
     /// "inflates" the HolonNode into a Holon, stores it in the cache, and returns an Rc<RefCell<Holon>> for it
     /// Not currently extern... because fetches will be mediated by the cache
 
-    pub fn fetch_holon(_context: &HolonsContext, id: HolonId) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    pub fn fetch_holon(_context: &HolonsContext, id: HolonId) -> Result<Rc<Holon>, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
-        return if let Some(node) = holon_node_record {
+        if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
             holon.state = HolonState::Fetched;
             // consider getting get relationship map, descriptor, holon_space here;
@@ -271,7 +282,7 @@ impl Holon {
         } else {
             // no holon_node fetched for specified holon_id
             Err(HolonError::HolonNotFound(id.0.to_string()))
-        };
+        }
     }
 
     pub fn delete_holon(id: HolonId) -> Result<ActionHash, HolonError> {
@@ -361,4 +372,3 @@ impl Holon {
 //     delete_entry(original_holon_hash)
 //
 // }
-

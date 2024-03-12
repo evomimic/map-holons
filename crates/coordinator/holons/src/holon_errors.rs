@@ -2,7 +2,7 @@ use hdk::prelude::*;
 use thiserror::Error;
 
 #[hdk_entry_helper]
-#[derive(Error, Eq, PartialEq,Clone)]
+#[derive(Error, Eq, PartialEq, Clone)]
 pub enum HolonError {
     #[error("{0} field is missing")]
     EmptyField(String),
@@ -24,9 +24,8 @@ pub enum HolonError {
     UnableToAddHolons(String),
     #[error("{0} is not a valid relationship for this source holon type {1}")]
     InvalidRelationship(String, String),
-    // #[error("Wrong type: {0}")]
-    // TypeError(String),
-
+    #[error("Cache Error: {0}")]
+    CacheError(String),
 }
 
 impl From<WasmError> for HolonError {
@@ -48,4 +47,3 @@ impl From<BorrowError> for HolonError {
         HolonError::InvalidHolonReference(format!("Failed to borrow Rc<RefCell<Holon>>: {}", error))
     }
 }
-
