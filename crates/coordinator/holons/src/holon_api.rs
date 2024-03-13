@@ -6,8 +6,6 @@ use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
 
-use crate::commit_manager::CommitManager;
-use crate::context::HolonsContext;
 use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
 

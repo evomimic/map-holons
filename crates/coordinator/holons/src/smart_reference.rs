@@ -1,11 +1,14 @@
 use std::rc::Rc;
+
 use derive_new::new;
+use hdk::prelude::*;
+
+use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
+use shared_types_holon::holon_node::PropertyName;
+
+use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonFieldGettable};
 use crate::holon_errors::HolonError;
-use hdk::prelude::*;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
-use crate::context::HolonsContext;
 use crate::relationship::RelationshipMap;
 
 #[hdk_entry_helper]
@@ -35,6 +38,17 @@ impl SmartReference {
         Ok(()) // rc_holon has been ensured to be populated
 
     }
+
+
+    pub fn clone_reference(&self) -> SmartReference {
+        SmartReference {
+            holon_id: self.holon_id.clone(),
+            key: self.key.clone(),
+            rc_holon: self.rc_holon.clone(),
+            smart_property_values: self.smart_property_values.clone(),
+        }
+    }
+
     // Constructor function for creating from Holon Reference
     pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference,HolonError> {
         let id = rc_holon.get_id()?;

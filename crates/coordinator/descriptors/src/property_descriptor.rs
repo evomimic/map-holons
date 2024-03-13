@@ -31,8 +31,8 @@ pub fn define_property_descriptor(
     label: MapString, // Human readable name for this property name
     property_of: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
     value_type: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    has_supertype: Option<&TypeDescriptor>,
-    described_by: Option<&TypeDescriptor>,
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
 ) -> PropertyDescriptor {
 
     let property_of_name = MapString("TODO: Extract type_name from the PROPERTY_OF HolonDescriptor".to_string());

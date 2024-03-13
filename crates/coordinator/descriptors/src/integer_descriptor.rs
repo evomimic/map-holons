@@ -1,4 +1,5 @@
 use holons::context::HolonsContext;
+use holons::holon_reference::HolonReference;
 
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
@@ -15,8 +16,8 @@ pub fn define_integer_descriptor(
     label: MapString, // Human readable name for this type
     min_value: MapInteger,
     max_value: MapInteger,
-    has_supertype: Option<&TypeDescriptor>,
-    described_by: Option<&TypeDescriptor>,
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
 
 ) -> IntegerDescriptor {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------

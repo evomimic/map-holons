@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -9,7 +9,7 @@ use crate::staged_reference::StagedReference;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
-    staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
+    pub staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
     index: HashMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
 
@@ -38,14 +38,15 @@ impl CommitManager {
     pub fn stage_holon(&mut self, holon: Holon) -> StagedReference {
         let rc_holon = Rc::new(RefCell::new(holon.clone())); // Cloning the object for Rc
         self.staged_holons.push(Rc::clone(&rc_holon));
+        let holon_index = self.staged_holons.len() - 1;
         let mut key: Option<MapString> = None;
         if let Some(the_key) = holon.get_key().unwrap() {
             key = Some(the_key.clone());
-            self.index.insert(the_key, self.staged_holons.len() - 1);
+            self.index.insert(the_key, holon_index);
         }
         StagedReference {
             key,
-            rc_holon
+            holon_index,
         }
     }
 
@@ -61,6 +62,28 @@ impl CommitManager {
             Some(Rc::clone(&self.staged_holons[index]))
         } else {
             None
+        }
+    }
+    pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
+        let holons = &self.staged_holons;
+        let holon_ref = holons.get(reference.holon_index)
+            .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
+
+        match holon_ref.try_borrow() {
+            Ok(holon) => Ok(holon),
+            Err(_) => Err(HolonError::FailedToBorrow("Holon Reference from staged_holons vector".to_string()))
+        }
+    }
+
+    pub fn get_mut_holon(&self, staged_reference: &StagedReference) -> Result<RefMut<Holon>, HolonError> {
+        return if let Some(holon) = self.staged_holons.get(staged_reference.holon_index) {
+            if let Ok(holon_ref) = holon.try_borrow_mut() {
+                Ok(holon_ref)
+            } else {
+                Err(HolonError::FailedToBorrow("for StagedReference".to_string()))
+            }
+        } else {
+            Err(HolonError::InvalidHolonReference("Invalid holon index".to_string()))
         }
     }
     pub fn clear_staged_objects(&mut self) {

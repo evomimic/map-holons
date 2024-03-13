@@ -14,16 +14,18 @@ pub enum HolonError {
     RecordConversion(String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
+    #[error("Index {0} into Holons Vector is Out of Range")]
+    IndexOutOfRange(String),
     #[error("{0} Not Implemented")]
     NotImplemented(String),
     #[error("{0} relationship is missing StagedCollection")]
     MissingStagedCollection(String),
-    #[error("for {0}")]
-    FailedToBorrowMutably(String),
+    #[error("Failed to Borrow {0}")]
+    FailedToBorrow(String),
     #[error("to {0}")]
     UnableToAddHolons(String),
     #[error("{0} is not a valid relationship for this source holon type {1}")]
-    InvalidRelationship(String, String),
+    InvalidRelationship(String, String), // TODO: move this error to ValidationError
     // #[error("Wrong type: {0}")]
     // TypeError(String),
 

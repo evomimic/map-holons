@@ -3,6 +3,7 @@
 use holons::context::HolonsContext;
 use holons::staged_reference::{StagedReference};
 use holons::holon::Holon;
+use holons::holon_reference::HolonReference;
 // use holons::relationship::{RelationshipName, RelationshipTarget};
 
 use crate::semantic_version::define_semantic_version;
@@ -32,8 +33,8 @@ pub fn define_type_descriptor(
     label: MapString, // Human readable name for this type
     is_dependent: MapBoolean,
     is_value_descriptor: MapBoolean,
-    described_by: Option<&TypeDescriptor>,
-    has_supertype: Option<&TypeDescriptor>,
+    described_by: Option<StagedReference>,
+    has_supertype: Option<StagedReference>,
     //_owned_by: HolonReference, // HolonSpace
 ) -> TypeDescriptor {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------

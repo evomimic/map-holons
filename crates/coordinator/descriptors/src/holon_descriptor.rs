@@ -1,4 +1,5 @@
 use holons::context::HolonsContext;
+use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use crate::type_descriptor::{define_type_descriptor};
 
@@ -25,8 +26,8 @@ pub fn define_holon_descriptor(
     type_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
-    has_supertype: Option<&TypeDescriptor>,
-    described_by: Option<&TypeDescriptor>,
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
 
 ) -> HolonDescriptor {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------

@@ -21,7 +21,7 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::relationship::RelationshipMap;
 
 #[hdk_entry_helper]
-#[derive(Clone)]
+#[derive(Clone,Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
@@ -34,34 +34,35 @@ pub struct Holon {
     // pub dances : DanceMap,
 }
 
-/// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
-/// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
-/// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
-/// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
-impl Eq for Holon {}
-
-impl PartialEq for Holon {
-    fn eq(&self, other: &Self) -> bool {
-        match (&self.state, &other.state) {
-            (HolonState::Fetched, HolonState::Fetched) => {
-                if let (Some(self_address),
-                    Some(other_address)) =
-                    (self.saved_node.as_ref().map(|record| record.action_address()),
-                     other.saved_node.as_ref().map(|record| record.action_address())) {
-                    return self_address == other_address;
-                }
-                false // If action addresses are not present, they are not equal
-            }
-            (HolonState::Changed, HolonState::Changed) => {
-                self.saved_node == other.saved_node
-            }
-            (HolonState::New, HolonState::New) => {
-                self.property_map == other.property_map
-            }
-            _ => false, // In all other cases, Holons are not equal
-        }
-    }
-}
+// Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
+// ///he PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
+// /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
+// /// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
+// /// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
+// impl Eq for Holon {}
+//
+// impl PartialEq for Holon {
+//     fn eq(&self, other: &Self) -> bool {
+//         match (&self.state, &other.state) {
+//             (HolonState::Fetched, HolonState::Fetched) => {
+//                 if let (Some(self_address),
+//                     Some(other_address)) =
+//                     (self.saved_node.as_ref().map(|record| record.action_address()),
+//                      other.saved_node.as_ref().map(|record| record.action_address())) {
+//                     return self_address == other_address;
+//                 }
+//                 false // If action addresses are not present, they are not equal
+//             }
+//             (HolonState::Changed, HolonState::Changed) => {
+//                 self.saved_node == other.saved_node
+//             }
+//             (HolonState::New, HolonState::New) => {
+//                 self.property_map == other.property_map
+//             }
+//             _ => false, // In all other cases, Holons are not equal
+//         }
+//     }
+// }
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -131,7 +132,6 @@ impl Holon {
     }
 
 
-
     pub fn into_node(self) -> HolonNode {
         HolonNode {
             property_map: self.property_map,
@@ -199,6 +199,11 @@ impl Holon {
     //     }
     //     self
     // }
+
+    pub fn set_key_manually(&mut self, key: MapString) {
+        self.key = Some(key);
+    }
+
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         // TODO: Add better handling if saved_node is None
@@ -296,11 +301,6 @@ impl Holon {
             Err(error) => Err(HolonError::WasmError(error.to_string())),
         }
     }
-    pub fn set_key_manually(&mut self, key: MapString) {
-        self.key = Some(key);
-    }
-
-}
 
 // =======
 // use hdk::prelude::*;
@@ -361,4 +361,4 @@ impl Holon {
 //     delete_entry(original_holon_hash)
 //
 // }
-
+}

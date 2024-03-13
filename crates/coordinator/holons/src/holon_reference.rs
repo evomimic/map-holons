@@ -51,6 +51,12 @@ impl HolonReference {
             HolonReference::Staged(staged_reference) => staged_reference.get_relationship_map(context),
         }
     }
+    pub fn clone_reference(&self) -> HolonReference {
+        match self {
+            HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
+            HolonReference::Staged(staged_ref) => HolonReference::Staged(staged_ref.clone_reference()),
+        }
+    }
 
 }
 

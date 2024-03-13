@@ -1,4 +1,5 @@
 use holons::context::HolonsContext;
+use holons::holon_reference::HolonReference;
 
 use holons::relationship::RelationshipTarget;
 use holons::staged_reference::StagedReference;
@@ -37,8 +38,8 @@ pub fn define_relationship_descriptor(
     affinity: MapInteger,
     source_for: RelationshipTarget, // TODO: switch type to HolonReference
     target_for: RelationshipTarget, // TODO: switch type to HolonReference
-    has_supertype: Option<&TypeDescriptor>,
-    described_by: Option<&TypeDescriptor>,
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
     has_inverse: Option<StagedReference>,
 
 ) -> RelationshipDescriptor {
