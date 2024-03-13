@@ -1,11 +1,11 @@
 use holons::context::HolonsContext;
-use holons::holon_reference::HolonReference;
 
-use holons::relationship::RelationshipName;
+
+
 use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{IntegerDescriptor, Schema, TypeDescriptor};
+use crate::descriptor_types::{IntegerDescriptor};
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
 pub fn define_integer_descriptor(

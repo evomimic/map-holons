@@ -4,10 +4,12 @@ use hdk::prelude::*;
 use holons::commit_manager::CommitManager;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
+use holons::holon_errors::HolonError;
 use crate::loader::*;
-
+// load_core_schema_api
 #[hdk_extern]
 pub fn load_core_schema_api(_:()) -> ExternResult<Holon> {
+    return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
     let context = HolonsContext {
         commit_manager: CommitManager::new().into()
     };

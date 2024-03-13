@@ -7,6 +7,7 @@ use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
 
 use crate::holon::Holon;
+use crate::holon_errors::HolonError;
 use crate::holon_node::delete_holon_node;
 
 #[hdk_extern]
@@ -41,6 +42,8 @@ pub fn get_holon(
 #[hdk_extern]
 pub fn commit(input: Holon) -> ExternResult<Holon> {
     let holon = input.clone();
+    // // quick exit to test error return
+    // return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
     match holon.commit() {
         Ok(result)=> Ok(result.clone()),
         Err(holon_error) => {

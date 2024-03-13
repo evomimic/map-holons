@@ -13,6 +13,6 @@ pub struct DescriptorTestCase {
 #[derive(Clone, Debug)]
 pub enum DescriptorTestStep {
     Create(Holon), // Associated data is expected TypeDescriptor
-    Update(Holon), // Associated data is expected TypeDescriptor after update
-    Delete(HolonId), // Associated data is id of TypeDescriptor to delete
+    // Update(Holon), // Associated data is expected TypeDescriptor after update
+    // Delete(HolonId), // Associated data is id of TypeDescriptor to delete
 }

@@ -3,13 +3,13 @@
 use holons::context::HolonsContext;
 use holons::staged_reference::{StagedReference};
 use holons::holon::Holon;
-use holons::holon_reference::HolonReference;
+
 // use holons::relationship::{RelationshipName, RelationshipTarget};
 
 use crate::semantic_version::define_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
-use crate::descriptor_types::{Schema, TypeDescriptor};
+use crate::descriptor_types::{TypeDescriptor};
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions
@@ -24,8 +24,8 @@ use crate::descriptor_types::{Schema, TypeDescriptor};
 ///
 ///
 pub fn define_type_descriptor(
-    context: &HolonsContext,
-    schema: StagedReference,
+    _context: &HolonsContext,
+    _schema: StagedReference,
     descriptor_name: MapString,
     type_name: MapString,
     base_type: BaseType,
@@ -33,8 +33,8 @@ pub fn define_type_descriptor(
     label: MapString, // Human readable name for this type
     is_dependent: MapBoolean,
     is_value_descriptor: MapBoolean,
-    described_by: Option<StagedReference>,
-    has_supertype: Option<StagedReference>,
+    _described_by: Option<StagedReference>,
+    _has_supertype: Option<StagedReference>,
     //_owned_by: HolonReference, // HolonSpace
 ) -> TypeDescriptor {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
@@ -74,7 +74,7 @@ pub fn define_type_descriptor(
         );
 
     // Define a default semantic_version
-    let version = define_semantic_version(0, 0, 1);
+    let _version = define_semantic_version(0, 0, 1);
 
 
     // Add the outbound relationships shared by all TypeDescriptors

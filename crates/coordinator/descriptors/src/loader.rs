@@ -1,12 +1,12 @@
 use holons::context::HolonsContext;
 use holons::holon_errors::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{BaseType, MapBoolean, MapString};
 
-use crate::descriptor_types::{META_PROPERTY_DESCRIPTOR, META_RELATIONSHIP_DESCRIPTOR, META_TYPE_DESCRIPTOR, Schema};
-use crate::holon_descriptor::define_holon_descriptor;
-use crate::type_descriptor::define_type_descriptor;
+use holons::staged_reference::StagedReference;
+
+
+use crate::descriptor_types::{Schema};
+
+
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all of the
 /// MAP L0 Schema Meta Descriptors
@@ -38,7 +38,7 @@ use crate::type_descriptor::define_type_descriptor;
 /// 
 
 pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, HolonError> {
-        let mut schema = Schema::new(
+        let schema = Schema::new(
             "MAP L0 Core Schema".to_string(),
             "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
         );
@@ -110,7 +110,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, Holo
 
      */
 
-        context.commit_manager.borrow_mut().commit();
+        //context.commit_manager.borrow_mut().commit();
 
         Ok(schema_ref)
     }
