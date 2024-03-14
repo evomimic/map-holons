@@ -2,7 +2,8 @@
 
 #![allow(unused_imports)]
 
-// use futures::future;
+mod shared_test;
+
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -11,18 +12,16 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
+use holons::helpers::*;
 use holons::holon::Holon;
-// use shared_test::test;
 use holons::holon_api::*;
 use holons::holon_errors::HolonError;
-use shared_test::*;
 use shared_test::holon_fixtures::*;
 use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
-use shared_types_holon::holon_node::{PropertyMap, PropertyName};
-use shared_types_holon::HolonId;
+use shared_test::*;
+use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
-
-mod shared_test;
+use shared_types_holon::HolonId;
 
 /// This function iterates through the Vec of Holons provided by the test fixture
 ///
@@ -51,7 +50,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
 
     // The heavy lifting for this test is in the test data set creation.
 
-    let mut test_holons: Vec<Holon> = input.unwrap().creates;
+    let test_holons: Vec<Holon> = input.unwrap().creates;
     let h_count = test_holons.len();
 
     println!("******* STARTING TESTS WITH {h_count} HOLONS ***************************");
@@ -73,7 +72,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
         let p_count = test_holon.property_map.len();
 
         println!("\n****** Starting create/get test for the following Holon:");
-        print_holon_without_saved_node(&test_holon);
+        // print_holon_without_saved_node(&test_holon);
 
         let mut builder_holon = Holon::new();
 
@@ -94,6 +93,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
         let created_holon: Holon = conductor
             .call(&cell.zome("holons"), "commit", builder_holon.clone())
             .await;
+
         println!("Commit request returned this holon");
         println!("{:#?}", created_holon);
 
@@ -101,9 +101,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
             created_action_hashes.push(id.clone());
 
             println!("Fetching created holon");
-            let fetched_holon: Holon = conductor
-                .call(&cell.zome("holons"), "get_holon", id)
-                .await;
+            let fetched_holon: Holon = conductor.call(&cell.zome("holons"), "get_holon", id).await;
 
             assert_eq!(test_holon.into_node(), fetched_holon.clone().into_node());
 
@@ -116,13 +114,13 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
     let fetched_holons: Vec<Holon> = conductor
         .call(&cell.zome("holons"), "get_all_holons", ())
         .await;
-    assert_eq!(h_count, fetched_holons.len());
+    assert_eq!(h_count, fetched_holons.clone().len());
 
     // TESTING DELETES //
     println!("\n\n *********** TESTING DELETES *******************\n");
 
-    for hash in created_action_hashes {
-        let deleted_hash: ActionHash = conductor
+    for hash in created_action_hashes.clone() {
+        let _deleted_hash: ActionHash = conductor
             .call(&cell.zome("holons"), "delete_holon", hash.clone())
             .await;
     }
