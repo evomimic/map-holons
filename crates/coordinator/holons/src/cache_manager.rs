@@ -11,7 +11,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct HolonCacheManager {
     pub local_cache: Rc<RefCell<Cache<HolonId, Rc<Holon>>>>,
-    // pub external_caches: HashMap<HolonSpaceId, HolonCache>,
+    //pub external_caches: HashMap<HolonSpaceId, HolonCache>,
 }
 
 impl HolonCacheManager {
@@ -26,12 +26,12 @@ impl HolonCacheManager {
         &self,
         holon_space_id: Option<HolonId>,
     ) -> Result<Rc<RefCell<Cache<HolonId, Rc<Holon>>>>, HolonError> {
-        if let Some(_id) = holon_space_id {
-            return Err(HolonError::NotImplemented(
-                "External HolonReference not impemented".to_string(),
-            ));
+        return if let Some(_id) = holon_space_id {
+            Err(HolonError::NotImplemented(
+                "External HolonReference not implemented".to_string(),
+            ))
         } else {
-            return Ok(Rc::clone(&self.local_cache));
+            Ok(Rc::clone(&self.local_cache))
         }
     }
 
@@ -41,10 +41,10 @@ impl HolonCacheManager {
         holon_space_id: Option<HolonId>,
         holon_id: HolonId,
     ) -> Result<Rc<Holon>, HolonError> {
-        if let Some(_id) = holon_space_id {
-            return Err(HolonError::NotImplemented(
-                "External HolonReference not impemented".to_string(),
-            ));
+        return if let Some(_id) = holon_space_id {
+            Err(HolonError::NotImplemented(
+                "External HolonReference not implemented".to_string(),
+            ))
         } else {
             let cache = self.get_cache(holon_space_id.clone())?;
 
@@ -56,7 +56,7 @@ impl HolonCacheManager {
 
             let fetched_holon = Holon::fetch_holon(context, holon_id.clone())?;
             mut_cache.insert(holon_id, fetched_holon.clone());
-            return Ok(fetched_holon);
+            Ok(fetched_holon)
         }
     }
 }

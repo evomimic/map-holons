@@ -10,7 +10,7 @@ use holons::holon::Holon;
 pub fn load_core_schema_api(_: ()) -> ExternResult<Holon> {
     let context = HolonsContext::new();
     match load_core_schema(&context) {
-        Ok(result) => Ok(result.clone_holon()),
+        Ok(result) => Ok(result.clone_holon(&context)),
         Err(holon_error) => Err(holon_error.into()),
     }
 }

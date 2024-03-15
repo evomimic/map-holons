@@ -7,7 +7,6 @@ use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
 
 use crate::holon::Holon;
-use crate::holon_errors::HolonError;
 use crate::holon_node::delete_holon_node;
 
 #[hdk_extern]

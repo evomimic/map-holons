@@ -92,7 +92,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                               MapBoolean(false),
                                                               MapBoolean(false),
                                                               None,
-                                                              Some(&type_descriptor));
+                                                              None);
     steps.push(DescriptorTestStep::Create(
         meta_relationship_descriptor.0.clone(),
     ));
