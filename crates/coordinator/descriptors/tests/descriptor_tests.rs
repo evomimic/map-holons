@@ -67,6 +67,10 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
         .call(&cell.zome("descriptors"), "load_core_schema_api", ())
         .await;
     // assert_eq!(1, fetched_holons.len());
+    println!("Call to load_core_schema_api returned: ");
+    println!("{:#?}",load_schema_result);
+
+
 
 
     // The heavy lifting for this test is in the test data set creation.

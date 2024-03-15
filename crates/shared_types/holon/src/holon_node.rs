@@ -21,7 +21,7 @@ impl From<ActionHash> for HolonId {
 }
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PropertyName(pub MapString);
 impl fmt::Display for PropertyName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

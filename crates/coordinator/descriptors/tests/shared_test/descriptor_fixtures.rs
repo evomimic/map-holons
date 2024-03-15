@@ -77,7 +77,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                         MapString("HolonDescriptor".to_string()),
                                                         MapString("A meta-descriptor that defines the properties and relationships shared by all MAP HolonDescriptors".to_string()),
                                                         MapString("Meta Holon Descriptor".to_string()),
-                                                        Some(&type_descriptor),
+                                                        None,
                                                         //Some(HolonReference::Local((LocalHolonReference::from_holon((type_descriptor.as_holon()))))),
                                                         None);
 
@@ -107,7 +107,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                           MapBoolean(false),
                                                           MapBoolean(false),
                                                           None,
-                                                          Some(&type_descriptor));
+                                                          None);
 
     steps.push(DescriptorTestStep::Create(
         meta_property_descriptor.0.clone(),

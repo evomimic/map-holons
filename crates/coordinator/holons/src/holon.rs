@@ -21,7 +21,7 @@ use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 
 #[hdk_entry_helper]
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
@@ -34,35 +34,37 @@ pub struct Holon {
     // pub dances : DanceMap,
 }
 
-/// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
-/// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
-/// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
-/// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
-impl Eq for Holon {}
 
-impl PartialEq for Holon {
-    fn eq(&self, other: &Self) -> bool {
-        match (&self.state, &other.state) {
-            (HolonState::Fetched, HolonState::Fetched) => {
-                if let (Some(self_address), Some(other_address)) = (
-                    self.saved_node
-                        .as_ref()
-                        .map(|record| record.action_address()),
-                    other
-                        .saved_node
-                        .as_ref()
-                        .map(|record| record.action_address()),
-                ) {
-                    return self_address == other_address;
-                }
-                false // If action addresses are not present, they are not equal
-            }
-            (HolonState::Changed, HolonState::Changed) => self.saved_node == other.saved_node,
-            (HolonState::New, HolonState::New) => self.property_map == other.property_map,
-            _ => false, // In all other cases, Holons are not equal
-        }
-    }
-}
+// Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
+// ///he PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
+// /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
+// /// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
+// /// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
+// impl Eq for Holon {}
+//
+// impl PartialEq for Holon {
+//     fn eq(&self, other: &Self) -> bool {
+//         match (&self.state, &other.state) {
+//             (HolonState::Fetched, HolonState::Fetched) => {
+//                 if let (Some(self_address),
+//                     Some(other_address)) =
+//                     (self.saved_node.as_ref().map(|record| record.action_address()),
+//                      other.saved_node.as_ref().map(|record| record.action_address())) {
+//                     return self_address == other_address;
+//                 }
+//                 false // If action addresses are not present, they are not equal
+//             }
+//             (HolonState::Changed, HolonState::Changed) => {
+//                 self.saved_node == other.saved_node
+//             }
+//             (HolonState::New, HolonState::New) => {
+//                 self.property_map == other.property_map
+//             }
+//             _ => false, // In all other cases, Holons are not equal
+//         }
+//     }
+// }
+
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -90,10 +92,7 @@ pub trait HolonFieldGettable {
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError>;
-    fn get_relationship_map(
-        &mut self,
-        context: &HolonsContext,
-    ) -> Result<RelationshipMap, HolonError>;
+
     fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
@@ -211,10 +210,17 @@ impl Holon {
     //     self
     // }
 
+    pub fn set_key_manually(&mut self, key: MapString) {
+        self.key = Some(key);
+    }
+
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
-        // TODO: Add better handling if saved_node is None
-        let node = self.saved_node.clone().unwrap();
-        Ok(HolonId(node.as_ref().action_address().clone()))
+        let node = self.saved_node.clone();
+        if let Some(record) = node {
+            Ok(HolonId(record.action_address().clone()))
+        } else {
+            Err(HolonError::HolonNotFound("Node is empty".to_string()))
+        }
     }
 
     /// commit() creates a HolonNode and SmartLinks if state = New,
@@ -270,7 +276,11 @@ impl Holon {
     /// "inflates" the HolonNode into a Holon, stores it in the cache, and returns an Rc<RefCell<Holon>> for it
     /// Not currently extern... because fetches will be mediated by the cache
 
-    pub fn fetch_holon(_context: &HolonsContext, id: HolonId) -> Result<Rc<Holon>, HolonError> {
+    pub fn fetch_holon(
+        _context: &HolonsContext,
+        id: HolonId,
+    ) -> Result<Rc<RefCell<Holon>>, HolonError> {
+
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
@@ -307,68 +317,65 @@ impl Holon {
             Err(error) => Err(HolonError::WasmError(error.to_string())),
         }
     }
-    pub fn set_key_manually(&mut self, key: MapString) {
-        self.key = Some(key);
-    }
 
+    // =======
+    // use hdk::prelude::*;
+    // use holons_integrity::*;
+    // #[hdk_extern]
+    // pub fn create_holon(holon: Holon) -> ExternResult<Record> {
+    //     let holon_hash = create_entry(&EntryTypes::Holon(holon.clone()))?;
+    //     let record = get(holon_hash.clone(), GetOptions::default())?
+    //         .ok_or(
+    //             wasm_error!(
+    //                 WasmErrorInner::Guest(String::from("Could not find the newly created Holon"))
+    //             ),
+    //         )?;
+    //     let path = Path::from("all_holons");
+    //     create_link(path.path_entry_hash()?, holon_hash.clone(), LinkTypes::AllHolons, ())?;
+    //     Ok(record)
+    // }
+    // #[hdk_extern]
+    // pub fn get_holon(original_holon_hash: ActionHash) -> ExternResult<Option<Record>> {
+    //     let links = get_links(original_holon_hash.clone(), LinkTypes::HolonUpdates, None)?;
+    //     let latest_link = links
+    //         .into_iter()
+    //         .max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
+    //     let latest_holon_hash = match latest_link {
+    //         Some(link) => ActionHash::from(link.target.clone()),
+    //         None => original_holon_hash.clone(),
+    //     };
+    //     get(latest_holon_hash, GetOptions::default())
+    // }
+    // #[derive(Serialize, Deserialize, Debug)]
+    // pub struct UpdateHolonInput {
+    //     pub original_holon_hash: ActionHash,
+    //     pub previous_holon_hash: ActionHash,
+    //     pub updated_holon: Holon,
+    // }
+    // #[hdk_extern]
+    // pub fn update_holon(input: UpdateHolonInput) -> ExternResult<Record> {
+    //     let updated_holon_hash = update_entry(
+    //         input.previous_holon_hash.clone(),
+    //         &input.updated_holon,
+    //     )?;
+    //     create_link(
+    //         input.original_holon_hash.clone(),
+    //         updated_holon_hash.clone(),
+    //         LinkTypes::HolonUpdates,
+    //         (),
+    //     )?;
+    //     let record = get(updated_holon_hash.clone(), GetOptions::default())?
+    //         .ok_or(
+    //             wasm_error!(
+    //                 WasmErrorInner::Guest(String::from("Could not find the newly updated Holon"))
+    //             ),
+    //         )?;
+    //     Ok(record)
+    // }
+    // #[hdk_extern]
+    // pub fn delete_holon(original_holon_hash: ActionHash) -> ExternResult<ActionHash> {
+    //     delete_entry(original_holon_hash)
+    //
+    // }
 }
 
-// =======
-// use hdk::prelude::*;
-// use holons_integrity::*;
-// #[hdk_extern]
-// pub fn create_holon(holon: Holon) -> ExternResult<Record> {
-//     let holon_hash = create_entry(&EntryTypes::Holon(holon.clone()))?;
-//     let record = get(holon_hash.clone(), GetOptions::default())?
-//         .ok_or(
-//             wasm_error!(
-//                 WasmErrorInner::Guest(String::from("Could not find the newly created Holon"))
-//             ),
-//         )?;
-//     let path = Path::from("all_holons");
-//     create_link(path.path_entry_hash()?, holon_hash.clone(), LinkTypes::AllHolons, ())?;
-//     Ok(record)
-// }
-// #[hdk_extern]
-// pub fn get_holon(original_holon_hash: ActionHash) -> ExternResult<Option<Record>> {
-//     let links = get_links(original_holon_hash.clone(), LinkTypes::HolonUpdates, None)?;
-//     let latest_link = links
-//         .into_iter()
-//         .max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
-//     let latest_holon_hash = match latest_link {
-//         Some(link) => ActionHash::from(link.target.clone()),
-//         None => original_holon_hash.clone(),
-//     };
-//     get(latest_holon_hash, GetOptions::default())
-// }
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct UpdateHolonInput {
-//     pub original_holon_hash: ActionHash,
-//     pub previous_holon_hash: ActionHash,
-//     pub updated_holon: Holon,
-// }
-// #[hdk_extern]
-// pub fn update_holon(input: UpdateHolonInput) -> ExternResult<Record> {
-//     let updated_holon_hash = update_entry(
-//         input.previous_holon_hash.clone(),
-//         &input.updated_holon,
-//     )?;
-//     create_link(
-//         input.original_holon_hash.clone(),
-//         updated_holon_hash.clone(),
-//         LinkTypes::HolonUpdates,
-//         (),
-//     )?;
-//     let record = get(updated_holon_hash.clone(), GetOptions::default())?
-//         .ok_or(
-//             wasm_error!(
-//                 WasmErrorInner::Guest(String::from("Could not find the newly updated Holon"))
-//             ),
-//         )?;
-//     Ok(record)
-// }
-// #[hdk_extern]
-// pub fn delete_holon(original_holon_hash: ActionHash) -> ExternResult<ActionHash> {
-//     delete_entry(original_holon_hash)
-//
-// }

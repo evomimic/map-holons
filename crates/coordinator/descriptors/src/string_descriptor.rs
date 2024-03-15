@@ -1,8 +1,9 @@
 use holons::context::HolonsContext;
+
 use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{Schema, StringDescriptor, TypeDescriptor};
+use crate::descriptor_types::{StringDescriptor};
 // use shared_types_holon::BaseType::*;
 
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
@@ -15,8 +16,8 @@ pub fn define_string_descriptor(
     label: MapString, // Human readable name for this type
     min_length: MapInteger,
     max_length: MapInteger,
-    has_supertype: Option<&TypeDescriptor>,
-    described_by: Option<&TypeDescriptor>,
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
 
 ) -> StringDescriptor {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
