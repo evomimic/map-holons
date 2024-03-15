@@ -14,17 +14,20 @@
 #![allow(dead_code)]
 
 use core::panic;
+use descriptors::descriptor_types::{
+    Schema, META_PROPERTY_DESCRIPTOR, META_RELATIONSHIP_DESCRIPTOR, META_TYPE_DESCRIPTOR,
+};
+use descriptors::holon_descriptor::define_holon_descriptor;
+use descriptors::type_descriptor::define_type_descriptor;
+use holons::cache_manager::HolonCacheManager;
+use holons::commit_manager::CommitManager;
+use holons::context::HolonsContext;
 use holons::helpers::*;
-use holons::holon_api::*;
 use holons::holon::Holon;
+use holons::holon_api::*;
 use rstest::*;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapString};
 use std::collections::btree_map::BTreeMap;
-use descriptors::descriptor_types::{META_PROPERTY_DESCRIPTOR, META_RELATIONSHIP_DESCRIPTOR, META_TYPE_DESCRIPTOR, Schema};
-use descriptors::holon_descriptor::define_holon_descriptor;
-use descriptors::type_descriptor::define_type_descriptor;
-use holons::commit_manager::CommitManager;
-use holons::context::HolonsContext;
 
 // use hdk::prelude::*;
 
@@ -39,19 +42,19 @@ use holons::holon_errors::HolonError;
 ///
 #[fixture]
 pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
-
     let mut context = HolonsContext {
         commit_manager: CommitManager::new().into(),
+        cache_manager: HolonCacheManager::new().into(),
     };
 
     let mut schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
-        "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string()
+        "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
     );
 
     let rc_schema = context.commit_manager.borrow_mut().stage_holon(schema.0); // Borrow_mut() allows mutation
 
-    let mut steps:  Vec<DescriptorTestStep>= Vec::new();
+    let mut steps: Vec<DescriptorTestStep> = Vec::new();
 
     // let schema_reference = define_local_target(&schema.into_holon());
     let type_descriptor = define_type_descriptor(&context,
@@ -89,8 +92,10 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                               MapBoolean(false),
                                                               MapBoolean(false),
                                                               None,
-                                                              None);
-    steps.push(DescriptorTestStep::Create(meta_relationship_descriptor.0.clone()));
+                                                              Some(&type_descriptor));
+    steps.push(DescriptorTestStep::Create(
+        meta_relationship_descriptor.0.clone(),
+    ));
 
     let meta_property_descriptor = define_type_descriptor(&context,
                                                           rc_schema.clone(),
@@ -104,11 +109,10 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                           None,
                                                           None);
 
-    steps.push(DescriptorTestStep::Create(meta_property_descriptor.0.clone()));
+    steps.push(DescriptorTestStep::Create(
+        meta_property_descriptor.0.clone(),
+    ));
 
-    let test_case = DescriptorTestCase {
-        steps,
-    };
-      Ok(test_case)
-
+    let test_case = DescriptorTestCase { steps };
+    Ok(test_case)
 }

@@ -34,6 +34,7 @@ pub struct Holon {
     // pub dances : DanceMap,
 }
 
+
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
 // ///he PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
 // /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
@@ -64,6 +65,7 @@ pub struct Holon {
 //     }
 // }
 
+
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub enum HolonState {
@@ -90,6 +92,7 @@ pub trait HolonFieldGettable {
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError>;
+
     fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
@@ -277,8 +280,9 @@ impl Holon {
         _context: &HolonsContext,
         id: HolonId,
     ) -> Result<Rc<RefCell<Holon>>, HolonError> {
+
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
-        return if let Some(node) = holon_node_record {
+        if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
             holon.state = HolonState::Fetched;
             // consider getting get relationship map, descriptor, holon_space here;
@@ -288,7 +292,7 @@ impl Holon {
         } else {
             // no holon_node fetched for specified holon_id
             Err(HolonError::HolonNotFound(id.0.to_string()))
-        };
+        }
     }
 
     pub fn delete_holon(id: HolonId) -> Result<ActionHash, HolonError> {
@@ -374,3 +378,4 @@ impl Holon {
     //
     // }
 }
+
