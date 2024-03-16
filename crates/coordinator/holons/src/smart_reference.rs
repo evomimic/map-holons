@@ -25,19 +25,39 @@ impl SmartReference {
     /// This is a private function that attempts to ensure that the SmartReference contains a populated rc_holon field.
     /// If rc_holon is already populated, it simply returns Ok(self)
     /// Otherwise, invoke get_rc_holon on the cache_manager (found in the context) to get a reference to the cached holon,
-    fn ensure_rc(&mut self, _context: &HolonsContext,)->Result<(), HolonError> {
+
+    fn ensure_rc(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
         // Check if rc_holon is already populated
         if self.rc_holon.is_some() {
             return Ok(()); // Already populated, no action needed
         }
 
-        // TODO: Attempt to populate rc_holon by invoking get_rc_holon on the cache_manager
-        // let rc_holon = context.cache_manager.get_rc_holon(&self.holon_id)?;
-        // self.rc_holon = Some(rc_holon);
+        // Obtain a mutable reference to cache_manager
+        let mut cache_manager_ref_mut = context.cache_manager.borrow_mut();
+
+        // Attempt to populate rc_holon by invoking get_rc_holon on the cache_manager
+        let rc_holon = cache_manager_ref_mut.get_rc_holon(context, None, &self.holon_id)?;
+
+        // Update rc_holon in self
+        self.rc_holon = Some(rc_holon);
 
         Ok(()) // rc_holon has been ensured to be populated
-
     }
+    // fn ensure_rc(&mut self, context: &HolonsContext,)->Result<(), HolonError> {
+    //     // Check if rc_holon is already populated
+    //     if self.rc_holon.is_some() {
+    //         return Ok(()); // Already populated, no action needed
+    //     }
+    //
+    //     // TODO: Attempt to populate rc_holon by invoking get_rc_holon on the cache_manager
+    //     let rc_holon = context.cache_manager.borrow().get_rc_holon(context, None, &self.holon_id)?;
+    //     self.rc_holon = Some(rc_holon);
+    //
+    //     Ok(()) // rc_holon has been ensured to be populated
+    //
+    // }
+
+
 
 
     pub fn clone_reference(&self) -> SmartReference {

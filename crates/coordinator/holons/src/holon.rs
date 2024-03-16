@@ -1,10 +1,8 @@
 use std::fmt;
-use std::rc::Rc;
 
 use derive_new::new;
-//use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use hdi::prelude::ActionHash;
-use hdk::entry::get;
+
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
@@ -268,29 +266,6 @@ impl Holon {
                     ))
                 }
             }
-        }
-    }
-
-    /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash, it then
-    /// "inflates" the HolonNode into a Holon, stores it in the cache, and returns an Rc<Holon> for it
-    /// Not currently extern... because fetches will be mediated by the cache
-
-    pub fn fetch_holon(
-        _context: &HolonsContext,
-        id: HolonId,
-    ) -> Result<Rc<Holon>, HolonError> {
-
-        let holon_node_record = get(id.0.clone(), GetOptions::default())?;
-        if let Some(node) = holon_node_record {
-            let mut holon = Holon::try_from_node(node)?;
-            holon.state = HolonState::Fetched;
-            // consider getting get relationship map, descriptor, holon_space here;
-            // add to cache and get Rc<RefCell<Holon>> for it
-            // since cache hasn't been implemented yet, return error for now
-            Err(HolonError::NotImplemented("HolonCache".to_string()))
-        } else {
-            // no holon_node fetched for specified holon_id
-            Err(HolonError::HolonNotFound(id.0.to_string()))
         }
     }
 
