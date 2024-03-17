@@ -1,11 +1,13 @@
 /// This file defines the functions exposed via hdk_extern
 ///
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use crate::holon_node::delete_holon_node;
-use crate::holon_types::Holon;
 
+use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::HolonId;
+use shared_types_holon::value_types::BaseValue;
+
+use crate::holon::Holon;
+use crate::holon_node::delete_holon_node;
 
 #[hdk_extern]
 pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
@@ -24,10 +26,23 @@ pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
         input.value.clone());
     Ok(holon)
 }
+#[hdk_extern]
+pub fn get_holon(
+    id: HolonId,
+) -> ExternResult<Option<Holon>> {
+       match Holon::get_holon(id) {
+        Ok(result) => Ok(result),
+        Err(holon_error) => {
+            Err(holon_error.into())
+        }
+    }
+}
 
 #[hdk_extern]
 pub fn commit(input: Holon) -> ExternResult<Holon> {
-    let mut holon = input.clone();
+    let holon = input.clone();
+    // // quick exit to test error return
+    // return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
     match holon.commit() {
         Ok(result)=> Ok(result.clone()),
         Err(holon_error) => {
@@ -35,17 +50,6 @@ pub fn commit(input: Holon) -> ExternResult<Holon> {
         }
     }
 
-}
-#[hdk_extern]
-pub fn get_holon(
-    target_holon_id: ActionHash,
-) -> ExternResult<Option<Holon>> {
-    match Holon::fetch_holon(target_holon_id.into()) {
-        Ok(result)=> Ok(Option::from(result)),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
-    }
 }
 
 #[hdk_extern]

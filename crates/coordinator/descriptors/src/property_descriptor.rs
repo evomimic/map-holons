@@ -1,7 +1,9 @@
-use holons::relationship::RelationshipTarget;
+use holons::context::HolonsContext;
+use holons::holon_reference::HolonReference;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
-use crate::descriptor_types::{PropertyDescriptor, Schema, TypeDescriptor};
+use crate::descriptor_types::{PropertyDescriptor};
 
 
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
@@ -22,14 +24,15 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 ///
 ///
 pub fn define_property_descriptor(
-    schema: &Schema,
+    context: &HolonsContext,
+    schema: StagedReference,
     property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
     description: MapString,
     label: MapString, // Human readable name for this property name
-    property_of: RelationshipTarget, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    value_type: RelationshipTarget, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    has_supertype: Option<&TypeDescriptor>,
-    described_by: Option<&TypeDescriptor>,
+    _property_of: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
+    _value_type: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
 ) -> PropertyDescriptor {
 
     let property_of_name = MapString("TODO: Extract type_name from the PROPERTY_OF HolonDescriptor".to_string());
@@ -37,7 +40,8 @@ pub fn define_property_descriptor(
     // build the type_name for the PropertyDescriptor
     let type_name = MapString(format!("{}_PROPERTY_OF_{}", property_name.0, property_of_name.0));
 
-    let mut descriptor = define_type_descriptor(
+    let descriptor = define_type_descriptor(
+        context,
         schema,
         derive_descriptor_name(&property_name),
         type_name,

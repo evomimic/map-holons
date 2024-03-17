@@ -1,7 +1,8 @@
 use hdk::prelude::*;
 use thiserror::Error;
+
 #[hdk_entry_helper]
-#[derive(Error, Eq, PartialEq)]
+#[derive(Error, Eq, PartialEq, Clone)]
 pub enum HolonError {
     #[error("{0} field is missing")]
     EmptyField(String),
@@ -13,14 +14,21 @@ pub enum HolonError {
     RecordConversion(String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
-    // #[error("Wrong type: {0}")]
-    // TypeError(String),
+    #[error("Index {0} into Holons Vector is Out of Range")]
+    IndexOutOfRange(String),
+    #[error("{0} Not Implemented")]
+    NotImplemented(String),
+    #[error("{0} relationship is missing StagedCollection")]
+    MissingStagedCollection(String),
+    #[error("Failed to Borrow {0}")]
+    FailedToBorrow(String),
+    #[error("to {0}")]
+    UnableToAddHolons(String),
+    #[error("{0} is not a valid relationship for this source holon type {1}")]
+    InvalidRelationship(String, String), // TODO: move this error to ValidationError
+    #[error("Cache Error: {0}")]
+    CacheError(String),
 
-    // #[error("Element missing its Entry")]
-    // EntryMissing,
-
-    // #[error("Wasm Error {0}")]
-    // Wasm(WasmError),
 }
 
 impl From<WasmError> for HolonError {
@@ -32,5 +40,13 @@ impl From<WasmError> for HolonError {
 impl Into<WasmError> for HolonError {
     fn into(self) -> WasmError {
         wasm_error!("HolonError {:?}", self.to_string())
+    }
+}
+
+use std::cell::BorrowError;
+
+impl From<BorrowError> for HolonError {
+    fn from(error: BorrowError) -> Self {
+        HolonError::InvalidHolonReference(format!("Failed to borrow Rc<RefCell<Holon>>: {}", error))
     }
 }

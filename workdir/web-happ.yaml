@@ -2,6 +2,6 @@
 manifest_version: "1"
 name: map-holons_integrity
 ui:
-  bundled: "../ui/dist.zip"
+  bundled: "../_ui/dist.zip"
 happ_manifest:
   bundled: "./map-holons_integrity.happ"

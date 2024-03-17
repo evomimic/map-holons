@@ -1,87 +1,62 @@
-use crate::holon::HolonGetters;
-use crate::holon_errors::HolonError;
-use crate::holon_types::Holon;
 use hdk::prelude::*;
+
+use shared_types_holon::{MapString, PropertyValue};
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::HolonId;
-use shared_types_holon::value_types::BaseValue;
 
+use crate::context::HolonsContext;
+use crate::holon::HolonFieldGettable;
+use crate::holon_errors::HolonError;
+use crate::relationship::RelationshipMap;
+use crate::smart_reference::SmartReference;
+use crate::staged_reference::StagedReference;
 
-pub trait HolonReferenceFns {
-    fn get_holon(&self) -> Result<Holon, HolonError>;
-}
+// If I can operate directly on HolonReferences as if they were Holons, I don't need this Trait
+// pub trait HolonReferenceFns {
+//     fn get_rc_holon(&self) -> Result<Rc<RefCell<Holon>>, HolonError>;
+// }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+/// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
+/// state (and therefore owned by the CacheManager) or being staged for creation/update (and therefore owned by the
+/// CommitManager).
+///
+/// HolonReference also hides whether the referenced holon is in the local space or an external space
 pub enum HolonReference {
-    Local(LocalHolonReference),
-    // External(ExternalHolonReference),
+    Smart(SmartReference),
+    Staged(StagedReference),
 }
 
-impl HolonReferenceFns for HolonReference {
-    fn get_holon(&self) -> Result<Holon, HolonError> {
+impl HolonFieldGettable for HolonReference {
+
+    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
+       match self {
+           HolonReference::Smart(smart_reference) => smart_reference.get_property_value(context, property_name),
+           HolonReference::Staged(staged_reference) => staged_reference.get_property_value(context, property_name),
+       }
+
+    }
+
+    fn get_key(&mut self, context: &HolonsContext,) -> Result<Option<MapString>,HolonError> {
         match self {
-            HolonReference::Local(holon_reference) => holon_reference.get_holon(),
+            HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
         }
     }
 }
 
-impl HolonGetters for HolonReference {
-    fn get_property_value(
-        &self,
-        property_name: PropertyName,
-    ) -> Result<Option<BaseValue>, HolonError> {
-        let holon = self.get_holon()?;
-        holon.get_property_value(property_name)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct LocalHolonReference {
-    holon_id: Option<HolonId>,
-    holon: Option<Holon>,
-}
-
-impl HolonReferenceFns for LocalHolonReference {
-    /// get_holon will return the cached Holon, first retrieving it from the storage tier, if necessary
-    fn get_holon(&self) -> Result<Holon, HolonError> {
-        let holon_reference = self.clone();
-        if let Some(holon) = holon_reference.holon {
-            Ok(holon)
-        } else {
-            if let Some(id) = holon_reference.holon_id {
-                Holon::fetch_holon(id)
-            } else {
-                Err(HolonError::HolonNotFound(
-                    "LocalHolonReference is empty".to_string(),
-                ))
-            }
+impl HolonReference {
+    pub fn get_relationship_map(&mut self, context: &HolonsContext,) -> Result<RelationshipMap, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_relationship_map(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_relationship_map(context),
         }
     }
-}
-
-impl LocalHolonReference {
-
-    // Constructor function for creating from HolonId
-    pub fn from_holon_id(holon_id: HolonId) -> Self {
-        Self {
-            holon_id: Some(holon_id),
-            holon: None,
+    pub fn clone_reference(&self) -> HolonReference {
+        match self {
+            HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
+            HolonReference::Staged(staged_ref) => HolonReference::Staged(staged_ref.clone_reference()),
         }
     }
 
-    // Constructor function for creating from Holon
-    pub fn from_holon(holon: Holon) -> Self {
-        Self {
-            holon_id: None,
-            holon: Some(holon),
-        }
-    }
-    pub fn add_holon_id(&mut self, holon_id: HolonId)-> &mut Self {
-        self.holon_id = Some(holon_id);
-        self
-    }
-    pub fn add_holon(&mut self, holon: Holon) -> &mut Self {
-        self.holon = Some(holon);
-        self
-    }
 }
+
