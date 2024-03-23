@@ -22,6 +22,7 @@ use crate::{all_holon_nodes::*, property_map};
 #[derive(Clone, Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,
+    pub validation_state: ValidationState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
     pub property_map: PropertyMap,
@@ -29,12 +30,12 @@ pub struct Holon {
     key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
-
     // pub dancer : Dancer,
+    pub errors: Vec<HolonError>,
 }
 
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
-// ///he PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
+// /// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
 // /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
 // /// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
 // /// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
@@ -84,6 +85,14 @@ impl fmt::Display for HolonState {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ValidationState {
+    NoDescriptor,
+    ValidationRequired,
+    Validated,
+    Invalid,
+}
+
 pub trait HolonFieldGettable {
     fn get_property_value(
         &mut self,
@@ -101,11 +110,13 @@ impl Holon {
     pub fn new() -> Holon {
         Holon {
             state: HolonState::New,
+            validation_state: ValidationState::NoDescriptor,
             saved_node: None,
             predecessor: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
             key: None,
+            errors: Vec::new(),
         }
     }
 
@@ -150,11 +161,13 @@ impl Holon {
 
         let holon = Holon {
             state: HolonState::Fetched,
+            validation_state: ValidationState::Validated,
             saved_node: Some(holon_node_record),
             predecessor: None,
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
             key: None,
+            errors: Vec::new(),
         };
 
         // TODO: populate predecessor from link to previous record for this Holon
@@ -277,19 +290,17 @@ impl Holon {
                     ))
                 }
             }
-            _ => { // For either Fetched or Saved no save is needed, just return HolonId
+            _ => {
+                // For either Fetched or Saved no save is needed, just return HolonId
 
-                    let node = self.saved_node.clone();
-                    if let Some(record) = node {
-                        return Ok(HolonId(record.action_address().clone()))
-                    }
-                    else {
-                        Err(HolonError::HolonNotFound(
-                            "Expected Holon to have a saved_node, but it doesn't".to_string()
-                        ))
-
-                    }
-
+                let node = self.saved_node.clone();
+                if let Some(record) = node {
+                    return Ok(HolonId(record.action_address().clone()));
+                } else {
+                    Err(HolonError::HolonNotFound(
+                        "Expected Holon to have a saved_node, but it doesn't".to_string(),
+                    ))
+                }
             }
         }
     }
@@ -369,7 +380,6 @@ impl Holon {
     //         }
     //     }
     // }
-
 
     // =======
     // use hdk::prelude::*;

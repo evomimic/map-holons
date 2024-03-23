@@ -1,5 +1,7 @@
 use hdk::prelude::*;
 use thiserror::Error;
+use shared_types_holon::validation_error::ValidationError;
+
 
 #[hdk_entry_helper]
 #[derive(Error, Eq, PartialEq, Clone)]
@@ -28,6 +30,8 @@ pub enum HolonError {
     InvalidRelationship(String, String), // TODO: move this error to ValidationError
     #[error("Cache Error: {0}")]
     CacheError(String),
+    #[error("Validation error: {0}")]
+    ValidationError(ValidationError),
 
 }
 
