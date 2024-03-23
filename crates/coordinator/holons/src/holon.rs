@@ -21,19 +21,20 @@ use crate::relationship::RelationshipMap;
 #[derive(Clone, Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,
+    pub validation_state: ValidationState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
     key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
-
     // pub dances : DanceMap,
+    pub errors: Vec<HolonError>,
 }
 
 
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
-// ///he PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
+// /// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
 // /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
 // /// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
 // /// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
@@ -83,6 +84,14 @@ impl fmt::Display for HolonState {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ValidationState {
+    NoDescriptor,
+    ValidationRequired, 
+    Validated,
+    Invalid,
+}
+
 pub trait HolonFieldGettable {
     fn get_property_value(
         &mut self,
@@ -100,10 +109,12 @@ impl Holon {
     pub fn new() -> Holon {
         Holon {
             state: HolonState::New,
+            validation_state: ValidationState::NoDescriptor,
             saved_node: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
             key: None,
+            errors: Vec::new(),
         }
     }
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
@@ -152,10 +163,12 @@ impl Holon {
 
         let holon = Holon {
             state: HolonState::Fetched,
+            validation_state: ValidationState::Validated,
             saved_node: Some(holon_node_record),
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
             key: None,
+            errors: Vec::new(),
         };
         // TODO: populate `key` from the property map once we have Descriptors/Constraints available
 
