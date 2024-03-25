@@ -3,12 +3,12 @@ use std::rc::Rc;
 use derive_new::new;
 use hdk::prelude::*;
 
-use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonFieldGettable};
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 
 #[hdk_entry_helper]
@@ -16,7 +16,7 @@ use crate::relationship::RelationshipMap;
 pub struct SmartReference {
     //holon_space_id: Option<SpaceId>
     pub holon_id: HolonId,
-    pub key : Option<MapString>,
+    pub key: Option<MapString>,
     pub rc_holon: Option<Rc<Holon>>,
     pub smart_property_values: Option<PropertyMap>,
 }
@@ -57,9 +57,6 @@ impl SmartReference {
     //
     // }
 
-
-
-
     pub fn clone_reference(&self) -> SmartReference {
         SmartReference {
             holon_id: self.holon_id.clone(),
@@ -70,7 +67,7 @@ impl SmartReference {
     }
 
     // Constructor function for creating from Holon Reference
-    pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference,HolonError> {
+    pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference, HolonError> {
         let id = rc_holon.get_id()?;
         let key = rc_holon.get_key()?;
 
@@ -81,7 +78,10 @@ impl SmartReference {
             smart_property_values: None, // TODO: need fn to build smart_property_map, this requires descriptor
         })
     }
-    pub fn get_relationship_map(&mut self, context: &HolonsContext) -> Result<RelationshipMap, HolonError> {
+    pub fn get_relationship_map(
+        &mut self,
+        context: &HolonsContext,
+    ) -> Result<RelationshipMap, HolonError> {
         // Ensure rc_holon is populated
         self.ensure_rc(context)?;
 
@@ -89,14 +89,18 @@ impl SmartReference {
         if let Some(holon) = self.rc_holon.as_ref() {
             holon.get_relationship_map()
         } else {
-            Err(HolonError::InvalidHolonReference("Rc Holon is not available".to_string()))
+            Err(HolonError::InvalidHolonReference(
+                "Rc Holon is not available".to_string(),
+            ))
         }
     }
-
-
 }
 impl HolonFieldGettable for SmartReference {
-    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
+    fn get_property_value(
+        &mut self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
         // Check if the property value is available in smart_property_values
         if let Some(smart_map) = &self.smart_property_values {
             if let Some(value) = smart_map.get(property_name) {
@@ -111,11 +115,13 @@ impl HolonFieldGettable for SmartReference {
         if let Some(holon) = self.rc_holon.as_ref() {
             holon.get_property_value(property_name)
         } else {
-            Err(HolonError::InvalidHolonReference("Rc Holon is not available".to_string()))
+            Err(HolonError::InvalidHolonReference(
+                "Rc Holon is not available".to_string(),
+            ))
         }
     }
 
-       fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         // Ensure rc_holon is populated
         self.ensure_rc(context)?;
 
@@ -123,10 +129,9 @@ impl HolonFieldGettable for SmartReference {
         if let Some(holon) = self.rc_holon.as_ref() {
             holon.get_key()
         } else {
-            Err(HolonError::InvalidHolonReference("Rc Holon is not available".to_string()))
+            Err(HolonError::InvalidHolonReference(
+                "Rc Holon is not available".to_string(),
+            ))
         }
     }
 }
-
-
-

@@ -1,11 +1,11 @@
 use hdk::prelude::*;
 
-use shared_types_holon::{MapString, PropertyValue};
 use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::{MapString, PropertyValue};
 
 use crate::context::HolonsContext;
 use crate::holon::HolonFieldGettable;
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
@@ -27,16 +27,22 @@ pub enum HolonReference {
 }
 
 impl HolonFieldGettable for HolonReference {
-
-    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
-       match self {
-           HolonReference::Smart(smart_reference) => smart_reference.get_property_value(context, property_name),
-           HolonReference::Staged(staged_reference) => staged_reference.get_property_value(context, property_name),
-       }
-
+    fn get_property_value(
+        &mut self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.get_property_value(context, property_name)
+            }
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.get_property_value(context, property_name)
+            }
+        }
     }
 
-    fn get_key(&mut self, context: &HolonsContext,) -> Result<Option<MapString>,HolonError> {
+    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
             HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
@@ -45,18 +51,23 @@ impl HolonFieldGettable for HolonReference {
 }
 
 impl HolonReference {
-    pub fn get_relationship_map(&mut self, context: &HolonsContext,) -> Result<RelationshipMap, HolonError> {
+    pub fn get_relationship_map(
+        &mut self,
+        context: &HolonsContext,
+    ) -> Result<RelationshipMap, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_relationship_map(context),
-            HolonReference::Staged(staged_reference) => staged_reference.get_relationship_map(context),
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.get_relationship_map(context)
+            }
         }
     }
     pub fn clone_reference(&self) -> HolonReference {
         match self {
             HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
-            HolonReference::Staged(staged_ref) => HolonReference::Staged(staged_ref.clone_reference()),
+            HolonReference::Staged(staged_ref) => {
+                HolonReference::Staged(staged_ref.clone_reference())
+            }
         }
     }
-
 }
-

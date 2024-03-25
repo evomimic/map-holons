@@ -14,14 +14,14 @@
 #![allow(dead_code)]
 
 use core::panic;
+use holons::commit_manager::CommitManager;
+use holons::context::HolonsContext;
 use holons::helpers::*;
-use holons::holon_api::*;
 use holons::holon::Holon;
+use holons::holon_api::*;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-use holons::commit_manager::CommitManager;
-use holons::context::HolonsContext;
 
 // use hdk::prelude::*;
 
@@ -31,15 +31,14 @@ use crate::shared_test::test_data_types::HolonCreatesTestCase;
 //     create_example_property_descriptors, create_example_updates_for_property_descriptors,
 // };
 
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
 
 /// This function creates a set of simple (undescribed) holons
 ///
 #[fixture]
 pub fn undescribed_holons_fixture() -> Result<HolonCreatesTestCase, HolonError> {
-
-    let mut test_data_set : Vec<Holon>= Vec::new();
+    let mut test_data_set: Vec<Holon> = Vec::new();
 
     let mut descriptor = Holon::new();
 
@@ -51,11 +50,15 @@ pub fn undescribed_holons_fixture() -> Result<HolonCreatesTestCase, HolonError> 
         )
         .with_property_value(
             PropertyName(MapString("descriptor_name".to_string())),
-            BaseValue::StringValue(MapString("This holon does not have a descriptor".to_string())),
+            BaseValue::StringValue(MapString(
+                "This holon does not have a descriptor".to_string(),
+            )),
         )
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(MapString("this is a simple TypeDescriptor holon".to_string())),
+            BaseValue::StringValue(MapString(
+                "this is a simple TypeDescriptor holon".to_string(),
+            )),
         )
         .with_property_value(
             PropertyName(MapString("label".to_string())),
@@ -70,7 +73,6 @@ pub fn undescribed_holons_fixture() -> Result<HolonCreatesTestCase, HolonError> 
             BaseValue::BooleanValue(MapBoolean(false)),
         );
     test_data_set.push(descriptor);
-
 
     Ok(HolonCreatesTestCase {
         creates: test_data_set,

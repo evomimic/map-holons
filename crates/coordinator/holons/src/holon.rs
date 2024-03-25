@@ -12,7 +12,7 @@ use shared_types_holon::{HolonId, MapString, PropertyValue};
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
@@ -31,7 +31,6 @@ pub struct Holon {
     // pub dances : DanceMap,
     pub errors: Vec<HolonError>,
 }
-
 
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
 // /// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
@@ -63,7 +62,6 @@ pub struct Holon {
 //     }
 // }
 
-
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub enum HolonState {
@@ -87,7 +85,7 @@ impl fmt::Display for HolonState {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ValidationState {
     NoDescriptor,
-    ValidationRequired, 
+    ValidationRequired,
     Validated,
     Invalid,
 }
@@ -365,4 +363,3 @@ impl Holon {
     //
     // }
 }
-

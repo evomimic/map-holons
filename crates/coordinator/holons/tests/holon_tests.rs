@@ -15,7 +15,7 @@ use rstest::*;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use shared_test::holon_fixtures::*;
 use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
 use shared_test::*;
