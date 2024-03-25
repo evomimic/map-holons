@@ -1,6 +1,6 @@
 use crate::context::HolonsContext;
 use crate::holon::Holon;
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use hdk::prelude::*;
 use std::cell::RefCell;
 // use hdk::prelude::*;

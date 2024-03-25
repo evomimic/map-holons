@@ -17,9 +17,9 @@ use rstest::*;
 use shared_test::descriptor_fixtures::*;
 use shared_test::*;
 // use shared_test::test;
-use holons::holon_api::*;
-use holons::holon_errors::HolonError;
 use holons::holon::Holon;
+use holons::holon_api::*;
+use holons::holon_error::HolonError;
 
 use shared_test::test_data_types::{DescriptorTestCase, DescriptorTestStep};
 use shared_types_holon::holon_node::{PropertyMap, PropertyName};
@@ -69,9 +69,6 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
     // // assert_eq!(1, fetched_holons.len());
     // println!("Call to load_core_schema_api returned: ");
     // println!("{:#?}",load_schema_result);
-
-
-
 
     // The heavy lifting for this test is in the test data set creation.
 
@@ -132,7 +129,6 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
     //         }
     //     }
     // }
-
 
     println!("All Steps Completed...");
     println!("To re-run just this test with output, use: 'cargo test -p descriptors --test descriptor_tests  -- --show-output'");

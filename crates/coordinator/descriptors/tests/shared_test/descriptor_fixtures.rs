@@ -36,7 +36,7 @@ use crate::shared_test::test_data_types::{DescriptorTestCase, DescriptorTestStep
 // use crate::shared_test::property_descriptor_data_creators::{
 //     create_example_property_descriptors, create_example_updates_for_property_descriptors,
 // };
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 
 /// This function creates returns a TestCase containing a sequence of Descriptor Create, Update and Delete ops
 ///

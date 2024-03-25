@@ -8,7 +8,7 @@ use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonFieldGettable};
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 // use crate::staged_reference::StagedReference;
 use crate::holon::HolonState;

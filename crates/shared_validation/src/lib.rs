@@ -1,4 +1,5 @@
-use shared_types_holon::ValidationError;
+pub use validation_error::*;
+pub mod validation_error;
 
 // We may eventually want these modules to be private
 pub mod properties;

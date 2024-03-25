@@ -11,7 +11,7 @@ use shared_types_holon::{HolonId, MapString, PropertyValue};
 
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;

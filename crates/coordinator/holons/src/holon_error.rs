@@ -1,7 +1,6 @@
 use hdk::prelude::*;
+use shared_validation::ValidationError;
 use thiserror::Error;
-use shared_types_holon::validation_error::ValidationError;
-
 
 #[hdk_entry_helper]
 #[derive(Error, Eq, PartialEq, Clone)]
@@ -32,7 +31,6 @@ pub enum HolonError {
     CacheError(String),
     #[error("Validation error: {0}")]
     ValidationError(ValidationError),
-
 }
 
 impl From<WasmError> for HolonError {
