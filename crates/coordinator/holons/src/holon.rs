@@ -31,7 +31,6 @@ pub struct Holon {
     // pub dances : DanceMap,
 }
 
-
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
 // ///he PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
 // /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
@@ -61,7 +60,6 @@ pub struct Holon {
 //         }
 //     }
 // }
-
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -231,6 +229,10 @@ impl Holon {
                 let result = create_holon_node(self.clone().into_node());
                 match result {
                     Ok(record) => {
+                        let holon_id = HolonId(record.action_address().clone());
+                        for (_name, target) in self.relationship_map.0 {
+                            target.commit(holon_id.clone())?;
+                        }
                         holon.saved_node = Some(record);
                         holon.state = HolonState::Fetched;
 
@@ -254,6 +256,10 @@ impl Holon {
                     let result = update_holon_node(input);
                     match result {
                         Ok(record) => {
+                            let holon_id = HolonId(record.action_address().clone());
+                            for (_name, target) in self.clone().relationship_map.0 {
+                                target.commit(holon_id.clone())?;
+                            }
                             holon.saved_node = Some(record);
 
                             Ok(self)
@@ -352,4 +358,3 @@ impl Holon {
     //
     // }
 }
-
