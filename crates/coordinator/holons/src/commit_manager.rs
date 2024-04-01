@@ -2,17 +2,17 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::holon::Holon;
 use crate::holon_errors::HolonError;
-use shared_types_holon::MapString;
-use crate::holon::{Holon};
+use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
+use shared_types_holon::MapString;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
     pub staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
     index: HashMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
-
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {
@@ -26,8 +26,7 @@ pub enum CommitRequestStatus {
 }
 
 impl CommitManager {
-
-    pub fn new()->CommitManager {
+    pub fn new() -> CommitManager {
         CommitManager {
             staged_holons: Vec::new(),
             index: Default::default(),
@@ -35,7 +34,7 @@ impl CommitManager {
     }
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, the function updates the index to allow the staged holon to be retrieved by key
-    pub fn stage_holon(&mut self, holon: Holon) -> StagedReference {
+    pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
         let rc_holon = Rc::new(RefCell::new(holon.clone())); // Cloning the object for Rc
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
@@ -44,10 +43,7 @@ impl CommitManager {
             key = Some(the_key.clone());
             self.index.insert(the_key, holon_index);
         }
-        StagedReference {
-            key,
-            holon_index,
-        }
+        StagedReference { key, holon_index }
     }
 
     /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the
@@ -66,25 +62,35 @@ impl CommitManager {
     }
     pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
         let holons = &self.staged_holons;
-        let holon_ref = holons.get(reference.holon_index)
+        let holon_ref = holons
+            .get(reference.holon_index)
             .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
 
         match holon_ref.try_borrow() {
             Ok(holon) => Ok(holon),
-            Err(_) => Err(HolonError::FailedToBorrow("Holon Reference from staged_holons vector".to_string()))
+            Err(_) => Err(HolonError::FailedToBorrow(
+                "Holon Reference from staged_holons vector".to_string(),
+            )),
         }
     }
 
-    pub fn get_mut_holon(&self, staged_reference: &StagedReference) -> Result<RefMut<Holon>, HolonError> {
+    pub fn get_mut_holon(
+        &self,
+        staged_reference: &StagedReference,
+    ) -> Result<RefMut<Holon>, HolonError> {
         return if let Some(holon) = self.staged_holons.get(staged_reference.holon_index) {
             if let Ok(holon_ref) = holon.try_borrow_mut() {
                 Ok(holon_ref)
             } else {
-                Err(HolonError::FailedToBorrow("for StagedReference".to_string()))
+                Err(HolonError::FailedToBorrow(
+                    "for StagedReference".to_string(),
+                ))
             }
         } else {
-            Err(HolonError::InvalidHolonReference("Invalid holon index".to_string()))
-        }
+            Err(HolonError::InvalidHolonReference(
+                "Invalid holon index".to_string(),
+            ))
+        };
     }
     pub fn clear_staged_objects(&mut self) {
         self.staged_holons.clear();
@@ -104,7 +110,9 @@ impl CommitManager {
             let holon = rc_holon.borrow().clone(); // Clone the object inside RefCell
             let outcome = holon.commit();
 
-            if let Err(e) = outcome { errors.push(e) };
+            if let Err(e) = outcome {
+                errors.push(e)
+            };
         }
 
         self.clear_staged_objects();
@@ -121,6 +129,3 @@ impl CommitManager {
         commit_response
     }
 }
-
-
-
