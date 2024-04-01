@@ -16,12 +16,14 @@ use crate::holon_errors::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
+use crate::smart_reference::SmartReference;
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
+    pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
     key: Option<MapString>,
@@ -99,6 +101,7 @@ impl Holon {
         Holon {
             state: HolonState::New,
             saved_node: None,
+            predecessor: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
             key: None,
@@ -151,6 +154,7 @@ impl Holon {
         let holon = Holon {
             state: HolonState::Fetched,
             saved_node: Some(holon_node_record),
+            predecessor: None,
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
             key: None,
