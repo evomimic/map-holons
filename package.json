@@ -17,9 +17,9 @@
     "cb": "clear && npm run build:happ"
   },
   "devDependencies": {
-    "@holochain-playground/cli": "^0.1.1",
-    "concurrently": "^6.2.1",
-    "rimraf": "^3.0.2"
+    "@holochain-playground/cli": "^0.2.0",
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5"
   },
   "engines": {
     "npm": ">=7.0.0"

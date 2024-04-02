@@ -27,7 +27,7 @@ pub fn get_smartlinks_for_holon_node(
     let get_input: Vec<GetInput> = links
         .into_iter()
         .map(|link| GetInput::new(
-            ActionHash::from(link.target).into(),
+            link.target.try_into().unwrap(),
             GetOptions::default(),
         ))
         .collect();
@@ -53,7 +53,7 @@ pub fn remove_smartlink(
         None,
     )?;
     for link in links {
-        if ActionHash::from(link.target.clone()).eq(&input.target_holon_node_hash) {
+        if link.target.into_action_hash().unwrap().eq(&input.target_holon_node_hash) {
             delete_link(link.create_link_hash)?;
         }
     }

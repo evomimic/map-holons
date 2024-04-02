@@ -16,13 +16,13 @@ members = ["crates/coordinator/holons",
 
 [workspace.dependencies]
 
-holochain_integrity_types = "0.1"
-hdi = "0.2"
-hdk = "0.1"
+holochain_integrity_types = "0.2"
+hdi = "0.3"
+hdk = "0.2"
 serde = "1"
-derive-new = "0.5"
+derive-new = "0.6"
 thiserror = "1"
-ahash ="=0.8.6"
+ahash ="=0.8.11"
 quick_cache = "0.4.1"
 
 
