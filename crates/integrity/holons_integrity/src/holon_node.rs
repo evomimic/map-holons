@@ -35,7 +35,7 @@ pub fn validate_create_link_holon_node_updates(
     target_address: AnyLinkableHash,
     _tag: LinkTag,
 ) -> ExternResult<ValidateCallbackResult> {
-    let action_hash = ActionHash::from(base_address);
+    let action_hash = base_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(String::from("No action hash associated with link"))),)?;
     let record = must_get_valid_record(action_hash)?;
     let _holon_node: crate::HolonNode = record
         .entry()
@@ -46,7 +46,7 @@ pub fn validate_create_link_holon_node_updates(
                 WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
             ),
         )?;
-    let action_hash = ActionHash::from(target_address);
+    let action_hash = target_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(String::from("No action hash associated with link"))),)?;
     let record = must_get_valid_record(action_hash)?;
     let _holon_node: crate::HolonNode = record
         .entry()
@@ -79,7 +79,7 @@ pub fn validate_create_link_all_holon_nodes(
     _tag: LinkTag,
 ) -> ExternResult<ValidateCallbackResult> {
     // Check the entry type for the given action hash
-    let action_hash = ActionHash::from(target_address);
+    let action_hash = target_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(String::from("No action hash associated with link"))),)?;
     let record = must_get_valid_record(action_hash)?;
     let _holon_node: crate::HolonNode = record
         .entry()
