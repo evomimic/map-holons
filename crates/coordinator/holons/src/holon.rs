@@ -151,9 +151,9 @@ impl Holon {
         Ok(self.key.clone())
     }
 
-    pub fn into_node(self) -> HolonNode {
+    pub fn into_node(&self) -> HolonNode {
         HolonNode {
-            property_map: self.property_map,
+            property_map: self.property_map.clone(),
         }
     }
 
@@ -239,8 +239,8 @@ impl Holon {
     /// commit() creates a HolonNode and SmartLinks if state = New,
     /// updates the HolonNode and SmartLinks if state = Changed,
     /// and just returns the Holon unchanged if state = Fetched,
-    pub fn commit(self) -> Result<Self, HolonError> {
-        let mut holon = self.clone();
+    pub fn commit(mut self) -> Result<Self, HolonError> {
+        // let mut holon = self.clone(); // avoid doing this?
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
@@ -248,13 +248,13 @@ impl Holon {
                 match result {
                     Ok(record) => {
                         let holon_id = HolonId(record.action_address().clone());
-                        for (_name, target) in self.relationship_map.0 {
+                        for (_name, target) in self.relationship_map.0.clone() {
                             target.commit(holon_id.clone())?;
                         }
-                        holon.saved_node = Some(record);
-                        holon.state = HolonState::Fetched;
+                        self.saved_node = Some(record);
+                        self.state = HolonState::Fetched;
 
-                        Ok(holon)
+                        Ok(self)
                     }
                     Err(error) => Err(HolonError::from(error)),
                 }
@@ -278,7 +278,7 @@ impl Holon {
                             for (_name, target) in self.clone().relationship_map.0 {
                                 target.commit(holon_id.clone())?;
                             }
-                            holon.saved_node = Some(record);
+                            self.saved_node = Some(record);
 
                             Ok(self)
                         }

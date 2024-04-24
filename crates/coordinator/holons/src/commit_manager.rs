@@ -157,9 +157,8 @@ impl CommitManager {
         let mut errors: Vec<HolonError> = Vec::new();
         for rc_holon in self.staged_holons.clone() {
             // Dereference the Rc and clone the RefCell to access the object
-            let outcome = rc_holon.borrow().clone().commit(); // ?? Is clone a problem here ??
-
-            if let Err(e) = outcome {
+            let outcome = rc_holon.borrow_mut().clone().commit();
+            if let Err(e) = outcome.clone() {
                 errors.push(e)
             };
         }
@@ -189,7 +188,7 @@ impl CommitManager {
 
         // Set state to fetched, set predecessor to existing_holon
         holon.state = HolonState::Fetched;
-        holon.predecessor = Some(existing_holon.clone()); // ?? Should it be clone_reference ??
+        holon.predecessor = Some(existing_holon.clone_reference());
 
         // Add the new holon into the CommitManager's staged_holons list, remebering its index
         let index = self.staged_holons.len();

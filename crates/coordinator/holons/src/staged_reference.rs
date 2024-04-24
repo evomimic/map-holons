@@ -123,7 +123,7 @@ impl StagedReference {
     ) -> Result<RelationshipMap, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        Ok(holon.relationship_map.clone()) // ?? Clone ok?  ??
+        Ok(holon.relationship_map.clone())
     }
 
     pub fn get_mut_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
