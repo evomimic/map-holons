@@ -2,8 +2,12 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::holon::Holon;
+// use crate::cache_manager::HolonCacheManager;
+use crate::context::HolonsContext;
+use crate::holon::{Holon, HolonState};
 use crate::holon_errors::HolonError;
+use crate::relationship::RelationshipMap;
+use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 use shared_types_holon::MapString;
@@ -35,7 +39,7 @@ impl CommitManager {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, the function updates the index to allow the staged holon to be retrieved by key
     pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
-        let rc_holon = Rc::new(RefCell::new(holon.clone())); // Cloning the object for Rc
+        let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
         let mut key: Option<MapString> = None;
@@ -44,6 +48,52 @@ impl CommitManager {
             self.index.insert(the_key, holon_index);
         }
         StagedReference { key, holon_index }
+    }
+
+    pub fn clone_holon(
+        &mut self,
+        context: &HolonsContext,
+        existing_holon: &mut SmartReference,
+    ) -> Result<StagedReference, HolonError> {
+        // Create a new empty Holon
+        let mut holon = Holon::new();
+
+        // Add the new holon into the CommitManager's staged_holons list, remebering its index
+        let index = self.staged_holons.len();
+        self.staged_holons
+            .push(Rc::new(RefCell::new(holon.clone())));
+
+        // Return a staged reference to the staged holon
+        let staged_reference = StagedReference {
+            key: existing_holon.key.clone(),
+            holon_index: index,
+        };
+
+        // Copy the existing holon's PropertyMap into the new holon
+        holon.property_map = existing_holon.get_property_map(context)?;
+
+        // Iterate through existing holon's RelationshipMap
+        // For each RelationshipTarget, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
+        let existing_relationship_map = existing_holon.get_relationship_map(context)?;
+        holon.relationship_map = RelationshipMap::new();
+        for (relationship_name, relationship_target) in existing_relationship_map.0 {
+            let mut new_relationship_target = RelationshipTarget {
+                editable: None,
+                cursors: Vec::new(),
+            };
+            // for now populate 0th cursor
+            new_relationship_target.stage_collection(
+                staged_reference.clone_reference(),
+                relationship_target.cursors[0].clone(),
+            );
+
+            holon
+                .relationship_map
+                .0
+                .insert(relationship_name, new_relationship_target);
+        }
+
+        Ok(staged_reference)
     }
 
     /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the
@@ -107,8 +157,7 @@ impl CommitManager {
         let mut errors: Vec<HolonError> = Vec::new();
         for rc_holon in self.staged_holons.clone() {
             // Dereference the Rc and clone the RefCell to access the object
-            let holon = rc_holon.borrow().clone(); // Clone the object inside RefCell
-            let outcome = holon.commit();
+            let outcome = rc_holon.borrow().clone().commit(); // ?? Is clone a problem here ??
 
             if let Err(e) = outcome {
                 errors.push(e)
@@ -127,5 +176,56 @@ impl CommitManager {
             }
         };
         commit_response
+    }
+
+    /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
+    pub fn edit_holon(
+        &mut self,
+        context: &HolonsContext,
+        existing_holon: &mut SmartReference,
+    ) -> Result<StagedReference, HolonError> {
+        // Create empty Holon
+        let mut holon = Holon::new();
+
+        // Set state to fetched, set predecessor to existing_holon
+        holon.state = HolonState::Fetched;
+        holon.predecessor = Some(existing_holon.clone()); // ?? Should it be clone_reference ??
+
+        // Add the new holon into the CommitManager's staged_holons list, remebering its index
+        let index = self.staged_holons.len();
+        self.staged_holons
+            .push(Rc::new(RefCell::new(holon.clone())));
+
+        // Return a staged reference to the staged holon
+        let staged_reference = StagedReference {
+            key: existing_holon.key.clone(),
+            holon_index: index,
+        };
+
+        // Copy the existing holon's PropertyMap into the new holon
+        holon.property_map = existing_holon.get_property_map(context)?;
+
+        // Iterate through existing holon's RelationshipMap
+        // For each RelationshipTarget, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
+        let existing_relationship_map = existing_holon.get_relationship_map(context)?;
+        holon.relationship_map = RelationshipMap::new();
+        for (relationship_name, relationship_target) in existing_relationship_map.0 {
+            let mut new_relationship_target = RelationshipTarget {
+                editable: None,
+                cursors: Vec::new(),
+            };
+            // *Note: temp implementation, populate 0th cursor. TODO: set strategy for how to determine which SmartCollection (cursor) to choose
+            new_relationship_target.stage_collection(
+                staged_reference.clone_reference(),
+                relationship_target.cursors[0].clone(),
+            );
+
+            holon
+                .relationship_map
+                .0
+                .insert(relationship_name, new_relationship_target);
+        }
+
+        Ok(staged_reference)
     }
 }

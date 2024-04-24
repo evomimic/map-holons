@@ -9,7 +9,6 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
 
-use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_errors::HolonError;
@@ -17,6 +16,7 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
+use crate::{all_holon_nodes::*, property_map};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -107,6 +107,22 @@ impl Holon {
             key: None,
         }
     }
+
+    // /// Custom clone implementation for Holon.
+    // /// The clone method used by both the edit_holon and clone_holon CommitManager functions should copy the Holon, its properties, its relationship_map, and its RelationshipTargets, but NOT their cursors.
+    // pub fn clone_holon(&self) -> Self {
+    //     // let relationship_map = x;
+
+    //     Self {
+    //         state: HolonState::New,
+    //         save_node: self.saved_node.clone(),
+    //         predecessor: None,
+    //         property_map: self.property_map.clone(),
+    //         relationship_map,
+    //         key: self.key.clone(),
+    //     }
+    // }
+
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
     /// TODO: replace with cache aware function
     pub fn get_holon(id: HolonId) -> Result<Option<Holon>, HolonError> {
@@ -129,11 +145,6 @@ impl Holon {
             .get(property_name)
             .cloned()
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
-    }
-
-    // this method is probably not needed
-    pub fn get_relationship_map(&self) -> Result<RelationshipMap, HolonError> {
-        Ok(self.relationship_map.clone())
     }
 
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
@@ -159,6 +170,9 @@ impl Holon {
             relationship_map: RelationshipMap::new(),
             key: None,
         };
+
+        // TODO: populate predecessor from link to previous record for this Holon
+
         // TODO: populate `key` from the property map once we have Descriptors/Constraints available
 
         // TODO: Populate RelationshipMap from links

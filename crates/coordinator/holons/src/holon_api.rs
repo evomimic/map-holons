@@ -3,38 +3,34 @@
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::HolonId;
 use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::HolonId;
 
 use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
 
 #[hdk_extern]
-pub fn new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
-#[derive(Clone, Serialize, Deserialize, Debug)]
+pub fn new_holon(_: ()) -> ExternResult<Holon> {
+    Ok(Holon::new())
+}
+#[derive(Serialize, Deserialize, Debug)]
 pub struct WithPropertyInput {
     pub holon: Holon,
-    pub property_name:PropertyName,
+    pub property_name: PropertyName,
     pub value: BaseValue,
 }
 
 #[hdk_extern]
 pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
     let mut holon = input.holon.clone();
-    holon.with_property_value(
-        input.property_name.clone(),
-        input.value.clone());
+    holon.with_property_value(input.property_name.clone(), input.value.clone());
     Ok(holon)
 }
 #[hdk_extern]
-pub fn get_holon(
-    id: HolonId,
-) -> ExternResult<Option<Holon>> {
-       match Holon::get_holon(id) {
+pub fn get_holon(id: HolonId) -> ExternResult<Option<Holon>> {
+    match Holon::get_holon(id) {
         Ok(result) => Ok(result),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
+        Err(holon_error) => Err(holon_error.into()),
     }
 }
 
@@ -44,41 +40,25 @@ pub fn commit(input: Holon) -> ExternResult<Holon> {
     // // quick exit to test error return
     // return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
     match holon.commit() {
-        Ok(result)=> Ok(result.clone()),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
+        Ok(result) => Ok(result.clone()),
+        Err(holon_error) => Err(holon_error.into()),
     }
-
 }
 
 #[hdk_extern]
-pub fn get_all_holons(
-   _: (),
-) -> ExternResult<Vec<Holon>> {
+pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {
     match Holon::get_all_holons() {
         Ok(result) => Ok(result),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
+        Err(holon_error) => Err(holon_error.into()),
     }
-
 }
 #[hdk_extern]
-pub fn delete_holon(
-    target_holon_id: ActionHash,
-) -> ExternResult<ActionHash> {
+pub fn delete_holon(target_holon_id: ActionHash) -> ExternResult<ActionHash> {
     match delete_holon_node(target_holon_id) {
         Ok(result) => Ok(result),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
+        Err(holon_error) => Err(holon_error.into()),
     }
 }
-
-
-
-
 
 /*
 #[derive(Serialize, Deserialize, Debug)]
