@@ -1,50 +1,54 @@
-use std::cell::{RefCell};
-use std::collections::BTreeMap;
-use std::rc::Rc;
 use derive_new::new;
 use hdk::prelude::*;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
 
-use shared_types_holon::{MapString, PropertyValue};
-use shared_types_holon::holon_node::PropertyName;
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonFieldGettable};
 use crate::holon_errors::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use crate::staged_collection::StagedCollection;
+use shared_types_holon::holon_node::PropertyName;
+use shared_types_holon::{MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct StagedReference {
-    pub key : Option<MapString>,
-    // pub rc_holon : Rc<RefCell<Holon>>,
+    pub key: Option<MapString>,
+    // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: usize,
 }
-
 
 impl StagedReference {
     // Constructor function for creating StagedReference index into CommitManagers StagedHolons
     // pub fn from_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<StagedReference, HolonError> {
     //     let key = rc_holon.borrow().get_key()?;
-    //
-    //     Ok(StagedReference {
-    //         key,
-    //         rc_holon,
-    //     })
+
+    //     Ok(StagedReference { key, holon_index })
     // }
 
-    // Method to clone the underlying Holon object
-    pub fn clone_holon(&self, context: &HolonsContext) -> Holon {
-        context.commit_manager.borrow().staged_holons[self.holon_index].borrow().clone()
-    }
+    // // Method to clone the underlying Holon object
+    // pub fn clone_holon(&self, context: &HolonsContext) -> Holon {
+    //     context.commit_manager.borrow().staged_holons[self.holon_index]
+    //         .borrow()
+    //         .clone()
+    // }
+
     pub fn clone_reference(&self) -> StagedReference {
         StagedReference {
             key: self.key.clone(),
-            holon_index: self.holon_index,
+            holon_index: self.holon_index.clone(),
         }
     }
 
-    pub fn add_related_holons(&self, context: &mut HolonsContext, relationship_name: RelationshipName, holons: Vec<HolonReference>) -> Result<(), HolonError> {
+    pub fn add_related_holons(
+        &self,
+        context: &mut HolonsContext,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
         // Ensure the existence of an editable collection for the specified relationship name
         self.ensure_editable_collection(context, relationship_name.clone())?;
 
@@ -65,11 +69,11 @@ impl StagedReference {
             collection.holons.extend(holons);
             Ok(())
         } else {
-            Err(HolonError::UnableToAddHolons("to staged collection".to_string()))
+            Err(HolonError::UnableToAddHolons(
+                "to staged collection".to_string(),
+            ))
         }
     }
-
-
 
     /// This function confirms that a RelationshipTarget with an editable collection has been created
     /// for the specified relationship. If so, it returns true.
@@ -79,12 +83,19 @@ impl StagedReference {
     /// TODO: Add validation_status to either RelationshipTarget or StagedCollection and, before adding the
     /// RelationshipTarget, verify that a relationship with the specified relationship_name is valid for this holon type
     ///
-    fn ensure_editable_collection(&self, context: &mut HolonsContext, relationship_name: RelationshipName) -> Result<bool, HolonError> {
+    fn ensure_editable_collection(
+        &self,
+        context: &mut HolonsContext,
+        relationship_name: RelationshipName,
+    ) -> Result<bool, HolonError> {
         // Get mutable access to the holon
         let holon_ref = self.get_mut_holon(context)?;
 
         // Access the relationship map and ensure the existence of the editable collection
-        holon_ref.borrow().get_relationship_map()?
+        holon_ref
+            .borrow()
+            .relationship_map
+            .clone()
             .0
             .entry(relationship_name.clone())
             .or_insert_with(|| {
@@ -106,10 +117,13 @@ impl StagedReference {
         Ok(true) // Return true indicating success
     }
 
-    pub fn get_relationship_map(&mut self, context: &HolonsContext) -> Result<RelationshipMap, HolonError> {
+    pub fn get_relationship_map(
+        &mut self,
+        context: &HolonsContext,
+    ) -> Result<RelationshipMap, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_relationship_map()
+        Ok(holon.relationship_map.clone())
     }
 
     pub fn get_mut_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
@@ -124,16 +138,23 @@ impl StagedReference {
             Ok(holon_ref.clone())
         } else {
             // If index is out of range, return an error
-            Err(HolonError::InvalidHolonReference(format!("Invalid holon index: {}", self.holon_index)))
+            Err(HolonError::InvalidHolonReference(format!(
+                "Invalid holon index: {}",
+                self.holon_index
+            )))
         }
     }
 }
 
 impl HolonFieldGettable for StagedReference {
-    fn get_property_value(&mut self, context: &HolonsContext, property_name: &PropertyName) -> Result<PropertyValue, HolonError> {
+    fn get_property_value(
+        &mut self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_property_value( property_name)
+        holon.get_property_value(property_name)
     }
 
     fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
@@ -142,9 +163,3 @@ impl HolonFieldGettable for StagedReference {
         holon.get_key().clone()
     }
 }
-
-
-
-
-
-
