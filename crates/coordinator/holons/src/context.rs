@@ -14,6 +14,12 @@ impl HolonsContext {
             cache_manager: HolonCacheManager::new().into(),
         }
     }
+    pub fn init_context(commit_manager: CommitManager, cache_manager: HolonCacheManager) -> HolonsContext {
+        HolonsContext {
+            commit_manager: RefCell::from(commit_manager),
+            cache_manager: RefCell::from(cache_manager),
+        }
+    }
     // pub fn set_commit_manager(&mut self, commit_manager: CommitManager) {
     //     self.commit_manager = commit_manager.clone();
     //     return

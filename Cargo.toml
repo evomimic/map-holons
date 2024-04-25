@@ -10,6 +10,7 @@ resolver = "2"
 
 members = ["crates/coordinator/holons",
     "crates/coordinator/descriptors",
+    "crates/coordinator/dances",
     "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
 ]
@@ -29,6 +30,9 @@ quick_cache = "0.4.1"
 
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
+
+[workspace.dependencies.dances]
+path = "crates/coordinator/dances"
 
 [workspace.dependencies.descriptors]
 path = "crates/coordinator/descriptors"

@@ -13,8 +13,8 @@ use std::collections::BTreeMap;
 /// * When *_new_* holons are created (from scratch), their relationship_map will be created but empty
 /// * When holons are derived or cloned from existing holons
 ///     * their relationship_map will have entries for any populated in the existing holon
-///     * the RelationshipTarget value for those entries will be have a StagedCollection created
-///     * the StagedCollection will be populated with SmartReferences cloned from the exist holon
+///     * the RelationshipTarget value for those entries will have a StagedCollection created
+///     * the StagedCollection will be populated with SmartReferences cloned from the existing holon
 ///
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]

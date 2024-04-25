@@ -1,5 +1,5 @@
 use std::cell::{Ref, RefCell, RefMut};
-use std::collections::HashMap;
+use std::collections::{BTreeMap};
 use std::rc::Rc;
 
 use crate::holon_errors::HolonError;
@@ -10,7 +10,7 @@ use crate::staged_reference::StagedReference;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
     pub staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
-    index: HashMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
+    pub index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
 
 
@@ -33,6 +33,9 @@ impl CommitManager {
             index: Default::default(),
         }
     }
+
+
+
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, the function updates the index to allow the staged holon to be retrieved by key
     pub fn stage_holon(&mut self, holon: Holon) -> StagedReference {
@@ -96,7 +99,7 @@ impl CommitManager {
     /// index are cleared.
     ///
     /// The CommitResponse returned by this function returns Success if no errors were encountered.
-    /// Otherwise the CommitResponse will contain an error status and the vector of errors.
+    /// Otherwise, the CommitResponse will contain an error status and the vector of errors.
     pub fn commit(&mut self) -> CommitResponse {
         let mut errors: Vec<HolonError> = Vec::new();
         for rc_holon in self.staged_holons.clone() {
