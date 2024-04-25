@@ -34,15 +34,15 @@ pub fn get_holon(id: HolonId) -> ExternResult<Option<Holon>> {
     }
 }
 
-#[hdk_extern]
-pub fn commit(input: Holon) -> ExternResult<Holon> {
-    // // quick exit to test error return
-    // return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
-    match input.clone().commit() {
-        Ok(result) => Ok(result.clone()),
-        Err(holon_error) => Err(holon_error.into()),
-    }
-}
+// #[hdk_extern]
+// pub fn commit(input: Holon) -> ExternResult<Holon> {
+//     // // quick exit to test error return
+//     // return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
+//     match input.clone().commit() {
+//         Ok(result) => Ok(result.clone()),
+//         Err(holon_error) => Err(holon_error.into()),
+//     }
+// }
 
 #[hdk_extern]
 pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {

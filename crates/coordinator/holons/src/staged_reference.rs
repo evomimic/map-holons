@@ -36,6 +36,13 @@ impl StagedReference {
     //         .clone()
     // }
 
+    pub fn commit(&self, context: &HolonsContext) -> Result<(), HolonError> {
+        let holon_ref = self.get_mut_holon(context)?;
+        let mut holon = holon_ref.borrow_mut();
+        holon.commit(context)?;
+        Ok(())
+    }
+
     pub fn clone_reference(&self) -> StagedReference {
         StagedReference {
             key: self.key.clone(),

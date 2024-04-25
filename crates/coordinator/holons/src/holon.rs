@@ -108,7 +108,6 @@ impl Holon {
         }
     }
 
-
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
     /// TODO: replace with cache aware function
     pub fn get_holon(id: HolonId) -> Result<Option<Holon>, HolonError> {
@@ -225,7 +224,7 @@ impl Holon {
     /// commit() creates a HolonNode and SmartLinks if state = New,
     /// updates the HolonNode and SmartLinks if state = Changed,
     /// and just returns the Holon unchanged if state = Fetched,
-    pub fn commit(mut self) -> Result<Self, HolonError> {
+    pub fn commit(mut self, context: &HolonsContext) -> Result<Self, HolonError> {
         // let mut holon = self.clone(); // avoid doing this?
         match self.state {
             HolonState::New => {
@@ -234,8 +233,8 @@ impl Holon {
                 match result {
                     Ok(record) => {
                         let holon_id = HolonId(record.action_address().clone());
-                        for (_name, target) in self.relationship_map.0.clone() {
-                            target.commit(holon_id.clone())?;
+                        for (name, target) in self.relationship_map.0.clone() {
+                            target.commit(context, holon_id.clone(), name.clone())?;
                         }
                         self.saved_node = Some(record);
                         self.state = HolonState::Fetched;
@@ -261,8 +260,8 @@ impl Holon {
                     match result {
                         Ok(record) => {
                             let holon_id = HolonId(record.action_address().clone());
-                            for (_name, target) in self.clone().relationship_map.0 {
-                                target.commit(holon_id.clone())?;
+                            for (name, target) in self.clone().relationship_map.0 {
+                                target.commit(context, holon_id.clone(), name.clone())?;
                             }
                             self.saved_node = Some(record);
 

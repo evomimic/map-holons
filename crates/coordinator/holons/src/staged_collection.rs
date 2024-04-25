@@ -1,6 +1,7 @@
-use crate::holon_errors::HolonError;
+use crate::context::HolonsContext;
 use crate::holon_reference::HolonReference;
 use crate::staged_reference::StagedReference;
+use crate::{holon_errors::HolonError, relationship::RelationshipName};
 use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;
@@ -72,9 +73,14 @@ impl StagedCollection {
     //     self.holons = Vec::new(); // is it correct to clear holons from staged collection? otherwise commit doesn't need to take mutable reference to self
     //     Ok(())
     // }
-    pub fn commit(&self, source_id: HolonId) -> Result<(), HolonError> {
+    pub fn commit(
+        &self,
+        context: &HolonsContext,
+        source_id: HolonId,
+        name: RelationshipName,
+    ) -> Result<(), HolonError> {
         for holon_reference in self.holons.clone() {
-            holon_reference.commit(source_id.clone())?;
+            holon_reference.commit(context, source_id.clone(), name.clone())?;
         }
         Ok(())
     }
