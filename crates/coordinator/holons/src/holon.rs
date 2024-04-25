@@ -108,20 +108,6 @@ impl Holon {
         }
     }
 
-    // /// Custom clone implementation for Holon.
-    // /// The clone method used by both the edit_holon and clone_holon CommitManager functions should copy the Holon, its properties, its relationship_map, and its RelationshipTargets, but NOT their cursors.
-    // pub fn clone_holon(&self) -> Self {
-    //     // let relationship_map = x;
-
-    //     Self {
-    //         state: HolonState::New,
-    //         save_node: self.saved_node.clone(),
-    //         predecessor: None,
-    //         property_map: self.property_map.clone(),
-    //         relationship_map,
-    //         key: self.key.clone(),
-    //     }
-    // }
 
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
     /// TODO: replace with cache aware function
@@ -151,7 +137,7 @@ impl Holon {
         Ok(self.key.clone())
     }
 
-    pub fn into_node(&self) -> HolonNode {
+    pub fn into_node(self) -> HolonNode {
         HolonNode {
             property_map: self.property_map.clone(),
         }
