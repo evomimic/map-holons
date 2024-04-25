@@ -12,25 +12,33 @@ use crate::dance_request::DanceRequest;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::holon_dances::stage_new_holon_dance;
+use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
 /// initializing the context (including converting the StagingArea into CommitManager) and,
-/// after getting the result of the call, converting the CommitManager back into StagingArea
+/// after getting the result of the call, converting the CommitManager back into StagingArea.
 ///
+/// This function alwayss returns a DanceResponse (instead of an Error) because
+/// errors are encoded in the DanceResponse's status_code.
 
 #[hdk_extern]
 pub fn dance(request:DanceRequest)->ExternResult<DanceResponse> {
 
-    // TODO: Validate the dance request
 
-    let mut result = DanceResponse {
-        status_code: ResponseStatusCode::NotImplemented,
-        description: MapString("Invalid Request".to_string()),
-        body: None,
-        descriptor: None,
-        staging_area: request.staging_area.clone(),
-    };
+    let valid = true;  // TODO: Validate the dance request
+
+    if !valid {
+        let response = DanceResponse {
+            status_code: ResponseStatusCode::BadRequest,
+            description: MapString("Invalid Request".to_string()),
+            body: None,
+            descriptor: None,
+            staging_area: request.staging_area.clone(),
+        };
+        return Ok(response)
+
+    }
 
     // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
 
@@ -51,28 +59,13 @@ pub fn dance(request:DanceRequest)->ExternResult<DanceResponse> {
 
     // Dispatch the dance and map result to DanceResponse
     let dispatch_result = dancer.dispatch(&context, request);
-    // if Ok,
 
-    if let Ok(body) = dispatch_result {
-        result.body = Some(body);
-        result.status_code = ResponseStatusCode::Ok;
-    } else {
-        result.status_code = ResponseStatusCode::ServiceUnavailable;
-
-
-    }
-
+    let mut result = process_dispatch_result(dispatch_result);
 
     // Restore the StagingArea from CommitManager
+    result.staging_area = Some(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
 
-
-
-
-    // TODO: Restore the StagingArea from CommitManager
-
-
-
-    Ok(result)
+   Ok(result)
 }
 
 // Define a type alias for functions that can be dispatched
@@ -119,6 +112,19 @@ impl Dancer {
         }
     }
 }
+/// This function creates a DanceResponse from a `dispatch_result`.
+///
+/// If `dispatch_result` is `Ok`,
+/// * `status_code` is set to Ok,
+/// * `description` is set to "Success".
+/// * `body` is set to the body returned in the dispatch_result
+/// * `descriptor`, and `staging_area` are all initialized to None
+///
+/// If the `dispatch_result` is `Err`,
+/// * status_code is set from the mapping of HolonError `ResponseStatusCode`
+/// * `description` holds the error message associated with the HolonError
+/// * `body`, `descriptor` and `staging_area` are all set to None
+///
 
 fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
@@ -152,11 +158,10 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
             // Construct DanceResponse with error details
             DanceResponse {
                 status_code: ResponseStatusCode::from(error), // Convert HolonError to ResponseStatusCode
-                description: MapString("Fill in Error description here".to_string()),
+                description: MapString(error_message),
                 body: None, // No body since it's an error
                 descriptor: None, // Provide appropriate value if needed
                 staging_area: None, // Provide appropriate value if needed
-                //error_message: Some(error_message), // Set the error message
             }
         }
     }

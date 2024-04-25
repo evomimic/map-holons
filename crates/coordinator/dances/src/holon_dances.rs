@@ -8,7 +8,7 @@ use holons::holon_errors::HolonError;
 use shared_types_holon::MapInteger;
 use crate::dance_request::{DanceRequest};
 
-use crate::dance_response::{DanceResponse, ResponseBody};
+use crate::dance_response::{ResponseBody};
 // type DanceFunction = fn(context: &HolonsContext, request:DanceRequest) -> Result<ResponseBody, HolonError>;
 /// Create a new holon that can be incrementally built up prior to commit.
 /// As a dance adaptor, this function wraps (and insulates) the native functionality in Dance

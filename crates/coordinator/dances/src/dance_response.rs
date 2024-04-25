@@ -1,15 +1,13 @@
-use std::collections::BTreeMap;
-use std::fmt;
+
 
 use derive_new::new;
 
 use hdk::prelude::*;
-use holons::holon::{Holon, HolonState};
+use holons::holon::{Holon};
 use holons::holon_errors::HolonError;
 use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipMap;
 use holons::smart_collection::SmartCollection;
-use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap};
+use shared_types_holon::{MapInteger, MapString};
 use crate::staging_area::StagingArea;
 
 

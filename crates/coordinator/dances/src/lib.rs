@@ -3,9 +3,9 @@ mod dancer;
 mod staging_area;
 pub mod holon_dances;
 pub mod dance_request;
-mod api_errors;
 
-use hdk::prelude::*;
+
+// use hdk::prelude::*;
 // use holons_integrity::*;
 
 // #[hdk_extern]

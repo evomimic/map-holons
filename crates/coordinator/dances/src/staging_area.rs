@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap};
 use std::rc::Rc;
 use hdk::prelude::*;
 use holons::commit_manager::CommitManager;
