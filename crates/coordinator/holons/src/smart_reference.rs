@@ -59,7 +59,7 @@ impl SmartReference {
     //
     // }
 
-    // // Should only be called by the CommitManager ie TODO: needs to be protectecd
+    // // Should only be called by the CommitManager ie TODO: needs to be protected
     // pub fn clone_holon(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
     //     // Ensure rc_holon is populated
     //     self.ensure_rc(context)?;
