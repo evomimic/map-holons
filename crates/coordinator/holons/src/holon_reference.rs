@@ -72,7 +72,10 @@ impl HolonReference {
         }
     }
 
-    /// Commit on HolonReference persists a StagedReference variant to the DHT, then creates a smart_link, or just creates a smart_link for an already persisted SmartReference variant
+    /// Commit on HolonReference persists the reference as a SmartLink in the persistent store.
+    /// * If it's variant is Staged, then first commits() on its referenced holon and then uses
+    /// its holon_id as the to_address for the SmartLink
+    /// *  If it's variant is SmartReference, it just needs to create the SmartLink
     pub fn commit(
         &self,
         context: &HolonsContext,
@@ -81,14 +84,19 @@ impl HolonReference {
     ) -> Result<(), HolonError> {
         match self {
             HolonReference::Staged(staged_reference) => {
-                staged_reference.commit(context)?;
-                Ok(())
+                let target_id = staged_reference.commit(context)?;
+                let input = SmartLinkInput {
+                    from_address: source_id,
+                    to_address: target_id,
+                    relationship_descriptor: relationship_name,
+                };
+                create_smart_link(input)
             }
             HolonReference::Smart(smart_reference) => {
                 let input = SmartLinkInput {
-                    from_address: source_id.clone(),
-                    to_address: smart_reference.holon_id,
-                    relationship_descriptor: relationship_name.clone(),
+                    from_address: source_id,
+                    to_address: smart_reference.clone().holon_id,
+                    relationship_descriptor: relationship_name,
                 };
                 create_smart_link(input)
             }
