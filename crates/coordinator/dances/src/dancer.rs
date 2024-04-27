@@ -11,7 +11,7 @@ use shared_types_holon::MapString;
 use crate::dance_request::DanceRequest;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::holon_dances::stage_new_holon_dance;
+use crate::holon_dances::{get_all_holons_dance, stage_new_holon_dance};
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -57,6 +57,7 @@ pub fn dance(request:DanceRequest)->ExternResult<DanceResponse> {
 
     // TODO: If the request is a Command, add the request to the undo_list
 
+
     // Dispatch the dance and map result to DanceResponse
     let dispatch_result = dancer.dispatch(&context, request);
 
@@ -79,6 +80,7 @@ type DanceFunction = fn(context: &HolonsContext, request:DanceRequest) -> Result
 // * Command Response and Results objects --
 //
 // ## Commands
+#[derive(Debug)]
 struct Dancer {
     pub dispatch_table: HashMap<&'static str, DanceFunction>,
 }
@@ -89,7 +91,7 @@ impl Dancer {
         let mut dispatch_table = HashMap::new();
 
         // Register functions into the dispatch table
-        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
+        dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
 
         // Add more functions as needed
 

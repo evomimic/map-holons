@@ -8,11 +8,11 @@ use crate::staging_area::StagingArea;
 #[derive(Clone, Eq, PartialEq)]
 pub struct DanceRequest {
     pub dance_name: MapString, // unique key within Offered Holon Type
-    pub offering_holon: HolonReference,
-    pub handler: HolonId, // the space that can handle this request
+    // pub offering_holon: HolonReference,
+    // pub handler: HolonId, // the space that can handle this request
     pub body: RequestBody,
-    pub dance_type: DanceType, // Action, Command or Query?
-    pub descriptor: HolonReference, // space_id+holon_id of DanceDescriptor
+    // pub dance_type: DanceType, // Action, Command or Query?
+    //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
     pub staging_area: Option<StagingArea>,
 
 }
@@ -24,12 +24,27 @@ pub enum DanceType {
     Command,
 }
 
-
-
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct RequestBody {
     pub parameters: PropertyMap,  // input parameters for this request
+}
+impl RequestBody {
+    pub fn new()->Self {
+        Self {
+            parameters: PropertyMap::new(),
+        }
+    }
+}
+
+impl DanceRequest {
+    pub fn new(dance_name:MapString, body: RequestBody)->Self {
+        Self {
+            dance_name,
+            body,
+            staging_area: None,
+        }
+    }
 }
 
 

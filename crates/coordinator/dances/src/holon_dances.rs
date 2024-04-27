@@ -5,8 +5,8 @@ use hdk::prelude::*;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_errors::HolonError;
-use shared_types_holon::MapInteger;
-use crate::dance_request::{DanceRequest};
+use shared_types_holon::{MapInteger, MapString};
+use crate::dance_request::{DanceRequest, RequestBody};
 
 use crate::dance_response::{ResponseBody};
 // type DanceFunction = fn(context: &HolonsContext, request:DanceRequest) -> Result<ResponseBody, HolonError>;
@@ -33,14 +33,34 @@ pub fn stage_new_holon_dance(context: &HolonsContext, _request: DanceRequest) ->
 
 }
 
+pub fn build_stage_new_holon_dance_request()->Result<DanceRequest, HolonError> {
+    let body = RequestBody::new();
+    Ok(DanceRequest::new(MapString("stage_new_holon".to_string()), body))
+}
+pub fn get_all_holons_dance(_context: &HolonsContext, _request: DanceRequest) -> Result<ResponseBody, HolonError> {
+    // TODO: add support for descriptor parameter
+    //
+    //
+    let query_result =  Holon::get_all_holons();
+    match query_result {
+        Ok(holons) => Ok(
+            ResponseBody::Holons(holons)
+        ),
+        Err(holon_error) => {
+            Err(holon_error.into())
+        }
+    }
 
-// // pub fn stage_new_holon(_:()) -> ExternResult<Holon> {Ok(Holon::new())}
-// #[derive(Clone, Serialize, Deserialize, Debug)]
-// pub struct WithPropertyInput {
-//     pub holon: Holon,
-//     pub property_name:PropertyName,
-//     pub value: BaseValue,
-// }
+
+}
+pub fn build_get_all_holons_dance_request()->Result<DanceRequest, HolonError> {
+    let body = RequestBody::new();
+    Ok(DanceRequest::new(MapString("get_all_holons".to_string()), body))
+}
+
+
+
+
 //
 // #[hdk_extern]
 // pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {

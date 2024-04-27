@@ -1,4 +1,4 @@
-mod dance_response;
+pub mod dance_response;
 mod dancer;
 mod staging_area;
 pub mod holon_dances;

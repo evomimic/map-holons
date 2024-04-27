@@ -68,6 +68,7 @@ pub type StagedIndex = MapInteger;
 #[derive(Clone, Eq, PartialEq)]
 pub enum ResponseBody {
     Holon(Holon),
+    Holons(Vec<Holon>),
     SmartCollection(SmartCollection),
     Index(StagedIndex),
 }
