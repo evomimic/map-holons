@@ -152,12 +152,12 @@ impl CommitManager {
     /// index are cleared.
     ///
     /// The CommitResponse returned by this function returns Success if no errors were encountered.
-    /// Otherwise the CommitResponse will contain an error status and the vector of errors.
-    pub fn commit(&mut self) -> CommitResponse {
+    /// Otherwise, the CommitResponse will contain an error status and the vector of errors.
+    pub fn commit(&mut self, context:&HolonsContext) -> CommitResponse {
         let mut errors: Vec<HolonError> = Vec::new();
         for rc_holon in self.staged_holons.clone() {
             // Dereference the Rc and clone the RefCell to access the object
-            let outcome = rc_holon.borrow_mut().clone().commit();
+            let outcome = rc_holon.borrow_mut().clone().commit(context);
             if let Err(e) = outcome.clone() {
                 errors.push(e)
             };

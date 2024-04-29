@@ -69,7 +69,7 @@ pub enum HolonState {
     New,
     Fetched,
     Changed,
-    // CreateInProgress,
+    Saved,
     // SaveInProgress,
 }
 
@@ -79,6 +79,7 @@ impl fmt::Display for HolonState {
             HolonState::New => write!(f, "New"),
             HolonState::Fetched => write!(f, "Fetched"),
             HolonState::Changed => write!(f, "Changed"),
+            HolonState::Saved => write!(f, "Saved"),
         }
     }
 }
@@ -107,7 +108,6 @@ impl Holon {
             key: None,
         }
     }
-
 
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
     /// TODO: replace with cache aware function
@@ -222,11 +222,14 @@ impl Holon {
         }
     }
 
-    /// commit() creates a HolonNode and SmartLinks if state = New,
-    /// updates the HolonNode and SmartLinks if state = Changed,
-    /// and just returns the Holon unchanged if state = Fetched,
-    pub fn commit(mut self) -> Result<Self, HolonError> {
-        // let mut holon = self.clone(); // avoid doing this?
+    /// commit() saves a staged holon to the persistent store.
+    /// If the staged holon is `New`, it creates a HolonNode and SmartLinks
+    /// If the staged holon is `Changed`, it persists a new version of HolonNode and its SmartLinks
+    /// If the staged holon is `Fetched`, it does nothing
+    /// If there are no errors, this function creates the HolonId of the newly saved Holon
+    /// The state of the original holon (i.e., self) is updated to `Fetched` so that commits are
+    /// idempotent.
+    pub fn commit(&mut self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
@@ -234,23 +237,21 @@ impl Holon {
                 match result {
                     Ok(record) => {
                         let holon_id = HolonId(record.action_address().clone());
-                        for (_name, target) in self.relationship_map.0.clone() {
-                            target.commit(holon_id.clone())?;
+                        // Iterate through the holon's relationship map, invoking commit on each
+                        for (name, target) in self.relationship_map.0.clone() {
+                            target.commit(context, holon_id.clone(), name.clone())?;
                         }
-                        self.saved_node = Some(record);
-                        self.state = HolonState::Fetched;
 
-                        Ok(self)
+                        self.state = HolonState::Saved;
+
+                        Ok(holon_id)
                     }
                     Err(error) => Err(HolonError::from(error)),
                 }
             }
-            HolonState::Fetched => {
-                // Holon hasn't been changed since it was fetched
-                return Ok(self);
-            }
+
             HolonState::Changed => {
-                if let Some(node) = self.saved_node.clone() {
+                if let Some(ref node) = self.saved_node {
                     let input = UpdateHolonNodeInput {
                         // TEMP solution for original hash is to keep it the same //
                         original_holon_node_hash: node.action_address().clone(), // TODO: find way to populate this correctly
@@ -261,12 +262,12 @@ impl Holon {
                     match result {
                         Ok(record) => {
                             let holon_id = HolonId(record.action_address().clone());
-                            for (_name, target) in self.clone().relationship_map.0 {
-                                target.commit(holon_id.clone())?;
+                            for (name, target) in self.clone().relationship_map.0 {
+                                target.commit(context, holon_id.clone(), name.clone())?;
                             }
                             self.saved_node = Some(record);
 
-                            Ok(self)
+                            Ok(holon_id)
                         }
                         Err(error) => Err(HolonError::from(error)),
                     }
@@ -275,6 +276,20 @@ impl Holon {
                         "Must have a saved node in order to update".to_string(),
                     ))
                 }
+            }
+            _ => { // For either Fetched or Saved no save is needed, just return HolonId
+
+                    let node = self.saved_node.clone();
+                    if let Some(record) = node {
+                        return Ok(HolonId(record.action_address().clone()))
+                    }
+                    else {
+                        Err(HolonError::HolonNotFound(
+                            "Expected Holon to have a saved_node, but it doesn't".to_string()
+                        ))
+
+                    }
+
             }
         }
     }
@@ -301,6 +316,60 @@ impl Holon {
             Err(error) => Err(HolonError::WasmError(error.to_string())),
         }
     }
+    // pub fn commit(mut self, context: &HolonsContext) -> Result<Self, HolonError> {
+    //     //let mut holon = self.clone(); // avoid doing this?
+    //     match self.state {
+    //         HolonState::New => {
+    //             // Create a new HolonNode from this Holon and request it be created
+    //             let result = create_holon_node(self.clone().into_node());
+    //             match result {
+    //                 Ok(record) => {
+    //                     let holon_id = HolonId(record.action_address().clone());
+    //                     for (name, target) in self.relationship_map.0.clone() {
+    //                         target.commit(context, holon_id.clone(), name.clone())?;
+    //                     }
+    //                     self.saved_node = Some(record);
+    //                     self.state = HolonState::Fetched;
+    //
+    //                     Ok(self)
+    //                 }
+    //                 Err(error) => Err(HolonError::from(error)),
+    //             }
+    //         }
+    //         HolonState::Fetched => {
+    //             // Holon hasn't been changed since it was fetched
+    //             return Ok(self);
+    //         }
+    //         HolonState::Changed => {
+    //             if let Some(node) = self.saved_node.clone() {
+    //                 let input = UpdateHolonNodeInput {
+    //                     // TEMP solution for original hash is to keep it the same //
+    //                     original_holon_node_hash: node.action_address().clone(), // TODO: find way to populate this correctly
+    //                     previous_holon_node_hash: node.action_address().clone(),
+    //                     updated_holon_node: self.clone().into_node(),
+    //                 };
+    //                 let result = update_holon_node(input);
+    //                 match result {
+    //                     Ok(record) => {
+    //                         let holon_id = HolonId(record.action_address().clone());
+    //                         for (name, target) in self.clone().relationship_map.0 {
+    //                             target.commit(context, holon_id.clone(), name.clone())?;
+    //                         }
+    //                         self.saved_node = Some(record);
+    //
+    //                         Ok(self)
+    //                     }
+    //                     Err(error) => Err(HolonError::from(error)),
+    //                 }
+    //             } else {
+    //                 Err(HolonError::HolonNotFound(
+    //                     "Must have a saved node in order to update".to_string(),
+    //                 ))
+    //             }
+    //         }
+    //     }
+    // }
+
 
     // =======
     // use hdk::prelude::*;

@@ -1,5 +1,6 @@
 use crate::{holon_errors::HolonError, staged_reference::StagedReference};
 // use crate::smart_reference::SmartReference;
+use crate::context::HolonsContext;
 use crate::holon_reference::HolonReference;
 use crate::smart_collection::SmartCollection;
 use crate::staged_collection::StagedCollection;
@@ -47,9 +48,14 @@ impl RelationshipTarget {
     //     }
     //     Ok(())
     // }
-    pub fn commit(&self, source_id: HolonId) -> Result<(), HolonError> {
+    pub fn commit(
+        &self,
+        context: &HolonsContext,
+        source_id: HolonId,
+        name: RelationshipName,
+    ) -> Result<(), HolonError> {
         if let Some(collection) = self.editable.clone() {
-            collection.commit(source_id)?;
+            collection.commit(context, source_id.clone(), name.clone())?;
         }
         Ok(())
     }

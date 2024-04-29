@@ -1,33 +1,45 @@
 use hdi::prelude::*;
 //use shared_types_holon::holon_node::{HolonNode};
+
+pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
+pub const HEADER_BYTES: [u8; 3] = [226, 130, 183]; // Unicode '₷' // hex bytes: [0xE2][0x82][0xB7]
+pub const PROLOG_SEPERATOR: [u8; 3] = [226, 138, 163]; // Unicode '⊣' // hex bytes: [0xE2][0x8A][0xA3]
+// pub const LOCAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 129]; // Unicode 'Ⓛ' // hex bytes: [0xE2] [0x93] [0x81]
+// pub const EXTERNAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 141]; // Unicode 'Ⓛ' // hex bytes: [0xE2] [0x93] [0x8D]
+
 pub fn validate_create_smartlink(
     _action: CreateLink,
     base_address: AnyLinkableHash,
     target_address: AnyLinkableHash,
     _tag: LinkTag,
 ) -> ExternResult<ValidateCallbackResult> {
-    let action_hash = base_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(String::from("No action hash associated with link"))),)?;
+    let action_hash = base_address
+        .into_action_hash()
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "No action hash associated with link"
+        ))))?;
     let record = must_get_valid_record(action_hash)?;
     let _holon_node: crate::HolonNode = record
         .entry()
         .to_app_option()
         .map_err(|e| wasm_error!(e))?
-        .ok_or(
-            wasm_error!(
-                WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
-            ),
-        )?;
-    let action_hash = target_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(String::from("No action hash associated with link"))),)?;
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "Linked action must reference an entry"
+        ))))?;
+    let action_hash =
+        target_address
+            .into_action_hash()
+            .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+                "No action hash associated with link"
+            ))))?;
     let record = must_get_valid_record(action_hash)?;
     let _holon_node: crate::HolonNode = record
         .entry()
         .to_app_option()
         .map_err(|e| wasm_error!(e))?
-        .ok_or(
-            wasm_error!(
-                WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
-            ),
-        )?;
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "Linked action must reference an entry"
+        ))))?;
     Ok(ValidateCallbackResult::Valid)
 }
 pub fn validate_delete_smartlink(
