@@ -22,7 +22,7 @@ impl HolonCacheManager {
         // Initialize local cache
         let local_cache = Cache::new(99);
 
-        // Wrap local_cache in an Rc<RefCell<_>>
+        // Wrap local_cache in a Rc<RefCell<_>>
         let local_cache_rc = Rc::new(RefCell::new(HolonCache(local_cache)));
 
         // Create and return a new HolonCacheManager

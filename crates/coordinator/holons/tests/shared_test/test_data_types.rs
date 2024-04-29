@@ -14,7 +14,7 @@ pub struct HolonsTestCase {
 }
 #[derive(Clone, Debug)]
 pub enum HolonTestStep {
-    EnsureEmptu(), // Does a get_all_holons to confirm database is empty
+    EnsureEmpty(), // Does a get_all_holons to confirm database is empty
     Create(Holon), // Associated data is expected Holon
     Update(Holon), // Associated data is expected Holon after update
     Delete(HolonId), // Associated data is id of Holon to delete

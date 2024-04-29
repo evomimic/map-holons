@@ -30,7 +30,7 @@ pub struct Holon {
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
 
-    // pub dances : DanceMap,
+    // pub dancer : Dancer,
 }
 
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq

@@ -1,0 +1,132 @@
+/**
+ * @public
+ */
+export type HoloHash = Uint8Array;
+/**
+ * @public
+ */
+export type AgentPubKey = HoloHash;
+/**
+ * @public
+ */
+export type DnaHash = HoloHash;
+/**
+ * @public
+ */
+export type WasmHash = HoloHash;
+/**
+ * @public
+ */
+export type EntryHash = HoloHash;
+/**
+ * @public
+ */
+export type ActionHash = HoloHash;
+/**
+ * @public
+ */
+export type AnyDhtHash = HoloHash;
+/**
+ * @public
+ */
+export type ExternalHash = HoloHash;
+/**
+ * @public
+ */
+export type KitsuneAgent = Uint8Array;
+/**
+ * @public
+ */
+export type KitsuneSpace = Uint8Array;
+/** Base64 hash types */
+/**
+ * @public
+ */
+export type HoloHashB64 = string;
+/**
+ * @public
+ */
+export type AgentPubKeyB64 = HoloHashB64;
+/**
+ * @public
+ */
+export type DnaHashB64 = HoloHashB64;
+/**
+ * @public
+ */
+export type WasmHashB64 = HoloHashB64;
+/**
+ * @public
+ */
+export type EntryHashB64 = HoloHashB64;
+/**
+ * @public
+ */
+export type ActionHashB64 = HoloHashB64;
+/**
+ * @public
+ */
+export type AnyDhtHashB64 = HoloHashB64;
+/**
+ * @public
+ */
+export type InstalledAppId = string;
+/**
+ * @public
+ */
+export type Signature = Uint8Array;
+/**
+ * @public
+ */
+export type CellId = [DnaHash, AgentPubKey];
+/**
+ * @public
+ */
+export type DnaProperties = unknown;
+/**
+ * @public
+ */
+export type RoleName = string;
+/**
+ * @public
+ */
+export type InstalledCell = {
+    cell_id: CellId;
+    role_name: RoleName;
+};
+/**
+ * @public
+ */
+export type Timestamp = number;
+/**
+ * @public
+ */
+export interface Duration {
+    secs: number;
+    nanos: number;
+}
+/**
+ * @public
+ */
+export interface HoloHashed<T> {
+    hash: HoloHash;
+    content: T;
+}
+/**
+ * @public
+ */
+export interface NetworkInfo {
+    fetch_pool_info: FetchPoolInfo;
+    current_number_of_peers: number;
+    arc_size: number;
+    total_network_peers: number;
+    bytes_since_last_time_queried: number;
+    completed_rounds_since_last_time_queried: number;
+}
+/**
+ * @public
+ */
+export interface FetchPoolInfo {
+    op_bytes_to_fetch: number;
+    num_ops_to_fetch: number;
+}

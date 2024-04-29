@@ -1,5 +1,5 @@
 use std::cell::{Ref, RefCell, RefMut};
-use std::collections::HashMap;
+use std::collections::{BTreeMap};
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
@@ -15,7 +15,7 @@ use shared_types_holon::MapString;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
     pub staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
-    index: HashMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
+    pub index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -36,6 +36,9 @@ impl CommitManager {
             index: Default::default(),
         }
     }
+
+
+
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, the function updates the index to allow the staged holon to be retrieved by key
     pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
