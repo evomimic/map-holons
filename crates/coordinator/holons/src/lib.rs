@@ -1,18 +1,18 @@
 pub mod all_holon_nodes;
+pub mod cache_manager;
 pub mod commit_manager;
+pub mod context;
 pub mod helpers;
 pub mod holon;
 pub mod holon_api;
 pub mod holon_errors;
 pub mod holon_node;
-
-pub mod cache_manager;
-pub mod context;
 pub mod holon_reference;
 pub mod property_map;
 pub mod relationship;
-pub mod smart_reference;
 pub mod smart_collection;
+pub mod smart_link_manager;
+pub mod smart_reference;
 pub mod smartlink;
 pub mod staged_collection;
 pub mod staged_reference;

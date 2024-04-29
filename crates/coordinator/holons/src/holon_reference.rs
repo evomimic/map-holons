@@ -5,7 +5,9 @@ use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 use crate::context::HolonsContext;
 use crate::holon::HolonFieldGettable;
 use crate::holon_errors::HolonError;
-use crate::relationship::RelationshipMap;
+use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::smart_link_manager::SmartLinkInput;
+use crate::smart_link_manager::*;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 
@@ -21,8 +23,8 @@ use crate::staged_reference::StagedReference;
 ///
 /// HolonReference also hides whether the referenced holon is in the local space or an external space
 pub enum HolonReference {
-    Smart(SmartReference),
     Staged(StagedReference),
+    Smart(SmartReference),
 }
 
 impl HolonFieldGettable for HolonReference {
@@ -70,14 +72,34 @@ impl HolonReference {
         }
     }
 
-    pub fn commit(self, source_id: HolonId) -> Result<Self, HolonError> {
-        Err(HolonError::NotImplemented(
-            "Holon Reference commit not implemented".to_string(),
-        ))
+    /// Commit on HolonReference persists the reference as a SmartLink in the persistent store.
+    /// * If it's variant is Staged, then first commits() on its referenced holon and then uses
+    /// its holon_id as the to_address for the SmartLink
+    /// *  If it's variant is SmartReference, it just needs to create the SmartLink
+    pub fn commit(
+        &self,
+        context: &HolonsContext,
+        source_id: HolonId,
+        relationship_name: RelationshipName,
+    ) -> Result<(), HolonError> {
+        match self {
+            HolonReference::Staged(staged_reference) => {
+                let target_id = staged_reference.commit(context)?;
+                let input = SmartLinkInput {
+                    from_address: source_id,
+                    to_address: target_id,
+                    relationship_descriptor: relationship_name,
+                };
+                create_smart_link(input)
+            }
+            HolonReference::Smart(smart_reference) => {
+                let input = SmartLinkInput {
+                    from_address: source_id,
+                    to_address: smart_reference.clone().holon_id,
+                    relationship_descriptor: relationship_name,
+                };
+                create_smart_link(input)
+            }
+        }
     }
-    // pub fn commit(source_id: HolonId) -> Result<(), HolonError> {
-    //     Err(HolonError::NotImplemented(
-    //         "Holon Reference commit not implemented".to_string(),
-    //     ))
-    // }
 }

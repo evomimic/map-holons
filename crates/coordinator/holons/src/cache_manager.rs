@@ -1,16 +1,15 @@
-use std::cell::RefCell;
-use hdk::prelude::*;
 use crate::context::HolonsContext;
 use crate::holon::Holon;
 use crate::holon_errors::HolonError;
+use hdk::prelude::*;
+use std::cell::RefCell;
 // use hdk::prelude::*;
 use quick_cache::unsync::Cache;
 use shared_types_holon::HolonId;
 
 use std::rc::Rc;
 #[derive(Debug)]
-pub struct HolonCache ( Cache<HolonId, Rc<Holon>> );
-
+pub struct HolonCache(Cache<HolonId, Rc<Holon>>);
 
 #[derive(Debug)]
 pub struct HolonCacheManager {
@@ -58,18 +57,13 @@ impl HolonCacheManager {
         Ok(Rc::clone(&self.local_cache))
     }
 
-
     /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash, it then
     /// "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon(
-        _context: &HolonsContext,
-        id: &HolonId,
-    ) -> Result<Holon, HolonError> {
-
+    fn fetch_holon(_context: &HolonsContext, id: &HolonId) -> Result<Holon, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         if let Some(node) = holon_node_record {
             let holon = Holon::try_from_node(node)?;
-            return Ok(holon)
+            return Ok(holon);
         } else {
             // no holon_node fetched for specified holon_id
             Err(HolonError::HolonNotFound(id.0.to_string()))
@@ -105,7 +99,9 @@ impl HolonCacheManager {
         // Obtain a mutable reference to local_cache
         let cache_mut = self.get_cache_mut(holon_space_id)?;
         let mut cache_mut = cache_mut.borrow_mut();
-        cache_mut.0.insert(holon_id.clone(), Rc::new(fetched_holon.clone()));
+        cache_mut
+            .0
+            .insert(holon_id.clone(), Rc::new(fetched_holon.clone()));
 
         // Return the fetched holon
         Ok(Rc::new(fetched_holon))
@@ -137,7 +133,4 @@ impl HolonCacheManager {
     //     // Return the fetched holon
     //     Ok(Rc::new(fetched_holon))
     // }
-
 }
-
-

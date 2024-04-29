@@ -1,4 +1,7 @@
-use crate::holon_errors::HolonError;
+use crate::{holon_errors::HolonError, staged_reference::StagedReference};
+// use crate::smart_reference::SmartReference;
+use crate::context::HolonsContext;
+use crate::holon_reference::HolonReference;
 use crate::smart_collection::SmartCollection;
 use crate::staged_collection::StagedCollection;
 use hdk::prelude::*;
@@ -45,13 +48,50 @@ impl RelationshipTarget {
     //     }
     //     Ok(())
     // }
-    pub fn commit(&self, source_id: HolonId) -> Result<(), HolonError> {
+    pub fn commit(
+        &self,
+        context: &HolonsContext,
+        source_id: HolonId,
+        name: RelationshipName,
+    ) -> Result<(), HolonError> {
         if let Some(collection) = self.editable.clone() {
-            collection.commit(source_id)?;
+            collection.commit(context, source_id.clone(), name.clone())?;
         }
         Ok(())
     }
+
+    /// Creates an editable_collection within the RelationshipTarget from the SmartReferences in the existing_collection
+    pub fn stage_collection(
+        &mut self,
+        source_holon: StagedReference,
+        existing_collection: SmartCollection,
+    ) {
+        // convert Vec<SmartReference> to Vec<HolonReference>
+        let holons = existing_collection
+            .holons
+            .into_iter()
+            .map(|smart_ref| HolonReference::Smart(smart_ref))
+            .collect();
+
+        let staged_collection = StagedCollection {
+            source_holon: Some(source_holon),
+            relationship_descriptor: existing_collection.relationship_descriptor,
+            holons,
+            keyed_index: existing_collection.keyed_index,
+        };
+        self.editable = Some(staged_collection);
+    }
 }
+
+// impl Clone for RelationshipTarget {
+//     /// Custom clone implementation, does not clone its cursors or editable vector
+//     fn clone(&self) -> Self {
+//         Self {
+//             editable: None,
+//             cursors: Vec::new(),
+//         }
+//     }
+// }
 
 // pub fn query_relationship(
 //     source_holon: HolonReference,
