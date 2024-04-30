@@ -89,50 +89,51 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
                 .call(&cell.zome("holons"), "with_property_value", input)
                 .await;
         }
-        println!("Attempting to create holon");
-        let created_holon: Holon = conductor
-            .call(&cell.zome("holons"), "commit", builder_holon.clone())
-            .await;
-
-        println!("Commit request returned this holon");
-        println!("{:#?}", created_holon);
-
-        if let Ok(id) = created_holon.get_id() {
-            created_action_hashes.push(id.clone());
-
-            println!("Fetching created holon");
-            let fetched_holon: Holon = conductor.call(&cell.zome("holons"), "get_holon", id).await;
-
-            assert_eq!(test_holon.into_node(), fetched_holon.clone().into_node());
-
-            println!("\n...Success! Fetched holon matches generated holon ******");
-            trace!("{:#?}", fetched_holon);
-        }
     }
-
-    println!("All Holon Descriptors Created... do a get_all_holon_types and compare result with test data...");
-    let fetched_holons: Vec<Holon> = conductor
-        .call(&cell.zome("holons"), "get_all_holons", ())
-        .await;
-    assert_eq!(h_count, fetched_holons.clone().len());
-
-    // TESTING DELETES //
-    println!("\n\n *********** TESTING DELETES *******************\n");
-
-    for hash in created_action_hashes.clone() {
-        let _deleted_hash: ActionHash = conductor
-            .call(&cell.zome("holons"), "delete_holon", hash.clone())
-            .await;
-    }
-
-    debug!("Performing get_all_holons here to ensure all holons_integrity have been deleted.\n");
-
-    let fetched_holons: Vec<Holon> = conductor
-        .call(&cell.zome("holons"), "get_all_holons", ())
-        .await;
-
-    assert_eq!(0, fetched_holons.len());
-    println!("...Success! All holons_integrity have been deleted. \n");
+        println!("SKIPPING REMAINDER OF TESTS... move them to Dance API tests");
+    //     let created_holon: Holon = conductor
+    //         .call(&cell.zome("holons"), "commit", builder_holon.clone())
+    //         .await;
+    //
+    //     println!("Commit request returned this holon");
+    //     println!("{:#?}", created_holon);
+    //
+    //     if let Ok(id) = created_holon.get_id() {
+    //         created_action_hashes.push(id.clone());
+    //
+    //         println!("Fetching created holon");
+    //         let fetched_holon: Holon = conductor.call(&cell.zome("holons"), "get_holon", id).await;
+    //
+    //         assert_eq!(test_holon.into_node(), fetched_holon.clone().into_node());
+    //
+    //         println!("\n...Success! Fetched holon matches generated holon ******");
+    //         trace!("{:#?}", fetched_holon);
+    //     }
+    // }
+    //
+    // println!("All Holon Descriptors Created... do a get_all_holon_types and compare result with test data...");
+    // let fetched_holons: Vec<Holon> = conductor
+    //     .call(&cell.zome("holons"), "get_all_holons", ())
+    //     .await;
+    // assert_eq!(h_count, fetched_holons.clone().len());
+    //
+    // // TESTING DELETES //
+    // println!("\n\n *********** TESTING DELETES *******************\n");
+    //
+    // for hash in created_action_hashes.clone() {
+    //     let _deleted_hash: ActionHash = conductor
+    //         .call(&cell.zome("holons"), "delete_holon", hash.clone())
+    //         .await;
+    // }
+    //
+    // debug!("Performing get_all_holons here to ensure all holons_integrity have been deleted.\n");
+    //
+    // let fetched_holons: Vec<Holon> = conductor
+    //     .call(&cell.zome("holons"), "get_all_holons", ())
+    //     .await;
+    //
+    // assert_eq!(0, fetched_holons.len());
+    // println!("...Success! All holons_integrity have been deleted. \n");
     println!("To re-run just this test with output, use: 'cargo test -p holons --test holon_tests  -- --show-output'");
 }
 

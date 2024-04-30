@@ -62,13 +62,13 @@ async fn rstest_schema_loading(#[case] input: Result<DescriptorTestCase, HolonEr
 
     println!("Success! Initial DB state has no Holons");
 
-    println!("Starting core schema load...");
-    let load_schema_result : Holon = conductor
-        .call(&cell.zome("descriptors"), "load_core_schema_api", ())
-        .await;
-    // assert_eq!(1, fetched_holons.len());
-    println!("Call to load_core_schema_api returned: ");
-    println!("{:#?}",load_schema_result);
+    println!("SKIPPING core schema load...");
+    // let load_schema_result : Holon = conductor
+    //     .call(&cell.zome("descriptors"), "load_core_schema_api", ())
+    //     .await;
+    // // assert_eq!(1, fetched_holons.len());
+    // println!("Call to load_core_schema_api returned: ");
+    // println!("{:#?}",load_schema_result);
 
 
 

@@ -23,7 +23,7 @@ pub fn stage_new_holon_dance(context: &HolonsContext, _request: DanceRequest) ->
     //
     //
     let new_holon = Holon:: new();
-    let staged_reference = context.commit_manager.borrow_mut().stage_holon(new_holon);
+    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(new_holon);
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
