@@ -1,8 +1,7 @@
 use hdi::prelude::*;
 use shared_types_holon::HolonNode;
-use shared_validation::validation_helpers::validate_holon_comprehensive;
+// use shared_validation::validation_helpers::*;
 use shared_validation::ValidationError;
-use shared_validation::ValidationResult;
 
 /*
 #[hdk_entry_helper]
