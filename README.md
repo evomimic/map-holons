@@ -10,11 +10,11 @@ MAP Holons is still in early proof-of-concept prototype stages. The prototype ar
 Enter the nix shell by running this in the root folder of the repository: 
 
 ```bash
-nix-shell
+nix develop
 npm install
 ```
 
-**Run all the other instructions in this README from inside this nix-shell, otherwise they won't work**.
+**Run all the other instructions in this README from inside this nix shell, otherwise they won't work**.
 
 ## Running 2 agents
  

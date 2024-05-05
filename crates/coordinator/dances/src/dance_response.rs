@@ -1,30 +1,26 @@
-
-
 use derive_new::new;
 
+use crate::staging_area::StagingArea;
 use hdk::prelude::*;
-use holons::holon::{Holon};
+use holons::holon::Holon;
 use holons::holon_errors::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::smart_collection::SmartCollection;
 use shared_types_holon::{MapInteger, MapString};
-use crate::staging_area::StagingArea;
-
 
 /// Define a standard set of statuses that may be returned by DanceRequests.
 /// They are patterned after and should align, as much as reasonable, with [HTTP Status Codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes)
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub enum ResponseStatusCode {
-    Ok, // 200
-    Accepted, // 202
-    BadRequest, // 400,
-    Unauthorized, // 401
-    NotFound, // 404
-    ServerError, // 500
-    NotImplemented, // 501
+    Ok,                 // 200
+    Accepted,           // 202
+    BadRequest,         // 400,
+    Unauthorized,       // 401
+    NotFound,           // 404
+    ServerError,        // 500
+    NotImplemented,     // 501
     ServiceUnavailable, // 503
-
 }
 
 impl From<HolonError> for ResponseStatusCode {
@@ -40,12 +36,12 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidRelationship(_,_) => ResponseStatusCode::ServerError,
+            HolonError::InvalidRelationship(_, _) => ResponseStatusCode::ServerError,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
+            HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
         }
     }
 }
-
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -55,8 +51,6 @@ pub struct DanceResponse {
     pub body: Option<ResponseBody>,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
     pub staging_area: Option<StagingArea>,
-
-
 }
 // Read-only results can be returned directly in ResponseBody as either a Holon or a
 // (serialized) SmartCollection
@@ -80,7 +74,7 @@ impl DanceResponse {
         body: Option<ResponseBody>,
         descriptor: Option<HolonReference>,
         staging_area: Option<StagingArea>,
-    )->DanceResponse {
+    ) -> DanceResponse {
         DanceResponse {
             status_code,
             description,
@@ -88,11 +82,5 @@ impl DanceResponse {
             descriptor,
             staging_area,
         }
-
-
     }
 }
-
-
-
-

@@ -4,7 +4,7 @@ use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
 use crate::holon::HolonFieldGettable;
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_link_manager::SmartLinkInput;
 use crate::smart_link_manager::*;

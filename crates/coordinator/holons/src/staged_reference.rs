@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonFieldGettable};
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use crate::staged_collection::StagedCollection;

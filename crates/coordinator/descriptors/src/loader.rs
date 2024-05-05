@@ -1,5 +1,5 @@
 use holons::context::HolonsContext;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 
 use holons::staged_reference::StagedReference;
 

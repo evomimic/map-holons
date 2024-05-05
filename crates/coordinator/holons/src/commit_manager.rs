@@ -1,11 +1,11 @@
 use std::cell::{Ref, RefCell, RefMut};
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
@@ -37,8 +37,6 @@ impl CommitManager {
         }
     }
 
-
-
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, the function updates the index to allow the staged holon to be retrieved by key
     pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
@@ -50,6 +48,7 @@ impl CommitManager {
             key = Some(the_key.clone());
             self.index.insert(the_key, holon_index);
         }
+        StagedReference { key, holon_index }
         StagedReference { key, holon_index }
     }
 
@@ -156,10 +155,16 @@ impl CommitManager {
     ///
     /// The CommitResponse returned by this function returns Success if no errors were encountered.
     /// Otherwise, the CommitResponse will contain an error status and the vector of errors.
-    pub fn commit(&mut self, context:&HolonsContext) -> CommitResponse {
+    pub fn commit(&mut self, context: &HolonsContext) -> CommitResponse {
         let mut errors: Vec<HolonError> = Vec::new();
         for rc_holon in self.staged_holons.clone() {
             // Dereference the Rc and clone the RefCell to access the object
+            let holon = rc_holon.borrow().clone(); // Clone the object inside RefCell
+            let outcome = holon.commit();
+
+            if let Err(e) = outcome {
+                errors.push(e)
+            };
             let outcome = rc_holon.borrow_mut().clone().commit(context);
             if let Err(e) = outcome.clone() {
                 errors.push(e)
@@ -179,6 +184,7 @@ impl CommitManager {
         };
         commit_response
     }
+}
 
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
     pub fn edit_holon(
