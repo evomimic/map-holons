@@ -3,7 +3,7 @@ use derive_new::new;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::holon::Holon;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::smart_collection::SmartCollection;
 use shared_types_holon::{MapInteger, MapString};

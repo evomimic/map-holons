@@ -1,7 +1,7 @@
 use crate::context::HolonsContext;
 use crate::holon_reference::HolonReference;
 use crate::staged_reference::StagedReference;
-use crate::{holon_errors::HolonError, relationship::RelationshipName};
+use crate::{holon_error::HolonError, relationship::RelationshipName};
 use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;

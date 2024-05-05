@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use holons::holon::Holon;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use shared_types_holon::{HolonId, MapInteger, MapString, PropertyValue};
 
 #[derive(Clone, Debug)]

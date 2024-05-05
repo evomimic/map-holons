@@ -4,7 +4,7 @@ use hdk::prelude::*;
 
 use holons::context::HolonsContext;
 use holons::holon::Holon;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use shared_types_holon::{MapInteger, MapString};
 use crate::dance_request::{DanceRequest, RequestBody};
 

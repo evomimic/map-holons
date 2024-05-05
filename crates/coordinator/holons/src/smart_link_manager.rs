@@ -1,4 +1,4 @@
-use crate::holon_errors::HolonError;
+use crate::holon_error::HolonError;
 use crate::relationship::RelationshipName;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;

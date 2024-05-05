@@ -46,7 +46,7 @@ pub enum ApiError {
 //
 // use std::cell::BorrowError;
 // use holochain::prelude::kitsune_p2p::dependencies::kitsune_p2p_types::dependencies::thiserror::Error;
-// use holons::holon_errors::HolonError;
+// use holons::holon_error::HolonError;
 //
 // impl From<BorrowError> for HolonError {
 //     fn from(error: BorrowError) -> Self {

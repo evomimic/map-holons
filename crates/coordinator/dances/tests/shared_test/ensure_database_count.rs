@@ -18,7 +18,7 @@ use dances::dance_response::ResponseBody::Holons;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use crate::shared_test::dance_fixtures::*;
 use crate::shared_test::test_data_types::{DancesTestCase};
 use crate::shared_test::*;

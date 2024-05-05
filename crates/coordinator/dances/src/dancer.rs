@@ -7,7 +7,7 @@ use crate::dance_request::DanceRequest;
 use holons::cache_manager::HolonCacheManager;
 use holons::commit_manager::CommitManager;
 use holons::context::HolonsContext;
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};

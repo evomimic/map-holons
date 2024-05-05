@@ -33,7 +33,7 @@ use crate::shared_test::test_data_types::DancesTestCase;
 //     create_example_property_descriptors, create_example_updates_for_property_descriptors,
 // };
 
-use holons::holon_errors::HolonError;
+use holons::holon_error::HolonError;
 use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyName};
 
 /// This function creates a set of simple (undescribed) holons
