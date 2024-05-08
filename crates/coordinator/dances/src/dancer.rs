@@ -19,7 +19,7 @@ use crate::staging_area::StagingArea;
 /// initializing the context (including converting the StagingArea into CommitManager) and,
 /// after getting the result of the call, converting the CommitManager back into StagingArea.
 ///
-/// This function alwayss returns a DanceResponse (instead of an Error) because
+/// This function always returns a DanceResponse (instead of an Error) because
 /// errors are encoded in the DanceResponse's status_code.
 
 #[hdk_extern]
@@ -52,6 +52,9 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // TODO: If the request is a Command, add the request to the undo_list
 
     // Dispatch the dance and map result to DanceResponse
+    // if !dancer.dance_name_dispatchable(&context, request.clone()) {
+    //     return Err(HolonError::NotImplemented("No function to dispatch in dispatch table".to_string()).into())
+    // }
     let dispatch_result = dancer.dispatch(&context, request);
 
     let mut result = process_dispatch_result(dispatch_result);
@@ -87,6 +90,7 @@ impl Dancer {
 
         // Register functions into the dispatch table
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
+        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
 
         // Add more functions as needed
 
@@ -99,6 +103,13 @@ impl Dancer {
     //     self.dispatch_table.insert(name.clone().as_str(), func);
     // }
 
+    fn dance_name_dispatchable(
+        &self,
+        context: &HolonsContext,
+        request: DanceRequest,
+    ) -> bool {
+        self.dispatch_table.contains_key(request.dance_name.0.as_str())
+    }
     // Function to dispatch a request based on the function name
     fn dispatch(
         &self,
@@ -109,6 +120,7 @@ impl Dancer {
             func(context, request)
         } else {
             Err(HolonError::NotImplemented(request.dance_name.0.clone()))
+            // Err(HolonError::InvalidParameter("couldn't find some dance in the dispatch table".to_string()))
         }
     }
 }
@@ -131,7 +143,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
         Ok(body) => {
             // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
             DanceResponse {
-                status_code: ResponseStatusCode::Ok,
+                status_code: ResponseStatusCode::OK,
                 description: MapString("Success".to_string()),
                 body: Some(body),
                 descriptor: None,   // Provide appropriate value if needed
@@ -142,6 +154,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
             // If the dispatch_result is an error, extract the associated string value
             let error_message = match error.clone() {
                 HolonError::EmptyField(msg)
+                | HolonError::InvalidParameter(msg)
                 | HolonError::HolonNotFound(msg)
                 | HolonError::WasmError(msg)
                 | HolonError::RecordConversion(msg)

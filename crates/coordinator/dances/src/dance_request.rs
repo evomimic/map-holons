@@ -1,7 +1,9 @@
 use hdk::prelude::*;
+use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
+use holons::smart_collection::SmartCollection;
 use shared_types_holon::{HolonId, MapString, PropertyMap};
-use crate::staging_area::StagingArea;
+use crate::staging_area::{StagingArea,StagedIndex};
 
 
 #[hdk_entry_helper]
@@ -26,14 +28,30 @@ pub enum DanceType {
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
-pub struct RequestBody {
-    pub parameters: PropertyMap,  // input parameters for this request
+pub enum RequestBody {
+    None,
+    Holon(Holon),
+    ParameterValues(PropertyMap),
+    Index(StagedIndex),
 }
+// pub struct RequestBody {
+//     pub parameters: PropertyMap,  // input parameters for this request
+// }
 impl RequestBody {
-    pub fn new()->Self {
-        Self {
-            parameters: PropertyMap::new(),
-        }
+    pub fn new() -> Self {
+        Self::None // Assuming 'None' is the default variant
+    }
+
+    pub fn new_holon(holon: Holon) -> Self {
+        Self::Holon(holon)
+    }
+
+    pub fn new_parameter_values(parameters: PropertyMap) -> Self {
+        Self::ParameterValues(parameters)
+    }
+
+    pub fn new_index(index: StagedIndex) -> Self {
+        Self::Index(index)
     }
 }
 

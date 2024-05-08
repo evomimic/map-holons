@@ -7,6 +7,8 @@ use thiserror::Error;
 pub enum HolonError {
     #[error("{0} field is missing")]
     EmptyField(String),
+    #[error("{0} parameter is not valid")]
+    InvalidParameter(String),
     #[error("Holon not found: {0}")]
     HolonNotFound(String),
     #[error("WasmError {0}")]

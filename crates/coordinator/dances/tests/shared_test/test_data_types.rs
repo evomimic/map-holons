@@ -13,7 +13,7 @@ pub struct DancesTestCase {
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
-    // Create(Holon), // Associated data is expected Holon
+    StageHolon(Holon), // Associated data is expected Holon, it could be empty
     // Update(Holon), // Associated data is expected Holon after update
     // Delete(HolonId), // Associated data is id of Holon to delete
 }
@@ -39,10 +39,10 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // pub fn add_create_step(&mut self, holon: Holon) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::Create(holon));
-    //     Ok(())
-    // }
+    pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::StageHolon(holon));
+        Ok(())
+    }
     //
     // pub fn add_update_step(&mut self, holon: Holon) -> Result<(), HolonError> {
     //     self.steps.push_back(DanceTestStep::Update(holon));

@@ -1,8 +1,9 @@
+use std::fmt;
 use derive_new::new;
 
-use crate::staging_area::StagingArea;
+use crate::staging_area::{StagedIndex, StagingArea};
 use hdk::prelude::*;
-use holons::holon::Holon;
+use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::smart_collection::SmartCollection;
@@ -13,7 +14,7 @@ use shared_types_holon::{MapInteger, MapString};
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub enum ResponseStatusCode {
-    Ok,                 // 200
+    OK,                 // 200
     Accepted,           // 202
     BadRequest,         // 400,
     Unauthorized,       // 401
@@ -27,6 +28,7 @@ impl From<HolonError> for ResponseStatusCode {
     fn from(error: HolonError) -> Self {
         match error {
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
             HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
             HolonError::WasmError(_) => ResponseStatusCode::ServerError,
             HolonError::RecordConversion(_) => ResponseStatusCode::ServerError,
@@ -42,6 +44,22 @@ impl From<HolonError> for ResponseStatusCode {
         }
     }
 }
+impl fmt::Display for ResponseStatusCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ResponseStatusCode::OK => write!(f, "200 -- OK"),
+            ResponseStatusCode::Accepted => write!(f, "202 -- Accepted"),           // 202
+            ResponseStatusCode::BadRequest => write!(f, "400 -- Bad Request"),         // 400,
+            ResponseStatusCode::Unauthorized => write!(f, "401 -- Unauthorized"),       // 401
+            ResponseStatusCode::NotFound => write!(f, "404 -- Not Found"),           // 404
+            ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"),        // 500
+            ResponseStatusCode::NotImplemented => write!(f, "501 -- Not Implemented"),     // 501
+            ResponseStatusCode::ServiceUnavailable => write!(f, "503 -- Service Unavailable"), // 503
+
+        }
+    }
+}
+
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -56,8 +74,6 @@ pub struct DanceResponse {
 // (serialized) SmartCollection
 // Staged holons will be returned via the StagingArea.
 // StagedIndex is used to return a (reference) to a StagedHolon
-
-pub type StagedIndex = MapInteger;
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub enum ResponseBody {

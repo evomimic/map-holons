@@ -1,42 +1,67 @@
-/// This file defines the functions exposed via hdk_extern
-///
+/// This file defines the DancesAdaptors offered by the holons zome. For each Dance, this file
+/// also defines a `build_` function as a helper function for creating DanceRequests for that
+/// Dance from native parameters.
+/// They are bundled in the dances zome for now, but in the future they probably should be moved
+/// into their own zome.
 use hdk::prelude::*;
 
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use shared_types_holon::{MapInteger, MapString};
-use crate::dance_request::{DanceRequest, RequestBody};
+use shared_types_holon::{MapInteger, MapString, PropertyMap};
 
-use crate::dance_response::{ResponseBody};
+use crate::dance_request::{DanceRequest, RequestBody};
+use crate::dance_response::ResponseBody;
+
 // type DanceFunction = fn(context: &HolonsContext, request:DanceRequest) -> Result<ResponseBody, HolonError>;
 /// Create a new holon that can be incrementally built up prior to commit.
-/// As a dance adaptor, this function wraps (and insulates) the native functionality in Dance
+/// ParameterValues supplied in the body of the request (if any) are used to set properties on
+/// holon.
+/// As a dance adaptor, this function wraps (and insulates) Dancer from native functionality
 /// and insulates the native function from any dependency on Dances. In general, this means:
 /// 1.  Extracting any required input parameters from the DanceRequest's request_body
 /// 2.  Invoking the native function
 /// 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 /// mapping any errors into an appropriate ResponseStatus and returning results in the body.
 ///
-pub fn stage_new_holon_dance(context: &HolonsContext, _request: DanceRequest) -> Result<ResponseBody, HolonError> {
-    // TODO: add support for descriptor parameter
-    //
-    //
-    let new_holon = Holon:: new();
+///
+pub fn stage_new_holon_dance(context: &HolonsContext, request: DanceRequest) -> Result<ResponseBody, HolonError> {
+    // Create a new Holon
+    let mut new_holon = Holon::new();
+
+    // Populate parameters if available
+    match request.body {
+        RequestBody::None => {
+            // No parameters to populate, continue
+        }
+        RequestBody::ParameterValues(parameters) => {
+            // Populate parameters into the new Holon
+            for (property_name, base_value) in parameters.iter() {
+                new_holon.with_property_value(property_name.clone(), base_value.clone());
+            }
+        }
+        _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
+    }
+
+    // Stage the new holon
     let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(new_holon);
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
-
+    // Create and return the response body with the staged index
     let index = MapInteger(staged_reference.holon_index.try_into().expect("Conversion failed"));
     Ok(ResponseBody::Index(index))
-
 }
 
-pub fn build_stage_new_holon_dance_request()->Result<DanceRequest, HolonError> {
-    let body = RequestBody::new();
+///
+/// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
+/// in the body of the request.
+pub fn build_stage_new_holon_dance_request(properties:PropertyMap)->Result<DanceRequest, HolonError> {
+    let body = RequestBody::new_parameter_values(properties);
     Ok(DanceRequest::new(MapString("stage_new_holon".to_string()), body))
-}
+    }
+
+/// This dance retrieves all holons from the persistent store
 pub fn get_all_holons_dance(_context: &HolonsContext, _request: DanceRequest) -> Result<ResponseBody, HolonError> {
     // TODO: add support for descriptor parameter
     //
@@ -53,6 +78,7 @@ pub fn get_all_holons_dance(_context: &HolonsContext, _request: DanceRequest) ->
 
 
 }
+// Builds a DanceRequest for retrieving all holons from the persistent store
 pub fn build_get_all_holons_dance_request()->Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
     Ok(DanceRequest::new(MapString("get_all_holons".to_string()), body))

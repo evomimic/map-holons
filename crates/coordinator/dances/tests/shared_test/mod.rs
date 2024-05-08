@@ -4,6 +4,7 @@ pub mod test_data_types;
 pub mod dance_fixtures;
 
 pub mod ensure_database_count;
+pub mod stage_new_holon;
 
 
 use hdk::prelude::*;

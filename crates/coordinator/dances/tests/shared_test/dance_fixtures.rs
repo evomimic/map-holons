@@ -43,11 +43,22 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     let mut test_case = DancesTestCase::new(
         "Simple Create/Get Holon Testcase".to_string(),
-        "Ensure database starts empty, stage a Book Holon for create, commit, get all holons".to_string(),
+        "Ensure DB starts empty, stage a Book Holon with properties, commit, get all holons".to_string(),
 
     );
 
     test_case.add_ensure_database_count_step(MapInteger(0))?;
+
+    let mut book_holon = Holon::new();
+    book_holon
+        .with_property_value(
+            PropertyName(MapString("title".to_string())),
+            BaseValue::StringValue(MapString("Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string())))
+        .with_property_value(
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
+        ;
+    test_case.add_stage_holon_step(book_holon)?;
 
 
     // let mut book_holon = Holon::new();

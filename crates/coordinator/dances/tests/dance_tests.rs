@@ -24,6 +24,7 @@ use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::HolonId;
 use crate::shared_test::test_data_types::DanceTestStep;
 use crate::shared_test::ensure_database_count::execute_ensure_database_count;
+use crate::shared_test::stage_new_holon::execute_stage_new_holon;
 //use crate::shared_test::ensure_database_count::*;
 
 /// This function iterates through a vector of test steps provided by the test fixture
@@ -40,7 +41,7 @@ use crate::shared_test::ensure_database_count::execute_ensure_database_count;
 /// Note that this will exercise, create, get, and get_all capabilities across a variety of holons
 ///
 /// To selectively run JUST THE TESTS in this file, use:
-///      cargo test -p holons --test holon_tests  -- --show-output
+///      cargo test -p dances --test dance_tests  -- --show-output
 ///
 #[rstest]
 #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
@@ -67,7 +68,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         println!("--- executing next test step");
         match step {
             DanceTestStep::EnsureDatabaseCount(expected_count) => execute_ensure_database_count(&conductor, &cell, expected_count).await,
-            // DanceTestStep::Create(holon) => execute_create_step(&conductor, &cell, holon),
+            DanceTestStep::StageHolon(holon) => execute_stage_new_holon(&conductor, &cell, holon).await,
             // DanceTestStep::Update(holon) => execute_update_step(&conductor, &cell, holon),
             // DanceTestStep::Delete(holon_id) => execute_delete_step(&conductor, &cell, holon_id),
         }
