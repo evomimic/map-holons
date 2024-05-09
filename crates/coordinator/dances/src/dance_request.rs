@@ -15,7 +15,7 @@ pub struct DanceRequest {
     pub body: RequestBody,
     // pub dance_type: DanceType, // Action, Command or Query?
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
-    pub staging_area: Option<StagingArea>,
+    pub staging_area: StagingArea,
 
 }
 
@@ -34,9 +34,7 @@ pub enum RequestBody {
     ParameterValues(PropertyMap),
     Index(StagedIndex),
 }
-// pub struct RequestBody {
-//     pub parameters: PropertyMap,  // input parameters for this request
-// }
+
 impl RequestBody {
     pub fn new() -> Self {
         Self::None // Assuming 'None' is the default variant
@@ -56,11 +54,11 @@ impl RequestBody {
 }
 
 impl DanceRequest {
-    pub fn new(dance_name:MapString, body: RequestBody)->Self {
+    pub fn new(dance_name:MapString, body: RequestBody, staging_area: StagingArea)->Self {
         Self {
             dance_name,
             body,
-            staging_area: None,
+            staging_area,
         }
     }
 }

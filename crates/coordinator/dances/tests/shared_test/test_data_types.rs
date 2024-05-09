@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use shared_types_holon::{HolonId, MapInteger, MapString, PropertyValue};
+use dances::staging_area::StagingArea;
 
 #[derive(Clone, Debug)]
 pub struct DancesTestCase {
@@ -14,17 +15,25 @@ pub struct DancesTestCase {
 pub enum DanceTestStep {
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be empty
+    Commit(),
     // Update(Holon), // Associated data is expected Holon after update
     // Delete(HolonId), // Associated data is id of Holon to delete
 }
 
-// A HolonsTestCase contains a sequence of test steps. The type of the HolonTestStep determines the test behavior
-// EnsureEmpty -- Does a get_all_holons to confirm database is empty
-// Create(Holon), Creates the specified holon, gets the created holon to confirm successful created, pushes the created
-//    and pushes the created holon into a created_holons stack for subsequent get_all a test step.
-// Update(Holon), // Associated data is expected Holon after update
-// Delete(HolonId), // Associated data is id of Holon to delete
-// `Create` test steps will trigger create and get tests
+pub struct DanceTestState {
+    pub staging_area: StagingArea,
+    pub created_holons: Vec<Holon>,
+}
+
+impl DanceTestState {
+    pub fn new() -> DanceTestState {
+        DanceTestState {
+            staging_area: StagingArea::new(),
+            created_holons: Vec::new(),
+        }
+    }
+}
+
 
 impl DancesTestCase {
     pub fn new(name: String, description: String)->Self {
@@ -41,6 +50,10 @@ impl DancesTestCase {
 
     pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::StageHolon(holon));
+        Ok(())
+    }
+    pub fn add_commit_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::Commit());
         Ok(())
     }
     //

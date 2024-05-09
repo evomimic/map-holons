@@ -11,7 +11,7 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::holon_dances::{get_all_holons_dance, stage_new_holon_dance};
+use crate::holon_dances::{commit_dance, get_all_holons_dance, stage_new_holon_dance};
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -39,11 +39,10 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
 
-    let mut commit_manager = CommitManager::new();
+   // let mut commit_manager = CommitManager::new();
 
-    if let Some(staging_area) = request.clone().staging_area {
-        commit_manager = staging_area.to_commit_manager();
-    }
+    let mut commit_manager = request.clone().staging_area.to_commit_manager();
+    // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
     let context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
 
     // Get the Dancer
@@ -60,16 +59,15 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     let mut result = process_dispatch_result(dispatch_result);
 
     // Restore the StagingArea from CommitManager
-    result.staging_area = Some(StagingArea::from_commit_manager(
-        &context.commit_manager.borrow(),
-    ));
+    result.staging_area = StagingArea::from_commit_manager(&context.commit_manager.borrow());
+    // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
     Ok(result)
 }
 
 // Define a type alias for functions that can be dispatched
 type DanceFunction =
-    fn(context: &HolonsContext, request: DanceRequest) -> Result<ResponseBody, HolonError>;
+    fn(context: &HolonsContext, request: DanceRequest) -> Result<Option<ResponseBody>, HolonError>;
 
 // Define a struct to manage the dispatch table and offer the Dancer behaviors including the external
 // API operations of dance and (eventually) undo / redo (see [Command Pattern Wiki]
@@ -91,6 +89,7 @@ impl Dancer {
         // Register functions into the dispatch table
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
+        dispatch_table.insert("commit", commit_dance as DanceFunction);
 
         // Add more functions as needed
 
@@ -103,9 +102,8 @@ impl Dancer {
     //     self.dispatch_table.insert(name.clone().as_str(), func);
     // }
 
-    fn dance_name_dispatchable(
+    fn dance_name_is_dispatchable(
         &self,
-        context: &HolonsContext,
         request: DanceRequest,
     ) -> bool {
         self.dispatch_table.contains_key(request.dance_name.0.as_str())
@@ -115,7 +113,7 @@ impl Dancer {
         &self,
         context: &HolonsContext,
         request: DanceRequest,
-    ) -> Result<ResponseBody, HolonError> {
+    ) -> Result<Option<ResponseBody>, HolonError> {
         if let Some(func) = self.dispatch_table.get(request.dance_name.0.as_str()) {
             func(context, request)
         } else {
@@ -138,16 +136,16 @@ impl Dancer {
 /// * `body`, `descriptor` and `staging_area` are all set to None
 ///
 
-fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
+fn process_dispatch_result(dispatch_result: Result<Option<ResponseBody>, HolonError>) -> DanceResponse {
     match dispatch_result {
         Ok(body) => {
             // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
             DanceResponse {
                 status_code: ResponseStatusCode::OK,
                 description: MapString("Success".to_string()),
-                body: Some(body),
+                body: body,
                 descriptor: None,   // Provide appropriate value if needed
-                staging_area: None, // Provide appropriate value if needed
+                staging_area: StagingArea::new(), // Provide appropriate value if needed
             }
         }
         Err(error) => {
@@ -156,6 +154,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 HolonError::EmptyField(msg)
                 | HolonError::InvalidParameter(msg)
                 | HolonError::HolonNotFound(msg)
+                | HolonError::CommitFailure(msg)
                 | HolonError::WasmError(msg)
                 | HolonError::RecordConversion(msg)
                 | HolonError::InvalidHolonReference(msg)
@@ -175,7 +174,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 description: MapString(error_message),
                 body: None,         // No body since it's an error
                 descriptor: None,   // Provide appropriate value if needed
-                staging_area: None, // Provide appropriate value if needed
+                staging_area: StagingArea::new(), // Provide appropriate value if needed
             }
         }
     }

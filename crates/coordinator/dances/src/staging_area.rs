@@ -15,11 +15,11 @@ pub struct StagingArea {
 
 impl StagingArea {
 
-    pub fn new() {
+    pub fn new()->Self {
         StagingArea {
             staged_holons: Vec::new(),
             index: BTreeMap::new(),
-        };
+        }
     }
     // Function to create StagingArea from CommitManager
     pub fn from_commit_manager(commit_manager: &CommitManager) -> Self {
@@ -28,6 +28,7 @@ impl StagingArea {
             staged_holons,
             index: commit_manager.index.clone(),
         }
+
     }
 
     // Function to create CommitManager from StagingArea

@@ -1,6 +1,6 @@
 pub mod dance_response;
-mod dancer;
-mod staging_area;
+pub mod dancer;
+pub mod staging_area;
 pub mod holon_dances;
 pub mod dance_request;
 

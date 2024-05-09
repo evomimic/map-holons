@@ -11,6 +11,8 @@ pub enum HolonError {
     InvalidParameter(String),
     #[error("Holon not found: {0}")]
     HolonNotFound(String),
+    #[error("Commit Failure {0}")]
+    CommitFailure(String),
     #[error("WasmError {0}")]
     WasmError(String),
     #[error("Couldn't convert Record to {0}")]
@@ -52,5 +54,18 @@ use std::cell::BorrowError;
 impl From<BorrowError> for HolonError {
     fn from(error: BorrowError) -> Self {
         HolonError::InvalidHolonReference(format!("Failed to borrow Rc<RefCell<Holon>>: {}", error))
+    }
+}
+
+impl HolonError {
+    pub fn combine_errors(errors: Vec<HolonError>) -> String {
+        let mut combined = String::new();
+        for (i, error) in errors.into_iter().enumerate() {
+            if i > 0 {
+                combined.push_str(", ");
+            }
+            combined.push_str(&error.to_string());
+        }
+        combined
     }
 }

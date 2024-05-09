@@ -10,7 +10,7 @@ use crate::relationship::RelationshipMap;
 use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
-use shared_types_holon::MapString;
+use shared_types_holon::{MapInteger, MapString};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
@@ -50,6 +50,19 @@ impl CommitManager {
         }
         StagedReference { key, holon_index }
     }
+
+    // Constructor function for creating StagedReference from an index into CommitManagers StagedHolons
+    // pub fn get_reference_from_index(&self, index: MapInteger) -> Result<StagedReference, HolonError> {
+    //
+    //     // Ensure index is valid
+    //     let holon_index = index.0 as usize;
+    //     if holon_index < 0 || holon_index > self.staged_holons.len() {
+    //         Err(HolonError::IndexOutOfRange(index.0.to_string()))
+    //     }
+        // let key = rc_holon.borrow().get_key()?;
+
+    //     Ok(StagedReference { key, holon_index })
+    // }
 
     pub fn clone_holon(
         &mut self,

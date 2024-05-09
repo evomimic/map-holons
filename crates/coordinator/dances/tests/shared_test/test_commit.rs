@@ -11,7 +11,7 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
-use dances::holon_dances::{build_get_all_holons_dance_request, build_stage_new_holon_dance_request};
+use dances::holon_dances::{build_commit_dance_request, build_get_all_holons_dance_request, build_stage_new_holon_dance_request};
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::dance_response::ResponseBody::{Holons, Index};
 
@@ -20,7 +20,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 use crate::shared_test::dance_fixtures::*;
-use crate::shared_test::test_data_types::{DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -31,12 +31,12 @@ use crate::shared_test::test_data_types::DanceTestStep;
 /// and confirms a Success response
 ///
 
-pub async fn execute_stage_new_holon(conductor: &SweetConductor, cell: &SweetCell, expected_holon: Holon) ->() {
+pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_state: &mut DanceTestState) ->() {
 
-    println!("--- Staging a new Holon:");
-    println!("{:#?}", expected_holon.clone());
-    // Build a stage_holon DanceRequest
-    let request = build_stage_new_holon_dance_request(expected_holon.clone().property_map);
+    println!("--- Committing Staged Holons ---- :");
+
+    // Build a commit DanceRequest
+    let request = build_commit_dance_request(test_state.staging_area.clone());
     println!("Dance Request: {:#?}", request);
 
     match request {
@@ -44,34 +44,17 @@ pub async fn execute_stage_new_holon(conductor: &SweetConductor, cell: &SweetCel
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
+            test_state.staging_area = response.staging_area.clone();
             println!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
             let description = response.description.clone();
-            if let ResponseStatusCode::OK = code {
-                if let Some(body) = response.body {
-                    if let Index(index) = body {
-                        let index_value = index.0.to_string();
-                        println!("{index_value} returned in body");
-                        // An index was returned in the body, retrieve the Holon at that index within
-                        // the StagingArea and confirm it matches the expected Holon.
-                        if let Some(area) = response.staging_area {
-                            let holons = area.staged_holons;
-                            assert_eq!(expected_holon, holons[index.0 as usize]);
-                        }
-                        println!("Success! Holon has been staged, as expected");
-                    } else {
-                        panic!("Expected `index` to staged_holon in the response body, but didn't get one!");
-                    }
-                } else {
-                    panic!("Expected Some response.body, got None!");
-                }
-
+            if code == ResponseStatusCode::OK {
+                // Check that staging area is empty
+                assert!(response.staging_area.staged_holons.is_empty());
+                println!("Success! Commit succeeded");
             } else {
                 panic!("DanceRequest returned {code} for {description}");
             }
-
-
-
         }
         Err(error)=> {
             panic!("{:?} Unable to build a stage_holon request ", error);
