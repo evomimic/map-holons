@@ -11,7 +11,7 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
-use dances::holon_dances::{build_commit_dance_request, build_get_all_holons_dance_request, build_stage_new_holon_dance_request};
+use dances::holon_dance_adapter::{build_commit_dance_request, build_get_all_holons_dance_request, build_stage_new_holon_dance_request};
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::dance_response::ResponseBody::{Holons, Index};
 
@@ -44,8 +44,9 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
-            test_state.staging_area = response.staging_area.clone();
+
             println!("Dance Response: {:#?}", response.clone());
+            test_state.staging_area = response.staging_area.clone();
             let code = response.status_code;
             let description = response.description.clone();
             if code == ResponseStatusCode::OK {
