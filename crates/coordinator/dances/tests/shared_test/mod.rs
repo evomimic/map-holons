@@ -6,6 +6,7 @@ pub mod dance_fixtures;
 pub mod test_ensure_database_count;
 pub mod test_stage_new_holon;
 pub mod test_commit;
+pub mod test_with_properties_command;
 
 
 use hdk::prelude::*;

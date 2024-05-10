@@ -18,6 +18,8 @@ pub struct CommitManager {
     pub staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
     pub index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
+/// a StagedIndex identifies a StagedHolon by its position within the staged_holons vector
+pub type StagedIndex = MapInteger;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {
@@ -51,6 +53,7 @@ impl CommitManager {
         }
         StagedReference { key, holon_index }
     }
+
 
     // Constructor function for creating StagedReference from an index into CommitManagers StagedHolons
     // pub fn get_reference_from_index(&self, index: MapInteger) -> Result<StagedReference, HolonError> {
@@ -125,6 +128,10 @@ impl CommitManager {
             None
         }
     }
+
+    // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
+    //     self.staged_holons.get(index.0 as usize)
+    // }
     pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
         let holons = &self.staged_holons;
         let holon_ref = holons
@@ -138,7 +145,24 @@ impl CommitManager {
             )),
         }
     }
-
+    pub fn get_mut_holon_by_index(
+        &self,
+        holon_index: StagedIndex,
+    ) -> Result<RefMut<Holon>, HolonError> {
+        return if let Some(holon) = self.staged_holons.get(holon_index.0 as usize) {
+            if let Ok(holon_ref) = holon.try_borrow_mut() {
+                Ok(holon_ref)
+            } else {
+                Err(HolonError::FailedToBorrow(
+                    "for StagedReference".to_string(),
+                ))
+            }
+        } else {
+            Err(HolonError::InvalidHolonReference(
+                "Invalid holon index".to_string(),
+            ))
+        };
+    }
     pub fn get_mut_holon(
         &self,
         staged_reference: &StagedReference,
@@ -251,3 +275,5 @@ impl CommitManager {
         Ok(staged_reference)
     }
 }
+
+

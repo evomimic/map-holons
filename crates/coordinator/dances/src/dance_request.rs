@@ -1,31 +1,30 @@
 use hdk::prelude::*;
+use holons::commit_manager::StagedIndex;
 use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
 use holons::smart_collection::SmartCollection;
 use shared_types_holon::{HolonId, MapString, PropertyMap};
-use crate::staging_area::{StagingArea,StagedIndex};
+use crate::staging_area::StagingArea;
 
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct DanceRequest {
-    pub dance_name: MapString, // unique key within Offered Holon Type
-    // pub offering_holon: HolonReference,
-    // pub handler: HolonId, // the space that can handle this request
+    pub dance_name: MapString, // unique key within the (single) dispatch table
+    pub dance_type: DanceType,
     pub body: RequestBody,
-    // pub dance_type: DanceType, // Action, Command or Query?
-    //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
     pub staging_area: StagingArea,
+    //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 
 }
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub enum DanceType {
-    Query,
-    Command,
+    Standalone, // i.e., a dance not associated with a specific holon
+    QueryMethod(HolonId), // a read-only dance originated from a specific, already persisted, holon
+    Command(StagedIndex), // a mutating method operating on a specific staged_holon identified by its index into the staged_holons vector
 }
-
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub enum RequestBody {
@@ -54,9 +53,10 @@ impl RequestBody {
 }
 
 impl DanceRequest {
-    pub fn new(dance_name:MapString, body: RequestBody, staging_area: StagingArea)->Self {
+    pub fn new(dance_name:MapString, dance_type:DanceType, body:RequestBody, staging_area: StagingArea)->Self {
         Self {
             dance_name,
+            dance_type,
             body,
             staging_area,
         }

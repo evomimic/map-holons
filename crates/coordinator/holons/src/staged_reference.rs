@@ -12,6 +12,7 @@ use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget}
 use crate::staged_collection::StagedCollection;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
+use crate::commit_manager::StagedIndex;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -22,16 +23,11 @@ pub struct StagedReference {
 }
 
 impl StagedReference {
-    // Constructor function for creating a StagedReference from an index into CommitManagers StagedHolons
-    // pub fn from_index(rc_holon: Rc<RefCell<Holon>>) -> Result<StagedReference, HolonError> {
-    //     let key = rc_holon.borrow().get_key()?;
-    //
-    //     Ok(StagedReference { key, holon_index })
-    // }
+
     // Constructor function for creating StagedReference index into CommitManagers StagedHolons
     // pub fn from_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<StagedReference, HolonError> {
     //     let key = rc_holon.borrow().get_key()?;
-
+    //
     //     Ok(StagedReference { key, holon_index })
     // }
 

@@ -1,8 +1,9 @@
 use std::fmt;
 use derive_new::new;
 
-use crate::staging_area::{StagedIndex, StagingArea};
+use crate::staging_area::StagingArea;
 use hdk::prelude::*;
+use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;

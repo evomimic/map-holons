@@ -21,7 +21,7 @@ use holons::holon::Holon;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-use holons::commit_manager::CommitManager;
+use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 
 use crate::shared_test::test_data_types::DancesTestCase;
@@ -34,7 +34,7 @@ use crate::shared_test::test_data_types::DancesTestCase;
 // };
 
 use holons::holon_error::HolonError;
-use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyName};
+use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue};
 
 /// This function creates a set of simple (undescribed) holons
 ///
@@ -43,7 +43,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     let mut test_case = DancesTestCase::new(
         "Simple Create/Get Holon Testcase".to_string(),
-        "Ensure DB starts empty, stage a Book Holon with properties, commit, ensure db count is 1".to_string(),
+        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count is 2".to_string(),
 
     );
 
@@ -54,21 +54,35 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         .with_property_value(
             PropertyName(MapString("title".to_string())),
             BaseValue::StringValue(MapString("Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string())))
-        .with_property_value(
-            PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
         ;
     test_case.add_stage_holon_step(book_holon)?;
+
+    let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("description".to_string())),
+        BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
+    );
+
+    test_case.add_with_properties_step(MapInteger(0), properties)?;
+
     let mut person_holon = Holon::new();
-    person_holon
-        .with_property_value(
-            PropertyName(MapString("first name".to_string())),
-            BaseValue::StringValue(MapString("Roger".to_string())))
-        .with_property_value(
-            PropertyName(MapString("last name".to_string())),
-            BaseValue::StringValue(MapString("Briggs".to_string())))
-    ;
+
     test_case.add_stage_holon_step(person_holon)?;
+
+    let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("first name".to_string())),
+        BaseValue::StringValue(MapString("Roger".to_string()))
+    );
+    properties.insert(
+        PropertyName(MapString("last name".to_string())),
+        BaseValue::StringValue(MapString("Briggs".to_string()))
+    );
+    test_case.add_with_properties_step(MapInteger(1), properties)?;
+
+
+
+
     test_case.add_commit_step()?;
     test_case.add_ensure_database_count_step(MapInteger(2))?;
 

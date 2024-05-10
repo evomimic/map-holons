@@ -40,5 +40,3 @@ impl StagingArea {
         }
     }
 }
-/// a StagedIndex identifies a StagedHolon by its position within the staging_area's staged_holons vector
-pub type StagedIndex = MapInteger;
