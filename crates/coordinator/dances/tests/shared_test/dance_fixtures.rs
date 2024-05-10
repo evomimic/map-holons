@@ -59,8 +59,18 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
             BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
         ;
     test_case.add_stage_holon_step(book_holon)?;
+    let mut person_holon = Holon::new();
+    person_holon
+        .with_property_value(
+            PropertyName(MapString("first name".to_string())),
+            BaseValue::StringValue(MapString("Roger".to_string())))
+        .with_property_value(
+            PropertyName(MapString("last name".to_string())),
+            BaseValue::StringValue(MapString("Briggs".to_string())))
+    ;
+    test_case.add_stage_holon_step(person_holon)?;
     test_case.add_commit_step()?;
-    test_case.add_ensure_database_count_step(MapInteger(1))?;
+    test_case.add_ensure_database_count_step(MapInteger(2))?;
 
 
     // let mut book_holon = Holon::new();
