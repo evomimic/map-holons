@@ -24,6 +24,7 @@ use crate::staging_area::StagingArea;
 
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
+    trace!("Entered Dancer::dance()");
     let valid = true; // TODO: Validate the dance request
 
     if !valid {
@@ -51,9 +52,9 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // TODO: If the request is a Command, add the request to the undo_list
 
     // Dispatch the dance and map result to DanceResponse
-    // if !dancer.dance_name_dispatchable(&context, request.clone()) {
-    //     return Err(HolonError::NotImplemented("No function to dispatch in dispatch table".to_string()).into())
-    // }
+    if !dancer.dance_name_is_dispatchable(request.clone()) {
+        return Err(HolonError::NotImplemented("No function to dispatch in dispatch table".to_string()).into())
+    }
     let dispatch_result = dancer.dispatch(&context, request);
 
     let mut result = process_dispatch_result(dispatch_result);

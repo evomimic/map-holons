@@ -67,7 +67,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     println!("******* {description}  ***************************");
 
     for step in test_case.steps {
-        println!("--- executing next test step");
+        //println!("\n\n============= STARTING NEXT STEP: {}", step);
         match step {
             DanceTestStep::EnsureDatabaseCount(expected_count) => execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count).await,
             DanceTestStep::StageHolon(holon) => execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await,

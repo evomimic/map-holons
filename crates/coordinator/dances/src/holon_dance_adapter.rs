@@ -105,7 +105,7 @@ pub fn with_property_dance(context: &HolonsContext, request: DanceRequest) -> Re
 
 ///
 /// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
-pub fn build_with_property_value_dance_request(staging_area: StagingArea, index: MapInteger, properties: PropertyMap)->Result<DanceRequest, HolonError> {
+pub fn build_with_property_values_dance_request(staging_area: StagingArea, index: MapInteger, properties: PropertyMap)->Result<DanceRequest, HolonError> {
     let body = RequestBody::new_parameter_values(properties);
     Ok(DanceRequest::new(MapString("with_property_values".to_string()), body, staging_area))
 }
@@ -148,8 +148,6 @@ pub fn commit_dance(context: &HolonsContext, _request: DanceRequest) -> Result<O
         Error(errors)
             => Err(HolonError::CommitFailure(HolonError::combine_errors(errors))),
     }
-
-
 }
 
 ///

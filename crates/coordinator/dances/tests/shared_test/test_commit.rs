@@ -33,7 +33,7 @@ use crate::shared_test::test_data_types::DanceTestStep;
 
 pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_state: &mut DanceTestState) ->() {
 
-    println!("--- Committing Staged Holons ---- :");
+    println!("\n\n--- TEST STEP: Committing Staged Holons ---- :");
 
     // Build a commit DanceRequest
     let request = build_commit_dance_request(test_state.staging_area.clone());

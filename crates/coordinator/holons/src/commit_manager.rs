@@ -1,6 +1,7 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use hdk::prelude::info;
 
 // use crate::cache_manager::HolonCacheManager;
 use crate::context::HolonsContext;
@@ -168,15 +169,16 @@ impl CommitManager {
     /// The CommitResponse returned by this function returns Success if no errors were encountered.
     /// Otherwise, the CommitResponse will contain an error status and the vector of errors.
     pub fn commit(&mut self, context: &HolonsContext) -> CommitResponse {
+        info!("Entering commit...");
         let mut errors: Vec<HolonError> = Vec::new();
         for rc_holon in self.staged_holons.clone() {
             // Dereference the Rc and clone the RefCell to access the object
-            let mut holon = rc_holon.borrow_mut(); // Clone the object inside RefCell
-            let outcome = holon.commit(context);
-
-            if let Err(e) = outcome {
-                errors.push(e)
-            };
+            // let mut holon = rc_holon.borrow_mut(); // Clone the object inside RefCell
+            // let outcome = holon.commit(context);
+            //
+            // if let Err(e) = outcome {
+            //     errors.push(e)
+            // };
             let outcome = rc_holon.borrow_mut().clone().commit(context);
             if let Err(e) = outcome.clone() {
                 errors.push(e)

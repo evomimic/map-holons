@@ -38,7 +38,7 @@ pub async fn execute_ensure_database_count(
     expected_count: MapInteger
 ){
     let expected_count_string = expected_count.0.to_string();
-    println!("--- Ensuring database holds {expected_count_string} holons ---");
+    println!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
     // Build a get_all_holons DanceRequest
     let request = build_get_all_holons_dance_request(test_state.staging_area.clone());
     println!("Dance Request: {:#?}", request);

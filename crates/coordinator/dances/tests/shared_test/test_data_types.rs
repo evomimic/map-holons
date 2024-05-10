@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
-use holons::holon::Holon;
+use std::fmt;
+use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use shared_types_holon::{HolonId, MapInteger, MapString, PropertyValue};
 use dances::staging_area::StagingArea;
@@ -14,10 +15,26 @@ pub struct DancesTestCase {
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
-    StageHolon(Holon), // Associated data is expected Holon, it could be empty
+    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     Commit(),
     // Update(Holon), // Associated data is expected Holon after update
     // Delete(HolonId), // Associated data is id of Holon to delete
+}
+
+impl fmt::Display for DanceTestStep {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DanceTestStep::EnsureDatabaseCount(count) => {
+                write!(f, "EnsureDatabaseCount = {}", count.0)
+            }
+            DanceTestStep::StageHolon(holon) => {
+                write!(f, "StageHolon({:#?})", holon)
+            }
+            DanceTestStep::Commit() => {
+                write!(f, "Commit")
+            }
+        }
+    }
 }
 
 pub struct DanceTestState {
