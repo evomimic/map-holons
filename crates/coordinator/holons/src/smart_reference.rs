@@ -45,45 +45,6 @@ impl SmartReference {
 
         Ok(()) // rc_holon has been ensured to be populated
     }
-    // fn ensure_rc(&mut self, context: &HolonsContext,)->Result<(), HolonError> {
-    //     // Check if rc_holon is already populated
-    //     if self.rc_holon.is_some() {
-    //         return Ok(()); // Already populated, no action needed
-    //     }
-    //
-    //     // TODO: Attempt to populate rc_holon by invoking get_rc_holon on the cache_manager
-    //     let rc_holon = context.cache_manager.borrow().get_rc_holon(context, None, &self.holon_id)?;
-    //     self.rc_holon = Some(rc_holon);
-    //
-    //     Ok(()) // rc_holon has been ensured to be populated
-    //
-    // }
-
-    // // Should only be called by the CommitManager ie TODO: needs to be protected
-    // pub fn clone_holon(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
-    //     // Ensure rc_holon is populated
-    //     self.ensure_rc(context)?;
-
-    //     // Call the method directly on the dereferenced Rc
-    //     if let Some(rc_holon) = self.rc_holon.as_ref() {
-    //         let holon_key = rc_holon.get_key()?;
-    //         let mut holon = Holon::new();
-
-    //         holon.property_map = rc_holon.property_map.clone();
-    //         holon.relationship_map = rc_holon.relationship_map.clone();
-
-    //         if let Some(key) = holon_key {
-    //             holon.set_key_manually(key);
-    //         } else {
-    //         }
-
-    //         Ok(holon)
-    //     } else {
-    //         Err(HolonError::InvalidHolonReference(
-    //             "Rc Holon is not available".to_string(),
-    //         ))
-    //     }
-    // }
 
     pub fn clone_reference(&self) -> SmartReference {
         SmartReference {
@@ -94,7 +55,7 @@ impl SmartReference {
         }
     }
 
-    // Constructor function for creating from Holon Reference
+    // Constructor function for creating Holon Reference from an rc_holon
     pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference, HolonError> {
         let id = rc_holon.get_id()?;
         let key = rc_holon.get_key()?;

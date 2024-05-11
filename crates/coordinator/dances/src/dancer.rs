@@ -31,7 +31,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
         let response = DanceResponse {
             status_code: ResponseStatusCode::BadRequest,
             description: MapString("Invalid Request".to_string()),
-            body: None,
+            body: ResponseBody::None,
             descriptor: None,
             staging_area: request.staging_area.clone(),
         };
@@ -68,7 +68,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
 // Define a type alias for functions that can be dispatched
 type DanceFunction =
-    fn(context: &HolonsContext, request: DanceRequest) -> Result<Option<ResponseBody>, HolonError>;
+    fn(context: &HolonsContext, request: DanceRequest) -> Result<ResponseBody, HolonError>;
 
 // Define a struct to manage the dispatch table and offer the Dancer behaviors including the external
 // API operations of dance and (eventually) undo / redo (see [Command Pattern Wiki]
@@ -115,7 +115,7 @@ impl Dancer {
         &self,
         context: &HolonsContext,
         request: DanceRequest,
-    ) -> Result<Option<ResponseBody>, HolonError> {
+    ) -> Result<ResponseBody, HolonError> {
         if let Some(func) = self.dispatch_table.get(request.dance_name.0.as_str()) {
             func(context, request)
         } else {
@@ -138,7 +138,7 @@ impl Dancer {
 /// * `body`, `descriptor` and `staging_area` are all set to None
 ///
 
-fn process_dispatch_result(dispatch_result: Result<Option<ResponseBody>, HolonError>) -> DanceResponse {
+fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
         Ok(body) => {
             // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
@@ -174,7 +174,7 @@ fn process_dispatch_result(dispatch_result: Result<Option<ResponseBody>, HolonEr
             DanceResponse {
                 status_code: ResponseStatusCode::from(error), // Convert HolonError to ResponseStatusCode
                 description: MapString(error_message),
-                body: None,         // No body since it's an error
+                body: ResponseBody::None,         // No body since it's an error
                 descriptor: None,   // Provide appropriate value if needed
                 staging_area: StagingArea::new(), // Provide appropriate value if needed
             }

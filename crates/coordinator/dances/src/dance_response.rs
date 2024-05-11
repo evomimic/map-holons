@@ -8,6 +8,7 @@ use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::smart_collection::SmartCollection;
+use holons::smart_reference::SmartReference;
 use shared_types_holon::{MapInteger, MapString};
 
 #[hdk_entry_helper]
@@ -15,7 +16,7 @@ use shared_types_holon::{MapInteger, MapString};
 pub struct DanceResponse {
     pub status_code: ResponseStatusCode,
     pub description: MapString,
-    pub body: Option<ResponseBody>,
+    pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
     pub staging_area: StagingArea,
 }
@@ -42,9 +43,10 @@ pub enum ResponseStatusCode {
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub enum ResponseBody {
-    Holon(Holon),
-    Holons(Vec<Holon>),
-    SmartCollection(SmartCollection),
+    None,
+    //Holon(Holon),
+    Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
+    // SmartCollection(SmartCollection),
     Index(StagedIndex),
 }
 
@@ -93,7 +95,7 @@ impl DanceResponse {
     pub fn new(
         status_code: ResponseStatusCode,
         description: MapString,
-        body: Option<ResponseBody>,
+        body: ResponseBody,
         descriptor: Option<HolonReference>,
         staging_area: StagingArea,
     ) -> DanceResponse {

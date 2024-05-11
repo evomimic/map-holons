@@ -236,28 +236,31 @@ impl Holon {
     }
 
     /// commit() saves a staged holon to the persistent store.
-    /// If the staged holon is `New`, it creates a HolonNode and SmartLinks
-    /// If the staged holon is `Changed`, it persists a new version of HolonNode and its SmartLinks
-    /// If the staged holon is `Fetched`, it does nothing
-    /// If there are no errors, this function creates the HolonId of the newly saved Holon
-    /// The state of the original holon (i.e., self) is updated to `Fetched` so that commits are
+    /// If the staged holon is `New`, it creates a HolonNode and SmartLinks.
+    /// If the staged holon is `Changed`, it persists a new version of HolonNode and its SmartLinks.
+    /// If the staged holon is `Fetched` or `Saved`, it does nothing.
+    /// If there are no errors:
+    /// 1) The state of the original holon (i.e., self) is updated to `Saved` so that commits are
     /// idempotent.
-    pub fn commit(&mut self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+    /// 2) the function returns a clone of the saved holon
+    ///
+    ///
+    pub fn commit(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
                 let result = create_holon_node(self.clone().into_node());
                 match result {
                     Ok(record) => {
-                        let holon_id = HolonId(record.action_address().clone());
+                        let holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, target) in self.relationship_map.0.clone() {
-                            target.commit(context, holon_id.clone(), name.clone())?;
+                            target.commit(context, HolonId::from(holon_id.clone()), name.clone())?;
                         }
 
                         self.state = HolonState::Saved;
-
-                        Ok(holon_id)
+                        self.saved_node = Option::from(record);
+                        Ok(self.clone())
                     }
                     Err(error) => Err(HolonError::from(error)),
                 }
@@ -278,9 +281,9 @@ impl Holon {
                             for (name, target) in self.clone().relationship_map.0 {
                                 target.commit(context, holon_id.clone(), name.clone())?;
                             }
-                            self.saved_node = Some(record);
-
-                            Ok(holon_id)
+                            self.state = HolonState::Saved;
+                            self.saved_node = Option::from(record);
+                            Ok(self.clone())
                         }
                         Err(error) => Err(HolonError::from(error)),
                     }
@@ -295,7 +298,7 @@ impl Holon {
 
                 let node = self.saved_node.clone();
                 if let Some(record) = node {
-                    return Ok(HolonId(record.action_address().clone()));
+                    Ok(self.clone())
                 } else {
                     Err(HolonError::HolonNotFound(
                         "Expected Holon to have a saved_node, but it doesn't".to_string(),
