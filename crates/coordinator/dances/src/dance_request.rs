@@ -1,8 +1,6 @@
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
 use holons::holon::Holon;
-use holons::holon_reference::HolonReference;
-use holons::smart_collection::SmartCollection;
 use shared_types_holon::{HolonId, MapString, PropertyMap};
 use crate::staging_area::StagingArea;
 

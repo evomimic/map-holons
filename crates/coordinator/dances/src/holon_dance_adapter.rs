@@ -1,11 +1,22 @@
-/// This file defines the DancesAdaptors offered by the holons zome. For each Dance, this file
-/// also defines a `build_` function as a helper function for creating DanceRequests for that
-/// Dance from native parameters.
-/// They are bundled in the dances zome for now, but in the future they probably should be moved
-/// into their own zome.
+/// This file defines the DancesAdaptors offered by the holons zome.
+/// TODO: Move these adaptors to their own zome
+///
+/// For each Dance, this file defines:
+/// - a `build_` function as a helper function for creating DanceRequests for that Dance from
+/// native parameters.
+/// - a function that performs the dance
+///
+///
+/// /// As a dance adaptor, this function wraps (and insulates) Dancer from native functionality
+/// and insulates the native function from any dependency on Dances. In general, this means:
+/// 1.  Extracting any required input parameters from the DanceRequest's request_body
+/// 2.  Invoking the native function
+/// 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
+/// mapping any errors into an appropriate ResponseStatus and returning results in the body.
+
 use hdk::prelude::*;
 
-use holons::commit_manager::CommitRequestStatus::{Error, Success};
+use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::StagedIndex;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
@@ -16,19 +27,20 @@ use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::staging_area::StagingArea;
 
-/// Create a new holon that can be incrementally built up prior to commit.
-/// ParameterValues supplied in the body of the request (if any) are used to set properties on
-/// holon.
-/// As a dance adaptor, this function wraps (and insulates) Dancer from native functionality
-/// and insulates the native function from any dependency on Dances. In general, this means:
-/// 1.  Extracting any required input parameters from the DanceRequest's request_body
-/// 2.  Invoking the native function
-/// 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
-/// mapping any errors into an appropriate ResponseStatus and returning results in the body.
+/// This dance creates a new holon that can be incrementally built up prior to commit.
 ///
+/// *DanceRequest:*
+/// - dance_name: "stage_new_holon"
+/// - dance_type: Standalone
+/// - request_body:
+///     ParameterValues: specifying the initial set of properties to set in the staged_holon (if any)
 ///
-pub fn stage_new_holon_dance(context: &HolonsContext, request: DanceRequest) -> Result<Option<ResponseBody>, HolonError> {
-    // Create a new Holon
+/// *ResponseBody:*
+/// - an Index into staged_holons that references the newly staged holon.
+///
+pub fn stage_new_holon_dance(context: &HolonsContext, request: DanceRequest)
+    -> Result<ResponseBody, HolonError> {
+    // Create and stage new Holon
     let mut new_holon = Holon::new();
 
     // Populate parameters if available
@@ -53,7 +65,7 @@ pub fn stage_new_holon_dance(context: &HolonsContext, request: DanceRequest) -> 
     // Convert the holon_index in the StagedReference into a MapInteger
     // and then return it in the response body
     let index = MapInteger(staged_reference.holon_index.try_into().expect("Conversion failed"));
-    Ok(Some(ResponseBody::Index(index)))
+    Ok(ResponseBody::Index(index))
 }
 
 ///
@@ -65,17 +77,17 @@ pub fn build_stage_new_holon_dance_request(staging_area: StagingArea, properties
     }
 
 /// Add property values to an already staged holon
-/// ParameterValues supplied in the body of the request are used to set properties on the holon
 ///
-/// As a dance adaptor, this function wraps (and insulates) Dancer from native functionality
-/// and insulates the native function from any dependency on Dances. In general, this means:
-/// 1.  Extracting any required input parameters from the DanceRequest's request_body
-/// 2.  Invoking the native function
-/// 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
-/// mapping any errors into an appropriate ResponseStatus and returning results in the body.
+/// *DanceRequest:*
+/// - dance_name: "with_properties"
+/// - dance_type: Command(StagedIndex) -- references staged_holon to update
+/// - request_body:
+///     ParameterValues: specifying the set of properties to set in the staged_holon
 ///
+/// *ResponseBody:*
+/// - an Index into staged_holons that references the updated holon.
 ///
-pub fn with_properties_dance(context: &HolonsContext, request: DanceRequest) -> Result<Option<ResponseBody>, HolonError> {
+pub fn with_properties_dance(context: &HolonsContext, request: DanceRequest) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
     match request.dance_type {
         DanceType::Command(staged_index) => {
@@ -89,14 +101,14 @@ pub fn with_properties_dance(context: &HolonsContext, request: DanceRequest) -> 
                     match request.body {
                         RequestBody::None => {
                             // No parameters to populate, continue
-                            Ok(Some(ResponseBody::Index(staged_index)))
+                            Ok(ResponseBody::Index(staged_index))
                         },
                         RequestBody::ParameterValues(parameters) => {
                             // Populate parameters into the new Holon
                             for (property_name, base_value) in parameters {
                                 holon_mut.with_property_value(property_name.clone(), base_value.clone());
                             }
-                            Ok(Some(ResponseBody::Index(staged_index)))
+                            Ok(ResponseBody::Index(staged_index))
                         },
                         _ => Err(HolonError::InvalidParameter("request.body".to_string())),
                     }
@@ -117,15 +129,24 @@ pub fn build_with_properties_dance_request(staging_area: StagingArea, index: Sta
 }
 
 
-/// This dance retrieves all holons from the persistent store
-pub fn get_all_holons_dance(_context: &HolonsContext, _request: DanceRequest) -> Result<Option<ResponseBody>, HolonError> {
+/// Get all holons from the persistent store
+///
+/// *DanceRequest:*
+/// - dance_name: "get_all_holons"
+/// - dance_type: Standalone
+/// - request_body: None
+///
+/// *ResponseBody:*
+/// - Holons -- will be replaced by SmartCollection once supported
+///
+pub fn get_all_holons_dance(_context: &HolonsContext, _request: DanceRequest) -> Result<ResponseBody, HolonError> {
     // TODO: add support for descriptor parameter
     //
     //
     let query_result =  Holon::get_all_holons();
     match query_result {
         Ok(holons) => Ok(
-            Some(ResponseBody::Holons(holons))
+            ResponseBody::Holons(holons)
         ),
         Err(holon_error) => {
             Err(holon_error.into())
@@ -142,17 +163,33 @@ pub fn build_get_all_holons_dance_request(staging_area: StagingArea)->Result<Dan
 
 /// Commit all staged holons to the persistent store
 ///
-pub fn commit_dance(context: &HolonsContext, _request: DanceRequest) -> Result<Option<ResponseBody>, HolonError> {
+/// *DanceRequest:*
+/// - dance_name: "commit"
+/// - dance_type: Standalone
+/// - request_body: None
+///
+/// *ResponseBody:*
+/// - Holons -- a vector of clones of all successfully committed holons
+///
+pub fn commit_dance(context: &HolonsContext, _request: DanceRequest) -> Result<ResponseBody, HolonError> {
 
     let commit_response = context
         .commit_manager
         .borrow_mut()
         .commit(context);
 
+
     match commit_response.status {
-        Success => Ok(None),
-        Error(errors)
-            => Err(HolonError::CommitFailure(HolonError::combine_errors(errors))),
+        Complete => Ok(
+            ResponseBody::Holons(commit_response.saved_holons)
+        ),
+        Incomplete => {
+            let completion_message = format!("{} of {:?} were successfully committed",
+                                             commit_response.saved_holons.len(),
+                                             commit_response.commits_attempted,
+            );
+            Err(HolonError::CommitFailure(completion_message.to_string()))
+        }
     }
 }
 

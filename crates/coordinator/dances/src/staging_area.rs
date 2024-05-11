@@ -4,7 +4,7 @@ use std::rc::Rc;
 use hdk::prelude::*;
 use holons::commit_manager::CommitManager;
 use holons::holon::Holon;
-use shared_types_holon::{MapInteger, MapString};
+use shared_types_holon::{MapString};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]

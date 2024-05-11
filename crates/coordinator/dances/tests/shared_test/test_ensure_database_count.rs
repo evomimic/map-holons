@@ -49,16 +49,16 @@ pub async fn execute_ensure_database_count(
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
             test_state.staging_area = response.staging_area.clone();
-            if let Some(body) = response.body {
-                if let Holons(holons) = body {
-                    assert_eq!(expected_count, MapInteger(holons.len() as i64));
-                    let actual_count = holons.len().to_string();
-                    println!("Success! DB has {actual_count} holons, as expected");
 
-                } else {
-                    panic!("Expected get_all_holons to return Holons response, but it didn't!");
-                }
+            if let Holons(holons) = response.body {
+                assert_eq!(expected_count, MapInteger(holons.len() as i64));
+                let actual_count = holons.len().to_string();
+                println!("Success! DB has {actual_count} holons, as expected");
+
+            } else {
+                panic!("Expected get_all_holons to return Holons response, but it didn't!");
             }
+
 
         }
         Err(error)=> {

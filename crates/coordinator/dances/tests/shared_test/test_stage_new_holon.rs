@@ -54,31 +54,23 @@ pub async fn execute_stage_new_holon(
             let description = response.description.clone();
             test_state.staging_area = response.staging_area.clone();
             if let ResponseStatusCode::OK = code {
-                if let Some(body) = response.body {
-                    if let Index(index) = body {
-                        let index_value = index.0.to_string();
-                        println!("{index_value} returned in body");
-                        // An index was returned in the body, retrieve the Holon at that index within
-                        // the StagingArea and confirm it matches the expected Holon.
+                if let Index(index) = response.body {
+                    let index_value = index.0.to_string();
+                    println!("{index_value} returned in body");
+                    // An index was returned in the body, retrieve the Holon at that index within
+                    // the StagingArea and confirm it matches the expected Holon.
 
-                        let holons = response.staging_area.staged_holons;
-                        assert_eq!(expected_holon, holons[index.0 as usize]);
+                    let holons = response.staging_area.staged_holons;
+                    assert_eq!(expected_holon, holons[index.0 as usize]);
 
 
-                        println!("Success! Holon has been staged, as expected");
-                    } else {
-                        panic!("Expected `index` to staged_holon in the response body, but didn't get one!");
-                    }
+                    println!("Success! Holon has been staged, as expected");
                 } else {
-                    panic!("Expected Some response.body, got None!");
+                    panic!("Expected `index` to staged_holon in the response body, but didn't get one!");
                 }
-
             } else {
                 panic!("DanceRequest returned {code} for {description}");
             }
-
-
-
         }
         Err(error)=> {
             panic!("{:?} Unable to build a stage_holon request ", error);
