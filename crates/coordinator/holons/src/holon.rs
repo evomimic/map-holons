@@ -16,7 +16,7 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
-use crate::{all_holon_nodes::*, property_map};
+use crate::{all_holon_nodes::*};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -294,10 +294,10 @@ impl Holon {
                 }
             }
             _ => {
-                // For either Fetched or Saved no save is needed, just return HolonId
+                // For either Fetched or Saved no save is needed, just return Holon
 
                 let node = self.saved_node.clone();
-                if let Some(record) = node {
+                if let Some(_record) = node {
                     Ok(self.clone())
                 } else {
                     Err(HolonError::HolonNotFound(

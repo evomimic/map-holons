@@ -11,8 +11,7 @@ use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use crate::staged_collection::StagedCollection;
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::{HolonId, MapString, PropertyValue};
-use crate::commit_manager::StagedIndex;
+use shared_types_holon::{MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]

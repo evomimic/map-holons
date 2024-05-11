@@ -5,7 +5,6 @@ use hdk::prelude::*;
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
 use holons::cache_manager::HolonCacheManager;
-use holons::commit_manager::CommitManager;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
@@ -42,7 +41,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
    // let mut commit_manager = CommitManager::new();
 
-    let mut commit_manager = request.clone().staging_area.to_commit_manager();
+    let commit_manager = request.clone().staging_area.to_commit_manager();
     // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
     let context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
 

@@ -11,9 +11,8 @@ use crate::relationship::RelationshipMap;
 use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
-use shared_types_holon::{HolonId, MapInteger, MapString};
-use crate::holon_reference::HolonReference;
-use crate::smart_collection::SmartCollection;
+use shared_types_holon::{MapInteger, MapString};
+
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {

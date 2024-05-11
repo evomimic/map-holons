@@ -4,12 +4,10 @@ use derive_new::new;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
-use holons::holon::{Holon, HolonState};
+use holons::holon::{Holon};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-use holons::smart_collection::SmartCollection;
-use holons::smart_reference::SmartReference;
-use shared_types_holon::{MapInteger, MapString};
+use shared_types_holon::{MapString};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
