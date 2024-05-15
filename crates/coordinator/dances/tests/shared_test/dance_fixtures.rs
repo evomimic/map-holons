@@ -47,6 +47,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     );
 
+    // let mut expected_holons = Vec::new();
+
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
     let mut book_holon = Holon::new();
@@ -56,7 +58,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
         )),
     );
-    test_case.add_stage_holon_step(book_holon)?;
+    test_case.add_stage_holon_step(book_holon.clone())?;
+    // expected_holons.push(book_holon.clone());
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -68,7 +71,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     let mut person_holon = Holon::new();
 
-    test_case.add_stage_holon_step(person_holon)?;
+    test_case.add_stage_holon_step(person_holon.clone())?;
+    // expected_holons.push(person_holon.clone());
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -82,6 +86,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_with_properties_step(MapInteger(1), properties)?;
 
     test_case.add_commit_step()?;
+    test_case.add_match_db_content_test_step()?;
+
     test_case.add_ensure_database_count_step(MapInteger(2))?;
 
     // let mut book_holon = Holon::new();
@@ -94,6 +100,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     //         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
     //     ;
     // test_case.add_create_step(book_holon)?;
+
+    // debug!("expected holons: {:?}", expected_holons);
 
     Ok(test_case.clone())
 }

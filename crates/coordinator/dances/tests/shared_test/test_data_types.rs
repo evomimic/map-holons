@@ -13,53 +13,6 @@ pub struct DancesTestCase {
     pub steps: VecDeque<DanceTestStep>,
 }
 
-#[derive(Clone, Debug)]
-pub enum DanceTestStep {
-    EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
-    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
-    Commit,
-    WithProperties(StagedIndex, PropertyMap), // Update properties for Holon at StagedIndex with PropertyMap
-                                              // Update(Holon), // Associated data is expected Holon after update
-                                              // Delete(HolonId), // Associated data is id of Holon to delete
-}
-
-impl fmt::Display for DanceTestStep {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DanceTestStep::EnsureDatabaseCount(count) => {
-                write!(f, "EnsureDatabaseCount = {}", count.0)
-            }
-            DanceTestStep::StageHolon(holon) => {
-                write!(f, "StageHolon({:#?})", holon)
-            }
-            DanceTestStep::Commit => {
-                write!(f, "Commit")
-            }
-            DanceTestStep::WithProperties(index, properties) => {
-                write!(
-                    f,
-                    "WithProperties for Holon at ({:#?}) with properties: {:#?} ",
-                    index, properties
-                )
-            }
-        }
-    }
-}
-
-pub struct DanceTestState {
-    pub staging_area: StagingArea,
-    pub created_holons: Vec<Holon>,
-}
-
-impl DanceTestState {
-    pub fn new() -> DanceTestState {
-        DanceTestState {
-            staging_area: StagingArea::new(),
-            created_holons: Vec::new(),
-        }
-    }
-}
-
 impl DancesTestCase {
     pub fn new(name: String, description: String) -> Self {
         Self {
@@ -103,6 +56,62 @@ impl DancesTestCase {
     //     self.steps.push_back(DanceTestStep::Delete(holon_id));
     //     Ok(())
     // }
+
+    pub fn add_match_db_content_test_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::MatchSavedContent);
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum DanceTestStep {
+    EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
+    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+    Commit,
+    WithProperties(StagedIndex, PropertyMap), // Update properties for Holon at StagedIndex with PropertyMap
+    // Update(Holon), // Associated data is expected Holon after update
+    // Delete(HolonId), // Associated data is id of Holon to delete
+    MatchSavedContent,
+}
+
+impl fmt::Display for DanceTestStep {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DanceTestStep::EnsureDatabaseCount(count) => {
+                write!(f, "EnsureDatabaseCount = {}", count.0)
+            }
+            DanceTestStep::StageHolon(holon) => {
+                write!(f, "StageHolon({:#?})", holon)
+            }
+            DanceTestStep::Commit => {
+                write!(f, "Commit")
+            }
+            DanceTestStep::WithProperties(index, properties) => {
+                write!(
+                    f,
+                    "WithProperties for Holon at ({:#?}) with properties: {:#?} ",
+                    index, properties
+                )
+            }
+            DanceTestStep::MatchSavedContent => {
+                write!(f, "MatchSavedContent")
+            }
+        }
+    }
+}
+
+pub struct DanceTestState {
+    pub staging_area: StagingArea,
+    pub created_holons: Vec<Holon>,
+}
+
+impl DanceTestState {
+    pub fn new() -> DanceTestState {
+        DanceTestState {
+            staging_area: StagingArea::new(),
+            created_holons: Vec::new(),
+        }
+    }
 }
 
 // #[derive(Clone, Debug)]

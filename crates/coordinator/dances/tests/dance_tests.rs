@@ -15,6 +15,7 @@ use rstest::*;
 use crate::shared_test::test_commit::execute_commit;
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep};
 use crate::shared_test::test_ensure_database_count::execute_ensure_database_count;
+use crate::shared_test::test_match_db_content::execute_match_db_content;
 use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use crate::shared_test::test_with_properties_command::execute_with_properties;
 use dances::staging_area::StagingArea;
@@ -73,12 +74,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         match step {
             DanceTestStep::EnsureDatabaseCount(expected_count) => {
                 execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
-                    .await
+                    .await;
             }
             DanceTestStep::StageHolon(holon) => {
-                execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await
+                execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await;
             }
-            DanceTestStep::Commit => execute_commit(&conductor, &cell, &mut test_state).await,
+            DanceTestStep::Commit => {
+                execute_commit(&conductor, &cell, &mut test_state).await;
+            }
             DanceTestStep::WithProperties(staged_index, properties) => {
                 execute_with_properties(
                     &conductor,
@@ -87,9 +90,13 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     staged_index,
                     properties,
                 )
-                .await
-            } // DanceTestStep::Update(holon) => execute_update_step(&conductor, &cell, holon),
-              // DanceTestStep::Delete(holon_id) => execute_delete_step(&conductor, &cell, holon_id),
+                .await;
+            }
+            // DanceTestStep::Update(holon) => execute_update_step(&conductor, &cell, holon),
+            // DanceTestStep::Delete(holon_id) => execute_delete_step(&conductor, &cell, holon_id),
+            DanceTestStep::MatchSavedContent => {
+                execute_match_db_content(&conductor, &cell, &mut test_state).await;
+            }
         }
     }
     println!("-------------- END OF {name} TEST CASE  ------------------");

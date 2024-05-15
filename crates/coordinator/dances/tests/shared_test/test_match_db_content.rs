@@ -3,10 +3,11 @@
 use std::collections::BTreeMap;
 
 use async_std::task;
-use dances::dance_response::ResponseBody::Holons;
+use dances::dance_response::ResponseBody;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
-    build_get_all_holons_dance_request, build_stage_new_holon_dance_request,
+    build_get_all_holons_dance_request, build_get_holon_by_id_dance_request,
+    build_stage_new_holon_dance_request,
 };
 use hdk::prelude::*;
 use holochain::sweettest::*;
@@ -33,13 +34,15 @@ pub async fn execute_match_db_content(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
-    expected_holons: Vec<Holon>,
 ) {
     println!("\n\n--- TEST STEP: Ensuring database matches expected holons ---");
-    for expected_holon in expected_holons {
+    for expected_holon in test_state.created_holons.clone() {
+        // get HolonId
+        let holon_id = expected_holon.get_id().unwrap();
         // Build a get_holon_by_id DanceRequest
-        let request = build_get_holon_by_id_dance_request(test_state.staging_area.clone());
-        // println!("Dance Request: {:#?}", request);
+        let request =
+            build_get_holon_by_id_dance_request(test_state.staging_area.clone(), holon_id.clone());
+        println!("Dance Request: {:#?}", request);
 
         match request {
             Ok(valid_request) => {
@@ -48,18 +51,19 @@ pub async fn execute_match_db_content(
                     .await;
                 test_state.staging_area = response.staging_area.clone();
 
-                if let Holon(fetched_holon) = response.body.clone() {
+                if let ResponseBody::Holon(fetched_holon) = response.body.clone() {
                     assert_eq!(expected_holon, fetched_holon);
                     println!("Success! DB fetched holon matched expected");
                 } else {
                     panic!(
-                        "Expected get_holon_by_id to return a Holon response, but it returned {}",
-                        response.body.clone()
+                        "Expected get_holon_by_id to return a Holon response for id: {:?}, but it returned {:?}",
+                        holon_id,
+                        response.body
                     );
                 }
             }
             Err(error) => {
-                panic!("{:?} Unable to build a get_all_holons request ", error);
+                panic!("{:?} Unable to build a get_holon_by_id request ", error);
             }
         }
     }

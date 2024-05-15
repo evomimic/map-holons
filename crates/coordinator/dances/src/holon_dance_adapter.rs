@@ -1,3 +1,6 @@
+use std::borrow::Borrow;
+use std::rc::Rc;
+
 /// This file defines the DancesAdaptors offered by the holons zome.
 /// TODO: Move these adaptors to their own zome
 ///
@@ -210,7 +213,7 @@ pub fn build_get_all_holons_dance_request(
 ///     - Holon(Holon)
 ///
 pub fn get_holon_by_id_dance(
-    _context: &HolonsContext,
+    context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     let holon_id = match request.body {
@@ -221,21 +224,18 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    let query = Holon::get_holon(holon_id)?;
-    if let Some(holon) = query {
-        Ok(ResponseBody::Holon(holon))
-    } else {
-        Err(HolonError::HolonNotFound(
-            "get_holon returned None for given HolonId".to_string(),
-        ))
-    }
+    let mut cache_manager = context.cache_manager.borrow_mut();
+    let rc_holon = cache_manager.get_rc_holon(None, &holon_id)?;
+
+    Ok(ResponseBody::Holon((*rc_holon).clone()))
 }
 
 /// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
 pub fn build_get_holon_by_id_dance_request(
     staging_area: StagingArea,
+    holon_id: HolonId,
 ) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new();
+    let body = RequestBody::HolonId(holon_id);
     Ok(DanceRequest::new(
         MapString("get_holon_by_id".to_string()),
         DanceType::Standalone,

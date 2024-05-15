@@ -9,6 +9,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
 
+use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_error::HolonError;
@@ -16,7 +17,6 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
-use crate::{all_holon_nodes::*};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -121,17 +121,18 @@ impl Holon {
     }
 
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
-    /// TODO: replace with cache aware function
+    // TODO: replace with cache aware function
+    // TODO: Throw None case or remove option
     pub fn get_holon(id: HolonId) -> Result<Option<Holon>, HolonError> {
         let holon_node_record = get_holon_node(id.0.clone())?;
-        return if let Some(node) = holon_node_record {
+        if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
             holon.state = HolonState::Fetched;
             Ok(Some(holon))
         } else {
             // no holon_node fetched for specified holon_id
             Err(HolonError::HolonNotFound(id.0.to_string()))
-        };
+        }
     }
 
     pub fn get_property_value(
@@ -255,7 +256,11 @@ impl Holon {
                         let holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, target) in self.relationship_map.0.clone() {
-                            target.commit(context, HolonId::from(holon_id.clone()), name.clone())?;
+                            target.commit(
+                                context,
+                                HolonId::from(holon_id.clone()),
+                                name.clone(),
+                            )?;
                         }
 
                         self.state = HolonState::Saved;

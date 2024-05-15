@@ -59,7 +59,7 @@ impl HolonCacheManager {
 
     /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash, it then
     /// "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon(_context: &HolonsContext, id: &HolonId) -> Result<Holon, HolonError> {
+    fn fetch_holon(id: &HolonId) -> Result<Holon, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         if let Some(node) = holon_node_record {
             let holon = Holon::try_from_node(node)?;
@@ -80,7 +80,6 @@ impl HolonCacheManager {
 
     pub fn get_rc_holon(
         &mut self,
-        context: &HolonsContext,
         holon_space_id: Option<&HolonId>,
         holon_id: &HolonId,
     ) -> Result<Rc<Holon>, HolonError> {
@@ -94,7 +93,7 @@ impl HolonCacheManager {
         }
 
         // If not found in the cache, fetch the holon
-        let fetched_holon = Self::fetch_holon(context, holon_id)?;
+        let fetched_holon = Self::fetch_holon(holon_id)?;
 
         // Obtain a mutable reference to local_cache
         let cache_mut = self.get_cache_mut(holon_space_id)?;
