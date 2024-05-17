@@ -236,33 +236,41 @@ impl Holon {
     }
 
     /// commit() saves a staged holon to the persistent store.
-    /// If the staged holon is `New`, it creates a HolonNode and SmartLinks.
-    /// If the staged holon is `Changed`, it persists a new version of HolonNode and its SmartLinks.
-    /// If the staged holon is `Fetched` or `Saved`, it does nothing.
-    /// If there are no errors:
-    /// 1) The state of the original holon (i.e., self) is updated to `Saved` so that commits are
-    /// idempotent.
-    /// 2) the function returns a clone of the saved holon
     ///
+    /// If the staged holon is `Fetched` or `Saved`, commit does nothing.
     ///
-    pub fn commit(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
+    /// If the staged holon is `New`, commit attempts to create a HolonNode.
+    ///
+    /// If the staged holon is `Changed`, commit persists a new version of the HolonNode
+    ///
+    /// If the create or update is successful, the holon's `saved_node` is set from the record
+    /// returned, its `state` is changed to `Saved`, so that commits are idempotent, and the
+    /// function returns a clone of self.
+    ///
+    /// If an error is encountered, it is pushed into the holons `errors` vector, the holon's state
+    /// is left unchanged and an Err is returned.
+    ///
+
+    pub fn commit(&mut self) -> Result<Holon, HolonError> {
+        debug!("Entered Holon::commit");
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
+                debug!("HolonState is New... requesting new HolonNode be created in the DHT");
                 let result = create_holon_node(self.clone().into_node());
+
                 match result {
                     Ok(record) => {
-                        let holon_id = record.action_address().clone();
-                        // Iterate through the holon's relationship map, invoking commit on each
-                        for (name, target) in self.relationship_map.0.clone() {
-                            target.commit(context, HolonId::from(holon_id.clone()), name.clone())?;
-                        }
-
                         self.state = HolonState::Saved;
                         self.saved_node = Option::from(record);
+
                         Ok(self.clone())
                     }
-                    Err(error) => Err(HolonError::from(error)),
+                    Err(error) => {
+                        let holon_error = HolonError::from(error);
+                        self.errors.push(holon_error.clone());
+                        Err(holon_error)
+                    },
                 }
             }
 
@@ -274,36 +282,67 @@ impl Holon {
                         previous_holon_node_hash: node.action_address().clone(),
                         updated_holon_node: self.clone().into_node(),
                     };
+                    debug!("HolonState is Changed... requesting HolonNode be updated in the DHT");
                     let result = update_holon_node(input);
                     match result {
                         Ok(record) => {
-                            let holon_id = HolonId(record.action_address().clone());
-                            for (name, target) in self.clone().relationship_map.0 {
-                                target.commit(context, holon_id.clone(), name.clone())?;
-                            }
                             self.state = HolonState::Saved;
                             self.saved_node = Option::from(record);
                             Ok(self.clone())
                         }
-                        Err(error) => Err(HolonError::from(error)),
+                        Err(error) => {
+                            let holon_error = HolonError::from(error);
+                            self.errors.push(holon_error.clone());
+                            Err(holon_error)
+                        },
                     }
                 } else {
-                    Err(HolonError::HolonNotFound(
-                        "Must have a saved node in order to update".to_string(),
-                    ))
+                    let holon_error = HolonError::HolonNotFound("Holon marked Changed, but has no saved_node".to_string());
+                    self.errors.push(holon_error.clone());
+                    Err(holon_error)
                 }
             }
             _ => {
                 // For either Fetched or Saved no save is needed, just return Holon
 
-                let node = self.saved_node.clone();
-                if let Some(_record) = node {
-                    Ok(self.clone())
-                } else {
-                    Err(HolonError::HolonNotFound(
-                        "Expected Holon to have a saved_node, but it doesn't".to_string(),
-                    ))
+                Ok(self.clone())
+            }
+        }
+    }
+    /// commit_relationship() saves a `Saved` holon's relationships as SmartLinks. It should only be invoked
+    /// AFTER staged_holons have been successfully committed.
+    ///
+    /// If the staged holon is `Fetched`, `New`, or `Changed` commit does nothing.
+    ///
+    /// If the staged holon is `Saved`, commit_relationship iterates through the holon's
+    /// `relationship_map` and calls commit on each member's RelationshipTarget.
+    ///
+    /// If all commits are successful, the function returns a clone a self. Otherwise, the
+    /// function returns an error.
+    ///
+    pub fn commit_relationships(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        debug!("Entered Holon::commit_relationships");
+        match self.state {
+            HolonState::Saved => {
+                match self.saved_node.clone() {
+                    Some(record) => {
+                        let holon_id = record.action_address().clone();
+                        // Iterate through the holon's relationship map, invoking commit on each
+                        for (name, target) in self.relationship_map.0.clone() {
+                            // TODO: flatten this delegation, no staged holon commits are required
+                            debug!("committing_relationship for {:#?}", name.clone());
+                            target.commit_relationship(context, HolonId::from(holon_id.clone()), name.clone())?;
+                        }
+
+                        Ok(self.clone())
+                    }
+                    None => Err(HolonError::HolonNotFound("Holon marked Saved, but has no saved_node".to_string()))
                 }
+            }
+
+            _ => {
+                // Ignore all other states, just return self
+                Ok(self.clone())
             }
         }
     }

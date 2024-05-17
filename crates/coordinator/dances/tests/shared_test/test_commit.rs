@@ -33,11 +33,11 @@ use crate::shared_test::test_data_types::DanceTestStep;
 
 pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_state: &mut DanceTestState) ->() {
 
-    println!("\n\n--- TEST STEP: Committing Staged Holons ---- :");
+    info!("\n\n--- TEST STEP: Committing Staged Holons ---- :");
 
     // Build a commit DanceRequest
     let request = build_commit_dance_request(test_state.staging_area.clone());
-    println!("Dance Request: {:#?}", request);
+    debug!("Dance Request: {:#?}", request);
 
     match request {
         Ok(valid_request)=> {
@@ -45,14 +45,14 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
 
-            println!("Dance Response: {:#?}", response.clone());
+            debug!("Dance Response: {:#?}", response.clone());
             test_state.staging_area = response.staging_area.clone();
             let code = response.status_code;
             let description = response.description.clone();
             if code == ResponseStatusCode::OK {
                 // Check that staging area is empty
                 assert!(response.staging_area.staged_holons.is_empty());
-                println!("Success! Commit succeeded");
+                info!("Success! Commit succeeded");
             } else {
                 panic!("DanceRequest returned {code} for {description}");
             }

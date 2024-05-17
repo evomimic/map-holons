@@ -73,14 +73,19 @@ impl StagedCollection {
     //     self.holons = Vec::new(); // is it correct to clear holons from staged collection? otherwise commit doesn't need to take mutable reference to self
     //     Ok(())
     // }
-    pub fn commit(
+    /// This method creates smartlinks for the specified relationship name from the specified
+    /// to each of the members of its collection. It assumes that all staged_holons have
+    /// been previously saved, so their holon_id is available through their saved_node
+    pub fn add_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
+
+        debug!("Entered StagedCollection::add_smartlinks_for_collection, calling commit on each holon_reference in the collection.");
         for holon_reference in self.holons.clone() {
-            holon_reference.commit(context, source_id.clone(), name.clone())?;
+            holon_reference.commit_smartlink(context, source_id.clone(), name.clone())?;
         }
         Ok(())
     }

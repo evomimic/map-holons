@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 use async_std::task;
 use hdk::prelude::*;
+use holochain::prelude::kitsune_p2p::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
@@ -23,6 +24,7 @@ use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::HolonId;
+use crate::shared_test::test_add_related_holon::execute_add_related_holons;
 use crate::shared_test::test_commit::execute_commit;
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep};
 use crate::shared_test::test_ensure_database_count::execute_ensure_database_count;
@@ -44,10 +46,12 @@ use crate::shared_test::test_with_properties_command::execute_with_properties;
 ///      cargo test -p dances --test dance_tests  -- --show-output
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+//#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+#[case::simple_add_related_holon_test(simple_add_related_holons_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
+    let _ = holochain_trace::test_run().ok();
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
         setup_conductor().await;
@@ -64,12 +68,13 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Initialize the DanceTestState
     let mut test_state =DanceTestState::new();
 
-    println!("******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
-    println!("******* {description}  ***************************");
+    info!("******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
+    info!("******* {description}  ***************************");
 
     for step in test_case.steps {
         //println!("\n\n============= STARTING NEXT STEP: {}", step);
         match step {
+            DanceTestStep::AddRelatedHolons(staged_index, relationship_name,holons_to_add) => execute_add_related_holons(&conductor, &cell, &mut test_state, staged_index, relationship_name, holons_to_add).await,
             DanceTestStep::EnsureDatabaseCount(expected_count) => execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count).await,
             DanceTestStep::StageHolon(holon) => execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await,
             DanceTestStep::Commit() => execute_commit(&conductor, &cell, &mut test_state,).await,
@@ -78,6 +83,6 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             // DanceTestStep::Delete(holon_id) => execute_delete_step(&conductor, &cell, holon_id),
         }
     }
-    println!("-------------- END OF {name} TEST CASE  ------------------");
+    info!("-------------- END OF {name} TEST CASE  ------------------");
 }
 

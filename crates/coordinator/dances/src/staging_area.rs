@@ -26,7 +26,7 @@ impl StagingArea {
         let staged_holons: Vec<Holon> = commit_manager.staged_holons.iter().map(|holon_rc| holon_rc.borrow().clone()).collect();
         StagingArea {
             staged_holons,
-            index: commit_manager.index.clone(),
+            index: commit_manager.keyed_index.clone(),
         }
 
     }
@@ -36,7 +36,7 @@ impl StagingArea {
         let staged_holons: Vec<Rc<RefCell<Holon>>> = self.staged_holons.iter().map(|holon| Rc::new(RefCell::new(holon.clone()))).collect();
         CommitManager {
             staged_holons,
-            index: self.index.clone(),
+            keyed_index: self.index.clone(),
         }
     }
 }

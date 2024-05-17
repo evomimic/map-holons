@@ -35,13 +35,13 @@ pub async fn execute_ensure_database_count(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
-    expected_count: MapInteger
+    expected_count: MapInteger,
 ){
     let expected_count_string = expected_count.0.to_string();
-    println!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
+    info!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
     // Build a get_all_holons DanceRequest
     let request = build_get_all_holons_dance_request(test_state.staging_area.clone());
-    println!("Dance Request: {:#?}", request);
+    debug!("Dance Request: {:#?}", request);
 
     match request {
         Ok(valid_request)=> {
@@ -53,7 +53,7 @@ pub async fn execute_ensure_database_count(
             if let Holons(holons) = response.body {
                 assert_eq!(expected_count, MapInteger(holons.len() as i64));
                 let actual_count = holons.len().to_string();
-                println!("Success! DB has {actual_count} holons, as expected");
+                info!("Success! DB has {actual_count} holons, as expected");
 
             } else {
                 panic!("Expected get_all_holons to return Holons response, but it didn't!");

@@ -38,33 +38,33 @@ pub async fn execute_stage_new_holon(
     expected_holon: Holon
 ) ->() {
 
-    println!("\n\n--- TEST STEP: Staging a new Holon:");
+    info!("\n\n--- TEST STEP: Staging a new Holon:");
     // println!("{:#?}", expected_holon.clone());
     // Build a stage_holon DanceRequest
     let request = build_stage_new_holon_dance_request(test_state.staging_area.clone(), expected_holon.clone().property_map);
-    println!("Dance Request: {:#?}", request);
+    debug!("Dance Request: {:#?}", request);
 
     match request {
         Ok(valid_request)=> {
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
-            println!("Dance Response: {:#?}", response.clone());
+            debug!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
             let description = response.description.clone();
             test_state.staging_area = response.staging_area.clone();
             if let ResponseStatusCode::OK = code {
                 if let Index(index) = response.body {
-                    let index_value = index.0.to_string();
-                    println!("{index_value} returned in body");
+                    let index_value = index.to_string();
+                    debug!("{index_value} returned in body");
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
                     let holons = response.staging_area.staged_holons;
-                    assert_eq!(expected_holon, holons[index.0 as usize]);
+                    assert_eq!(expected_holon, holons[index as usize]);
 
 
-                    println!("Success! Holon has been staged, as expected");
+                    info!("Success! Holon has been staged, as expected");
                 } else {
                     panic!("Expected `index` to staged_holon in the response body, but didn't get one!");
                 }

@@ -42,9 +42,9 @@ pub async fn execute_with_properties(
     properties: PropertyMap,
 ) ->() {
 
-    println!("\n\n--- TEST STEP: with_properties Command:");
+    info!("\n\n--- TEST STEP: with_properties Command:");
     // Get the state of the holon prior to dancing the request
-    let staged_holon = test_state.staging_area.staged_holons.get(staged_holon_index.0 as usize);
+    let staged_holon = test_state.staging_area.staged_holons.get(staged_holon_index);
     match staged_holon {
         None => {
             panic!("Unable to get staged_holon from the staging_area");
@@ -57,30 +57,30 @@ pub async fn execute_with_properties(
             }
             // Build a with_properties DanceRequest
             let request = build_with_properties_dance_request(test_state.staging_area.clone(), staged_holon_index, properties.clone());
-            println!("Dance Request: {:#?}", request);
+            debug!("Dance Request: {:#?}", request);
 
             match request {
                 Ok(valid_request)=> {
                     let response: DanceResponse = conductor
                         .call(&cell.zome("dances"), "dance", valid_request)
                         .await;
-                    println!("Dance Response: {:#?}", response.clone());
+                    debug!("Dance Response: {:#?}", response.clone());
                     let code = response.status_code;
                     let description = response.description.clone();
                     test_state.staging_area = response.staging_area.clone();
                     if let ResponseStatusCode::OK = code {
 
                         if let Index(index) = response.body {
-                            let index_value = index.0.to_string();
-                            println!("{index_value} returned in body");
+                            let index_value = index.to_string();
+                            debug!("{index_value} returned in body");
                             // An index was returned in the body, retrieve the Holon at that index within
                             // the StagingArea and confirm it matches the expected Holon.
 
                             let holons = response.staging_area.staged_holons;
-                            assert_eq!(expected_holon, holons[index.0 as usize]);
+                            assert_eq!(expected_holon, holons[index]);
 
 
-                            println!("Success! Holon has updated with supplied properties");
+                            info!("Success! Holon has updated with supplied properties");
                         }
 
                     } else {

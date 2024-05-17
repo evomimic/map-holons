@@ -97,6 +97,15 @@ impl SmartReference {
     }
 }
 impl HolonFieldGettable for SmartReference {
+    /// This function gets the value for the specified property name
+    /// It will attempt to get it from the smart_property_values map first to avoid having to
+    /// retrieve the underlying holon. But, failing that, it will do an ensure_rc to make sure
+    /// the holon has been retrieved from the persistent store and then attempt to get the
+    /// property value from the holon.
+    ///
+    /// Possible Errors:
+    /// This function returns an EmptyFiled error if no value is found for the specified property
+    /// Or (less likely) an InvalidHolonReference
     fn get_property_value(
         &mut self,
         context: &HolonsContext,
