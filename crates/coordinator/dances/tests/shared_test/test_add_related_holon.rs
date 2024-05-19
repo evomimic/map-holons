@@ -61,6 +61,7 @@ pub async fn execute_add_related_holons(
             // Build the DanceRequest
             let request = build_add_related_holons_dance_request(
                 test_state.staging_area.clone(),
+
                 source_holon_index,
                 relationship_name,
                 holons_to_add);

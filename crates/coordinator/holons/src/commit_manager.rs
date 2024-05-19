@@ -104,7 +104,7 @@ impl CommitManager {
         // FIRST PASS: Commit Staged Holons
         {
             debug!("Starting FIRST PASS... commit staged_holons...");
-            let mut commit_manager = context.commit_manager.borrow_mut();
+            let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit();
                 match outcome {

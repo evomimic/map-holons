@@ -329,7 +329,6 @@ impl Holon {
                         let holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, target) in self.relationship_map.0.clone() {
-                            // TODO: flatten this delegation, no staged holon commits are required
                             debug!("committing_relationship for {:#?}", name.clone());
                             target.commit_relationship(context, HolonId::from(holon_id.clone()), name.clone())?;
                         }

@@ -28,7 +28,6 @@ ahash ="=0.8.11"
 quick_cache = "0.4.1"
 
 
-
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
 

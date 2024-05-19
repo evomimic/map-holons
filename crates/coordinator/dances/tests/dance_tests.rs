@@ -1,4 +1,21 @@
-//! Holon Descriptor Test Cases
+//! MAP Dance Test Cases
+//!
+//! The functions in this file are used in conjunction with Rust rstest test fixtures.
+//! inserting holochain_trace::test_run() at the start of a tests driver (e.g., dance_tests)
+//! setting RUST_LOG to the desired client-side tracing level to include in output.
+//! setting WASM_LOG to the desired guest-side tracing level to include in output.
+//! In increasing level of detail:
+//! error, warn, info, debug, trace
+
+//! Examples:
+
+//! To show DEBUG level trace messages on the client-side and WARN level trace messages on the guest-side:
+//! export RUST_LOG=debug
+//! export WASM_LOG=warn
+
+//! To show INFO level trace messages on the client-side and DEBUG level trace messages on the guest-side:
+//! export RUST_LOG=info
+//! export WASM_LOG=debug
 
 #![allow(unused_imports)]
 
@@ -6,12 +23,17 @@ mod shared_test;
 
 use std::collections::BTreeMap;
 
+
 use async_std::task;
 use hdk::prelude::*;
+
 use holochain::prelude::kitsune_p2p::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
+use std::sync::{Arc, Mutex};
+use tracing::{info, warn, debug, error, trace, Level};
+//use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -37,7 +59,7 @@ use crate::shared_test::test_with_properties_command::execute_with_properties;
 /// For each step, this function invokes the test execution functions created for that kind of
 /// DanceTestStep.
 ///
-/// This function maintains the following  TestState that allows the test steps to be linked together.
+/// This function maintains the following TestState that allows the test steps to be linked together.
 /// * staging_area -- initially set to empty and then reset from the results of each test step
 /// * created_holons -- a vector of Holon that is incrementally extended by test steps. It can be used to drive update/delete of those holons.
 /// * TBD
@@ -46,11 +68,12 @@ use crate::shared_test::test_with_properties_command::execute_with_properties;
 ///      cargo test -p dances --test dance_tests  -- --show-output
 ///
 #[rstest]
-//#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
 #[case::simple_add_related_holon_test(simple_add_related_holons_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
+
     let _ = holochain_trace::test_run().ok();
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
@@ -85,4 +108,3 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     }
     info!("-------------- END OF {name} TEST CASE  ------------------");
 }
-
