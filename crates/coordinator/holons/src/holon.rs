@@ -9,6 +9,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
 
+use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
 use crate::holon_error::HolonError;
@@ -16,7 +17,6 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
-use crate::{all_holon_nodes::*, property_map};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -31,6 +31,16 @@ pub struct Holon {
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
     // pub dancer : Dancer,
+    pub errors: Vec<HolonError>,
+}
+
+/// Type used for testing in order to match the essential content of a Holon
+#[hdk_entry_helper]
+#[derive(Clone, Eq, PartialEq)]
+pub struct EssentialHolonContent {
+    pub property_map: PropertyMap,
+    pub relationship_map: RelationshipMap,
+    key: Option<MapString>,
     pub errors: Vec<HolonError>,
 }
 
@@ -121,17 +131,18 @@ impl Holon {
     }
 
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
-    /// TODO: replace with cache aware function
+    // TODO: replace with cache aware function
+    // TODO: Throw None case or remove option
     pub fn get_holon(id: HolonId) -> Result<Option<Holon>, HolonError> {
         let holon_node_record = get_holon_node(id.0.clone())?;
-        return if let Some(node) = holon_node_record {
+        if let Some(node) = holon_node_record {
             let mut holon = Holon::try_from_node(node)?;
             holon.state = HolonState::Fetched;
             Ok(Some(holon))
         } else {
             // no holon_node fetched for specified holon_id
             Err(HolonError::HolonNotFound(id.0.to_string()))
-        };
+        }
     }
 
     pub fn get_property_value(
@@ -236,28 +247,35 @@ impl Holon {
     }
 
     /// commit() saves a staged holon to the persistent store.
-    /// If the staged holon is `New`, it creates a HolonNode and SmartLinks
-    /// If the staged holon is `Changed`, it persists a new version of HolonNode and its SmartLinks
-    /// If the staged holon is `Fetched`, it does nothing
-    /// If there are no errors, this function creates the HolonId of the newly saved Holon
-    /// The state of the original holon (i.e., self) is updated to `Fetched` so that commits are
+    /// If the staged holon is `New`, it creates a HolonNode and SmartLinks.
+    /// If the staged holon is `Changed`, it persists a new version of HolonNode and its SmartLinks.
+    /// If the staged holon is `Fetched` or `Saved`, it does nothing.
+    /// If there are no errors:
+    /// 1) The state of the original holon (i.e., self) is updated to `Saved` so that commits are
     /// idempotent.
-    pub fn commit(&mut self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+    /// 2) the function returns a clone of the saved holon
+    ///
+    ///
+    pub fn commit(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
                 let result = create_holon_node(self.clone().into_node());
                 match result {
                     Ok(record) => {
-                        let holon_id = HolonId(record.action_address().clone());
+                        let holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, target) in self.relationship_map.0.clone() {
-                            target.commit(context, holon_id.clone(), name.clone())?;
+                            target.commit(
+                                context,
+                                HolonId::from(holon_id.clone()),
+                                name.clone(),
+                            )?;
                         }
 
                         self.state = HolonState::Saved;
-
-                        Ok(holon_id)
+                        self.saved_node = Option::from(record);
+                        Ok(self.clone())
                     }
                     Err(error) => Err(HolonError::from(error)),
                 }
@@ -278,9 +296,9 @@ impl Holon {
                             for (name, target) in self.clone().relationship_map.0 {
                                 target.commit(context, holon_id.clone(), name.clone())?;
                             }
-                            self.saved_node = Some(record);
-
-                            Ok(holon_id)
+                            self.state = HolonState::Saved;
+                            self.saved_node = Option::from(record);
+                            Ok(self.clone())
                         }
                         Err(error) => Err(HolonError::from(error)),
                     }
@@ -291,11 +309,11 @@ impl Holon {
                 }
             }
             _ => {
-                // For either Fetched or Saved no save is needed, just return HolonId
+                // For either Fetched or Saved no save is needed, just return Holon
 
                 let node = self.saved_node.clone();
-                if let Some(record) = node {
-                    return Ok(HolonId(record.action_address().clone()));
+                if let Some(_record) = node {
+                    Ok(self.clone())
                 } else {
                     Err(HolonError::HolonNotFound(
                         "Expected Holon to have a saved_node, but it doesn't".to_string(),
@@ -327,6 +345,17 @@ impl Holon {
             Err(error) => Err(HolonError::WasmError(error.to_string())),
         }
     }
+
+    pub fn essential_content(&self) -> EssentialHolonContent {
+        EssentialHolonContent {
+            property_map: self.property_map.clone(),
+            relationship_map: self.relationship_map.clone(),
+            key: self.key.clone(),
+            errors: self.errors.clone(),
+        }
+    }
+
+    // ====
     // pub fn commit(mut self, context: &HolonsContext) -> Result<Self, HolonError> {
     //     //let mut holon = self.clone(); // avoid doing this?
     //     match self.state {

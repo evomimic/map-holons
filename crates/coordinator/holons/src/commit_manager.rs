@@ -1,3 +1,4 @@
+use hdk::prelude::*;
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -10,26 +11,82 @@ use crate::relationship::RelationshipMap;
 use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
-use shared_types_holon::MapString;
+use shared_types_holon::{MapInteger, MapString};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
     pub staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
     pub index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
+/// a StagedIndex identifies a StagedHolon by its position within the staged_holons vector
+pub type StagedIndex = MapInteger;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {
     pub status: CommitRequestStatus,
+    pub commits_attempted: MapInteger,
+    pub saved_holons: Vec<Holon>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
+/// *Complete* means all staged holons have been committed and staged_holons cleared
+///
+/// *Incomplete* means one or more of the staged_holons could not be committed.
+/// For details, iterate through the staged_holons vector.
+/// Holon's with a `Saved` status have been committed,
+/// Holon's with a `New` or `Changed` state had error(s), see the Holon's errors vector for details
 pub enum CommitRequestStatus {
-    Success,
-    Error(Vec<HolonError>),
+    Complete,
+    Incomplete,
 }
 
 impl CommitManager {
+    /// This function attempts to persist the state of all `staged_holons`.
+    ///
+    /// If ALL commits succeed, it clears all staged objects and returns a `Complete` status
+    ///
+    /// Otherwise, it returns an `Incomplete` status and preserves its staged_holons so the caller
+    /// can see which holons were saved and what errors were encountered for those that were not
+    /// saved.
+    ///
+    /// NOTE: The CommitResponse returns clones of any successfully
+    /// committed holons, even if the response status is `Incomplete`.
+    ///
+    pub fn commit(&mut self, context: &HolonsContext) -> CommitResponse {
+        trace!("Entering commit...");
+
+        // Initialize the request_status to Complete, assuming all commits will succeed
+        // If any commit errors are encountered, reset request_status to `Incomplete`
+
+        let mut response = CommitResponse {
+            status: CommitRequestStatus::Complete,
+            commits_attempted: MapInteger(self.staged_holons.len() as i64),
+            saved_holons: Vec::new(),
+        };
+        // Invoke commit on each of the staged_holons
+        // If successful, add an "unloaded" SmartReference to it to saved_holons
+        // Otherwise, set request_status to Incomplete
+        for rc_holon in self.staged_holons.clone() {
+            let outcome = rc_holon.borrow_mut().clone().commit(context);
+            match outcome {
+                Ok(holon) => {
+                    response.saved_holons.push(holon);
+                }
+                Err(_error) => {
+                    response.status = CommitRequestStatus::Incomplete;
+                }
+            }
+        }
+
+        match response.status {
+            CommitRequestStatus::Complete => {
+                self.clear_staged_objects();
+                response
+            }
+            CommitRequestStatus::Incomplete => response,
+        }
+    }
+
     pub fn new() -> CommitManager {
         CommitManager {
             staged_holons: Vec::new(),
@@ -51,6 +108,19 @@ impl CommitManager {
         StagedReference { key, holon_index }
     }
 
+    // Constructor function for creating StagedReference from an index into CommitManagers StagedHolons
+    // pub fn get_reference_from_index(&self, index: MapInteger) -> Result<StagedReference, HolonError> {
+    //
+    //     // Ensure index is valid
+    //     let holon_index = index.0 as usize;
+    //     if holon_index < 0 || holon_index > self.staged_holons.len() {
+    //         Err(HolonError::IndexOutOfRange(index.0.to_string()))
+    //     }
+    // let key = rc_holon.borrow().get_key()?;
+
+    //     Ok(StagedReference { key, holon_index })
+    // }
+
     pub fn clone_holon(
         &mut self,
         context: &HolonsContext,
@@ -59,7 +129,7 @@ impl CommitManager {
         // Create a new empty Holon
         let mut holon = Holon::new();
 
-        // Add the new holon into the CommitManager's staged_holons list, remebering its index
+        // Add the new holon into the CommitManager's staged_holons list, remembering its index
         let index = self.staged_holons.len();
         self.staged_holons
             .push(Rc::new(RefCell::new(holon.clone())));
@@ -111,6 +181,10 @@ impl CommitManager {
             None
         }
     }
+
+    // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
+    //     self.staged_holons.get(index.0 as usize)
+    // }
     pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
         let holons = &self.staged_holons;
         let holon_ref = holons
@@ -124,7 +198,24 @@ impl CommitManager {
             )),
         }
     }
-
+    pub fn get_mut_holon_by_index(
+        &self,
+        holon_index: StagedIndex,
+    ) -> Result<RefMut<Holon>, HolonError> {
+        return if let Some(holon) = self.staged_holons.get(holon_index.0 as usize) {
+            if let Ok(holon_ref) = holon.try_borrow_mut() {
+                Ok(holon_ref)
+            } else {
+                Err(HolonError::FailedToBorrow(
+                    "for StagedReference".to_string(),
+                ))
+            }
+        } else {
+            Err(HolonError::InvalidHolonReference(
+                "Invalid holon index".to_string(),
+            ))
+        };
+    }
     pub fn get_mut_holon(
         &self,
         staged_reference: &StagedReference,
@@ -147,43 +238,6 @@ impl CommitManager {
         self.staged_holons.clear();
         self.index.clear();
     }
-    /// This function iterates through the staged holons, committing each one.
-    /// Any errors encountered are accumulated in an errors vector.
-    /// Once all staged holons have been committed (successfully or not), the staged_holons vector and the
-    /// index are cleared.
-    ///
-    /// The CommitResponse returned by this function returns Success if no errors were encountered.
-    /// Otherwise, the CommitResponse will contain an error status and the vector of errors.
-    pub fn commit(&mut self, context: &HolonsContext) -> CommitResponse {
-        let mut errors: Vec<HolonError> = Vec::new();
-        for rc_holon in self.staged_holons.clone() {
-            // Dereference the Rc and clone the RefCell to access the object
-            let mut holon = rc_holon.borrow_mut(); // Clone the object inside RefCell
-            let outcome = holon.commit(context);
-
-            if let Err(e) = outcome {
-                errors.push(e)
-            };
-            let outcome = rc_holon.borrow_mut().clone().commit(context);
-            if let Err(e) = outcome.clone() {
-                errors.push(e)
-            };
-        }
-
-        self.clear_staged_objects();
-
-        let commit_response = if errors.is_empty() {
-            CommitResponse {
-                status: CommitRequestStatus::Success,
-            }
-        } else {
-            CommitResponse {
-                status: CommitRequestStatus::Error(errors),
-            }
-        };
-        commit_response
-    }
-
 
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
     pub fn edit_holon(
@@ -198,7 +252,7 @@ impl CommitManager {
         holon.state = HolonState::Fetched;
         holon.predecessor = Some(existing_holon.clone_reference());
 
-        // Add the new holon into the CommitManager's staged_holons list, remebering its index
+        // Add the new holon into the CommitManager's staged_holons list, remembering its index
         let index = self.staged_holons.len();
         self.staged_holons
             .push(Rc::new(RefCell::new(holon.clone())));

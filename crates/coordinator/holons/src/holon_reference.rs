@@ -84,10 +84,10 @@ impl HolonReference {
     ) -> Result<(), HolonError> {
         match self {
             HolonReference::Staged(staged_reference) => {
-                let target_id = staged_reference.commit(context)?;
+                let target_holon = staged_reference.commit(context)?;
                 let input = SmartLinkInput {
                     from_address: source_id,
-                    to_address: target_id,
+                    to_address: target_holon.get_id().unwrap(),
                     relationship_descriptor: relationship_name,
                 };
                 create_smart_link(input)

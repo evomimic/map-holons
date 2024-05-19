@@ -1,7 +1,7 @@
 // Simple Create Test Fixture
 //
 // This file is used to creates a TestCase that exercises the following steps:
-// - Ensure database is empty 
+// - Ensure database is empty
 // - stage a new holon
 // - update the staged holon's properties
 // - commit the holon
@@ -11,18 +11,17 @@
 //
 //
 
-
 #![allow(dead_code)]
 
 use core::panic;
+use holons::commit_manager::{CommitManager, StagedIndex};
+use holons::context::HolonsContext;
 use holons::helpers::*;
-use holons::holon_api::*;
 use holons::holon::Holon;
+use holons::holon_api::*;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-use holons::commit_manager::CommitManager;
-use holons::context::HolonsContext;
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
@@ -34,21 +33,64 @@ use crate::shared_test::test_data_types::DancesTestCase;
 // };
 
 use holons::holon_error::HolonError;
-use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyName};
+use shared_types_holon::{
+    MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
+};
 
 /// This function creates a set of simple (undescribed) holons
 ///
 #[fixture]
 pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
-
     let mut test_case = DancesTestCase::new(
         "Simple Create/Get Holon Testcase".to_string(),
-        "Ensure database starts empty, stage a Book Holon for create, commit, get all holons".to_string(),
+        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count is 2".to_string(),
 
     );
 
+    let mut expected_holons = Vec::new();
+
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
+    let mut book_holon = Holon::new();
+    book_holon.with_property_value(
+        PropertyName(MapString("title".to_string())),
+        BaseValue::StringValue(MapString(
+            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+        )),
+    );
+    test_case.add_stage_holon_step(book_holon.clone())?;
+    expected_holons.push(book_holon.clone());
+
+    let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("description".to_string())),
+        BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
+    );
+
+    test_case.add_with_properties_step(MapInteger(0), properties)?;
+
+    let mut person_holon = Holon::new();
+
+    test_case.add_stage_holon_step(person_holon.clone())?;
+    expected_holons.push(person_holon.clone());
+
+    let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("first name".to_string())),
+        BaseValue::StringValue(MapString("Roger".to_string())),
+    );
+    properties.insert(
+        PropertyName(MapString("last name".to_string())),
+        BaseValue::StringValue(MapString("Briggs".to_string())),
+    );
+    test_case.add_with_properties_step(MapInteger(1), properties)?;
+
+    test_case.add_commit_step()?;
+    test_case.add_match_db_content_test_step()?;
+
+    test_case.add_ensure_database_count_step(MapInteger(2))?;
+
+    // test_case.holons = expected_holons;
 
     // let mut book_holon = Holon::new();
     // book_holon
@@ -61,8 +103,9 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     //     ;
     // test_case.add_create_step(book_holon)?;
 
-    Ok(test_case.clone())
+    // debug!("expected holons: {:?}", expected_holons);
 
+    Ok(test_case.clone())
 }
 
 // #[cfg(test)]

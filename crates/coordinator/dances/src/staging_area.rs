@@ -1,25 +1,25 @@
 use std::cell::RefCell;
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 use hdk::prelude::*;
 use holons::commit_manager::CommitManager;
 use holons::holon::Holon;
-use shared_types_holon::MapString;
+use shared_types_holon::{MapString};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct StagingArea {
-    staged_holons:Vec<Holon>, // Contains all holons staged for commit
+    pub staged_holons:Vec<Holon>, // Contains all holons staged for commit
     index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
 
 impl StagingArea {
 
-    pub fn new() {
+    pub fn new()->Self {
         StagingArea {
             staged_holons: Vec::new(),
             index: BTreeMap::new(),
-        };
+        }
     }
     // Function to create StagingArea from CommitManager
     pub fn from_commit_manager(commit_manager: &CommitManager) -> Self {
@@ -28,6 +28,7 @@ impl StagingArea {
             staged_holons,
             index: commit_manager.index.clone(),
         }
+
     }
 
     // Function to create CommitManager from StagingArea
