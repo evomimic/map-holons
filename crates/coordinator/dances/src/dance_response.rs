@@ -1,13 +1,13 @@
-use std::fmt;
 use derive_new::new;
+use std::fmt;
 
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
-use holons::holon::{Holon};
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-use shared_types_holon::{MapString};
+use shared_types_holon::MapString;
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -42,7 +42,7 @@ pub enum ResponseStatusCode {
 #[derive(Clone, Eq, PartialEq)]
 pub enum ResponseBody {
     None,
-    //Holon(Holon),
+    Holon(Holon),
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
     // SmartCollection(SmartCollection),
     Index(StagedIndex),
@@ -73,21 +73,16 @@ impl fmt::Display for ResponseStatusCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ResponseStatusCode::OK => write!(f, "200 -- OK"),
-            ResponseStatusCode::Accepted => write!(f, "202 -- Accepted"),           // 202
-            ResponseStatusCode::BadRequest => write!(f, "400 -- Bad Request"),         // 400,
-            ResponseStatusCode::Unauthorized => write!(f, "401 -- Unauthorized"),       // 401
-            ResponseStatusCode::NotFound => write!(f, "404 -- Not Found"),           // 404
-            ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"),        // 500
-            ResponseStatusCode::NotImplemented => write!(f, "501 -- Not Implemented"),     // 501
+            ResponseStatusCode::Accepted => write!(f, "202 -- Accepted"), // 202
+            ResponseStatusCode::BadRequest => write!(f, "400 -- Bad Request"), // 400,
+            ResponseStatusCode::Unauthorized => write!(f, "401 -- Unauthorized"), // 401
+            ResponseStatusCode::NotFound => write!(f, "404 -- Not Found"), // 404
+            ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"), // 500
+            ResponseStatusCode::NotImplemented => write!(f, "501 -- Not Implemented"), // 501
             ResponseStatusCode::ServiceUnavailable => write!(f, "503 -- Service Unavailable"), // 503
-
         }
     }
 }
-
-
-
-
 
 impl DanceResponse {
     pub fn new(
