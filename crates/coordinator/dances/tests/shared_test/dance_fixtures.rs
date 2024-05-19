@@ -14,8 +14,6 @@
 #![allow(dead_code)]
 
 use core::panic;
-use holons::commit_manager::{CommitManager, StagedIndex};
-use holons::context::HolonsContext;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
@@ -38,6 +36,7 @@ use crate::shared_test::test_data_types::DancesTestCase;
 // };
 
 use holons::holon_error::HolonError;
+use holons::relationship::RelationshipName;
 
 use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue};
 
@@ -92,7 +91,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_with_properties_step(1, properties)?;
 
     test_case.add_commit_step()?;
-    test_case.add_match_db_content_test_step()?;
+    test_case.add_match_saved_content_step()?;
 
     test_case.add_ensure_database_count_step(MapInteger(2))?;
 

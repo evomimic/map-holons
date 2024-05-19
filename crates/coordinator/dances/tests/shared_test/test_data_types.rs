@@ -18,57 +18,6 @@ pub struct DancesTestCase {
     // pub holons: Vec<Holon>,
 }
 
-impl DancesTestCase {
-    pub fn new(name: String, description: String) -> Self {
-        Self {
-            name,
-            description,
-            steps: VecDeque::new(),
-            // holons: Vec::new(),
-        }
-    }
-
-    pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::EnsureDatabaseCount(count));
-        Ok(())
-    }
-
-    pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::StageHolon(holon));
-        Ok(())
-    }
-    pub fn add_commit_step(&mut self) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::Commit);
-        Ok(())
-    }
-
-    pub fn add_with_properties_step(
-        &mut self,
-        index: StagedIndex,
-        properties: PropertyMap,
-    ) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::WithProperties(index, properties));
-        Ok(())
-    }
-    //
-    // pub fn add_update_step(&mut self, holon: Holon) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::Update(holon));
-    //     Ok(())
-    // }
-    //
-    // pub fn add_delete_step(&mut self, holon_id: HolonId) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::Delete(holon_id));
-    //     Ok(())
-    // }
-
-    pub fn add_match_db_content_test_step(&mut self) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::MatchSavedContent);
-        Ok(())
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
     AddRelatedHolons(StagedIndex, RelationshipName, Vec<PortableReference>),
@@ -76,8 +25,6 @@ pub enum DanceTestStep {
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     Commit,
     WithProperties(StagedIndex, PropertyMap), // Update properties for Holon at StagedIndex with PropertyMap
-    // Update(Holon), // Associated data is expected Holon after update
-    // Delete(HolonId), // Associated data is id of Holon to delete
     MatchSavedContent,
 }
 
@@ -146,13 +93,17 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
+    pub fn match_saved_content_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::MatchSavedContent);
+        Ok(())
+    }
 
     pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::StageHolon(holon));
         Ok(())
     }
     pub fn add_commit_step(&mut self) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::Commit());
+        self.steps.push_back(DanceTestStep::Commit);
         Ok(())
     }
 
@@ -160,31 +111,6 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::WithProperties(index, properties));
         Ok(())
     }
-    //
-    // pub fn add_update_step(&mut self, holon: Holon) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::Update(holon));
-    //     Ok(())
-    // }
-    //
-    // pub fn add_delete_step(&mut self, holon_id: HolonId) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::Delete(holon_id));
-    //     Ok(())
-    // }
+
 }
 
-// #[derive(Clone, Debug)]
-// pub enum HolonTestCase {
-//     Creates(HolonCreatesTestCase),
-//     Updates(HolonUpdatesTestCase),
-// }
-// #[derive(Clone, Debug)]
-// pub struct HolonUpdatesTestCase { // this is equivalent to current HolonDescriptorTestCase
-//     pub original: Holon,
-//     pub updates: Vec<Holon>,
-//     // pub message_level: Level,
-// }
-// #[derive(Clone, Debug)]
-// pub struct HolonCreatesTestCase {
-//     pub creates: Vec<Holon>,
-//     // pub message_level: Level,
-// }

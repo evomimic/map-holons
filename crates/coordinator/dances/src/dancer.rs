@@ -10,9 +10,8 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::holon_dance_adapter::{
-    add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
-    with_properties_dance,
+use crate::holon_dance_adapter::{add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
+    with_properties_dance };
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -145,35 +144,35 @@ impl Dancer {
 ///
 
 fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
-    match dispatch_result {
-        Ok(body) => {
-            // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
-            DanceResponse {
-                status_code: ResponseStatusCode::OK,
-                description: MapString("Success".to_string()),
-                body: body,
-                descriptor: None, // Provide appropriate value if needed
-                staging_area: StagingArea::new(), // Provide appropriate value if needed
+        match dispatch_result {
+            Ok(body) => {
+                // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
+                DanceResponse {
+                    status_code: ResponseStatusCode::OK,
+                    description: MapString("Success".to_string()),
+                    body,
+                    descriptor: None, // Provide appropriate value if needed
+                    staging_area: StagingArea::new(), // Provide appropriate value if needed
+                }
             }
-        }
-        Err(error) => {
+            Err(error) => {
             // If the dispatch_result is an error, extract the associated string value
             let error_message = match error.clone() {
-                HolonError::EmptyField(msg)
-                | HolonError::InvalidParameter(msg)
-                | HolonError::HolonNotFound(msg)
-                | HolonError::CommitFailure(msg)
-                | HolonError::WasmError(msg)
-                | HolonError::RecordConversion(msg)
-                | HolonError::InvalidHolonReference(msg)
-                | HolonError::IndexOutOfRange(msg)
-                | HolonError::NotImplemented(msg)
-                | HolonError::MissingStagedCollection(msg)
-                | HolonError::FailedToBorrow(msg)
-                | HolonError::UnableToAddHolons(msg)
-                | HolonError::InvalidRelationship(msg, _)
-                | HolonError::CacheError(msg) => msg,
-                HolonError::ValidationError(validation_error) => validation_error.to_string(),
+            HolonError::EmptyField(msg)
+            | HolonError::InvalidParameter(msg)
+            | HolonError::HolonNotFound(msg)
+            | HolonError::CommitFailure(msg)
+            | HolonError::WasmError(msg)
+            | HolonError::RecordConversion(msg)
+            | HolonError::InvalidHolonReference(msg)
+            | HolonError::IndexOutOfRange(msg)
+            | HolonError::NotImplemented(msg)
+            | HolonError::MissingStagedCollection(msg)
+            | HolonError::FailedToBorrow(msg)
+            | HolonError::UnableToAddHolons(msg)
+            | HolonError::InvalidRelationship(msg, _)
+            | HolonError::CacheError(msg) => msg,
+            HolonError::ValidationError(validation_error) => validation_error.to_string(),
             };
 
             // Construct DanceResponse with error details
@@ -183,7 +182,8 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 body: ResponseBody::None, // No body since it's an error
                 descriptor: None,         // Provide appropriate value if needed
                 staging_area: StagingArea::new(), // Provide appropriate value if needed
+                }
             }
         }
     }
-}
+

@@ -41,9 +41,8 @@ pub enum CommitRequestStatus {
 }
 
 impl CommitManager {
-
     /// This function converts a StagedIndex into a StagedReference
-    pub fn to_staged_reference(&self, staged_index: StagedIndex) -> Result<StagedReference,HolonError> {
+    pub fn to_staged_reference(&self, staged_index: StagedIndex) -> Result<StagedReference, HolonError> {
         if let Some(staged_holon) = self.staged_holons.get(staged_index) {
             let holon = staged_holon.borrow();
             let key = holon.get_key().unwrap();
@@ -136,15 +135,16 @@ impl CommitManager {
         }
 
         // Handle the final status of the commit process
+
         {
             let mut commit_manager = context.commit_manager.borrow_mut();
             if response.status == CommitRequestStatus::Complete {
                 commit_manager.clear_staged_objects();
+                response
+            } else {
+                response
             }
-            CommitRequestStatus::Incomplete => response,
         }
-
-        response
     }
 
 
