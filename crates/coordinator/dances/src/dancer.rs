@@ -10,7 +10,9 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::holon_dance_adapter::{add_related_holons_dance, commit_dance, get_all_holons_dance, stage_new_holon_dance, with_properties_dance};
+use crate::holon_dance_adapter::{
+    add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
+    with_properties_dance,
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -39,7 +41,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
 
-   // let mut commit_manager = CommitManager::new();
+    // let mut commit_manager = CommitManager::new();
 
     let commit_manager = request.clone().staging_area.to_commit_manager();
     // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
@@ -51,9 +53,12 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // TODO: If the request is a Command, add the request to the undo_list
 
     // Dispatch the dance and map result to DanceResponse
-    if !dancer.dance_name_is_dispatchable(request.clone()) {
-        return Err(HolonError::NotImplemented("No function to dispatch in dispatch table".to_string()).into())
-    }
+    // if !dancer.dance_name_is_dispatchable(request.clone()) {
+    //     return Err(HolonError::NotImplemented(
+    //         "No function to dispatch in dispatch table".to_string(),
+    //     )
+    //     .into());
+    // }
     let dispatch_result = dancer.dispatch(&context, request);
 
     let mut result = process_dispatch_result(dispatch_result);
@@ -90,6 +95,7 @@ impl Dancer {
 
         // Register functions into the dispatch table
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
+        dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
@@ -106,11 +112,9 @@ impl Dancer {
     //     self.dispatch_table.insert(name.clone().as_str(), func);
     // }
 
-    fn dance_name_is_dispatchable(
-        &self,
-        request: DanceRequest,
-    ) -> bool {
-        self.dispatch_table.contains_key(request.dance_name.0.as_str())
+    fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
+        self.dispatch_table
+            .contains_key(request.dance_name.0.as_str())
     }
     // Function to dispatch a request based on the function name
     fn dispatch(
@@ -148,7 +152,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 status_code: ResponseStatusCode::OK,
                 description: MapString("Success".to_string()),
                 body: body,
-                descriptor: None,   // Provide appropriate value if needed
+                descriptor: None, // Provide appropriate value if needed
                 staging_area: StagingArea::new(), // Provide appropriate value if needed
             }
         }
@@ -176,8 +180,8 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
             DanceResponse {
                 status_code: ResponseStatusCode::from(error), // Convert HolonError to ResponseStatusCode
                 description: MapString(error_message),
-                body: ResponseBody::None,         // No body since it's an error
-                descriptor: None,   // Provide appropriate value if needed
+                body: ResponseBody::None, // No body since it's an error
+                descriptor: None,         // Provide appropriate value if needed
                 staging_area: StagingArea::new(), // Provide appropriate value if needed
             }
         }

@@ -1,14 +1,14 @@
 // #![allow(warnings)]
 
-pub mod test_data_types;
 pub mod dance_fixtures;
+pub mod test_data_types;
 
-pub mod test_ensure_database_count;
-pub mod test_stage_new_holon;
 pub mod test_commit;
+pub mod test_ensure_database_count;
+pub mod test_match_db_content;
+pub mod test_stage_new_holon;
 pub mod test_with_properties_command;
 pub mod test_add_related_holon;
-
 
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};

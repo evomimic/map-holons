@@ -15,7 +15,12 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 
-use hdi::prelude::*;
+use std::borrow::Borrow;
+use std::rc::Rc;
+
+
+
+use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
@@ -23,7 +28,10 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
-use shared_types_holon::{MapString, PropertyMap};
+use shared_types_holon::{MapString, MapInteger, PropertyMap};
+use shared_types_holon::HolonId;
+
+
 
 use crate::dance_request::{DanceRequest, DanceType, PortableReference, RequestBody};
 use crate::dance_response::ResponseBody;
@@ -104,8 +112,10 @@ pub fn build_add_related_holons_dance_request(
 /// *ResponseBody:*
 /// - an Index into staged_holons that references the newly staged holon.
 ///
-pub fn stage_new_holon_dance(context: &HolonsContext, request: DanceRequest)
-    -> Result<ResponseBody, HolonError> {
+pub fn stage_new_holon_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     // Create and stage new Holon
     let mut new_holon = Holon::new();
 
@@ -124,20 +134,31 @@ pub fn stage_new_holon_dance(context: &HolonsContext, request: DanceRequest)
     }
 
     // Stage the new holon
-    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(new_holon);
+    let staged_reference = context
+        .commit_manager
+        .borrow_mut()
+        .stage_new_holon(new_holon);
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
     Ok(ResponseBody::Index(staged_reference.holon_index))
+
 }
 
-///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
-pub fn build_stage_new_holon_dance_request(staging_area: StagingArea, properties:PropertyMap)->Result<DanceRequest, HolonError> {
+pub fn build_stage_new_holon_dance_request(
+    staging_area: StagingArea,
+    properties: PropertyMap,
+) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new_parameter_values(properties);
-    Ok(DanceRequest::new(MapString("stage_new_holon".to_string()), DanceType::Standalone,body, staging_area))
-    }
+    Ok(DanceRequest::new(
+        MapString("stage_new_holon".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
+}
 
 /// Add property values to an already staged holon
 ///
@@ -150,7 +171,10 @@ pub fn build_stage_new_holon_dance_request(staging_area: StagingArea, properties
 /// *ResponseBody:*
 /// - an Index into staged_holons that references the updated holon.
 ///
-pub fn with_properties_dance(context: &HolonsContext, request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn with_properties_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
     match request.dance_type {
         DanceType::CommandMethod(staged_index) => {
@@ -165,32 +189,41 @@ pub fn with_properties_dance(context: &HolonsContext, request: DanceRequest) -> 
                         RequestBody::None => {
                             // No parameters to populate, continue
                             Ok(ResponseBody::Index(staged_index))
-                        },
+                        }
                         RequestBody::ParameterValues(parameters) => {
                             // Populate parameters into the new Holon
                             for (property_name, base_value) in parameters {
-                                holon_mut.with_property_value(property_name.clone(), base_value.clone());
+                                holon_mut
+                                    .with_property_value(property_name.clone(), base_value.clone());
                             }
                             Ok(ResponseBody::Index(staged_index))
-                        },
+                        }
                         _ => Err(HolonError::InvalidParameter("request.body".to_string())),
                     }
-                },
-                Err(_) => Err(HolonError::IndexOutOfRange("Unable to borrow a mutable reference to holon at supplied staged_index".to_string()))
+                }
+                Err(_) => Err(HolonError::IndexOutOfRange(
+                    "Unable to borrow a mutable reference to holon at supplied staged_index"
+                        .to_string(),
+                )),
             }
-        },
-        _ => Err(HolonError::InvalidParameter("Expected Command(StagedIndex) DanceType, didn't get one".to_string()))
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Expected Command(StagedIndex) DanceType, didn't get one".to_string(),
+        )),
     }
 }
 
-
-///
 /// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
-pub fn build_with_properties_dance_request(staging_area: StagingArea, index: StagedIndex, properties: PropertyMap) ->Result<DanceRequest, HolonError> {
+pub fn build_with_properties_dance_request(
+    staging_area: StagingArea,
+    index: StagedIndex,
+    properties: PropertyMap,
+) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new_parameter_values(properties);
-    Ok(DanceRequest::new(MapString("with_properties".to_string()), DanceType::CommandMethod(index), body, staging_area))
-}
 
+    Ok(DanceRequest::new(MapString("with_properties".to_string()), DanceType::CommandMethod(index), body, staging_area))
+
+}
 
 /// Get all holons from the persistent store
 ///
@@ -202,26 +235,74 @@ pub fn build_with_properties_dance_request(staging_area: StagingArea, index: Sta
 /// *ResponseBody:*
 /// - Holons -- will be replaced by SmartCollection once supported
 ///
-pub fn get_all_holons_dance(_context: &HolonsContext, _request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn get_all_holons_dance(
+    _context: &HolonsContext,
+    _request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     // TODO: add support for descriptor parameter
     //
     //
-    let query_result =  Holon::get_all_holons();
+    let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => Ok(
-            ResponseBody::Holons(holons)
-        ),
-        Err(holon_error) => {
-            Err(holon_error.into())
-        }
+        Ok(holons) => Ok(ResponseBody::Holons(holons)),
+        Err(holon_error) => Err(holon_error.into()),
     }
-
-
 }
-// Builds a DanceRequest for retrieving all holons from the persistent store
-pub fn build_get_all_holons_dance_request(staging_area: StagingArea)->Result<DanceRequest, HolonError> {
+
+/// Builds a DanceRequest for retrieving all holons from the persistent store
+pub fn build_get_all_holons_dance_request(
+    staging_area: StagingArea,
+) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
-    Ok(DanceRequest::new(MapString("get_all_holons".to_string()), DanceType::Standalone, body, staging_area))
+    Ok(DanceRequest::new(
+        MapString("get_all_holons".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
+}
+
+/// Gets Holon from persistent store, located by HolonId (ActionHash)
+///
+/// *DanceRequest:*
+/// - dance_name: "get_holon_by_id"
+/// - dance_type: Standalone
+/// - request_body:
+///     - HolonId(HolonId)
+///
+/// *ResponseBody:*
+///     - Holon(Holon)
+///
+pub fn get_holon_by_id_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    let holon_id = match request.body {
+        RequestBody::HolonId(id) => id,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "RequestBody variant must be HolonId".to_string(),
+            ))
+        }
+    };
+    let mut cache_manager = context.cache_manager.borrow_mut();
+    let rc_holon = cache_manager.get_rc_holon(None, &holon_id)?;
+
+    Ok(ResponseBody::Holon((*rc_holon).clone()))
+}
+
+/// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
+pub fn build_get_holon_by_id_dance_request(
+    staging_area: StagingArea,
+    holon_id: HolonId,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::HolonId(holon_id);
+    Ok(DanceRequest::new(
+        MapString("get_holon_by_id".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
 }
 
 /// Commit all staged holons to the persistent store
@@ -238,12 +319,8 @@ pub fn commit_dance(context: &HolonsContext, _request: DanceRequest) -> Result<R
 
     let commit_response = CommitManager::commit(context);
 
-
-
     match commit_response.status {
-        Complete => Ok(
-            ResponseBody::Holons(commit_response.saved_holons)
-        ),
+        Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
         Incomplete => {
             let completion_message = format!("{} of {:?} were successfully committed",
                                              commit_response.saved_holons.len(),
@@ -257,12 +334,15 @@ pub fn commit_dance(context: &HolonsContext, _request: DanceRequest) -> Result<R
 ///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
-pub fn build_commit_dance_request(staging_area: StagingArea)->Result<DanceRequest, HolonError> {
+pub fn build_commit_dance_request(staging_area: StagingArea) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
-    Ok(DanceRequest::new(MapString("commit".to_string()), DanceType::Standalone, body, staging_area))
+    Ok(DanceRequest::new(
+        MapString("commit".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
 }
-
-
 
 //
 // #[hdk_extern]
@@ -322,10 +402,6 @@ pub fn build_commit_dance_request(staging_area: StagingArea)->Result<DanceReques
 //         }
 //     }
 // }
-
-
-
-
 
 /*
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,7 +1,7 @@
+use hdk::prelude::*;
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use hdk::prelude::*;
 
 // use crate::cache_manager::HolonCacheManager;
 use crate::context::HolonsContext;
@@ -12,7 +12,6 @@ use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 use shared_types_holon::{MapInteger, MapString};
-
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
@@ -26,7 +25,7 @@ pub type StagedIndex = usize;
 pub struct CommitResponse {
     pub status: CommitRequestStatus,
     pub commits_attempted: MapInteger,
-    pub saved_holons:Vec<Holon>,
+    pub saved_holons: Vec<Holon>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -101,6 +100,7 @@ impl CommitManager {
             saved_holons: Vec::new(),
         };
 
+
         // FIRST PASS: Commit Staged Holons
         {
             debug!("Starting FIRST PASS... commit staged_holons...");
@@ -141,6 +141,7 @@ impl CommitManager {
             if response.status == CommitRequestStatus::Complete {
                 commit_manager.clear_staged_objects();
             }
+            CommitRequestStatus::Incomplete => response,
         }
 
         response
@@ -169,6 +170,7 @@ impl CommitManager {
         StagedReference { key, holon_index }
     }
 
+
     // pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
     //     let rc_holon = Rc::new(RefCell::new(holon.clone()));
     //     self.staged_holons.push(Rc::clone(&rc_holon));
@@ -182,6 +184,7 @@ impl CommitManager {
     // }
 
 
+
     // Constructor function for creating StagedReference from an index into CommitManagers StagedHolons
     // pub fn get_reference_from_index(&self, index: MapInteger) -> Result<StagedReference, HolonError> {
     //
@@ -190,7 +193,7 @@ impl CommitManager {
     //     if holon_index < 0 || holon_index > self.staged_holons.len() {
     //         Err(HolonError::IndexOutOfRange(index.0.to_string()))
     //     }
-        // let key = rc_holon.borrow().get_key()?;
+    // let key = rc_holon.borrow().get_key()?;
 
     //     Ok(StagedReference { key, holon_index })
     // }
@@ -351,7 +354,6 @@ impl CommitManager {
         self.keyed_index.clear();
     }
 
-
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
     pub fn edit_holon(
         &mut self,
@@ -403,5 +405,3 @@ impl CommitManager {
         Ok(staged_reference)
     }
 }
-
-

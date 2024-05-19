@@ -1,3 +1,4 @@
+use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
 use holons::holon::Holon;
@@ -6,8 +7,6 @@ use holons::relationship::RelationshipName;
 use holons::smart_reference::SmartReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{HolonId, MapString, PropertyMap};
-use crate::staging_area::StagingArea;
-
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -17,13 +16,12 @@ pub struct DanceRequest {
     pub body: RequestBody,
     pub staging_area: StagingArea,
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
-
 }
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub enum DanceType {
-    Standalone, // i.e., a dance not associated with a specific holon
+    Standalone,           // i.e., a dance not associated with a specific holon
     QueryMethod(HolonId), // a read-only dance originated from a specific, already persisted, holon
     CommandMethod(StagedIndex), // a mutating method operating on a specific staged_holon identified by its index into the staged_holons vector
 }
@@ -65,6 +63,7 @@ pub enum RequestBody {
     None,
     Holon(Holon),
     TargetHolons(RelationshipName, Vec<PortableReference>),
+    HolonId(HolonId),
     ParameterValues(PropertyMap),
     Index(StagedIndex),
 }
@@ -93,7 +92,12 @@ impl RequestBody {
 }
 
 impl DanceRequest {
-    pub fn new(dance_name:MapString, dance_type:DanceType, body:RequestBody, staging_area: StagingArea)->Self {
+    pub fn new(
+        dance_name: MapString,
+        dance_type: DanceType,
+        body: RequestBody,
+        staging_area: StagingArea,
+    ) -> Self {
         Self {
             dance_name,
             dance_type,
@@ -102,9 +106,3 @@ impl DanceRequest {
         }
     }
 }
-
-
-
-
-
-

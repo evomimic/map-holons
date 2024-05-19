@@ -36,7 +36,7 @@ impl SmartReference {
         let mut cache_manager_ref_mut = context.cache_manager.borrow_mut();
 
         // Attempt to populate rc_holon by invoking get_rc_holon on the cache_manager
-        let rc_holon = cache_manager_ref_mut.get_rc_holon(context, None, &self.holon_id)?;
+        let rc_holon = cache_manager_ref_mut.get_rc_holon(None, &self.holon_id)?;
 
         // Update rc_holon in self
         self.rc_holon = Some(rc_holon);
