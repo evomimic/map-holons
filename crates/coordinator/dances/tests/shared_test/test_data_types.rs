@@ -11,6 +11,7 @@ pub struct DancesTestCase {
     pub name: String,
     pub description: String,
     pub steps: VecDeque<DanceTestStep>,
+    // pub holons: Vec<Holon>,
 }
 
 impl DancesTestCase {
@@ -19,6 +20,7 @@ impl DancesTestCase {
             name,
             description,
             steps: VecDeque::new(),
+            // holons: Vec::new(),
         }
     }
 

@@ -34,6 +34,16 @@ pub struct Holon {
     pub errors: Vec<HolonError>,
 }
 
+/// Type used for testing in order to match the essential content of a Holon
+#[hdk_entry_helper]
+#[derive(Clone, Eq, PartialEq)]
+pub struct EssentialHolonContent {
+    pub property_map: PropertyMap,
+    pub relationship_map: RelationshipMap,
+    key: Option<MapString>,
+    pub errors: Vec<HolonError>,
+}
+
 // Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
 // /// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
 // /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
@@ -335,6 +345,17 @@ impl Holon {
             Err(error) => Err(HolonError::WasmError(error.to_string())),
         }
     }
+
+    pub fn essential_content(&self) -> EssentialHolonContent {
+        EssentialHolonContent {
+            property_map: self.property_map.clone(),
+            relationship_map: self.relationship_map.clone(),
+            key: self.key.clone(),
+            errors: self.errors.clone(),
+        }
+    }
+
+    // ====
     // pub fn commit(mut self, context: &HolonsContext) -> Result<Self, HolonError> {
     //     //let mut holon = self.clone(); // avoid doing this?
     //     match self.state {

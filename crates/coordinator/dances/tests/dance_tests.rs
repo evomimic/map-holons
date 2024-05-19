@@ -20,7 +20,7 @@ use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use crate::shared_test::test_with_properties_command::execute_with_properties;
 use dances::staging_area::StagingArea;
 use holons::helpers::*;
-use holons::holon::Holon;
+use holons::holon::{Holon, HolonState};
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 use shared_test::dance_fixtures::*;
@@ -59,6 +59,10 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     let steps = test_case.clone().steps;
     let name = test_case.clone().name.clone();
     let description = test_case.clone().description;
+    // let fixture_holons = test_case.holons;
+    // assert!(fixture_holons.iter().all(|h| h.state == HolonState::New));
+    // assert!(fixture_holons.iter().all(|h| h.saved_node == None));
+    // println!("fixture_holons: {:#?}", fixture_holons);
 
     let steps_count = steps.len();
 
@@ -99,5 +103,6 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
         }
     }
+
     println!("-------------- END OF {name} TEST CASE  ------------------");
 }

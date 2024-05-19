@@ -51,8 +51,11 @@ pub async fn execute_match_db_content(
                     .await;
                 test_state.staging_area = response.staging_area.clone();
 
-                if let ResponseBody::Holon(fetched_holon) = response.body.clone() {
-                    assert_eq!(expected_holon, fetched_holon);
+                if let ResponseBody::Holon(actual_holon) = response.body.clone() {
+                    assert_eq!(
+                        expected_holon.essential_content(),
+                        actual_holon.essential_content()
+                    );
                     println!("Success! DB fetched holon matched expected");
                 } else {
                     panic!(

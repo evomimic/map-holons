@@ -47,7 +47,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     );
 
-    // let mut expected_holons = Vec::new();
+    let mut expected_holons = Vec::new();
 
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
@@ -59,7 +59,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         )),
     );
     test_case.add_stage_holon_step(book_holon.clone())?;
-    // expected_holons.push(book_holon.clone());
+    expected_holons.push(book_holon.clone());
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -72,7 +72,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     let mut person_holon = Holon::new();
 
     test_case.add_stage_holon_step(person_holon.clone())?;
-    // expected_holons.push(person_holon.clone());
+    expected_holons.push(person_holon.clone());
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -89,6 +89,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_match_db_content_test_step()?;
 
     test_case.add_ensure_database_count_step(MapInteger(2))?;
+
+    // test_case.holons = expected_holons;
 
     // let mut book_holon = Holon::new();
     // book_holon
