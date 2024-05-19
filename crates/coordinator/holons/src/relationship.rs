@@ -41,21 +41,16 @@ impl RelationshipTarget {
         }
     }
 
-    // pub fn commit(&mut self, source_id: HolonId) -> Result<(), HolonError> {
-    //     if let Some(collection) = self.editable.clone() {
-    //         let mut mut_collection: StagedCollection = collection;
-    //         mut_collection.commit(source_id)?;
-    //     }
-    //     Ok(())
-    // }
-    pub fn commit(
+
+    /// The method
+    pub fn commit_relationship(
         &self,
         context: &HolonsContext,
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         if let Some(collection) = self.editable.clone() {
-            collection.commit(context, source_id.clone(), name.clone())?;
+            collection.add_smartlinks_for_collection(context, source_id.clone(), name.clone())?;
         }
         Ok(())
     }

@@ -11,9 +11,8 @@ use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::holon_dance_adapter::{
-    commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
+    add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
     with_properties_dance,
-};
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -26,7 +25,7 @@ use crate::staging_area::StagingArea;
 
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
-    trace!("Entered Dancer::dance()");
+    info!("Entered Dancer::dance() with {:#?}", request);
     let valid = true; // TODO: Validate the dance request
 
     if !valid {
@@ -68,6 +67,8 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     result.staging_area = StagingArea::from_commit_manager(&context.commit_manager.borrow());
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
+    info!("======== RETURNING FROM  Dancer::dance() with {:#?}", result.clone());
+
     Ok(result)
 }
 
@@ -98,6 +99,7 @@ impl Dancer {
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
+        dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
 
         // Add more functions as needed
 

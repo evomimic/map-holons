@@ -23,6 +23,11 @@ use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
+use dances::dance_request::PortableReference;
+use holons::commit_manager::{CommitManager, StagedIndex};
+use holons::context::HolonsContext;
+
+
 use crate::shared_test::test_data_types::DancesTestCase;
 
 // use hdk::prelude::*;
@@ -33,9 +38,9 @@ use crate::shared_test::test_data_types::DancesTestCase;
 // };
 
 use holons::holon_error::HolonError;
-use shared_types_holon::{
-    MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
+
+use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue};
+
 
 /// This function creates a set of simple (undescribed) holons
 ///
@@ -61,15 +66,16 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_stage_holon_step(book_holon.clone())?;
     expected_holons.push(book_holon.clone());
 
+
     let mut properties = PropertyMap::new();
     properties.insert(
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     );
 
-    test_case.add_with_properties_step(MapInteger(0), properties)?;
+    test_case.add_with_properties_step(0, properties)?;
 
-    let mut person_holon = Holon::new();
+    let person_holon = Holon::new();
 
     test_case.add_stage_holon_step(person_holon.clone())?;
     expected_holons.push(person_holon.clone());
@@ -83,7 +89,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         PropertyName(MapString("last name".to_string())),
         BaseValue::StringValue(MapString("Briggs".to_string())),
     );
-    test_case.add_with_properties_step(MapInteger(1), properties)?;
+    test_case.add_with_properties_step(1, properties)?;
 
     test_case.add_commit_step()?;
     test_case.add_match_db_content_test_step()?;
@@ -107,15 +113,75 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     Ok(test_case.clone())
 }
+#[fixture]
+pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+    let mut test_case = DancesTestCase::new(
+        "Simple Add Related Holon Testcase".to_string(),
+        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count is 2".to_string(),
 
-//     #[test]
-//     fn test_create_dummy_data() {
-//         let data = create_dummy_data(()).unwrap();
+    );
 
-//         println!("{:#?}", data);
-//     }
-// }
+    test_case.add_ensure_database_count_step(MapInteger(0))?;
+
+    let mut book_holon = Holon::new();
+    book_holon
+        .with_property_value(
+            PropertyName(MapString("title".to_string())),
+            BaseValue::StringValue(MapString("Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string())))
+    ;
+    test_case.add_stage_holon_step(book_holon)?;
+    let book_index:StagedIndex = 0;
+
+    let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("description".to_string())),
+        BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
+    );
+
+    test_case.add_with_properties_step(book_index, properties)?;
+
+    let person_holon_briggs = Holon::new();
+
+    test_case.add_stage_holon_step(person_holon_briggs)?;
+    let briggs_index: StagedIndex = 1;
+    let briggs_reference = PortableReference::Staged(briggs_index);
+
+    let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("first name".to_string())),
+        BaseValue::StringValue(MapString("Roger".to_string()))
+    );
+    properties.insert(
+        PropertyName(MapString("last name".to_string())),
+        BaseValue::StringValue(MapString("Briggs".to_string()))
+    );
+    test_case.add_with_properties_step(briggs_index, properties)?;
+
+    let mut person_holon_gebser = Holon::new();
+    person_holon_gebser
+        .with_property_value(
+            PropertyName(MapString("first name".to_string())),
+            BaseValue::StringValue(MapString("Jean".to_string())))
+        .with_property_value(
+            PropertyName(MapString("last name".to_string())),
+            BaseValue::StringValue(MapString("Gebser".to_string())))
+    ;
+    test_case.add_stage_holon_step(person_holon_gebser)?;
+    let gebser_index: StagedIndex = 2;
+    let gebser_reference = PortableReference::Staged(gebser_index);
+
+    let mut holons_to_add: Vec<PortableReference> = Vec::new();
+
+    holons_to_add.push(briggs_reference);
+    holons_to_add.push(gebser_reference);
+
+    test_case.add_related_holons_step(book_index, RelationshipName(MapString("AUTHORS".to_string())), holons_to_add)?;
+
+    test_case.add_commit_step()?;
+    test_case.add_ensure_database_count_step(MapInteger(3))?;
+
+
+    Ok(test_case.clone())
+
+}
