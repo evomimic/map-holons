@@ -277,6 +277,7 @@ pub fn get_holon_by_id_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
+    info!("-------ENTERED: get_holon_by_id_dance.");
     let holon_id = match request.body {
         RequestBody::HolonId(id) => id,
         _ => {
@@ -285,7 +286,10 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
+    info!("getting cache_manager from context");
     let mut cache_manager = context.cache_manager.borrow_mut();
+
+    info!("asking cache_manager to get rc_holon");
     let rc_holon = cache_manager.get_rc_holon(None, &holon_id)?;
 
     Ok(ResponseBody::Holon((*rc_holon).clone()))

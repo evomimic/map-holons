@@ -12,7 +12,6 @@ node_modules/
 .hc
 .running
 Cargo.lock
-flake.lock
 .idea
 /package-lock.json
 settings.json

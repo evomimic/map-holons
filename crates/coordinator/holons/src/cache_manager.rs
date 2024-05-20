@@ -82,20 +82,34 @@ impl HolonCacheManager {
         holon_space_id: Option<&HolonId>,
         holon_id: &HolonId,
     ) -> Result<Rc<Holon>, HolonError> {
+
+        info!("-------ENTERED: get_rc_holon, getting cache");
         let cache = self.get_cache(holon_space_id)?;
 
-        // Check if the holon is already in the cache
-        let cache_borrow = cache.borrow();
-        if let Some(holon) = cache_borrow.0.get(holon_id) {
-            // Return the holon if found in the cache
-            return Ok(holon.clone());
+        {
+            // Check if the holon is already in the cache
+            info!("borrowing the cache from the cache_manager");
+            let cache_borrow = cache.borrow();
+            info!("checking the cache for holon_id: {:#?}", holon_id.clone());
+            if let Some(holon) = cache_borrow.0.get(holon_id) {
+                // Return the holon if found in the cache
+                return Ok(holon.clone());
+            }
         }
+            info!("holon not cached, fetching holon");
 
-        // If not found in the cache, fetch the holon
-        let fetched_holon = Self::fetch_holon(holon_id)?;
+            // If not found in the cache, fetch the holon
+            let fetched_holon = Self::fetch_holon(holon_id)?;
+
+            info!("holon fetched");
+
+
+
+        info!("getting mutable reference to cache");
 
         // Obtain a mutable reference to local_cache
         let cache_mut = self.get_cache_mut(holon_space_id)?;
+
         let mut cache_mut = cache_mut.borrow_mut();
         cache_mut
             .0

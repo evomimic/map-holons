@@ -34,26 +34,25 @@ use rstest::*;
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn, debug, error, trace, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
-use dances::staging_area::StagingArea;
+
 use holons::helpers::*;
-use holons::holon::{Holon, HolonState};
+use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
+use dances::staging_area::StagingArea;
 use shared_test::dance_fixtures::*;
-use shared_test::test_data_types::DancesTestCase;
+use shared_test::test_data_types::{DancesTestCase};
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::HolonId;
-
 use crate::shared_test::test_add_related_holon::execute_add_related_holons;
 use crate::shared_test::test_commit::execute_commit;
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep};
 use crate::shared_test::test_ensure_database_count::execute_ensure_database_count;
-use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use crate::shared_test::test_match_db_content::execute_match_db_content;
-
-
+use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
+use crate::shared_test::test_with_properties_command::execute_with_properties;
 //use crate::shared_test::ensure_database_count::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
@@ -67,14 +66,12 @@ use crate::shared_test::test_match_db_content::execute_match_db_content;
 /// * TBD
 ///
 /// To selectively run JUST THE TESTS in this file, use:
-///      cargo test -p dances --test dance_tests  -- --show-output
+///      cargo test -p dances --test dance_tests
 ///
-
-
-#[tokio::test(flavor = "multi_thread")]
+#[rstest]
 #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
 #[case::simple_add_related_holon_test(simple_add_related_holons_fixture())]
-#[rstest]
+#[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
@@ -89,35 +86,25 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     let steps = test_case.clone().steps;
     let name = test_case.clone().name.clone();
     let description = test_case.clone().description;
-    // let fixture_holons = test_case.holons;
-    // assert!(fixture_holons.iter().all(|h| h.state == HolonState::New));
-    // assert!(fixture_holons.iter().all(|h| h.saved_node == None));
-    // println!("fixture_holons: {:#?}", fixture_holons);
 
     let steps_count = steps.len();
 
     // Initialize the DanceTestState
-    let mut test_state = DanceTestState::new();
-
+    let mut test_state =DanceTestState::new();
 
     info!("******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("******* {description}  ***************************");
 
-
-    println!("Steps: {:#?}", test_case.steps.clone());
     for step in test_case.steps {
         //println!("\n\n============= STARTING NEXT STEP: {}", step);
         match step {
-            DanceTestStep::AddRelatedHolons(staged_index, relationship_name, holons_to_add) => execute_add_related_holons(&conductor, &cell, &mut test_state, staged_index, relationship_name, holons_to_add).await,
+            DanceTestStep::AddRelatedHolons(staged_index, relationship_name,holons_to_add) => execute_add_related_holons(&conductor, &cell, &mut test_state, staged_index, relationship_name, holons_to_add).await,
             DanceTestStep::EnsureDatabaseCount(expected_count) => execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count).await,
             DanceTestStep::StageHolon(holon) => execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await,
-            DanceTestStep::Commit() => execute_commit(&conductor, &cell, &mut test_state, ).await,
+            DanceTestStep::Commit => execute_commit(&conductor, &cell, &mut test_state,).await,
             DanceTestStep::WithProperties(staged_index, properties) => execute_with_properties(&conductor, &cell, &mut test_state, staged_index, properties).await,
-            DanceTestStep::MatchSavedContent => {
-                execute_match_db_content(&conductor, &cell, &mut test_state).await;
-            }
+            DanceTestStep::MatchSavedContent => execute_match_db_content(&conductor, &cell, &mut test_state,).await,
         }
     }
-
     info!("-------------- END OF {name} TEST CASE  ------------------");
 }

@@ -39,25 +39,28 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     }
 
     // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
-
-    // let mut commit_manager = CommitManager::new();
-
+    //info!("initializing commit_manager from staging_area");
     let commit_manager = request.clone().staging_area.to_commit_manager();
     // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
+    //info!("initializing context");
     let context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
+
+
 
     // Get the Dancer
     let dancer = Dancer::new();
 
     // TODO: If the request is a Command, add the request to the undo_list
+    info!("confirm dance is dispatchable");
 
     // Dispatch the dance and map result to DanceResponse
-    // if !dancer.dance_name_is_dispatchable(request.clone()) {
-    //     return Err(HolonError::NotImplemented(
-    //         "No function to dispatch in dispatch table".to_string(),
-    //     )
-    //     .into());
-    // }
+    if !dancer.dance_name_is_dispatchable(request.clone()) {
+        return Err(HolonError::NotImplemented(
+            "No function to dispatch in dispatch table".to_string(),
+        )
+        .into());
+    }
+    info!("dispatching dance");
     let dispatch_result = dancer.dispatch(&context, request);
 
     let mut result = process_dispatch_result(dispatch_result);
@@ -112,6 +115,7 @@ impl Dancer {
     // }
 
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
+        info!("checking that dance_name: {:#?} is dispatchable",request.dance_name.0.as_str() );
         self.dispatch_table
             .contains_key(request.dance_name.0.as_str())
     }

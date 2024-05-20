@@ -93,7 +93,7 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
-    pub fn match_saved_content_step(&mut self) -> Result<(), HolonError> {
+    pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);
         Ok(())
     }
