@@ -8,7 +8,10 @@
     "start": "AGENTS=2 npm run network",
     "network": "hc s clean && npm run build:happ && UI_PORT=8888 concurrently \"npm start -w ui\" \"npm run launch:happ\" \"holochain-playground\"",
     "test": "npm run build:zomes && hc app pack workdir --recursive && npm t -w tests",
-    "sweetest": "npm run build:happ && RUST_LOG=warn && WASM_LOG=warn && cargo test",
+    "sweetest": "npm run build:happ && npm run sweetest:quiet",
+    "sweetest:quiet": "RUST_LOG=warn WASM_LOG=warn cargo test",
+    "sweetest:trace": "RUST_LOG=debug WASM_LOG=debug cargo test",
+    "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} cargo test",
     "launch:happ": "echo \"pass\" | RUST_LOG=warn hc launch --piped -n $AGENTS workdir/map-holons.happ --ui-port $UI_PORT network mdns",
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
@@ -16,6 +19,12 @@
     "clean": "npx rimraf target && npx rimraf .cargo && npx rimraf Cargo.lock && npx rimraf flake.lock",
     "cb": "clear && npm run build:happ"
   },
+  "_comments": {
+    "sweetest:quiet": "Script to run tests with minimal tracing (warn level)",
+    "sweetest:trace": "Script to run tests with detailed tracing (debug level)",
+    "sweetest:custom": "Script to run tests with custom tracing levels. Defaults to 'warn' if env variables not already set"
+  },
+
   "devDependencies": {
     "@holochain-playground/cli": "^0.2.0",
     "concurrently": "^8.2.2",

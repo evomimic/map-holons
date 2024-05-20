@@ -30,6 +30,8 @@ impl HolonCacheManager {
             //external_caches: HashMap::new(),
         }
     }
+    /// This method returns a sharable reference to the HolonCache for the specified holon_space_id.
+    /// If holon_space_id is None, return reference to the local HolonCache.
     pub fn get_cache(
         &self,
         holon_space_id: Option<&HolonId>,
@@ -40,19 +42,6 @@ impl HolonCacheManager {
             ));
         }
         // Return a reference to the local cache
-        Ok(Rc::clone(&self.local_cache))
-    }
-
-    pub fn get_cache_mut(
-        &mut self,
-        holon_space_id: Option<&HolonId>,
-    ) -> Result<Rc<RefCell<HolonCache>>, HolonError> {
-        if let Some(_) = holon_space_id {
-            return Err(HolonError::NotImplemented(
-                "External HolonReference not implemented".to_string(),
-            ));
-        }
-        // Return a mutable reference to the local cache
         Ok(Rc::clone(&self.local_cache))
     }
 
@@ -88,61 +77,42 @@ impl HolonCacheManager {
 
         {
             // Check if the holon is already in the cache
-            info!("borrowing the cache from the cache_manager");
-            let cache_borrow = cache.borrow();
-            info!("checking the cache for holon_id: {:#?}", holon_id.clone());
-            if let Some(holon) = cache_borrow.0.get(holon_id) {
-                // Return the holon if found in the cache
-                return Ok(holon.clone());
+            debug!("borrowing the cache from the cache_manager");
+            let try_cache_borrow = cache.try_borrow();
+            match try_cache_borrow {
+                Ok(cache) => {
+                    debug!("checking the cache for holon_id: {:#?}", holon_id.clone());
+                    if let Some(holon) = cache.0.get(holon_id) {
+                        // Return the holon if found in the cache
+                        return Ok(holon.clone());
+                    }
+                }
+                Err(_e) => {
+                    return Err(HolonError::FailedToBorrow("Unable borrow holon cache immutably".to_string()));
+                }
             }
         }
-            info!("holon not cached, fetching holon");
 
-            // If not found in the cache, fetch the holon
-            let fetched_holon = Self::fetch_holon(holon_id)?;
-
-            info!("holon fetched");
+        info!("holon not cached, fetching holon");
+        let fetched_holon = Self::fetch_holon(holon_id)?;
+        debug!("holon fetched");
 
 
+        debug!("getting mutable reference to cache");
+        let try_cache_mut = cache.try_borrow_mut();
+        match try_cache_mut {
+            Ok(mut cache) => {
+                debug!("inserting fetched holon in the cache for holon_id: {:#?}", holon_id.clone());
+                cache.0.insert(holon_id.clone(), Rc::new(fetched_holon.clone()));
+                // Return the holon if found in the cache
+                Ok(Rc::new(fetched_holon))
 
-        info!("getting mutable reference to cache");
+            }
+            Err(_e) => {
+                return Err(HolonError::FailedToBorrow("Unable borrow_mut holon cache".to_string()));
+            }
+        }
 
-        // Obtain a mutable reference to local_cache
-        let cache_mut = self.get_cache_mut(holon_space_id)?;
 
-        let mut cache_mut = cache_mut.borrow_mut();
-        cache_mut
-            .0
-            .insert(holon_id.clone(), Rc::new(fetched_holon.clone()));
-
-        // Return the fetched holon
-        Ok(Rc::new(fetched_holon))
     }
-
-    // pub fn get_rc_holon(
-    //     &self,
-    //     context: &HolonsContext,
-    //     holon_space_id: Option<&HolonId>,
-    //     holon_id: &HolonId,
-    // ) -> Result<Rc<Holon>, HolonError> {
-    //     let cache = self.get_cache(holon_space_id)?;
-    //
-    //     // Check if the holon is already in the cache
-    //     let cache_borrow = cache.borrow();
-    //     if let Some(holon) = cache_borrow.0.get(holon_id) {
-    //         // Return the holon if found in the cache
-    //         return Ok(holon.clone());
-    //     }
-    //
-    //     // If not found in the cache, fetch the holon
-    //     let fetched_holon = Self::fetch_holon(context, holon_id)?;
-    //
-    //     let mut self_mut = self;
-    //     let mut cache_mut = self_mut.get_cache_mut(holon_space_id)?.borrow_mut();
-    //     cache_mut.0.insert(holon_id.clone(), Rc::new(fetched_holon.clone()));
-    //
-    //
-    //     // Return the fetched holon
-    //     Ok(Rc::new(fetched_holon))
-    // }
 }
