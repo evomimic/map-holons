@@ -1,9 +1,9 @@
+use holons::context::HolonsContext;
 use holons::holon_reference::HolonReference;
-use holons::holon_types::Holon;
-use holons::relationship::{RelationshipName, RelationshipTarget};
+use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
-
+use crate::descriptor_types::{PropertyDescriptor};
 
 
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
@@ -24,22 +24,24 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 ///
 ///
 pub fn define_property_descriptor(
-    schema: &RelationshipTarget,
+    context: &HolonsContext,
+    schema: StagedReference,
     property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
     description: MapString,
     label: MapString, // Human readable name for this property name
-    property_of: RelationshipTarget, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    value_type: RelationshipTarget, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    has_supertype: Option<HolonReference>,
-    described_by: Option<HolonReference>,
-) -> Holon {
+    _property_of: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
+    _value_type: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
+) -> PropertyDescriptor {
 
     let property_of_name = MapString("TODO: Extract type_name from the PROPERTY_OF HolonDescriptor".to_string());
 
     // build the type_name for the PropertyDescriptor
     let type_name = MapString(format!("{}_PROPERTY_OF_{}", property_name.0, property_of_name.0));
 
-    let mut descriptor = define_type_descriptor(
+    let descriptor = define_type_descriptor(
+        context,
         schema,
         derive_descriptor_name(&property_name),
         type_name,
@@ -54,20 +56,20 @@ pub fn define_property_descriptor(
 
     // Populate the relationships
 
-    descriptor
-        .add_related_holon(
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            schema.clone(),
-        )
-        .add_related_holon(
-            RelationshipName(MapString("PROPERTY_OF".to_string())),
-            property_of,
-        )
-        .add_related_holon(
-            RelationshipName(MapString("VALUE_TYPE".to_string())),
-            value_type,
-        );
+    // descriptor
+    //     .add_related_holon(
+    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
+    //         schema.clone(),
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("PROPERTY_OF".to_string())),
+    //         property_of,
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("VALUE_TYPE".to_string())),
+    //         value_type,
+    //     );
 
-    descriptor
+    PropertyDescriptor(descriptor.0)
 
 }

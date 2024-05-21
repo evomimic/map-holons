@@ -33,7 +33,7 @@ pub fn get_holon_node(
         .into_iter()
         .max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
     let latest_holon_node_hash = match latest_link {
-        Some(link) => ActionHash::from(link.target.clone()),
+        Some(link) => link.target.clone().into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(String::from("No action hash associated with link"))),)?,
         None => original_holon_node_hash.clone(),
     };
     get(latest_holon_node_hash, GetOptions::default())

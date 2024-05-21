@@ -10,30 +10,32 @@ resolver = "2"
 
 members = ["crates/coordinator/holons",
     "crates/coordinator/descriptors",
-    "crates/coordinator/hdm",
+    "crates/coordinator/dances",
     "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
+    "crates/shared_validation",
 ]
 
 [workspace.dependencies]
 
 holochain_integrity_types = "0.2"
-hdi = "0.2"
-hdk = "0.1"
+hdi = "0.3"
+hdk = "0.2"
 serde = "1"
-derive-new = "0.5"
+derive-new = "0.6"
 thiserror = "1"
-ahash ="=0.8.6"
+ahash ="=0.8.11"
+quick_cache = "0.4.1"
 
 
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
 
+[workspace.dependencies.dances]
+path = "crates/coordinator/dances"
+
 [workspace.dependencies.descriptors]
 path = "crates/coordinator/descriptors"
-
-[workspace.dependencies.hdm]
-path = "crates/coordinator/hdm"
 
 [workspace.dependencies.holons_integrity]
 path = "crates/integrity/holons_integrity"
@@ -41,3 +43,5 @@ path = "crates/integrity/holons_integrity"
 [workspace.dependencies.shared_types_holon]
 path = "crates/shared_types/holon"
 
+[workspace.dependencies.shared_validation]
+path = "crates/shared_validation"

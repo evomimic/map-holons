@@ -1,12 +1,12 @@
 use derive_new::new;
 
 use hdk::prelude::*;
+use holons::holon::Holon;
 
-use holons::holon_types::Holon;
 
 // use shared_types_holon::holon_node::{BaseValue, BaseType};
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString};
+use shared_types_holon::value_types::{BaseValue, MapInteger, MapString};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]

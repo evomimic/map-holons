@@ -1,10 +1,12 @@
-use holons::holon_reference::HolonReference;
-use holons::holon_types::Holon;
-use holons::relationship::{RelationshipName, RelationshipTarget};
+use holons::context::HolonsContext;
+
+
+use holons::relationship::RelationshipTarget;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use crate::descriptor_types::DeletionSemantic;
+use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
 
 
 use crate::type_descriptor::{define_type_descriptor};
@@ -25,7 +27,8 @@ use crate::type_descriptor::{define_type_descriptor};
 ///
 ///
 pub fn define_relationship_descriptor(
-    schema: &RelationshipTarget,
+    context: &HolonsContext,
+    schema: StagedReference,
     relationship_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
@@ -33,15 +36,17 @@ pub fn define_relationship_descriptor(
     max_target_cardinality: MapInteger,
     deletion_semantic: DeletionSemantic,
     affinity: MapInteger,
-    source_for: RelationshipTarget, // TODO: switch type to HolonReference
-    target_for: RelationshipTarget, // TODO: switch type to HolonReference
-    has_supertype: Option<HolonReference>,
-    described_by: Option<HolonReference>,
+    _source_for: RelationshipTarget, // TODO: switch type to HolonReference
+    _target_for: RelationshipTarget, // TODO: switch type to HolonReference
+    has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
+    _has_inverse: Option<StagedReference>,
 
-) -> Holon {
+) -> RelationshipDescriptor {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_name= MapString(format!("{}-{}->{}", "source_for_type_name".to_string(), relationship_name.0,"target_for_type_name".to_string()));
     let mut descriptor = define_type_descriptor(
+        context,
         schema,
         MapString(format!("{}{}", type_name.0, "Descriptor".to_string())),
         type_name,
@@ -56,7 +61,7 @@ pub fn define_relationship_descriptor(
 
     // Add its properties
 
-    descriptor
+    descriptor.0
         .with_property_value(
             PropertyName(MapString("min_target_cardinality".to_string())),
             BaseValue::IntegerValue(min_target_cardinality),
@@ -79,19 +84,19 @@ pub fn define_relationship_descriptor(
     // _source_for: HolonReference,
     //     _target_for: HolonReference,
     //     _has_supertype: Option<HolonReference>,
-    descriptor
-        .add_related_holon(
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            schema.clone(),
-        )
-        .add_related_holon(
-            RelationshipName(MapString("SOURCE_FOR".to_string())),
-            source_for.clone(),
-        )
-        .add_related_holon(
-            RelationshipName(MapString("TARGET_FOR".to_string())),
-            target_for.clone(),
-        );
+    // descriptor
+    //     .add_related_holon(
+    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
+    //         schema.clone(),
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("SOURCE_FOR".to_string())),
+    //         source_for.clone(),
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("TARGET_FOR".to_string())),
+    //         target_for.clone(),
+    //     );
 
     // TODO: If has_supertype is supplied, populate that relationship
     // if let Some(supertype) = has_supertype  {
@@ -111,6 +116,6 @@ pub fn define_relationship_descriptor(
 
 
 
-    descriptor
+    RelationshipDescriptor(descriptor.0)
 
 }
