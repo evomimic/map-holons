@@ -7,7 +7,7 @@ pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
     let get_input: Vec<GetInput> = links
         .into_iter()
         .map(|link| GetInput::new(
-            ActionHash::from(link.target).into(),
+            link.target.try_into().unwrap(),
             GetOptions::default(),
         ))
         .collect();

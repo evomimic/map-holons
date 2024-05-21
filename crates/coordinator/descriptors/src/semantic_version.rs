@@ -1,8 +1,8 @@
 use derive_new::new;
 
 use hdk::prelude::*;
+use holons::holon::Holon;
 
-use holons::holon_types::Holon;
 
 // use shared_types_holon::holon_node::{BaseValue, BaseType};
 use shared_types_holon::holon_node::PropertyName;

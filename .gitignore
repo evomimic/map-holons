@@ -1,8 +1,9 @@
 
-/node_modules/
+node_modules/
 /dist/
 /target/
 /.cargo/
+.DS_Store
 *.happ
 *.webhapp
 *.zip

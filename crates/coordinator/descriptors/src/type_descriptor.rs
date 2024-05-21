@@ -1,14 +1,15 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
-use holons::helpers::define_local_target;
-use holons::holon_reference::{HolonReference, LocalHolonReference};
-use holons::holon_types::Holon;
-use holons::relationship::{RelationshipName, RelationshipTarget};
+use holons::context::HolonsContext;
+use holons::staged_reference::{StagedReference};
+use holons::holon::Holon;
+
+// use holons::relationship::{RelationshipName, RelationshipTarget};
 
 use crate::semantic_version::define_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
-use crate::descriptor_types::{Schema, TypeDescriptor};
+use crate::descriptor_types::{TypeDescriptor};
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions
@@ -23,7 +24,8 @@ use crate::descriptor_types::{Schema, TypeDescriptor};
 ///
 ///
 pub fn define_type_descriptor(
-    schema: &Schema,
+    _context: &HolonsContext,
+    _schema: StagedReference,
     descriptor_name: MapString,
     type_name: MapString,
     base_type: BaseType,
@@ -31,14 +33,14 @@ pub fn define_type_descriptor(
     label: MapString, // Human readable name for this type
     is_dependent: MapBoolean,
     is_value_descriptor: MapBoolean,
-    described_by: Option<&TypeDescriptor>,
-    has_supertype: Option<&TypeDescriptor>,
+    _described_by: Option<StagedReference>,
+    _has_supertype: Option<StagedReference>,
     //_owned_by: HolonReference, // HolonSpace
 ) -> TypeDescriptor {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
-    let schema_reference = HolonReference::Local(LocalHolonReference::from_holon(schema.0.clone()));
-    let schema_target = RelationshipTarget::One(schema_reference);
+    // let schema_reference = StagedReference::from_holon()from_holon(schema.0.clone()));
+    // let schema_target = RelationshipTarget::One(schema_reference);
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
@@ -72,40 +74,41 @@ pub fn define_type_descriptor(
         );
 
     // Define a default semantic_version
-    let version = define_semantic_version(0, 0, 1);
+    let _version = define_semantic_version(0, 0, 1);
+
 
     // Add the outbound relationships shared by all TypeDescriptors
-    let version_target = define_local_target(&version);
+   // let version_target = define_local_target(&version);
 
-    descriptor
-        .add_related_holon(
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            schema_target,
-        )
-        .add_related_holon(
-            RelationshipName(MapString("VERSION".to_string())),
-            version_target,
-        );
+    // descriptor
+    //     .add_related_holon(
+    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
+    //         schema_target,
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("VERSION".to_string())),
+    //         version_target,
+    //     );
 
     // TODO: If has_supertype is supplied, populate that relationship
 
-    if let Some(supertype) = has_supertype  {
-        let supertype_reference = HolonReference::Local(LocalHolonReference::from_holon(supertype.0.clone()));
-        descriptor.add_related_holon(
-            RelationshipName(MapString("HAS_SUPERTYPE".to_string())),
-            RelationshipTarget::ZeroOrOne(Some(supertype_reference)),
-        );
-    }
-    // TODO: If described_by is supplied, populate that relationship
-    if let Some(is_described_by) = described_by  {
-        let described_by_reference = HolonReference::Local(LocalHolonReference::from_holon(is_described_by.0.clone()));
-
-        descriptor
-            .add_related_holon(
-            RelationshipName(MapString("DESCRIBED_BY".to_string())),
-            RelationshipTarget::ZeroOrOne(Some(described_by_reference)),
-        );
-    }
+    // if let Some(supertype) = has_supertype  {
+    //     let supertype_reference = HolonReference::Local(LocalHolonReference::from_holon(supertype.0.clone()));
+    //     descriptor.add_related_holon(
+    //         RelationshipName(MapString("HAS_SUPERTYPE".to_string())),
+    //         RelationshipTarget::ZeroOrOne(Some(supertype_reference)),
+    //     );
+    // }
+    // // TODO: If described_by is supplied, populate that relationship
+    // if let Some(is_described_by) = described_by  {
+    //     let described_by_reference = HolonReference::Local(LocalHolonReference::from_holon(is_described_by.0.clone()));
+    //
+    //     descriptor
+    //         .add_related_holon(
+    //         RelationshipName(MapString("DESCRIBED_BY".to_string())),
+    //         RelationshipTarget::ZeroOrOne(Some(described_by_reference)),
+    //     );
+    // }
     //TODO: Populate owned_by relationship
     // descriptor.add_related_holon(
     //     RelationshipName(MapString("OWNED_BY".to_string())),

@@ -1,5 +1,4 @@
-
-use holons::holon_types::{Holon};
+use holons::holon::Holon;
 use shared_types_holon::value_types::{MapEnumValue, MapString};
 
 
