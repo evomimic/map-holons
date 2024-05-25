@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-
+use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonFieldGettable};
 use crate::holon_error::HolonError;
@@ -13,7 +13,6 @@ use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget}
 use crate::staged_collection::StagedCollection;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{MapString, PropertyValue};
-use crate::commit_manager::StagedIndex;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -24,7 +23,6 @@ pub struct StagedReference {
 }
 
 impl StagedReference {
-
     // Constructor function for creating StagedReference index into CommitManagers StagedHolons
     // pub fn from_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<StagedReference, HolonError> {
     //     let key = rc_holon.borrow().get_key()?;
@@ -45,14 +43,12 @@ impl StagedReference {
         borrowed_holon.commit()
     }
 
-
     pub fn clone_reference(&self) -> StagedReference {
         StagedReference {
             key: self.key.clone(),
             holon_index: self.holon_index.clone(),
         }
     }
-
 
     pub fn add_related_holons(
         &self,
@@ -99,7 +95,6 @@ impl StagedReference {
     /// RelationshipTarget, verify that a relationship with the specified relationship_name is valid for this holon type
     ///
 
-
     // HERE"S THE CHATGPT VERSION
     fn ensure_editable_collection(
         &self,
@@ -114,9 +109,15 @@ impl StagedReference {
         let mut holon = holon_ref.borrow_mut();
         debug!("Borrowed holon mutably in ensure_editable_collection");
 
-        holon.relationship_map.0.entry(relationship_name.clone())
+        holon
+            .relationship_map
+            .0
+            .entry(relationship_name.clone())
             .or_insert_with(|| {
-                debug!("Creating new editable collection for relationship: {:?}", relationship_name);
+                debug!(
+                    "Creating new editable collection for relationship: {:?}",
+                    relationship_name
+                );
                 // Create a StagedCollection
                 let staged_collection = StagedCollection {
                     source_holon: Some(self.clone()), // Set source_holon to a StagedReference to the same holon
@@ -132,10 +133,12 @@ impl StagedReference {
                 }
             });
 
-        debug!("ensure_editable_collection completed successfully for relationship: {:?}", relationship_name);
+        debug!(
+            "ensure_editable_collection completed successfully for relationship: {:?}",
+            relationship_name
+        );
         Ok(true) // Return true indicating success
     }
-
 
     pub fn get_relationship_map(
         &mut self,
@@ -175,6 +178,18 @@ impl StagedReference {
                 self.holon_index
             )))
         }
+    }
+
+    pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
+        // Get mutable access to the source holon
+        let holon_ref = self.get_mut_holon(context)?;
+
+        // Borrow the holon from the RefCell
+        let mut holon = holon_ref.borrow_mut();
+
+        holon.abandon_staged_changes();
+
+        Ok(())
     }
 }
 

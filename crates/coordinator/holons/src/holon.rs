@@ -18,6 +18,12 @@ use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
 
+#[derive(Debug)]
+pub enum AccessType {
+    Read,
+    Write,
+}
+
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Holon {
@@ -81,6 +87,7 @@ pub enum HolonState {
     Fetched,
     Changed,
     Saved,
+    Abandoned,
     // SaveInProgress,
 }
 
@@ -91,6 +98,7 @@ impl fmt::Display for HolonState {
             HolonState::Fetched => write!(f, "Fetched"),
             HolonState::Changed => write!(f, "Changed"),
             HolonState::Saved => write!(f, "Saved"),
+            HolonState::Abandoned => write!(f, "Abandoned"),
         }
     }
 }
@@ -248,7 +256,7 @@ impl Holon {
 
     /// commit() saves a staged holon to the persistent store.
     ///
-    /// If the staged holon is `Fetched` or `Saved`, commit does nothing.
+    /// If the staged holon is `Fetched`, `Saved`, or 'Abandoned' commit does nothing.
     ///
     /// If the staged holon is `New`, commit attempts to create a HolonNode.
     ///
@@ -272,7 +280,6 @@ impl Holon {
 
                 match result {
                     Ok(record) => {
-
                         self.state = HolonState::Saved;
                         self.saved_node = Option::from(record);
 
@@ -282,7 +289,7 @@ impl Holon {
                         let holon_error = HolonError::from(error);
                         self.errors.push(holon_error.clone());
                         Err(holon_error)
-                    },
+                    }
                 }
             }
 
@@ -306,16 +313,19 @@ impl Holon {
                             let holon_error = HolonError::from(error);
                             self.errors.push(holon_error.clone());
                             Err(holon_error)
-                        },
+                        }
                     }
                 } else {
-                    let holon_error = HolonError::HolonNotFound("Holon marked Changed, but has no saved_node".to_string());
+                    let holon_error = HolonError::HolonNotFound(
+                        "Holon marked Changed, but has no saved_node".to_string(),
+                    );
                     self.errors.push(holon_error.clone());
                     Err(holon_error)
                 }
             }
+
             _ => {
-                // For either Fetched or Saved no save is needed, just return Holon
+                // For either Fetched, Saved, Abandoned, no save is needed, just return Holon
 
                 Ok(self.clone())
             }
@@ -342,12 +352,18 @@ impl Holon {
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, target) in self.relationship_map.0.clone() {
                             debug!("committing_relationship for {:#?}", name.clone());
-                            target.commit_relationship(context, HolonId::from(holon_id.clone()), name.clone())?;
+                            target.commit_relationship(
+                                context,
+                                HolonId::from(holon_id.clone()),
+                                name.clone(),
+                            )?;
                         }
 
                         Ok(self.clone())
                     }
-                    None => Err(HolonError::HolonNotFound("Holon marked Saved, but has no saved_node".to_string()))
+                    None => Err(HolonError::HolonNotFound(
+                        "Holon marked Saved, but has no saved_node".to_string(),
+                    )),
                 }
             }
 
@@ -387,6 +403,32 @@ impl Holon {
             relationship_map: self.relationship_map.clone(),
             key: self.key.clone(),
             errors: self.errors.clone(),
+        }
+    }
+
+    pub fn abandon_staged_changes(&mut self) -> () {
+        self.state = HolonState::Abandoned;
+    }
+
+    pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
+        match access_type {
+            AccessType::Read => {
+                if self.state == HolonState::Abandoned {
+                    Err(HolonError::NotAccessible(
+                        "Read".to_string(),
+                        format!("{:?}", self.state),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+            AccessType::Write => match self.state {
+                HolonState::New | HolonState::Fetched | HolonState::Changed => Ok(()),
+                _ => Err(HolonError::NotAccessible(
+                    "Write".to_string(),
+                    format!("{:?}", self.state),
+                )),
+            },
         }
     }
 
