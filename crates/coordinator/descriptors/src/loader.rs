@@ -120,7 +120,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<Holon, HolonError> {
     let response = CommitManager::commit(context);
     info!("Commit response {:#?}", response.clone());
 
-    // Need to retrieve the Schema holon by key.
+    // TODO: Need to retrieve the saved Schema holon by key once get_holon_by_key dance is available.
 
     Ok(schema.0)
 
