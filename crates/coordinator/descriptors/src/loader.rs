@@ -1,5 +1,8 @@
+use hdk::prelude::{info,debug,trace,warn};
+use holons::commit_manager::CommitManager;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
+use holons::holon::Holon;
 
 use holons::staged_reference::StagedReference;
 
@@ -34,16 +37,18 @@ use crate::descriptor_types::Schema;
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, HolonError> {
+pub fn load_core_schema(context: &HolonsContext) -> Result<Holon, HolonError> {
+
     let schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
     );
 
-    let schema_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(schema.0);
+    info!("Preparing to stage schema holon {:#?}", schema.0.clone());
+
+    let schema_ref = context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone());
+
+
     /*
 
        let type_descriptor = define_type_descriptor(
@@ -110,9 +115,15 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, Holo
 
     */
 
-    //context.commit_manager.borrow_mut().commit();
+    info!("Staging complete... committing schema {:#?}", schema.0.clone());
 
-    Ok(schema_ref)
+    let response = CommitManager::commit(context);
+    info!("Commit response {:#?}", response.clone());
+
+    // Need to retrieve the Schema holon by key.
+
+    Ok(schema.0)
+
 }
 
 // pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, HolonError> {

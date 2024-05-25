@@ -26,6 +26,7 @@ pub enum DanceTestStep {
     Commit,
     WithProperties(StagedIndex, PropertyMap), // Update properties for Holon at StagedIndex with PropertyMap
     MatchSavedContent,
+    LoadCoreSchema,
 }
 
 impl fmt::Display for DanceTestStep {
@@ -52,6 +53,9 @@ impl fmt::Display for DanceTestStep {
             }
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
+            }
+            DanceTestStep::LoadCoreSchema => {
+                write!(f, "LoadCoreSchema")
             }
         }
     }
@@ -109,6 +113,10 @@ impl DancesTestCase {
 
     pub fn add_with_properties_step(&mut self, index:StagedIndex, properties:PropertyMap) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::WithProperties(index, properties));
+        Ok(())
+    }
+    pub fn add_load_core_schema(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::LoadCoreSchema);
         Ok(())
     }
 

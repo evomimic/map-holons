@@ -10,6 +10,7 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
+use crate::descriptors_dance_adapter::load_core_schema_dance;
 use crate::holon_dance_adapter::{add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
     with_properties_dance };
 use crate::staging_area::StagingArea;
@@ -102,6 +103,7 @@ impl Dancer {
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
         dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
+        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
 
         // Add more functions as needed
 

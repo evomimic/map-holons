@@ -162,6 +162,9 @@ impl CommitManager {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
+        info!("CommitManager has staged a new holon at index {:#?}",holon_index);
+        debug!("staged_holon: {:#?}", self.staged_holons.get(holon_index));
+
         let mut key: Option<MapString> = None;
         if let Some(the_key) = holon.get_key().unwrap() {
             key = Some(the_key.clone());
