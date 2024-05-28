@@ -6,7 +6,7 @@ use holons::holon::Holon;
 
 // use holons::relationship::{RelationshipName, RelationshipTarget};
 
-use crate::semantic_version::define_semantic_version;
+use crate::semantic_version::set_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 use crate::descriptor_types::{TypeDescriptor};
@@ -74,7 +74,7 @@ pub fn define_type_descriptor(
         );
 
     // Define a default semantic_version
-    let _version = define_semantic_version(0, 0, 1);
+    let _version = set_semantic_version(0, 0, 1);
 
 
     // Add the outbound relationships shared by all TypeDescriptors

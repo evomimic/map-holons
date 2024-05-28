@@ -31,7 +31,7 @@ impl SemanticVersion {
     }
 }
 
-pub fn define_semantic_version(major: i64, minor: i64, patch: i64) -> Holon {
+pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut version = Holon::new();
 
