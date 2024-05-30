@@ -42,7 +42,8 @@ impl RelationshipTarget {
     }
 
 
-    /// The method
+    /// This method saves outbound relationships from the holon identified by source_id
+    /// to the holons that are in the editable StagedCollection of this relationship.
     pub fn commit_relationship(
         &self,
         context: &HolonsContext,

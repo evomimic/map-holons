@@ -39,8 +39,6 @@ pub fn define_type_descriptor(
 ) -> TypeDescriptor {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
-    // let schema_reference = StagedReference::from_holon()from_holon(schema.0.clone()));
-    // let schema_target = RelationshipTarget::One(schema_reference);
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
