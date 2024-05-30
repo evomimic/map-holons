@@ -4,10 +4,10 @@ import { runScenario, pause, CallableCell, dhtSync } from '@holochain/tryorama';
 import { NewEntryAction, ActionHash, AppBundleSource,  fakeActionHash, fakeAgentPubKey, fakeEntryHash } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 
-import { createHolon, send_dance_request } from './common.js';
-import { BaseValueType, DanceResponse, Holon, DanceTypeEnum, RequestBodyEnum, PropertyMap, ResponseStatusCodeMap  } from "./types.js";
+import { addProperty, build_dance_request, createHolon, send_dance_request } from './common.js';
+import { BaseValue, BaseValueType, DanceResponse, Holon, DanceTypeEnum, RequestBodyEnum, PropertyMap, ResponseStatusCodeMap, ResponseStatusCode, PortableReferenceEnum, TargetHolons } from "./types.js";
 
-test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
+test('TEST CASE 2, Stage, Cancel, Commit, Delete Holons', async () => {
   await runScenario(async scenario => {
     // Construct proper paths for your app.
     // This assumes app bundle created by the `hc app pack` command.
@@ -130,10 +130,54 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     );
     console.log("final",response)
     assert.equal(Object.keys(response.body)[0], "Holons");
-    const holons:Holon[] = Object.values(response.body)[0]
-    assert.equal(holons.length, 2); //2 holons committed
-    console.log(holons)
-    holons.forEach(holon => { console.log(holon.property_map) })
+    assert.equal(Object.values(response.body)[0].length, 2); //2 holons committed
+    console.log(Object.values(response.body)[0])
+
+ 
+
+    //const relationship = "owns"
+    //const relations = [{[PortableReferenceEnum.Staged]: 1}] //StagedIndex}
+    //const target_details_arr:TargetHolons = [relationship,relations]
+    //target_details_arr.push(relationship)
+    //target_details_arr.push(relations)
+    //let add_related_response: DanceResponse = await send_dance_request(
+    //  alice.cells[0],
+     // "add_related_holons",
+     // {[DanceTypeEnum.CommandMethod]:0},
+     // {[RequestBodyEnum.TargetHolons]: target_details_arr},
+     // stageresponse2.staging_area
+    //);
+    //console.log(add_desc_response)
+    //assert.equal(Object.keys(add_desc_response.status_code)[0], ResponseStatusCodeMap.OK);
+    
+    /*
+    const updatedHolon: Holon = await addProperty(alice.cells[0], emptyHolon, "title", [value] );
+    assert.ok(updatedHolon);
+    console.log(updatedHolon)
+    
+    await dhtSync([alice], alice.cells[0].cell_id[0]);
+
+     // Alice adds another property to the Holon
+     let value2:BaseValue = {type: BaseValueType.StringValue, value: "some description"};
+     console.log("here",value2)
+     const updatedHolon2: Holon = await addProperty(alice.cells[0], updatedHolon, "description", [value2] );
+     assert.ok(updatedHolon2);
+     console.log(updatedHolon2)
+
+     await dhtSync([alice], alice.cells[0].cell_id[0]);
+
+     //alice commits the holons
+    
+    // alice gets all holons again
+    collectionOutput = await alice.cells[0].callZome({
+      zome_name: "holons",
+      fn_name: "get_all_holons",
+      //payload: null
+    });
+    console.log("all holons:",collectionOutput)
+    assert.equal(collectionOutput.length, 1);
+    //assert.deepEqual(updatedHolon, collectionOutput[0]);
+    */
   });
 });
 

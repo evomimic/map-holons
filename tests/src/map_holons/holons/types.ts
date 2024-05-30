@@ -1,8 +1,8 @@
-import { HoloHash } from "@holochain/client"
+import { HoloHash, HoloHashB64 } from "@holochain/client"
 
-export type MapString = {type:string, value:string}
+//export type MapString = {type:string, value:string}
 
-type RelationshipNameType = MapString
+type RelationshipNameType = string
 type StagedIndex = number
 
 export enum BaseValueType {
@@ -19,16 +19,15 @@ export type BaseValueMap = {
   [BaseValueType.EnumValue]: 'Option1' | 'Option2' | 'Option3';
 };
 
-//export type BaseValue = Array<{ [K in BaseValueType]: { type: K, value: string } }[BaseValueType]>;
-export type BaseValue = { [K in keyof BaseValueMap]: { type: K; value: BaseValueMap[K] } }[keyof BaseValueMap];
+export type BaseValue = { [K in keyof BaseValueMap]: { [key in K]: BaseValueMap[K] } }[keyof BaseValueMap];
 
 export type BaseValueList = [BaseValue]
 type PropertyValue = BaseValue
 type PropertyName = string
-type PropertyMap = Map<PropertyName, PropertyValue>;
+export type PropertyMap = Record<PropertyName, PropertyValue>;
 
 type StagedReference = {
-  key?: MapString,
+  key?: string,
   // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
   holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
@@ -36,7 +35,7 @@ type StagedReference = {
 type SmartReference = {
   //holon_space_id: Option<SpaceId>
   holon_id: HoloHash,
-  key?: MapString,
+  key?: string,
   rc_holon?: null, //Rc<Holon>,
   smart_property_values?: PropertyMap
 }
@@ -62,18 +61,22 @@ export enum RequestBodyEnum {
   Index = 'Index',
 }
 
+export type TargetHolons = [RelationshipNameType,PortableReference[]]
+
 type RequestBodyMap = {
   [RequestBodyEnum.None]: null,
   [RequestBodyEnum.Holon]: Holon,
-  [RequestBodyEnum.TargetHolons]: [RelationshipNameType,PortableReference[]],
-  [RequestBodyEnum.HolonId]: HoloHash
+  [RequestBodyEnum.TargetHolons]: TargetHolons,
+  [RequestBodyEnum.HolonId]: HoloHashB64
   [RequestBodyEnum.ParameterValues]: PropertyMap,
   [RequestBodyEnum.Index]: StagedIndex,
 }
 
-export type RequestBody = { [K in keyof RequestBodyMap]: { [key in K]: RequestBodyMap[K] } }[RequestBodyEnum];
+export type RequestBodyObject = { [K in keyof RequestBodyMap]: { [key in K]: RequestBodyMap[K] } }[RequestBodyEnum];
+export type RequestBody = string | [string,Holon] | [string,TargetHolons] | [string,HoloHashB64] | [string,PropertyMap] | [string,StagedIndex]
 
-enum ResponseStatusCode {
+
+export enum ResponseStatusCode {
   OK,                 // 200
   Accepted,           // 202
   BadRequest,         // 400,
@@ -82,6 +85,17 @@ enum ResponseStatusCode {
   ServerError,        // 500
   NotImplemented,     // 501
   ServiceUnavailable, // 503
+}
+
+export enum ResponseStatusCodeMap {
+  OK = "OK",                 
+  Accepted = "Accepted",
+  BadRequest = "BadRequest",
+  Unauthorized = "Unauthorized",
+  NotFound = "NotFound",
+  ServerError = "ServerError",
+  NotImplemented = "NotImplemented",
+  ServiceUnavailable = "ServiceUnavailable"
 }
 
 export enum ResponseBodyEnum {
@@ -93,7 +107,7 @@ export enum ResponseBodyEnum {
 }
 
 type ResponseBodyMap = {
-  [ResponseBodyEnum.None],
+  [ResponseBodyEnum.None]:null,
   [ResponseBodyEnum.Holon]: Holon,
   [ResponseBodyEnum.Holons]: Holon[],
   [RequestBodyEnum.Index]: StagedIndex,
@@ -101,14 +115,10 @@ type ResponseBodyMap = {
 
 export type ResponseBody = { [K in keyof ResponseBodyMap]: { type: K; value: ResponseBodyMap[K] } }[keyof ResponseBodyMap];
 
-enum PortableReferenceEnum {
+export enum PortableReferenceEnum {
   Saved = 'HolonId',
   Staged = 'StagedIndex'
 }
-//pub struct StagingArea {
- // pub staged_holons:Vec<Holon>, // Contains all holons staged for commit
- // index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
-//}
 
 export type StagingArea = {
   staged_holons:Holon[], // Contains all holons staged for commit
@@ -120,7 +130,7 @@ type PortableReferenceMap = {
   [PortableReferenceEnum.Staged]: StagedIndex
 }
 
-export type PortableReference = { [K in keyof PortableReferenceMap]: { type: K; value: PortableReferenceMap[K] } }[keyof PortableReferenceMap];
+export type PortableReference = { [K in keyof PortableReferenceMap]: { [key in K]: PortableReferenceMap[K] } }[keyof PortableReferenceMap];
 
 export enum DanceTypeEnum {
   Standalone = 'Standalone', // i.e., a dance not associated with a specific holon
@@ -129,36 +139,38 @@ export enum DanceTypeEnum {
 }
 export type DanceTypeMap = {
   [DanceTypeEnum.Standalone]: null,
-  [DanceTypeEnum.QueryMethod]: HoloHash,
+  [DanceTypeEnum.QueryMethod]: HoloHashB64,
   [DanceTypeEnum.CommandMethod]: StagedIndex
 }
 
-export type DanceType = { [K in keyof DanceTypeMap]: {[key in K]: DanceTypeMap[K]}}[keyof DanceTypeMap];
+export type DanceTypeObject = { [K in keyof DanceTypeMap]: {[key in K]: DanceTypeMap[K]}}[keyof DanceTypeMap];
+export type DanceType = string | [string,HoloHashB64] | [string,StagedIndex]
 
 export type DanceRequest = {
   dance_name: string //MapString, // unique key within the (single) dispatch table
-  dance_type: DanceType,
-  body: RequestBody,
+  dance_type: DanceTypeObject,
+  body: RequestBodyObject,
   staging_area: StagingArea,
   //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
 
 export type DanceResponse = {
     status_code: ResponseStatusCode,
-    description: MapString,
+    description: string,
     body: ResponseBody,
     descriptor?: HolonReference, // space_id+holon_id of DanceDescriptor
     staging_area: StagingArea,
 }
 
+
 export type Holon = {
     state: { New: null },
     validation_state: { NoDescriptor: null },
-    saved_node: null,
-    predecessor: null,
-    property_map: {},
+    //saved_node: null,
+    //predecessor: null,
+    property_map: PropertyMap,
     relationship_map: {},
-    key: null,
+    //key: null,
     errors: []
 }
 
