@@ -157,6 +157,7 @@ impl Holon {
         &self,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         self.property_map
             .get(property_name)
             .cloned()
@@ -164,6 +165,7 @@ impl Holon {
     }
 
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         Ok(self.key.clone())
     }
 
@@ -222,13 +224,20 @@ impl Holon {
     // TODO: Add conditional validation checking when adding properties
     // TODO: add error checking and HolonError result
     // Possible Errors: Unrecognized Property Name
-    pub fn with_property_value(&mut self, property: PropertyName, value: BaseValue) -> &mut Self {
+    pub fn with_property_value(
+        &mut self,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
         match self.state {
-            HolonState::Fetched => self.state = HolonState::Changed,
+            HolonState::Fetched => {
+                self.state = HolonState::Changed;
+            }
             _ => {}
         }
-        self
+        Ok(self)
     }
     // // TODO: add error checking and HolonError result
     // // Possible Errors: Unrecognized Property Name
@@ -246,6 +255,7 @@ impl Holon {
     }
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         let node = self.saved_node.clone();
         if let Some(record) = node {
             Ok(HolonId(record.action_address().clone()))

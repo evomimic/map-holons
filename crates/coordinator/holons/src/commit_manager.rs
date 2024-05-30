@@ -116,11 +116,13 @@ impl CommitManager {
                 match outcome {
                     Ok(holon) => match holon.state {
                         HolonState::Abandoned => {
+                            // should these be index?
                             if !response.abandoned_holons.contains(&holon) {
                                 response.abandoned_holons.push(holon);
                             }
                         }
                         _ => {
+                            //
                             if !response.saved_holons.contains(&holon) {
                                 response.saved_holons.push(holon);
                             }

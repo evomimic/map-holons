@@ -37,6 +37,8 @@ pub enum HolonError {
     ValidationError(ValidationError),
     #[error("{0} access not allowed while holon is in {1} state")]
     NotAccessible(String, String),
+    #[error("{0} guard failed")]
+    GuardError(String),
 }
 
 impl From<WasmError> for HolonError {

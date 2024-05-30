@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{Holon, HolonFieldGettable};
+use crate::holon::{AccessType, Holon, HolonFieldGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
@@ -57,6 +57,7 @@ impl StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::add_related_holons");
+
         // Ensure the existence of an editable collection for the specified relationship name
         self.ensure_editable_collection(context, relationship_name.clone())?;
         debug!("In StagedReference::add_related_holons, got the editable_collection");
@@ -67,6 +68,9 @@ impl StagedReference {
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
         debug!("In StagedReference::add_related_holons, getting collection for relationship name");
+
+        // Ensure is accessbile for Write
+        holon.is_accessible(AccessType::Write)?;
 
         // Retrieve the editable collection for the specified relationship name
         let editable_collection = match holon.relationship_map.0.get_mut(&relationship_name) {

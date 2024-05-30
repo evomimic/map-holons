@@ -1,12 +1,13 @@
 use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
 
-
-
-use holons::staged_reference::StagedReference;
-use shared_types_holon::PropertyName;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{IntegerDescriptor};
+use crate::descriptor_types::IntegerDescriptor;
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
+use holons::staged_reference::StagedReference;
+use shared_types_holon::value_types::{
+    BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType,
+};
+use shared_types_holon::PropertyName;
 
 pub fn define_integer_descriptor(
     context: &HolonsContext,
@@ -18,8 +19,7 @@ pub fn define_integer_descriptor(
     max_value: MapInteger,
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
-
-) -> IntegerDescriptor {
+) -> Result<IntegerDescriptor, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
@@ -33,17 +33,18 @@ pub fn define_integer_descriptor(
         MapBoolean(true),
         described_by,
         has_supertype,
-    );
+    )?;
 
-    descriptor.0
+    descriptor
+        .0
         .with_property_value(
             PropertyName(MapString("min_value".to_string())),
             BaseValue::IntegerValue(min_value),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("max_value".to_string())),
             BaseValue::IntegerValue(max_value),
-        );
+        )?;
 
     // Populate the relationships
 
@@ -58,8 +59,5 @@ pub fn define_integer_descriptor(
     // TODO: get the (assumed to be existing HAS_PROPERTIES RelationshipDescriptor)
     // TODO: add the property descriptors to the TypeDescriptors HAS_PROPERTIES relationship
 
-
-
-    IntegerDescriptor(descriptor.0)
-
+    Ok(IntegerDescriptor(descriptor.0))
 }

@@ -202,8 +202,10 @@ pub fn with_properties_dance(
                         RequestBody::ParameterValues(parameters) => {
                             // Populate parameters into the new Holon
                             for (property_name, base_value) in parameters {
-                                holon_mut
-                                    .with_property_value(property_name.clone(), base_value.clone());
+                                holon_mut.with_property_value(
+                                    property_name.clone(),
+                                    base_value.clone(),
+                                )?;
                             }
                             Ok(ResponseBody::Index(staged_index))
                         }
@@ -374,7 +376,7 @@ pub fn build_commit_dance_request(staging_area: StagingArea) -> Result<DanceRequ
 /// *ResponseBody:*
 /// - an Index into staged_holons that references the updated holon.
 ///
-pub fn abandon_staged_changes(
+pub fn abandon_staged_changes_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
@@ -418,7 +420,7 @@ pub fn build_abandon_staged_changes_dance_request(
     let body = RequestBody::None;
     Ok(DanceRequest::new(
         MapString("commit".to_string()),
-        DanceType::CommandMethod(()),
+        DanceType::CommandMethod(index),
         body,
         staging_area,
     ))

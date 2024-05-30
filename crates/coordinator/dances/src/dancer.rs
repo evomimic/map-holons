@@ -189,6 +189,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 | HolonError::UnableToAddHolons(msg)
                 | HolonError::InvalidRelationship(msg, _)
                 | HolonError::NotAccessible(msg, _)
+                | HolonError::GuardError(msg)
                 | HolonError::CacheError(msg) => msg,
                 HolonError::ValidationError(validation_error) => validation_error.to_string(),
             };

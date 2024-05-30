@@ -65,7 +65,9 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidRelationship(_, _) => ResponseStatusCode::ServerError,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
+            HolonError::NotAccessible(_, _) => ResponseStatusCode::BadRequest,
             HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
+            HolonError::GuardError(_) => ResponseStatusCode::BadRequest,
         }
     }
 }
