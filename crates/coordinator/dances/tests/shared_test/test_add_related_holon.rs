@@ -41,10 +41,11 @@ pub async fn execute_add_related_holons(
     test_state: &mut DanceTestState,
     source_holon_index: StagedIndex,
     relationship_name: RelationshipName,
-    holons_to_add: Vec<PortableReference>
+    holons_to_add: Vec<PortableReference>,
+    expected_response: ResponseStatusCode,
 ) ->() {
 
-    info!("\n\n--- TEST STEP: Adding Related Holons");
+    info!("\n\n--- TEST STEP: Adding Related Holons. Expecting  {:#?}", expected_response.clone());
 
 
     // Get the state of the holon prior to dancing the request
@@ -53,9 +54,9 @@ pub async fn execute_add_related_holons(
         None => {
             panic!("Unable to get source holon from the staging_area at index  {:#?}", source_holon_index.to_string());
         }
-        Some(original_holon) => {
+        Some(_original_holon) => {
             // Create the expected_holon from the source_holon + the supplied related holons
-            let mut expected_holon = original_holon.clone();
+            // let mut expected_holon = original_holon.clone();
 
 
             // Build the DanceRequest
@@ -74,8 +75,13 @@ pub async fn execute_add_related_holons(
                         .await;
                     info!("Dance Response: {:#?}", response.clone());
                     let code = response.status_code;
-                    let description = response.description.clone();
+
                     test_state.staging_area = response.staging_area.clone();
+
+                    assert_eq!(code, expected_response);
+                    info!("as expected, add_related_holons dance request returned {:#?}", code.clone());
+
+
                     if let ResponseStatusCode::OK = code {
                         if let Index(index) = response.body {
                             let index_value = index.to_string();
@@ -83,14 +89,12 @@ pub async fn execute_add_related_holons(
                             // An index was returned in the body, retrieve the Holon at that index within
                             // the StagingArea and confirm it matches the expected Holon.
 
-                            let holons = response.staging_area.staged_holons;
+                            //let holons = response.staging_area.staged_holons;
                             //assert_eq!(expected_holon, holons[index]);
 
 
                             info!("Success! Related Holons have been added");
                         }
-                    } else {
-                        panic!("DanceRequest returned {code} for {description}");
                     }
                 }
                 Err(error) => {

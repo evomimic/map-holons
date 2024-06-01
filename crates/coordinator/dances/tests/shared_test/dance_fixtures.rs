@@ -22,6 +22,7 @@ use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
 use dances::dance_request::PortableReference;
+use dances::dance_response::ResponseStatusCode;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 
@@ -71,7 +72,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     );
 
-    test_case.add_with_properties_step(0, properties)?;
+    test_case.add_with_properties_step(0, properties, ResponseStatusCode::OK)?;
 
     let person_holon = Holon::new();
 
@@ -87,7 +88,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         PropertyName(MapString("last name".to_string())),
         BaseValue::StringValue(MapString("Briggs".to_string())),
     );
-    test_case.add_with_properties_step(1, properties)?;
+    test_case.add_with_properties_step(1, properties, ResponseStatusCode::OK)?;
 
     test_case.add_commit_step()?;
     test_case.add_match_saved_content_step()?;
@@ -137,7 +138,7 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     );
 
-    test_case.add_with_properties_step(book_index, properties)?;
+    test_case.add_with_properties_step(book_index, properties, ResponseStatusCode::OK)?;
 
     let person_holon_briggs = Holon::new();
 
@@ -154,7 +155,7 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         PropertyName(MapString("last name".to_string())),
         BaseValue::StringValue(MapString("Briggs".to_string())),
     );
-    test_case.add_with_properties_step(briggs_index, properties)?;
+    test_case.add_with_properties_step(briggs_index, properties, ResponseStatusCode::OK)?;
 
     let mut person_holon_gebser = Holon::new();
     person_holon_gebser
@@ -179,34 +180,36 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         book_index,
         RelationshipName(MapString("AUTHORS".to_string())),
         holons_to_add,
+        ResponseStatusCode::OK,
     )?;
 
     test_case.add_commit_step()?;
+
     test_case.add_ensure_database_count_step(MapInteger(3))?;
 
     Ok(test_case.clone())
 }
 
-/// Fixture for abandoning stages changes..
-///
-///  H1, H2, H3, etc refer to order of Holons added to staging area.
-/// Before the commit process, these Holons are only able to be identified by their index in the staging_area Vec,
-/// thefore it is necessary to maintain their order.
-/// Each Holon's index can be figured by subtracting 1. Ex H1 is index 0, H2 index 1
-///
-///
+/// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
 pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Simple AbandonStagedChanges Testcase".to_string(),
-        "".to_string(), // //
+        "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible".to_string(),
     );
 
     test_case.add_ensure_database_count_step(MapInteger(0))?;
+    //
+    // H1, H2, H3, etc refer to order of Holons added to staging area.
+    // Before the commit process, these Holons are only able to be identified by their index in the staging_area Vec,
+    // therefore it is necessary to maintain their order.
+    // Each Holon's index can be figured by subtracting 1. Ex H1 is index 0, H2 index 1
+    //
+    //
 
     //  ADD STEP:  STAGE:  Book Holon (H1)  //
-    let mut book_holon = Holon::new();
-    book_holon.with_property_value(
+    let mut book = Holon::new();
+    book.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -215,11 +218,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     )?;
-    test_case.add_stage_holon_step(book_holon.clone())?;
+    test_case.add_stage_holon_step(book.clone())?;
+    let book_index: usize = 0; // assume book is at this position in staged_holons vector
 
     //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
-    let mut person_holon_1 = Holon::new();
-    person_holon_1
+    let mut person_1 = Holon::new();
+    person_1
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
             BaseValue::StringValue(MapString("Roger".to_string())),
@@ -228,6 +232,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
             PropertyName(MapString("last name".to_string())),
             BaseValue::StringValue(MapString("Briggs".to_string())),
         )?;
+    test_case.add_stage_holon_step(person_1.clone())?;
+    let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
 
     //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
     let mut person_holon_2 = Holon::new();
@@ -241,48 +247,31 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
             BaseValue::StringValue(MapString("Smith".to_string())),
         )?;
     test_case.add_stage_holon_step(person_holon_2.clone())?;
+    let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
 
     // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
     test_case.add_related_holons_step(
-        0, // source holons
-        RelationshipName(MapString("Authored by".to_string())),
-        vec![PortableReference::Staged(1), PortableReference::Staged(2)],
+        book_index, // source holon
+        RelationshipName(MapString("AUTHORED_BY".to_string())),
+        vec![PortableReference::Staged(person_1_index), PortableReference::Staged(person_2_index)],
+        ResponseStatusCode::OK,
     )?;
 
     // ADD STEP:  ABANDON:  H2
-    test_case.add_abandon_staged_changes_step(1)?;
+    // This step verifies the abandon dance succeeds and that subsequent operations on the
+    // abandoned Holon return NotAccessible Errors
+    test_case.add_abandon_staged_changes_step(person_1_index, ResponseStatusCode::OK)?;
 
-    //  ADD STEP:  WITH PROPERTIES  //
-    // Attempt with_properties dance -- expect success on H1 and for H2 BadRequest/NotAccessible response
-    //
-    // H1
-    let mut properties = PropertyMap::new();
-    properties.insert(
-        PropertyName(MapString("".to_string())),
-        BaseValue::StringValue(MapString("".to_string())),
-    );
-    test_case.add_with_properties_step(1, properties)?;
-    // H2
-    let mut properties = PropertyMap::new();
-    properties.insert(
-        PropertyName(MapString("".to_string())),
-        BaseValue::StringValue(MapString("".to_string())),
-    );
-    let expected_error = test_case.add_with_properties_step(1, properties);
-    if expected_error.is_ok() {
-        return Err(HolonError::GuardError("with_property_value".to_string()));
-    }
 
     // ADD STEP:  RELATIONSHIP:  Author H2 -> H3  //
-    // Attempt add_related_holon dance -- expect BadRequest/NotAccessible response
-    let expected_error = test_case.add_related_holons_step(
-        0, // source holons
-        RelationshipName(MapString("Authored by".to_string())),
-        vec![PortableReference::Staged(1), PortableReference::Staged(2)],
+    // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
+   test_case.add_related_holons_step(
+        person_1_index, // source holons
+        RelationshipName(MapString("FRIENDS".to_string())),
+        vec![PortableReference::Staged(person_1_index), PortableReference::Staged(person_2_index)],
+       ResponseStatusCode::Conflict,
     );
-    if expected_error.is_ok() {
-        return Err(HolonError::GuardError("add_related_holon".to_string()));
-    }
+
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
@@ -310,10 +299,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
 
     // ADD STEP:  ABANDON:  H4
-    test_case.add_abandon_staged_changes_step(3)?;
+    test_case.add_abandon_staged_changes_step(0, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ABANDON:  H5
-    test_case.add_abandon_staged_changes_step(4)?;
+    test_case.add_abandon_staged_changes_step(1, ResponseStatusCode::OK)?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;

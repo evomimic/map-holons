@@ -137,7 +137,7 @@ pub fn stage_new_holon_dance(
         RequestBody::ParameterValues(parameters) => {
             // Populate parameters into the new Holon
             for (property_name, base_value) in parameters.iter() {
-                new_holon.with_property_value(property_name.clone(), base_value.clone());
+                new_holon.with_property_value(property_name.clone(), base_value.clone())?;
             }
         }
         _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
@@ -338,6 +338,7 @@ pub fn commit_dance(
     context: &HolonsContext,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
+    debug!("Entered: commit_dance");
     let commit_response = CommitManager::commit(context);
 
     match commit_response.status {
@@ -381,23 +382,21 @@ pub fn abandon_staged_changes_dance(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
+    debug!("Entered: abandon_staged_changes_dance");
     match request.dance_type {
         DanceType::CommandMethod(staged_index) => {
+            debug!("trying to borrow_mut commit_manager");
             // Try to get a mutable reference to the staged holon referenced by its index
-            let commit_manage_mut = context.commit_manager.borrow_mut();
-            let staged_holon = commit_manage_mut.get_mut_holon_by_index(staged_index.clone());
+            let commit_manager_mut = context.commit_manager.borrow_mut();
+            debug!("commit_manager borrowed_mut");
+            let staged_holon = commit_manager_mut.get_mut_holon_by_index(staged_index.clone());
+            //debug!("Result of borrow_mut on the staged holon  {:#?}", staged_holon.clone());
 
             match staged_holon {
                 Ok(mut holon_mut) => {
                     holon_mut.abandon_staged_changes();
-                    // Populate properties from parameters (if any)
-                    match request.body {
-                        RequestBody::None => {
-                            // No parameters to populate, continue
-                            Ok(ResponseBody::Index(staged_index))
-                        }
-                        _ => Err(HolonError::InvalidParameter("request.body".to_string())),
-                    }
+                    Ok(ResponseBody::Index(staged_index))
+
                 }
                 Err(_) => Err(HolonError::IndexOutOfRange(
                     "Unable to borrow a mutable reference to holon at supplied staged_index"
@@ -419,7 +418,7 @@ pub fn build_abandon_staged_changes_dance_request(
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
     Ok(DanceRequest::new(
-        MapString("commit".to_string()),
+        MapString("abandon_staged_changes_foo".to_string()),
         DanceType::CommandMethod(index),
         body,
         staging_area,

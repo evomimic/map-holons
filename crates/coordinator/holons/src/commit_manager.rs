@@ -44,12 +44,18 @@ pub enum CommitRequestStatus {
 
 impl CommitManager {
     /// This function converts a StagedIndex into a StagedReference
+    /// Returns HolonError::IndexOutOfRange is index is out range for staged_holons vector
+    /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
+    /// TODO: The latter is only reliable if staged_holons is made private
     pub fn to_staged_reference(
         &self,
         staged_index: StagedIndex,
     ) -> Result<StagedReference, HolonError> {
         if let Some(staged_holon) = self.staged_holons.get(staged_index) {
             let holon = staged_holon.borrow();
+            if let HolonState::Abandoned = holon.state {
+                return Err(HolonError::NotAccessible("to_staged_reference".to_string(),"Abandoned".to_string()))
+            }
             let key = holon.get_key().unwrap();
             Ok(StagedReference {
                 key,
@@ -109,7 +115,7 @@ impl CommitManager {
 
         // FIRST PASS: Commit Staged Holons
         {
-            debug!("Starting FIRST PASS... commit staged_holons...");
+            info!("\n\nStarting FIRST PASS... commit staged_holons...");
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit();
@@ -117,15 +123,15 @@ impl CommitManager {
                     Ok(holon) => match holon.state {
                         HolonState::Abandoned => {
                             // should these be index?
-                            if !response.abandoned_holons.contains(&holon) {
+                            //if !response.abandoned_holons.contains(&holon) {
                                 response.abandoned_holons.push(holon);
-                            }
+                            //}
+                        }
+                        HolonState::Saved => {
+                            response.saved_holons.push(holon);
                         }
                         _ => {
-                            //
-                            if !response.saved_holons.contains(&holon) {
-                                response.saved_holons.push(holon);
-                            }
+
                         }
                     },
                     Err(_error) => {
@@ -141,7 +147,7 @@ impl CommitManager {
 
         // SECOND PASS: Commit relationships
         {
-            debug!("Starting 2ND PASS... commit relationships for the saved staged_holons...");
+            info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit_relationships(context);

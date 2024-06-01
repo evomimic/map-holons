@@ -72,42 +72,51 @@ impl HolonReference {
         }
     }
 
-    /// Commit on HolonReference persists the reference as a SmartLink for the specified
-    /// relationship and source_id
-    /// This function assumes all StagedHolons have been committed before ANY relationships. Thus,
-    /// it should be possible to get the target HolonId (i.e., to_address) from EITHER
-    /// a SmartReference or StagedReference variant.
-
-    pub fn commit_smartlink(
-        &self,
-        context: &HolonsContext,
-        source_id: HolonId,
-        relationship_name: RelationshipName,
-    ) -> Result<(), HolonError> {
-        debug!("Entered HolonReference::commit_smartlink");
-        let target_id = match self {
-            HolonReference::Smart(smart_reference) => {
-                Ok(smart_reference.holon_id.clone())
-            }
-            HolonReference::Staged(staged_ref) => {
-                debug!("Attempting to borrow commit_manager");
-                let commit_manager = context.commit_manager.borrow();
-                let holon = commit_manager.get_holon(staged_ref)?;
-                debug!("Attempting to get holon_id from staged reference's holon");
-                holon.get_id().clone()
-            }
-        };
-        debug!("Got target_id {:?}",target_id.clone());
-
-        if let Ok(to_address) = target_id {
-            let input = SmartLinkInput {
-                from_address: source_id,
-                to_address,
-                relationship_descriptor: relationship_name,
-            };
-            create_smart_link(input)
-        } else {
-            Err(HolonError::CommitFailure("Unable to get holon_id from HolonReference".to_string()))
+    pub fn get_holon_id(&self, context:&HolonsContext) -> Result<HolonId, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
+            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
         }
+
+
     }
+
+    // /// Commit on HolonReference persists the reference as a SmartLink for the specified
+    // /// relationship and source_id
+    // /// This function assumes all StagedHolons have been committed before ANY relationships. Thus,
+    // /// it should be possible to get the target HolonId (i.e., to_address) from EITHER
+    // /// a SmartReference or StagedReference variant.
+    //
+    // pub fn commit_smartlink(
+    //     &self,
+    //     context: &HolonsContext,
+    //     source_id: HolonId,
+    //     relationship_name: RelationshipName,
+    // ) -> Result<(), HolonError> {
+    //     debug!("Entered HolonReference::commit_smartlink");
+    //     let target_id = match self {
+    //         HolonReference::Smart(smart_reference) => {
+    //             Ok(smart_reference.holon_id.clone())
+    //         }
+    //         HolonReference::Staged(staged_ref) => {
+    //             debug!("Attempting to borrow commit_manager");
+    //             let commit_manager = context.commit_manager.borrow();
+    //             let holon = commit_manager.get_holon(staged_ref)?;
+    //             debug!("Attempting to get holon_id from staged reference's holon");
+    //             holon.get_id().clone()
+    //         }
+    //     };
+    //     debug!("Got target_id {:?}",target_id.clone());
+    //
+    //     if let Ok(to_address) = target_id {
+    //         let input = SmartLinkInput {
+    //             from_address: source_id,
+    //             to_address,
+    //             relationship_descriptor: relationship_name,
+    //         };
+    //         create_smart_link(input)
+    //     } else {
+    //         Err(HolonError::CommitFailure("Unable to get holon_id from HolonReference".to_string()))
+    //     }
+    // }
 }

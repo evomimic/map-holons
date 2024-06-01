@@ -65,6 +65,9 @@ impl SmartReference {
             smart_property_values: None, // TODO: need fn to build smart_property_map, this requires descriptor
         })
     }
+    pub fn get_id(&self)->Result<HolonId, HolonError> {
+        Ok(self.holon_id.clone())
+    }
     pub fn get_property_map(&mut self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
         // Ensure rc_holon is populated
         self.ensure_rc(context)?;
