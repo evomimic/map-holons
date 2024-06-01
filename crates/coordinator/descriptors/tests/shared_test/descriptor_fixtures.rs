@@ -50,7 +50,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
     let mut schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
-    );
+    )?;
 
     let rc_schema = context
         .commit_manager
@@ -70,7 +70,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                  MapBoolean(false),
                                                  MapBoolean(false),
                                                  None,
-                                                 None);
+                                                 None)?;
 
     // Add to Schema-COMPONENTS->TypeDescriptor relationships?
     steps.push(DescriptorTestStep::Create(type_descriptor.0.clone()));
@@ -82,7 +82,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                         MapString("Meta Holon Descriptor".to_string()),
                                                         None,
                                                         //Some(HolonReference::Local((LocalHolonReference::from_holon((type_descriptor.as_holon()))))),
-                                                        None);
+                                                        None)?;
 
     steps.push(DescriptorTestStep::Create(meta_holon_descriptor.0.clone()));
     let meta_relationship_descriptor = define_type_descriptor(&context,
@@ -95,7 +95,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                               MapBoolean(false),
                                                               MapBoolean(false),
                                                               None,
-                                                              None);
+                                                              None)?;
     steps.push(DescriptorTestStep::Create(
         meta_relationship_descriptor.0.clone(),
     ));
@@ -110,7 +110,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
                                                           MapBoolean(false),
                                                           MapBoolean(false),
                                                           None,
-                                                          None);
+                                                          None)?;
 
     steps.push(DescriptorTestStep::Create(
         meta_property_descriptor.0.clone(),

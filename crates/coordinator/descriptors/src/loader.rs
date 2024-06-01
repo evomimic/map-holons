@@ -38,7 +38,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, Holo
     let schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
-    );
+    )?;
 
     let schema_ref = context
         .commit_manager

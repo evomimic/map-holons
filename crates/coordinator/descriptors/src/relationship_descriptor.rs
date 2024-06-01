@@ -1,15 +1,14 @@
 use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
 
-
+use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
 use holons::relationship::RelationshipTarget;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
+use shared_types_holon::PropertyName;
 
-
-use crate::type_descriptor::{define_type_descriptor};
+use crate::type_descriptor::define_type_descriptor;
 
 /// This function defines and stages (but does not persist) a new RelationshipDescriptor.
 /// Values for each of the RelationshipDescriptor properties will be set based on supplied parameters.
@@ -41,10 +40,14 @@ pub fn define_relationship_descriptor(
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
     _has_inverse: Option<StagedReference>,
-
-) -> RelationshipDescriptor {
+) -> Result<RelationshipDescriptor, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let type_name= MapString(format!("{}-{}->{}", "source_for_type_name".to_string(), relationship_name.0,"target_for_type_name".to_string()));
+    let type_name = MapString(format!(
+        "{}-{}->{}",
+        "source_for_type_name".to_string(),
+        relationship_name.0,
+        "target_for_type_name".to_string()
+    ));
     let mut descriptor = define_type_descriptor(
         context,
         schema,
@@ -57,28 +60,28 @@ pub fn define_relationship_descriptor(
         MapBoolean(false),
         described_by,
         has_supertype,
-    );
+    )?;
 
     // Add its properties
 
-    descriptor.0
+    descriptor
+        .0
         .with_property_value(
             PropertyName(MapString("min_target_cardinality".to_string())),
             BaseValue::IntegerValue(min_target_cardinality),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("max_target_cardinality".to_string())),
             BaseValue::IntegerValue(max_target_cardinality),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("deletion_semantic".to_string())),
             BaseValue::EnumValue(deletion_semantic.to_enum_variant()),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("affinity".to_string())),
             BaseValue::IntegerValue(affinity),
-        );
-
+        )?;
 
     // Populate its relationships
     // _source_for: HolonReference,
@@ -113,9 +116,5 @@ pub fn define_relationship_descriptor(
     //     )
     // }
 
-
-
-
-    RelationshipDescriptor(descriptor.0)
-
+    Ok(RelationshipDescriptor(descriptor.0))
 }

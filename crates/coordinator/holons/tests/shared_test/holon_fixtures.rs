@@ -47,31 +47,31 @@ pub fn undescribed_holons_fixture() -> Result<HolonCreatesTestCase, HolonError> 
         .with_property_value(
             PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(MapString("TypeDescriptor".to_string())),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("descriptor_name".to_string())),
             BaseValue::StringValue(MapString(
                 "This holon does not have a descriptor".to_string(),
             )),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "this is a simple TypeDescriptor holon".to_string(),
             )),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(MapString("Type Descriptor".to_string())),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
             BaseValue::BooleanValue(MapBoolean(false)),
-        );
+        )?;
     test_data_set.push(descriptor);
 
     Ok(HolonCreatesTestCase {

@@ -3,7 +3,7 @@ use derive_new::new;
 use hdk::prelude::*;
 use holons::holon::Holon;
 
-
+use holons::holon_error::HolonError;
 // use shared_types_holon::holon_node::{BaseValue, BaseType};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseValue, MapInteger, MapString};
@@ -31,7 +31,7 @@ impl SemanticVersion {
     }
 }
 
-pub fn define_semantic_version(major: i64, minor: i64, patch: i64) -> Holon {
+pub fn define_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon, HolonError> {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut version = Holon::new();
 
@@ -40,17 +40,17 @@ pub fn define_semantic_version(major: i64, minor: i64, patch: i64) -> Holon {
         .with_property_value(
             PropertyName(MapString("major".to_string())),
             BaseValue::IntegerValue(MapInteger(major)),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("minor".to_string())),
             BaseValue::IntegerValue(MapInteger(minor)),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("patch".to_string())),
             BaseValue::IntegerValue(MapInteger(patch)),
-        );
+        )?;
 
-    version
+    Ok(version)
 }
 
 // TODO: Implement and debug the following function

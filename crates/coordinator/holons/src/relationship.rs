@@ -7,10 +7,16 @@ use crate::staged_collection::StagedCollection;
 use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;
+use std::fmt;
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct RelationshipName(pub MapString);
+impl fmt::Display for RelationshipName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]

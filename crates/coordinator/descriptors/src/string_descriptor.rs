@@ -1,9 +1,12 @@
 use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
 
+use crate::descriptor_types::StringDescriptor;
 use holons::staged_reference::StagedReference;
+use shared_types_holon::value_types::{
+    BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType,
+};
 use shared_types_holon::PropertyName;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{StringDescriptor};
 // use shared_types_holon::BaseType::*;
 
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
@@ -18,8 +21,7 @@ pub fn define_string_descriptor(
     max_length: MapInteger,
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
-
-) -> StringDescriptor {
+) -> Result<StringDescriptor, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
@@ -33,18 +35,18 @@ pub fn define_string_descriptor(
         MapBoolean(true),
         described_by,
         has_supertype,
-    );
+    )?;
 
-    descriptor.0
+    descriptor
+        .0
         .with_property_value(
-        PropertyName(MapString("min_length".to_string())),
-        BaseValue::IntegerValue(min_length),
-    )
+            PropertyName(MapString("min_length".to_string())),
+            BaseValue::IntegerValue(min_length),
+        )?
         .with_property_value(
             PropertyName(MapString("max_length".to_string())),
             BaseValue::IntegerValue(max_length),
-        );
+        )?;
 
-    StringDescriptor(descriptor.0)
-
+    Ok(StringDescriptor(descriptor.0))
 }
