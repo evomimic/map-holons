@@ -17,7 +17,6 @@ use shared_types_holon::{HolonId, MapString, PropertyValue};
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct StagedReference {
-    pub key: Option<MapString>,
     // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
@@ -37,11 +36,10 @@ impl HolonFieldGettable for StagedReference {
         let holon = binding.get_holon(&self)?;
         holon.get_key().clone()
     }
-
 }
 
 impl StagedReference {
-    pub fn get_id(&self, context:&HolonsContext)->Result<HolonId, HolonError> {
+    pub fn get_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
         holon.get_id()
@@ -54,7 +52,6 @@ impl StagedReference {
 
     pub fn clone_reference(&self) -> StagedReference {
         StagedReference {
-            key: self.key.clone(),
             holon_index: self.holon_index.clone(),
         }
     }
@@ -193,7 +190,10 @@ impl StagedReference {
     }
 
     pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.holon_index);
+        debug!(
+            "Entered: abandon_staged_changes for staged_index: {:#?}",
+            self.holon_index
+        );
         // Get mutable access to the source holon
         let holon_ref = self.get_mut_holon(context)?;
 
@@ -207,5 +207,3 @@ impl StagedReference {
         Ok(())
     }
 }
-
-

@@ -43,7 +43,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, Holo
     let schema_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(schema.0);
+        .stage_new_holon(schema.0)?;
     /*
 
        let type_descriptor = define_type_descriptor(

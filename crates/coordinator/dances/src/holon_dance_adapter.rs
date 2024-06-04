@@ -14,8 +14,8 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-use std::borrow::Borrow;
-use std::rc::Rc;
+// use std::borrow::Borrow;
+// use std::rc::Rc;
 
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
@@ -28,7 +28,7 @@ use holons::relationship::RelationshipName;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapInteger, MapString, PropertyMap};
 
-use crate::dance_request::{DanceRequest, DanceType, PortableReference, RequestBody};
+use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::staging_area::StagingArea;
 
@@ -65,17 +65,13 @@ pub fn add_related_holons_dance(
                         RequestBody::TargetHolons(relationship_name, holons_to_add) => {
                             // Convert Vec<PortableReference> to Vec<HolonReference> inline
                             debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
-                            let holon_refs_vec: Vec<HolonReference> = holons_to_add
-                                .into_iter()
-                                .map(|portable_ref| portable_ref.to_holon_reference())
-                                .collect();
 
                             debug!("Got the holon_refs_vec, about to call add_related_holons");
                             // Call the add_related_holons method on StagedReference
                             source_reference.add_related_holons(
                                 context,
                                 relationship_name,
-                                holon_refs_vec,
+                                holons_to_add,
                             )?;
 
                             Ok(ResponseBody::Index(staged_index))
@@ -100,7 +96,7 @@ pub fn build_add_related_holons_dance_request(
     staging_area: StagingArea,
     index: StagedIndex,
     relationship_name: RelationshipName,
-    holons_to_add: Vec<PortableReference>,
+    holons_to_add: Vec<HolonReference>,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new_target_holons(relationship_name, holons_to_add);
     Ok(DanceRequest::new(
@@ -147,7 +143,7 @@ pub fn stage_new_holon_dance(
     let staged_reference = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(new_holon);
+        .stage_new_holon(new_holon)?;
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
@@ -396,7 +392,6 @@ pub fn abandon_staged_changes_dance(
                 Ok(mut holon_mut) => {
                     holon_mut.abandon_staged_changes();
                     Ok(ResponseBody::Index(staged_index))
-
                 }
                 Err(_) => Err(HolonError::IndexOutOfRange(
                     "Unable to borrow a mutable reference to holon at supplied staged_index"

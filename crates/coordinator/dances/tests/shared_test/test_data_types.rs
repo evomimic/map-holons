@@ -1,13 +1,13 @@
-use dances::dance_request::PortableReference;
+use dances::dance_response::ResponseStatusCode;
 use dances::staging_area::StagingArea;
 use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
+use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::VecDeque;
 use std::fmt;
-use dances::dance_response::ResponseStatusCode;
 
 #[derive(Clone, Debug)]
 pub struct DancesTestCase {
@@ -18,7 +18,12 @@ pub struct DancesTestCase {
 
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
-    AddRelatedHolons(StagedIndex, RelationshipName, Vec<PortableReference>, ResponseStatusCode), // Adds relationship between two Holons
+    AddRelatedHolons(
+        StagedIndex,
+        RelationshipName,
+        Vec<HolonReference>,
+        ResponseStatusCode,
+    ), // Adds relationship between two Holons
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     Commit,            // Attempts to commit
@@ -30,7 +35,12 @@ pub enum DanceTestStep {
 impl fmt::Display for DanceTestStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DanceTestStep::AddRelatedHolons(index, relationship_name, holons_to_add, expected_response) => {
+            DanceTestStep::AddRelatedHolons(
+                index,
+                relationship_name,
+                holons_to_add,
+                expected_response,
+            ) => {
                 write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", index, relationship_name, holons_to_add.len(), expected_response )
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
@@ -53,7 +63,11 @@ impl fmt::Display for DanceTestStep {
                 write!(f, "MatchSavedContent")
             }
             DanceTestStep::AbandonStagedChanges(index, expected_response) => {
-                write!(f, "Marking Holon at ({:#?}) as Abandoned, expecting ({:#?})", index, expected_response)
+                write!(
+                    f,
+                    "Marking Holon at ({:#?}) as Abandoned, expecting ({:#?})",
+                    index, expected_response
+                )
             }
         }
     }
@@ -86,7 +100,7 @@ impl DancesTestCase {
         &mut self,
         source_index: StagedIndex, // "owning" source Holon, which owns the Relationship
         relationship_name: RelationshipName,
-        related_holons: Vec<PortableReference>, // "targets" referenced by HolonId for Saved and index for Staged
+        related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::AddRelatedHolons(
@@ -121,8 +135,11 @@ impl DancesTestCase {
         properties: PropertyMap,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::WithProperties(index, properties, expected_response));
+        self.steps.push_back(DanceTestStep::WithProperties(
+            index,
+            properties,
+            expected_response,
+        ));
         Ok(())
     }
     pub fn add_abandon_staged_changes_step(
@@ -130,8 +147,10 @@ impl DancesTestCase {
         index: StagedIndex,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::AbandonStagedChanges(index, expected_response));
+        self.steps.push_back(DanceTestStep::AbandonStagedChanges(
+            index,
+            expected_response,
+        ));
         Ok(())
     }
 }
