@@ -58,7 +58,9 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
     let mut book_holon = Holon::new();
-    book_holon.set_key_manually(MapString("Book Key".to_string()))?;
+    book_holon.set_key_manually(MapString(
+        "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+    ))?;
     book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(
@@ -125,7 +127,9 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
     let mut book_holon = Holon::new();
-    book_holon.set_key_manually(MapString("Book Key".to_string()))?;
+    book_holon.set_key_manually(MapString(
+        "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+    ))?;
     book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(
@@ -218,7 +222,9 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  ADD STEP:  STAGE:  Book Holon (H1)  //
     let mut book = Holon::new();
-    book.set_key_manually(MapString("Book Key".to_string()))?;
+    book.set_key_manually(MapString(
+        "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+    ))?;
     book.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(

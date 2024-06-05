@@ -42,7 +42,7 @@ pub async fn execute_stage_new_holon(
     // Build a stage_holon DanceRequest
     let request = build_stage_new_holon_dance_request(
         test_state.staging_area.clone(),
-        expected_holon.clone().property_map,
+        expected_holon.clone(),
     );
     debug!("Dance Request: {:#?}", request);
 

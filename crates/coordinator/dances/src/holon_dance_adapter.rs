@@ -122,6 +122,7 @@ pub fn stage_new_holon_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
+    debug!("== Entered staged new holon dance ==");
     // Create and stage new Holon
     let mut new_holon = Holon::new();
 
@@ -130,14 +131,22 @@ pub fn stage_new_holon_dance(
         RequestBody::None => {
             // No parameters to populate, continue
         }
-        RequestBody::ParameterValues(parameters) => {
-            // Populate parameters into the new Holon
-            for (property_name, base_value) in parameters.iter() {
-                new_holon.with_property_value(property_name.clone(), base_value.clone())?;
-            }
+        // RequestBody::ParameterValues(parameters) => {
+        //     // Populate parameters into the new Holon
+        //     for (property_name, base_value) in parameters.iter() {
+        //         new_holon.with_property_value(property_name.clone(), base_value.clone())?;
+        //     }
+        // }
+        RequestBody::Holon(holon) => {
+            new_holon = holon;
+            debug!("Request body matched holon variant");
         }
         _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
     }
+    debug!(
+        "Response body matched successfully for holon:{:#?}",
+        new_holon
+    );
 
     // Stage the new holon
     let staged_reference = context
@@ -152,11 +161,23 @@ pub fn stage_new_holon_dance(
 
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
+// pub fn build_stage_new_holon_dance_request(
+//     staging_area: StagingArea,
+//     properties: PropertyMap,
+// ) -> Result<DanceRequest, HolonError> {
+//     let body = RequestBody::new_parameter_values(properties);
+//     Ok(DanceRequest::new(
+//         MapString("stage_new_holon".to_string()),
+//         DanceType::Standalone,
+//         body,
+//         staging_area,
+//     ))
+// }
 pub fn build_stage_new_holon_dance_request(
     staging_area: StagingArea,
-    properties: PropertyMap,
+    holon: Holon,
 ) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_parameter_values(properties);
+    let body = RequestBody::new_holon(holon);
     Ok(DanceRequest::new(
         MapString("stage_new_holon".to_string()),
         DanceType::Standalone,
@@ -253,6 +274,7 @@ pub fn get_all_holons_dance(
     // TODO: add support for descriptor parameter
     //
     //
+    debug!("Entering get_all_holons dance..");
     let query_result = Holon::get_all_holons();
     match query_result {
         Ok(holons) => Ok(ResponseBody::Holons(holons)),
