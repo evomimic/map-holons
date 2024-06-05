@@ -202,8 +202,10 @@ pub fn with_properties_dance(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
+    debug!("===== ENTERED with_properties_dance");
     match request.dance_type {
         DanceType::CommandMethod(staged_index) => {
+            debug!("looking for StagedHolon at index: {:#?}", staged_index);
             // Try to get a mutable reference to the staged holon referenced by its index
             let commit_manage_mut = context.commit_manager.borrow_mut();
             let staged_holon = commit_manage_mut.get_mut_holon_by_index(staged_index.clone());

@@ -45,6 +45,7 @@ pub async fn execute_with_properties(
 
     info!("\n\n--- TEST STEP: with_properties Command:");
     // Get the state of the holon prior to dancing the request
+    debug!("trying to get staged_holon at staged_holon_index: {:#?}", staged_holon_index);
     let staged_holon = test_state.staging_area.staged_holons.get(staged_holon_index);
     match staged_holon {
         None => {

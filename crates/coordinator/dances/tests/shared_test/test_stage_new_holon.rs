@@ -52,6 +52,7 @@ pub async fn execute_stage_new_holon(
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
             debug!("Dance Response: {:#?}", response.clone());
+            test_state.staging_area = response.staging_area.clone();
             let code = response.status_code;
             let description = response.description.clone();
             if let ResponseStatusCode::OK = code {

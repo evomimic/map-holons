@@ -47,7 +47,7 @@ pub struct Holon {
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
     //pub relationship_map: RelationshipMap,
-    key: Option<MapString>,
+    //key: Option<MapString>,
     pub errors: Vec<HolonError>,
 }
 
@@ -371,7 +371,7 @@ impl Holon {
         EssentialHolonContent {
             property_map: self.property_map.clone(),
             //relationship_map: self.relationship_map.clone(),
-            key: self.key.clone(),
+            //key: self.key.clone(),
             errors: self.errors.clone(),
         }
     }
