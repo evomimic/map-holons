@@ -1,4 +1,5 @@
 use holons::context::HolonsContext;
+use holons::holon_reference::HolonReference;
 
 
 use holons::relationship::RelationshipTarget;
@@ -6,7 +7,7 @@ use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
+use crate::descriptor_types::{DeletionSemantic, RelationshipType};
 
 
 use crate::type_descriptor::{define_type_descriptor};
@@ -26,9 +27,9 @@ use crate::type_descriptor::{define_type_descriptor};
 /// *
 ///
 ///
-pub fn define_relationship_descriptor(
+pub fn define_relationship_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: HolonReference,
     relationship_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
@@ -42,7 +43,7 @@ pub fn define_relationship_descriptor(
     described_by: Option<StagedReference>,
     _has_inverse: Option<StagedReference>,
 
-) -> RelationshipDescriptor {
+) -> RelationshipType {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_name= MapString(format!("{}-{}->{}", "source_for_type_name".to_string(), relationship_name.0,"target_for_type_name".to_string()));
     let mut descriptor = define_type_descriptor(
@@ -116,6 +117,6 @@ pub fn define_relationship_descriptor(
 
 
 
-    RelationshipDescriptor(descriptor.0)
+    RelationshipType(descriptor.0)
 
 }

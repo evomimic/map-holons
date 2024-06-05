@@ -3,6 +3,7 @@
 use holons::context::HolonsContext;
 use holons::staged_reference::{StagedReference};
 use holons::holon::Holon;
+use holons::holon_reference::HolonReference;
 
 // use holons::relationship::{RelationshipName, RelationshipTarget};
 
@@ -25,7 +26,7 @@ use crate::descriptor_types::{TypeDescriptor};
 ///
 pub fn define_type_descriptor(
     _context: &HolonsContext,
-    _schema: StagedReference,
+    _schema: HolonReference,
     descriptor_name: MapString,
     type_name: MapString,
     base_type: BaseType,

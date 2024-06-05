@@ -23,9 +23,9 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 /// * VALUE_TYPE->ValueDescriptor (supplied)
 ///
 ///
-pub fn define_property_descriptor(
+pub fn define_property_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: HolonReference,
     property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
     description: MapString,
     label: MapString, // Human readable name for this property name

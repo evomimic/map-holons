@@ -3,12 +3,14 @@ use holons::commit_manager::CommitManager;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon::Holon;
+use holons::holon_reference::HolonReference;
 
 use holons::staged_reference::StagedReference;
 
 use crate::descriptor_types::Schema;
+use crate::value_type_loader::load_core_value_types;
 
-/// The load_core_schema function creates a new Schema Holon and populates it descriptors for all of the
+/// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
 /// MAP L0 Schema Meta Descriptors
 ///     *  MetaTypeDescriptor
 ///     *  MetaHolonDescriptor
@@ -37,7 +39,7 @@ use crate::descriptor_types::Schema;
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<Holon, HolonError> {
+pub fn load_core_schema(context: &HolonsContext) -> Result<HolonReference, HolonError> {
 
     let schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
@@ -46,74 +48,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<Holon, HolonError> {
 
     info!("Preparing to stage schema holon {:#?}", schema.0.clone());
 
-    let schema_ref = context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone());
+    let schema_ref = HolonReference::Staged(context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone()));
 
-
-    /*
-
-       let type_descriptor = define_type_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString(META_TYPE_DESCRIPTOR.to_string()),
-           MapString("TypeDescriptor".to_string()),
-           BaseType::Holon,
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP descriptors (including itself).".to_string()),
-           MapString("Meta Type Descriptor".to_string()),
-           MapBoolean(false),
-           MapBoolean(false),
-           None,
-           None,
-       );
-
-       let type_descriptor_ref = context.commit_manager.borrow_mut().stage_new_holon(type_descriptor.0);
-
-       // Add to Schema-COMPONENTS->TypeDescriptor relationships
-
-       let meta_holon_descriptor = define_holon_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString("HolonDescriptor".to_string()),
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP HolonDescriptors".to_string()),
-           MapString("Meta Holon Descriptor".to_string()),
-           Some(type_descriptor_ref.clone_reference()),
-           None,
-       );
-
-       let _meta_holon_descriptor_index = context.commit_manager.borrow_mut().stage_new_holon(meta_holon_descriptor.0);
-
-       let meta_relationship_descriptor = define_type_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString(META_RELATIONSHIP_DESCRIPTOR.to_string()),
-           MapString("RelationshipDescriptor".to_string()),
-           BaseType::Holon,
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP RelationshipDescriptors".to_string()),
-           MapString("Meta Relationship Descriptor".to_string()),
-           MapBoolean(false),
-           MapBoolean(false),
-           None,
-           Some(&type_descriptor),
-       );
-
-       let _meta_relationship_descriptor_index = context.commit_manager.borrow_mut().stage_new_holon(meta_relationship_descriptor.0);
-
-       let meta_property_descriptor = define_type_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString(META_PROPERTY_DESCRIPTOR.to_string()),
-           MapString("PropertyDescriptor".to_string()),
-           BaseType::Holon,
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP PropertyDescriptors".to_string()),
-           MapString("Property Meta Descriptor".to_string()),
-           MapBoolean(false),
-           MapBoolean(false),
-           None,
-           Some(&type_descriptor),
-       );
-
-       let _meta_property_descriptor_index = context.commit_manager.borrow_mut().stage_new_holon(meta_property_descriptor.0);
-
-    */
+    load_core_value_types(context, &schema_ref);
 
     info!("Staging complete... committing schema {:#?}", schema.0.clone());
 
@@ -122,7 +59,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<Holon, HolonError> {
 
     // TODO: Need to retrieve the saved Schema holon by key once get_holon_by_key dance is available.
 
-    Ok(schema.0)
+    Ok(schema_ref)
 
 }
 

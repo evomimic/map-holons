@@ -12,13 +12,13 @@ use shared_types_holon::value_types::{MapEnumValue, MapString};
 /// TODO: In this type-safe layer, should TypeDescriptor be a Rust Enum with variants for each descriptor type?
 pub struct Schema(pub Holon);
 pub struct TypeDescriptor(pub Holon);
-pub struct HolonDescriptor(pub Holon);
-pub struct RelationshipDescriptor(pub Holon);
+pub struct HolonType(pub Holon);
+pub struct RelationshipType(pub Holon);
 pub struct PropertyDescriptor(pub Holon);
-pub struct StringDescriptor(pub Holon);
-pub struct IntegerDescriptor(pub Holon);
-pub struct BooleanDescriptor(pub Holon);
-pub struct EnumDescriptor(pub Holon);
+pub struct StringType(pub Holon);
+pub struct IntegerType(pub Holon);
+pub struct BooleanType(pub Holon);
+pub struct EnumType(pub Holon);
 // pub enum BuiltInDescriptorType {
 //     HolonDescriptor("HolonDescriptor"),
 //     HolonCollectionDescriptor("HolonCollectionDescriptor"),

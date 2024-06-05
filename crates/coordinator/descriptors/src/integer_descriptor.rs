@@ -1,16 +1,16 @@
 use holons::context::HolonsContext;
-
+use holons::holon_reference::HolonReference;
 
 
 use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{IntegerDescriptor};
+use crate::descriptor_types::{IntegerType};
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
-pub fn define_integer_descriptor(
+pub fn define_integer_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: HolonReference,
     type_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
@@ -19,7 +19,7 @@ pub fn define_integer_descriptor(
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
 
-) -> IntegerDescriptor {
+) -> IntegerType {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
@@ -60,6 +60,6 @@ pub fn define_integer_descriptor(
 
 
 
-    IntegerDescriptor(descriptor.0)
+    IntegerType(descriptor.0)
 
 }

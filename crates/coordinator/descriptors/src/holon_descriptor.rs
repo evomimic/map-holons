@@ -1,4 +1,5 @@
 use holons::context::HolonsContext;
+use holons::holon_reference::HolonReference;
 
 use holons::staged_reference::StagedReference;
 use crate::type_descriptor::{define_type_descriptor};
@@ -6,7 +7,7 @@ use crate::type_descriptor::{define_type_descriptor};
 
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
-use crate::descriptor_types::{HolonDescriptor};
+use crate::descriptor_types::{HolonType};
 
 /// This function defines and stages (but does not persist) a new HolonDescriptor.
 /// Values for each of the HolonDescriptor properties will be set based on supplied parameters.
@@ -20,16 +21,16 @@ use crate::descriptor_types::{HolonDescriptor};
 /// * VERSION->SemanticVersion (default)
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
 ///
-pub fn define_holon_descriptor(
+pub fn define_holon_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: HolonReference,
     type_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
 
-) -> HolonDescriptor {
+) -> HolonType {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     let descriptor = define_type_descriptor(
@@ -48,5 +49,5 @@ pub fn define_holon_descriptor(
 
 
 
-    HolonDescriptor(descriptor.0)
+    HolonType(descriptor.0)
 }
