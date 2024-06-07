@@ -6,7 +6,7 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
 
 use shared_types_holon::value_types::BaseValue;
 
@@ -34,7 +34,6 @@ pub struct Holon {
     pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
-    key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
     // pub dancer : Dancer,
@@ -104,7 +103,6 @@ impl Holon {
             predecessor: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
-            key: None,
             errors: Vec::new(),
         }
     }
@@ -134,9 +132,21 @@ impl Holon {
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
 
+    /// This function returns the primary key value for the holon or None if there is no key value
+    /// for this holon (NOTE: Not all holon types have defined keys.)
+    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        Ok(self.key.clone())
+        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
+        if let Some(key) = key {
+            let string_value: String = key
+                .try_into()
+                .map_err(|_| HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string()))?;
+            Ok(Some(MapString(string_value)))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
@@ -148,8 +158,6 @@ impl Holon {
             Err(HolonError::HolonNotFound("Node is empty".to_string()))
         }
     }
-
-
 
     pub fn into_node(self) -> HolonNode {
         HolonNode {
@@ -169,7 +177,6 @@ impl Holon {
             predecessor: None,
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
-            key: None,
             errors: Vec::new(),
         };
 
@@ -181,7 +188,6 @@ impl Holon {
 
         Ok(holon)
     }
-
 
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
@@ -215,13 +221,6 @@ impl Holon {
     //     }
     //     self
     // }
-
-    pub fn set_key_manually(&mut self, key: MapString) -> Result<(), HolonError>  {
-        self.is_accessible(AccessType::Write)?;
-        self.key = Some(key);
-        Ok(())
-    }
-
 
     /// commit() saves a staged holon to the persistent store.
     ///
@@ -367,13 +366,14 @@ impl Holon {
         }
     }
 
-    pub fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent {
+    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
+        let key = self.get_key()?;
+        Ok(EssentialHolonContent {
             property_map: self.property_map.clone(),
             //relationship_map: self.relationship_map.clone(),
-            key: self.key.clone(),
+            key,
             errors: self.errors.clone(),
-        }
+        })
     }
 
     //  TODO: If state is Saved, return HolonError::NotAccessible

@@ -55,7 +55,7 @@ pub fn descriptors_fixture() -> Result<DescriptorTestCase, HolonError> {
     let rc_schema = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(schema.0); // Borrow_mut() allows mutation
+        .stage_new_holon(schema.0)?; // Borrow_mut() allows mutation
 
     let mut steps: Vec<DescriptorTestStep> = Vec::new();
 

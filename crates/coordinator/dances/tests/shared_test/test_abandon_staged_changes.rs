@@ -3,7 +3,10 @@ use std::collections::BTreeMap;
 use async_std::task;
 use dances::dance_response::ResponseBody;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
-use dances::holon_dance_adapter::{build_abandon_staged_changes_dance_request, build_get_all_holons_dance_request, build_get_holon_by_id_dance_request, build_stage_new_holon_dance_request};
+use dances::holon_dance_adapter::{
+    build_abandon_staged_changes_dance_request, build_get_all_holons_dance_request,
+    build_get_holon_by_id_dance_request, build_stage_new_holon_dance_request,
+};
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -38,8 +41,10 @@ pub async fn execute_abandon_staged_changes(
     expected_response: ResponseStatusCode,
 ) {
     info!("\n\n--- TEST STEP: Abandon Staged Changes ---");
-    let request =
-        build_abandon_staged_changes_dance_request(test_state.staging_area.clone(), staged_index.clone());
+    let request = build_abandon_staged_changes_dance_request(
+        test_state.staging_area.clone(),
+        staged_index.clone(),
+    );
 
     info!("Dance Request: {:#?}", request);
 
@@ -61,27 +66,28 @@ pub async fn execute_abandon_staged_changes(
                     if let ResponseBody::Index(staged_index) = response.body.clone() {
                         match test_state.staging_area.get_holon_mut(staged_index) {
                             Ok(abandoned_holon) => {
-
-                                assert!(matches!(abandoned_holon
-                                    .get_property_value(&PropertyName(MapString("some_name".to_string())))
-                                    , Err(HolonError::NotAccessible(_, _))));
+                                assert!(matches!(
+                                    abandoned_holon.get_property_value(&PropertyName(MapString(
+                                        "some_name".to_string()
+                                    ))),
+                                    Err(HolonError::NotAccessible(_, _))
+                                ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_property_value`");
 
-                                assert!(matches!(abandoned_holon
-                                    .get_key()
-                                    , Err(HolonError::NotAccessible(_, _))));
+                                assert!(matches!(
+                                    abandoned_holon.get_key(),
+                                    Err(HolonError::NotAccessible(_, _))
+                                ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_key`");
 
-                                assert!(matches!(abandoned_holon
-                                    .with_property_value(PropertyName(MapString("some_name".to_string()))
-                                        ,BaseValue::BooleanValue(MapBoolean(true)))
-                                    , Err(HolonError::NotAccessible(_, _))));
+                                assert!(matches!(
+                                    abandoned_holon.with_property_value(
+                                        PropertyName(MapString("some_name".to_string())),
+                                        BaseValue::BooleanValue(MapBoolean(true))
+                                    ),
+                                    Err(HolonError::NotAccessible(_, _))
+                                ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
-
-                                assert!(matches!(abandoned_holon
-                                    .set_key_manually(MapString("some_key".to_string()))
-                                    , Err(HolonError::NotAccessible(_, _))));
-                                debug!("Confirmed abandoned holon is NotAccessible for `set_key_manually`");
                             }
                             Err(e) => {
                                 panic!("Failed to get holon: {:?}", e);
@@ -91,12 +97,14 @@ pub async fn execute_abandon_staged_changes(
                         panic!("Expected abandon_staged_changes to return an Index response, but it didn't");
                     }
                 }
-                _ => ()
+                _ => (),
             }
         }
         Err(error) => {
-            panic!("{:?} Unable to build a abandon_staged_changes request ", error);
+            panic!(
+                "{:?} Unable to build a abandon_staged_changes request ",
+                error
+            );
         }
     }
 }
-

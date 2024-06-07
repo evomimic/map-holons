@@ -17,11 +17,12 @@ use core::panic;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
+use holons::holon_reference::HolonReference;
+use holons::staged_reference::StagedReference;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
-use dances::dance_request::PortableReference;
 use dances::dance_response::ResponseStatusCode;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
@@ -57,6 +58,12 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
     let mut book_holon = Holon::new();
+    book_holon.with_property_value(
+        PropertyName(MapString("key".to_string())),
+        BaseValue::StringValue(MapString(
+            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+        )),
+    )?;
     book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(
@@ -124,6 +131,12 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
 
     let mut book_holon = Holon::new();
     book_holon.with_property_value(
+        PropertyName(MapString("key".to_string())),
+        BaseValue::StringValue(MapString(
+            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+        )),
+    )?;
+    book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -144,7 +157,10 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
 
     test_case.add_stage_holon_step(person_holon_briggs)?;
     let briggs_index: StagedIndex = 1;
-    let briggs_reference = PortableReference::Staged(briggs_index);
+    let briggs_staged_reference = StagedReference {
+        holon_index: briggs_index,
+    };
+    let briggs_holon_reference = HolonReference::Staged(briggs_staged_reference);
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -169,11 +185,14 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         )?;
     test_case.add_stage_holon_step(person_holon_gebser)?;
     let gebser_index: StagedIndex = 2;
-    let gebser_reference = PortableReference::Staged(gebser_index);
+    let gebser_staged_reference = StagedReference {
+        holon_index: gebser_index,
+    };
+    let gebser_reference = HolonReference::Staged(gebser_staged_reference);
 
-    let mut holons_to_add: Vec<PortableReference> = Vec::new();
+    let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
-    holons_to_add.push(briggs_reference);
+    holons_to_add.push(briggs_holon_reference);
     holons_to_add.push(gebser_reference);
 
     test_case.add_related_holons_step(
@@ -210,6 +229,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  ADD STEP:  STAGE:  Book Holon (H1)  //
     let mut book = Holon::new();
     book.with_property_value(
+        PropertyName(MapString("key".to_string())),
+        BaseValue::StringValue(MapString(
+            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+        )),
+    )?;
+    book.with_property_value(
         PropertyName(MapString("title".to_string())),
         BaseValue::StringValue(MapString(
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -234,6 +259,9 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         )?;
     test_case.add_stage_holon_step(person_1.clone())?;
     let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
+    let person_1_staged_reference = StagedReference {
+        holon_index: person_1_index,
+    };
 
     //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
     let mut person_holon_2 = Holon::new();
@@ -248,12 +276,18 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         )?;
     test_case.add_stage_holon_step(person_holon_2.clone())?;
     let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
+    let person_2_staged_reference = StagedReference {
+        holon_index: person_2_index,
+    };
 
     // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
     test_case.add_related_holons_step(
         book_index, // source holon
         RelationshipName(MapString("AUTHORED_BY".to_string())),
-        vec![PortableReference::Staged(person_1_index), PortableReference::Staged(person_2_index)],
+        vec![
+            HolonReference::Staged(person_1_staged_reference.clone()),
+            HolonReference::Staged(person_2_staged_reference.clone()),
+        ],
         ResponseStatusCode::OK,
     )?;
 
@@ -262,16 +296,17 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // abandoned Holon return NotAccessible Errors
     test_case.add_abandon_staged_changes_step(person_1_index, ResponseStatusCode::OK)?;
 
-
     // ADD STEP:  RELATIONSHIP:  Author H2 -> H3  //
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
-   test_case.add_related_holons_step(
+    test_case.add_related_holons_step(
         person_1_index, // source holons
         RelationshipName(MapString("FRIENDS".to_string())),
-        vec![PortableReference::Staged(person_1_index), PortableReference::Staged(person_2_index)],
-       ResponseStatusCode::Conflict,
-    );
-
+        vec![
+            HolonReference::Staged(person_1_staged_reference),
+            HolonReference::Staged(person_2_staged_reference),
+        ],
+        ResponseStatusCode::Conflict,
+    )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
