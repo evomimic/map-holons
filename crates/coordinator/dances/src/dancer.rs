@@ -190,8 +190,10 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 | HolonError::InvalidRelationship(msg, _)
                 | HolonError::NotAccessible(msg, _)
                 | HolonError::GuardError(msg)
+                | HolonError::UnexpectedValueType(msg, _)
                 | HolonError::CacheError(msg) => msg,
                 HolonError::ValidationError(validation_error) => validation_error.to_string(),
+
             };
 
             // Construct DanceResponse with error details

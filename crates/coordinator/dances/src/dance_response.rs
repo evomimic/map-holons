@@ -70,6 +70,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
             HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
             HolonError::GuardError(_) => ResponseStatusCode::BadRequest,
+            HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
         }
     }
 }

@@ -6,7 +6,7 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
 
 use shared_types_holon::value_types::BaseValue;
 
@@ -132,17 +132,18 @@ impl Holon {
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
 
+    /// This function returns the primary key value for the holon or None if there is no key value
+    /// for this holon (NOTE: Not all holon types have defined keys.)
+    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        // TODO: this logic needs to be replaced once MAP Descriptors are available.
-        let key = self
-            .property_map
-            .get(&PropertyName(MapString("key".to_string())));
+        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
         if let Some(key) = key {
-            match key {
-                BaseValue::StringValue(key) => Ok(Some(key.clone())),
-                _ => Err(HolonError::InvalidParameter("BaseValue".to_string())),
-            }
+            let string_value: String = key
+                .try_into()
+                .map_err(|_| HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string()))?;
+            Ok(Some(MapString(string_value)))
         } else {
             Ok(None)
         }
