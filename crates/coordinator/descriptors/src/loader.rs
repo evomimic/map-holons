@@ -41,25 +41,31 @@ use crate::value_type_loader::load_core_value_types;
 
 pub fn load_core_schema(context: &HolonsContext) -> Result<HolonReference, HolonError> {
 
+    // Begin by staging and committing `schema`. It's HolonReference becomes the target of
+    // the COMPONENT_OF relationship for all schema components
+
     let schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
     );
 
-    info!("Preparing to stage schema holon {:#?}", schema.0.clone());
-
-    let schema_ref = HolonReference::Staged(context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone()));
-
-    load_core_value_types(context, &schema_ref);
-
-    info!("Staging complete... committing schema {:#?}", schema.0.clone());
+    let staged_schema_ref = context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone());
+    // TODO: Handle Result
+    info!("Committing schema {:#?}", schema.0.clone());
 
     let response = CommitManager::commit(context);
-    info!("Commit response {:#?}", response.clone());
+    // Check if Commit is Complete, get a SmartReference to the saved SchemaHolon
+
+
+
+
+
+    //load_core_value_types(context, &schema_ref);
 
     // TODO: Need to retrieve the saved Schema holon by key once get_holon_by_key dance is available.
 
-    Ok(schema_ref)
+    Err(HolonError::NotImplemented("Incomplete implementation of  load_core_schema".to_string()))
+
 
 }
 

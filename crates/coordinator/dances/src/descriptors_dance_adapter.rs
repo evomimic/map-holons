@@ -53,7 +53,8 @@ pub fn load_core_schema_dance(context: &HolonsContext, request: DanceRequest) ->
             // Call the native load_core_schema function
             let result = load_core_schema(context);
             match result {
-                Ok(schema)=> {
+                Ok(schema_ref)=> {
+                    let schema = schema_ref.borrow().
                     Ok(ResponseBody::Holon(schema))
                 }
                 Err(e) => Err(e),

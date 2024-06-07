@@ -26,7 +26,7 @@ use crate::descriptor_types::{TypeDescriptor};
 ///
 pub fn define_type_descriptor(
     _context: &HolonsContext,
-    _schema: HolonReference,
+    schema: &HolonReference, // Type-COMPONENT_OF->Schema
     descriptor_name: MapString,
     type_name: MapString,
     base_type: BaseType,
@@ -34,9 +34,9 @@ pub fn define_type_descriptor(
     label: MapString, // Human readable name for this type
     is_dependent: MapBoolean,
     is_value_descriptor: MapBoolean,
-    _described_by: Option<StagedReference>,
-    _has_supertype: Option<StagedReference>,
-    //_owned_by: HolonReference, // HolonSpace
+    described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
+    is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
+    //_owned_by: HolonReference, // Holon-OWNED_BY->HolonSpace
 ) -> TypeDescriptor {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();

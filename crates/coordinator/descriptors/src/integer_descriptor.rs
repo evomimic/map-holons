@@ -7,7 +7,10 @@ use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
 use crate::descriptor_types::{IntegerType};
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
-
+/// This function defines (and describes) a new integer type. Values of this type will be stored
+/// as MapInteger. The `min_value` and `max_value` properties are unique to this IntegerType and can
+/// be used to narrow the range of legal values for this type. Agent-defined types can be the
+/// `ValueType` for a MapProperty.
 pub fn define_integer_type(
     context: &HolonsContext,
     schema: HolonReference,
@@ -16,7 +19,7 @@ pub fn define_integer_type(
     label: MapString, // Human readable name for this type
     min_value: MapInteger,
     max_value: MapInteger,
-    has_supertype: Option<StagedReference>,
+    has_supertype: Option<StagedReference>, // this should always be ValueType
     described_by: Option<StagedReference>,
 
 ) -> IntegerType {
@@ -44,21 +47,6 @@ pub fn define_integer_type(
             PropertyName(MapString("max_value".to_string())),
             BaseValue::IntegerValue(max_value),
         );
-
-    // Populate the relationships
-
-    // descriptor.0
-    //     .add_related_holon(
-    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
-    //         define_local_target(&schema.0.clone()),
-    //     );
-    //
-
-    // TODO: Create PropertyDescriptors for min_length & max_length
-    // TODO: get the (assumed to be existing HAS_PROPERTIES RelationshipDescriptor)
-    // TODO: add the property descriptors to the TypeDescriptors HAS_PROPERTIES relationship
-
-
 
     IntegerType(descriptor.0)
 

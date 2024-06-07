@@ -7,34 +7,67 @@ use holons::holon_reference::HolonReference;
 use crate::semantic_version::set_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
+use shared_types_holon::ValueType;
 use crate::descriptor_types::{TypeDescriptor};
+use crate::type_descriptor::define_type_descriptor;
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions
 ///
-/// Values for each of the TypeDescriptor _properties_ will be set based on supplied parameters.
+/// Values for each of the TypeDescriptor _properties_ will be set based on supplied parameters
+/// except for the following which are fixed by this function:
+/// is_dependent: true
+/// is_value_type: true
 ///
-/// The descriptor will have the following _relationships_ populated:
-/// * DESCRIBED_BY->TypeDescriptor (if supplied)
+///
+/// This function is intended to ONLY BE CALLED by the definers of specific value types
+/// (e.g., define_integer_type). It handles the aspects common to all value types.
+/// This function will populate the TypeDescriptor properties for this ValueType
+/// as well as the following relationships:
+/// * DESCRIBED_BY->TypeDescriptor (if supplied) -- the MetaDescriptor for this type
 /// * COMPONENT_OF->Schema (supplied)
 /// * VERSION->SemanticVersion (default)
-/// * HAS_SUPERTYPE->TypeDescriptor (if supplied)
-///
-///
+/// * IS_SUBTYPE_OF->TypeDescriptor -- always set to `Type`
 pub fn define_value_type(
-    _context: &HolonsContext,
-    _schema: &HolonReference,
+    context: &HolonsContext,
+    schema: HolonReference,
     descriptor_name: MapString,
     type_name: MapString,
-    base_type: BaseType,
+    value_type: ValueType,
     description: MapString,
     label: MapString, // Human-readable name for this type
-    _described_by: Option<StagedReference>,
-    _has_supertype: Option<StagedReference>,
+    described_by: Option<StagedReference>,
+    has_supertype: Option<HolonReference>
     //_owned_by: HolonReference, // HolonSpace
-) -> TypeDescriptor {
+) -> ValueType {
+
+    // ------------ Validate the supplied parameters
+    // Skip type-checking the schema HolonReference, if it does not reference a Schema Holon,
+    // validation on the COMPONENT_OF relationship will fail
+
+
+
+
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
+
+    let base_type = BaseType::Value(value_type);
+
+
+    // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
+    let mut descriptor = define_type_descriptor(
+        context,
+        schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
+        descriptor_name,
+        type_name,
+        base_type,
+        description,
+        label,
+        MapBoolean(true), // is_dependent
+        MapBoolean(true), // is_value_type
+        described_by,
+        has_supertype,
+    );
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor

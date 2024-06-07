@@ -158,6 +158,7 @@ impl CommitManager {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
+    /// TODO: Change signature to return a Result<StagedReference, HolonError>
     pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
