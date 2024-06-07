@@ -13,10 +13,15 @@ impl Schema {
     pub fn new(name: String, description: String) -> Result<Schema, HolonError> {
         // ?TODO: change name
         let mut schema_holon = Holon::new();
+        let key_property_name: MapString = MapString("key".to_string());
         let name_property_name: MapString = MapString("name".to_string());
         let description_property_name: MapString = MapString("description".to_string());
 
         schema_holon
+            .with_property_value(
+                PropertyName(key_property_name),
+                BaseValue::StringValue(MapString(name.clone())),
+            )?
             .with_property_value(
                 PropertyName(name_property_name),
                 BaseValue::StringValue(MapString(name.clone())),
@@ -24,8 +29,7 @@ impl Schema {
             .with_property_value(
                 PropertyName(description_property_name),
                 BaseValue::StringValue(MapString(description)),
-            )?
-            .set_key_manually(MapString(name.clone()));
+            )?;
 
         Ok(Schema(schema_holon))
     }

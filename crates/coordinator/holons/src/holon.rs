@@ -34,7 +34,6 @@ pub struct Holon {
     pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
-    key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
     // pub dancer : Dancer,
@@ -47,7 +46,7 @@ pub struct Holon {
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
     //pub relationship_map: RelationshipMap,
-    //key: Option<MapString>,
+    key: Option<MapString>,
     pub errors: Vec<HolonError>,
 }
 
@@ -104,7 +103,6 @@ impl Holon {
             predecessor: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
-            key: None,
             errors: Vec::new(),
         }
     }
@@ -136,7 +134,18 @@ impl Holon {
 
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        Ok(self.key.clone())
+        // TODO: this logic needs to be replaced once MAP Descriptors are available.
+        let key = self
+            .property_map
+            .get(&PropertyName(MapString("key".to_string())));
+        if let Some(key) = key {
+            match key {
+                BaseValue::StringValue(key) => Ok(Some(key.clone())),
+                _ => Err(HolonError::InvalidParameter("BaseValue".to_string())),
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
@@ -148,8 +157,6 @@ impl Holon {
             Err(HolonError::HolonNotFound("Node is empty".to_string()))
         }
     }
-
-
 
     pub fn into_node(self) -> HolonNode {
         HolonNode {
@@ -169,7 +176,6 @@ impl Holon {
             predecessor: None,
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
-            key: None,
             errors: Vec::new(),
         };
 
@@ -181,7 +187,6 @@ impl Holon {
 
         Ok(holon)
     }
-
 
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
@@ -215,13 +220,6 @@ impl Holon {
     //     }
     //     self
     // }
-
-    pub fn set_key_manually(&mut self, key: MapString) -> Result<(), HolonError>  {
-        self.is_accessible(AccessType::Write)?;
-        self.key = Some(key);
-        Ok(())
-    }
-
 
     /// commit() saves a staged holon to the persistent store.
     ///
@@ -367,13 +365,14 @@ impl Holon {
         }
     }
 
-    pub fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent {
+    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
+        let key = self.get_key()?;
+        Ok(EssentialHolonContent {
             property_map: self.property_map.clone(),
             //relationship_map: self.relationship_map.clone(),
-            //key: self.key.clone(),
+            key,
             errors: self.errors.clone(),
-        }
+        })
     }
 
     //  TODO: If state is Saved, return HolonError::NotAccessible
