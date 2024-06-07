@@ -1,12 +1,19 @@
 use holons::context::HolonsContext;
+
 use holons::holon_error::HolonError;
+
+use holons::holon_reference::HolonReference;
+
 
 use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
 use holons::relationship::RelationshipTarget;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
+
 use shared_types_holon::PropertyName;
+
+use crate::descriptor_types::{DeletionSemantic, RelationshipType};
 
 use crate::type_descriptor::define_type_descriptor;
 
@@ -25,9 +32,9 @@ use crate::type_descriptor::define_type_descriptor;
 /// *
 ///
 ///
-pub fn define_relationship_descriptor(
+pub fn define_relationship_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: HolonReference,
     relationship_name: MapString,
     description: MapString,
     label: MapString, // Human readable name for this type
@@ -40,7 +47,9 @@ pub fn define_relationship_descriptor(
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
     _has_inverse: Option<StagedReference>,
-) -> Result<RelationshipDescriptor, HolonError> {
+
+) -> Result<RelationshipType, HolonError> {
+
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_name = MapString(format!(
         "{}-{}->{}",
@@ -116,5 +125,7 @@ pub fn define_relationship_descriptor(
     //     )
     // }
 
-    Ok(RelationshipDescriptor(descriptor.0))
+
+    Ok(RelationshipType(descriptor.0))
 }
+

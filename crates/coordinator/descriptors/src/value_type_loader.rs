@@ -6,68 +6,52 @@ use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
 
 use holons::staged_reference::StagedReference;
+use shared_types_holon::{MapInteger, MapString};
 
 use crate::descriptor_types::Schema;
-use crate::value_type_loader::load_core_value_types;
+use crate::string_descriptor::define_string_type;
 
-/// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
-/// MAP L0 Schema Meta Descriptors
-///     *  MetaTypeDescriptor
-///     *  MetaHolonDescriptor
-///     *  MetaRelationshipDescriptor
-///     *  MetaPropertyDescriptor
-///     *  MetaDanceDescriptor
-///     *  MetaValueDescriptor
-///     *  MetaBooleanDescriptor
-///     *  MetaEnumDescriptor
-///     *  MetaEnumVariantDescriptor
-///     *  MetaIntegerDescriptor
-///     *  MetaStringDescriptor
-/// And their related types
-///     *  SchemaHolonDescriptor
-///     *  ConstraintHolonDescriptor
-///     *  SemanticVersionHolonDescriptor
-///     *  DeletionSemanticEnumDescriptor
-///     *  DeletionSemanticEnumVariantAllow
-///     *  DeletionSemanticEnumVariantBlock
-///     *  DeletionSemanticEnumVariantPropagate
-///     *  HolonStateEnumDescriptor
-///     *  HolonStateEnumNewVariant
-///     *  HolonStateEnumFetchedVariant
-///     *  HolonStateEnumChangedVariant
+/// The load_core_value_types function creates type descriptors for each of the built-in ValueTypes
 ///
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<HolonReference, HolonError> {
+pub fn load_core_value_types(context: &HolonsContext, schema: &HolonReference) -> Result<(), HolonError> {
+// context: &HolonsContext,
+//     schema: HolonReference,
+//     type_name: MapString,
+//     description: MapString,
+//     label: MapString, // Human readable name for this type
+//     min_length: MapInteger,
+//     max_length: MapInteger,
+//     has_supertype: Option<StagedReference>,
+//     described_by: Option<StagedReference>,
+    let string_type = define_string_type(
+        context,
+        schema,
+        MapString("MapString".to_string()),
+        MapString("Built-in MAP String Type".to_string()),
+        MapString("String".to_string()),
+        MapInteger(0),
+        MapInteger(4096),
+        None,
+        None
+    );
 
-    // Begin by staging and committing `schema`. It's HolonReference becomes the target of
-    // the COMPONENT_OF relationship for all schema components
 
-    let schema = Schema::new(
-        "MAP L0 Core Schema".to_string(),
-        "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
-    )?;
+    info!("Preparing to stage descriptor {:#?}", string_type.0.clone());
+
+    let string_type_ref = context.commit_manager.borrow_mut().stage_new_holon(string_type.0.clone());
 
 
-    let staged_schema_ref = context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone());
-    // TODO: Handle Result
-    info!("Committing schema {:#?}", schema.0.clone());
+    info!("Staging complete... committing value type definitions.");
 
     let response = CommitManager::commit(context);
-    // Check if Commit is Complete, get a SmartReference to the saved SchemaHolon
-
-
-
-
-
-    //load_core_value_types(context, &schema_ref);
+    info!("Commit response {:#?}", response.clone());
 
     // TODO: Need to retrieve the saved Schema holon by key once get_holon_by_key dance is available.
 
-    Err(HolonError::NotImplemented("Incomplete implementation of  load_core_schema".to_string()))
-
-
+    Ok(())
 
 }
 

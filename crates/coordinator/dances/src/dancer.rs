@@ -10,10 +10,12 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
+
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
     get_holon_by_id_dance, stage_new_holon_dance, with_properties_dance,
 };
+
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -104,14 +106,14 @@ impl Dancer {
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
-        dispatch_table.insert(
-            "add_related_holons",
-            add_related_holons_dance as DanceFunction,
-        );
+
         dispatch_table.insert(
             "abandon_staged_changes_foo",
             abandon_staged_changes_dance as DanceFunction,
         );
+
+        dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
+        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
 
         // Add more functions as needed
 

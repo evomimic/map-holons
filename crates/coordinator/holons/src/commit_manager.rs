@@ -180,6 +180,7 @@ impl CommitManager {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
+
     pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
@@ -187,23 +188,13 @@ impl CommitManager {
         let holon_key: Option<MapString> = holon.get_key()?;
         if let Some(key) = holon_key {
             self.keyed_index.insert(key.clone(), holon_index);
+
         }
 
         Ok(StagedReference { holon_index })
     }
 
-    // Constructor function for creating StagedReference from an index into CommitManagers StagedHolons
-    // pub fn get_reference_from_index(&self, index: MapInteger) -> Result<StagedReference, HolonError> {
-    //
-    //     // Ensure index is valid
-    //     let holon_index = index.0 as usize;
-    //     if holon_index < 0 || holon_index > self.staged_holons.len() {
-    //         Err(HolonError::IndexOutOfRange(index.0.to_string()))
-    //     }
-    // let key = rc_holon.borrow().get_key()?;
-
-    //     Ok(StagedReference { key, holon_index })
-    // }
+ 
 
     pub fn clone_holon(
         &mut self,
