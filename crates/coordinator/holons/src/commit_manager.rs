@@ -25,7 +25,9 @@ pub type StagedIndex = usize;
 pub struct CommitResponse {
     pub status: CommitRequestStatus,
     pub commits_attempted: MapInteger,
-    pub saved_holons: Vec<Holon>,
+    // could the order of these Vecs cause challenges with identifying Holons in relation to their staged_index?
+    pub saved_holons: Vec<Holon>, // should this be index? where else used?
+    pub abandoned_holons: Vec<Holon>, // should this be index?
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -42,12 +44,22 @@ pub enum CommitRequestStatus {
 
 impl CommitManager {
     /// This function converts a StagedIndex into a StagedReference
-    pub fn to_staged_reference(&self, staged_index: StagedIndex) -> Result<StagedReference, HolonError> {
+    /// Returns HolonError::IndexOutOfRange is index is out range for staged_holons vector
+    /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
+    /// TODO: The latter is only reliable if staged_holons is made private
+    pub fn to_staged_reference(
+        &self,
+        staged_index: StagedIndex,
+    ) -> Result<StagedReference, HolonError> {
         if let Some(staged_holon) = self.staged_holons.get(staged_index) {
             let holon = staged_holon.borrow();
-            let key = holon.get_key().unwrap();
+            if let HolonState::Abandoned = holon.state {
+                return Err(HolonError::NotAccessible(
+                    "to_staged_reference".to_string(),
+                    "Abandoned".to_string(),
+                ));
+            }
             Ok(StagedReference {
-                key,
                 holon_index: staged_index,
             })
         } else {
@@ -95,21 +107,32 @@ impl CommitManager {
         // If any commit errors are encountered, reset request_status to `Incomplete`
         let mut response = CommitResponse {
             status: CommitRequestStatus::Complete,
-            commits_attempted: MapInteger(context.commit_manager.borrow().staged_holons.len() as i64),
+            commits_attempted: MapInteger(
+                context.commit_manager.borrow().staged_holons.len() as i64
+            ),
             saved_holons: Vec::new(),
+            abandoned_holons: Vec::new(),
         };
-
 
         // FIRST PASS: Commit Staged Holons
         {
-            debug!("Starting FIRST PASS... commit staged_holons...");
+            info!("\n\nStarting FIRST PASS... commit staged_holons...");
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit();
                 match outcome {
-                    Ok(holon) => {
-                        response.saved_holons.push(holon);
-                    }
+                    Ok(holon) => match holon.state {
+                        HolonState::Abandoned => {
+                            // should these be index?
+                            //if !response.abandoned_holons.contains(&holon) {
+                            response.abandoned_holons.push(holon);
+                            //}
+                        }
+                        HolonState::Saved => {
+                            response.saved_holons.push(holon);
+                        }
+                        _ => {}
+                    },
                     Err(_error) => {
                         response.status = CommitRequestStatus::Incomplete;
                     }
@@ -123,7 +146,7 @@ impl CommitManager {
 
         // SECOND PASS: Commit relationships
         {
-            debug!("Starting 2ND PASS... commit relationships for the saved staged_holons...");
+            info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit_relationships(context);
@@ -147,7 +170,6 @@ impl CommitManager {
         }
     }
 
-
     pub fn new() -> CommitManager {
         CommitManager {
             staged_holons: Vec::new(),
@@ -158,49 +180,21 @@ impl CommitManager {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
-    /// TODO: Change signature to return a Result<StagedReference, HolonError>
-    pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
+
+    pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
-        info!("CommitManager has staged a new holon at index {:#?}",holon_index);
-        debug!("staged_holon: {:#?}", self.staged_holons.get(holon_index));
+        let holon_key: Option<MapString> = holon.get_key()?;
+        if let Some(key) = holon_key {
+            self.keyed_index.insert(key.clone(), holon_index);
 
-        let mut key: Option<MapString> = None;
-        if let Some(the_key) = holon.get_key().unwrap() {
-            key = Some(the_key.clone());
-            self.keyed_index.insert(the_key, holon_index);
         }
-        StagedReference { key, holon_index }
+
+        Ok(StagedReference { holon_index })
     }
 
-
-    // pub fn stage_new_holon(&mut self, holon: Holon) -> StagedReference {
-    //     let rc_holon = Rc::new(RefCell::new(holon.clone()));
-    //     self.staged_holons.push(Rc::clone(&rc_holon));
-    //     let holon_index = self.staged_holons.len() - 1;
-    //     let mut key: Option<MapString> = None;
-    //     if let Some(the_key) = holon.get_key().unwrap() {
-    //         key = Some(the_key.clone());
-    //         self.index.insert(the_key, holon_index);
-    //     }
-    //     StagedReference { key, holon_index }
-    // }
-
-
-
-    // Constructor function for creating StagedReference from an index into CommitManagers StagedHolons
-    // pub fn get_reference_from_index(&self, index: MapInteger) -> Result<StagedReference, HolonError> {
-    //
-    //     // Ensure index is valid
-    //     let holon_index = index.0 as usize;
-    //     if holon_index < 0 || holon_index > self.staged_holons.len() {
-    //         Err(HolonError::IndexOutOfRange(index.0.to_string()))
-    //     }
-    // let key = rc_holon.borrow().get_key()?;
-
-    //     Ok(StagedReference { key, holon_index })
-    // }
+ 
 
     pub fn clone_holon(
         &mut self,
@@ -216,10 +210,7 @@ impl CommitManager {
             .push(Rc::new(RefCell::new(holon.clone())));
 
         // Return a staged reference to the staged holon
-        let staged_reference = StagedReference {
-            key: existing_holon.key.clone(),
-            holon_index: index,
-        };
+        let staged_reference = StagedReference { holon_index: index };
 
         // Copy the existing holon's PropertyMap into the new holon
         holon.property_map = existing_holon.get_property_map(context)?;
@@ -294,7 +285,7 @@ impl CommitManager {
                     Err(HolonError::FailedToBorrow(
                         "for StagedReference".to_string(),
                     ))
-                }
+                };
             }
         }
         Err(HolonError::InvalidHolonReference(
@@ -315,7 +306,6 @@ impl CommitManager {
     ) -> Result<RefMut<Holon>, HolonError> {
         self.get_mut_holon_internal(Some(staged_reference.holon_index))
     }
-
 
     // pub fn get_mut_holon_by_index(
     //     &self,
@@ -377,10 +367,7 @@ impl CommitManager {
             .push(Rc::new(RefCell::new(holon.clone())));
 
         // Return a staged reference to the staged holon
-        let staged_reference = StagedReference {
-            key: existing_holon.key.clone(),
-            holon_index: index,
-        };
+        let staged_reference = StagedReference { holon_index: index };
 
         // Copy the existing holon's PropertyMap into the new holon
         holon.property_map = existing_holon.get_property_map(context)?;

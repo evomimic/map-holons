@@ -47,7 +47,8 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<HolonReference, Holon
     let schema = Schema::new(
         "MAP L0 Core Schema".to_string(),
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
-    );
+    )?;
+
 
     let staged_schema_ref = context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone());
     // TODO: Handle Result
@@ -65,6 +66,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<HolonReference, Holon
     // TODO: Need to retrieve the saved Schema holon by key once get_holon_by_key dance is available.
 
     Err(HolonError::NotImplemented("Incomplete implementation of  load_core_schema".to_string()))
+
 
 
 }

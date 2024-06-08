@@ -5,6 +5,7 @@ use crate::{holon_error::HolonError, relationship::RelationshipName};
 use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;
+use crate::smart_link_manager::{create_smart_link, SmartLinkInput};
 
 ///
 /// StagedCollections are editable collections of holons representing the target of a relationship
@@ -66,16 +67,9 @@ impl StagedCollection {
         }
     }
 
-    // pub fn commit(&mut self, source_id: HolonId) -> Result<(), HolonError> {
-    //     for holon_reference in self.holons.clone() {
-    //         holon_reference.commit(source_id.clone())?;
-    //     }
-    //     self.holons = Vec::new(); // is it correct to clear holons from staged collection? otherwise commit doesn't need to take mutable reference to self
-    //     Ok(())
-    // }
-    /// This method creates smartlinks for the specified relationship name from the specified
-    /// to each of the members of its collection. It assumes that all staged_holons have
-    /// been previously saved, so their holon_id is available through their saved_node
+
+    /// This method creates smartlinks from the specified source_id for the specified relationship name
+    /// to each holon its collection that has a holon_id.
     pub fn add_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
@@ -83,12 +77,21 @@ impl StagedCollection {
         name: RelationshipName,
     ) -> Result<(), HolonError> {
 
-        debug!("Entered StagedCollection::add_smartlinks_for_collection, calling commit on each holon_reference in the collection.");
+        debug!("Calling commit on each HOLON_REFERENCE in the collection for {:#?}.", name.0.clone());
         for holon_reference in self.holons.clone() {
-            holon_reference.commit_smartlink(context, source_id.clone(), name.clone())?;
+            // Only commit references to holons with id's (i.e., Saved)
+            if let Ok(target_id) = holon_reference.get_holon_id(context) {
+                let input = SmartLinkInput {
+                    from_address: source_id.clone(),
+                    to_address:target_id,
+                    relationship_descriptor: name.clone(),
+                };
+                create_smart_link(input)?;
+            }
         }
         Ok(())
     }
+
 
     // pub fn remove_holons(&mut self, holons: Vec<HolonReference>) {
     //     todo!()

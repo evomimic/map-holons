@@ -44,6 +44,20 @@ pub enum BaseValue {
     EnumValue(MapEnumValue), // this is for simple enum variants,
 }
 
+impl TryInto<String> for &BaseValue {
+    type Error = ();
+
+    fn try_into(self) -> Result<String, Self::Error> {
+        match self {
+            BaseValue::StringValue(val) => Ok(val.0.clone()),
+            BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
+            BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
+            BaseValue::EnumValue(val) => Ok(val.0.0.clone()), // Assuming EnumValue contains a String
+            _ => Err(()),
+        }
+    }
+}
+
 // TODO: Upgrade MAP Value Type System from type aliases to TupleStructs following newtype pattern
 
 // pub struct MapString (String);

@@ -15,4 +15,4 @@ Cargo.lock
 .idea
 /package-lock.json
 settings.json
-/tests/node_modules
+/tests/node_modules/
