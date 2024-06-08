@@ -1,28 +1,30 @@
 use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-
-
 use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{IntegerType};
+
+use crate::descriptor_types::IntegerType;
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
+
 /// This function defines (and describes) a new integer type. Values of this type will be stored
 /// as MapInteger. The `min_value` and `max_value` properties are unique to this IntegerType and can
 /// be used to narrow the range of legal values for this type. Agent-defined types can be the
 /// `ValueType` for a MapProperty.
 pub fn define_integer_type(
     context: &HolonsContext,
-    schema: HolonReference,
+    schema: &HolonReference,
     type_name: MapString,
     description: MapString,
-    label: MapString, // Human readable name for this type
+    label: MapString,
+    has_supertype: Option<HolonReference>,
+    described_by: Option<HolonReference>,
+    owned_by: Option<HolonReference>,
     min_value: MapInteger,
     max_value: MapInteger,
-    has_supertype: Option<StagedReference>, // this should always be ValueType
-    described_by: Option<StagedReference>,
+) -> Result<StagedReference, HolonError> {
 
-) -> IntegerType {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
@@ -36,9 +38,13 @@ pub fn define_integer_type(
         MapBoolean(true),
         described_by,
         has_supertype,
-    );
+        owned_by,
+    )?;
 
-    descriptor.0
+    let mut mut_holon = descriptor.get_mut_holon(context)?;
+
+    mut_holon
+        .borrow_mut()
         .with_property_value(
             PropertyName(MapString("min_value".to_string())),
             BaseValue::IntegerValue(min_value),
@@ -48,6 +54,6 @@ pub fn define_integer_type(
             BaseValue::IntegerValue(max_value),
         );
 
-    IntegerType(descriptor.0)
+    Ok(descriptor)
 
 }

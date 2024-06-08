@@ -1,16 +1,15 @@
 use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-
 use holons::staged_reference::StagedReference;
-use crate::type_descriptor::{define_type_descriptor};
-
-
-use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
-use crate::descriptor_types::{HolonType};
+use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 
-/// This function defines and stages (but does not persist) a new HolonDescriptor.
-/// Values for each of the HolonDescriptor properties will be set based on supplied parameters.
+use crate::type_descriptor::define_type_descriptor;
+
+/// This function defines and stages (but does not persist) a new HolonType.
+/// It adds values for each of its properties based on supplied parameters
+/// and (optionally) it adds related holons for this type's relationships
 ///
 /// *Naming Rule*:
 ///     `descriptor_name`:= `<type_name>"HolonDescriptor"`
@@ -20,17 +19,19 @@ use crate::descriptor_types::{HolonType};
 /// * COMPONENT_OF->Schema (supplied)
 /// * VERSION->SemanticVersion (default)
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
+/// * OWNED_BY->HolonSpace (if supplied)
 ///
 pub fn define_holon_type(
     context: &HolonsContext,
-    schema: HolonReference,
+    schema: &HolonReference,
     type_name: MapString,
     description: MapString,
-    label: MapString, // Human readable name for this type
-    has_supertype: Option<StagedReference>,
-    described_by: Option<StagedReference>,
+    label: MapString, // Human-readable name for this type
+    has_supertype: Option<HolonReference>,
+    described_by: Option<HolonReference>,
+    owned_by: Option<HolonReference>
 
-) -> HolonType {
+) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     let descriptor = define_type_descriptor(
@@ -45,9 +46,10 @@ pub fn define_holon_type(
         MapBoolean(false),
         has_supertype,
         described_by,
-    );
+        owned_by,
+    )?;
 
 
 
-    HolonType(descriptor.0)
+    Ok(descriptor)
 }

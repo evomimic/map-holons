@@ -1,29 +1,33 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
 use holons::context::HolonsContext;
-use holons::staged_reference::{StagedReference};
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
 
-// use holons::relationship::{RelationshipName, RelationshipTarget};
+use holons::staged_reference::StagedReference;
 
-use crate::semantic_version::set_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 
+use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
+
+use crate::semantic_version::{SemanticVersion, set_semantic_version};
+
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
-/// It is intended to be called by other define_xxx_descriptor functions
+/// It is intended to be called by other define_xxx_descriptor functions.
 ///
-/// Values for each of the TypeDescriptor _properties_ will be set based on supplied parameters.
+/// This function adds values for each of the properties shared by all type descriptors
+/// and (optionally) adds related holons for relationships shared by all type descriptors
 ///
-/// The descriptor will have the following _relationships_ populated:
-/// * DESCRIBED_BY->TypeDescriptor (if supplied)
-/// * COMPONENT_OF->Schema (supplied)
-/// * VERSION->SemanticVersion (default)
-/// * HAS_SUPERTYPE->TypeDescriptor (if supplied)
+/// For now, `version` is being treated as a MapString property and is initialized to "0.0.1"
+///
+/// This function will add the `Type-COMPONENT_OF->Schema` relationship
+/// and optionally, the following relationships:
+/// * `Type-DESCRIBED_BY->TypeDescriptor` (if supplied)
+/// * `Holon-OWNED_BY-> HolonSpace` (if supplied)
+/// * `Type-HAS_SUPERTYPE->TypeDescriptor` (if supplied)
 ///
 ///
 pub fn define_type_descriptor(
@@ -35,15 +39,16 @@ pub fn define_type_descriptor(
     description: MapString,
     label: MapString, // Human-readable name for this type
     is_dependent: MapBoolean,
-    is_value_descriptor: MapBoolean,
+    is_value_type: MapBoolean,
     described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
     is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
-    //_owned_by: HolonReference, // Holon-OWNED_BY->HolonSpace
+    owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
 ) -> Result<StagedReference, HolonError> {
+
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
     // Define a default semantic_version as a String Property
-    let version = MapString(set_semantic_version(0, 0, 1).to_string());
+    let initial_version = MapString(SemanticVersion::default().to_string());
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
@@ -73,18 +78,20 @@ pub fn define_type_descriptor(
         )
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
-            BaseValue::BooleanValue(is_value_descriptor),
+            BaseValue::BooleanValue(is_value_type),
+
         )
         .with_property_value(
             PropertyName(MapString("version".to_string())),
-            BaseValue::StringValue(version),
+            BaseValue::StringValue(initial_version),
         );
 
     // Stage the new TypeDescriptor
     let staged_reference = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(descriptor.clone())?;
+        .stage_new_holon(descriptor.clone());
+
 
     staged_reference
         .add_related_holons(
@@ -97,17 +104,26 @@ pub fn define_type_descriptor(
             .add_related_holons(
                 context,
                 RelationshipName(MapString("DESCRIBED_BY".to_string())),
-                vec![descriptor_ref])
+                vec![descriptor_ref])?
     };
     if let Some(is_subtype_of_ref) = is_subtype_of {
         staged_reference
             .add_related_holons(
                 context,
                 RelationshipName(MapString("IS_SUBTYPE_OF".to_string())),
-                vec![is_subtype_of_ref])
+                vec![is_subtype_of_ref])?
+    };
+    if let Some(owned_by_ref) = owned_by {
+        staged_reference
+            .add_related_holons(
+                context,
+                RelationshipName(MapString("OWNED_BY".to_string())),
+                vec![owned_by_ref])?
     };
 
-    staged_reference
+
+    Ok(staged_reference)
+
 }
 
 pub fn derive_descriptor_name(type_name: &MapString) -> MapString {

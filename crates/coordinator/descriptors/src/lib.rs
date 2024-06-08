@@ -8,7 +8,6 @@ pub mod descriptor_types;
 pub mod holon_descriptor;
 pub mod relationship_descriptor;
 pub mod property_descriptor;
-pub mod descriptor_api;
 pub mod value_type_loader;
 pub mod value_type_descriptor;
 

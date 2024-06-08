@@ -84,10 +84,11 @@ pub struct EnumValue(pub String);
 pub enum BaseType {
     Holon,
     Collection,
+    Property,
     Relationship,
-    Boolean,
-    Integer,
-    String,
+    // Boolean,
+    // Integer,
+    // String,
     Value(ValueType),
     ValueArray(ValueType),
 }
@@ -107,11 +108,11 @@ impl fmt::Display for BaseType {
         match self {
             BaseType::Holon => write!(f, "Holon"),
             BaseType::Collection => write!(f, "Collection"),
-            //BaseType::Composite => write!(f, "Composite"),
+            BaseType::Property => write!(f, "Property"),
             BaseType::Relationship => write!(f, "Relationship"),
-            BaseType::Boolean => write!(f, "Boolean"),
-            BaseType::Integer => write!(f, "Integer"),
-            BaseType::String => write!(f, "String"),
+            // BaseType::Boolean => write!(f, "Boolean"),
+            // BaseType::Integer => write!(f, "Integer"),
+            // BaseType::String => write!(f, "String"),
             // BaseType::EnumValue => write!(f, "EnumValue"),
             // BaseType::EnumHolon => write!(f, "EnumHolon"),
             BaseType::Value(value_type) => match value_type {
