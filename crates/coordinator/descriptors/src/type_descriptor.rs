@@ -3,17 +3,13 @@
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
-
+use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-
-use crate::semantic_version::{SemanticVersion, set_semantic_version};
-
+use crate::semantic_version::SemanticVersion;
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions.

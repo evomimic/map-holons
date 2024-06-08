@@ -23,7 +23,7 @@ pub fn load_core_value_types(context: &HolonsContext, schema: &HolonReference) -
     let label = MapString("String".to_string());
 
     info!("Preparing to stage descriptor for {:#?}", type_name.clone());
-    let descriptor = define_string_type(
+    define_string_type(
         context,
         schema,
         type_name.clone(),

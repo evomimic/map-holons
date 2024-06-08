@@ -5,7 +5,6 @@ use holons::staged_reference::StagedReference;
 use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
 
-use crate::descriptor_types::IntegerType;
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
 /// This function defines (and describes) a new integer type. Values of this type will be stored

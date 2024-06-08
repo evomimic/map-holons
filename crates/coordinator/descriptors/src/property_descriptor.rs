@@ -4,12 +4,9 @@ use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{BaseType, PropertyName};
-use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{MapBoolean, MapString};
-use crate::descriptor_types::{PropertyDescriptor};
 
-
-use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
+use crate::type_descriptor::define_type_descriptor;
 
 /// This function defines and stages (but does not persist) a new PropertyDescriptor.
 /// Values for each of the PropertyDescriptor properties will be set based on supplied parameters.

@@ -1,17 +1,3 @@
-use holons::context::HolonsContext;
-use holons::staged_reference::{StagedReference};
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-
-
-use crate::semantic_version::set_semantic_version;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
-use shared_types_holon::ValueType;
-use crate::descriptor_types::{TypeDescriptor};
-use crate::type_descriptor::define_type_descriptor;
-
 // NOTE: This file is deprecated... an intermediate holon serving only as shared supertype
 // of value type descriptors is unnecessary and just adds complication
 
