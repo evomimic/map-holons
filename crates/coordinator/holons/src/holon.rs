@@ -5,9 +5,10 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
+use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
+
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapString, PropertyValue};
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
@@ -18,6 +19,12 @@ use crate::holon_node::*;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
 
+#[derive(Debug)]
+pub enum AccessType {
+    Read,
+    Write,
+}
+
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Holon {
@@ -27,7 +34,6 @@ pub struct Holon {
     pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
-    key: Option<MapString>,
     // pub descriptor: HolonReference,
     // pub holon_space: HolonReference,
     // pub dancer : Dancer,
@@ -39,40 +45,10 @@ pub struct Holon {
 #[derive(Clone, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
-    pub relationship_map: RelationshipMap,
+    //pub relationship_map: RelationshipMap,
     key: Option<MapString>,
     pub errors: Vec<HolonError>,
 }
-
-// Move to id staged holons via index should mean that derived implementations of PartialEq and Eq
-// /// The PartialEq and Eq traits need to be implemented for Holon to support Vec operations of the CommitManager.
-// /// NOTE: Holons types are NOT required to have a Key, so we can't rely on key for identity.
-// /// * For *retrieved Holons*, the HolonId can serve as a unique id for purposes of comparison
-// /// * But *staged holons* don't have a HolonId. In this case, identity is determined on _saved_node_ and property_values
-// impl Eq for Holon {}
-//
-// impl PartialEq for Holon {
-//     fn eq(&self, other: &Self) -> bool {
-//         match (&self.state, &other.state) {
-//             (HolonState::Fetched, HolonState::Fetched) => {
-//                 if let (Some(self_address),
-//                     Some(other_address)) =
-//                     (self.saved_node.as_ref().map(|record| record.action_address()),
-//                      other.saved_node.as_ref().map(|record| record.action_address())) {
-//                     return self_address == other_address;
-//                 }
-//                 false // If action addresses are not present, they are not equal
-//             }
-//             (HolonState::Changed, HolonState::Changed) => {
-//                 self.saved_node == other.saved_node
-//             }
-//             (HolonState::New, HolonState::New) => {
-//                 self.property_map == other.property_map
-//             }
-//             _ => false, // In all other cases, Holons are not equal
-//         }
-//     }
-// }
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -81,6 +57,7 @@ pub enum HolonState {
     Fetched,
     Changed,
     Saved,
+    Abandoned,
     // SaveInProgress,
 }
 
@@ -91,6 +68,7 @@ impl fmt::Display for HolonState {
             HolonState::Fetched => write!(f, "Fetched"),
             HolonState::Changed => write!(f, "Changed"),
             HolonState::Saved => write!(f, "Saved"),
+            HolonState::Abandoned => write!(f, "Abandoned"),
         }
     }
 }
@@ -125,7 +103,6 @@ impl Holon {
             predecessor: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
-            key: None,
             errors: Vec::new(),
         }
     }
@@ -144,19 +121,42 @@ impl Holon {
             Err(HolonError::HolonNotFound(id.0.to_string()))
         }
     }
-
     pub fn get_property_value(
         &self,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         self.property_map
             .get(property_name)
             .cloned()
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
 
+    /// This function returns the primary key value for the holon or None if there is no key value
+    /// for this holon (NOTE: Not all holon types have defined keys.)
+    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
-        Ok(self.key.clone())
+        self.is_accessible(AccessType::Read)?;
+        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
+        if let Some(key) = key {
+            let string_value: String = key
+                .try_into()
+                .map_err(|_| HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string()))?;
+            Ok(Some(MapString(string_value)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_id(&self) -> Result<HolonId, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let node = self.saved_node.clone();
+        if let Some(record) = node {
+            Ok(HolonId(record.action_address().clone()))
+        } else {
+            Err(HolonError::HolonNotFound("Node is empty".to_string()))
+        }
     }
 
     pub fn into_node(self) -> HolonNode {
@@ -177,7 +177,6 @@ impl Holon {
             predecessor: None,
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
-            key: None,
             errors: Vec::new(),
         };
 
@@ -190,23 +189,6 @@ impl Holon {
         Ok(holon)
     }
 
-    // NOTE: this function doesn't check if supplied RelationshipName is a valid outbound
-    // relationship for the self holon. It probably  needs to be possible to suspend
-    // this checking while the type system is being bootstrapped, since the descriptors
-    // required by the validation may not yet exist.
-    // TODO: Add conditional validation checking when adding relationships
-    // pub fn add_related_holon(
-    //     &mut self,
-    //     name: RelationshipName,
-    //     target: RelationshipTarget,
-    // ) -> &mut Self {
-    //     self.relationship_map.insert(name, target);
-    //     match self.state {
-    //         HolonState::Fetched => self.state = HolonState::Changed,
-    //         _ => {}
-    //     }
-    //     self
-    // }
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors
@@ -214,13 +196,20 @@ impl Holon {
     // TODO: Add conditional validation checking when adding properties
     // TODO: add error checking and HolonError result
     // Possible Errors: Unrecognized Property Name
-    pub fn with_property_value(&mut self, property: PropertyName, value: BaseValue) -> &mut Self {
+    pub fn with_property_value(
+        &mut self,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
         match self.state {
-            HolonState::Fetched => self.state = HolonState::Changed,
+            HolonState::Fetched => {
+                self.state = HolonState::Changed;
+            }
             _ => {}
         }
-        self
+        Ok(self)
     }
     // // TODO: add error checking and HolonError result
     // // Possible Errors: Unrecognized Property Name
@@ -233,22 +222,9 @@ impl Holon {
     //     self
     // }
 
-    pub fn set_key_manually(&mut self, key: MapString) {
-        self.key = Some(key);
-    }
-
-    pub fn get_id(&self) -> Result<HolonId, HolonError> {
-        let node = self.saved_node.clone();
-        if let Some(record) = node {
-            Ok(HolonId(record.action_address().clone()))
-        } else {
-            Err(HolonError::HolonNotFound("Node is empty".to_string()))
-        }
-    }
-
     /// commit() saves a staged holon to the persistent store.
     ///
-    /// If the staged holon is `Fetched` or `Saved`, commit does nothing.
+    /// If the staged holon is already  `Fetched`, `Saved`, or 'Abandoned', commit does nothing.
     ///
     /// If the staged holon is `New`, commit attempts to create a HolonNode.
     ///
@@ -263,7 +239,7 @@ impl Holon {
     ///
 
     pub fn commit(&mut self) -> Result<Holon, HolonError> {
-        debug!("Entered Holon::commit");
+        debug!("Entered Holon::commit for holon in {:#?} state", self.state);
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
@@ -272,7 +248,6 @@ impl Holon {
 
                 match result {
                     Ok(record) => {
-
                         self.state = HolonState::Saved;
                         self.saved_node = Option::from(record);
 
@@ -282,7 +257,7 @@ impl Holon {
                         let holon_error = HolonError::from(error);
                         self.errors.push(holon_error.clone());
                         Err(holon_error)
-                    },
+                    }
                 }
             }
 
@@ -294,7 +269,7 @@ impl Holon {
                         previous_holon_node_hash: node.action_address().clone(),
                         updated_holon_node: self.clone().into_node(),
                     };
-                    debug!("HolonState is Changed... requesting HolonNode be updated in the DHT");
+                    debug!("Requesting HolonNode be updated in the DHT");
                     let result = update_holon_node(input);
                     match result {
                         Ok(record) => {
@@ -306,16 +281,20 @@ impl Holon {
                             let holon_error = HolonError::from(error);
                             self.errors.push(holon_error.clone());
                             Err(holon_error)
-                        },
+                        }
                     }
                 } else {
-                    let holon_error = HolonError::HolonNotFound("Holon marked Changed, but has no saved_node".to_string());
+                    let holon_error = HolonError::HolonNotFound(
+                        "Holon marked Changed, but has no saved_node".to_string(),
+                    );
                     self.errors.push(holon_error.clone());
                     Err(holon_error)
                 }
             }
+
             _ => {
-                // For either Fetched or Saved no save is needed, just return Holon
+                // For either Fetched, Saved, Abandoned, no save is needed, just return Holon
+                debug!("Skipping commit for holon in {:#?} state", self.state);
 
                 Ok(self.clone())
             }
@@ -338,16 +317,22 @@ impl Holon {
             HolonState::Saved => {
                 match self.saved_node.clone() {
                     Some(record) => {
-                        let holon_id = record.action_address().clone();
+                        let source_holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, target) in self.relationship_map.0.clone() {
-                            debug!("committing_relationship for {:#?}", name.clone());
-                            target.commit_relationship(context, HolonId::from(holon_id.clone()), name.clone())?;
+                            debug!("COMMITTING {:#?} relationship", name.clone());
+                            target.commit_relationship(
+                                context,
+                                HolonId::from(source_holon_id.clone()),
+                                name.clone(),
+                            )?;
                         }
 
                         Ok(self.clone())
                     }
-                    None => Err(HolonError::HolonNotFound("Holon marked Saved, but has no saved_node".to_string()))
+                    None => Err(HolonError::HolonNotFound(
+                        "Holon marked Saved, but has no saved_node".to_string(),
+                    )),
                 }
             }
 
@@ -381,127 +366,40 @@ impl Holon {
         }
     }
 
-    pub fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent {
+    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
+        let key = self.get_key()?;
+        Ok(EssentialHolonContent {
             property_map: self.property_map.clone(),
-            relationship_map: self.relationship_map.clone(),
-            key: self.key.clone(),
+            //relationship_map: self.relationship_map.clone(),
+            key,
             errors: self.errors.clone(),
-        }
+        })
     }
 
-    // ====
-    // pub fn commit(mut self, context: &HolonsContext) -> Result<Self, HolonError> {
-    //     //let mut holon = self.clone(); // avoid doing this?
-    //     match self.state {
-    //         HolonState::New => {
-    //             // Create a new HolonNode from this Holon and request it be created
-    //             let result = create_holon_node(self.clone().into_node());
-    //             match result {
-    //                 Ok(record) => {
-    //                     let holon_id = HolonId(record.action_address().clone());
-    //                     for (name, target) in self.relationship_map.0.clone() {
-    //                         target.commit(context, holon_id.clone(), name.clone())?;
-    //                     }
-    //                     self.saved_node = Some(record);
-    //                     self.state = HolonState::Fetched;
-    //
-    //                     Ok(self)
-    //                 }
-    //                 Err(error) => Err(HolonError::from(error)),
-    //             }
-    //         }
-    //         HolonState::Fetched => {
-    //             // Holon hasn't been changed since it was fetched
-    //             return Ok(self);
-    //         }
-    //         HolonState::Changed => {
-    //             if let Some(node) = self.saved_node.clone() {
-    //                 let input = UpdateHolonNodeInput {
-    //                     // TEMP solution for original hash is to keep it the same //
-    //                     original_holon_node_hash: node.action_address().clone(), // TODO: find way to populate this correctly
-    //                     previous_holon_node_hash: node.action_address().clone(),
-    //                     updated_holon_node: self.clone().into_node(),
-    //                 };
-    //                 let result = update_holon_node(input);
-    //                 match result {
-    //                     Ok(record) => {
-    //                         let holon_id = HolonId(record.action_address().clone());
-    //                         for (name, target) in self.clone().relationship_map.0 {
-    //                             target.commit(context, holon_id.clone(), name.clone())?;
-    //                         }
-    //                         self.saved_node = Some(record);
-    //
-    //                         Ok(self)
-    //                     }
-    //                     Err(error) => Err(HolonError::from(error)),
-    //                 }
-    //             } else {
-    //                 Err(HolonError::HolonNotFound(
-    //                     "Must have a saved node in order to update".to_string(),
-    //                 ))
-    //             }
-    //         }
-    //     }
-    // }
+    //  TODO: If state is Saved, return HolonError::NotAccessible
+    pub fn abandon_staged_changes(&mut self) -> () {
+        self.state = HolonState::Abandoned;
+    }
 
-    // =======
-    // use hdk::prelude::*;
-    // use holons_integrity::*;
-    // #[hdk_extern]
-    // pub fn create_holon(holon: Holon) -> ExternResult<Record> {
-    //     let holon_hash = create_entry(&EntryTypes::Holon(holon.clone()))?;
-    //     let record = get(holon_hash.clone(), GetOptions::default())?
-    //         .ok_or(
-    //             wasm_error!(
-    //                 WasmErrorInner::Guest(String::from("Could not find the newly created Holon"))
-    //             ),
-    //         )?;
-    //     let path = Path::from("all_holons");
-    //     create_link(path.path_entry_hash()?, holon_hash.clone(), LinkTypes::AllHolons, ())?;
-    //     Ok(record)
-    // }
-    // #[hdk_extern]
-    // pub fn get_holon(original_holon_hash: ActionHash) -> ExternResult<Option<Record>> {
-    //     let links = get_links(original_holon_hash.clone(), LinkTypes::HolonUpdates, None)?;
-    //     let latest_link = links
-    //         .into_iter()
-    //         .max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
-    //     let latest_holon_hash = match latest_link {
-    //         Some(link) => ActionHash::from(link.target.clone()),
-    //         None => original_holon_hash.clone(),
-    //     };
-    //     get(latest_holon_hash, GetOptions::default())
-    // }
-    // #[derive(Serialize, Deserialize, Debug)]
-    // pub struct UpdateHolonInput {
-    //     pub original_holon_hash: ActionHash,
-    //     pub previous_holon_hash: ActionHash,
-    //     pub updated_holon: Holon,
-    // }
-    // #[hdk_extern]
-    // pub fn update_holon(input: UpdateHolonInput) -> ExternResult<Record> {
-    //     let updated_holon_hash = update_entry(
-    //         input.previous_holon_hash.clone(),
-    //         &input.updated_holon,
-    //     )?;
-    //     create_link(
-    //         input.original_holon_hash.clone(),
-    //         updated_holon_hash.clone(),
-    //         LinkTypes::HolonUpdates,
-    //         (),
-    //     )?;
-    //     let record = get(updated_holon_hash.clone(), GetOptions::default())?
-    //         .ok_or(
-    //             wasm_error!(
-    //                 WasmErrorInner::Guest(String::from("Could not find the newly updated Holon"))
-    //             ),
-    //         )?;
-    //     Ok(record)
-    // }
-    // #[hdk_extern]
-    // pub fn delete_holon(original_holon_hash: ActionHash) -> ExternResult<ActionHash> {
-    //     delete_entry(original_holon_hash)
-    //
-    // }
+    pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
+        match access_type {
+            AccessType::Read => {
+                if self.state == HolonState::Abandoned {
+                    Err(HolonError::NotAccessible(
+                        "Read".to_string(),
+                        format!("{:?}", self.state),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+            AccessType::Write => match self.state {
+                HolonState::New | HolonState::Fetched | HolonState::Changed => Ok(()),
+                _ => Err(HolonError::NotAccessible(
+                    "Write".to_string(),
+                    format!("{:?}", self.state),
+                )),
+            },
+        }
+    }
 }

@@ -1,9 +1,18 @@
 use holons::context::HolonsContext;
+
+use holons::holon_error::HolonError;
+
+use crate::descriptor_types::IntegerDescriptor;
+use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
+
 use holons::holon_reference::HolonReference;
 
-
 use holons::staged_reference::StagedReference;
+use shared_types_holon::value_types::{
+    BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType,
+};
 use shared_types_holon::PropertyName;
+
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType};
 use crate::descriptor_types::{IntegerType};
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
@@ -12,6 +21,7 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 /// be used to narrow the range of legal values for this type. Agent-defined types can be the
 /// `ValueType` for a MapProperty.
 pub fn define_integer_type(
+
     context: &HolonsContext,
     schema: HolonReference,
     type_name: MapString,
@@ -21,8 +31,8 @@ pub fn define_integer_type(
     max_value: MapInteger,
     has_supertype: Option<StagedReference>, // this should always be ValueType
     described_by: Option<StagedReference>,
+) -> Result<IntegerType, HolonError> {
 
-) -> IntegerType {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
@@ -36,18 +46,20 @@ pub fn define_integer_type(
         MapBoolean(true),
         described_by,
         has_supertype,
-    );
+    )?;
 
-    descriptor.0
+    descriptor
+        .0
         .with_property_value(
             PropertyName(MapString("min_value".to_string())),
             BaseValue::IntegerValue(min_value),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("max_value".to_string())),
             BaseValue::IntegerValue(max_value),
-        );
+        )?;
 
-    IntegerType(descriptor.0)
+    Ok(IntegerType(descriptor.0))
 
 }
+

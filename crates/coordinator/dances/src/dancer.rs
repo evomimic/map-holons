@@ -10,9 +10,12 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::descriptors_dance_adapter::load_core_schema_dance;
-use crate::holon_dance_adapter::{add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, stage_new_holon_dance,
-    with_properties_dance };
+
+use crate::holon_dance_adapter::{
+    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
+    get_holon_by_id_dance, stage_new_holon_dance, with_properties_dance,
+};
+
 use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -46,21 +49,19 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     //info!("initializing context");
     let context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
 
-
-
     // Get the Dancer
     let dancer = Dancer::new();
 
     // TODO: If the request is a Command, add the request to the undo_list
-    info!("confirm dance is dispatchable");
-
-    // Dispatch the dance and map result to DanceResponse
-    if !dancer.dance_name_is_dispatchable(request.clone()) {
-        return Err(HolonError::NotImplemented(
-            "No function to dispatch in dispatch table".to_string(),
-        )
-        .into());
-    }
+    // info!("confirm dance is dispatchable");
+    //
+    // // Dispatch the dance and map result to DanceResponse
+    // if !dancer.dance_name_is_dispatchable(request.clone()) {
+    //     return Err(HolonError::NotImplemented(
+    //         "No function to dispatch in dispatch table".to_string(),
+    //     )
+    //     .into());
+    // }
     info!("dispatching dance");
     let dispatch_result = dancer.dispatch(&context, request);
 
@@ -70,7 +71,10 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     result.staging_area = StagingArea::from_commit_manager(&context.commit_manager.borrow());
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
-    info!("======== RETURNING FROM  Dancer::dance() with {:#?}", result.clone());
+    info!(
+        "======== RETURNING FROM  Dancer::dance() with {:#?}",
+        result.clone()
+    );
 
     Ok(result)
 }
@@ -102,6 +106,12 @@ impl Dancer {
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
+
+        dispatch_table.insert(
+            "abandon_staged_changes_foo",
+            abandon_staged_changes_dance as DanceFunction,
+        );
+
         dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
 
@@ -117,7 +127,10 @@ impl Dancer {
     // }
 
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
-        info!("checking that dance_name: {:#?} is dispatchable",request.dance_name.0.as_str() );
+        info!(
+            "checking that dance_name: {:#?} is dispatchable",
+            request.dance_name.0.as_str()
+        );
         self.dispatch_table
             .contains_key(request.dance_name.0.as_str())
     }
@@ -150,35 +163,39 @@ impl Dancer {
 ///
 
 fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
-        match dispatch_result {
-            Ok(body) => {
-                // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
-                DanceResponse {
-                    status_code: ResponseStatusCode::OK,
-                    description: MapString("Success".to_string()),
-                    body,
-                    descriptor: None, // Provide appropriate value if needed
-                    staging_area: StagingArea::new(), // Provide appropriate value if needed
-                }
+    match dispatch_result {
+        Ok(body) => {
+            // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
+            DanceResponse {
+                status_code: ResponseStatusCode::OK,
+                description: MapString("Success".to_string()),
+                body,
+                descriptor: None, // Provide appropriate value if needed
+                staging_area: StagingArea::new(), // Provide appropriate value if needed
             }
-            Err(error) => {
+        }
+        Err(error) => {
             // If the dispatch_result is an error, extract the associated string value
             let error_message = match error.clone() {
-            HolonError::EmptyField(msg)
-            | HolonError::InvalidParameter(msg)
-            | HolonError::HolonNotFound(msg)
-            | HolonError::CommitFailure(msg)
-            | HolonError::WasmError(msg)
-            | HolonError::RecordConversion(msg)
-            | HolonError::InvalidHolonReference(msg)
-            | HolonError::IndexOutOfRange(msg)
-            | HolonError::NotImplemented(msg)
-            | HolonError::MissingStagedCollection(msg)
-            | HolonError::FailedToBorrow(msg)
-            | HolonError::UnableToAddHolons(msg)
-            | HolonError::InvalidRelationship(msg, _)
-            | HolonError::CacheError(msg) => msg,
-            HolonError::ValidationError(validation_error) => validation_error.to_string(),
+                HolonError::EmptyField(msg)
+                | HolonError::InvalidParameter(msg)
+                | HolonError::HolonNotFound(msg)
+                | HolonError::CommitFailure(msg)
+                | HolonError::WasmError(msg)
+                | HolonError::RecordConversion(msg)
+                | HolonError::InvalidHolonReference(msg)
+                | HolonError::IndexOutOfRange(msg)
+                | HolonError::NotImplemented(msg)
+                | HolonError::MissingStagedCollection(msg)
+                | HolonError::FailedToBorrow(msg)
+                | HolonError::UnableToAddHolons(msg)
+                | HolonError::InvalidRelationship(msg, _)
+                | HolonError::NotAccessible(msg, _)
+                | HolonError::GuardError(msg)
+                | HolonError::UnexpectedValueType(msg, _)
+                | HolonError::CacheError(msg) => msg,
+                HolonError::ValidationError(validation_error) => validation_error.to_string(),
+
             };
 
             // Construct DanceResponse with error details
@@ -188,8 +205,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 body: ResponseBody::None, // No body since it's an error
                 descriptor: None,         // Provide appropriate value if needed
                 staging_area: StagingArea::new(), // Provide appropriate value if needed
-                }
             }
         }
     }
-
+}

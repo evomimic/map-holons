@@ -26,9 +26,11 @@ pub struct DanceResponse {
 pub enum ResponseStatusCode {
     OK,                 // 200
     Accepted,           // 202
-    BadRequest,         // 400,
+    BadRequest,         // 400
     Unauthorized,       // 401
+    Forbidden,          // 403 -- use this for authorization / permission errors
     NotFound,           // 404
+    Conflict,           // 409 -- use this when request denied due to a conflict with the current state of the resource
     ServerError,        // 500
     NotImplemented,     // 501
     ServiceUnavailable, // 503
@@ -65,7 +67,10 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidRelationship(_, _) => ResponseStatusCode::ServerError,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
+            HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
             HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
+            HolonError::GuardError(_) => ResponseStatusCode::BadRequest,
+            HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
         }
     }
 }
@@ -73,13 +78,15 @@ impl fmt::Display for ResponseStatusCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ResponseStatusCode::OK => write!(f, "200 -- OK"),
-            ResponseStatusCode::Accepted => write!(f, "202 -- Accepted"), // 202
-            ResponseStatusCode::BadRequest => write!(f, "400 -- Bad Request"), // 400,
-            ResponseStatusCode::Unauthorized => write!(f, "401 -- Unauthorized"), // 401
-            ResponseStatusCode::NotFound => write!(f, "404 -- Not Found"), // 404
-            ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"), // 500
-            ResponseStatusCode::NotImplemented => write!(f, "501 -- Not Implemented"), // 501
-            ResponseStatusCode::ServiceUnavailable => write!(f, "503 -- Service Unavailable"), // 503
+            ResponseStatusCode::Accepted => write!(f, "202 -- Accepted"),
+            ResponseStatusCode::BadRequest => write!(f, "400 -- Bad Request"),
+            ResponseStatusCode::Unauthorized => write!(f, "401 -- Unauthorized"),
+            ResponseStatusCode::Forbidden => write!(f, "403 -- Unauthorized"),
+            ResponseStatusCode::NotFound => write!(f, "404 -- Not Found"),
+            ResponseStatusCode::Conflict => write!(f, "409 -- Conflict"),
+            ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"),
+            ResponseStatusCode::NotImplemented => write!(f, "501 -- Not Implemented"),
+            ResponseStatusCode::ServiceUnavailable => write!(f, "503 -- Service Unavailable"),
         }
     }
 }

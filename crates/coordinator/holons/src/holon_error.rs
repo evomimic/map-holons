@@ -35,6 +35,12 @@ pub enum HolonError {
     CacheError(String),
     #[error("Validation error: {0}")]
     ValidationError(ValidationError),
+    #[error("{0} access not allowed while holon is in {1} state")]
+    NotAccessible(String, String),
+    #[error("Unable to cast {0} into expected ValueType: {1}")]
+    UnexpectedValueType(String, String),
+    #[error("{0} guard failed")]
+    GuardError(String),
 }
 
 impl From<WasmError> for HolonError {
@@ -50,6 +56,7 @@ impl Into<WasmError> for HolonError {
 }
 
 use std::cell::BorrowError;
+use shared_types_holon::{BaseType, BaseValue, MapString, ValueType};
 
 impl From<BorrowError> for HolonError {
     fn from(error: BorrowError) -> Self {

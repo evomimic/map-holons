@@ -4,54 +4,59 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-
+use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{Holon, HolonFieldGettable};
+use crate::holon::{AccessType, Holon, HolonFieldGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use crate::staged_collection::StagedCollection;
 use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::{MapString, PropertyValue};
-use crate::commit_manager::{CommitManager, StagedIndex};
+
+use shared_types_holon::{HolonId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct StagedReference {
-    pub key: Option<MapString>,
     // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
+impl HolonFieldGettable for StagedReference {
+    fn get_property_value(
+        &mut self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        let binding = context.commit_manager.borrow();
+        let holon = binding.get_holon(&self)?;
+        holon.get_property_value(property_name)
+    }
+
+    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+        let binding = context.commit_manager.borrow();
+        let holon = binding.get_holon(&self)?;
+        holon.get_key().clone()
+    }
+}
 
 impl StagedReference {
-
-    // Constructor function for creating StagedReference index into CommitManagers StagedHolons
-    // pub fn from_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<StagedReference, HolonError> {
-    //     let key = rc_holon.borrow().get_key()?;
-    //
-    //     Ok(StagedReference { key, holon_index })
-    // }
-
-    // // Method to clone the underlying Holon object
-    // pub fn clone_holon(&self, context: &HolonsContext) -> Holon {
-    //     context.commit_manager.borrow().staged_holons[self.holon_index]
-    //         .borrow()
-    //         .clone()
-    // }
-
+    pub fn get_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+        let binding = context.commit_manager.borrow();
+        let holon = binding.get_holon(&self)?;
+        holon.get_id()
+    }
     pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let holon_ref = self.get_mut_holon(context)?;
         let mut borrowed_holon = holon_ref.borrow_mut();
         borrowed_holon.commit()
     }
 
-
     pub fn clone_reference(&self) -> StagedReference {
         StagedReference {
-            key: self.key.clone(),
             holon_index: self.holon_index.clone(),
         }
     }
+
 
     /// Use this method to get a copy of the staged holon referenced by this StagedReference.
     /// NOTE: The cloned holon is NOT, itself, staged by the CommitManager
@@ -78,6 +83,7 @@ impl StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::add_related_holons");
+
         // Ensure the existence of an editable collection for the specified relationship name
         self.ensure_editable_collection(context, relationship_name.clone())?;
         debug!("In StagedReference::add_related_holons, got the editable_collection");
@@ -88,6 +94,9 @@ impl StagedReference {
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
         debug!("In StagedReference::add_related_holons, getting collection for relationship name");
+
+        // Ensure is accessible for Write
+        holon.is_accessible(AccessType::Write)?;
 
         // Retrieve the editable collection for the specified relationship name
         let editable_collection = match holon.relationship_map.0.get_mut(&relationship_name) {
@@ -116,8 +125,6 @@ impl StagedReference {
     /// RelationshipTarget, verify that a relationship with the specified relationship_name is valid for this holon type
     ///
 
-
-    // HERE"S THE CHATGPT VERSION
     fn ensure_editable_collection(
         &self,
         context: &HolonsContext,
@@ -131,9 +138,15 @@ impl StagedReference {
         let mut holon = holon_ref.borrow_mut();
         debug!("Borrowed holon mutably in ensure_editable_collection");
 
-        holon.relationship_map.0.entry(relationship_name.clone())
+        holon
+            .relationship_map
+            .0
+            .entry(relationship_name.clone())
             .or_insert_with(|| {
-                debug!("Creating new editable collection for relationship: {:?}", relationship_name);
+                debug!(
+                    "Creating new editable collection for relationship: {:?}",
+                    relationship_name
+                );
                 // Create a StagedCollection
                 let staged_collection = StagedCollection {
                     source_holon: Some(self.clone()), // Set source_holon to a StagedReference to the same holon
@@ -149,10 +162,12 @@ impl StagedReference {
                 }
             });
 
-        debug!("ensure_editable_collection completed successfully for relationship: {:?}", relationship_name);
+        debug!(
+            "ensure_editable_collection completed successfully for relationship: {:?}",
+            relationship_name
+        );
         Ok(true) // Return true indicating success
     }
-
 
     pub fn get_relationship_map(
         &mut self,
@@ -194,23 +209,21 @@ impl StagedReference {
         }
     }
 
+    pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
+        debug!(
+            "Entered: abandon_staged_changes for staged_index: {:#?}",
+            self.holon_index
+        );
+        // Get mutable access to the source holon
+        let holon_ref = self.get_mut_holon(context)?;
 
-}
+        // Borrow the holon from the RefCell
+        let mut holon = holon_ref.borrow_mut();
 
-impl HolonFieldGettable for StagedReference {
-    fn get_property_value(
-        &mut self,
-        context: &HolonsContext,
-        property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError> {
-        let binding = context.commit_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        holon.get_property_value(property_name)
-    }
+        debug!("borrowed mut for holon: {:#?}", self.holon_index);
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        let binding = context.commit_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        holon.get_key().clone()
+        holon.abandon_staged_changes();
+
+        Ok(())
     }
 }

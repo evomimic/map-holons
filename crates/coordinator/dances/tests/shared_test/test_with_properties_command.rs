@@ -40,10 +40,12 @@ pub async fn execute_with_properties(
     test_state: &mut DanceTestState,
     staged_holon_index: StagedIndex,
     properties: PropertyMap,
-) ->() {
+    expected_response: ResponseStatusCode,
+)  {
 
     info!("\n\n--- TEST STEP: with_properties Command:");
     // Get the state of the holon prior to dancing the request
+    debug!("trying to get staged_holon at staged_holon_index: {:#?}", staged_holon_index);
     let staged_holon = test_state.staging_area.staged_holons.get(staged_holon_index);
     match staged_holon {
         None => {
@@ -53,7 +55,10 @@ pub async fn execute_with_properties(
             // Create the expected_holon from the original_holon + the supplied property values
             let mut expected_holon = original_holon.clone();
             for (property_name, base_value) in properties.clone() {
-                expected_holon.with_property_value(property_name.clone(), base_value.clone());
+                let result = expected_holon.with_property_value(property_name.clone(), base_value.clone());
+                if let Err(e) = result {
+                    panic!("Unabled to add property value to expected holon, due to: {:#?}", e);
+                }
             }
             // Build a with_properties DanceRequest
             let request = build_with_properties_dance_request(test_state.staging_area.clone(), staged_holon_index, properties.clone());
@@ -68,6 +73,7 @@ pub async fn execute_with_properties(
                     let code = response.status_code;
                     let description = response.description.clone();
                     test_state.staging_area = response.staging_area.clone();
+                    assert_eq!(expected_response,code.clone());
                     if let ResponseStatusCode::OK = code {
 
                         if let Index(index) = response.body {
