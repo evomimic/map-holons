@@ -44,7 +44,7 @@ impl fmt::Display for DanceTestStep {
                 holons_to_add,
                 expected_response,
             ) => {
-                write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", index, relationship_name, holons_to_add.len(), expected_response )
+                write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", index, relationship_name, holons_to_add.len(), expected_response)
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
@@ -72,9 +72,9 @@ impl fmt::Display for DanceTestStep {
                     "Marking Holon at ({:#?}) as Abandoned, expecting ({:#?})",
                     index, expected_response
                 )
+            }
             DanceTestStep::LoadCoreSchema => {
                 write!(f, "LoadCoreSchema")
-
             }
         }
     }

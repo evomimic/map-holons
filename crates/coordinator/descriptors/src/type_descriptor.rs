@@ -51,42 +51,42 @@ pub fn define_type_descriptor(
         .with_property_value(
             PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(type_name),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("descriptor_name".to_string())),
             BaseValue::StringValue(descriptor_name),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(description),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("label".to_string())),
             BaseValue::StringValue(label),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
             BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string()))),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(is_dependent),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
             BaseValue::BooleanValue(is_value_type),
 
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("version".to_string())),
             BaseValue::StringValue(initial_version),
-        );
+        )?;
 
     // Stage the new TypeDescriptor
     let staged_reference = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(descriptor.clone());
+        .stage_new_holon(descriptor.clone())?;
 
 
     staged_reference

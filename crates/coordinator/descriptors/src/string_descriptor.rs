@@ -57,11 +57,11 @@ pub fn define_string_type(
         .with_property_value(
             PropertyName(MapString("min_length".to_string())),
             BaseValue::IntegerValue(min_length),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("max_length".to_string())),
             BaseValue::IntegerValue(max_length),
-        );
+        )?;
 
 
     Ok(descriptor)

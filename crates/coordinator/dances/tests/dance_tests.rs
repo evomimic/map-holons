@@ -115,7 +115,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::MatchSavedContent => execute_match_db_content(&conductor, &cell, &mut test_state,).await,
             DanceTestStep::AbandonStagedChanges(staged_index, expected_response) => execute_abandon_staged_changes(&conductor, &cell, &mut test_state, staged_index, expected_response).await,
             DanceTestStep::LoadCoreSchema => execute_load_new_schema(&conductor, &cell, &mut test_state).await,
->
+
         }
     }
     info!("-------------- END OF {name} TEST CASE  ------------------");

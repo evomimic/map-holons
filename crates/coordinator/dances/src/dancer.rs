@@ -10,6 +10,7 @@ use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
+use crate::descriptors_dance_adapter::load_core_schema_dance;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,

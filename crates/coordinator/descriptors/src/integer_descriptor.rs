@@ -47,11 +47,11 @@ pub fn define_integer_type(
         .with_property_value(
             PropertyName(MapString("min_value".to_string())),
             BaseValue::IntegerValue(min_value),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("max_value".to_string())),
             BaseValue::IntegerValue(max_value),
-        );
+        )?;
 
     Ok(descriptor)
 

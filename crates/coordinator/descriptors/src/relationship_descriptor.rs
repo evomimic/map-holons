@@ -66,19 +66,19 @@ pub fn define_relationship_type(
         .with_property_value(
             PropertyName(MapString("min_target_cardinality".to_string())),
             BaseValue::IntegerValue(min_target_cardinality),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("max_target_cardinality".to_string())),
             BaseValue::IntegerValue(max_target_cardinality),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("deletion_semantic".to_string())),
             BaseValue::EnumValue(deletion_semantic.to_enum_variant()),
-        )
+        )?
         .with_property_value(
             PropertyName(MapString("affinity".to_string())),
             BaseValue::IntegerValue(affinity),
-        );
+        )?;
 
     // Add its relationships
     if let Some(descriptor_ref) = target_holon_type {
