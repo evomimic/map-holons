@@ -53,8 +53,14 @@ pub fn load_core_schema_dance(context: &HolonsContext, request: DanceRequest) ->
             // Call the native load_core_schema function
             let result = load_core_schema(context);
             match result {
-                Ok(schema_ref)=> {
-                    Ok(ResponseBody::HolonReference(schema_ref))
+                Ok(commit_response)=> {
+                    match commit_response.status {
+                        Complete => Ok(ResponseBody::None),
+                        Incomplete => {
+                            Err(HolonError::CommitFailure("Incomplete commit".to_string()))
+                        }
+                    }
+
                 }
                 Err(e) => Err(e),
             }

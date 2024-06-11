@@ -1,5 +1,6 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
+use hdk::prelude::{info,debug,trace,warn};
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
@@ -41,13 +42,20 @@ pub fn define_type_descriptor(
     owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
 ) -> Result<StagedReference, HolonError> {
 
+    info!("Staging... {:#?}", type_name.0.clone());
+
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
+
     // Define a default semantic_version as a String Property
     let initial_version = MapString(SemanticVersion::default().to_string());
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(type_name.clone()),
+        )?
         .with_property_value(
             PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(type_name),
@@ -83,6 +91,9 @@ pub fn define_type_descriptor(
         )?;
 
     // Stage the new TypeDescriptor
+
+    debug!("{:#?}", descriptor.clone());
+
     let staged_reference = context
         .commit_manager
         .borrow_mut()

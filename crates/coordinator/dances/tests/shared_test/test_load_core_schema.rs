@@ -54,12 +54,10 @@ pub async fn execute_load_new_schema(
             let description = response.description.clone();
             test_state.staging_area = response.staging_area.clone();
             if let ResponseStatusCode::OK = code {
-                if let ResponseBody::Holon(schema) = response.body {
-                    debug!("{:#?} returned in body", schema);
-
+                if let ResponseBody::None = response.body.clone() {
                     info!("Success! Load Schema Completed without error");
                 } else {
-                    panic!("Expected schema holon in the response body, but didn't get one!");
+                    panic!("Expected `None` in response body, but got {:#?} instead!",response.body.clone());
                 }
             } else {
                 panic!("DanceRequest returned {code} for {description}");

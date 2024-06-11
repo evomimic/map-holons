@@ -32,6 +32,8 @@ pub fn define_holon_type(
     owned_by: Option<HolonReference>
 
 ) -> Result<StagedReference, HolonError> {
+
+
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     let descriptor = define_type_descriptor(

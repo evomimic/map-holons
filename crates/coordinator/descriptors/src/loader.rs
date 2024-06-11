@@ -1,13 +1,15 @@
 use hdk::prelude::{info,debug,trace,warn};
-use holons::commit_manager::CommitManager;
+use holons::commit_manager::{CommitManager, CommitResponse};
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
 
 use holons::staged_reference::StagedReference;
+use shared_types_holon::MapString;
 
-use crate::descriptor_types::Schema;
+use crate::descriptor_types::{META_HOLON_TYPE, Schema, SCHEMA_NAME};
+use crate::holon_descriptor::define_holon_type;
 use crate::value_type_loader::load_core_value_types;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
@@ -39,36 +41,76 @@ use crate::value_type_loader::load_core_value_types;
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<HolonReference, HolonError> {
+pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, HolonError> {
 
-    // Begin by staging and committing `schema`. It's HolonReference becomes the target of
+    info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
+    // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
 
+
     let schema = Schema::new(
-        "MAP L0 Core Schema".to_string(),
+        SCHEMA_NAME.to_string(),
         "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
     )?;
 
+    info!("Staging Schema...");
+    let staged_schema_ref = HolonReference::Staged(context
+        .commit_manager
+        .borrow_mut().
+        stage_new_holon(schema.0.clone()
+        )?);
 
-    let staged_schema_ref = context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone());
-    // TODO: Handle Result
-    info!("Committing schema {:#?}", schema.0.clone());
+
+    let type_name = MapString(META_HOLON_TYPE.to_string());
+    let description = MapString("The meta type that specifies the properties, relationships, \
+    and dances of the base HolonType".to_string());
+    let label = MapString("Holon Type Descriptor".to_string());
+
+    let meta_holon_type_ref = HolonReference::Staged(define_holon_type(
+        context,
+        &staged_schema_ref,
+        type_name,
+        description,
+        label,
+        None,
+        None,
+        None
+    )?);
+
+
+    let type_name = MapString("HolonType".to_string());
+    let description = MapString("This type specifies the properties, relationships, and dances \
+    for a type of Holon.".to_string());
+    let label = MapString("Holon Type Descriptor".to_string());
+
+    let holon_type_ref = define_holon_type(
+        context,
+        &staged_schema_ref,
+        type_name,
+        description,
+        label,
+        None,
+        Some(meta_holon_type_ref.clone()),
+        None
+    )?;
+
+
+
+
+
+
+    info!("^^^^^^^ STAGING COMPLETE: Committing schema...");
 
     let response = CommitManager::commit(context);
-    // Check if Commit is Complete, get a SmartReference to the saved SchemaHolon
 
+    let r = response.clone();
 
+    info!("Commit Response: {:#?}", r.status);
+    info!("Commits Attempted: {:#?}", r.commits_attempted.0.to_string());
+    info!("Holons Saved: {:#?}", r.saved_holons.len());
+    info!("Abandoned: {:#?}", r.abandoned_holons.len());
 
-
-
-    //load_core_value_types(context, &schema_ref);
-
-    // TODO: Need to retrieve the saved Schema holon by key once get_holon_by_key dance is available.
-
-    Err(HolonError::NotImplemented("Incomplete implementation of  load_core_schema".to_string()))
-
-
-
+    Ok(response)
 }
 
 // pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, HolonError> {
