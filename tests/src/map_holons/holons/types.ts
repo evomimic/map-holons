@@ -27,7 +27,7 @@ type PropertyName = string
 export type PropertyMap = Record<PropertyName, PropertyValue>;
 
 type StagedReference = {
-  key?: string,
+  //key?: string,
   // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
   holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
@@ -35,8 +35,8 @@ type StagedReference = {
 type SmartReference = {
   //holon_space_id: Option<SpaceId>
   holon_id: HoloHash,
-  key?: string,
-  rc_holon?: null, //Rc<Holon>,
+  //key?: string,
+  //rc_holon?: null, //Rc<Holon>,
   smart_property_values?: PropertyMap
 }
 
@@ -103,10 +103,10 @@ export enum ResponseBodyEnum {
   Holon = "Holon",
   Holons = "HolonList", // will be replaced by SmartCollection once supported
   // SmartCollection(SmartCollection),
-  Index = "StagedIndex"
+  Index = "Index" //StagedIndex"
 }
 
-type ResponseBodyMap = {
+export type ResponseBodyMap = {
   [ResponseBodyEnum.None]:null,
   [ResponseBodyEnum.Holon]: Holon,
   [ResponseBodyEnum.Holons]: Holon[],
@@ -146,7 +146,7 @@ export type DanceTypeMap = {
 export type DanceTypeObject = { [K in keyof DanceTypeMap]: {[key in K]: DanceTypeMap[K]}}[keyof DanceTypeMap];
 export type DanceType = string | [string,HoloHashB64] | [string,StagedIndex]
 
-export type DanceRequest = {
+export type DanceRequestObject = {
   dance_name: string //MapString, // unique key within the (single) dispatch table
   dance_type: DanceTypeObject,
   body: RequestBodyObject,
@@ -154,12 +154,12 @@ export type DanceRequest = {
   //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
 
-export type DanceResponse = {
-    status_code: ResponseStatusCode,
-    description: string,
-    body: ResponseBody,
-    descriptor?: HolonReference, // space_id+holon_id of DanceDescriptor
-    staging_area: StagingArea,
+export type DanceResponseObject = {
+  status_code: ResponseStatusCode,
+  description: string,
+  body: ResponseBody,
+  descriptor?: HolonReference, // space_id+holon_id of DanceDescriptor
+  staging_area: StagingArea
 }
 
 
