@@ -2,19 +2,6 @@ import { CallableCell } from '@holochain/tryorama';
 import { NewEntryAction, ActionHash, Record, AppBundleSource, fakeActionHash, fakeAgentPubKey, fakeEntryHash, fakeDnaHash } from '@holochain/client';
 import { BaseValue, BaseValueList, DanceRequestObject, Holon, WithPropertyInput, DanceTypeEnum, RequestBodyEnum, DanceResponseObject, DanceType, RequestBody, DanceTypeObject, RequestBodyObject, TargetHolons, StagingArea, PropertyMap, ResponseStatusCode, ResponseBody, HolonReference, ResponseBodyEnum } from './types';
 
-
-export function send_dance_request(cell: CallableCell, name:string, type:DanceTypeObject, body:RequestBodyObject):Promise<DanceResponseObject> {
-    const data:DanceRequestObject = { 
-        dance_name:name,
-        dance_type:type,
-        body: body,
-        staging_area:{staged_holons:[],index:{}}
-
-    }
-    return cell.callZome({zome_name: "dances", fn_name: "dance", payload: data})
-}
-
-
 export function createHolon(props:PropertyMap):Holon {
     return {
         state: { New: null },
@@ -29,18 +16,7 @@ export function createHolon(props:PropertyMap):Holon {
 }
 
 
-export async function withProperty(cell: CallableCell, emptyholon: Holon, property:string = undefined, propertyvalue:BaseValueList = undefined): Promise<Holon> {
-    const propertyObject: WithPropertyInput = { holon: emptyholon, property_name:property, value:propertyvalue }
-    return cell.callZome({
-      zome_name: "holons",
-      fn_name: "with_property_value",
-      payload: propertyObject //|| await sampleHolon(cell),
-    });
-}
-
-
-
-// alternative helper class
+// helper class
 export class DanceResponse  {
     public status_code: ResponseStatusCode
     public description: string
@@ -64,11 +40,11 @@ export class DanceResponse  {
         return this.staging_area.index
     }
     //wip
-    findIndexbyKey(key:string):number{
-        if (this.body.type === ResponseBodyEnum.Holons)
-            return 0
-        return 0
-    }
+    //findIndexbyKey(key:string):number{
+      //  if (this.body.type === ResponseBodyEnum.Holons)
+       //     return 0
+      //  return 0
+   // }
 
 }
 
