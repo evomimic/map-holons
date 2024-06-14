@@ -29,14 +29,14 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     let alicerequest = new DanceRequest(alice.cells[0])
 
     //task 1 - get all holons
-    console.log("---- alice gets all holons to ensure the staging area is empty\n")
+    console.log("---- alice gets all holons to ensure the persistent store is empty\n")
     let response = await alicerequest.readall("get_all_holons")
     //console.log(response)
     assert.equal(response.getStagedObjects().length, 0);
 
 
     //task 2 - create empty holon by not providing one
-    console.log('----- Alice creates a new empty Holon for Book\n')
+    console.log('----- Alice stages a new empty Holon for Book\n')
     response = await alicerequest.createOneEmpty("stage_new_holon")
     //assertions
     assert.equal(response.getStagedObjects().length, 1);
@@ -62,7 +62,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
 
 
     //task 4 - add description to existing book holon
-    console.warn("---- Alice adds a decription property to the book Holon at index 0\n") 
+    console.warn("---- Alice adds a description property to the book Holon at index 0\n")
     properties = {}
     properties["description"] = {[BaseValueType.StringValue]:"some description"}
     response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
@@ -77,7 +77,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
 
 
     // task 5 - build a person holon and send it in the body
-    console.warn("--- Alice builds and adds a new person holon\n") 
+    console.warn("--- Alice builds and stages a new person holon\n")
     properties = {}
     properties["first_name"] = {[BaseValueType.StringValue]:"Thomas"}
     properties["favourite number"] = {[BaseValueType.IntegerValue]:42}
@@ -105,7 +105,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
 
 
     //task 7 - get all holons
-    console.warn(" -- alice gets all holons to ensure the staging area matches\n")
+    console.warn(" -- alice gets all holons to ensure the persistent store matches\n")
     response = await alicerequest.readall("get_all_holons")
     //assertions:
     console.log("final response",response)
