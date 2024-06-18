@@ -1,11 +1,11 @@
 import { assert, test } from "vitest";
 
 import { runScenario, pause, CallableCell, dhtSync } from '@holochain/tryorama';
-import { NewEntryAction, ActionHash, AppBundleSource,  fakeActionHash, fakeAgentPubKey, fakeEntryHash } from '@holochain/client';
+import {  } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 
-import { createHolon, send_dance_request } from './common.js';
-import { BaseValueType, DanceResponse, Holon, DanceTypeEnum, RequestBodyEnum, PropertyMap, ResponseStatusCodeMap  } from "./types.js";
+import { DanceRequest, createHolon } from './common.js';
+import { BaseValueType, Holon, PropertyMap, ResponseStatusCodeMap, ResponseBodyEnum  } from "./types.js";
 
 test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
   await runScenario(async scenario => {
@@ -24,111 +24,91 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     // conductor of the scenario.
     await scenario.shareAllAgents();
     //---------------------------------------------------------------
-
+    
+    //create instance of the DanceRequest class
+    let alicerequest = new DanceRequest(alice.cells[0])
 
     //task 1 - get all holons
-    console.warn("alice gets all holons to ensure the staging area is empty")
-    let response: DanceResponse =  await send_dance_request(
-      alice.cells[0],
-      "get_all_holons",
-      {[DanceTypeEnum.Standalone]:null},
-      {[RequestBodyEnum.None]: null},
-      {staged_holons:[],index:{}}
-    );
-    console.log(response)
-    assert.equal(response.staging_area.staged_holons.length, 0);
+    console.log("---- alice gets all holons to ensure the persistent store is empty\n")
+    let response = await alicerequest.readall("get_all_holons")
+    //console.log(response)
+    assert.equal(response.getStagedObjects().length, 0);
+
 
     //task 2 - create empty holon by not providing one
-    console.warn('Alice creates a new empty Holon for Book')
-    response = await send_dance_request(
-      alice.cells[0],
-      "stage_new_holon",
-      {[DanceTypeEnum.Standalone]:null},
-      {[RequestBodyEnum.None]: null},
-      {staged_holons:[],index:{}}
-    );
-    console.log(response)
-    assert.equal(response.staging_area.staged_holons.length, 1);
-    assert.equal(Object.values(response.body)[0], 0);
-    //update index data
-    response.staging_area.index["Book"] = 0
+    console.log('----- Alice stages a new empty Holon for Book\n')
+    response = await alicerequest.createOneEmpty("stage_new_holon")
+    //assertions
+    assert.equal(response.getStagedObjects().length, 1);
+    assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index);
+    let holonindex = Object.values(response.body)[0]
+    //console.log("index response:",holonindex )
+    assert.equal(holonindex, 0);
+
 
     //task 3 - add a title property to holon at index 0
-    console.warn("Alice adds a title property to the Book Holon at index 0")
+    console.log(" -- -- Alice adds a title property to the Book Holon at index 0\n")
     let properties:PropertyMap = {}
     properties["title"] = {[BaseValueType.StringValue]:"mybook"}
-    response = await send_dance_request(
-      alice.cells[0],
-      "with_properties",
-      {[DanceTypeEnum.CommandMethod]:0},
-      {[RequestBodyEnum.ParameterValues]: properties},
-      response.staging_area
-    );
-    console.log(response)
+    response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
+    //console.log(response)
+    //assertions:
+    assert.equal(response.getStagedObjects().length, 1);
     assert.equal(Object.keys(response.status_code)[0], ResponseStatusCodeMap.OK);
-    assert.equal(Object.values(response.body)[0], 0);
-    //update index data
-    response.staging_area.index["Book"] = 0
+    assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
+    holonindex = Object.values(response.body)[0]
+    assert.equal(holonindex, 0);
+
+
 
     //task 4 - add description to existing book holon
-    console.warn("Alice adds a decription property to the book Holon at index 0") 
+    console.warn("---- Alice adds a description property to the book Holon at index 0\n")
     properties = {}
     properties["description"] = {[BaseValueType.StringValue]:"some description"}
-    response = await send_dance_request(
-      alice.cells[0],
-      "with_properties",
-      {[DanceTypeEnum.CommandMethod]:0},
-      {[RequestBodyEnum.ParameterValues]: properties},
-      response.staging_area
-    );
-    console.log("property add result:",response)
+    response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
+    //assertions
+    //console.log("property add result:",response)
+    assert.equal(response.getStagedObjects().length, 1);
     assert.equal(Object.keys(response.status_code)[0], ResponseStatusCodeMap.OK);
-    assert.equal(Object.values(response.body)[0], 0);
+    assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
+    holonindex = Object.values(response.body)[0]
+    assert.equal(holonindex, 0);
+
+
 
     // task 5 - build a person holon and send it in the body
-    console.warn("Alice builds and adds a new person holon") 
+    console.warn("--- Alice builds and stages a new person holon\n")
     properties = {}
     properties["first_name"] = {[BaseValueType.StringValue]:"Thomas"}
     properties["favourite number"] = {[BaseValueType.IntegerValue]:42}
     let holon:Holon = createHolon(properties)
-    response = await send_dance_request(
-      alice.cells[0],
-      "stage_new_holon",
-      {[DanceTypeEnum.Standalone]:null},
-      {[RequestBodyEnum.ParameterValues]: properties},
-      response.staging_area
-    );
-    console.log("New holon result",response)
-    assert.equal(response.staging_area.staged_holons.length, 2);
-    assert.equal(Object.values(response.body)[0], 1);
-    //update index data
-    response.staging_area.index["Person"] = 1
+    response = await alicerequest.createOne("stage_new_holon",holon)
+    //assertions
+    //console.log("New holon result",response)
+    assert.equal(response.getStagedObjects().length, 2);
+    assert.equal(Object.keys(response.status_code)[0], ResponseStatusCodeMap.OK);
+    assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
+    holonindex = Object.values(response.body)[0]
+    assert.equal(holonindex, 1);
 
-    // task 5 - commit staged holons
-    console.warn("Alice commits all staged holons") 
-    response = await send_dance_request(
-      alice.cells[0],
-      "commit",
-      {[DanceTypeEnum.Standalone]:null},
-      {[RequestBodyEnum.None]: null},
-      response.staging_area
-    );
+
+
+    // task 6 - commit staged holons
+    console.log("--- Alice commits all staged holons\n") 
+    response = await alicerequest.commit("commit")
+    //assertions:
     console.log("commit result",response)
-    assert.equal(response.staging_area.staged_holons.length, 0);
+    assert.equal(response.getStagedObjects().length, 0);
     assert.equal(Object.keys(response.body)[0], "Holons");
     assert.equal(Object.values(response.body)[0].length, 2); //2 holons committed
 
 
+
     //task 7 - get all holons
-    console.warn("alice gets all holons to ensure the staging area matches")
-    response =  await send_dance_request(
-      alice.cells[0],
-      "get_all_holons",
-      {[DanceTypeEnum.Standalone]:null},
-      {[RequestBodyEnum.None]: null},
-      response.staging_area
-    );
-    console.log("final",response)
+    console.warn(" -- alice gets all holons to ensure the persistent store matches\n")
+    response = await alicerequest.readall("get_all_holons")
+    //assertions:
+    console.log("final response",response)
     assert.equal(Object.keys(response.body)[0], "Holons");
     const holons:Holon[] = Object.values(response.body)[0]
     assert.equal(holons.length, 2); //2 holons committed

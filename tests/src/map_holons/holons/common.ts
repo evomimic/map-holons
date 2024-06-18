@@ -1,34 +1,6 @@
 import { CallableCell } from '@holochain/tryorama';
 import { NewEntryAction, ActionHash, Record, AppBundleSource, fakeActionHash, fakeAgentPubKey, fakeEntryHash, fakeDnaHash } from '@holochain/client';
-import { BaseValue, BaseValueList, DanceRequest, Holon, WithPropertyInput, DanceTypeEnum, RequestBodyEnum, DanceResponse, DanceType, RequestBody, DanceTypeObject, RequestBodyObject, TargetHolons, StagingArea, PropertyMap } from './types';
-
-export function build_dance_request(danceName:string):DanceRequest {
-    return { 
-        dance_name:danceName,
-        dance_type:{[DanceTypeEnum.Standalone]:null},
-        body: {[RequestBodyEnum.None]:null},
-        staging_area: {staged_holons:[],index:{}}
-    }
-}
-
-export function send_dance_request(cell: CallableCell, name:string, type:DanceTypeObject, body:RequestBodyObject, stage:StagingArea):Promise<DanceResponse> {
-    const data:DanceRequest = { 
-        dance_name:name,
-        dance_type:type,
-        body: body,
-        staging_area: stage
-    }
-    return cell.callZome({zome_name: "dances", fn_name: "dance", payload: data})
-}
-
-export async function sampleHolon(cell: CallableCell, partialHolon = {}) {
-    return {
-        ...{
-	  descriptor: (await fakeActionHash()),
-        },
-        ...partialHolon
-    };
-}
+import { BaseValue, BaseValueList, DanceRequestObject, Holon, WithPropertyInput, DanceTypeEnum, RequestBodyEnum, DanceResponseObject, DanceType, RequestBody, DanceTypeObject, RequestBodyObject, TargetHolons, StagingArea, PropertyMap, ResponseStatusCode, ResponseBody, HolonReference, ResponseBodyEnum } from './types';
 
 export function createHolon(props:PropertyMap):Holon {
     return {
@@ -44,31 +16,109 @@ export function createHolon(props:PropertyMap):Holon {
 }
 
 
-export async function addProperty(cell: CallableCell, emptyholon: Holon, property:string = undefined, propertyvalue:BaseValueList = undefined): Promise<Holon> {
-    const propertyObject: WithPropertyInput = { holon: emptyholon, property_name:property, value:propertyvalue }
-    return cell.callZome({
-      zome_name: "holons",
-      fn_name: "with_property_value",
-      payload: propertyObject //|| await sampleHolon(cell),
-    });
+// helper class
+export class DanceResponse  {
+    public status_code: ResponseStatusCode
+    public description: string
+    public body: ResponseBody
+    public descriptor?: HolonReference // space_id+holon_id of DanceDescriptor
+    private staging_area: StagingArea
+
+    constructor (private dr:DanceResponseObject){
+      this.status_code = dr.status_code
+      this.description = dr.description
+      this.body = dr.body
+      this.descriptor = dr.descriptor
+      this.staging_area = dr.staging_area
+    }
+
+    getStagedObjects(){
+        return this.staging_area.staged_holons
+    }
+
+    getStagedIndex(){
+        return this.staging_area.index
+    }
+    //wip
+    //findIndexbyKey(key:string):number{
+      //  if (this.body.type === ResponseBodyEnum.Holons)
+       //     return 0
+      //  return 0
+   // }
+
 }
 
+//helper classes
+export class DanceRequest  {
+    zome_name = "dances"
+    zome_fn = "dance"
+    cell:CallableCell
+    staging_area: StagingArea = {staged_holons:[],index:{}}
 
+    constructor (private agent:CallableCell){
+        this.cell = agent
+    }
 
-export async function sampleHolonNode(cell: CallableCell, partialHolonNode = {}) {
-    return {
-        ...{
-	  dummy_field: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-        },
-        ...partialHolonNode
-    };
-}
+    private async callzome(data:DanceRequestObject):Promise<DanceResponse> {
+        const response:DanceResponseObject = await this.cell.callZome({zome_name: this.zome_name, fn_name: this.zome_fn, payload: data})
+        this.staging_area = response.staging_area
+        return new DanceResponse(response)
+    }
 
-export async function createHolonNode(cell: CallableCell, holonNode = undefined): Promise<Record> {
-    return cell.callZome({
-      zome_name: "holons",
-      fn_name: "create_holon_node",
-      payload: holonNode || await sampleHolonNode(cell),
-    });
+    // readall is standalone request with no parameters or properties
+    public async readall(name:string):Promise<DanceResponse> {
+        const dro:DanceRequestObject = {
+            dance_name:name,
+            dance_type:{[DanceTypeEnum.Standalone]:null},
+            body:{[RequestBodyEnum.None]: null},
+            staging_area:this.staging_area
+        } 
+        return this.callzome(dro)
+    }
+    
+    /* create one using the stage request with no parameters or properties */
+    public async createOneEmpty(name:string):Promise<DanceResponse> {
+        const dro:DanceRequestObject = {
+            dance_name:name,
+            dance_type:{[DanceTypeEnum.Standalone]:null},
+            body:{[RequestBodyEnum.None]: null},
+            staging_area:this.staging_area
+        } 
+        return this.callzome(dro)
+    }
+
+    /* create one using the stage request with properties */
+    public async createOne(name:string, data:Holon):Promise<DanceResponse> {
+        const dro:DanceRequestObject = {
+            dance_name:name,
+            dance_type:{[DanceTypeEnum.Standalone]:null},
+            body:{[RequestBodyEnum.Holon]: data},
+            staging_area:this.staging_area
+        } 
+        return this.callzome(dro)
+    }
+
+    /// update an existing object by index with properties  
+    public async updateOneWithProperties(name:string, index:number, properties:PropertyMap):Promise<DanceResponse> {
+        const dro:DanceRequestObject = {
+            dance_name:name,
+            dance_type:{[DanceTypeEnum.CommandMethod]:index},
+            body:{[RequestBodyEnum.ParameterValues]: properties},
+            staging_area:this.staging_area
+        } 
+        return this.callzome(dro)
+    } 
+
+    // maybe this doesnt need any string variations?
+    public async commit(name:string){
+        const dro:DanceRequestObject = {
+            dance_name:name,
+            dance_type:{[DanceTypeEnum.Standalone]:null},
+            body:{[RequestBodyEnum.None]: null},
+            staging_area:this.staging_area
+        } 
+        return this.callzome(dro)
+    }
+
 }
 
