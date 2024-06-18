@@ -306,7 +306,7 @@ impl Holon {
     /// If the staged holon is `Fetched`, `New`, or `Changed` commit does nothing.
     ///
     /// If the staged holon is `Saved`, commit_relationship iterates through the holon's
-    /// `relationship_map` and calls commit on each member's RelationshipTarget.
+    /// `relationship_map` and calls commit on each member's HolonCollection.
     ///
     /// If all commits are successful, the function returns a clone a self. Otherwise, the
     /// function returns an error.

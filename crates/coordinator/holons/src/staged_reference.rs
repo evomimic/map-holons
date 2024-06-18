@@ -9,7 +9,7 @@ use crate::context::HolonsContext;
 use crate::holon::{AccessType, Holon, HolonFieldGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
-use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
+use crate::relationship::{HolonCollection, RelationshipMap, RelationshipName};
 use crate::staged_collection::StagedCollection;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
@@ -80,7 +80,7 @@ impl StagedReference {
 
         // Retrieve the editable collection for the specified relationship name
         let editable_collection = match holon.relationship_map.0.get_mut(&relationship_name) {
-            Some(relationship_target) => relationship_target.editable.as_mut(),
+            Some(holon_collection) => holon_collection.editable.as_mut(),
             None => None,
         };
         debug!("In StagedReference::add_related_holons, about to add the holons to the editable collections:");
@@ -96,13 +96,13 @@ impl StagedReference {
         }
     }
 
-    /// This function confirms that a RelationshipTarget with an editable collection has been created
+    /// This function confirms that a HolonCollection with an editable collection has been created
     /// for the specified relationship. If so, it returns true.
-    /// Otherwise, create a RelationshipTarget with an editable collection for this relationship, add it to the
+    /// Otherwise, create a HolonCollection with an editable collection for this relationship, add it to the
     /// source_holon's relationship_map and return true.
     ///
-    /// TODO: Add validation_status to either RelationshipTarget or StagedCollection and, before adding the
-    /// RelationshipTarget, verify that a relationship with the specified relationship_name is valid for this holon type
+    /// TODO: Add validation_status to either HolonCollection or StagedCollection and, before adding the
+    /// HolonCollection, verify that a relationship with the specified relationship_name is valid for this holon type
     ///
 
     fn ensure_editable_collection(
@@ -132,13 +132,13 @@ impl StagedReference {
                     source_holon: Some(self.clone()), // Set source_holon to a StagedReference to the same holon
                     relationship_descriptor: None,
                     holons: Vec::new(),
-                    keyed_index: BTreeMap::new(),
+                    // keyed_index: BTreeMap::new(),
                 };
 
-                // Return the RelationshipTarget with the created StagedCollection
-                RelationshipTarget {
+                // Return the HolonCollection with the created StagedCollection
+                HolonCollection {
                     editable: Some(staged_collection),
-                    cursors: Vec::new(),
+                    cursor: None,
                 }
             });
 

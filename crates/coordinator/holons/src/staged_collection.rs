@@ -1,11 +1,11 @@
 use crate::context::HolonsContext;
 use crate::holon_reference::HolonReference;
+use crate::smart_link_manager::{create_smart_link, SmartLinkInput};
 use crate::staged_reference::StagedReference;
 use crate::{holon_error::HolonError, relationship::RelationshipName};
 use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;
-use crate::smart_link_manager::{create_smart_link, SmartLinkInput};
 
 ///
 /// StagedCollections are editable collections of holons representing the target of a relationship
@@ -15,22 +15,23 @@ use crate::smart_link_manager::{create_smart_link, SmartLinkInput};
 /// * When *_new_* holons are created (from scratch), their relationship_map will be created but empty
 /// * When holons are derived or cloned from existing holons
 ///     * their relationship_map will have entries for any populated in the existing holon
-///     * the RelationshipTarget value for those entries will have a StagedCollection created
+///     * the HolonCollection value for those entries will have a StagedCollection created
 ///     * the StagedCollection will be populated with SmartReferences cloned from the existing holon
 ///
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]
 pub struct StagedCollection {
     pub source_holon: Option<StagedReference>,
-    pub relationship_descriptor: Option<HolonReference>,
+    // pub relationship_name: Option<HolonReference>,
+    pub relationship_name: Option<RelationshipName>, // defaulting to RelationshipName until names ready
     pub holons: Vec<HolonReference>,
-    pub keyed_index: BTreeMap<MapString, usize>,
+    // pub keyed_index: BTreeMap<MapString, usize>,
     // TODO: validation_state: ValidationState,
 }
 
 // // pub struct StagedCollection {
 // //     pub source_holon:  Option<Weak<RefCell<Holon>>>,
-// //     pub relationship_descriptor: Option<HolonReference>,
+// //     pub relationship_name: Option<HolonReference>,
 // //     pub holons: Vec<HolonReference>,
 // //     pub keyed_index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 // //     // TODO: validation_state: ValidationState,
@@ -61,12 +62,11 @@ impl StagedCollection {
     pub fn new() -> Self {
         StagedCollection {
             source_holon: None,
-            relationship_descriptor: None,
+            relationship_name: None,
             holons: Vec::new(),
-            keyed_index: BTreeMap::new(),
+            // keyed_index: BTreeMap::new(),
         }
     }
-
 
     /// This method creates smartlinks from the specified source_id for the specified relationship name
     /// to each holon its collection that has a holon_id.
@@ -76,22 +76,23 @@ impl StagedCollection {
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
-
-        debug!("Calling commit on each HOLON_REFERENCE in the collection for {:#?}.", name.0.clone());
+        debug!(
+            "Calling commit on each HOLON_REFERENCE in the collection for {:#?}.",
+            name.0.clone()
+        );
         for holon_reference in self.holons.clone() {
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id(context) {
                 let input = SmartLinkInput {
                     from_address: source_id.clone(),
-                    to_address:target_id,
-                    relationship_descriptor: name.clone(),
+                    to_address: target_id,
+                    relationship_name: name.clone(),
                 };
                 create_smart_link(input)?;
             }
         }
         Ok(())
     }
-
 
     // pub fn remove_holons(&mut self, holons: Vec<HolonReference>) {
     //     todo!()

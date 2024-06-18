@@ -12,7 +12,7 @@ pub struct SmartLinkInput {
     pub from_address: HolonId,
     pub to_address: HolonId,
     // temporarily using RelationshipName as descriptor
-    pub relationship_descriptor: RelationshipName,
+    pub relationship_name: RelationshipName,
     // temporarily set as options - defaulting to None for now
     // pub access_path: Option<AccessPath>,
     // pub proxy_id: Option<OutboundProxyId>,
@@ -26,7 +26,7 @@ pub fn create_smart_link(input: SmartLinkInput) -> Result<(), HolonError> {
 
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
 
-    let link_tag = create_link_tag(input.relationship_descriptor.0 .0.clone());
+    let link_tag = create_link_tag(input.relationship_name.0 .0.clone());
 
     create_link(
         input.from_address.clone().0,

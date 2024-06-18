@@ -2,7 +2,7 @@ use holochain::prelude::VecOrSingle::Vec;
 /// This file defines the a RelationshipDescriptor
 ///
 use holons::holon_types::Holon;
-use holons::relationship::RelationshipTarget;
+use holons::relationship::HolonCollection;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,

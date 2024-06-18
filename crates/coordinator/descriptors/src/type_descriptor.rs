@@ -5,7 +5,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::staged_reference::StagedReference;
 
-// use holons::relationship::{RelationshipName, RelationshipTarget};
+// use holons::relationship::{RelationshipName, HolonCollection};
 
 use crate::descriptor_types::TypeDescriptor;
 use crate::semantic_version::define_semantic_version;
@@ -41,7 +41,7 @@ pub fn define_type_descriptor(
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
     // let schema_reference = StagedReference::from_holon()from_holon(schema.0.clone()));
-    // let schema_target = RelationshipTarget::One(schema_reference);
+    // let schema_target = HolonCollection::One(schema_reference);
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
@@ -96,7 +96,7 @@ pub fn define_type_descriptor(
     //     let supertype_reference = HolonReference::Local(LocalHolonReference::from_holon(supertype.0.clone()));
     //     descriptor.add_related_holon(
     //         RelationshipName(MapString("HAS_SUPERTYPE".to_string())),
-    //         RelationshipTarget::ZeroOrOne(Some(supertype_reference)),
+    //         HolonCollection::ZeroOrOne(Some(supertype_reference)),
     //     );
     // }
     // // TODO: If described_by is supplied, populate that relationship
@@ -106,7 +106,7 @@ pub fn define_type_descriptor(
     //     descriptor
     //         .add_related_holon(
     //         RelationshipName(MapString("DESCRIBED_BY".to_string())),
-    //         RelationshipTarget::ZeroOrOne(Some(described_by_reference)),
+    //         HolonCollection::ZeroOrOne(Some(described_by_reference)),
     //     );
     // }
     //TODO: Populate owned_by relationship

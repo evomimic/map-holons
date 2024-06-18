@@ -2,7 +2,7 @@ use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 
 use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
-use holons::relationship::RelationshipTarget;
+use holons::relationship::HolonCollection;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
@@ -35,8 +35,8 @@ pub fn define_relationship_descriptor(
     max_target_cardinality: MapInteger,
     deletion_semantic: DeletionSemantic,
     affinity: MapInteger,
-    _source_for: RelationshipTarget, // TODO: switch type to HolonReference
-    _target_for: RelationshipTarget, // TODO: switch type to HolonReference
+    _source_for: HolonCollection, // TODO: switch type to HolonReference
+    _target_for: HolonCollection, // TODO: switch type to HolonReference
     has_supertype: Option<StagedReference>,
     described_by: Option<StagedReference>,
     _has_inverse: Option<StagedReference>,
