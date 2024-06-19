@@ -1,16 +1,15 @@
 use derive_new::new;
 use hdk::prelude::*;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
 use crate::holon::{AccessType, Holon, HolonFieldGettable};
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
-use crate::relationship::{HolonCollection, RelationshipMap, RelationshipName};
-use crate::staged_collection::StagedCollection;
+use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
 
@@ -31,7 +30,7 @@ impl HolonFieldGettable for StagedReference {
         holon.get_property_value(property_name)
     }
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
         holon.get_key().clone()
@@ -64,10 +63,6 @@ impl StagedReference {
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::add_related_holons");
 
-        // Ensure the existence of an editable collection for the specified relationship name
-        self.ensure_editable_collection(context, relationship_name.clone())?;
-        debug!("In StagedReference::add_related_holons, got the editable_collection");
-
         // Get mutable access to the source holon
         let holon_ref = self.get_mut_holon(context)?;
 
@@ -78,75 +73,23 @@ impl StagedReference {
         // Ensure is accessible for Write
         holon.is_accessible(AccessType::Write)?;
 
-        // Retrieve the editable collection for the specified relationship name
-        let editable_collection = match holon.relationship_map.0.get_mut(&relationship_name) {
-            Some(holon_collection) => holon_collection.editable.as_mut(),
-            None => None,
-        };
         debug!("In StagedReference::add_related_holons, about to add the holons to the editable collections:");
 
-        // Add the holons to the editable collection
-        if let Some(collection) = editable_collection {
-            collection.holons.extend(holons);
-            Ok(())
+        // Retrieve the editable collection for the specified relationship name
+        if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
+            collection.is_accessible(AccessType::Write)?;
+            collection.add_references(context, holons)?;
         } else {
-            Err(HolonError::UnableToAddHolons(
-                "to staged collection".to_string(),
-            ))
+            let mut collection = HolonCollection::new_staged();
+            collection.is_accessible(AccessType::Write)?;
+            collection.add_references(context, holons)?;
+            holon
+                .relationship_map
+                .0
+                .insert(relationship_name, collection);
         }
-    }
 
-    /// This function confirms that a HolonCollection with an editable collection has been created
-    /// for the specified relationship. If so, it returns true.
-    /// Otherwise, create a HolonCollection with an editable collection for this relationship, add it to the
-    /// source_holon's relationship_map and return true.
-    ///
-    /// TODO: Add validation_status to either HolonCollection or StagedCollection and, before adding the
-    /// HolonCollection, verify that a relationship with the specified relationship_name is valid for this holon type
-    ///
-
-    fn ensure_editable_collection(
-        &self,
-        context: &HolonsContext,
-        relationship_name: RelationshipName,
-    ) -> Result<bool, HolonError> {
-        // Get mutable access to the holon
-        let holon_ref = self.get_mut_holon(context)?;
-        debug!("Got mutable holon reference in ensure_editable_collection");
-
-        // Access the relationship map and ensure the existence of the editable collection
-        let mut holon = holon_ref.borrow_mut();
-        debug!("Borrowed holon mutably in ensure_editable_collection");
-
-        holon
-            .relationship_map
-            .0
-            .entry(relationship_name.clone())
-            .or_insert_with(|| {
-                debug!(
-                    "Creating new editable collection for relationship: {:?}",
-                    relationship_name
-                );
-                // Create a StagedCollection
-                let staged_collection = StagedCollection {
-                    source_holon: Some(self.clone()), // Set source_holon to a StagedReference to the same holon
-                    relationship_descriptor: None,
-                    holons: Vec::new(),
-                    // keyed_index: BTreeMap::new(),
-                };
-
-                // Return the HolonCollection with the created StagedCollection
-                HolonCollection {
-                    editable: Some(staged_collection),
-                    cursor: None,
-                }
-            });
-
-        debug!(
-            "ensure_editable_collection completed successfully for relationship: {:?}",
-            relationship_name
-        );
-        Ok(true) // Return true indicating success
+        Ok(())
     }
 
     pub fn get_relationship_map(

@@ -5,6 +5,7 @@ pub mod context;
 pub mod helpers;
 pub mod holon;
 pub mod holon_api;
+pub mod holon_collection;
 pub mod holon_error;
 pub mod holon_node;
 pub mod holon_reference;
