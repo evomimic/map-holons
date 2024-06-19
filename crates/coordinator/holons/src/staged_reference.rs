@@ -12,6 +12,7 @@ use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName, RelationshipTarget};
 use crate::staged_collection::StagedCollection;
 use shared_types_holon::holon_node::PropertyName;
+
 use shared_types_holon::{HolonId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
@@ -55,6 +56,25 @@ impl StagedReference {
             holon_index: self.holon_index.clone(),
         }
     }
+
+
+    /// Use this method to get a copy of the staged holon referenced by this StagedReference.
+    /// NOTE: The cloned holon is NOT, itself, staged by the CommitManager
+    pub fn clone_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        let commit_manager = context.commit_manager
+            .try_borrow()
+            .map_err(|_| HolonError::FailedToBorrow("commit_manager".to_string()))?;
+
+        let holon_rc = commit_manager.staged_holons.get(self.holon_index)
+            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
+
+        let holon_ref = holon_rc
+            .try_borrow()
+            .map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
+
+        Ok(holon_ref.clone())
+    }
+
 
     pub fn add_related_holons(
         &self,

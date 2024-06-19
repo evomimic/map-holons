@@ -1,27 +1,39 @@
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-
-use crate::descriptor_types::StringDescriptor;
+use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType,
 };
-use shared_types_holon::PropertyName;
-// use shared_types_holon::BaseType::*;
 
 use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 
-pub fn define_string_descriptor(
+/// This function defines and stages (but does not persist) a new StringValueType
+/// Values for each of its properties will be set based on supplied parameters.
+///
+/// *Naming Rule*:
+///     `descriptor_name`:= `<type_name>"ValueDescriptor"`
+///
+/// The descriptor will have the following relationships populated:
+/// * DESCRIBED_BY->TypeDescriptor (if supplied)
+/// * COMPONENT_OF->Schema (supplied)
+/// * VERSION->SemanticVersion (default)
+/// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
+///
+pub fn define_string_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: &HolonReference,
     type_name: MapString,
     description: MapString,
-    label: MapString, // Human readable name for this type
+    label: MapString,
+    has_supertype: Option<HolonReference>,
+    described_by: Option<HolonReference>,
+    owned_by: Option<HolonReference>,
     min_length: MapInteger,
     max_length: MapInteger,
-    has_supertype: Option<StagedReference>,
-    described_by: Option<StagedReference>,
-) -> Result<StringDescriptor, HolonError> {
+) -> Result<StagedReference, HolonError> {
+
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
@@ -31,14 +43,17 @@ pub fn define_string_descriptor(
         BaseType::Value(ValueType::String),
         description,
         label,
-        MapBoolean(true),
-        MapBoolean(true),
+        MapBoolean(true), // is_dependent
+        MapBoolean(true), // is_value_type
         described_by,
         has_supertype,
+        owned_by,
     )?;
 
-    descriptor
-        .0
+    let mut mut_holon = descriptor.get_mut_holon(context)?;
+
+    mut_holon
+        .borrow_mut()
         .with_property_value(
             PropertyName(MapString("min_length".to_string())),
             BaseValue::IntegerValue(min_length),
@@ -48,5 +63,6 @@ pub fn define_string_descriptor(
             BaseValue::IntegerValue(max_length),
         )?;
 
-    Ok(StringDescriptor(descriptor.0))
+
+    Ok(descriptor)
 }

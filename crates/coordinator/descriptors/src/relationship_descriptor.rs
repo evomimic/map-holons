@@ -1,13 +1,12 @@
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-
-use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
-use holons::relationship::RelationshipTarget;
+use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
+use shared_types_holon::{BaseType, PropertyName};
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use shared_types_holon::PropertyName;
 
+use crate::descriptor_types::DeletionSemantic;
 use crate::type_descriptor::define_type_descriptor;
 
 /// This function defines and stages (but does not persist) a new RelationshipDescriptor.
@@ -21,51 +20,49 @@ use crate::type_descriptor::define_type_descriptor;
 /// * DESCRIBED_BY->TypeDescriptor (if supplied)
 /// * COMPONENT_OF->Schema (supplied)
 /// * VERSION->SemanticVersion (default)
-/// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
-/// *
+/// * HAS_SUPERTYPE-> HolonType (if supplied)
+/// * TARGET_HOLON_TYPE -> HolonType (if supplied)
 ///
 ///
-pub fn define_relationship_descriptor(
+pub fn define_relationship_type(
     context: &HolonsContext,
-    schema: StagedReference,
+    schema: &HolonReference,
     relationship_name: MapString,
     description: MapString,
-    label: MapString, // Human readable name for this type
+    label: MapString,
+    is_subtype_of: Option<HolonReference>,
+    described_by: Option<HolonReference>,
+    owned_by: Option<HolonReference>,
     min_target_cardinality: MapInteger,
     max_target_cardinality: MapInteger,
     deletion_semantic: DeletionSemantic,
     affinity: MapInteger,
-    _source_for: RelationshipTarget, // TODO: switch type to HolonReference
-    _target_for: RelationshipTarget, // TODO: switch type to HolonReference
-    has_supertype: Option<StagedReference>,
-    described_by: Option<StagedReference>,
+    target_holon_type: Option<HolonReference>,
     _has_inverse: Option<StagedReference>,
-) -> Result<RelationshipDescriptor, HolonError> {
+
+) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let type_name = MapString(format!(
-        "{}-{}->{}",
-        "source_for_type_name".to_string(),
-        relationship_name.0,
-        "target_for_type_name".to_string()
-    ));
-    let mut descriptor = define_type_descriptor(
+    let type_name= MapString(format!("{}-{}->{}", "source_for_type_name".to_string(), relationship_name.0,"target_for_type_name".to_string()));
+    let mut staged_reference = define_type_descriptor(
         context,
         schema,
         MapString(format!("{}{}", type_name.0, "Descriptor".to_string())),
         type_name,
-        BaseTypeHolon,
+        BaseType::Relationship,
         description,
         label,
         MapBoolean(false),
         MapBoolean(false),
         described_by,
-        has_supertype,
+        is_subtype_of,
+        owned_by,
     )?;
 
     // Add its properties
+    let mut mut_holon = staged_reference.get_mut_holon(context)?;
 
-    descriptor
-        .0
+    mut_holon
+        .borrow_mut()
         .with_property_value(
             PropertyName(MapString("min_target_cardinality".to_string())),
             BaseValue::IntegerValue(min_target_cardinality),
@@ -83,38 +80,15 @@ pub fn define_relationship_descriptor(
             BaseValue::IntegerValue(affinity),
         )?;
 
-    // Populate its relationships
-    // _source_for: HolonReference,
-    //     _target_for: HolonReference,
-    //     _has_supertype: Option<HolonReference>,
-    // descriptor
-    //     .add_related_holon(
-    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
-    //         schema.clone(),
-    //     )
-    //     .add_related_holon(
-    //         RelationshipName(MapString("SOURCE_FOR".to_string())),
-    //         source_for.clone(),
-    //     )
-    //     .add_related_holon(
-    //         RelationshipName(MapString("TARGET_FOR".to_string())),
-    //         target_for.clone(),
-    //     );
+    // Add its relationships
+    if let Some(descriptor_ref) = target_holon_type {
+        staged_reference
+            .add_related_holons(
+                context,
+                RelationshipName(MapString("TARGET_HOLON_TYPE".to_string())),
+                vec![descriptor_ref])?
+    };
 
-    // TODO: If has_supertype is supplied, populate that relationship
-    // if let Some(supertype) = has_supertype  {
-    //     descriptor.add_related_holon(
-    //         RelationshipName(MapString("HAS_SUPERTYPE".to_string())),
-    //         supertype.clone(),
-    //     )
-    // }
-    // TODO: If described_by is supplied, populate that relationship
-    // if let Some(is_described_by) = described_by  {
-    //     descriptor.add_related_holon(
-    //         RelationshipName(MapString("DESCRIBED_BY".to_string())),
-    //         is_described_by.clone(),
-    //     )
-    // }
+    Ok(staged_reference)
 
-    Ok(RelationshipDescriptor(descriptor.0))
 }

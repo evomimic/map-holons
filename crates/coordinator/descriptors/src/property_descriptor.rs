@@ -1,12 +1,12 @@
-use crate::descriptor_types::PropertyDescriptor;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
+use shared_types_holon::{BaseType, PropertyName};
 use shared_types_holon::value_types::{MapBoolean, MapString};
 
-use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
+use crate::type_descriptor::define_type_descriptor;
 
 /// This function defines and stages (but does not persist) a new PropertyDescriptor.
 /// Values for each of the PropertyDescriptor properties will be set based on supplied parameters.
@@ -23,55 +23,54 @@ use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
 /// * VALUE_TYPE->ValueDescriptor (supplied)
 ///
 ///
-pub fn define_property_descriptor(
+pub fn define_property_type(
     context: &HolonsContext,
-    schema: StagedReference,
-    property_name: MapString, // snake_case name for this property, e.g., "name" -- TODO: define PropertyName StringValueType
+    schema: &HolonReference,
     description: MapString,
-    label: MapString,             // Human readable name for this property name
-    _property_of: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    _value_type: HolonReference, // TODO: Change this type to HolonReference once fn's to get_holon from reference are available
-    has_supertype: Option<StagedReference>,
-    described_by: Option<StagedReference>,
-) -> Result<PropertyDescriptor, HolonError> {
-    let property_of_name =
-        MapString("TODO: Extract type_name from the PROPERTY_OF HolonDescriptor".to_string());
+    label: MapString, // Human-readable name for this type
+    has_supertype: Option<HolonReference>,
+    described_by: Option<HolonReference>,
+    owned_by: Option<HolonReference>,
+    property_name: PropertyName,
+    property_of: HolonReference,
+    value_type: HolonReference,
+) -> Result<StagedReference, HolonError> {
+
+
 
     // build the type_name for the PropertyDescriptor
-    let type_name = MapString(format!(
-        "{}_PROPERTY_OF_{}",
-        property_name.0, property_of_name.0
-    ));
+    let type_name = MapString(format!("{}_Property", property_name.0));
 
-    let descriptor = define_type_descriptor(
+    let staged_reference = define_type_descriptor(
         context,
         schema,
-        derive_descriptor_name(&property_name),
+        MapString(format!("{}{}", type_name.0, "PropertyDescriptor".to_string())),
         type_name,
-        BaseTypeHolon, // Do we need a Property BaseType???
+        BaseType::Property,
         description,
         label,
-        MapBoolean(true),
         MapBoolean(false),
-        described_by,
+        MapBoolean(false),
         has_supertype,
+        described_by,
+        owned_by,
     )?;
 
     // Populate the relationships
 
-    // descriptor
-    //     .add_related_holon(
-    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
-    //         schema.clone(),
-    //     )
-    //     .add_related_holon(
-    //         RelationshipName(MapString("PROPERTY_OF".to_string())),
-    //         property_of,
-    //     )
-    //     .add_related_holon(
-    //         RelationshipName(MapString("VALUE_TYPE".to_string())),
-    //         value_type,
-    //     );
+    staged_reference
+        .add_related_holons(
+            context,
+            RelationshipName(MapString("PROPERTY_OF".to_string())),
+            vec![property_of.clone()])?;
 
-    Ok(PropertyDescriptor(descriptor.0))
+    staged_reference
+        .add_related_holons(
+            context,
+            RelationshipName(MapString("VALUE_TYPE".to_string())),
+            vec![value_type.clone()])?;
+
+
+    Ok(staged_reference)
+
 }
