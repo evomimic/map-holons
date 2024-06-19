@@ -6,8 +6,8 @@ use crate::context::HolonsContext;
 use crate::holon::HolonFieldGettable;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::smart_link_manager::*;
 use crate::smart_link_manager::SmartLinkInput;
+use crate::smart_link_manager::*;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 
@@ -43,7 +43,7 @@ impl HolonFieldGettable for HolonReference {
         }
     }
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
             HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
@@ -72,13 +72,11 @@ impl HolonReference {
         }
     }
 
-    pub fn get_holon_id(&self, context:&HolonsContext) -> Result<HolonId, HolonError> {
+    pub fn get_holon_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_id(),
             HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
         }
-
-
     }
 
     // /// Commit on HolonReference persists the reference as a SmartLink for the specified

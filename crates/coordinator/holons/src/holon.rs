@@ -88,7 +88,7 @@ pub trait HolonFieldGettable {
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError>;
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
+    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
 }
@@ -138,11 +138,13 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
+        let key = self
+            .property_map
+            .get(&PropertyName(MapString("key".to_string())));
         if let Some(key) = key {
-            let string_value: String = key
-                .try_into()
-                .map_err(|_| HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string()))?;
+            let string_value: String = key.try_into().map_err(|_| {
+                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
+            })?;
             Ok(Some(MapString(string_value)))
         } else {
             Ok(None)
@@ -319,9 +321,9 @@ impl Holon {
                     Some(record) => {
                         let source_holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
-                        for (name, target) in self.relationship_map.0.clone() {
+                        for (name, holon_collection) in self.relationship_map.0.clone() {
                             debug!("COMMITTING {:#?} relationship", name.clone());
-                            target.commit_relationship(
+                            holon_collection.commit_relationship(
                                 context,
                                 HolonId::from(source_holon_id.clone()),
                                 name.clone(),

@@ -30,9 +30,9 @@ pub enum ResponseStatusCode {
     Unauthorized,       // 401
     Forbidden,          // 403 -- use this for authorization / permission errors
     NotFound,           // 404
-    Conflict,           // 409 -- use this when request denied due to a conflict with the current state of the resource
-    ServerError,        // 500
-    NotImplemented,     // 501
+    Conflict, // 409 -- use this when request denied due to a conflict with the current state of the resource
+    ServerError, // 500
+    NotImplemented, // 501
     ServiceUnavailable, // 503
 }
 
@@ -69,7 +69,8 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
             HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
-            HolonError::GuardError(_) => ResponseStatusCode::BadRequest,
+            HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
+            HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
             HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
         }
     }

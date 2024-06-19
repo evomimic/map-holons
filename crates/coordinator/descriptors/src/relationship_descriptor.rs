@@ -2,7 +2,7 @@ use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 
 use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
-use holons::relationship::HolonCollection;
+use holons::holon_collection::HolonCollection;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
