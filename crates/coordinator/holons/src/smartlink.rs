@@ -12,12 +12,6 @@ const fn smartlink_tag_header_length() -> usize {
     HEADER_BYTES.len()
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SmartLinkHolder {
-    pub name: String,
-    pub reference: SmartReference,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddSmartLinkInput {
     pub base_holon_node_hash: ActionHash,
@@ -73,6 +67,7 @@ pub fn remove_smartlink(input: RemoveSmartLinkInput) -> ExternResult<()> {
     Ok(())
 }
 
+// TODO: expand to decode all data from smart_link
 pub fn get_relationship_name_from_smartlink(link: Link) -> Result<RelationshipName, HolonError> {
     let link_tag_bytes = link.tag.clone().into_inner();
     let link_tag = String::from_utf8(link_tag_bytes).map_err(|_e| {
