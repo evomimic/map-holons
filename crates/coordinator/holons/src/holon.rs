@@ -6,7 +6,7 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
+use shared_types_holon::{HolonId, MapString};
 
 use shared_types_holon::value_types::BaseValue;
 
@@ -58,7 +58,7 @@ pub enum HolonState {
     Changed,
     Saved,
     Abandoned,
-    // SaveInProgress,
+    Transient,
 }
 
 impl fmt::Display for HolonState {
@@ -69,6 +69,7 @@ impl fmt::Display for HolonState {
             HolonState::Changed => write!(f, "Changed"),
             HolonState::Saved => write!(f, "Saved"),
             HolonState::Abandoned => write!(f, "Abandoned"),
+            HolonState::Transient => write!(f, "Transient"),
         }
     }
 }
@@ -293,7 +294,7 @@ impl Holon {
             }
 
             _ => {
-                // For either Fetched, Saved, Abandoned, no save is needed, just return Holon
+                // No save needed for Fetched, Saved, Abandoned, or Transient, just return Holon
                 debug!("Skipping commit for holon in {:#?} state", self.state);
 
                 Ok(self.clone())

@@ -50,7 +50,7 @@ impl HolonCacheManager {
     fn fetch_holon(id: &HolonId) -> Result<Holon, HolonError> {
         let holon_node_record = get(id.0.clone(), GetOptions::default())?;
         if let Some(node) = holon_node_record {
-            let mut holon = Holon::try_from_node(node)?;
+            let holon = Holon::try_from_node(node)?;
             return Ok(holon);
         } else {
             // no holon_node fetched for specified holon_id

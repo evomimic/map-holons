@@ -1,6 +1,6 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
-use hdk::prelude::{info,debug,trace,warn};
+use hdk::prelude::{info,debug,warn};
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
@@ -11,6 +11,18 @@ use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 
 use crate::semantic_version::SemanticVersion;
+
+pub struct TypeDefinitionHeader {
+    pub descriptor_name: Option<MapString>,  // If None, the descriptor name will be derived from the type_name
+    pub type_name: MapString,
+    pub description: MapString,
+    pub label: MapString, // Human-readable name for this type
+    pub is_dependent: MapBoolean,
+    pub is_value_type: MapBoolean,
+    pub described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
+    pub is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
+    pub owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
+}
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions.
@@ -30,35 +42,31 @@ use crate::semantic_version::SemanticVersion;
 pub fn define_type_descriptor(
     context: &HolonsContext,
     schema: &HolonReference, // Type-COMPONENT_OF->Schema
-    descriptor_name: MapString,
-    type_name: MapString,
     base_type: BaseType,
-    description: MapString,
-    label: MapString, // Human-readable name for this type
-    is_dependent: MapBoolean,
-    is_value_type: MapBoolean,
-    described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
-    is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
-    owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
+    header: TypeDefinitionHeader,
 ) -> Result<StagedReference, HolonError> {
 
-    info!("Staging... {:#?}", type_name.0.clone());
+    info!("Staging... {:#?}", header.type_name.clone());
 
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
 
     // Define a default semantic_version as a String Property
     let initial_version = MapString(SemanticVersion::default().to_string());
+    let descriptor_name = match header.descriptor_name {
+        Some(supplied_name)=> supplied_name,
+        None=> derive_descriptor_name(&header.type_name.clone())
+    };
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(type_name.clone()),
+            BaseValue::StringValue(header.type_name.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("type_name".to_string())),
-            BaseValue::StringValue(type_name),
+            BaseValue::StringValue(header.type_name),
         )?
         .with_property_value(
             PropertyName(MapString("descriptor_name".to_string())),
@@ -66,11 +74,11 @@ pub fn define_type_descriptor(
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(description),
+            BaseValue::StringValue(header.description),
         )?
         .with_property_value(
             PropertyName(MapString("label".to_string())),
-            BaseValue::StringValue(label),
+            BaseValue::StringValue(header.label),
         )?
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
@@ -78,11 +86,11 @@ pub fn define_type_descriptor(
         )?
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
-            BaseValue::BooleanValue(is_dependent),
+            BaseValue::BooleanValue(header.is_dependent),
         )?
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
-            BaseValue::BooleanValue(is_value_type),
+            BaseValue::BooleanValue(header.is_value_type),
 
         )?
         .with_property_value(
@@ -106,21 +114,21 @@ pub fn define_type_descriptor(
             RelationshipName(MapString("COMPONENT_OF".to_string())),
             vec![schema.clone()])?;
 
-    if let Some(descriptor_ref) = described_by {
+    if let Some(descriptor_ref) = header.described_by {
         staged_reference
             .add_related_holons(
                 context,
                 RelationshipName(MapString("DESCRIBED_BY".to_string())),
                 vec![descriptor_ref])?
     };
-    if let Some(is_subtype_of_ref) = is_subtype_of {
+    if let Some(is_subtype_of_ref) = header.is_subtype_of {
         staged_reference
             .add_related_holons(
                 context,
                 RelationshipName(MapString("IS_SUBTYPE_OF".to_string())),
                 vec![is_subtype_of_ref])?
     };
-    if let Some(owned_by_ref) = owned_by {
+    if let Some(owned_by_ref) = header.owned_by {
         staged_reference
             .add_related_holons(
                 context,

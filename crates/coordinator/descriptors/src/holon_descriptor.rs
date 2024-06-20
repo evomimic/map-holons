@@ -1,11 +1,17 @@
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{MapBoolean, MapString};
-use shared_types_holon::value_types::BaseType::Holon as BaseTypeHolon;
+use shared_types_holon::BaseType;
+use shared_types_holon::value_types::MapString;
 
-use crate::type_descriptor::define_type_descriptor;
+use crate::type_descriptor::{define_type_descriptor, TypeDefinitionHeader};
+
+pub struct HolonDefinition {
+    pub header:TypeDefinitionHeader,
+    pub properties: Vec<HolonReference>,
+}
 
 /// This function defines and stages (but does not persist) a new HolonType.
 /// It adds values for each of its properties based on supplied parameters
@@ -20,17 +26,13 @@ use crate::type_descriptor::define_type_descriptor;
 /// * VERSION->SemanticVersion (default)
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
 /// * OWNED_BY->HolonSpace (if supplied)
+/// * PROPERTIES->PropertyDescriptor (if supplied)
+/// * SOURCE_FOR->RelationshipDescriptor (if supplied)
 ///
 pub fn define_holon_type(
     context: &HolonsContext,
     schema: &HolonReference,
-    type_name: MapString,
-    description: MapString,
-    label: MapString, // Human-readable name for this type
-    has_supertype: Option<HolonReference>,
-    described_by: Option<HolonReference>,
-    owned_by: Option<HolonReference>
-
+    definition: HolonDefinition,
 ) -> Result<StagedReference, HolonError> {
 
 
@@ -39,19 +41,16 @@ pub fn define_holon_type(
     let descriptor = define_type_descriptor(
         context,
         schema,
-        MapString(format!("{}{}", type_name.0, "HolonDescriptor".to_string())),
-        type_name,
-        BaseTypeHolon,
-        description,
-        label,
-        MapBoolean(false),
-        MapBoolean(false),
-        has_supertype,
-        described_by,
-        owned_by,
+        BaseType::Holon,
+        definition.header,
     )?;
-
-
+    if definition.properties.len() > 0 {
+        descriptor
+            .add_related_holons(
+                context,
+                RelationshipName(MapString("PROPERTIES".to_string())),
+                definition.properties)?;
+    }
 
     Ok(descriptor)
 }

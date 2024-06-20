@@ -6,10 +6,11 @@ use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
 
 use holons::staged_reference::StagedReference;
-use shared_types_holon::MapString;
+use shared_types_holon::{MapBoolean, MapString};
 
 use crate::descriptor_types::{META_HOLON_TYPE, Schema, SCHEMA_NAME};
-use crate::holon_descriptor::define_holon_type;
+use crate::holon_descriptor::{define_holon_type, HolonDefinition};
+use crate::type_descriptor::TypeDefinitionHeader;
 use crate::value_type_loader::load_core_value_types;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
@@ -60,38 +61,74 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         stage_new_holon(schema.0.clone()
         )?);
 
+    // Load the ValueTypes
+    let (string_type_ref, integer_type_ref, boolean_type_ref)
+        = load_core_value_types(context, &staged_schema_ref)?;
+
+
+
 
     let type_name = MapString(META_HOLON_TYPE.to_string());
+
+    debug!("Staging {:?}",type_name);
     let description = MapString("The meta type that specifies the properties, relationships, \
     and dances of the base HolonType".to_string());
     let label = MapString("Holon Type Descriptor".to_string());
 
-    let meta_holon_type_ref = HolonReference::Staged(define_holon_type(
-        context,
-        &staged_schema_ref,
+    let type_header = TypeDefinitionHeader {
+        descriptor_name: None,
         type_name,
         description,
         label,
-        None,
-        None,
-        None
-    )?);
+        is_dependent: MapBoolean(false),
+        is_value_type: MapBoolean(false),
+        described_by: None,
+        is_subtype_of:None,
+        owned_by: None, // Holon Space
+    };
 
+    let holon_definition = HolonDefinition {
+        header: type_header,
+        properties:  vec![],
+    };
+
+
+    let meta_holon_type_ref = HolonReference::Staged(define_holon_type(
+        context,
+        &staged_schema_ref,
+        holon_definition, // provide property descriptors for this holon type here
+    )?);
 
     let type_name = MapString("HolonType".to_string());
     let description = MapString("This type specifies the properties, relationships, and dances \
     for a type of Holon.".to_string());
     let label = MapString("Holon Type Descriptor".to_string());
 
-    let holon_type_ref = define_holon_type(
-        context,
-        &staged_schema_ref,
+    let type_header = TypeDefinitionHeader {
+        descriptor_name: None,
         type_name,
         description,
         label,
-        None,
-        Some(meta_holon_type_ref.clone()),
-        None
+        is_dependent: MapBoolean(false),
+        is_value_type: MapBoolean(false),
+        described_by: None,
+        is_subtype_of:None,
+        owned_by: None, // Holon Space
+    };
+
+    let
+        holon_definition = HolonDefinition {
+        header: type_header,
+        properties:  vec![],
+    };
+
+
+
+
+    let holon_type_ref = define_holon_type(
+        context,
+        &staged_schema_ref,
+        holon_definition,
     )?;
 
 

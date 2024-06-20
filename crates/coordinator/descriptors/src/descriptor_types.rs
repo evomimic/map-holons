@@ -66,6 +66,11 @@ pub const META_INTEGER_TYPE: &str = "MetaIntegerType";
 pub const META_STRING_TYPE: &str = "MetaStringType";
 pub const META_VALUE_ARRAY_TYPE: &str = "MetaValueArrayType";
 
+pub const MAP_STRING_TYPE:  &str = "MapString";
+pub const MAP_INTEGER_TYPE:  &str = "MapInteger";
+pub const MAP_BOOLEAN_TYPE:  &str = "MapBoolean";
+
+
 
 
 

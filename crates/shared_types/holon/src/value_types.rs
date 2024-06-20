@@ -53,40 +53,9 @@ impl TryInto<String> for &BaseValue {
             BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
             BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
             BaseValue::EnumValue(val) => Ok(val.0.0.clone()), // Assuming EnumValue contains a String
-            _ => Err(()),
         }
     }
 }
-
-// TODO: Upgrade MAP Value Type System from type aliases to TupleStructs following newtype pattern
-
-// pub struct MapString (String);
-// impl MapString {
-//     pub fn to_string(&self)->String {
-//         self.0.clone();
-//     }
-// }
-
-// pub struct MapInteger (i64);
-// impl MapInteger {
-//     pub fn to_i64(&self)->i64 {
-//         self.0;
-//     }
-// }
-
-// pub struct MapBoolean(bool);
-// impl MapBoolean{
-//     pub fn to_boolean(&self)->bool {
-//         self.0;
-//     }
-// }
-
-// pub struct MapEnumValue(String);
-// impl MapEnumValue {
-//     pub fn to_string(&self)->String {
-//         self.0.to_string();
-//     }
-// }
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq,)]

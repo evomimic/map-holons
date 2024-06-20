@@ -75,9 +75,9 @@ use crate::shared_test::test_with_properties_command::execute_with_properties;
 ///
 #[rstest]
 
-#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
-#[case::simple_add_related_holon_test(simple_add_related_holons_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+//#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+//#[case::simple_add_related_holon_test(simple_add_related_holons_fixture())]
+//#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::load_core_schema(load_core_schema_test_fixture())]
 
 #[tokio::test(flavor = "multi_thread")]

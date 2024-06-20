@@ -56,7 +56,6 @@ impl Into<WasmError> for HolonError {
 }
 
 use std::cell::BorrowError;
-use shared_types_holon::{BaseType, BaseValue, MapString, ValueType};
 
 impl From<BorrowError> for HolonError {
     fn from(error: BorrowError) -> Self {
