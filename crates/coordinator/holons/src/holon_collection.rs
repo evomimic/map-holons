@@ -38,18 +38,18 @@ impl HolonCollection {
             keyed_index: BTreeMap::new(),
         }
     }
+
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match access_type {
-            AccessType::Read => {
-                if self.state == CollectionState::Abandoned {
-                    Err(HolonError::NotAccessible(
-                        "Read".to_string(),
-                        format!("{:?}", self.state),
-                    ))
-                } else {
-                    Ok(())
-                }
-            }
+            AccessType::Read => match self.state {
+                CollectionState::Fetched
+                | CollectionState::Staged
+                | CollectionState::Saved => Ok(()),
+                CollectionState::Abandoned => Err(HolonError::NotAccessible(
+                    "Read".to_string(),
+                    format!("{:?}", self.state),
+                )),
+            },
             AccessType::Write => match self.state {
                 CollectionState::Staged => Ok(()),
                 _ => Err(HolonError::NotAccessible(
@@ -59,6 +59,28 @@ impl HolonCollection {
             },
         }
     }
+
+    // pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
+    //     match access_type {
+    //         AccessType::Read => {
+    //             if self.state == CollectionState::Abandoned {
+    //                 Err(HolonError::NotAccessible(
+    //                     "Read".to_string(),
+    //                     format!("{:?}", self.state),
+    //                 ))
+    //             } else {
+    //                 Ok(())
+    //             }
+    //         }
+    //         AccessType::Write => match self.state {
+    //             CollectionState::Staged => Ok(()),
+    //             _ => Err(HolonError::NotAccessible(
+    //                 "Write".to_string(),
+    //                 format!("{:?}", self.state),
+    //             )),
+    //         },
+    //     }
+    // }
 
     pub fn into_staged(&self) -> Result<HolonCollection, HolonError> {
         self.is_accessible(AccessType::Read)?;
@@ -104,7 +126,7 @@ impl HolonCollection {
 
     /// This method creates smartlinks from the specified source_id for the specified relationship name
     /// to each holon its collection that has a holon_id.
-    pub fn add_smartlinks_for_collection(
+    pub fn save_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
         source_id: HolonId,
@@ -135,7 +157,7 @@ impl HolonCollection {
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
-        self.add_smartlinks_for_collection(context, source_id.clone(), name.clone())?;
+        self.save_smartlinks_for_collection(context, source_id.clone(), name.clone())?;
 
         Ok(())
     }

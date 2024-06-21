@@ -11,11 +11,9 @@ pub mod holon_node;
 pub mod holon_reference;
 pub mod property_map;
 pub mod relationship;
-pub mod smart_collection;
 pub mod smart_link_manager;
 pub mod smart_reference;
 pub mod smartlink;
-pub mod staged_collection;
 pub mod staged_reference;
 
 use hdk::prelude::*;

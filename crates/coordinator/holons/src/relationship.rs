@@ -6,7 +6,6 @@ use crate::smart_reference::SmartReference;
 use crate::smartlink::get_relationship_name_from_smartlink;
 // use crate::smart_reference::SmartReference;
 use crate::holon_reference::HolonReference;
-use crate::smart_collection::SmartCollection;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use shared_types_holon::{HolonId, MapString};
@@ -37,18 +36,28 @@ pub struct SmartLinkHolder {
     pub reference: HolonReference,
 }
 
-/// Builds a relationship map by doing a get_relationship_links (which under the hood does a get_links for all relationships) on the (owning) source_holon
-
+/// Builds a full or partial RelationshipMap for an existing holon identified by `source_holon_id`
+/// by retrieving SmartLinks for that holon.
+/// If `relationship_name` is supplied, the RelationshipMap returned will only have (at most) a
+/// single entry consisting of the HolonCollection for the supplied `relationship_name`.
+/// Otherwise, a full RelationshipMap will be populated for the `source_holon_id`.
+///
+///
+///
 pub fn build_relationship_map_from_smartlinks(
     context: &HolonsContext,
-    holon_id: ActionHash,
+    source_holon_id: ActionHash,
     relationship_name: Option<RelationshipName>,
 ) -> Result<RelationshipMap, HolonError> {
     let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
-    let links = get_relationship_links(holon_id.clone(), None)?;
+    let links = get_relationship_links(source_holon_id.clone(), relationship_name)?;
+
+    debug!("Retrieved {:?} links from holochain", links.len());
 
     for link in links {
-        let name_string = get_relationship_name_from_smartlink(link.clone())?.0 .0; // TODO: change this to decode the whole smartlink in SmartLinkHolder
+        // TODO: Consolidated all logic in this loop into a call on a (new) `decode_to_smartlink()`
+        // function that creates a SmartLink object from a holochain link.
+        let name_string = get_relationship_name_from_smartlink(link.clone())?.0 .0;
         let name = RelationshipName(MapString(name_string));
 
         let target = link.target.into_action_hash().ok_or_else(|| {
@@ -64,15 +73,15 @@ pub fn build_relationship_map_from_smartlinks(
             reference: reference.clone(),
         };
 
-        if let Some(references) = reference_map.get(&name) {
-            let mut vec = references.clone();
-            vec.push(reference);
-            reference_map.insert(name, vec);
-        } else {
-            let mut references: Vec<HolonReference> = Vec::new();
-            reference_map.insert(name, references);
-        }
+        // The following:
+        // 1) adds an entry for relationship name if not already present (via `entry` API)
+        // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+        // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+        reference_map.entry(name).or_insert_with(Vec::new).push(reference);
     }
+
+    // Now create the result
 
     let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
 
@@ -86,59 +95,54 @@ pub fn build_relationship_map_from_smartlinks(
 }
 
 // pub fn build_relationship_map_from_smartlinks(
+//     context: &HolonsContext,
 //     holon_id: ActionHash,
+//     relationship_name: Option<RelationshipName>,
 // ) -> Result<RelationshipMap, HolonError> {
-//     let mut map = BTreeMap::new();
-//     let links = get_relationship_links(holon_id.clone())?;
-//     // a convenience holder to make inserts more efficient
-//     let mut holder_vec: Vec<SmartLinkHolder> = Vec::new();
-
-//     let mut names: Vec<String> = Vec::new();
-
+//     let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
+//     let links = get_relationship_links(holon_id.clone(), relationship_name)?;
+//
+//     debug!("Retrieved {:?} links from holochain", links.len());
+//
 //     for link in links {
-//         let name = get_relationship_name_from_smartlink(link.clone())?.0 .0;
-//         if !names.iter().any(|n| n == &name) {
-//             names.push(name.clone());
-//         }
-
+//         let name_string = get_relationship_name_from_smartlink(link.clone())?.0 .0; // TODO: change this to decode the whole smartlink in SmartLinkHolder
+//         let name = RelationshipName(MapString(name_string));
+//
 //         let target = link.target.into_action_hash().ok_or_else(|| {
 //             HolonError::HashConversion("Link target".to_string(), "ActionHash".to_string())
 //         })?;
-//         let reference = SmartReference {
+//         let reference = HolonReference::Smart(SmartReference {
 //             holon_id: HolonId(target),
 //             smart_property_values: None, // defaulting to None until descriptors ready
-//         };
-
-//         let holder = SmartLinkHolder { name, reference };
-//         holder_vec.push(holder)
-//     }
-
-//     for name in names {
-//         let mut holons = Vec::new();
-
-//         holder_vec
-//             .clone()
-//             .into_iter()
-//             .filter(|h| h.name == name)
-//             .map(|h| holons.push(h.reference));
-
-//         let holon_reference = HolonReference::Smart(SmartReference {
-//             holon_id: HolonId(holon_id),
-//             smart_property_values: None, // defaulting to None until descriptors ready
 //         });
-
-//         let collection = HolonCollection {
-//             source_holon: Some(holon_reference),
-//             relationship_name: Some(RelationshipName(MapString(name.clone()))),
-//             holons,
+//
+//         let holder = SmartLinkHolder {
+//             name: name.clone(),
+//             reference: reference.clone(),
 //         };
-
-//         map.insert(RelationshipName(MapString(name.clone())), collection);
+//
+//         if let Some(references) = reference_map.get(&name) {
+//             let mut vec = references.clone();
+//             vec.push(reference);
+//             reference_map.insert(name, vec);
+//         } else {
+//             let mut references: Vec<HolonReference> = Vec::new();
+//             reference_map.insert(name, references);
+//         }
 //     }
-//     debug!("built relationship_map from smartlinks: {:#?}", map.clone());
-
-//     Ok(RelationshipMap(map))
+//
+//     let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
+//
+//     for (map_name, holons) in reference_map {
+//         let mut collection = HolonCollection::new_existing();
+//         collection.add_references(context, holons)?;
+//         relationship_map.insert(map_name, collection);
+//     }
+//
+//     Ok(RelationshipMap(relationship_map))
 // }
+
+
 
 /// Gets relationships optionally filtered by name
 pub fn get_relationship_links(

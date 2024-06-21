@@ -7,6 +7,7 @@ use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
+use shared_types_holon::BaseType::Relationship;
 
 use shared_types_holon::value_types::BaseValue;
 
@@ -16,7 +17,7 @@ use crate::helpers::get_holon_node_from_record;
 use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
-use crate::relationship::RelationshipMap;
+use crate::relationship::{build_relationship_map_from_smartlinks, RelationshipMap};
 use crate::smart_reference::SmartReference;
 
 #[derive(Debug)]
