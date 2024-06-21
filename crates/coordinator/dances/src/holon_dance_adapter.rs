@@ -270,7 +270,7 @@ pub fn build_with_properties_dance_request(
 /// - Holons -- will be replaced by SmartCollection once supported
 ///
 pub fn get_all_holons_dance(
-    _context: &HolonsContext,
+    context: &HolonsContext,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // TODO: add support for descriptor parameter

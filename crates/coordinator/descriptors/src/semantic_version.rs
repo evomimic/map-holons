@@ -56,7 +56,7 @@ pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon,
 
 // TODO: Implement and debug the following function
 // pub fn define_semantic_version_descriptor(
-//     schema: &RelationshipTarget,
+//     schema: &HolonCollection,
 //
 // ) -> Holon {
 //

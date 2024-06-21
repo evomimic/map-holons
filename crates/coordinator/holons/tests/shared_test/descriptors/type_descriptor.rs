@@ -1,7 +1,7 @@
 // This file creates a TypeDescriptor for the different MAP Value Types
 
 use holons::holon_types::Holon;
-use holons::relationship::RelationshipTarget;
+use holons::relationship::HolonCollection;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
@@ -42,7 +42,7 @@ pub fn define_semantic_version_descriptor() -> Holon {
     descriptor
 }
 
-pub fn define_type_descriptor_to_semantic_version(schema_target: &RelationshipTarget) -> Holon {
+pub fn define_type_descriptor_to_semantic_version(schema_target: &HolonCollection) -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
 

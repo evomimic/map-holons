@@ -2,8 +2,8 @@ use holons::helpers::define_local_target;
 use holons::holon_reference::HolonReference::*;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_types::Holon;
-use holons::relationship::RelationshipTarget;
-use holons::relationship::RelationshipTarget::*;
+use holons::relationship::HolonCollection;
+use holons::relationship::HolonCollection::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
@@ -116,7 +116,7 @@ pub fn define_collection_descriptor() -> Holon {
 //         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
 //         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
 //
-//     // Define a RelationshipTarget for the TypeDescriptor
+//     // Define a HolonCollection for the TypeDescriptor
 //     let type_descriptor_target = define_local_target(&supertype_descriptor);
 //
 //     // Define the holon_descriptor (it has no additional properties beyond its TypeDescriptor)

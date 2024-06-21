@@ -7,6 +7,8 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
+use crate::descriptor_types::TypeDescriptor;
+use crate::semantic_version::set_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 
@@ -46,9 +48,10 @@ pub fn define_type_descriptor(
 
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
-
+  
     // Define a default semantic_version as a String Property
     let initial_version = MapString(SemanticVersion::default().to_string());
+
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
@@ -90,44 +93,47 @@ pub fn define_type_descriptor(
             BaseValue::StringValue(initial_version),
         )?;
 
-    // Stage the new TypeDescriptor
 
-    debug!("{:#?}", descriptor.clone());
+    // Define a default semantic_version
+    let _version = set_semantic_version(0, 0, 1);
 
-    let staged_reference = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(descriptor.clone())?;
+    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(descriptor.clone())?;
+    // Add the outbound relationships shared by all TypeDescriptors
+    // let version_target = define_local_target(&version);
 
+    // descriptor
+    //     .add_related_holon(
+    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
+    //         schema_target,
+    //     )
+    //     .add_related_holon(
+    //         RelationshipName(MapString("VERSION".to_string())),
+    //         version_target,
+    //     );
 
-    staged_reference
-        .add_related_holons(
-            context,
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            vec![schema.clone()])?;
+    // TODO: If has_supertype is supplied, populate that relationship
 
-    if let Some(descriptor_ref) = described_by {
-        staged_reference
-            .add_related_holons(
-                context,
-                RelationshipName(MapString("DESCRIBED_BY".to_string())),
-                vec![descriptor_ref])?
-    };
-    if let Some(is_subtype_of_ref) = is_subtype_of {
-        staged_reference
-            .add_related_holons(
-                context,
-                RelationshipName(MapString("IS_SUBTYPE_OF".to_string())),
-                vec![is_subtype_of_ref])?
-    };
-    if let Some(owned_by_ref) = owned_by {
-        staged_reference
-            .add_related_holons(
-                context,
-                RelationshipName(MapString("OWNED_BY".to_string())),
-                vec![owned_by_ref])?
-    };
-
+    // if let Some(supertype) = has_supertype  {
+    //     let supertype_reference = HolonReference::Local(LocalHolonReference::from_holon(supertype.0.clone()));
+    //     descriptor.add_related_holon(
+    //         RelationshipName(MapString("HAS_SUPERTYPE".to_string())),
+    //         HolonCollection::ZeroOrOne(Some(supertype_reference)),
+    //     );
+    // }
+    // // TODO: If described_by is supplied, populate that relationship
+    // if let Some(is_described_by) = described_by  {
+    //     let described_by_reference = HolonReference::Local(LocalHolonReference::from_holon(is_described_by.0.clone()));
+    //
+    //     descriptor
+    //         .add_related_holon(
+    //         RelationshipName(MapString("DESCRIBED_BY".to_string())),
+    //         HolonCollection::ZeroOrOne(Some(described_by_reference)),
+    //     );
+    // }
+    //TODO: Populate owned_by relationship
+    // descriptor.add_related_holon(
+    //     RelationshipName(MapString("OWNED_BY".to_string())),
+    //     owned_by.clone(),
 
     Ok(staged_reference)
 

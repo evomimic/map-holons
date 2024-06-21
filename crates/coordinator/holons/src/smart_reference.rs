@@ -117,7 +117,7 @@ impl HolonFieldGettable for SmartReference {
         }
     }
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         if let Ok(holon) = context
             .cache_manager
             .borrow_mut()
