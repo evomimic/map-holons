@@ -1,50 +1,64 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
+use hdk::prelude::{info,debug,trace,warn};
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
+use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-
-// use holons::relationship::{RelationshipName, HolonCollection};
-
 use crate::descriptor_types::TypeDescriptor;
 use crate::semantic_version::define_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 
+use crate::semantic_version::SemanticVersion;
+
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
-/// It is intended to be called by other define_xxx_descriptor functions
+/// It is intended to be called by other define_xxx_descriptor functions.
 ///
-/// Values for each of the TypeDescriptor _properties_ will be set based on supplied parameters.
+/// This function adds values for each of the properties shared by all type descriptors
+/// and (optionally) adds related holons for relationships shared by all type descriptors
 ///
-/// The descriptor will have the following _relationships_ populated:
-/// * DESCRIBED_BY->TypeDescriptor (if supplied)
-/// * COMPONENT_OF->Schema (supplied)
-/// * VERSION->SemanticVersion (default)
-/// * HAS_SUPERTYPE->TypeDescriptor (if supplied)
+/// For now, `version` is being treated as a MapString property and is initialized to "0.0.1"
+///
+/// This function will add the `Type-COMPONENT_OF->Schema` relationship
+/// and optionally, the following relationships:
+/// * `Type-DESCRIBED_BY->TypeDescriptor` (if supplied)
+/// * `Holon-OWNED_BY-> HolonSpace` (if supplied)
+/// * `Type-HAS_SUPERTYPE->TypeDescriptor` (if supplied)
 ///
 ///
 pub fn define_type_descriptor(
-    _context: &HolonsContext,
-    _schema: StagedReference,
+    context: &HolonsContext,
+    schema: &HolonReference, // Type-COMPONENT_OF->Schema
     descriptor_name: MapString,
     type_name: MapString,
     base_type: BaseType,
     description: MapString,
-    label: MapString, // Human readable name for this type
+    label: MapString, // Human-readable name for this type
     is_dependent: MapBoolean,
-    is_value_descriptor: MapBoolean,
-    _described_by: Option<StagedReference>,
-    _has_supertype: Option<StagedReference>,
-    //_owned_by: HolonReference, // HolonSpace
-) -> Result<TypeDescriptor, HolonError> {
+    is_value_type: MapBoolean,
+    described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
+    is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
+    owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
+) -> Result<StagedReference, HolonError> {
+
+    info!("Staging... {:#?}", type_name.0.clone());
+
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
-    // let schema_reference = StagedReference::from_holon()from_holon(schema.0.clone()));
-    // let schema_target = HolonCollection::One(schema_reference);
+  
+    // Define a default semantic_version as a String Property
+    let initial_version = MapString(SemanticVersion::default().to_string());
+
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(type_name.clone()),
+        )?
         .with_property_value(
             PropertyName(MapString("type_name".to_string())),
             BaseValue::StringValue(type_name),
@@ -71,8 +85,14 @@ pub fn define_type_descriptor(
         )?
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
-            BaseValue::BooleanValue(is_value_descriptor),
+            BaseValue::BooleanValue(is_value_type),
+
+        )?
+        .with_property_value(
+            PropertyName(MapString("version".to_string())),
+            BaseValue::StringValue(initial_version),
         )?;
+
 
     // Define a default semantic_version
     let _version = define_semantic_version(0, 0, 1);
@@ -115,6 +135,7 @@ pub fn define_type_descriptor(
     //     owned_by.clone(),
 
     Ok(TypeDescriptor(descriptor))
+
 }
 
 pub fn derive_descriptor_name(type_name: &MapString) -> MapString {

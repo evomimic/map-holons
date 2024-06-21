@@ -26,10 +26,13 @@ pub enum DanceTestStep {
     ), // Adds relationship between two Holons
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+
     Commit,            // Attempts to commit
     WithProperties(StagedIndex, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedIndex with PropertyMap
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     AbandonStagedChanges(StagedIndex, ResponseStatusCode), // Marks a staged Holon as 'abandoned'
+    LoadCoreSchema,
+
 }
 
 impl fmt::Display for DanceTestStep {
@@ -41,7 +44,7 @@ impl fmt::Display for DanceTestStep {
                 holons_to_add,
                 expected_response,
             ) => {
-                write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", index, relationship_name, holons_to_add.len(), expected_response )
+                write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", index, relationship_name, holons_to_add.len(), expected_response)
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
@@ -62,12 +65,16 @@ impl fmt::Display for DanceTestStep {
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
+
             DanceTestStep::AbandonStagedChanges(index, expected_response) => {
                 write!(
                     f,
                     "Marking Holon at ({:#?}) as Abandoned, expecting ({:#?})",
                     index, expected_response
                 )
+            }
+            DanceTestStep::LoadCoreSchema => {
+                write!(f, "LoadCoreSchema")
             }
         }
     }
@@ -153,4 +160,10 @@ impl DancesTestCase {
         ));
         Ok(())
     }
+    pub fn add_load_core_schema(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::LoadCoreSchema);
+        Ok(())
+    }
+
+
 }

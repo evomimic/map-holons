@@ -52,6 +52,7 @@ pub fn build_relationship_map_from_smartlinks(
     let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
     let links = get_relationship_links(source_holon_id.clone(), relationship_name)?;
 
+
     debug!("Retrieved {:?} links from holochain", links.len());
 
     for link in links {
@@ -59,6 +60,8 @@ pub fn build_relationship_map_from_smartlinks(
         // function that creates a SmartLink object from a holochain link.
         let name_string = get_relationship_name_from_smartlink(link.clone())?.0 .0;
         let name = RelationshipName(MapString(name_string));
+
+
 
         let target = link.target.into_action_hash().ok_or_else(|| {
             HolonError::HashConversion("Link target".to_string(), "ActionHash".to_string())

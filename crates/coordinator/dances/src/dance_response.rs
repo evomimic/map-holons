@@ -48,6 +48,7 @@ pub enum ResponseBody {
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
     // SmartCollection(SmartCollection),
     Index(StagedIndex),
+    HolonReference(HolonReference),
 }
 
 impl From<HolonError> for ResponseStatusCode {

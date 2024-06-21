@@ -26,6 +26,19 @@ impl SmartReference {
             smart_property_values: self.smart_property_values.clone(),
         }
     }
+    // pub fn clone_holon(&self, context: &HolonsContext)->Result<Holon, HolonError> {
+    //     return match self.holon_id {
+    //         Some(holon_id) => {
+    //             let mut cache_manager_ref_mut = context.cache_manager.borrow_mut();
+    //             let holon = cache_manager_ref_mut.get_rc_holon(None, holon_id.clone())?;
+    //             Ok(holon)
+    //         }
+    //         None => {
+    //             Err(HolonError::HolonNotFound("No holon_id found in SmartReference".to_string()))
+    //         }
+    //     }
+    //
+    // }
 
     // Constructor function for creating Holon Reference from an rc_holon
     pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference, HolonError> {
