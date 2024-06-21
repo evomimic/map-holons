@@ -1,5 +1,5 @@
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, HolonFieldGettable};
+use crate::holon::{AccessType, HolonGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::RelationshipName;
@@ -82,7 +82,7 @@ impl HolonCollection {
     //     }
     // }
 
-    pub fn into_staged(&self) -> Result<HolonCollection, HolonError> {
+    pub fn to_staged(&self) -> Result<HolonCollection, HolonError> {
         self.is_accessible(AccessType::Read)?;
         if self.state == CollectionState::Fetched {
             Ok(HolonCollection {

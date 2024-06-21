@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, Holon, HolonFieldGettable};
+use crate::holon::{AccessType, Holon, HolonGettable};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
@@ -20,9 +20,9 @@ pub struct StagedReference {
     // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
-impl HolonFieldGettable for StagedReference {
+impl HolonGettable for StagedReference {
     fn get_property_value(
-        &mut self,
+        &self,
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
