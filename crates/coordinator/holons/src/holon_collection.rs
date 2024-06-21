@@ -82,7 +82,7 @@ impl HolonCollection {
     //     }
     // }
 
-    pub fn into_staged(&self) -> Result<HolonCollection, HolonError> {
+    pub fn to_staged(&self) -> Result<HolonCollection, HolonError> {
         self.is_accessible(AccessType::Read)?;
         if self.state == CollectionState::Fetched {
             Ok(HolonCollection {

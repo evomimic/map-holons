@@ -220,7 +220,7 @@ impl CommitManager {
         let existing_relationship_map = existing_holon.get_relationship_map(context)?;
         holon.relationship_map = RelationshipMap::new();
         for (relationship_name, holon_collection) in existing_relationship_map.0 {
-            holon_collection.into_staged()?;
+            holon_collection.to_staged()?;
 
             holon
                 .relationship_map
@@ -370,7 +370,7 @@ impl CommitManager {
         holon.relationship_map = RelationshipMap::new();
         for (relationship_name, holon_collection) in existing_relationship_map.0 {
             // *Note: temp implementation, populate 0th cursor. TODO: set strategy for how to determine which SmartCollection (cursor) to choose
-            holon_collection.into_staged()?;
+            holon_collection.to_staged()?;
 
             holon
                 .relationship_map
