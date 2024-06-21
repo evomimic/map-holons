@@ -8,7 +8,7 @@ use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 use crate::descriptor_types::TypeDescriptor;
-use crate::semantic_version::define_semantic_version;
+use crate::semantic_version::set_semantic_version;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 
@@ -95,8 +95,9 @@ pub fn define_type_descriptor(
 
 
     // Define a default semantic_version
-    let _version = define_semantic_version(0, 0, 1);
+    let _version = set_semantic_version(0, 0, 1);
 
+    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(descriptor.clone())?;
     // Add the outbound relationships shared by all TypeDescriptors
     // let version_target = define_local_target(&version);
 
@@ -134,7 +135,7 @@ pub fn define_type_descriptor(
     //     RelationshipName(MapString("OWNED_BY".to_string())),
     //     owned_by.clone(),
 
-    Ok(TypeDescriptor(descriptor))
+    Ok(staged_reference)
 
 }
 

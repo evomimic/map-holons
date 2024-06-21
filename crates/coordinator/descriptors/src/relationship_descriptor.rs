@@ -1,14 +1,16 @@
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 
-use crate::descriptor_types::{DeletionSemantic, RelationshipDescriptor};
+use crate::descriptor_types::{DeletionSemantic};
 use holons::holon_collection::HolonCollection;
+use holons::holon_reference::HolonReference;
+
 
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{BaseType, PropertyName};
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
 
-use crate::descriptor_types::DeletionSemantic;
+
 use crate::type_descriptor::define_type_descriptor;
 
 /// This function defines and stages (but does not persist) a new RelationshipDescriptor.
@@ -42,7 +44,6 @@ pub fn define_relationship_type(
     _source_for: HolonCollection, // TODO: switch type to HolonReference
     _target_for: HolonCollection, // TODO: switch type to HolonReference
     has_supertype: Option<StagedReference>,
-    described_by: Option<StagedReference>,
     _has_inverse: Option<StagedReference>,
 
 ) -> Result<StagedReference, HolonError> {
@@ -85,15 +86,6 @@ pub fn define_relationship_type(
             BaseValue::IntegerValue(affinity),
         )?;
 
-    // Add its relationships
-    if let Some(descriptor_ref) = target_holon_type {
-        staged_reference
-            .add_related_holons(
-                context,
-                RelationshipName(MapString("TARGET_HOLON_TYPE".to_string())),
-                vec![descriptor_ref])?
-    };
-
-    Ok(staged_reference)
+       Ok(staged_reference)
 
 }
