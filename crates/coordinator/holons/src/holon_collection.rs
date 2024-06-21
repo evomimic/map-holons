@@ -1,5 +1,5 @@
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, HolonFieldGettable};
+use crate::holon::{AccessType, HolonGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::RelationshipName;

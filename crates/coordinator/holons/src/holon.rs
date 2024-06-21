@@ -82,9 +82,9 @@ pub enum ValidationState {
     Invalid,
 }
 
-pub trait HolonFieldGettable {
+pub trait HolonGettable {
     fn get_property_value(
-        &mut self,
+        &self,
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError>;

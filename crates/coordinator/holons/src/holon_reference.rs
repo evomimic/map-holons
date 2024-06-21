@@ -3,7 +3,7 @@ use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
-use crate::holon::HolonFieldGettable;
+use crate::holon::HolonGettable;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_link_manager::SmartLinkInput;
@@ -27,9 +27,9 @@ pub enum HolonReference {
     Smart(SmartReference),
 }
 
-impl HolonFieldGettable for HolonReference {
+impl HolonGettable for HolonReference {
     fn get_property_value(
-        &mut self,
+        &self,
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
