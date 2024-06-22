@@ -3,7 +3,7 @@ use crate::holon::{AccessType, HolonGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::RelationshipName;
-use crate::smart_link_manager::{create_smart_link, SmartLinkInput};
+use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;
@@ -42,9 +42,9 @@ impl HolonCollection {
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match access_type {
             AccessType::Read => match self.state {
-                CollectionState::Fetched
-                | CollectionState::Staged
-                | CollectionState::Saved => Ok(()),
+                CollectionState::Fetched | CollectionState::Staged | CollectionState::Saved => {
+                    Ok(())
+                }
                 CollectionState::Abandoned => Err(HolonError::NotAccessible(
                     "Read".to_string(),
                     format!("{:?}", self.state),
@@ -139,12 +139,13 @@ impl HolonCollection {
         for holon_reference in self.members.clone() {
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id(context) {
-                let input = SmartLinkInput {
+                let input = SmartLink {
                     from_address: source_id.clone(),
                     to_address: target_id,
                     relationship_name: name.clone(),
+                    smart_property_values: None, // defaulting to None until descriptors are ready // TODO: populate
                 };
-                create_smart_link(input)?;
+                save_smartlink(input)?;
             }
         }
         Ok(())

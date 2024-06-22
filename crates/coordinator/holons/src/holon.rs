@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use derive_new::new;
@@ -5,20 +6,23 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
+use holons_integrity::LinkTypes;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
-use shared_types_holon::BaseType::Relationship;
+use shared_types_holon::{HolonId, MapString};
 
 use shared_types_holon::value_types::BaseValue;
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
-use crate::relationship::{build_relationship_map_from_smartlinks, RelationshipMap};
+use crate::holon_reference::HolonReference;
+use crate::relationship::{RelationshipMap, RelationshipName, SmartLinkHolder};
 use crate::smart_reference::SmartReference;
+use crate::smartlink::{create_link_tag, get_smartlink_from_link};
 
 #[derive(Debug)]
 pub enum AccessType {
@@ -405,4 +409,80 @@ impl Holon {
             },
         }
     }
+}
+
+/// Gets relationships optionally filtered by name and subsequent property_values
+pub fn get_relationship_links(
+    holon_id: ActionHash,
+    relationship_name: Option<RelationshipName>,
+) -> Result<Vec<Link>, HolonError> {
+    let link_tag: Option<LinkTag> = if let Some(name) = relationship_name {
+        Some(create_link_tag(name, None)) // currently defaulting smart_property_values to None // TODO: is this correct?
+    } else {
+        None
+    };
+
+    let links =
+        get_links(holon_id, LinkTypes::SmartLink, link_tag).map_err(|e| HolonError::from(e))?;
+
+    Ok(links)
+}
+
+/// Builds a full or partial RelationshipMap for an existing holon identified by `source_holon_id`
+/// by retrieving SmartLinks for that holon.
+/// If `relationship_name` is supplied, the RelationshipMap returned will only have (at most) a
+/// single entry consisting of the HolonCollection for the supplied `relationship_name`.
+/// Otherwise, a full RelationshipMap will be populated for the `source_holon_id`.
+///
+///
+///
+pub fn load_relationship_map(
+    context: &HolonsContext,
+    source_holon_id: ActionHash,
+    relationship_name: Option<RelationshipName>,
+) -> Result<RelationshipMap, HolonError> {
+    let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
+    let links = get_relationship_links(source_holon_id.clone(), relationship_name)?;
+
+    debug!("Retrieved {:?} links from holochain", links.len());
+
+    for link in links {
+        let smartlink = get_smartlink_from_link(link.clone())?;
+        // let name = RelationshipName(MapString(name_string));
+
+        let target = link.target.into_action_hash().ok_or_else(|| {
+            HolonError::HashConversion("Link target".to_string(), "ActionHash".to_string())
+        })?;
+        let reference = HolonReference::Smart(SmartReference {
+            holon_id: HolonId(target),
+            smart_property_values: None, // defaulting to None until descriptors ready
+        });
+
+        let holder = SmartLinkHolder {
+            name: name.clone(),
+            reference: reference.clone(),
+        };
+
+        // The following:
+        // 1) adds an entry for relationship name if not already present (via `entry` API)
+        // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+        // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+        reference_map
+            .entry(name)
+            .or_insert_with(Vec::new)
+            .push(reference);
+    }
+
+    // Now create the result
+
+    let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
+
+    for (map_name, holons) in reference_map {
+        let mut collection = HolonCollection::new_existing();
+        collection.add_references(context, holons)?;
+        relationship_map.insert(map_name, collection);
+    }
+
+    Ok(RelationshipMap(relationship_map))
 }
