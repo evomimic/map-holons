@@ -178,25 +178,25 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
         Err(error) => {
             // If the dispatch_result is an error, extract the associated string value
             let error_message = match error.clone() {
-                HolonError::EmptyField(msg)
-                | HolonError::InvalidParameter(msg)
-                | HolonError::HolonNotFound(msg)
-                | HolonError::CommitFailure(msg)
-                | HolonError::WasmError(msg)
-                | HolonError::RecordConversion(msg)
-                | HolonError::InvalidHolonReference(msg)
-                | HolonError::IndexOutOfRange(msg)
-                | HolonError::NotImplemented(msg)
-                | HolonError::MissingStagedCollection(msg)
-                | HolonError::FailedToBorrow(msg)
-                | HolonError::UnableToAddHolons(msg)
-                | HolonError::InvalidRelationship(msg, _)
-                | HolonError::NotAccessible(msg, _)
-                | HolonError::GuardError(msg)
-                | HolonError::UnexpectedValueType(msg, _)
-                | HolonError::CacheError(msg) => msg,
+                HolonError::EmptyField(_)
+                | HolonError::InvalidParameter(_)
+                | HolonError::HolonNotFound(_)
+                | HolonError::CommitFailure(_)
+                | HolonError::WasmError(_)
+                | HolonError::RecordConversion(_)
+                | HolonError::InvalidHolonReference(_)
+                | HolonError::IndexOutOfRange(_)
+                | HolonError::NotImplemented(_)
+                | HolonError::MissingStagedCollection(_)
+                | HolonError::FailedToBorrow(_)
+                | HolonError::UnableToAddHolons(_)
+                | HolonError::InvalidRelationship(_, _)
+                | HolonError::NotAccessible(_, _)
+                | HolonError::UnexpectedValueType(_, _)
+                | HolonError::Utf8Conversion(_, _)
+                | HolonError::HashConversion(_, _)
+                | HolonError::CacheError(_) => error.to_string(),
                 HolonError::ValidationError(validation_error) => validation_error.to_string(),
-
             };
 
             // Construct DanceResponse with error details

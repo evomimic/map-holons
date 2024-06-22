@@ -3,8 +3,8 @@ use holons::helpers::define_local_target;
 use holons::holon_reference::HolonReference::*;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_types::Holon;
-use holons::relationship::RelationshipTarget;
-use holons::relationship::RelationshipTarget::*;
+use holons::relationship::HolonCollection;
+use holons::relationship::HolonCollection::*;
 
 use derive_new::*;
 

@@ -17,6 +17,8 @@ pub enum HolonError {
     WasmError(String),
     #[error("Couldn't convert Record to {0}")]
     RecordConversion(String),
+    #[error("Couldn't convert {0} into {1} ")]
+    HashConversion(String, String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
     #[error("Index {0} into Holons Vector is Out of Range")]
@@ -39,8 +41,8 @@ pub enum HolonError {
     NotAccessible(String, String),
     #[error("Unable to cast {0} into expected ValueType: {1}")]
     UnexpectedValueType(String, String),
-    #[error("{0} guard failed")]
-    GuardError(String),
+    #[error("Invalid UTF8: Couldn't convert {0} into {1}")]
+    Utf8Conversion(String, String),
 }
 
 impl From<WasmError> for HolonError {

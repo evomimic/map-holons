@@ -34,6 +34,14 @@ pub fn get_holon(id: HolonId) -> ExternResult<Option<Holon>> {
     }
 }
 
+#[hdk_extern]
+pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {
+    match Holon::get_all_holons() {
+        Ok(result) => Ok(result),
+        Err(holon_error) => Err(holon_error.into()),
+    }
+}
+
 // #[hdk_extern]
 // pub fn commit(input: Holon) -> ExternResult<Holon> {
 //     // // quick exit to test error return
@@ -44,13 +52,7 @@ pub fn get_holon(id: HolonId) -> ExternResult<Option<Holon>> {
 //     }
 // }
 
-#[hdk_extern]
-pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {
-    match Holon::get_all_holons() {
-        Ok(result) => Ok(result),
-        Err(holon_error) => Err(holon_error.into()),
-    }
-}
+
 #[hdk_extern]
 pub fn delete_holon(target_holon_id: ActionHash) -> ExternResult<ActionHash> {
     match delete_holon_node(target_holon_id) {

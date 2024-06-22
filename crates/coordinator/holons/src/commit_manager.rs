@@ -6,9 +6,9 @@ use std::rc::Rc;
 // use crate::cache_manager::HolonCacheManager;
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
-use crate::relationship::RelationshipTarget;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 use shared_types_holon::{MapInteger, MapString};
@@ -216,24 +216,16 @@ impl CommitManager {
         holon.property_map = existing_holon.get_property_map(context)?;
 
         // Iterate through existing holon's RelationshipMap
-        // For each RelationshipTarget, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
+        // For each HolonCollection, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
         let existing_relationship_map = existing_holon.get_relationship_map(context)?;
         holon.relationship_map = RelationshipMap::new();
-        for (relationship_name, relationship_target) in existing_relationship_map.0 {
-            let mut new_relationship_target = RelationshipTarget {
-                editable: None,
-                cursors: Vec::new(),
-            };
-            // for now populate 0th cursor
-            new_relationship_target.stage_collection(
-                staged_reference.clone_reference(),
-                relationship_target.cursors[0].clone(),
-            );
+        for (relationship_name, holon_collection) in existing_relationship_map.0 {
+            holon_collection.to_staged()?;
 
             holon
                 .relationship_map
                 .0
-                .insert(relationship_name, new_relationship_target);
+                .insert(relationship_name, holon_collection);
         }
 
         Ok(staged_reference)
@@ -373,24 +365,17 @@ impl CommitManager {
         holon.property_map = existing_holon.get_property_map(context)?;
 
         // Iterate through existing holon's RelationshipMap
-        // For each RelationshipTarget, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
+        // For each HolonCollection, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
         let existing_relationship_map = existing_holon.get_relationship_map(context)?;
         holon.relationship_map = RelationshipMap::new();
-        for (relationship_name, relationship_target) in existing_relationship_map.0 {
-            let mut new_relationship_target = RelationshipTarget {
-                editable: None,
-                cursors: Vec::new(),
-            };
+        for (relationship_name, holon_collection) in existing_relationship_map.0 {
             // *Note: temp implementation, populate 0th cursor. TODO: set strategy for how to determine which SmartCollection (cursor) to choose
-            new_relationship_target.stage_collection(
-                staged_reference.clone_reference(),
-                relationship_target.cursors[0].clone(),
-            );
+            holon_collection.to_staged()?;
 
             holon
                 .relationship_map
                 .0
-                .insert(relationship_name, new_relationship_target);
+                .insert(relationship_name, holon_collection);
         }
 
         Ok(staged_reference)
