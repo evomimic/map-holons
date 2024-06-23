@@ -1,7 +1,8 @@
 use hdk::prelude::*;
+use std::{collections::BTreeMap, str};
 //use hdi::prelude::*;
 use holons_integrity::*;
-use shared_types_holon::{HolonId, MapString, PropertyMap};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName, PropertyValue};
 
 use crate::{holon_error::HolonError, relationship::RelationshipName};
 
@@ -15,6 +16,13 @@ pub struct SmartLink {
     pub from_address: HolonId,
     pub to_address: HolonId,
     pub relationship_name: RelationshipName, // temporarily using RelationshipName as descriptor
+    pub smart_property_values: Option<PropertyMap>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LinkTagObject {
+    pub relationship_name: String,
+    // pub proxy_id: ActionHash,
     pub smart_property_values: Option<PropertyMap>,
 }
 
@@ -44,32 +52,41 @@ pub struct SmartLink {
 //         .collect();
 //     Ok(records)
 // }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RemoveSmartLinkInput {
-    pub base_holon_node_hash: ActionHash,
-    pub target_holon_node_hash: ActionHash,
-}
-#[hdk_extern]
-pub fn remove_smartlink(input: RemoveSmartLinkInput) -> ExternResult<()> {
-    let links = get_links(
-        input.base_holon_node_hash.clone(),
-        LinkTypes::SmartLink,
-        None,
-    )?;
-    for link in links {
-        if link
-            .target
-            .into_action_hash()
-            .unwrap()
-            .eq(&input.target_holon_node_hash)
-        {
-            delete_link(link.create_link_hash)?;
-        }
-    }
-    Ok(())
-}
+// #[derive(Serialize, Deserialize, Debug)]
+// pub struct RemoveSmartLinkInput {
+//     pub base_holon_node_hash: ActionHash,
+//     pub target_holon_node_hash: ActionHash,
+// }
+// #[hdk_extern]
+// pub fn remove_smartlink(input: RemoveSmartLinkInput) -> ExternResult<()> {
+//     let links = get_links(
+//         input.base_holon_node_hash.clone(),
+//         LinkTypes::SmartLink,
+//         None,
+//     )?;
+//     for link in links {
+//         if link
+//             .target
+//             .into_action_hash()
+//             .unwrap()
+//             .eq(&input.target_holon_node_hash)
+//         {
+//             delete_link(link.create_link_hash)?;
+//         }
+//     }
+//     Ok(())
+// }
 
-pub fn get_smartlink_from_link(link: Link) -> Result<SmartLink, HolonError> {
+pub fn get_smartlink_from_link(
+    source_holon_id: ActionHash,
+    link: Link,
+) -> Result<SmartLink, HolonError> {
+    let target = link
+        .target
+        .into_action_hash()
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "No action hash associated with link"
+        ))))?;
     let link_tag_bytes = link.tag.clone().into_inner();
     let link_tag = String::from_utf8(link_tag_bytes).map_err(|_e| {
         HolonError::Utf8Conversion(
@@ -79,11 +96,54 @@ pub fn get_smartlink_from_link(link: Link) -> Result<SmartLink, HolonError> {
     })?;
     debug!("got: {:?}\n link_tag from smartlink ", link_tag.clone());
 
-    let chunks: Vec<&str> = link_tag.split(UNICODE_NUL_STR).collect();
-    let name = chunks[0][smartlink_tag_header_length()..].to_string(); // drop leading header bytes
-    debug!("got {:?}\n relationship_name from link_tag", name.clone());
+    let link_tag_obj = decode_link_tag(link_tag);
 
-    Ok(RelationshipName(MapString(name)))
+    let smartlink = SmartLink {
+        from_address: HolonId(source_holon_id.clone()),
+        to_address: HolonId(target),
+        relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
+        smart_property_values: link_tag_obj.smart_property_values,
+    };
+
+    Ok(smartlink)
+}
+
+pub fn decode_link_tag(link_tag: String) -> LinkTagObject {
+    let mut chunks: Vec<&str> = link_tag.split(UNICODE_NUL_STR).collect();
+    let relationship_name = chunks[0][smartlink_tag_header_length()..].to_string(); // drop leading header bytes
+    debug!(
+        "got {:?}\n relationship_name from link_tag",
+        relationship_name
+    );
+
+    // TODO: this logic will change once we insert steps for reference_type and proxy_id
+    // noting that the order of chunks by nul byte will be different
+
+    let mut prop_map: BTreeMap<PropertyName, PropertyValue> = BTreeMap::new();
+
+    for chunk in &mut chunks[1..] {
+        let props: Vec<&str> = chunk.split(|c| c == 'Ⓝ' || c == 'Ⓥ').collect();
+
+        // for now, always assuming value type is MapString
+        prop_map.insert(
+            PropertyName(MapString(props[1].to_string())),
+            BaseValue::StringValue(MapString(props[3].to_string())),
+        );
+    }
+    let smart_property_values: Option<PropertyMap> = if prop_map.is_empty() {
+        None
+    } else {
+        Some(prop_map)
+    };
+    debug!(
+        "got smart_property_values from link_tag: {:#?}",
+        smart_property_values
+    );
+
+    LinkTagObject {
+        relationship_name,
+        smart_property_values,
+    }
 }
 
 pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
@@ -116,6 +176,8 @@ pub fn create_link_tag(
     bytes.extend_from_slice(name.as_bytes());
 
     bytes.extend_from_slice(&PROLOG_SEPERATOR);
+    bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
+
     // TODO: determine reference type
     // bytes.extend_from_slice(reference_type.as_bytes());
     // bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
@@ -123,10 +185,16 @@ pub fn create_link_tag(
     // bytes.extend_from_slice(proxy_id_string.as_bytes());
     // bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
 
-    // ??
-    // for (prop, val) in property_values {
-    //     bytes.extend_from_slice(prop.as_bytes());
-    // }
-
+    if let Some(property_map) = &property_values {
+        for (prop, val) in property_map {
+            bytes.extend_from_slice(&PROP_NAME_SEPERATOR);
+            bytes.extend_from_slice(prop.0 .0.as_bytes());
+            bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
+            bytes.extend_from_slice(&PROP_VAL_SEPERATOR);
+            bytes.extend_from_slice(&val.into_bytes().0);
+            bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
+        }
+    }
+    debug!("created link_tag: {:?}", str::from_utf8(&bytes));
     LinkTag(bytes)
 }

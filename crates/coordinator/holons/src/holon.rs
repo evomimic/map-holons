@@ -411,13 +411,14 @@ impl Holon {
     }
 }
 
-/// Gets relationships optionally filtered by name and subsequent property_values
+/// Gets all relationships optionally filtered by name
 pub fn get_relationship_links(
     holon_id: ActionHash,
     relationship_name: Option<RelationshipName>,
 ) -> Result<Vec<Link>, HolonError> {
     let link_tag: Option<LinkTag> = if let Some(name) = relationship_name {
-        Some(create_link_tag(name, None)) // currently defaulting smart_property_values to None // TODO: is this correct?
+        // smart_property_values is set to None so that no additional filters are applied and all relationships of a given name are retrieved
+        Some(create_link_tag(name, None))
     } else {
         None
     };
@@ -447,7 +448,7 @@ pub fn load_relationship_map(
     debug!("Retrieved {:?} links from holochain", links.len());
 
     for link in links {
-        let smartlink = get_smartlink_from_link(link.clone())?;
+        let smartlink = get_smartlink_from_link(source_holon_id.clone(), link.clone())?;
         // let name = RelationshipName(MapString(name_string));
 
         let target = link.target.into_action_hash().ok_or_else(|| {

@@ -5,7 +5,7 @@ use crate::holon_reference::HolonReference;
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -136,15 +136,31 @@ impl HolonCollection {
             "Calling commit on each HOLON_REFERENCE in the collection for {:#?}.",
             name.0.clone()
         );
-        for holon_reference in self.members.clone() {
+        for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id(context) {
-                let input = SmartLink {
-                    from_address: source_id.clone(),
-                    to_address: target_id,
-                    relationship_name: name.clone(),
-                    smart_property_values: None, // defaulting to None until descriptors are ready // TODO: populate
+                let key = holon_reference.get_key(context)?;
+                let input: SmartLink = if let Some(key) = key {
+                    let mut prop_vals: PropertyMap = BTreeMap::new();
+                    prop_vals.insert(
+                        PropertyName(MapString("key".to_string())),
+                        BaseValue::StringValue(key),
+                    );
+                    SmartLink {
+                        from_address: source_id.clone(),
+                        to_address: target_id,
+                        relationship_name: name.clone(),
+                        smart_property_values: Some(prop_vals),
+                    }
+                } else {
+                    SmartLink {
+                        from_address: source_id.clone(),
+                        to_address: target_id,
+                        relationship_name: name.clone(),
+                        smart_property_values: None,
+                    }
                 };
+
                 save_smartlink(input)?;
             }
         }

@@ -28,12 +28,15 @@ impl fmt::Display for MapString {
 pub struct MapBoolean(pub bool);
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq,)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapInteger(pub i64);
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq,)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapEnumValue(pub MapString);
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct MapBytes(pub Vec<u8>);
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, new)]
@@ -44,16 +47,26 @@ pub enum BaseValue {
     EnumValue(MapEnumValue), // this is for simple enum variants,
 }
 
-impl TryInto<String> for &BaseValue {
-    type Error = ();
-
-    fn try_into(self) -> Result<String, Self::Error> {
+impl BaseValue {
+    pub fn into_bytes(&self) -> MapBytes {
+        // let string: String = self.into();
+        // MapBytes(string.into_bytes())
         match self {
-            BaseValue::StringValue(val) => Ok(val.0.clone()),
-            BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
-            BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
-            BaseValue::EnumValue(val) => Ok(val.0.0.clone()), // Assuming EnumValue contains a String
-            _ => Err(()),
+            Self::StringValue(map_string) => MapBytes(map_string.0.clone().into_bytes()),
+            Self::BooleanValue(map_bool) => MapBytes(vec![map_bool.0 as u8]),
+            Self::IntegerValue(map_int) => MapBytes(vec![map_int.0 as u8]),
+            Self::EnumValue(map_enum) => MapBytes(map_enum.0 .0.clone().into_bytes()),
+        }
+    }
+}
+
+impl Into<String> for &BaseValue {
+    fn into(self) -> String {
+        match self {
+            BaseValue::StringValue(val) => val.0.clone(),
+            BaseValue::IntegerValue(val) => val.0.to_string(),
+            BaseValue::BooleanValue(val) => val.0.to_string(),
+            BaseValue::EnumValue(val) => val.0 .0.clone(), // Assuming EnumValue contains a String
         }
     }
 }
@@ -89,7 +102,7 @@ impl TryInto<String> for &BaseValue {
 // }
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq,)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct EnumValue(pub String);
 
 #[hdk_entry_helper]
