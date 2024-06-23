@@ -51,6 +51,7 @@ impl DeletionSemantic {
         }
     }
 }
+
 /// The following constants specify the type_names for L0 Schema Components
 pub const SCHEMA_NAME: &str = "MAP Core L0 Schema";
 pub const META_TYPE_TYPE: &str = "MetaType";
@@ -69,7 +70,94 @@ pub const META_VALUE_ARRAY_TYPE: &str = "MetaValueArrayType";
 pub const MAP_STRING_TYPE:  &str = "MapString";
 pub const MAP_INTEGER_TYPE:  &str = "MapInteger";
 pub const MAP_BOOLEAN_TYPE:  &str = "MapBoolean";
+pub const DELETION_SEMANTIC_ENUM: &str = "DeletionSemanticEnum";
 
+pub enum CoreMetaSchemaName {
+    MetaSchemaType,
+    MetaType,
+    MetaHolonType,
+    MetaRelationshipType,
+    MetaPropertyType,
+    MetaDanceType,
+    MetaValueType,
+    MetaBooleanType,
+    MetaEnumType,
+    MetaEnumVariantType,
+    MetaIntegerType,
+    MetaStringType,
+    MetaValueArrayType,
+}
+
+impl CoreMetaSchemaName {
+    pub fn as_str(&self) -> &str {
+        match self {
+            CoreMetaSchemaName::MetaType => "MetaType",
+            CoreMetaSchemaName::MetaHolonType => "MetaHolonType",
+            CoreMetaSchemaName::MetaRelationshipType => "MetaRelationshipType",
+            CoreMetaSchemaName::MetaPropertyType => "MetaPropertyType",
+            CoreMetaSchemaName::MetaDanceType => "MetaDanceType",
+            CoreMetaSchemaName::MetaValueType => "MetaValueType",
+            CoreMetaSchemaName::MetaBooleanType => "MetaBooleanType",
+            CoreMetaSchemaName::MetaEnumType => "MetaEnumType",
+            CoreMetaSchemaName::MetaEnumVariantType => "MetaEnumVariantType",
+            CoreMetaSchemaName::MetaIntegerType => "MetaIntegerType",
+            CoreMetaSchemaName::MetaStringType => "MetaStringType",
+            CoreMetaSchemaName::MetaValueArrayType => "MetaValueArrayType",
+            CoreMetaSchemaName::MetaSchemaType => "MetaSchemaType"
+        }
+    }
+
+    pub fn as_map_string(&self) -> MapString {
+        MapString(self.as_str().to_string())
+    }
+}
+pub enum CoreSchemaName {
+    SchemaName,
+    HolonType,
+    PropertyType,
+    RelationshipType,
+    MapStringType,
+    MapIntegerType,
+    MapBooleanType,
+    DeletionSemanticEnumType,
+    DeletionSemanticEnumVariantAllow,
+    DeletionSemanticEnumVariantBlock,
+    DeletionSemanticEnumVariantPropagate,
+    HolonStateEnumType,
+    HolonStateEnumVariantNew,
+    HolonStateEnumVariantFetched,
+    HolonStateEnumVariantChanged,
+    HolonStateEnumVariantSaved,
+    HolonStateEnumVariantAbandoned,
+
+}
+impl CoreSchemaName {
+    pub fn as_str(&self) -> &str {
+        match self {
+            CoreSchemaName::HolonType => "HolonType",
+            CoreSchemaName::PropertyType=> "PropertyType",
+            CoreSchemaName::RelationshipType => "RelationshipType",
+            CoreSchemaName::MapStringType => "MapString",
+            CoreSchemaName::MapIntegerType => "MapInteger",
+            CoreSchemaName::MapBooleanType => "MapBoolean",
+            CoreSchemaName::DeletionSemanticEnumType => "DeletionSemanticEnum",
+            CoreSchemaName::SchemaName => "MAP Core Schema",
+            CoreSchemaName::DeletionSemanticEnumVariantAllow => "DeletionSemantic::Allow",
+            CoreSchemaName::DeletionSemanticEnumVariantBlock => "DeletionSemantic::Block",
+            CoreSchemaName::DeletionSemanticEnumVariantPropagate => "DeletionSemantic::Propagate",
+            CoreSchemaName::HolonStateEnumType => "HolonStateEnum",
+            CoreSchemaName::HolonStateEnumVariantNew => "HolonState::New",
+            CoreSchemaName::HolonStateEnumVariantFetched => "HolonState::Fetched",
+            CoreSchemaName::HolonStateEnumVariantChanged => "HolonState::Changed",
+            CoreSchemaName::HolonStateEnumVariantSaved =>"HolonState::Saved",
+            CoreSchemaName::HolonStateEnumVariantAbandoned => "HolonState::Abandoned",
+        }
+    }
+
+    pub fn as_map_string(&self) -> MapString {
+        MapString(self.as_str().to_string())
+    }
+}
 
 
 
