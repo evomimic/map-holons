@@ -3,7 +3,7 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::BaseType;
+use shared_types_holon::{BaseType, MapBoolean};
 use shared_types_holon::value_types::MapString;
 
 use crate::type_descriptor::{define_type_descriptor, TypeDefinitionHeader};
@@ -24,9 +24,9 @@ use crate::type_descriptor::{define_type_descriptor, TypeDefinitionHeader};
 ///
 ///
 pub struct PropertyTypeDefinition {
-    header: TypeDefinitionHeader,
-    property_of: HolonReference, // HolonType
-    value_type: HolonReference, // ValueType
+    pub header: TypeDefinitionHeader,
+    pub is_required: MapBoolean,
+    pub value_type: HolonReference, // ValueType
 }
 pub fn define_property_type(
     context: &HolonsContext,
@@ -43,11 +43,11 @@ pub fn define_property_type(
 
     // Populate the relationships
 
-    staged_reference
-        .add_related_holons(
-            context,
-            RelationshipName(MapString("PROPERTY_OF".to_string())),
-            vec![definition.property_of.clone()])?;
+    // staged_reference
+    //     .add_related_holons(
+    //         context,
+    //         RelationshipName(MapString("PROPERTY_OF".to_string())),
+    //         vec![definition.property_of.clone()])?;
 
     staged_reference
         .add_related_holons(

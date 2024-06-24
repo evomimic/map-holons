@@ -22,6 +22,8 @@ pub struct TypeDefinitionHeader {
     pub described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
     pub is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
     pub owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
+    //pub descriptor_properties: Vec<HolonReference>, // Type-DESCRIPTOR_PROPERTIES->PropertyType
+    //pub descriptor_relationships: Vec<HolonReference>, // Type-DESCRIPTOR_RELATIONSHIPS->RelationshipType
 }
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
@@ -107,7 +109,6 @@ pub fn define_type_descriptor(
         .borrow_mut()
         .stage_new_holon(descriptor.clone())?;
 
-
     staged_reference
         .add_related_holons(
             context,
@@ -135,6 +136,22 @@ pub fn define_type_descriptor(
                 RelationshipName(MapString("OWNED_BY".to_string())),
                 vec![owned_by_ref])?
     };
+
+    // if header.descriptor_properties.len()>0 {
+    //     staged_reference
+    //         .add_related_holons(
+    //             context,
+    //             RelationshipName(MapString("DESCRIPTOR_PROPERTIES".to_string())),
+    //             header.descriptor_properties)?
+    // };
+    //
+    // if header.descriptor_relationships.len()>0 {
+    //     staged_reference
+    //         .add_related_holons(
+    //             context,
+    //             RelationshipName(MapString("DESCRIPTOR_RELATIONSHIPS".to_string())),
+    //             header.descriptor_relationships)?
+    // };
 
 
     Ok(staged_reference)

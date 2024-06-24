@@ -10,6 +10,7 @@ use shared_types_holon::{MapBoolean, MapString};
 
 use crate::descriptor_types::{CoreSchemaName, CoreMetaSchemaName, Schema};
 use crate::holon_descriptor::{define_holon_type, HolonDefinition};
+use crate::meta_type_loader::load_core_meta_types;
 use crate::type_descriptor::TypeDefinitionHeader;
 use crate::value_type_loader::load_core_value_types;
 
@@ -29,7 +30,6 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
 
-
     let schema = Schema::new(
         CoreSchemaName::SchemaName.as_map_string(),
         MapString("The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string()),
@@ -48,8 +48,8 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     let (string_type_ref, integer_type_ref, boolean_type_ref)
         = load_core_value_types(context, &staged_schema_ref)?;
 
-
-
+    // Load the MetaTypes
+    load_core_meta_types(context, &staged_schema_ref)?;
 
     let type_name = CoreMetaSchemaName::MetaHolonType.as_map_string();
 

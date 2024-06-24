@@ -38,16 +38,17 @@ pub struct EnumType(pub Holon);
 pub enum DeletionSemantic {
     Allow, // deleting source_holon has no impact on the target_holon(s)
     Block, // prevent deletion of source_holon if any target_holons are related
-    Propagate, // if source_holon is deleted, then also delete any related target_holons
+    Cascade, // if source_holon is deleted, then also delete any related target_holons
 
 }
 
 impl DeletionSemantic {
+
     pub(crate) fn to_enum_variant(&self) -> MapEnumValue {
         match self {
             DeletionSemantic::Allow => MapEnumValue(MapString("Allow".to_string())),
             DeletionSemantic::Block => MapEnumValue(MapString("Block".to_string())),
-            DeletionSemantic::Propagate => MapEnumValue(MapString("Propagate".to_string())),
+            DeletionSemantic::Cascade => MapEnumValue(MapString("Propagate".to_string())),
         }
     }
 }
@@ -114,11 +115,10 @@ impl CoreMetaSchemaName {
 pub enum CoreSchemaName {
     SchemaName,
     HolonType,
-    PropertyType,
-    RelationshipType,
     MapStringType,
     MapIntegerType,
     MapBooleanType,
+    SemanticVersionType,
     DeletionSemanticEnumType,
     DeletionSemanticEnumVariantAllow,
     DeletionSemanticEnumVariantBlock,
@@ -135,11 +135,10 @@ impl CoreSchemaName {
     pub fn as_str(&self) -> &str {
         match self {
             CoreSchemaName::HolonType => "HolonType",
-            CoreSchemaName::PropertyType=> "PropertyType",
-            CoreSchemaName::RelationshipType => "RelationshipType",
             CoreSchemaName::MapStringType => "MapString",
             CoreSchemaName::MapIntegerType => "MapInteger",
             CoreSchemaName::MapBooleanType => "MapBoolean",
+            CoreSchemaName::SemanticVersionType => "SemanticVersion",
             CoreSchemaName::DeletionSemanticEnumType => "DeletionSemanticEnum",
             CoreSchemaName::SchemaName => "MAP Core Schema",
             CoreSchemaName::DeletionSemanticEnumVariantAllow => "DeletionSemantic::Allow",

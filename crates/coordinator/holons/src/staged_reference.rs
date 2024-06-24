@@ -12,7 +12,7 @@ use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
-use shared_types_holon::{HolonId, MapString, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -72,6 +72,26 @@ impl StagedReference {
             .map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
 
         Ok(holon_ref.clone())
+    }
+    pub fn with_property_value(
+        &self,
+        context: &HolonsContext,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&Self, HolonError> {
+        // Borrow the CommitManager immutably from the context
+        let commit_manager = context.commit_manager.borrow();
+
+        // Get the holon from the CommitManager
+        let holon_rc = commit_manager.staged_holons.get(self.holon_index)
+            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
+
+        let mut holon_ref = holon_rc.borrow_mut();
+
+        // Call the Holon's with_property_value method
+        holon_ref.with_property_value(property, value)?;
+
+        Ok(self)
     }
 
 
