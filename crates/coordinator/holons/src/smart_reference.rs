@@ -78,8 +78,8 @@ impl SmartReference {
         })?;
         let decoded_prop_map = decode_link_tag(link_tag).smart_property_values;
         if let Some(prop_vals) = decoded_prop_map {
-            let option_key = prop_vals.get(&PropertyName(MapString("key".to_string())));
-            if let Some(key) = option_key {
+            let key_option = prop_vals.get(&PropertyName(MapString("key".to_string())));
+            if let Some(key) = key_option {
                 return Ok(Some(MapString(key.into())));
             } else {
                 return Ok(None);

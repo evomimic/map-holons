@@ -163,7 +163,7 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
     )?;
     Ok(())
 }
-// fn create_link_tag(relationship_descriptor: String, access_path_string: String, proxy_id_string: String, property_values: String) -> LinkTag {
+
 pub fn create_link_tag(
     relationship_name: RelationshipName,
     property_values: Option<PropertyMap>,

@@ -459,18 +459,13 @@ pub fn load_relationship_map(
             smart_property_values: None, // defaulting to None until descriptors ready
         });
 
-        let holder = SmartLinkHolder {
-            name: name.clone(),
-            reference: reference.clone(),
-        };
-
         // The following:
         // 1) adds an entry for relationship name if not already present (via `entry` API)
         // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
         // 3) pushes the new HolonReference into the vector -- without having to clone the vector
 
         reference_map
-            .entry(name)
+            .entry(smartlink.relationship_name)
             .or_insert_with(Vec::new)
             .push(reference);
     }

@@ -139,8 +139,8 @@ impl HolonCollection {
         for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id(context) {
-                let key = holon_reference.get_key(context)?;
-                let input: SmartLink = if let Some(key) = key {
+                let key_option = holon_reference.get_key(context)?;
+                let input: SmartLink = if let Some(key) = key_option {
                     let mut prop_vals: PropertyMap = BTreeMap::new();
                     prop_vals.insert(
                         PropertyName(MapString("key".to_string())),
