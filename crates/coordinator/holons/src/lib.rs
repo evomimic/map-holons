@@ -14,6 +14,7 @@ pub mod relationship;
 pub mod smart_reference;
 pub mod smartlink;
 pub mod staged_reference;
+pub mod transient_collection;
 
 use hdk::prelude::*;
 use holons_integrity::*;

@@ -165,7 +165,7 @@ impl StagedReference {
 
         debug!("borrowed mut for holon: {:#?}", self.holon_index);
 
-        holon.abandon_staged_changes();
+        holon.abandon_staged_changes()?;
 
         Ok(())
     }

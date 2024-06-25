@@ -28,6 +28,18 @@ use crate::smartlink::{create_link_tag, get_smartlink_from_link};
 pub enum AccessType {
     Read,
     Write,
+    Abandon,
+    Commit,
+}
+impl fmt::Display for AccessType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AccessType::Read => write!(f, "Read"),
+            AccessType::Write => write!(f, "Write"),
+            AccessType::Abandon => write!(f, "Abandon"),
+            AccessType::Commit => write!(f, "Commit"),
+        }
+    }
 }
 
 #[hdk_entry_helper]
@@ -63,7 +75,6 @@ pub enum HolonState {
     Changed,
     Saved,
     Abandoned,
-    // SaveInProgress,
 }
 
 impl fmt::Display for HolonState {
@@ -85,6 +96,8 @@ pub enum ValidationState {
     Validated,
     Invalid,
 }
+
+
 
 pub trait HolonGettable {
     fn get_property_value(
@@ -109,6 +122,55 @@ impl Holon {
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
             errors: Vec::new(),
+        }
+    }
+
+    pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
+        match self.state {
+            HolonState::New => match access_type {
+                AccessType::Read |
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => Ok(()),
+            },
+            HolonState::Fetched => match access_type {
+                AccessType::Read => Ok(()),
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                }
+            }
+            HolonState::Changed => match access_type {
+                AccessType::Read |
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => Ok(()),
+            }
+            HolonState::Saved => match access_type {
+                AccessType::Write |
+                AccessType::Abandon => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                }
+                AccessType::Read |
+                AccessType::Commit => Ok(()),
+            }
+            HolonState::Abandoned => match access_type {
+                AccessType::Read |
+                AccessType::Write => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                }
+                |
+                AccessType::Commit |
+                AccessType::Abandon => Ok(()),
+            }
+
         }
     }
 
@@ -300,7 +362,7 @@ impl Holon {
             }
 
             _ => {
-                // For either Fetched, Saved, Abandoned, no save is needed, just return Holon
+                // No save needed for Fetched, Saved, Abandoned, or Transient, just return Holon
                 debug!("Skipping commit for holon in {:#?} state", self.state);
 
                 Ok(self.clone())
@@ -383,32 +445,14 @@ impl Holon {
         })
     }
 
-    //  TODO: If state is Saved, return HolonError::NotAccessible
-    pub fn abandon_staged_changes(&mut self) -> () {
+    pub fn abandon_staged_changes(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Abandon)?;
+
         self.state = HolonState::Abandoned;
+        Ok(())
+
     }
 
-    pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
-        match access_type {
-            AccessType::Read => {
-                if self.state == HolonState::Abandoned {
-                    Err(HolonError::NotAccessible(
-                        "Read".to_string(),
-                        format!("{:?}", self.state),
-                    ))
-                } else {
-                    Ok(())
-                }
-            }
-            AccessType::Write => match self.state {
-                HolonState::New | HolonState::Fetched | HolonState::Changed => Ok(()),
-                _ => Err(HolonError::NotAccessible(
-                    "Write".to_string(),
-                    format!("{:?}", self.state),
-                )),
-            },
-        }
-    }
 }
 
 /// Gets all relationships optionally filtered by name

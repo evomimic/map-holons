@@ -38,50 +38,49 @@ impl HolonCollection {
             keyed_index: BTreeMap::new(),
         }
     }
-
+    /// Checks if requested `access_type` is acceptable given the collection's current `state`.
+    /// If not, returns `NotAccessible` error
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
-        match access_type {
-            AccessType::Read => match self.state {
-                CollectionState::Fetched | CollectionState::Staged | CollectionState::Saved => {
-                    Ok(())
-                }
-                CollectionState::Abandoned => Err(HolonError::NotAccessible(
-                    "Read".to_string(),
-                    format!("{:?}", self.state),
-                )),
+        match self.state {
+            CollectionState::Fetched => match access_type {
+                AccessType::Read => Ok(()),
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                },
             },
-            AccessType::Write => match self.state {
-                CollectionState::Staged => Ok(()),
-                _ => Err(HolonError::NotAccessible(
-                    "Write".to_string(),
-                    format!("{:?}", self.state),
-                )),
+            CollectionState::Staged =>match access_type {
+                AccessType::Read |
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => Ok(()),
+            },
+            CollectionState::Saved => match access_type {
+                AccessType::Write |
+                AccessType::Abandon => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                },
+                AccessType::Read |
+                AccessType::Commit => Ok(()),
+            },
+            CollectionState::Abandoned => match access_type {
+                AccessType::Read |
+                AccessType::Write => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                },
+                |
+                AccessType::Commit |
+                AccessType::Abandon => Ok(()),
             },
         }
     }
-
-    // pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
-    //     match access_type {
-    //         AccessType::Read => {
-    //             if self.state == CollectionState::Abandoned {
-    //                 Err(HolonError::NotAccessible(
-    //                     "Read".to_string(),
-    //                     format!("{:?}", self.state),
-    //                 ))
-    //             } else {
-    //                 Ok(())
-    //             }
-    //         }
-    //         AccessType::Write => match self.state {
-    //             CollectionState::Staged => Ok(()),
-    //             _ => Err(HolonError::NotAccessible(
-    //                 "Write".to_string(),
-    //                 format!("{:?}", self.state),
-    //             )),
-    //         },
-    //     }
-    // }
-
     pub fn to_staged(&self) -> Result<HolonCollection, HolonError> {
         self.is_accessible(AccessType::Read)?;
         if self.state == CollectionState::Fetched {
@@ -132,6 +131,7 @@ impl HolonCollection {
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
+
         debug!(
             "Calling commit on each HOLON_REFERENCE in the collection for {:#?}.",
             name.0.clone()
@@ -174,6 +174,8 @@ impl HolonCollection {
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+
         self.save_smartlinks_for_collection(context, source_id.clone(), name.clone())?;
 
         Ok(())
