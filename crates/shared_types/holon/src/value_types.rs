@@ -60,15 +60,28 @@ impl BaseValue {
     }
 }
 
+// impl TryInto<String> for BaseValue {
+//     type Error = ();
+
+//     fn try_into(self) -> Result<String, Self::Error> {
+//         match self {
+//             BaseValue::StringValue(val) => Ok(val.0.clone()),
+//             BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
+//             BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
+//             BaseValue::EnumValue(val) => Ok(val.0 .0.clone()), // Assuming EnumValue contains a String
+//         }
+//     }
+// }
+
+// using into for conevenience since there is no error case yet
+
 impl Into<String> for &BaseValue {
-    type Error = ();
-  
-    fn into(self) -> Result<String, Self::Error> {
+    fn into(self) -> String {
         match self {
-            BaseValue::StringValue(val) => Ok(val.0.clone()),
-            BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
-            BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
-            BaseValue::EnumValue(val) => Ok(val.0.0.clone()), // Assuming EnumValue contains a String
+            BaseValue::StringValue(val) => val.0.clone(),
+            BaseValue::IntegerValue(val) => val.0.to_string(),
+            BaseValue::BooleanValue(val) => val.0.to_string(),
+            BaseValue::EnumValue(val) => val.0 .0.clone(), // Assuming EnumValue contains a String
         }
     }
 }
