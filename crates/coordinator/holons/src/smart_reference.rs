@@ -10,6 +10,7 @@ use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonGettable};
 use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
+use crate::smartlink::decode_link_tag;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -64,6 +65,27 @@ impl SmartReference {
             Err(HolonError::InvalidHolonReference(
                 "Rc Holon is not available".to_string(),
             ))
+        }
+    }
+    // temporary function used until descriptors are ready
+    pub fn get_key_from_link(&self, link: Link) -> Result<Option<MapString>, HolonError> {
+        let link_tag_bytes = link.tag.clone().into_inner();
+        let link_tag = String::from_utf8(link_tag_bytes).map_err(|_e| {
+            HolonError::Utf8Conversion(
+                "Link tag bytes".to_string(),
+                "String (relationship name)".to_string(),
+            )
+        })?;
+        let decoded_prop_map = decode_link_tag(link_tag).smart_property_values;
+        if let Some(prop_vals) = decoded_prop_map {
+            let key_option = prop_vals.get(&PropertyName(MapString("key".to_string())));
+            if let Some(key) = key_option {
+                return Ok(Some(MapString(key.into())));
+            } else {
+                return Ok(None);
+            }
+        } else {
+            Ok(None)
         }
     }
 
