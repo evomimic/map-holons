@@ -20,7 +20,7 @@ use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::holon_reference::HolonReference;
-use crate::relationship::{RelationshipMap, RelationshipName, SmartLinkHolder};
+use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::smartlink::{create_link_tag, get_smartlink_from_link};
 
@@ -97,8 +97,6 @@ pub enum ValidationState {
     Invalid,
 }
 
-
-
 pub trait HolonGettable {
     fn get_property_value(
         &self,
@@ -109,6 +107,18 @@ pub trait HolonGettable {
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
+
+    /// In this method, &self is a either a HolonReference, StagedReference, SmartReference or Holon that represents the source holon,
+    /// whose related holons are being requested. relationship_name, if provided, indicates the name of the relationship being navigated.
+    /// In the future, this parameter will be replaced with an optional reference to the RelationshipDescriptor for this relationship.
+    /// If None, then all holons related to the source holon across all of its relationships are retrieved.
+    /// This method populates the cached source holon's HolonCollection for the specified relationship if one is provided.
+    /// If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
+    fn get_related_holons(
+        &self,
+        context: &HolonsContext,
+        relationship_name: Option<RelationshipName>,
+    ) -> Result<RelationshipMap, HolonError>;
 }
 
 impl Holon {
@@ -128,49 +138,38 @@ impl Holon {
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.state {
             HolonState::New => match access_type {
-                AccessType::Read |
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => Ok(()),
+                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
+                    Ok(())
+                }
             },
             HolonState::Fetched => match access_type {
                 AccessType::Read => Ok(()),
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => {
+                AccessType::Write | AccessType::Abandon | AccessType::Commit => {
                     Err(HolonError::NotAccessible(
                         format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
+                        format!("{:?}", self.state),
+                    ))
                 }
-            }
+            },
             HolonState::Changed => match access_type {
-                AccessType::Read |
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => Ok(()),
-            }
+                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
+                    Ok(())
+                }
+            },
             HolonState::Saved => match access_type {
-                AccessType::Write |
-                AccessType::Abandon => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                }
-                AccessType::Read |
-                AccessType::Commit => Ok(()),
-            }
+                AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+                AccessType::Read | AccessType::Commit => Ok(()),
+            },
             HolonState::Abandoned => match access_type {
-                AccessType::Read |
-                AccessType::Write => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                }
-                |
-                AccessType::Commit |
-                AccessType::Abandon => Ok(()),
-            }
-
+                AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+                AccessType::Commit | AccessType::Abandon => Ok(()),
+            },
         }
     }
 
@@ -450,9 +449,27 @@ impl Holon {
 
         self.state = HolonState::Abandoned;
         Ok(())
-
     }
 
+    pub fn get_related_holons(
+        &self,
+        _context: &HolonsContext,
+        relationship_name: Option<RelationshipName>,
+    ) -> Result<RelationshipMap, HolonError> {
+        let relationship_map = self.relationship_map.clone();
+        if let Some(name) = relationship_name {
+            let collection_option = relationship_map.0.get(&name);
+            if let Some(collection) = collection_option.clone() {
+                let mut map = BTreeMap::new();
+                map.insert(name, collection.clone());
+                return Ok(RelationshipMap(map));
+            } else {
+                return Ok(RelationshipMap(BTreeMap::new()));
+            }
+        } else {
+            Ok(relationship_map)
+        }
+    }
 }
 
 /// Gets all relationships optionally filtered by name
