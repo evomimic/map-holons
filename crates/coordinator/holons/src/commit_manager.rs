@@ -4,8 +4,8 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
-use crate::context::HolonsContext;
-use crate::holon::{Holon, HolonState};
+use crate::context::{self, HolonsContext};
+use crate::holon::{Holon, HolonGettable, HolonState};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
@@ -185,16 +185,13 @@ impl CommitManager {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
-        let holon_key: Option<MapString> = holon.get_key()?;
+        let holon_key: Option<MapString> = holon.get_key(&HolonsContext::new())?; // passing empty context for now // TODO: determine logic
         if let Some(key) = holon_key {
             self.keyed_index.insert(key.clone(), holon_index);
-
         }
 
         Ok(StagedReference { holon_index })
     }
-
- 
 
     pub fn clone_holon(
         &mut self,

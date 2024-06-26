@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use derive_new::new;
@@ -11,7 +11,6 @@ use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonGettable};
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::smartlink::decode_link_tag;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -55,57 +54,26 @@ impl SmartReference {
         Ok(self.holon_id.clone())
     }
     pub fn get_property_map(&self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
-        if let Ok(holon) = context
-            .cache_manager
-            .borrow_mut()
-            .get_rc_holon(None, &self.holon_id)
-        {
-            let holon_refcell = holon.borrow();
-            Ok(holon_refcell.property_map.clone())
-        } else {
-            Err(HolonError::InvalidHolonReference(
-                "Rc Holon is not available".to_string(),
-            ))
-        }
-    }
-    // temporary function used until descriptors are ready
-    pub fn get_key_from_link(&self, link: Link) -> Result<Option<MapString>, HolonError> {
-        let link_tag_bytes = link.tag.clone().into_inner();
-        let link_tag = String::from_utf8(link_tag_bytes).map_err(|_e| {
-            HolonError::Utf8Conversion(
-                "Link tag bytes".to_string(),
-                "String (relationship name)".to_string(),
-            )
-        })?;
-        let decoded_prop_map = decode_link_tag(link_tag).smart_property_values;
-        if let Some(prop_vals) = decoded_prop_map {
-            let key_option = prop_vals.get(&PropertyName(MapString("key".to_string())));
-            if let Some(key) = key_option {
-                return Ok(Some(MapString(key.into())));
-            } else {
-                return Ok(None);
-            }
-        } else {
-            Ok(None)
-        }
+        let holon = self.get_rc_holon(context)?;
+        let holon_refcell = holon.borrow();
+        Ok(holon_refcell.property_map.clone())
     }
 
     pub fn get_relationship_map(
         &self,
         context: &HolonsContext,
     ) -> Result<RelationshipMap, HolonError> {
-        if let Ok(holon) = context
+        let holon = self.get_rc_holon(context)?;
+        let holon_refcell = holon.borrow();
+        Ok(holon_refcell.relationship_map.clone())
+    }
+
+    // Private function for getting a mutable reference from the context
+    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        Ok(context
             .cache_manager
             .borrow_mut()
-            .get_rc_holon(None, &self.holon_id)
-        {
-            let holon_refcell = holon.borrow();
-            Ok(holon_refcell.relationship_map.clone())
-        } else {
-            Err(HolonError::InvalidHolonReference(
-                "Rc Holon is not available".to_string(),
-            ))
-        }
+            .get_rc_holon(None, &self.holon_id)?)
     }
 }
 impl HolonGettable for SmartReference {
@@ -129,51 +97,39 @@ impl HolonGettable for SmartReference {
         }
 
         // Get rc_holon from HolonCacheManager
-        if let Ok(holon) = context
-            .cache_manager
-            .borrow_mut()
-            .get_rc_holon(None, &self.holon_id)
-        {
-            holon.borrow().get_property_value(property_name)
-        } else {
-            Err(HolonError::InvalidHolonReference(
-                "Rc Holon is not available".to_string(),
-            ))
-        }
+        let holon = self.get_rc_holon(context)?;
+        let prop_val = holon.borrow().get_property_value(context, property_name)?;
+        Ok(prop_val)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        if let Ok(holon) = context
-            .cache_manager
-            .borrow_mut()
-            .get_rc_holon(None, &self.holon_id)
-        {
-            holon.borrow().get_key()
+        if let Some(smart_prop_vals) = self.smart_property_values.clone() {
+            let key_option = smart_prop_vals.get(&PropertyName(MapString("key".to_string())));
+            if let Some(key) = key_option {
+                return Ok(Some(MapString(key.into())));
+            } else {
+                let holon = self.get_rc_holon(context)?;
+                let key = holon.borrow().get_key(context)?;
+                return Ok(key);
+            }
         } else {
-            Err(HolonError::InvalidHolonReference(
-                "Rc Holon is not available".to_string(),
-            ))
+            let holon = self.get_rc_holon(context)?;
+            let key = holon.borrow().get_key(context)?;
+            return Ok(key);
         }
     }
 
+    // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
+    // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
     fn get_related_holons(
         &self,
         context: &HolonsContext,
         relationship_name: Option<RelationshipName>,
     ) -> Result<RelationshipMap, HolonError> {
-        if let Some(name) = relationship_name {
-            let relationship_map = self.get_relationship_map(context)?;
-
-            let collection_option = relationship_map.0.get(&name);
-            if let Some(collection) = collection_option {
-                let mut map = BTreeMap::new();
-                map.insert(name, collection.clone());
-                return Ok(RelationshipMap(map));
-            } else {
-                return Ok(RelationshipMap(BTreeMap::new()));
-            }
-        } else {
-            Ok(self.get_relationship_map(context)?)
-        }
+        let holon = self.get_rc_holon(context)?;
+        let map = holon
+            .borrow()
+            .get_related_holons(context, relationship_name)?;
+        Ok(map)
     }
 }

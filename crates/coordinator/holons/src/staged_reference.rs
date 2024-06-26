@@ -29,15 +29,17 @@ impl HolonGettable for StagedReference {
     ) -> Result<PropertyValue, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_property_value(property_name)
+        holon.get_property_value(context, property_name)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_key().clone()
+        holon.get_key(context).clone()
     }
 
+    // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
+    // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
     fn get_related_holons(
         &self,
         context: &HolonsContext,

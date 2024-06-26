@@ -17,20 +17,53 @@
 // use std::borrow::Borrow;
 // use std::rc::Rc;
 
+use std::collections::BTreeMap;
+
+use derive_new::new;
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-use holons::holon::Holon;
+use holons::holon::{Holon, HolonGettable};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
+use holons::smartlink::get_relationship_links;
 use shared_types_holon::HolonId;
-use shared_types_holon::{MapInteger, MapString, PropertyMap};
+use shared_types_holon::{MapString, PropertyMap};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::staging_area::StagingArea;
+
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct Node {
+    pub source_holon: HolonReference,
+    pub relationships: Option<QueryPathMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct NodeCollection {
+    pub members: Vec<Node>,
+    pub query_spec: Option<QueryExpression>,
+}
+
+impl NodeCollection {
+    pub fn new_empty() -> Self {
+        Self {
+            members: Vec::new(),
+            query_spec: None,
+        }
+    }
+}
+
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct QueryPathMap(pub BTreeMap<RelationshipName, NodeCollection>);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct QueryExpression {
+    relationship_name: Option<RelationshipName>,
+}
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
@@ -77,7 +110,8 @@ pub fn add_related_holons_dance(
                             Ok(ResponseBody::Index(staged_index))
                         }
                         _ => Err(HolonError::InvalidParameter(
-                            "Invalid request body".to_string(),
+                            "Invalid RequestBody: expected TargetHolons, didn't get one"
+                                .to_string(),
                         )),
                     }
                 }
@@ -85,7 +119,7 @@ pub fn add_related_holons_dance(
             }
         }
         _ => Err(HolonError::InvalidParameter(
-            "Expected CommandMethod(StagedIndex) DanceType, didn't get one".to_string(),
+            "Invalid DanceType: expected CommandMethod(StagedIndex), didn't get one".to_string(),
         )),
     }
 }
@@ -102,6 +136,76 @@ pub fn build_add_related_holons_dance_request(
     Ok(DanceRequest::new(
         MapString("add_related_holons".to_string()),
         DanceType::CommandMethod(index),
+        body,
+        staging_area,
+    ))
+}
+
+/// *DanceRequest:*
+/// - dance_name: "query_relationships"
+/// - dance_type: QueryMethod(NodeCollection) -- specifies the Collection to use as the source of the query
+/// - request_body: QueryExpression(QueryExpression)
+///     ///
+/// *ResponseBody:*
+/// - NodeCollection -- a collection containing the same source nodes passed in the request, but with their `relationships`
+/// updated to include entries that satisfy the criteria set by the QueryExpression supplied in the request
+///
+pub fn query_relationships_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("Entered add_related_holons_dance");
+
+    // Match the dance_type
+    match request.dance_type {
+        DanceType::QueryMethod(node_collection) => {
+            let relationship_name = match request.body {
+                RequestBody::QueryExpression(expression) => expression.relationship_name,
+                _ => {
+                    return Err(HolonError::InvalidParameter(
+                        "Invalid RequestBody: expected QueryExpression, didn't get one".to_string(),
+                    ))
+                }
+            };
+            let mut result_collection = NodeCollection::new_empty();
+            for node in node_collection.members {
+                let related_holons_map = node
+                    .source_holon
+                    .get_related_holons(context, relationship_name.clone())?
+                    .0;
+
+                let mut query_path_map = QueryPathMap::new(BTreeMap::new());
+
+                for (relationship_name, collection) in related_holons_map {
+                    let mut related_collection = NodeCollection::new_empty();
+                    for reference in collection.members {
+                        related_collection.members.push(Node::new(reference, None))
+                    }
+                    query_path_map
+                        .0
+                        .insert(relationship_name, related_collection);
+                }
+                let new_node = Node::new(node.source_holon, Some(query_path_map));
+                result_collection.members.push(new_node);
+            }
+            Ok(ResponseBody::Collection(result_collection))
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),
+        )),
+    }
+}
+
+/// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
+pub fn build_query_relationships_dance_request(
+    staging_area: StagingArea,
+    node_collection: NodeCollection,
+    query_expression: QueryExpression,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::new_query_expression(query_expression);
+    Ok(DanceRequest::new(
+        MapString("get_related_holons".to_string()),
+        DanceType::QueryMethod(node_collection),
         body,
         staging_area,
     ))
@@ -322,7 +426,7 @@ pub fn get_holon_by_id_dance(
         }
     };
     info!("getting cache_manager from context");
-    let mut cache_manager = context.cache_manager.borrow();
+    let cache_manager = context.cache_manager.borrow();
 
     info!("asking cache_manager to get rc_holon");
     let rc_holon = cache_manager.get_rc_holon(None, &holon_id)?;
@@ -415,7 +519,7 @@ pub fn abandon_staged_changes_dance(
 
             match staged_holon {
                 Ok(mut holon_mut) => {
-                    holon_mut.abandon_staged_changes();
+                    holon_mut.abandon_staged_changes()?;
                     Ok(ResponseBody::Index(staged_index))
                 }
                 Err(_) => Err(HolonError::IndexOutOfRange(
