@@ -11,6 +11,7 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::commit_manager::StagedIndex;
+use holons::context::HolonsContext;
 use rstest::*;
 
 use crate::shared_test::dance_fixtures::*;
@@ -18,7 +19,7 @@ use crate::shared_test::test_data_types::DanceTestStep;
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
-use holons::holon::Holon;
+use holons::holon::{Holon, HolonGettable};
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
@@ -46,6 +47,8 @@ pub async fn execute_abandon_staged_changes(
         staged_index.clone(),
     );
 
+    let context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
+
     info!("Dance Request: {:#?}", request);
 
     match request {
@@ -67,15 +70,16 @@ pub async fn execute_abandon_staged_changes(
                         match test_state.staging_area.get_holon_mut(staged_index) {
                             Ok(abandoned_holon) => {
                                 assert!(matches!(
-                                    abandoned_holon.get_property_value(&PropertyName(MapString(
-                                        "some_name".to_string()
-                                    ))),
+                                    abandoned_holon.get_property_value(
+                                        &context,
+                                        &PropertyName(MapString("some_name".to_string()))
+                                    ),
                                     Err(HolonError::NotAccessible(_, _))
                                 ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_property_value`");
 
                                 assert!(matches!(
-                                    abandoned_holon.get_key(),
+                                    abandoned_holon.get_key(&context),
                                     Err(HolonError::NotAccessible(_, _))
                                 ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_key`");

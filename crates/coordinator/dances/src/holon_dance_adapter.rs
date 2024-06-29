@@ -28,7 +28,6 @@ use holons::holon::{Holon, HolonGettable};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
-use holons::smartlink::get_relationship_links;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapString, PropertyMap};
 
@@ -60,7 +59,7 @@ impl NodeCollection {
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryPathMap(pub BTreeMap<RelationshipName, NodeCollection>);
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryExpression {
     relationship_name: Option<RelationshipName>,
 }
@@ -154,7 +153,7 @@ pub fn query_relationships_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("Entered add_related_holons_dance");
+    debug!("Entered query_relationships_dance");
 
     // Match the dance_type
     match request.dance_type {
@@ -204,7 +203,7 @@ pub fn build_query_relationships_dance_request(
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new_query_expression(query_expression);
     Ok(DanceRequest::new(
-        MapString("get_related_holons".to_string()),
+        MapString("query_relationships".to_string()),
         DanceType::QueryMethod(node_collection),
         body,
         staging_area,
