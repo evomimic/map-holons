@@ -1,4 +1,7 @@
-use crate::staging_area::StagingArea;
+use crate::{
+    holon_dance_adapter::{NodeCollection, QueryExpression},
+    staging_area::StagingArea,
+};
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
 use holons::holon::Holon;
@@ -20,8 +23,8 @@ pub struct DanceRequest {
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub enum DanceType {
-    Standalone,                 // i.e., a dance not associated with a specific holon
-    QueryMethod(HolonId), // a read-only dance originated from a specific, already persisted, holon
+    Standalone,                  // i.e., a dance not associated with a specific holon
+    QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
     CommandMethod(StagedIndex), // a mutating method operating on a specific staged_holon identified by its index into the staged_holons vector
 }
 
@@ -34,6 +37,7 @@ pub enum RequestBody {
     HolonId(HolonId),
     ParameterValues(PropertyMap),
     Index(StagedIndex),
+    QueryExpression(QueryExpression),
 }
 
 impl RequestBody {
@@ -58,6 +62,10 @@ impl RequestBody {
 
     pub fn new_index(index: StagedIndex) -> Self {
         Self::Index(index)
+    }
+
+    pub fn new_query_expression(query_expression: QueryExpression) -> Self {
+        Self::QueryExpression(query_expression)
     }
 }
 

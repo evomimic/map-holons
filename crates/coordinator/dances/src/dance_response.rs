@@ -1,6 +1,7 @@
 use derive_new::new;
 use std::fmt;
 
+use crate::holon_dance_adapter::NodeCollection;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
@@ -49,6 +50,7 @@ pub enum ResponseBody {
     // SmartCollection(SmartCollection),
     Index(StagedIndex),
     HolonReference(HolonReference),
+    Collection(NodeCollection),
 }
 
 impl From<HolonError> for ResponseStatusCode {

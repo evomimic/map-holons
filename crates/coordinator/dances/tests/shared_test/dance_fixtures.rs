@@ -14,6 +14,7 @@
 #![allow(dead_code)]
 
 use core::panic;
+use dances::holon_dance_adapter::{NodeCollection, QueryExpression};
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
@@ -55,8 +56,10 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     let mut expected_holons = Vec::new();
 
+    // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
+    // Create book Holon with properties //
     let mut book_holon = Holon::new();
     book_holon.with_property_value(
         PropertyName(MapString("key".to_string())),
@@ -70,6 +73,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
         )),
     )?;
+
+    //// Stage Holons & add properties
     test_case.add_stage_holon_step(book_holon.clone())?;
     expected_holons.push(book_holon.clone());
 
@@ -78,11 +83,10 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     );
-
     test_case.add_with_properties_step(0, properties, ResponseStatusCode::OK)?;
 
+    // Create person Holon //
     let person_holon = Holon::new();
-
     test_case.add_stage_holon_step(person_holon.clone())?;
     expected_holons.push(person_holon.clone());
 
@@ -96,26 +100,12 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         BaseValue::StringValue(MapString("Briggs".to_string())),
     );
     test_case.add_with_properties_step(1, properties, ResponseStatusCode::OK)?;
+    ////
 
+    // Commit, match content, & ensure DB count again //
     test_case.add_commit_step()?;
     test_case.add_match_saved_content_step()?;
-
     test_case.add_ensure_database_count_step(MapInteger(2))?;
-
-    // test_case.holons = expected_holons;
-
-    // let mut book_holon = Holon::new();
-    // book_holon
-    //     .with_property_value(
-    //         PropertyName(MapString("title".to_string())),
-    //         BaseValue::StringValue(MapString("Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string())))
-    //     .with_property_value(
-    //         PropertyName(MapString("description".to_string())),
-    //         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
-    //     ;
-    // test_case.add_create_step(book_holon)?;
-
-    // debug!("expected holons: {:?}", expected_holons);
 
     Ok(test_case.clone())
 }
@@ -127,8 +117,10 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
 
     );
 
+    // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
+    // Create book Holon with properties //
     let mut book_holon = Holon::new();
     book_holon.with_property_value(
         PropertyName(MapString("key".to_string())),
@@ -142,6 +134,8 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
         )),
     )?;
+
+    //// Stage Holons & add properties
     test_case.add_stage_holon_step(book_holon)?;
     let book_index: StagedIndex = 0;
 
@@ -150,9 +144,9 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     );
-
     test_case.add_with_properties_step(book_index, properties, ResponseStatusCode::OK)?;
 
+    // Create person Holons //
     let person_holon_briggs = Holon::new();
 
     test_case.add_stage_holon_step(person_holon_briggs)?;
@@ -184,6 +178,9 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
             BaseValue::StringValue(MapString("Gebser".to_string())),
         )?;
     test_case.add_stage_holon_step(person_holon_gebser)?;
+    ////
+
+    // Add related holons //
     let gebser_index: StagedIndex = 2;
     let gebser_staged_reference = StagedReference {
         holon_index: gebser_index,
@@ -202,9 +199,18 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         ResponseStatusCode::OK,
     )?;
 
+    // Commit & ensure DB count again //
     test_case.add_commit_step()?;
-
     test_case.add_ensure_database_count_step(MapInteger(3))?;
+
+    // Query Relationships //   TODO: sample data
+    let node_collection = NodeCollection::new_empty();
+    let query_expression = QueryExpression::new(None);
+    test_case.add_query_relationships_step(
+        node_collection,
+        query_expression,
+        ResponseStatusCode::OK,
+    )?;
 
     Ok(test_case.clone())
 }

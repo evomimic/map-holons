@@ -18,9 +18,9 @@ pub enum CollectionState {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct HolonCollection {
-    state: CollectionState,
-    members: Vec<HolonReference>,
-    keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
+    pub state: CollectionState,
+    pub members: Vec<HolonReference>,
+    pub keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
 }
 
 impl HolonCollection {
@@ -44,40 +44,31 @@ impl HolonCollection {
         match self.state {
             CollectionState::Fetched => match access_type {
                 AccessType::Read => Ok(()),
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => {
+                AccessType::Write | AccessType::Abandon | AccessType::Commit => {
                     Err(HolonError::NotAccessible(
                         format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                },
+                        format!("{:?}", self.state),
+                    ))
+                }
             },
-            CollectionState::Staged =>match access_type {
-                AccessType::Read |
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => Ok(()),
+            CollectionState::Staged => match access_type {
+                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
+                    Ok(())
+                }
             },
             CollectionState::Saved => match access_type {
-                AccessType::Write |
-                AccessType::Abandon => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                },
-                AccessType::Read |
-                AccessType::Commit => Ok(()),
+                AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+                AccessType::Read | AccessType::Commit => Ok(()),
             },
             CollectionState::Abandoned => match access_type {
-                AccessType::Read |
-                AccessType::Write => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                },
-                |
-                AccessType::Commit |
-                AccessType::Abandon => Ok(()),
+                AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+                AccessType::Commit | AccessType::Abandon => Ok(()),
             },
         }
     }
@@ -131,7 +122,6 @@ impl HolonCollection {
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
-
         debug!(
             "Calling commit on each HOLON_REFERENCE in the collection for {:#?}.",
             name.0.clone()

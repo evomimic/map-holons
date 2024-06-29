@@ -5,7 +5,7 @@ use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 use crate::context::HolonsContext;
 use crate::holon::HolonGettable;
 use crate::holon_error::HolonError;
-use crate::relationship::RelationshipMap;
+use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 
@@ -45,6 +45,21 @@ impl HolonGettable for HolonReference {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
             HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
+        }
+    }
+
+    fn get_related_holons(
+        &self,
+        context: &HolonsContext,
+        relationship_name: Option<RelationshipName>,
+    ) -> Result<RelationshipMap, HolonError> {
+        match self {
+            HolonReference::Smart(reference) => {
+                reference.get_related_holons(context, relationship_name)
+            }
+            HolonReference::Staged(reference) => {
+                reference.get_related_holons(context, relationship_name)
+            }
         }
     }
 }

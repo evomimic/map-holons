@@ -1,4 +1,5 @@
 use dances::dance_response::ResponseStatusCode;
+use dances::holon_dance_adapter::{NodeCollection, QueryExpression};
 use dances::staging_area::StagingArea;
 use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
@@ -27,12 +28,12 @@ pub enum DanceTestStep {
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
 
-    Commit,            // Attempts to commit
+    Commit,                                                       // Attempts to commit
     WithProperties(StagedIndex, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedIndex with PropertyMap
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     AbandonStagedChanges(StagedIndex, ResponseStatusCode), // Marks a staged Holon as 'abandoned'
     LoadCoreSchema,
-
+    QueryRelationships(NodeCollection, QueryExpression, ResponseStatusCode),
 }
 
 impl fmt::Display for DanceTestStep {
@@ -75,6 +76,13 @@ impl fmt::Display for DanceTestStep {
             }
             DanceTestStep::LoadCoreSchema => {
                 write!(f, "LoadCoreSchema")
+            }
+            DanceTestStep::QueryRelationships(
+                node_collection,
+                query_expression,
+                expected_response,
+            ) => {
+                write!(f, "QueryRelationships for node_collection:{:#?}, with query expression: {:#?}, expecting {:#?}", node_collection, query_expression, expected_response)
             }
         }
     }
@@ -165,5 +173,17 @@ impl DancesTestCase {
         Ok(())
     }
 
-
+    pub fn add_query_relationships_step(
+        &mut self,
+        node_collection: NodeCollection,
+        query_expression: QueryExpression,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::QueryRelationships(
+            node_collection,
+            query_expression,
+            expected_response,
+        ));
+        Ok(())
+    }
 }
