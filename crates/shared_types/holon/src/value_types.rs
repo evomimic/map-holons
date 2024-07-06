@@ -44,6 +44,7 @@ pub enum BaseValue {
     EnumValue(MapEnumValue), // this is for simple enum variants,
 }
 
+
 impl TryInto<String> for &BaseValue {
     type Error = ();
 
@@ -69,6 +70,7 @@ pub enum BaseType {
     Collection,
     Property,
     Relationship,
+    EnumVariant,
     // Boolean,
     // Integer,
     // String,
@@ -93,7 +95,7 @@ impl fmt::Display for BaseType {
             BaseType::Collection => write!(f, "Collection"),
             BaseType::Property => write!(f, "Property"),
             BaseType::Relationship => write!(f, "Relationship"),
-            // BaseType::Boolean => write!(f, "Boolean"),
+            BaseType::EnumVariant => write!(f, "EnumVariant"),
             // BaseType::Integer => write!(f, "Integer"),
             // BaseType::String => write!(f, "String"),
             // BaseType::EnumValue => write!(f, "EnumValue"),

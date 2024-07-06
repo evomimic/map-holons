@@ -41,21 +41,29 @@ impl TransientCollection {
         }
     }
 
+    pub fn add_reference(
+        &mut self,
+        context: &HolonsContext,
+        holon_ref: HolonReference,
+    ) -> Result<(), HolonError> {
+
+        let index = self.members.len();
+        self.members.push(holon_ref.clone());
+        let key = holon_ref.get_key(context)?;
+        if let Some(key) = key {
+            self.keyed_index.insert(key, index);
+        }
+        Ok(())
+    }
     pub fn add_references(
         &mut self,
         context: &HolonsContext,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
 
-        for holon in holons {
-            let index = self.members.len();
-            self.members.push(holon.clone());
-            let key = holon.get_key(context)?;
-            if let Some(key) = key {
-                self.keyed_index.insert(key, index);
-            }
+        for holon_ref in holons {
+            self.add_reference(context, holon_ref)?
         }
-
         Ok(())
     }
 }

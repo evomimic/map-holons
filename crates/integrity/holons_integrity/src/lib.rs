@@ -274,15 +274,15 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     let entry = match original_record.entry().as_option() {
                         Some(entry) => entry,
                         None => {
-                            if original_action.entry_type().visibility().is_public() {
-                                return Ok(
+                            return if original_action.entry_type().visibility().is_public() {
+                                Ok(
                                     ValidateCallbackResult::Invalid(
                                         "Original record for a delete of a public entry must contain an entry"
                                             .to_string(),
                                     ),
-                                );
+                                )
                             } else {
-                                return Ok(ValidateCallbackResult::Valid);
+                                Ok(ValidateCallbackResult::Valid)
                             }
                         }
                     };

@@ -3,9 +3,7 @@ use hdk::prelude::*;
 use holons_integrity::*;
 use shared_types_holon::MapString;
 
-use crate::{
-    holon_error::HolonError, relationship::RelationshipName, smart_reference::SmartReference,
-};
+use crate::{holon_error::HolonError, relationship::RelationshipName};
 
 const fn smartlink_tag_header_length() -> usize {
     // leaving this nomenclature for now

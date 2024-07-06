@@ -6,7 +6,6 @@ use std::rc::Rc;
 // use crate::cache_manager::HolonCacheManager;
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
-use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;

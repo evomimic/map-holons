@@ -10,6 +10,7 @@ resolver = "2"
 
 members = ["crates/coordinator/holons",
     "crates/coordinator/descriptors",
+    "crates/coordinator/core_schema",
     "crates/coordinator/dances",
     "crates/integrity/holons_integrity",
     "crates/shared_types/holon",
@@ -26,6 +27,7 @@ derive-new = "0.6"
 thiserror = "1"
 ahash ="=0.8.11"
 quick_cache = "0.4.1"
+Inflector = "0.11"
 
 
 [workspace.dependencies.holons]
@@ -36,6 +38,9 @@ path = "crates/coordinator/dances"
 
 [workspace.dependencies.descriptors]
 path = "crates/coordinator/descriptors"
+
+[workspace.dependencies.core_schema]
+path = "crates/coordinator/core_schema"
 
 [workspace.dependencies.holons_integrity]
 path = "crates/integrity/holons_integrity"

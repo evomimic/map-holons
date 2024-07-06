@@ -1,5 +1,5 @@
 use crate::relationship::RelationshipName;
-use crate::{holon_error::HolonError, relationship};
+use crate::{holon_error::HolonError};
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use shared_types_holon::HolonId;

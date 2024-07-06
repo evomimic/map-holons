@@ -25,7 +25,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-use descriptors::loader::load_core_schema;
+use core_schema::loader::load_core_schema;
 use holons::relationship::RelationshipName;
 use shared_types_holon::{MapString, MapInteger, PropertyMap};
 use shared_types_holon::HolonId;

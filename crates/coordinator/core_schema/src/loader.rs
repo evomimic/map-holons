@@ -1,4 +1,4 @@
-use hdk::prelude::{info,debug,trace,warn};
+use hdk::prelude::{info};
 use holons::commit_manager::{CommitManager, CommitResponse};
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
@@ -8,17 +8,17 @@ use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
 
-use crate::descriptor_types::{CoreSchemaName, CoreMetaSchemaName, Schema};
-use crate::holon_descriptor::{define_holon_type, HolonDefinition};
-use crate::meta_type_loader::load_core_meta_types;
-use crate::type_descriptor::TypeDefinitionHeader;
-use crate::value_type_loader::load_core_value_types;
+use descriptors::descriptor_types::{CoreSchemaName, CoreMetaSchemaName, Schema};
+use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
+//use descriptors::meta_type_loader::load_core_meta_types;
+use descriptors::type_descriptor::TypeDescriptorDefinition;
+//use descriptors::value_type_loader::load_core_value_types;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
 /// MAP L0 Schema Descriptors defined in `CoreSchemaNames`
 ///
 /// It uses the transient collection in context's dance_state to support lookup of previously
-/// created schema components so they may be referenced in relationship definition
+/// created schema components, so they may be referenced in relationship definition
 
 ///
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
@@ -42,75 +42,76 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         stage_new_holon(schema.0.clone()
         )?);
 
-    context.add_references_to_dance_state(vec![staged_schema_ref.clone()])?;
+    context.add_reference_to_dance_state(staged_schema_ref.clone())?;
 
     // Load the ValueTypes
-    let (string_type_ref, integer_type_ref, boolean_type_ref)
-        = load_core_value_types(context, &staged_schema_ref)?;
+    // load_core_value_types(context, &staged_schema_ref)?;
 
     // Load the MetaTypes
-    load_core_meta_types(context, &staged_schema_ref)?;
+    // load_core_meta_types(context, &staged_schema_ref)?;
 
-    let type_name = CoreMetaSchemaName::MetaHolonType.as_map_string();
+    let type_name = CoreMetaSchemaName::MetaHolonType.as_type_name();
 
-    debug!("Staging {:?}",type_name);
-    let description = MapString("The meta type that specifies the properties, relationships, \
-    and dances of the base HolonType".to_string());
-    let label = MapString("Holon Type Descriptor".to_string());
+    // debug!("Staging {:?}",type_name);
+    // let description = MapString("The meta type that specifies the properties, relationships, \
+    // and dances of the base HolonType".to_string());
+    // let label = MapString("Holon Type Descriptor".to_string());
+    //
+    // let type_header = TypeDescriptorDefinition {
+    //     descriptor_name: None,
+    //     type_name,
+    //     description,
+    //     label,
+    //     is_dependent: MapBoolean(false),
+    //     is_value_type: MapBoolean(false),
+    //     described_by: None,
+    //     is_subtype_of:None,
+    //     owned_by: None, // Holon Space
+    // };
+    //
+    // let holon_definition = HolonTypeDefinition {
+    //     header: type_header,
+    //     properties:  vec![],
+    // };
+    //
+    // let meta_holon_type_ref = HolonReference::Staged(define_holon_type(
+    //     context,
+    //     &staged_schema_ref,
+    //     holon_definition, // provide property descriptors for this holon type here
+    // )?);
+    //
+    // context.add_references_to_dance_state(vec![meta_holon_type_ref.clone()])?;
+    //
+    // let type_name = CoreSchemaName::HolonType.as_map_string();
+    // let description = MapString("This type specifies the properties, relationships, and dances \
+    // for a type of Holon.".to_string());
+    // let label = MapString("Holon Type Descriptor".to_string());
+    //
+    // let type_header = TypeDescriptorDefinition {
+    //     descriptor_name: None,
+    //     type_name,
+    //     description,
+    //     label,
+    //     is_dependent: MapBoolean(false),
+    //     is_value_type: MapBoolean(false),
+    //     described_by: Some(meta_holon_type_ref),
+    //     is_subtype_of:None,
+    //     owned_by: None, // Holon Space
+    // };
+    //
+    // let
+    //     holon_definition = HolonTypeDefinition {
+    //     header: type_header,
+    //     properties:  vec![],
+    // };
+    //
+    // let holon_type_ref = HolonReference::Staged(define_holon_type(
+    //     context,
+    //     &staged_schema_ref,
+    //     holon_definition,
+    // )?);
 
-    let type_header = TypeDefinitionHeader {
-        descriptor_name: None,
-        type_name,
-        description,
-        label,
-        is_dependent: MapBoolean(false),
-        is_value_type: MapBoolean(false),
-        described_by: None,
-        is_subtype_of:None,
-        owned_by: None, // Holon Space
-    };
-
-    let holon_definition = HolonDefinition {
-        header: type_header,
-        properties:  vec![],
-    };
-
-    let meta_holon_type_ref = HolonReference::Staged(define_holon_type(
-        context,
-        &staged_schema_ref,
-        holon_definition, // provide property descriptors for this holon type here
-    )?);
-
-    context.add_references_to_dance_state(vec![meta_holon_type_ref.clone()])?;
-
-    let type_name = CoreSchemaName::HolonType.as_map_string();
-    let description = MapString("This type specifies the properties, relationships, and dances \
-    for a type of Holon.".to_string());
-    let label = MapString("Holon Type Descriptor".to_string());
-
-    let type_header = TypeDefinitionHeader {
-        descriptor_name: None,
-        type_name,
-        description,
-        label,
-        is_dependent: MapBoolean(false),
-        is_value_type: MapBoolean(false),
-        described_by: Some(meta_holon_type_ref),
-        is_subtype_of:None,
-        owned_by: None, // Holon Space
-    };
-
-    let
-        holon_definition = HolonDefinition {
-        header: type_header,
-        properties:  vec![],
-    };
-
-    let holon_type_ref = HolonReference::Staged(define_holon_type(
-        context,
-        &staged_schema_ref,
-        holon_definition,
-    )?);
+    // Add relationships?
 
 
 

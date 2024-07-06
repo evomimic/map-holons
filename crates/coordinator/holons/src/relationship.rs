@@ -71,7 +71,7 @@ pub fn build_relationship_map_from_smartlinks(
             smart_property_values: None, // defaulting to None until descriptors ready
         });
 
-        let holder = SmartLinkHolder {
+        let _holder = SmartLinkHolder {
             name: name.clone(),
             reference: reference.clone(),
         };
