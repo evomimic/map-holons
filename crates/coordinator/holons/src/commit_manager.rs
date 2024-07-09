@@ -44,7 +44,7 @@ pub enum CommitRequestStatus {
 
 impl CommitManager {
     /// This function converts a StagedIndex into a StagedReference
-    /// Returns HolonError::IndexOutOfRange is index is out range for staged_holons vector
+    /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
     /// TODO: The latter is only reliable if staged_holons is made private
     pub fn to_staged_reference(

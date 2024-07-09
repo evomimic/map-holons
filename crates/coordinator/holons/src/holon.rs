@@ -452,7 +452,6 @@ impl Holon {
         let key = self.get_key(context)?;
         Ok(EssentialHolonContent {
             property_map: self.property_map.clone(),
-            //relationship_map: self.relationship_map.clone(),
             key,
             errors: self.errors.clone(),
         })

@@ -14,8 +14,16 @@ pub mod test_query_relationships;
 pub mod test_stage_new_holon;
 pub mod test_with_properties_command;
 
+use std::collections::BTreeMap;
+
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
+use holons::{
+    holon::{self, Holon},
+    holon_collection::{CollectionState, HolonCollection},
+    holon_reference::HolonReference,
+    relationship::{RelationshipMap, RelationshipName},
+};
 
 const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
 
