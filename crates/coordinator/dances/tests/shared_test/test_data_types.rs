@@ -33,7 +33,7 @@ pub enum DanceTestStep {
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     AbandonStagedChanges(StagedIndex, ResponseStatusCode), // Marks a staged Holon as 'abandoned'
     LoadCoreSchema,
-    QueryRelationships(NodeCollection, QueryExpression, ResponseStatusCode),
+    QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
 }
 
 impl fmt::Display for DanceTestStep {
@@ -178,12 +178,12 @@ impl DancesTestCase {
 
     pub fn add_query_relationships_step(
         &mut self,
-        node_collection: NodeCollection,
+        source_key: MapString,
         query_expression: QueryExpression,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::QueryRelationships(
-            node_collection,
+            source_key,
             query_expression,
             expected_response,
         ));

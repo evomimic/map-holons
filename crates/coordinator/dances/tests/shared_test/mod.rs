@@ -19,11 +19,15 @@ use std::collections::BTreeMap;
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use holons::{
-    holon::{self, Holon},
+    context::HolonsContext,
+    holon::{self, Holon, HolonGettable},
     holon_collection::{CollectionState, HolonCollection},
+    holon_error::HolonError,
     holon_reference::HolonReference,
     relationship::{RelationshipMap, RelationshipName},
 };
+use shared_types_holon::{HolonId, MapString};
+use test_data_types::DanceTestState;
 
 const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
 
@@ -52,4 +56,28 @@ pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
     let agent = AgentPubKey::from_raw_39(agent_hash).unwrap();
 
     (conductor, agent, cell)
+}
+
+// TEST HELPERS //
+
+pub fn get_holon_by_key_from_test_state(
+    context: &HolonsContext,
+    source_key: MapString,
+    test_state: &mut DanceTestState,
+) -> Result<Option<HolonId>, HolonError> {
+    for holon in test_state.created_holons.clone() {
+        let option_key = holon.get_key(context)?;
+        if let Some(key) = option_key {
+            if key == source_key {
+                let id = holon.get_id()?;
+                return Ok(Some(id));
+            }
+        } else {
+            return Err(HolonError::Misc(
+                "Returned multiple Holons for key".to_string(),
+            ));
+        }
+    }
+
+    Ok(None)
 }

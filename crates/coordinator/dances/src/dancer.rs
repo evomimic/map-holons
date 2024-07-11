@@ -194,6 +194,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 | HolonError::InvalidHolonReference(_)
                 | HolonError::IndexOutOfRange(_)
                 | HolonError::NotImplemented(_)
+                | HolonError::Misc(_)
                 | HolonError::MissingStagedCollection(_)
                 | HolonError::FailedToBorrow(_)
                 | HolonError::UnableToAddHolons(_)

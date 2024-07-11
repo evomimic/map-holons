@@ -13,6 +13,7 @@
 
 #![allow(dead_code)]
 
+use crate::get_holon_by_key_from_test_state;
 use crate::tracing::{error, info, warn};
 use core::panic;
 use dances::holon_dance_adapter::{Node, NodeCollection, QueryExpression};
@@ -21,6 +22,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_collection::{CollectionState, HolonCollection};
 use holons::holon_reference::HolonReference;
+use holons::smart_reference::SmartReference;
 use holons::staged_reference::StagedReference;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -44,7 +46,7 @@ use holons::holon_error::HolonError;
 use holons::relationship::RelationshipName;
 
 use shared_types_holon::{
-    MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
+    HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
 
 /// This function creates a set of simple (undescribed) holons
@@ -125,11 +127,12 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
 
     // Create book Holon with properties //
     let mut book_holon = Holon::new();
+    let book_holon_key = MapString(
+        "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+    );
     book_holon.with_property_value(
         PropertyName(MapString("key".to_string())),
-        BaseValue::StringValue(MapString(
-            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
-        )),
+        BaseValue::StringValue(book_holon_key.clone()),
     )?;
     book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
@@ -222,17 +225,10 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
     test_case.add_ensure_database_count_step(MapInteger(3))?;
 
     // Query Relationships //
-    let h_ref: HolonReference = HolonReference::Staged(StagedReference {
-        holon_index: book_index,
-    });
 
-    let node_collection = NodeCollection {
-        members: vec![Node::new(h_ref, None)],
-        query_spec: None,
-    };
     let query_expression = QueryExpression::new(Some(authors_relationship_name.clone()));
     test_case.add_query_relationships_step(
-        node_collection,
+        book_holon_key,
         query_expression,
         ResponseStatusCode::OK,
     )?;

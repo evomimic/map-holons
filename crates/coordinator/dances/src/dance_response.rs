@@ -65,6 +65,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::InvalidHolonReference(_) => ResponseStatusCode::BadRequest,
             HolonError::IndexOutOfRange(_) => ResponseStatusCode::ServerError,
             HolonError::NotImplemented(_) => ResponseStatusCode::NotImplemented,
+            HolonError::Misc(_) => ResponseStatusCode::ServerError,
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
