@@ -1,10 +1,14 @@
-use crate::{holon_error::HolonError, staged_reference::StagedReference};
-// use crate::smart_reference::SmartReference;
+#![allow(unused_imports)]
+
 use crate::context::HolonsContext;
+use crate::holon_collection::HolonCollection;
+use crate::holon_error::HolonError;
+use crate::smart_reference::SmartReference;
+use crate::smartlink::create_link_tag;
+// use crate::smart_reference::SmartReference;
 use crate::holon_reference::HolonReference;
-use crate::smart_collection::SmartCollection;
-use crate::staged_collection::StagedCollection;
 use hdk::prelude::*;
+use holons_integrity::LinkTypes;
 use shared_types_holon::{HolonId, MapString};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -20,76 +24,25 @@ impl fmt::Display for RelationshipName {
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
-pub struct RelationshipMap(pub BTreeMap<RelationshipName, RelationshipTarget>);
+pub struct RelationshipMap(pub BTreeMap<RelationshipName, HolonCollection>);
 impl RelationshipMap {
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, Eq, PartialEq)]
-pub struct RelationshipTarget {
-    pub editable: Option<StagedCollection>, // Mutable collection
-    pub cursors: Vec<SmartCollection>,      // a set of immutable, access path specific collections
-}
-impl RelationshipTarget {
-    pub fn new() -> Self {
-        Self {
-            editable: None,
-            cursors: Vec::new(),
-        }
-    }
-    pub fn new_staged(editable: StagedCollection) -> Self {
-        Self {
-            editable: Some(editable),
-            cursors: Vec::new(),
-        }
-    }
-
-
-    /// The method
-    pub fn commit_relationship(
-        &self,
-        context: &HolonsContext,
-        source_id: HolonId,
-        name: RelationshipName,
-    ) -> Result<(), HolonError> {
-        if let Some(collection) = self.editable.clone() {
-            collection.add_smartlinks_for_collection(context, source_id.clone(), name.clone())?;
-        }
-        Ok(())
-    }
-
-    /// Creates an editable_collection within the RelationshipTarget from the SmartReferences in the existing_collection
-    pub fn stage_collection(
-        &mut self,
-        source_holon: StagedReference,
-        existing_collection: SmartCollection,
-    ) {
-        // convert Vec<SmartReference> to Vec<HolonReference>
-        let holons = existing_collection
-            .holons
-            .into_iter()
-            .map(|smart_ref| HolonReference::Smart(smart_ref))
-            .collect();
-
-        let staged_collection = StagedCollection {
-            source_holon: Some(source_holon),
-            relationship_descriptor: existing_collection.relationship_descriptor,
-            holons,
-            keyed_index: existing_collection.keyed_index,
-        };
-        self.editable = Some(staged_collection);
-    }
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct SmartLinkHolder {
+    pub name: RelationshipName,
+    pub reference: HolonReference,
 }
 
-// impl Clone for RelationshipTarget {
+// impl Clone for HolonCollection {
 //     /// Custom clone implementation, does not clone its cursors or editable vector
 //     fn clone(&self) -> Self {
 //         Self {
 //             editable: None,
-//             cursors: Vec::new(),
+//             cursors: None,
 //         }
 //     }
 // }

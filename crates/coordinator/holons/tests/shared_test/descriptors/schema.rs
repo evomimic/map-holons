@@ -10,7 +10,7 @@ use holons::holon_reference::{HolonReference, LocalHolonReference};
 /// This file creates a Schema Holon and all of its child descriptors comprising the L0 layer
 /// of the MAP Ontology as well as the relationships between those descriptors
 use holons::holon_types::Holon;
-use holons::relationship::{RelationshipName, RelationshipTarget};
+use holons::relationship::{RelationshipName, HolonCollection};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
@@ -36,7 +36,7 @@ pub fn define_schema() -> Holon {
             )),
         );
 
-    // Define a RelationshipTarget for the Schema Holon
+    // Define a HolonCollection for the Schema Holon
 
     let schema_target = define_local_target(&schema);
 
@@ -84,12 +84,12 @@ pub fn define_schema() -> Holon {
 
     schema
 }
-// pub fn define_schema_type_descriptor(schema_target: &RelationshipTarget)-> Holon {
+// pub fn define_schema_type_descriptor(schema_target: &HolonCollection)-> Holon {
 // // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
 //
 // }
 
-pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
+pub fn define_schema_descriptor(schema_target: &HolonCollection) -> Holon {
     let mut schema_type_descriptor = Holon::new();
 
     schema_type_descriptor
@@ -133,7 +133,7 @@ pub fn define_schema_descriptor(schema_target: &RelationshipTarget) -> Holon {
 }
 /// This function defines the Schema -DESCRIPTORS-> TypeDescriptor relationship descriptor
 /// and adds it to the schema_target
-pub fn define_schema_relationship_descriptor(schema_target: &RelationshipTarget) -> Holon {
+pub fn define_schema_relationship_descriptor(schema_target: &HolonCollection) -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut schema_relationship_descriptor = Holon::new();
 

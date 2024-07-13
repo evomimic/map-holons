@@ -1,63 +1,49 @@
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-
-use crate::descriptor_types::IntegerDescriptor;
-use crate::type_descriptor::{define_type_descriptor, derive_descriptor_name};
+use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapInteger, MapString, ValueType,
-};
 use shared_types_holon::PropertyName;
+use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 
-pub fn define_integer_descriptor(
+use crate::type_descriptor::{define_type_descriptor, TypeDefinitionHeader};
+
+pub struct IntegerDefinition {
+    pub header:TypeDefinitionHeader,
+    pub min_value: MapInteger,
+    pub max_value: MapInteger,
+}
+
+/// This function defines (and describes) a new integer type. Values of this type will be stored
+/// as MapInteger. The `min_value` and `max_value` properties are unique to this IntegerType and can
+/// be used to narrow the range of legal values for this type. Agent-defined types can be the
+/// `ValueType` for a MapProperty.
+pub fn define_integer_type(
     context: &HolonsContext,
-    schema: StagedReference,
-    type_name: MapString,
-    description: MapString,
-    label: MapString, // Human readable name for this type
-    min_value: MapInteger,
-    max_value: MapInteger,
-    has_supertype: Option<StagedReference>,
-    described_by: Option<StagedReference>,
-) -> Result<IntegerDescriptor, HolonError> {
+    schema: &HolonReference,
+    definition: IntegerDefinition,
+) -> Result<StagedReference, HolonError> {
+
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let mut descriptor = define_type_descriptor(
         context,
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
-        derive_descriptor_name(&type_name),
-        type_name,
         BaseType::Value(ValueType::Integer),
-        description,
-        label,
-        MapBoolean(true),
-        MapBoolean(true),
-        described_by,
-        has_supertype,
+        definition.header,
     )?;
 
-    descriptor
-        .0
+    let mut mut_holon = descriptor.get_mut_holon(context)?;
+
+    mut_holon
+        .borrow_mut()
         .with_property_value(
             PropertyName(MapString("min_value".to_string())),
-            BaseValue::IntegerValue(min_value),
+            BaseValue::IntegerValue(definition.min_value),
         )?
         .with_property_value(
             PropertyName(MapString("max_value".to_string())),
-            BaseValue::IntegerValue(max_value),
+            BaseValue::IntegerValue(definition.max_value),
         )?;
 
-    // Populate the relationships
+    Ok(descriptor)
 
-    // descriptor.0
-    //     .add_related_holon(
-    //         RelationshipName(MapString("COMPONENT_OF".to_string())),
-    //         define_local_target(&schema.0.clone()),
-    //     );
-    //
-
-    // TODO: Create PropertyDescriptors for min_length & max_length
-    // TODO: get the (assumed to be existing HAS_PROPERTIES RelationshipDescriptor)
-    // TODO: add the property descriptors to the TypeDescriptors HAS_PROPERTIES relationship
-
-    Ok(IntegerDescriptor(descriptor.0))
 }

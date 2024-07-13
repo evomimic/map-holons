@@ -322,12 +322,13 @@ pub fn get_holon_by_id_dance(
         }
     };
     info!("getting cache_manager from context");
-    let mut cache_manager = context.cache_manager.borrow_mut();
+    let mut cache_manager = context.cache_manager.borrow();
 
     info!("asking cache_manager to get rc_holon");
     let rc_holon = cache_manager.get_rc_holon(None, &holon_id)?;
 
-    Ok(ResponseBody::Holon((*rc_holon).clone()))
+    let holon = rc_holon.borrow().clone();
+    Ok(ResponseBody::Holon(holon))
 }
 
 /// Builds a DanceRequest for retrieving holon by HolonId from the persistent store

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use derive_new::new;
@@ -5,24 +6,40 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
+use holons_integrity::LinkTypes;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{BaseType, HolonId, MapString, ValueType};
+use shared_types_holon::{HolonId, MapString};
 
 use shared_types_holon::value_types::BaseValue;
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
-use crate::relationship::RelationshipMap;
+use crate::holon_reference::HolonReference;
+use crate::relationship::{RelationshipMap, RelationshipName, SmartLinkHolder};
 use crate::smart_reference::SmartReference;
+use crate::smartlink::{create_link_tag, get_smartlink_from_link};
 
 #[derive(Debug)]
 pub enum AccessType {
     Read,
     Write,
+    Abandon,
+    Commit,
+}
+impl fmt::Display for AccessType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AccessType::Read => write!(f, "Read"),
+            AccessType::Write => write!(f, "Write"),
+            AccessType::Abandon => write!(f, "Abandon"),
+            AccessType::Commit => write!(f, "Commit"),
+        }
+    }
 }
 
 #[hdk_entry_helper]
@@ -58,7 +75,6 @@ pub enum HolonState {
     Changed,
     Saved,
     Abandoned,
-    // SaveInProgress,
 }
 
 impl fmt::Display for HolonState {
@@ -81,14 +97,16 @@ pub enum ValidationState {
     Invalid,
 }
 
-pub trait HolonFieldGettable {
+
+
+pub trait HolonGettable {
     fn get_property_value(
-        &mut self,
+        &self,
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError>;
 
-    fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
+    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
 }
@@ -104,6 +122,55 @@ impl Holon {
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
             errors: Vec::new(),
+        }
+    }
+
+    pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
+        match self.state {
+            HolonState::New => match access_type {
+                AccessType::Read |
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => Ok(()),
+            },
+            HolonState::Fetched => match access_type {
+                AccessType::Read => Ok(()),
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                }
+            }
+            HolonState::Changed => match access_type {
+                AccessType::Read |
+                AccessType::Write |
+                AccessType::Abandon |
+                AccessType::Commit => Ok(()),
+            }
+            HolonState::Saved => match access_type {
+                AccessType::Write |
+                AccessType::Abandon => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                }
+                AccessType::Read |
+                AccessType::Commit => Ok(()),
+            }
+            HolonState::Abandoned => match access_type {
+                AccessType::Read |
+                AccessType::Write => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state)))
+                }
+                |
+                AccessType::Commit |
+                AccessType::Abandon => Ok(()),
+            }
+
         }
     }
 
@@ -138,11 +205,13 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
+        let key = self
+            .property_map
+            .get(&PropertyName(MapString("key".to_string())));
         if let Some(key) = key {
-            let string_value: String = key
-                .try_into()
-                .map_err(|_| HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string()))?;
+            let string_value: String = key.try_into().map_err(|_| {
+                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
+            })?;
             Ok(Some(MapString(string_value)))
         } else {
             Ok(None)
@@ -293,7 +362,7 @@ impl Holon {
             }
 
             _ => {
-                // For either Fetched, Saved, Abandoned, no save is needed, just return Holon
+                // No save needed for Fetched, Saved, Abandoned, or Transient, just return Holon
                 debug!("Skipping commit for holon in {:#?} state", self.state);
 
                 Ok(self.clone())
@@ -306,7 +375,7 @@ impl Holon {
     /// If the staged holon is `Fetched`, `New`, or `Changed` commit does nothing.
     ///
     /// If the staged holon is `Saved`, commit_relationship iterates through the holon's
-    /// `relationship_map` and calls commit on each member's RelationshipTarget.
+    /// `relationship_map` and calls commit on each member's HolonCollection.
     ///
     /// If all commits are successful, the function returns a clone a self. Otherwise, the
     /// function returns an error.
@@ -319,9 +388,9 @@ impl Holon {
                     Some(record) => {
                         let source_holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
-                        for (name, target) in self.relationship_map.0.clone() {
+                        for (name, holon_collection) in self.relationship_map.0.clone() {
                             debug!("COMMITTING {:#?} relationship", name.clone());
-                            target.commit_relationship(
+                            holon_collection.commit_relationship(
                                 context,
                                 HolonId::from(source_holon_id.clone()),
                                 name.clone(),
@@ -376,30 +445,84 @@ impl Holon {
         })
     }
 
-    //  TODO: If state is Saved, return HolonError::NotAccessible
-    pub fn abandon_staged_changes(&mut self) -> () {
+    pub fn abandon_staged_changes(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Abandon)?;
+
         self.state = HolonState::Abandoned;
+        Ok(())
+
     }
 
-    pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
-        match access_type {
-            AccessType::Read => {
-                if self.state == HolonState::Abandoned {
-                    Err(HolonError::NotAccessible(
-                        "Read".to_string(),
-                        format!("{:?}", self.state),
-                    ))
-                } else {
-                    Ok(())
-                }
-            }
-            AccessType::Write => match self.state {
-                HolonState::New | HolonState::Fetched | HolonState::Changed => Ok(()),
-                _ => Err(HolonError::NotAccessible(
-                    "Write".to_string(),
-                    format!("{:?}", self.state),
-                )),
-            },
-        }
+}
+
+/// Gets all relationships optionally filtered by name
+pub fn get_relationship_links(
+    holon_id: ActionHash,
+    relationship_name: Option<RelationshipName>,
+) -> Result<Vec<Link>, HolonError> {
+    let link_tag: Option<LinkTag> = if let Some(name) = relationship_name {
+        // smart_property_values is set to None so that no additional filters are applied and all relationships of a given name are retrieved
+        Some(create_link_tag(name, None))
+    } else {
+        None
+    };
+
+    let links =
+        get_links(holon_id, LinkTypes::SmartLink, link_tag).map_err(|e| HolonError::from(e))?;
+
+    Ok(links)
+}
+
+/// Builds a full or partial RelationshipMap for an existing holon identified by `source_holon_id`
+/// by retrieving SmartLinks for that holon.
+/// If `relationship_name` is supplied, the RelationshipMap returned will only have (at most) a
+/// single entry consisting of the HolonCollection for the supplied `relationship_name`.
+/// Otherwise, a full RelationshipMap will be populated for the `source_holon_id`.
+///
+///
+///
+pub fn load_relationship_map(
+    context: &HolonsContext,
+    source_holon_id: ActionHash,
+    relationship_name: Option<RelationshipName>,
+) -> Result<RelationshipMap, HolonError> {
+    let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
+    let links = get_relationship_links(source_holon_id.clone(), relationship_name)?;
+
+    debug!("Retrieved {:?} links from holochain", links.len());
+
+    for link in links {
+        let smartlink = get_smartlink_from_link(source_holon_id.clone(), link.clone())?;
+        // let name = RelationshipName(MapString(name_string));
+
+        let target = link.target.into_action_hash().ok_or_else(|| {
+            HolonError::HashConversion("Link target".to_string(), "ActionHash".to_string())
+        })?;
+        let reference = HolonReference::Smart(SmartReference {
+            holon_id: HolonId(target),
+            smart_property_values: None, // defaulting to None until descriptors ready
+        });
+
+        // The following:
+        // 1) adds an entry for relationship name if not already present (via `entry` API)
+        // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+        // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+        reference_map
+            .entry(smartlink.relationship_name)
+            .or_insert_with(Vec::new)
+            .push(reference);
     }
+
+    // Now create the result
+
+    let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
+
+    for (map_name, holons) in reference_map {
+        let mut collection = HolonCollection::new_existing();
+        collection.add_references(context, holons)?;
+        relationship_map.insert(map_name, collection);
+    }
+
+    Ok(RelationshipMap(relationship_map))
 }

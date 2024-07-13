@@ -10,8 +10,7 @@ use shared_types_holon::value_types::{BaseValue, MapString};
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
-    pub fn new(name: String, description: String) -> Result<Schema, HolonError> {
-        // ?TODO: change name
+    pub fn new(name: MapString, description: MapString) -> Result<Schema, HolonError> {
         let mut schema_holon = Holon::new();
         let key_property_name: MapString = MapString("key".to_string());
         let name_property_name: MapString = MapString("name".to_string());
@@ -20,15 +19,15 @@ impl Schema {
         schema_holon
             .with_property_value(
                 PropertyName(key_property_name),
-                BaseValue::StringValue(MapString(name.clone())),
+                BaseValue::StringValue(name.clone()),
             )?
             .with_property_value(
                 PropertyName(name_property_name),
-                BaseValue::StringValue(MapString(name.clone())),
+                BaseValue::StringValue(name.clone()),
             )?
             .with_property_value(
                 PropertyName(description_property_name),
-                BaseValue::StringValue(MapString(description)),
+                BaseValue::StringValue(description),
             )?;
 
         Ok(Schema(schema_holon))

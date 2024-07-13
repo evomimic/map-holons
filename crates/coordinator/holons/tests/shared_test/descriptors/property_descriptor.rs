@@ -2,8 +2,8 @@ use holons::helpers::define_local_target;
 use holons::holon_reference::HolonReference::*;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_types::Holon;
-use holons::relationship::RelationshipTarget;
-use holons::relationship::RelationshipTarget::*;
+use holons::relationship::HolonCollection;
+use holons::relationship::HolonCollection::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,

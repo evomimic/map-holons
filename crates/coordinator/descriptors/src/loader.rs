@@ -1,118 +1,134 @@
+use hdk::prelude::{info,debug,trace,warn};
+use holons::commit_manager::{CommitManager, CommitResponse};
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
+use holons::holon::Holon;
+use holons::holon_reference::HolonReference;
 
 use holons::staged_reference::StagedReference;
+use shared_types_holon::{MapBoolean, MapString};
 
-use crate::descriptor_types::Schema;
+use crate::descriptor_types::{CoreSchemaName, CoreMetaSchemaName, Schema};
+use crate::holon_descriptor::{define_holon_type, HolonDefinition};
+use crate::type_descriptor::TypeDefinitionHeader;
+use crate::value_type_loader::load_core_value_types;
 
-/// The load_core_schema function creates a new Schema Holon and populates it descriptors for all of the
-/// MAP L0 Schema Meta Descriptors
-///     *  MetaTypeDescriptor
-///     *  MetaHolonDescriptor
-///     *  MetaRelationshipDescriptor
-///     *  MetaPropertyDescriptor
-///     *  MetaDanceDescriptor
-///     *  MetaValueDescriptor
-///     *  MetaBooleanDescriptor
-///     *  MetaEnumDescriptor
-///     *  MetaEnumVariantDescriptor
-///     *  MetaIntegerDescriptor
-///     *  MetaStringDescriptor
-/// And their related types
-///     *  SchemaHolonDescriptor
-///     *  ConstraintHolonDescriptor
-///     *  SemanticVersionHolonDescriptor
-///     *  DeletionSemanticEnumDescriptor
-///     *  DeletionSemanticEnumVariantAllow
-///     *  DeletionSemanticEnumVariantBlock
-///     *  DeletionSemanticEnumVariantPropagate
-///     *  HolonStateEnumDescriptor
-///     *  HolonStateEnumNewVariant
-///     *  HolonStateEnumFetchedVariant
-///     *  HolonStateEnumChangedVariant
+/// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
+/// MAP L0 Schema Descriptors defined in `CoreSchemaNames`
+///
+/// It uses the transient collection in context's dance_state to support lookup of previously
+/// created schema components so they may be referenced in relationship definition
+
 ///
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, HolonError> {
+pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, HolonError> {
+
+    info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
+    // Begin by staging `schema`. It's HolonReference becomes the target of
+    // the COMPONENT_OF relationship for all schema components
+
+
     let schema = Schema::new(
-        "MAP L0 Core Schema".to_string(),
-        "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
+        CoreSchemaName::SchemaName.as_map_string(),
+        MapString("The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string()),
     )?;
 
-    let schema_ref = context
+    info!("Staging Schema...");
+    let staged_schema_ref = HolonReference::Staged(context
         .commit_manager
-        .borrow_mut()
-        .stage_new_holon(schema.0)?;
-    /*
+        .borrow_mut().
+        stage_new_holon(schema.0.clone()
+        )?);
 
-       let type_descriptor = define_type_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString(META_TYPE_DESCRIPTOR.to_string()),
-           MapString("TypeDescriptor".to_string()),
-           BaseType::Holon,
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP descriptors (including itself).".to_string()),
-           MapString("Meta Type Descriptor".to_string()),
-           MapBoolean(false),
-           MapBoolean(false),
-           None,
-           None,
-       );
+    context.add_references_to_dance_state(vec![staged_schema_ref.clone()])?;
 
-       let type_descriptor_ref = context.commit_manager.borrow_mut().stage_new_holon(type_descriptor.0);
+    // Load the ValueTypes
+    let (string_type_ref, integer_type_ref, boolean_type_ref)
+        = load_core_value_types(context, &staged_schema_ref)?;
 
-       // Add to Schema-COMPONENTS->TypeDescriptor relationships
 
-       let meta_holon_descriptor = define_holon_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString("HolonDescriptor".to_string()),
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP HolonDescriptors".to_string()),
-           MapString("Meta Holon Descriptor".to_string()),
-           Some(type_descriptor_ref.clone_reference()),
-           None,
-       );
 
-       let _meta_holon_descriptor_index = context.commit_manager.borrow_mut().stage_new_holon(meta_holon_descriptor.0);
 
-       let meta_relationship_descriptor = define_type_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString(META_RELATIONSHIP_DESCRIPTOR.to_string()),
-           MapString("RelationshipDescriptor".to_string()),
-           BaseType::Holon,
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP RelationshipDescriptors".to_string()),
-           MapString("Meta Relationship Descriptor".to_string()),
-           MapBoolean(false),
-           MapBoolean(false),
-           None,
-           Some(&type_descriptor),
-       );
+    let type_name = CoreMetaSchemaName::MetaHolonType.as_map_string();
 
-       let _meta_relationship_descriptor_index = context.commit_manager.borrow_mut().stage_new_holon(meta_relationship_descriptor.0);
+    debug!("Staging {:?}",type_name);
+    let description = MapString("The meta type that specifies the properties, relationships, \
+    and dances of the base HolonType".to_string());
+    let label = MapString("Holon Type Descriptor".to_string());
 
-       let meta_property_descriptor = define_type_descriptor(
-           &context,
-           schema_ref.clone_reference(),
-           MapString(META_PROPERTY_DESCRIPTOR.to_string()),
-           MapString("PropertyDescriptor".to_string()),
-           BaseType::Holon,
-           MapString("A meta-descriptor that defines the properties and relationships shared by all MAP PropertyDescriptors".to_string()),
-           MapString("Property Meta Descriptor".to_string()),
-           MapBoolean(false),
-           MapBoolean(false),
-           None,
-           Some(&type_descriptor),
-       );
+    let type_header = TypeDefinitionHeader {
+        descriptor_name: None,
+        type_name,
+        description,
+        label,
+        is_dependent: MapBoolean(false),
+        is_value_type: MapBoolean(false),
+        described_by: None,
+        is_subtype_of:None,
+        owned_by: None, // Holon Space
+    };
 
-       let _meta_property_descriptor_index = context.commit_manager.borrow_mut().stage_new_holon(meta_property_descriptor.0);
+    let holon_definition = HolonDefinition {
+        header: type_header,
+        properties:  vec![],
+    };
 
-    */
+    let meta_holon_type_ref = HolonReference::Staged(define_holon_type(
+        context,
+        &staged_schema_ref,
+        holon_definition, // provide property descriptors for this holon type here
+    )?);
 
-    //context.commit_manager.borrow_mut().commit();
+    context.add_references_to_dance_state(vec![meta_holon_type_ref.clone()])?;
 
-    Ok(schema_ref)
+    let type_name = CoreSchemaName::HolonType.as_map_string();
+    let description = MapString("This type specifies the properties, relationships, and dances \
+    for a type of Holon.".to_string());
+    let label = MapString("Holon Type Descriptor".to_string());
+
+    let type_header = TypeDefinitionHeader {
+        descriptor_name: None,
+        type_name,
+        description,
+        label,
+        is_dependent: MapBoolean(false),
+        is_value_type: MapBoolean(false),
+        described_by: Some(meta_holon_type_ref),
+        is_subtype_of:None,
+        owned_by: None, // Holon Space
+    };
+
+    let
+        holon_definition = HolonDefinition {
+        header: type_header,
+        properties:  vec![],
+    };
+
+    let holon_type_ref = HolonReference::Staged(define_holon_type(
+        context,
+        &staged_schema_ref,
+        holon_definition,
+    )?);
+
+
+
+
+
+
+    info!("^^^^^^^ STAGING COMPLETE: Committing schema...");
+
+    let response = CommitManager::commit(context);
+
+    let r = response.clone();
+
+    info!("Commit Response: {:#?}", r.status);
+    info!("Commits Attempted: {:#?}", r.commits_attempted.0.to_string());
+    info!("Holons Saved: {:#?}", r.saved_holons.len());
+    info!("Abandoned: {:#?}", r.abandoned_holons.len());
+
+    Ok(response)
 }
 
 // pub fn load_core_schema(context: &HolonsContext) -> Result<StagedReference, HolonError> {

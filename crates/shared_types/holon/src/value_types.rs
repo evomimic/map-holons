@@ -28,12 +28,15 @@ impl fmt::Display for MapString {
 pub struct MapBoolean(pub bool);
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq,)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapInteger(pub i64);
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq,)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapEnumValue(pub MapString);
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct MapBytes(pub Vec<u8>);
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, new)]
@@ -44,52 +47,47 @@ pub enum BaseValue {
     EnumValue(MapEnumValue), // this is for simple enum variants,
 }
 
-impl TryInto<String> for &BaseValue {
-    type Error = ();
-
-    fn try_into(self) -> Result<String, Self::Error> {
+impl BaseValue {
+    pub fn into_bytes(&self) -> MapBytes {
+        // let string: String = self.into();
+        // MapBytes(string.into_bytes())
         match self {
-            BaseValue::StringValue(val) => Ok(val.0.clone()),
-            BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
-            BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
-            BaseValue::EnumValue(val) => Ok(val.0.0.clone()), // Assuming EnumValue contains a String
-            _ => Err(()),
+            Self::StringValue(map_string) => MapBytes(map_string.0.clone().into_bytes()),
+            Self::BooleanValue(map_bool) => MapBytes(vec![map_bool.0 as u8]),
+            Self::IntegerValue(map_int) => MapBytes(vec![map_int.0 as u8]),
+            Self::EnumValue(map_enum) => MapBytes(map_enum.0 .0.clone().into_bytes()),
         }
     }
 }
 
-// TODO: Upgrade MAP Value Type System from type aliases to TupleStructs following newtype pattern
+// impl TryInto<String> for BaseValue {
+//     type Error = ();
 
-// pub struct MapString (String);
-// impl MapString {
-//     pub fn to_string(&self)->String {
-//         self.0.clone();
+//     fn try_into(self) -> Result<String, Self::Error> {
+//         match self {
+//             BaseValue::StringValue(val) => Ok(val.0.clone()),
+//             BaseValue::IntegerValue(val) => Ok(val.0.to_string()),
+//             BaseValue::BooleanValue(val) => Ok(val.0.to_string()),
+//             BaseValue::EnumValue(val) => Ok(val.0 .0.clone()), // Assuming EnumValue contains a String
+//         }
 //     }
 // }
 
-// pub struct MapInteger (i64);
-// impl MapInteger {
-//     pub fn to_i64(&self)->i64 {
-//         self.0;
-//     }
-// }
+// using into for conevenience since there is no error case yet
 
-// pub struct MapBoolean(bool);
-// impl MapBoolean{
-//     pub fn to_boolean(&self)->bool {
-//         self.0;
-//     }
-// }
-
-// pub struct MapEnumValue(String);
-// impl MapEnumValue {
-//     pub fn to_string(&self)->String {
-//         self.0.to_string();
-//     }
-// }
+impl Into<String> for &BaseValue {
+    fn into(self) -> String {
+        match self {
+            BaseValue::StringValue(val) => val.0.clone(),
+            BaseValue::IntegerValue(val) => val.0.to_string(),
+            BaseValue::BooleanValue(val) => val.0.to_string(),
+            BaseValue::EnumValue(val) => val.0 .0.clone(), // Assuming EnumValue contains a String
+        }
+    }
+}
 
 #[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq,)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct EnumValue(pub String);
 
 #[hdk_entry_helper]
@@ -98,10 +96,11 @@ pub struct EnumValue(pub String);
 pub enum BaseType {
     Holon,
     Collection,
+    Property,
     Relationship,
-    Boolean,
-    Integer,
-    String,
+    // Boolean,
+    // Integer,
+    // String,
     Value(ValueType),
     ValueArray(ValueType),
 }
@@ -121,11 +120,11 @@ impl fmt::Display for BaseType {
         match self {
             BaseType::Holon => write!(f, "Holon"),
             BaseType::Collection => write!(f, "Collection"),
-            //BaseType::Composite => write!(f, "Composite"),
+            BaseType::Property => write!(f, "Property"),
             BaseType::Relationship => write!(f, "Relationship"),
-            BaseType::Boolean => write!(f, "Boolean"),
-            BaseType::Integer => write!(f, "Integer"),
-            BaseType::String => write!(f, "String"),
+            // BaseType::Boolean => write!(f, "Boolean"),
+            // BaseType::Integer => write!(f, "Integer"),
+            // BaseType::String => write!(f, "String"),
             // BaseType::EnumValue => write!(f, "EnumValue"),
             // BaseType::EnumHolon => write!(f, "EnumHolon"),
             BaseType::Value(value_type) => match value_type {
