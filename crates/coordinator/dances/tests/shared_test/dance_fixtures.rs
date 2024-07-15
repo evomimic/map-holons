@@ -255,6 +255,9 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  ADD STEP:  STAGE:  Book Holon (H1)  //
     let mut book_holon = Holon::new();
+    let book_holon_key = MapString(
+        "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
+    );
     book_holon.with_property_value(
         PropertyName(MapString("key".to_string())),
         BaseValue::StringValue(MapString(
@@ -308,13 +311,26 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     };
 
     // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
+    let authored_by_relationship_name = RelationshipName(MapString("AUTHORED_BY".to_string()));
+
+    let mut holons_to_add: Vec<HolonReference> = Vec::new();
+
+    holons_to_add.push(HolonReference::Staged(person_1_staged_reference));
+    holons_to_add.push(HolonReference::Staged(person_2_staged_reference));
+
+    book_holon.relationship_map.0.insert(
+        authored_by_relationship_name.clone(),
+        HolonCollection {
+            state: CollectionState::Staged,
+            members: holons_to_add.to_vec(),
+            keyed_index: BTreeMap::new(),
+        },
+    );
+
     test_case.add_related_holons_step(
         book_index, // source holon
-        RelationshipName(MapString("AUTHORED_BY".to_string())),
-        vec![
-            HolonReference::Staged(person_1_staged_reference.clone()),
-            HolonReference::Staged(person_2_staged_reference.clone()),
-        ],
+        authored_by_relationship_name.clone(),
+        holons_to_add.to_vec(),
         ResponseStatusCode::OK,
         book_holon.clone(),
     )?;
@@ -329,10 +345,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_related_holons_step(
         person_1_index, // source holons
         RelationshipName(MapString("FRIENDS".to_string())),
-        vec![
-            HolonReference::Staged(person_1_staged_reference),
-            HolonReference::Staged(person_2_staged_reference),
-        ],
+        holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
         book_holon.clone(),
     )?;
@@ -376,6 +389,14 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // ADD STEP:  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
+
+    // ADD STEP: QUERY RELATINSHIPS //
+    let query_expression = QueryExpression::new(Some(authored_by_relationship_name.clone()));
+    test_case.add_query_relationships_step(
+        book_holon_key,
+        query_expression,
+        ResponseStatusCode::OK,
+    )?;
 
     Ok(test_case.clone())
 }

@@ -160,6 +160,7 @@ impl HolonGettable for Holon {
         _context: &HolonsContext,
         relationship_name: Option<RelationshipName>,
     ) -> Result<RelationshipMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         let relationship_map = self.relationship_map.clone();
         if let Some(name) = relationship_name {
             let collection_option = relationship_map.0.get(&name);

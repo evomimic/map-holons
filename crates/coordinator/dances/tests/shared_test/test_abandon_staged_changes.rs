@@ -92,6 +92,12 @@ pub async fn execute_abandon_staged_changes(
                                     Err(HolonError::NotAccessible(_, _))
                                 ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
+
+                                assert!(matches!(
+                                    abandoned_holon.get_related_holons(&context, None),
+                                    Err(HolonError::NotAccessible(_, _))
+                                ));
+                                debug!("Confirmed abandoned holon is NotAccessible for `get_related_holons`");
                             }
                             Err(e) => {
                                 panic!("Failed to get holon: {:?}", e);
