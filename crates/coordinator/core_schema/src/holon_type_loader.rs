@@ -7,16 +7,25 @@ use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
 use crate::core_schema_types::{SchemaNamesTrait};
+// use crate::holon_type_loader::CoreHolonTypeName::{DanceRequestType, DanceResponseType, HolonSpaceType, HolonType, PropertyType, RelationshipType, SchemaType};
 use crate::property_type_loader::CorePropertyTypeName;
-use crate::property_type_loader::CorePropertyTypeName::{Description, Name};
+use crate::property_type_loader::CorePropertyTypeName::{Description, DescriptorName, Name, TypeName};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CoreHolonTypeName {
-    SchemaType,
+    DanceRequestType,
+    DanceResponseType,
     HolonSpaceType,
+    HolonType,
+    MetaType,
+    PropertyType,
+    RelationshipType,
+    SchemaType,
+    TypeHeader,
+    ValueType,
 }
 #[derive(Debug)]
-struct HolonTypeLoader {
+pub struct HolonTypeLoader {
     pub type_name: MapString,
     pub descriptor_name: MapString,
     pub description: MapString,
@@ -48,8 +57,7 @@ impl SchemaNamesTrait for CoreHolonTypeName {
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {
-        panic!("This trait function is not intended to be used for this type. \
-        The 'label' for this type is explicitly defined in get_variant_loader()")
+        self.derive_type_name()
     }
 
 
@@ -62,30 +70,57 @@ impl SchemaNamesTrait for CoreHolonTypeName {
 impl CoreHolonTypeName {
     /// This function returns the holon definition for a given holon type
     fn get_holon_type_loader(&self) -> HolonTypeLoader {
+        
+        let type_name = self.derive_type_name();
+        let descriptor_name = self.derive_descriptor_name();
+        let label = self.derive_label();
+        
+        
         use CoreHolonTypeName::*;
         match self {
-            SchemaType => HolonTypeLoader {
-                type_name: self.derive_type_name(),
-                descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes the built-in HolonType".into()),
-                label: MapString("HolonType".into()),
+            DanceRequestType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in DanceRequest type. This type \
+                specifies values all dance request types.".into()),
+                label,
                 described_by: None,
                 owned_by: None,
                 properties: vec![
-                   Name,
-                   Description,
+                    DescriptorName,
+
                 ],
                 key_properties: Some(vec![
-                    Name,
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+
+            },
+
+            DanceResponseType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in TypeDescriptor type. This type \
+                specifies values for the common characteristics shared by all types.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    DescriptorName,
+
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
                 ]),
                 // source_for: vec![],
             },
+
             HolonSpaceType => HolonTypeLoader {
-                type_name: self.derive_type_name(),
-                descriptor_name: self.derive_descriptor_name(),
+                type_name,
+                descriptor_name,
                 description: MapString("Describes the purpose and noteworthy aspects of this \
                 HolonSpace".into()),
-                label: MapString("Holon Space".into()),
+                label,
                 described_by: None,
                 owned_by: None,
                 properties: vec![
@@ -97,13 +132,141 @@ impl CoreHolonTypeName {
                 ]),
                 // source_for: vec![],
             },
+
+
+            HolonType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in HolonType".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+
+            PropertyType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in PropertyType type that serves as a \
+                shared supertype of all built-in PropertyTypes.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    DescriptorName,
+
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+            },
+
+            RelationshipType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in TypeDescriptor type. This type \
+                specifies values for the common characteristics shared by all types.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    DescriptorName,
+
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+            },
+
+            SchemaType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the scope, purpose and noteworthy aspects \
+                of this Schema.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                   Name,
+                   Description,
+                ],
+                key_properties: Some(vec![
+                    Name,
+                ]),
+                // source_for: vec![],
+            },
+
+            TypeHeader => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in TypeDescriptor type. This type \
+                specifies values for the common characteristics shared by all types.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                   DescriptorName,
+
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+            },
+
+            ValueType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in TypeDescriptor type. This type \
+                specifies values for the common characteristics shared by all types.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    DescriptorName,
+
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+
+            },
+
+            MetaType => HolonTypeLoader {
+                // specifies the properties & relationships shared by all TypesDescriptors
+                // (COMPONENT_OF, IS_A) + properties
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in TypeDescriptor type. This type \
+                specifies values for the common characteristics shared by all types.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    DescriptorName,
+
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+            }
         }
     }
 }
 
 /// This function handles the aspects of staging a new holon type definition that are common
 /// to all holon types. It assumes the type-specific parameters have been set by the caller.
-fn load_holon_type_definition(
+pub fn load_holon_type_definition(
     context: &HolonsContext,
     schema: &HolonReference,
     loader: HolonTypeLoader,

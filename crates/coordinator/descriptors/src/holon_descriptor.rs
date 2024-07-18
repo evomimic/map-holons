@@ -33,7 +33,7 @@ pub struct HolonTypeDefinition {
 /// * COMPONENT_OF->Schema (supplied)
 /// * VERSION->SemanticVersion (default)
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
-/// * OWNED_BY->HolonSpace (if supplied)
+/// * OwnedBy->HolonSpace (if supplied)
 /// * PROPERTIES->PropertyDescriptor (if supplied)
 /// * SOURCE_FOR->RelationshipDescriptor (if supplied)
 ///

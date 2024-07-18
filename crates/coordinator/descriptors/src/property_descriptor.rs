@@ -20,7 +20,7 @@ pub struct PropertyTypeDefinition {
 ///
 /// *Naming Rules:*
 /// * `type_name` will be automatically derived based on the following rule:
-///     `<property_name>"_PROPERTY_OF_"<type_name of the HolonDescriptor it is a PROPERTY_OF>`
+///    `
 /// *  `descriptor_name` will be derived by appending `Descriptor` to its type_name
 ///
 /// The descriptor will have the following relationships populated:

@@ -1,25 +1,22 @@
-// use hdk::prelude::{info,debug,trace,warn};
-// use descriptors::descriptor_types::CoreSchemaPropertyTypeName::PropertyTypeName;
-// use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
-// use descriptors::type_descriptor::TypeDescriptorDefinition;
-// use holons::commit_manager::CommitManager;
-// use holons::context::HolonsContext;
-// use holons::holon_error::HolonError;
-// use holons::holon::Holon;
+use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::staged_reference::StagedReference;
+use shared_types_holon::MapString;
 
-// use holons::staged_reference::StagedReference;
-use shared_types_holon::{MapBoolean, MapInteger, MapString};
+use crate::core_schema_types::SchemaNamesTrait;
+use crate::holon_type_loader::{HolonTypeLoader, load_holon_type_definition};
+use crate::property_type_loader::CorePropertyTypeName;
 
-// use crate::core_schema_types::SchemaNamesTrait;
-
-
+#[derive(Debug, Clone)]
 pub enum CoreMetaTypeName {
+     MetaType,
      MetaHolonType,
      MetaRelationshipType,
+     MetaHolonCollectionType,
      MetaPropertyType,
-     MetaDanceType,
-     MetaValueType,
+     //MetaDanceType,
+     // MetaValueType,
      MetaBooleanType,
      MetaEnumType,
      MetaEnumVariantType,
@@ -27,244 +24,278 @@ pub enum CoreMetaTypeName {
      MetaStringType,
      MetaValueArrayType,
 }
-struct MetaTypeLoader {
-    pub type_name: MapString,
-    pub descriptor_name: MapString,
-    pub description: MapString,
-    pub label: MapString, // Human-readable name for this type
-    pub described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
-    pub owned_by: Option<HolonReference>,
-    pub properties: Vec<HolonReference>, // PropertyDescriptors
-    pub key_properties: Option<Vec<HolonReference>>, // PropertyDescriptors
-    // pub source_for: Vec<HolonReference>, // RelationshipDescriptors
+
+/// The load_core_type function stages, but does not commit, a holon type descriptor
+/// for the type identified by its CoreMetaTypeName.
+/// Returns a StagedReference to the newly staged MetaTypeDefinition
+///
+impl SchemaNamesTrait for CoreMetaTypeName {
+    fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+        // Set the type specific variables for this type, then call the load_property_definition
+        let loader = self.get_holon_type_loader();
+        load_holon_type_definition(context, schema, loader)
+
+    }
+    /// This method returns the unique type_name for this property type in "snake_case"
+    fn derive_type_name(&self) -> MapString {
+        // Assume VariantNames have been defined in the proper format (CamelCase)
+        MapString(format!("{:?}", self))
+    }
+
+    /// This method returns the "descriptor_name" for this type in camel_case
+    fn derive_descriptor_name(&self) -> MapString {
+        // this implementation uses a simple naming rule of appending "_descriptor" to the type_name
+        MapString(format!("{}Descriptor", self.derive_type_name().0.clone()))
+    }
+    /// This method returns the human-readable name for this property type
+    fn derive_label(&self) -> MapString {
+        self.derive_type_name()
+    }
+
+
+    /// This method returns the human-readable description of this type
+    fn derive_description(&self) -> MapString {
+        panic!("This trait function is not intended to be used for this type. \
+        The 'description' for this type is explicitly defined in get_holon_type_loader()")
+    }
 }
-// /// The load_meta_types function stages, but does not commit, type descriptors
-// /// for each of the built-in meta types. References to the meta types are stored in dance_state
-// /// Returns a HolonReference to the Schema containing the newly staged types
-// ///
-// ///
-// impl SchemaNamesTrait for CoreMetaTypeName {
-//     fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
-//         // Set the type specific variables for this type, then call the load_property_definition
-//         let loader = self.get_holon_type_loader();
-//         load_meta_type_definition(context, schema, loader)
-//
-//     }
-//     /// This method returns the unique type_name for this property type in "snake_case"
-//     fn derive_type_name(&self) -> MapString {
-//         // Assume VariantNames have been defined in the proper format (CamelCase)
-//         MapString(format!("{:?}", self))
-//     }
-//
-//     /// This method returns the "descriptor_name" for this type in camel_case
-//     fn derive_descriptor_name(&self) -> MapString {
-//         // this implementation uses a simple naming rule of appending "_descriptor" to the type_name
-//         MapString(format!("{}Descriptor", self.derive_type_name().0.clone()))
-//     }
-//     /// This method returns the human-readable name for this property type
-//     fn derive_label(&self) -> MapString {
-//         self.derive_type_name()
-//     }
-//
-//
-//     /// This method returns the human-readable description of this type
-//     fn derive_description(&self) -> MapString {
-//         panic!("This trait function is not intended to be used for this type. \
-//         The 'description' for this type is explicitly defined in get_variant_loader()")
-//     }
-// }
-// impl CoreMetaTypeName {
-//     /// This function returns the variant definition for a given variant type
-//     fn get_meta_type_loader(&self) -> MetaTypeLoader {
-//         use CoreMetaTypeName::*;
-//         match self {
-//             MetaHolonType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//
-//             MetaRelationshipType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaPropertyType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaDanceType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaValueType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaBooleanType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaEnumType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaEnumVariantType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaIntegerType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaStringType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//             MetaValueArrayType => MetaTypeLoader {
-//                 type_name: self.derive_type_name(),
-//                 descriptor_name: self.derive_descriptor_name(),
-//                 description: MapString("Describes Holon Types".into()),
-//                 label: self.derive_label(),
-//                 described_by: None,
-//                 owned_by: None,
-//                 properties: vec![
-//                     PropertyTypeName::Name,
-//                     PropertyTypeName::Description,
-//                 ],
-//                 key_properties: Some(vec![
-//                     PropertyTypeName::Name,
-//                 ]),
-//                 // source_for: vec![],
-//             },
-//         }
-//     }
-// }
-//
+impl CoreMetaTypeName {
+    /// This function returns a HolonType Loader containing the properties and references that
+    /// comprise the definition of the `self` meta-type.
+    fn get_holon_type_loader(&self) -> HolonTypeLoader {
+        use CoreMetaTypeName::*;
+        use CorePropertyTypeName::*;
+        match self {
+            MetaType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Defines the properties, relationships and dances \
+                for the TypeDescriptor that all Map Type Definitions share.".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    DescriptorName,
+                    Label,
+                    BaseType,
+                    Description,
+                    IsDependent,
+                    IsBuiltinType,
+                    IsValueType,
+                    Version,
+                ],
+                key_properties: Some(vec![
+                    DescriptorName,
+                ]),
+                // source_for: vec![],
+            },
+            MetaHolonType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a Holon Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+
+            MetaRelationshipType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a Relationship Type as a child of its Source\
+                Holon".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    RelationshipName,
+                    DeletionSemantic,
+                ],
+                key_properties: Some(vec![
+                    RelationshipName,
+                ]),
+                // source_for: vec![],
+            },
+
+            MetaHolonCollectionType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a Holon Collection Type as a child of \
+                a Relationship.".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                    IsOrdered,
+                    AllowDuplicates,
+                    MinCardinality,
+                    MaxCardinality,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+
+            MetaPropertyType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a Property Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    PropertyTypeName,
+                ],
+                key_properties: Some(vec![
+                    PropertyTypeName,
+                ]),
+                // source_for: vec![],
+            },
+            // MetaDanceType => HolonTypeLoader {
+            //     type_name: self.derive_type_name(),
+            //     descriptor_name: self.derive_descriptor_name(),
+            //     description: MapString("Describes a Dance Type as a child of its Holon Type".into()),
+            //     label: self.derive_label(),
+            //     described_by: None,
+            //     owned_by: None,
+            //     properties: vec![
+            //         DanceName,
+            //     ],
+            //     key_properties: Some(vec![
+            //         PropertyTypeName::Name,
+            //     ]),
+            //     // source_for: vec![],
+            // },
+            // MetaValueType => HolonTypeLoader {
+            //     type_name: self.derive_type_name(),
+            //     descriptor_name: self.derive_descriptor_name(),
+            //     description: MapString("Describes a Value Type".into()),
+            //     label: self.derive_label(),
+            //     described_by: None,
+            //     owned_by: None,
+            //     properties: vec![
+            //         PropertyTypeName::Name,
+            //         PropertyTypeName::Description,
+            //     ],
+            //     key_properties: Some(vec![
+            //         PropertyTypeName::Name,
+            //     ]),
+            //     // source_for: vec![],
+            // },
+            MetaBooleanType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a Boolean Value Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+            MetaEnumType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes an Enum Value Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+            MetaEnumVariantType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a Variant for an Enum Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    VariantName,
+                ],
+                key_properties: Some(vec![
+                    VariantName,
+                ]),
+                // source_for: vec![],
+            },
+            MetaIntegerType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes an Integer Value Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                    MinValue,
+                    MaxValue,
+                ],
+                key_properties: Some(vec![
+                    TypeName
+                ]),
+                // source_for: vec![],
+            },
+            MetaStringType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a String Value Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                    MinLength,
+                    MaxLength,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+            MetaValueArrayType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes an Array of Values Type".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                    MinCardinality,
+                    MaxCardinality
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                // source_for: vec![],
+            },
+        }
+    }
+}
+
 // /// This function handles the aspects of staging a new holon type definition that are common
 // /// to all holon types. It assumes the type-specific parameters have been set by the caller.
 // fn load_meta_type_definition(
 //     context: &HolonsContext,
 //     schema: &HolonReference,
-//     loader: MetaTypeLoader,
+//     loader: HolonTypeLoader,
 // ) -> Result<StagedReference, HolonError> {
 //     let type_header = TypeDescriptorDefinition {
 //         descriptor_name: loader.descriptor_name,
@@ -322,87 +353,4 @@ struct MetaTypeLoader {
 //     Ok(staged_ref)
 // }
 
-// pub fn load_core_meta_types(context: &HolonsContext, schema: &HolonReference)
-//     -> Result<(),HolonError> {
-//
-//     // Stage MetaHolonType
-//
-//     let type_name=CoreMetaSchemaName::MetaHolonType.as_type_name();
-//     let description = MapString("The meta type that specifies the properties, relationships, \
-//     and dances shared by all HolonTypes".to_string());
-//     let label = MapString("Holon Type Descriptor".to_string());
-//
-//     let type_header = TypeDescriptorDefinition {
-//         descriptor_name: None,
-//         type_name,
-//         description,
-//         label,
-//         is_dependent: MapBoolean(false),
-//         is_value_type: MapBoolean(false),
-//         described_by: None,
-//         is_subtype_of:None,
-//         owned_by: None, // Holon Space
-//     };
-//
-//     let holon_definition = HolonTypeDefinition {
-//         header: type_header,
-//         properties:  vec![],
-//         //source_for: vec![],
-//     };
-//
-//     let meta_meta_type_ref = define_holon_type(
-//         context,
-//         schema,
-//         holon_definition, // provide property descriptors for this holon type here
-//     )?;
-//
-//     // add to DESCRIPTOR_RELATIONSHIPS the relationships that all HolonTypes must populate
-//     // add to DESCRIPTOR_PROPERTIES the properties that all HolonTypes must populate keys ValueType?
-//
-//     context.add_references_to_dance_state(vec![HolonReference::Staged(meta_holon_type_ref.clone())])?;
-//
-// // Stage MetaRelationshipType
-//
-//     let type_name=CoreMetaSchemaName::MetaRelationshipType.as_type_name();
-//     let description = MapString("The meta type that specifies the properties, relationships, \
-//     and dances that all RelationshipDescriptors have ".to_string());
-//     let label = MapString("Relationship Type Descriptor".to_string());
-//
-//     let type_header = TypeDescriptorDefinition {
-//         descriptor_name: None,
-//         type_name,
-//         description,
-//         label,
-//         is_dependent: MapBoolean(false),
-//         is_value_type: MapBoolean(false),
-//         described_by: None,
-//         is_subtype_of:None,
-//         owned_by: None, // Holon Space
-//     };
-//
-//     let holon_definition = HolonTypeDefinition {
-//         header: type_header,
-//         properties:  vec![],
-//         //source_for: vec![],
-//     };
-//
-//     let meta_relationship_type_ref = define_holon_type(
-//         context,
-//         schema,
-//         holon_definition, // provide property descriptors for this holon type here
-//     )?;
-//
-//     // add to DESCRIPTOR_RELATIONSHIPS the relationships that all HolonTypes must populate
-//     // add to DESCRIPTOR_PROPERTIES the properties that all HolonTypes must populate keys ValueType?
-//
-//     context.add_references_to_dance_state(vec![HolonReference::Staged(meta_relationship_type_ref)])?;
-//
-//
-//
-//
-//     info!("Staging of Core Meta Types is complete... ");
-//
-//
-//     Ok(())
-//
-// }
+

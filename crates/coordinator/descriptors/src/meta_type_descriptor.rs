@@ -421,12 +421,12 @@ pub struct MetaTypeDefinition {
 //         vec![HolonReference::Staged(is_subtype_of_relationship_staged)],
 //     )?;
 //
-//     // Relationship: OWNED_BY
+//     // Relationship: OwnedBy
 //     let owned_by_relationship_header = TypeDescriptorDefinition {
 //         descriptor_name: Some(MapString("OWNED_BYDescriptor".to_string())),
-//         type_name: MapString("OWNED_BY".to_string()),
-//         description: MapString("Relationship for OWNED_BY".to_string()),
-//         label: MapString("OWNED_BY".to_string()),
+//         type_name: MapString("OwnedBy".to_string()),
+//         description: MapString("Relationship for OwnedBy".to_string()),
+//         label: MapString("OwnedBy".to_string()),
 //         is_dependent: MapBoolean(false),
 //         is_value_type: MapBoolean(false),
 //         described_by: None,
@@ -436,7 +436,7 @@ pub struct MetaTypeDefinition {
 //
 //     let owned_by_relationship_definition = RelationshipTypeDefinition {
 //         header: owned_by_relationship_header,
-//         relationship_name: MapString("OWNED_BY".to_string()),
+//         relationship_name: MapString("OwnedBy".to_string()),
 //         source_owns_relationship: MapBoolean(true),
 //         min_target_cardinality: MapInteger(0),
 //         max_target_cardinality: MapInteger(1),

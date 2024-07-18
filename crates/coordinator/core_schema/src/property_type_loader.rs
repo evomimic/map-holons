@@ -8,15 +8,22 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
-use crate::boolean_value_type_loader::*;
-use crate::core_schema_types::{CoreValueTypeName, SchemaNamesTrait};
-use crate::enum_type_loader::*;
-use crate::integer_value_type_loader::*;
-use crate::string_value_type_loader::*;
+use crate::core_schema_types::SchemaNamesTrait;
+use CorePropertyTypeName::*;
+use crate::value_type_loader::CoreValueTypeName::*;
+use crate::enum_type_loader::CoreEnumTypeName::*;
+use crate::string_value_type_loader::CoreStringValueTypeName::*;
+use crate::boolean_value_type_loader::CoreBooleanValueTypeName::*;
+use crate::integer_value_type_loader::CoreIntegerValueTypeName::*;
+// use crate::enum_type_loader::*;
+// use crate::integer_value_type_loader::*;
+// use crate::property_type_loader::CorePropertyTypeName::{TypeName, VariantName};
+// use crate::string_value_type_loader::*;
+use crate::value_type_loader::CoreValueTypeName;
 //use crate::value_type_loader::load_core_value_type;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CorePropertyTypeName {
     AllowDuplicates, // MapBooleanType
     BaseType, // Enum -- BaseTypeEnumType
@@ -39,11 +46,12 @@ pub enum CorePropertyTypeName {
     RelationshipName, // MapString --RelationshipNameType
     SchemaName, // MapStringType
     TypeName, // MapStringType
+    VariantName, // MapStringType
     VariantOrder, // MapIntegerType
     Version, // MapString --SemanticVersionType
 }
 #[derive(Debug)]
-struct PropertyTypeLoader {
+pub struct PropertyTypeLoader {
     pub descriptor_name: MapString,
     pub description: MapString,
     pub label: MapString, // Human-readable name for this type
@@ -135,6 +143,7 @@ impl SchemaNamesTrait for CorePropertyTypeName {
              type.".to_string()),
             SchemaName => MapString("Specifies the human-readable name for this schema.".to_string()),
             TypeName => MapString("Specifies the (internal) name for this type.".to_string()),
+            VariantName => MapString("Specifies the (internal) name for this Variant.".to_string()),
             VariantOrder => MapString("Specifies the ordering (e.g., for sorting or salience \
             purposes) for this specific variant relative to other variants in this enum.".to_string()),
             Version => MapString("Specifies the semantic version of this type descriptor.".to_string()),
@@ -145,12 +154,7 @@ impl CorePropertyTypeName {
     /// This function returns the ValueType for this property type
 
     fn specify_value_type(&self) -> CoreValueTypeName {
-        use CorePropertyTypeName::*;
-        use CoreValueTypeName::*;
-        use CoreEnumTypeName::*;
-        use CoreStringValueTypeName::*;
-        use CoreBooleanValueTypeName::*;
-        use CoreIntegerValueTypeName::*;
+
 
         match self {
             AllowDuplicates => BooleanType(MapBooleanType),
@@ -174,6 +178,7 @@ impl CorePropertyTypeName {
             RelationshipName => StringType(RelationshipNameType),
             SchemaName => StringType(MapStringType),
             TypeName => StringType(MapStringType),
+            VariantName => StringType(MapStringType),
             VariantOrder => IntegerType(MapIntegerType),
             Version => StringType(SemanticVersionType),
         }

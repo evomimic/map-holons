@@ -3,8 +3,12 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::MapString;
+use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 
-use crate::core_schema_types::{CoreValueTypeName, SchemaNamesTrait};
+use crate::core_schema_types::{SchemaNamesTrait};
+use crate::enum_type_loader::CoreEnumTypeName;
+use crate::integer_value_type_loader::CoreIntegerValueTypeName;
+use crate::string_value_type_loader::CoreStringValueTypeName;
 
 // This file defines and stages (but does not commit) type definitions for all the MAP Core
 // ValueTypes.
@@ -28,6 +32,16 @@ use crate::core_schema_types::{CoreValueTypeName, SchemaNamesTrait};
 //         }
 //     }
 // }
+
+#[derive(Debug, Clone)]
+pub enum CoreValueTypeName {
+    StringType(CoreStringValueTypeName),
+    IntegerType(CoreIntegerValueTypeName),
+    BooleanType(CoreBooleanValueTypeName),
+    EnumType(CoreEnumTypeName),
+    // NOTE: ValueTypeNames are derived rather than explicitly defined
+}
+
 impl SchemaNamesTrait for CoreValueTypeName {
       fn load_core_type(
         &self,
@@ -78,3 +92,4 @@ impl SchemaNamesTrait for CoreValueTypeName {
         }
     }
 }
+

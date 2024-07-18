@@ -8,16 +8,18 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
-use crate::core_schema_types::{SchemaNamesTrait};
-use crate::enum_variant_loader::CoreEnumVariantTypeName;
+use crate::core_schema_types::SchemaNamesTrait;
 
-#[derive(Debug)]
+use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
+use crate::enum_variant_loader::CoreEnumVariantTypeName;
+use crate::enum_variant_loader::CoreEnumVariantTypeName::*;
+
+#[derive(Debug, Clone)]
 pub enum CoreEnumTypeName {
     MapBaseType, // Enum -- BaseTypeEnumType
     DeletionSemanticType, // Enum -- DeletionSemanticEnumType
 }
-
-struct EnumTypeLoader {
+pub struct EnumTypeLoader {
     pub type_name: MapString,
     pub descriptor_name: MapString,
     pub description: MapString,
@@ -26,7 +28,6 @@ struct EnumTypeLoader {
     pub owned_by: Option<HolonReference>,
     pub variants: Vec<CoreEnumVariantTypeName>,
 }
-
 impl SchemaNamesTrait for CoreEnumTypeName {
 
     fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
@@ -52,7 +53,7 @@ impl SchemaNamesTrait for CoreEnumTypeName {
     /// This method returns the "descriptor_name" for this type in snake_case
     fn derive_descriptor_name(&self) -> MapString {
         // this implementation uses a simple naming rule of appending "_descriptor" to the type_name
-        MapString(format!("{}_descriptor", self.derive_type_name().0.clone()))
+        MapString(format!("{}Descriptor", self.derive_type_name().0.clone()))
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {
@@ -64,7 +65,8 @@ impl SchemaNamesTrait for CoreEnumTypeName {
 
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
-        use CoreEnumTypeName::*;
+        // use CoreEnumTypeName::*;
+        // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
         match self {
             MapBaseType => MapString("Specifies the MAP BaseType of this object. ".to_string()),
             DeletionSemanticType => MapString("Offers different options handling requests to delete a \
@@ -73,13 +75,14 @@ impl SchemaNamesTrait for CoreEnumTypeName {
         }
     }
 }
+
 impl CoreEnumTypeName {
     /// This function returns the list of type names for the variants defined for this enum type
     fn specify_variants(&self) -> Vec<CoreEnumVariantTypeName> {
-        use CoreEnumTypeName::*;
+        // use CoreEnumTypeName::*;
+        // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
         match self {
             MapBaseType => {
-                use CoreEnumVariantTypeName::*;
                 vec![
                     BaseTypeHolon,
                     BaseTypeCollection,
@@ -99,7 +102,6 @@ impl CoreEnumTypeName {
 
             ,
             DeletionSemanticType => {
-                use CoreEnumVariantTypeName::*;
                 vec![
                     DeletionSemanticAllow,
                     DeletionSemanticBlock,
@@ -110,6 +112,7 @@ impl CoreEnumTypeName {
         }
     }
 }
+
 
 /// This function handles the aspects of staging a new enum type definition that are common
 /// to all enum types. It assumes the type-specific parameters have been set by the caller.

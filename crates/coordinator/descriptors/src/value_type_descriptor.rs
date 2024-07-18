@@ -122,7 +122,7 @@ pub fn define_value_type(
     // }
     //TODO: Populate owned_by relationship
     // descriptor.add_related_holon(
-    //     RelationshipName(MapString("OWNED_BY".to_string())),
+    //     RelationshipName(MapString("OwnedBy".to_string())),
     //     owned_by.clone(),
 
     TypeDescriptor(descriptor)

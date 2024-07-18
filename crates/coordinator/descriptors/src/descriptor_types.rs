@@ -25,7 +25,13 @@ use crate::string_descriptor::StringTypeDefinition;
 ///
 /// TODO: Implement a full-blown native Rust types layer for descriptors with adaptors to/from Holon representations
 /// TODO: In this type-safe layer, should TypeDescriptor be a Rust Enum with variants for each descriptor type?
+
 pub struct Schema(pub Holon);
+// pub struct Schema {
+//     pub schema_name: MapString,
+//     pub description: MapString,
+// }
+
 pub struct TypeDescriptor(pub Holon);
 pub struct HolonType(pub Holon);
 pub struct RelationshipType(pub Holon);
@@ -35,6 +41,7 @@ pub struct IntegerType(pub Holon);
 pub struct BooleanType(pub Holon);
 pub struct EnumType(pub Holon);
 
+#[derive(Debug)]
 pub enum DeletionSemantic {
     Allow, // deleting source_holon has no impact on the target_holon(s)
     Block, // prevent deletion of source_holon if any target_holons are related
@@ -379,7 +386,7 @@ impl CoreSchemaRelationshipTypeName {
             Instances => "INSTANCES",
             KeyProperties => "KEY_PROPERTIES",
             KeyPropertyOf => "KEY_PROPERTY_OF",
-            OwnedBy => "OWNED_BY",
+            OwnedBy => "OwnedBy",
             Owns => "OWNS",
             Properties => "PROPERTIES",
             PropertyTypeFor => "PROPERTY_TYPE_FOR",

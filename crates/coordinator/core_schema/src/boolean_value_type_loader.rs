@@ -5,15 +5,18 @@ use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{MapBoolean, MapString};
-use crate::core_schema_types::{SchemaNamesTrait};
+use shared_types_holon::{MapBoolean,MapString};
+// use crate::boolean_value_type_loader;
+// use crate::boolean_value_type_loader::CoreBooleanValueTypeName::MapBooleanType;
+use crate::core_schema_types::SchemaNamesTrait;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CoreBooleanValueTypeName {
     MapBooleanType,
 }
+
 #[derive(Debug)]
-struct BooleanTypeLoader {
+pub struct BooleanTypeLoader {
     pub type_name: MapString,
     pub descriptor_name: MapString,
     pub description: MapString,
@@ -53,12 +56,13 @@ impl SchemaNamesTrait for CoreBooleanValueTypeName {
         The 'description' for this type is explicitly defined in get_variant_loader()")
     }
 }
+
 impl CoreBooleanValueTypeName {
     /// This function returns the variant definition for a given variant type
     fn get_boolean_type_loader(&self) -> BooleanTypeLoader {
         use CoreBooleanValueTypeName::*;
         match self {
-            MapBooleanType => BooleanTypeLoader {
+            CoreBooleanValueTypeName::MapBooleanType => BooleanTypeLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
                 description: MapString("Built-in MAP Integer Type".into()),
@@ -71,6 +75,7 @@ impl CoreBooleanValueTypeName {
 
     }
 }
+
 
 /// This function handles the aspects of staging a new enum variant type definition that are common
 /// to all enum variant types. It assumes the type-specific parameters have been set by the caller.

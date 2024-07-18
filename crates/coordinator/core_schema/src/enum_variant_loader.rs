@@ -6,10 +6,11 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-use crate::core_schema_types::{SchemaNamesTrait};
+use crate::core_schema_types::SchemaNamesTrait;
+// use crate::enum_variant_loader;
+use crate::enum_variant_loader::CoreEnumVariantTypeName::{BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship, BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray, BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
 
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CoreEnumVariantTypeName {
     BaseTypeHolon,
     BaseTypeCollection,
@@ -28,7 +29,7 @@ pub enum CoreEnumVariantTypeName {
     DeletionSemanticBlock,
     DeletionSemanticCascade,
 }
-struct EnumVariantLoader {
+pub struct EnumVariantLoader {
     pub type_name: MapString,
     pub descriptor_name: MapString,
     pub description: MapString,
@@ -54,7 +55,7 @@ impl SchemaNamesTrait for CoreEnumVariantTypeName {
     /// This method returns the "descriptor_name" for this type in camel_case
     fn derive_descriptor_name(&self) -> MapString {
         // this implementation uses a simple naming rule of appending "_descriptor" to the type_name
-        MapString(format!("{}_DESCRIPTOR", self.derive_type_name().0.clone()))
+        MapString(format!("{}Descriptor", self.derive_type_name().0.clone()))
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {
@@ -69,20 +70,24 @@ impl SchemaNamesTrait for CoreEnumVariantTypeName {
         The 'description' for this type is explicitly defined in get_variant_loader()")
     }
 }
+
 impl CoreEnumVariantTypeName {
     /// This function returns the variant definition for a given variant type
     fn get_variant_loader(&self) -> EnumVariantLoader {
-        use CoreEnumVariantTypeName::*;
+        // use CoreEnumVariantTypeName::*;
+        // use shared_types_holon::MapInteger;
+        // use crate::enum_variant_loader::CoreEnumVariantTypeName::{BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship, BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray, BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
+        // use crate::enum_variant_loader::EnumVariantLoader;
         match self {
             BaseTypeHolon => EnumVariantLoader {
-                    type_name: self.derive_type_name(),
-                    descriptor_name: self.derive_descriptor_name(),
-                    description: MapString("Describes a BaseType::Holon".into()),
-                    label: MapString("Holon".into()),
-                    described_by: None,
-                    owned_by: None,
-                    variant_order: MapInteger(1),
-                },
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Describes a BaseType::Holon".into()),
+                label: MapString("Holon".into()),
+                described_by: None,
+                owned_by: None,
+                variant_order: MapInteger(1),
+            },
             BaseTypeCollection => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),

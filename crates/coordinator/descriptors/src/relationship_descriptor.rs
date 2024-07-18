@@ -6,7 +6,7 @@ use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{BaseType, PropertyName};
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
 
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic};
@@ -21,7 +21,7 @@ pub struct RelationshipTypeDefinition {
     pub deletion_semantic: DeletionSemantic,
     pub load_links_immediate: MapBoolean,
     pub load_holons_immediate: MapBoolean,
-    pub affinity: MapInteger,
+    //pub affinity: MapInteger,
     pub target_collection_type: HolonReference, // CollectionType
     pub has_inverse: Option<HolonReference>, // Inverse RelationshipType
 }
@@ -88,10 +88,6 @@ pub fn define_relationship_type(
         .with_property_value(
             PropertyName(MapString("deletion_semantic".to_string())),
             BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant()),
-        )?
-        .with_property_value(
-            PropertyName(MapString("affinity".to_string())),
-            BaseValue::IntegerValue(definition.affinity),
         )?;
 
     debug!("Staging new relationship_type {:#?}", relationship_type.clone());

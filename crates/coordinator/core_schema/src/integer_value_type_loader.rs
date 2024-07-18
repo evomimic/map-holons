@@ -5,15 +5,15 @@ use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{MapBoolean, MapInteger, MapString,};
-use crate::core_schema_types::{SchemaNamesTrait};
+use shared_types_holon::{MapBoolean, MapInteger, MapString, };
+use crate::core_schema_types::SchemaNamesTrait;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CoreIntegerValueTypeName {
     MapIntegerType,
 }
 #[derive(Debug)]
-struct IntegerTypeLoader {
+pub struct IntegerTypeLoader {
     pub type_name: MapString,
     pub descriptor_name: MapString,
     pub description: MapString,
@@ -41,7 +41,7 @@ impl SchemaNamesTrait for CoreIntegerValueTypeName {
     /// This method returns the "descriptor_name" for this type in camel_case
     fn derive_descriptor_name(&self) -> MapString {
         // this implementation uses a simple naming rule of appending "_descriptor" to the type_name
-        MapString(format!("{}_DESCRIPTOR", self.derive_type_name().0.clone()))
+        MapString(format!("{}Descriptor", self.derive_type_name().0.clone()))
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {
@@ -55,10 +55,12 @@ impl SchemaNamesTrait for CoreIntegerValueTypeName {
         The 'description' for this type is explicitly defined in get_variant_loader()")
     }
 }
+
 impl CoreIntegerValueTypeName {
     /// This function returns the variant definition for a given variant type
     fn get_integer_type_loader(&self) -> IntegerTypeLoader {
         use CoreIntegerValueTypeName::*;
+
         match self {
             MapIntegerType => IntegerTypeLoader {
                 type_name: self.derive_type_name(),
@@ -75,6 +77,8 @@ impl CoreIntegerValueTypeName {
 
     }
 }
+
+
 
 /// This function handles the aspects of staging a new enum variant type definition that are common
 /// to all enum variant types. It assumes the type-specific parameters have been set by the caller.

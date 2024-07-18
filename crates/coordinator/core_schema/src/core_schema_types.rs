@@ -3,33 +3,24 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::MapString;
-use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
-use crate::enum_type_loader::CoreEnumTypeName;
+
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
 use crate::holon_type_loader::CoreHolonTypeName;
-use crate::integer_value_type_loader::CoreIntegerValueTypeName;
+use crate::meta_type_loader::CoreMetaTypeName;
 use crate::property_type_loader::CorePropertyTypeName;
-use crate::string_value_type_loader::CoreStringValueTypeName;
+use crate::value_type_loader::CoreValueTypeName;
 
-
+#[derive(Debug, Clone)]
 pub enum CoreSchemaTypeName {
     ValueType(CoreValueTypeName),
     PropertyType(CorePropertyTypeName),
     EnumVariantType(CoreEnumVariantTypeName),
     HolonType(CoreHolonTypeName),
-//     CoreRelationshipType,
-//     CoreHolonType,
-//     CoreCollectionType,
-//     CoreMetaType,
+    MetaType(CoreMetaTypeName),
+    // HolonCollectionType(HolonCollectionTypeName),
 }
 
-#[derive(Debug)]
-pub enum CoreValueTypeName {
-    StringType(CoreStringValueTypeName),
-    IntegerType(CoreIntegerValueTypeName),
-    BooleanType(CoreBooleanValueTypeName),
-    EnumType(CoreEnumTypeName),
-}
+
 
 
 pub trait SchemaNamesTrait {
@@ -96,49 +87,75 @@ impl SchemaNamesTrait for CoreSchemaTypeName {
         context: &HolonsContext,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
+        use CoreSchemaTypeName::*;
         match self {
-            CoreSchemaTypeName::ValueType(inner) => inner.load_core_type(context, schema),
-            CoreSchemaTypeName::PropertyType(inner) => inner.load_core_type(context, schema),
-            CoreSchemaTypeName::EnumVariantType(inner) => inner.load_core_type(context, schema),
-            CoreSchemaTypeName::HolonType(inner) => inner.load_core_type(context, schema),
+            ValueType(inner) => inner.load_core_type(context, schema),
+            PropertyType(inner) => inner.load_core_type(context, schema),
+            EnumVariantType(inner) => inner.load_core_type(context, schema),
+            HolonType(inner) => inner.load_core_type(context, schema),
+            MetaType(inner) => inner.load_core_type(context, schema),
+
         }
     }
 
     fn derive_type_name(&self) -> MapString {
+        use CoreSchemaTypeName::*;
         match self {
-            CoreSchemaTypeName::ValueType(inner) => inner.derive_type_name(),
-            CoreSchemaTypeName::PropertyType(inner) => inner.derive_type_name(),
-            CoreSchemaTypeName::EnumVariantType(inner) => inner.derive_type_name(),
-            CoreSchemaTypeName::HolonType(inner) => inner.derive_type_name(),
+            ValueType(inner) => inner.derive_type_name(),
+            PropertyType(inner) => inner.derive_type_name(),
+            EnumVariantType(inner) => inner.derive_type_name(),
+            HolonType(inner) => inner.derive_type_name(),
+            MetaType(inner) => inner.derive_type_name(),
         }
     }
 
     fn derive_descriptor_name(&self) -> MapString {
+        use CoreSchemaTypeName::*;
         match self {
-            CoreSchemaTypeName::ValueType(inner) => inner.derive_descriptor_name(),
-            CoreSchemaTypeName::PropertyType(inner) => inner.derive_descriptor_name(),
-            CoreSchemaTypeName::EnumVariantType(inner) => inner.derive_descriptor_name(),
-            CoreSchemaTypeName::HolonType(inner) => inner.derive_descriptor_name(),
+            ValueType(inner) => inner.derive_descriptor_name(),
+            PropertyType(inner) => inner.derive_descriptor_name(),
+            EnumVariantType(inner) => inner.derive_descriptor_name(),
+            HolonType(inner) => inner.derive_descriptor_name(),
+            MetaType(inner) => inner.derive_descriptor_name(),
         }
     }
 
     fn derive_label(&self) -> MapString {
+        use CoreSchemaTypeName::*;
         match self {
-            CoreSchemaTypeName::ValueType(inner) => inner.derive_label(),
-            CoreSchemaTypeName::PropertyType(inner) => inner.derive_label(),
-            CoreSchemaTypeName::EnumVariantType(inner) => inner.derive_label(),
-            CoreSchemaTypeName::HolonType(inner) => inner.derive_label(),
+            ValueType(inner) => inner.derive_label(),
+            PropertyType(inner) => inner.derive_label(),
+            EnumVariantType(inner) => inner.derive_label(),
+            HolonType(inner) => inner.derive_label(),
+            MetaType(inner) => inner.derive_label(),
         }
     }
 
     fn derive_description(&self) -> MapString {
+        use CoreSchemaTypeName::*;
         match self {
-            CoreSchemaTypeName::ValueType(inner) => inner.derive_description(),
-            CoreSchemaTypeName::PropertyType(inner) => inner.derive_description(),
-            CoreSchemaTypeName::EnumVariantType(inner) => inner.derive_description(),
-            CoreSchemaTypeName::HolonType(inner) => inner.derive_description(),
+            ValueType(inner) => inner.derive_description(),
+            PropertyType(inner) => inner.derive_description(),
+            EnumVariantType(inner) => inner.derive_description(),
+            HolonType(inner) => inner.derive_description(),
+            MetaType(inner) => inner.derive_description(),
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

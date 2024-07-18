@@ -24,7 +24,7 @@ pub struct TypeDescriptorDefinition {
     pub is_value_type: MapBoolean,
     pub described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
     pub is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
-    pub owned_by: Option<HolonReference>, // Holon-OWNED_BY->HolonSpace
+    pub owned_by: Option<HolonReference>, // Holon-OwnedBy->HolonSpace
     // pub key_properties: Option<Vec<HolonReference>>,
     //pub descriptor_properties: Vec<HolonReference>, // Type-DESCRIPTOR_PROPERTIES->PropertyType
     //pub descriptor_relationships: Vec<HolonReference>, // Type-DESCRIPTOR_RELATIONSHIPS->RelationshipType
@@ -41,7 +41,7 @@ pub struct TypeDescriptorDefinition {
 /// This function will add the `Type-COMPONENT_OF->Schema` relationship
 /// and optionally, the following relationships:
 /// * `Type-DESCRIBED_BY->TypeDescriptor` (if supplied)
-/// * `Holon-OWNED_BY-> HolonSpace` (if supplied)
+/// * `Holon-OwnedBy-> HolonSpace` (if supplied)
 /// * `Type-HAS_SUPERTYPE->TypeDescriptor` (if supplied)
 ///
 ///
