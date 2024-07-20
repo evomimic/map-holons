@@ -5,7 +5,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{BaseValue, MapString};
+use shared_types_holon::{BaseValue, MapString, PropertyName};
 use shared_types_holon::value_types::{BaseType, ValueType};
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
@@ -41,6 +41,10 @@ pub fn define_boolean_type(
     // Add its properties
 
     boolean_type
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(definition.type_name.clone()),
+        )?
         .with_property_value(
             TypeName.as_property_name(),
             BaseValue::StringValue(definition.type_name),

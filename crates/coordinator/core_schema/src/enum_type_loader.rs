@@ -1,6 +1,7 @@
 use hdi::prelude::info;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
+use strum_macros::EnumIter;
 use descriptors::enum_descriptor::{define_enum_type, EnumTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -14,8 +15,9 @@ use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseTyp
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreEnumTypeName {
+    #[default]
     MapBaseType, // Enum -- BaseTypeEnumType
     DeletionSemanticType, // Enum -- DeletionSemanticEnumType
 }

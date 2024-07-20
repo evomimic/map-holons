@@ -1,4 +1,5 @@
 use hdi::prelude::info;
+use strum_macros::EnumIter;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -11,17 +12,18 @@ use crate::core_schema_types::{SchemaNamesTrait};
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::property_type_loader::CorePropertyTypeName::{Description, DescriptorName, Name, TypeName};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreHolonTypeName {
     DanceRequestType,
     DanceResponseType,
     HolonSpaceType,
+    #[default]
     HolonType,
     MetaType,
     PropertyType,
     RelationshipType,
     SchemaType,
-    TypeHeader,
+    TypeDescriptor,
     ValueType,
 }
 #[derive(Debug)]
@@ -204,7 +206,7 @@ impl CoreHolonTypeName {
                 // source_for: vec![],
             },
 
-            TypeHeader => HolonTypeLoader {
+            TypeDescriptor => HolonTypeLoader {
                 type_name,
                 descriptor_name,
                 description: MapString("Describes the built-in TypeDescriptor type. This type \

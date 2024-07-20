@@ -129,7 +129,6 @@ impl Holon {
     }
 
 
-
     /// commit() saves a staged holon to the persistent store.
     ///
     /// If the staged holon is already  `Fetched`, `Saved`, or 'Abandoned', commit does nothing.
@@ -147,11 +146,15 @@ impl Holon {
     ///
 
     pub fn commit(&mut self) -> Result<Holon, HolonError> {
-        debug!("Entered Holon::commit for holon in {:#?} state", self.state);
+        debug!(
+            "Entered Holon::commit for holon with key {:#?} in {:#?} state",
+            self.get_key()?.unwrap_or_else(|| MapString("<None>".to_string())).0,
+            self.state
+        );
         match self.state {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
-                debug!("HolonState is New... requesting new HolonNode be created in the DHT");
+                trace!("HolonState is New... requesting new HolonNode be created in the DHT");
                 let result = create_holon_node(self.clone().into_node());
 
                 match result {
@@ -228,7 +231,7 @@ impl Holon {
                         let source_holon_id = record.action_address().clone();
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, holon_collection) in self.relationship_map.0.clone() {
-                            debug!("COMMITTING {:#?} relationship", name.clone());
+                            debug!("COMMITTING {:#?} relationship", name.0.0.clone());
                             holon_collection.commit_relationship(
                                 context,
                                 HolonId::from(source_holon_id.clone()),
@@ -339,6 +342,22 @@ impl Holon {
             .cloned()
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
+
+    /// Returns the current state of the Holon.
+    ///
+    /// # Semantics
+    /// The state indicates the lifecycle stage of the holon, such as whether it has been fetched
+    /// from the persistent store, staged for changes, saved after committing changes, or abandoned.
+    ///
+    /// # Usage
+    /// Use this method to inspect the current state of the holon. DO NOT use this method to
+    /// make decisions about whether certain operations (e.g., reading, writing, committing) are
+    /// permissible. Use `is_accessible()` for this purpose instead.
+    pub fn get_state(&self)->HolonState {
+        self.state.clone()
+    }
+
+
 
     pub fn into_node(self) -> HolonNode {
         HolonNode {

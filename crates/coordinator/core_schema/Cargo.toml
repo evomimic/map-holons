@@ -16,6 +16,8 @@ serde = { workspace = true }
 derive-new = { workspace = true }
 thiserror = { workspace = true }
 Inflector = {workspace = true}
+strum = {workspace = true}
+strum_macros ={workspace = true}
 
 # Holochain Dependencies
 hdi = { workspace = true }

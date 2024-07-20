@@ -1,5 +1,6 @@
 use hdi::prelude::info;
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
+use strum_macros::EnumIter;
 // use inflector::cases::snakecase::to_snake_case;
 use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
@@ -13,32 +14,33 @@ use shared_types_holon::{MapBoolean, MapString};
 use crate::collection_type_loader::{CollectionSemantic, CollectionTypeSpec};
 use crate::core_schema_types::{SchemaNamesTrait};
 use crate::holon_type_loader::CoreHolonTypeName;
+use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, OwnedBy, Owns};
 use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreRelationshipTypeName {
-    OwnedBy,
-    Owns,
-    // DescribedBy,
-    // Instances,
-    // TypeDescriptor,
-    //Type,
-    // Components,
-    // ComponentOf,
-    // DescriptorProperties,
-    // PropertyTypeFor,
-    // DescriptorRelationships,
-    // SourceType,
+    // CollectionFor,
+
+    Components,
+    ComponentOf,
     // Dances,
     // DanceOf,
-    // Properties,
-    // TargetPropertyType,
-    // TargetHolonType,
+    DescribedBy,
     // ForCollectionType,
-    // TargetCollectionType,
-    // CollectionFor,
     // HasInverse,
+    HasSubtype,
+    Instances,
     // InverseOf
+    IsA,
+    #[default]
+    OwnedBy,
+    Owns,
+    Properties,
+    PropertyOf,
+    // SourceType,
+    // TargetCollectionType,
+    // TargetHolonType,
+    // TargetPropertyType,
 }
 #[derive(Debug)]
 pub struct RelationshipTypeLoader {
@@ -95,6 +97,132 @@ impl CoreRelationshipTypeName {
         let label = self.derive_label();
 
         match self {
+            Components => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("{} can be queried to get all of type descriptors \
+                    provided by this Schema.",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Block,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::Set,
+                    holon_type: CoreHolonTypeName::TypeDescriptor,
+                },
+                has_inverse: Some(ComponentOf),
+
+            },
+            ComponentOf => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("{} can be queried to get the Schema for which this type descriptor \
+                    is a component.",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::SchemaType,
+                },
+                has_inverse: Some(Components),
+
+            },
+            DescribedBy => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString(
+                    format!("Specifies the Type of this Holon and describes its properties, \
+                    relationships and dances ")
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(true),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::OptionalInstance,
+                    holon_type: CoreHolonTypeName::HolonType
+                },
+                has_inverse: Some(Instances),
+
+            },
+            HasSubtype => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString(
+                    format!("Specifies the Subtypes of this Type. Subtypes inherit the properties, \
+                    relationships and dances of their Supertype and may define additional \
+                     properties, relationships and dances. Even what a subtype is not the \
+                     SOURCE_FOR additional relationships, it may be defined to allow it to be a \
+                     type-specific TARGET_OF a HolonCollection.")
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Block,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec {
+                    semantic: CollectionSemantic::Set,
+                    holon_type: CoreHolonTypeName::HolonType
+                },
+                has_inverse: Some(IsA),
+            },
+
+
+            Instances => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString(
+                    format!("{} can be queried to get all of the instances of this Holon Type.",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Block,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::Set,
+                    holon_type: CoreHolonTypeName::HolonType, // TODO: this should really by Holon, Not HolonType
+                },
+                has_inverse: Some(DescribedBy),
+
+            },
+            IsA => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString(
+                    format!("Specifies the supertype of {}.",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Cascade,
+                load_links_immediate: MapBoolean(true),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::TypeDescriptor,
+                },
+                has_inverse: Some(HasSubtype),
+
+            },
             Owns => RelationshipTypeLoader {
                 descriptor_name,
                 description: MapString(
@@ -109,7 +237,7 @@ impl CoreRelationshipTypeName {
                 load_links_immediate: MapBoolean(false),
                 target_collection_type: CollectionTypeSpec{
                     semantic: CollectionSemantic::Set,
-                    holon_type: CoreHolonTypeName::TypeHeader,
+                    holon_type: CoreHolonTypeName::TypeDescriptor,
                 },
                 has_inverse: None, // Inverse should only be specified by relationship source owner
             },
@@ -132,155 +260,48 @@ impl CoreRelationshipTypeName {
                 },
                 has_inverse: Some(Owns),
             },
-            // DescribedBy => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description: MapString(
-            //         format!("Describes the type of this Holon, including its properties, \
-            //         relationships and dances ")
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(true),
-            //     deletion_semantic: DeletionSemantic::Allow,
-            //     load_links_immediate: MapBoolean(true),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::OptionalInstance,
-            //         holon_type: CoreHolonTypeName::HolonType
-            //     },
-            //     has_inverse: Some(Instances),
-            //
-            // },
-            // Instances => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description: MapString(
-            //         format!("{} can be queried to get all of the instances of this Holon Type.",
-            //                 relationship_type_name.0.clone())
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(false),
-            //     deletion_semantic: DeletionSemantic::Block,
-            //     load_links_immediate: MapBoolean(false),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::Set,
-            //         holon_type: CoreHolonTypeName::Holon,
-            //     },
-            //     has_inverse: None,
-            //
-            // },
-            // TypeDescriptor => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description: MapString(
-            //         format!("Specifies the defining characteristics of the {}.",
-            //                 relationship_type_name.0.clone())
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(true),
-            //     deletion_semantic: DeletionSemantic::Cascade,
-            //     load_links_immediate: MapBoolean(true),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::SingleInstance,
-            //         holon_type: CoreHolonTypeName::TypeHeader,
-            //     },
-            //     has_inverse: Some(Type),
-            //
-            // },
-            // // Type => {
-            // //
-            // // },
-            // Components => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description : MapString(
-            //         format!("{} can be queried to get all of type descriptors \
-            //         provided by this Schema.",
-            //         relationship_type_name.0.clone())
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(false),
-            //     deletion_semantic: DeletionSemantic::Block,
-            //     load_links_immediate: MapBoolean(false),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::Set,
-            //         holon_type: CoreHolonTypeName::TypeHeader,
-            //     },
-            //     has_inverse: Some(Type),
-            //
-            // },
-            // // ComponentOf => {
-            // //
-            // // },
-            // DescriptorProperties => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description : MapString(
-            //         format!("{} can be queried to get the property descriptors of the property types \
-            //         defined for this Map Type",
-            //                 relationship_type_name.0.clone())
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(true),
-            //     deletion_semantic: DeletionSemantic::Cascade,
-            //     load_links_immediate: MapBoolean(true),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::Set,
-            //         holon_type: CoreHolonTypeName::PropertyType,
-            //     },
-            //     has_inverse: Some(PropertyTypeFor),
-            //
-            // },
-            // PropertyTypeFor => {
-            //     RelationshipTypeLoader {
-            //         descriptor_name,
-            //         description: MapString(
-            //             format!("Specifies the HolonSpace this Holon is {}",
-            //                     relationship_type_name.0.clone())),
-            //         label,
-            //         described_by: None,
-            //         owned_by: None,
-            //         relationship_type_name,
-            //         source_owns_relationship: MapBoolean(true),
-            //         deletion_semantic: DeletionSemantic::Allow,
-            //         load_links_immediate: MapBoolean(true),
-            //         target_collection_type: CollectionTypeSpec{
-            //             semantic: CollectionSemantic::Set,
-            //             holon_type: CoreHolonTypeName::HolonSpaceType
-            //         },
-            //         has_inverse: Some(Owns),
-            //
-            // },
-            // DescriptorRelationships => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description : MapString(
-            //         format!("{} can be queried to get all of type descriptors \
-            //         provided by this Schema.",
-            //                 relationship_type_name.0.clone())
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(false),
-            //     deletion_semantic: DeletionSemantic::Block,
-            //     load_links_immediate: MapBoolean(false),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::Set,
-            //         holon_type: CoreHolonTypeName::TypeHeader,
-            //     },
-            //     has_inverse: Some(Type),
-            //
-            // },
+            Properties => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("{} can be queried to get all of PropertyTypes for a HolonType.",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Cascade,
+                load_links_immediate: MapBoolean(true),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::Set,
+                    holon_type: CoreHolonTypeName::PropertyType,
+                },
+                has_inverse: Some(PropertyOf),
+
+            },
+
+
+            PropertyOf => RelationshipTypeLoader {
+                    descriptor_name,
+                    description: MapString(
+                        format!("Specifies the Holon Type this Property Type is a {}",
+                                relationship_type_name.0.clone())),
+                    label,
+                    described_by: None,
+                    owned_by: None,
+                    relationship_type_name,
+                    source_owns_relationship: MapBoolean(false),
+                    deletion_semantic: DeletionSemantic::Block,
+                    load_links_immediate: MapBoolean(false),
+                    target_collection_type: CollectionTypeSpec{
+                        semantic: CollectionSemantic::Set,
+                        holon_type: CoreHolonTypeName::HolonType
+                    },
+                    has_inverse: Some(Properties),
+
+            },
+
             // SourceType => {
             //
             // },
@@ -307,27 +328,7 @@ impl CoreRelationshipTypeName {
             // // DanceOf => {
             // //
             // // },
-            // Properties => RelationshipTypeLoader {
-            //     descriptor_name,
-            //     description : MapString(
-            //         format!("{} can be queried to get all of type descriptors \
-            //         provided by this Schema.",
-            //                 relationship_type_name.0.clone())
-            //     ),
-            //     label,
-            //     described_by: None,
-            //     owned_by: None,
-            //     relationship_type_name,
-            //     source_owns_relationship: MapBoolean(false),
-            //     deletion_semantic: DeletionSemantic::Block,
-            //     load_links_immediate: MapBoolean(false),
-            //     target_collection_type: CollectionTypeSpec{
-            //         semantic: CollectionSemantic::Set,
-            //         holon_type: CoreHolonTypeName::TypeHeader,
-            //     },
-            //     has_inverse: Some(Type),
-            //
-            // },
+
             // TargetPropertyType => {
             //
             // },

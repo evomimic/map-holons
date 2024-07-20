@@ -65,6 +65,10 @@ pub fn define_collection_type(
 
     collection_type
         .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(collection_type_name.clone()),
+        )?
+        .with_property_value(
             PropertyName(MapString(CoreSchemaPropertyTypeName::MaxCardinality.as_snake_case().to_string())),
             BaseValue::IntegerValue(definition.max_cardinality),
         )?

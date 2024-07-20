@@ -1,4 +1,5 @@
 use hdi::prelude::info;
+use strum_macros::EnumIter;
 use descriptors::enum_variant_descriptor::{define_enum_variant_type, EnumVariantTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -10,8 +11,9 @@ use crate::core_schema_types::SchemaNamesTrait;
 // use crate::enum_variant_loader;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::{BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship, BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray, BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreEnumVariantTypeName {
+    #[default]
     BaseTypeHolon,
     BaseTypeCollection,
     BaseTypeProperty,

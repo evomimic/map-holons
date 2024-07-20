@@ -1,3 +1,4 @@
+use strum::IntoEnumIterator;
 use hdk::prelude::info;
 use holons::commit_manager::{CommitManager, CommitResponse};
 use holons::context::HolonsContext;
@@ -9,16 +10,23 @@ use holons::holon_reference::HolonReference;
 use shared_types_holon::{MapString};
 
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
+use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 // use descriptors::holon_descriptor::{define_holon_type};
 //use descriptors::meta_type_loader::load_core_meta_types;
 // use descriptors::type_descriptor::TypeDescriptorDefinition;
 // use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
+use crate::enum_type_loader::CoreEnumTypeName;
 // use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 // use crate::string_value_type_loader::CoreStringValueTypeName;
 // use crate::enum_type_loader::CoreEnumTypeName;
 // use crate::holon_type_loader::CoreHolonTypeName;
 use crate::holon_type_loader::CoreHolonTypeName::HolonType;
+use crate::integer_value_type_loader::CoreIntegerValueTypeName;
+use crate::property_type_loader::CorePropertyTypeName;
+use crate::relationship_type_loader::CoreRelationshipTypeName;
+use crate::string_value_type_loader::CoreStringValueTypeName;
+use crate::value_type_loader::CoreValueTypeName;
 // use crate::meta_type_loader::CoreMetaTypeName;
 // use crate::meta_type_loader::CoreMetaTypeName::{MetaBooleanType, MetaEnumType, MetaEnumVariantType, MetaHolonCollectionType, MetaHolonType, MetaIntegerType, MetaPropertyType, MetaRelationshipType, MetaStringType, MetaType, MetaValueArrayType};
 // use crate::value_type_loader::CoreValueTypeName;
@@ -63,6 +71,19 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         let _type_ref = type_name.lazy_get_core_type_definition(context, &staged_schema_ref)?;
 
     }
+    // Let's add all of the CoreRelationshipTypes to the initial load set
+
+    for variant in CoreRelationshipTypeName::iter() {
+        info!("Attempting to load {:?}", variant);
+        let _type_ref = variant.lazy_get_core_type_definition(context, &staged_schema_ref)?;
+    }
+
+    // Let's add all of the CorePropertyTypes to the initial load set
+
+    for variant in CorePropertyTypeName::iter() {
+        info!("Attempting to load {:?}", variant);
+        let _type_ref = variant.lazy_get_core_type_definition(context, &staged_schema_ref)?;
+    }
 
 
     info!("^^^^^^^ STAGING COMPLETE: Committing schema...");
@@ -80,9 +101,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 }
 
 fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
-    let result: Vec<CoreSchemaTypeName> = vec![
+    let mut result: Vec<CoreSchemaTypeName> = vec![
 
-        CoreSchemaTypeName::HolonType(HolonType),
+        // CoreSchemaTypeName::HolonType(HolonType),
 
         // ValueType(StringType(MapStringType)),
         // ValueType(StringType(PropertyNameType)),
@@ -109,6 +130,28 @@ fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
         // MetaType(MetaValueArrayType),
 
     ];
+
+    // Let's add all of the CoreSchemaValueTypes to the initial load set
+
+    for variant in CoreStringValueTypeName::iter() {
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::StringType(variant)));
+    }
+
+    // Add all CoreIntegerValueTypeName variants
+    for variant in CoreIntegerValueTypeName::iter() {
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::IntegerType(variant)));
+    }
+
+    // Add all CoreBooleanValueTypeName variants
+    for variant in CoreBooleanValueTypeName::iter() {
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::BooleanType(variant)));
+    }
+
+    // Add all CoreEnumTypeName variants
+    for variant in CoreEnumTypeName::iter() {
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::EnumType(variant)));
+    }
+
     result
 
 }

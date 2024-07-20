@@ -4,7 +4,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{BaseType, BaseValue, PropertyName};
+use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
@@ -49,6 +49,10 @@ pub fn define_property_type(
     // Add properties
 
     property_type
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(definition.property_name.0.clone()),
+        )?
         .with_property_value(
             CoreSchemaPropertyTypeName::PropertyTypeName.as_property_name(),
             BaseValue::StringValue(definition.property_name.0.clone()),

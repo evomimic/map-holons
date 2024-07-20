@@ -1,3 +1,4 @@
+use strum_macros::EnumIter;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;

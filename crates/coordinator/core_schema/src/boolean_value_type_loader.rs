@@ -1,4 +1,5 @@
 use hdi::prelude::info;
+use strum_macros::EnumIter;
 use descriptors::boolean_descriptor::{BooleanTypeDefinition, define_boolean_type};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -10,8 +11,9 @@ use shared_types_holon::{MapBoolean,MapString};
 // use crate::boolean_value_type_loader::CoreBooleanValueTypeName::MapBooleanType;
 use crate::core_schema_types::SchemaNamesTrait;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumIter, Default)]
 pub enum CoreBooleanValueTypeName {
+    #[default]
     MapBooleanType,
 }
 
@@ -42,7 +44,7 @@ impl SchemaNamesTrait for CoreBooleanValueTypeName {
     /// This method returns the "descriptor_name" for this type in camel_case
     fn derive_descriptor_name(&self) -> MapString {
         // this implementation uses a simple naming rule of appending "_descriptor" to the type_name
-        MapString(format!("{}_DESCRIPTOR", self.derive_type_name().0.clone()))
+        MapString(format!("{}Descriptor", self.derive_type_name().0.clone()))
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {

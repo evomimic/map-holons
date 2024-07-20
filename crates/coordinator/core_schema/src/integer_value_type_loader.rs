@@ -1,4 +1,5 @@
 use hdi::prelude::info;
+use strum_macros::EnumIter;
 use descriptors::integer_descriptor::{define_integer_type, IntegerTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -8,8 +9,9 @@ use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapInteger, MapString, };
 use crate::core_schema_types::SchemaNamesTrait;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default,EnumIter)]
 pub enum CoreIntegerValueTypeName {
+    #[default]
     MapIntegerType,
 }
 #[derive(Debug)]

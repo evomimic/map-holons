@@ -70,6 +70,10 @@ pub fn define_relationship_type(
     // Add its properties
     relationship_type
         .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(definition.relationship_type_name.0.clone()),
+        )?
+        .with_property_value(
             CoreSchemaPropertyTypeName::RelationshipName.as_property_name(),
             BaseValue::StringValue(definition.relationship_type_name.0.clone()),
         )?

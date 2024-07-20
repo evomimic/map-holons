@@ -16,6 +16,8 @@ pub mod smart_reference;
 pub mod smartlink;
 pub mod staged_reference;
 pub mod transient_collection;
+pub mod json_adapter;
+
 
 use hdk::prelude::*;
 use holons_integrity::*;

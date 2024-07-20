@@ -4,6 +4,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{
     BaseType, BaseValue, MapInteger, MapString, ValueType,
 };
@@ -50,6 +51,10 @@ pub fn define_string_type(
     // Add its properties
 
     string_type
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(definition.type_name.clone()),
+        )?
         .with_property_value(
             TypeName.as_property_name(),
             BaseValue::StringValue(definition.type_name.clone()),

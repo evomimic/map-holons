@@ -7,6 +7,7 @@ use std::rc::Rc;
 use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
 use crate::holon_error::HolonError;
+use crate::json_adapter::as_json;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
@@ -155,6 +156,14 @@ impl CommitManager {
                 }
             }
         }
+
+        info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
+
+        for saved_holon in &response.saved_holons {
+            info!("{}", as_json(saved_holon));
+        }
+
+
 
         // Handle the final status of the commit process
 

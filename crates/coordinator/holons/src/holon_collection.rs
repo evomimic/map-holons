@@ -38,6 +38,21 @@ impl HolonCollection {
             keyed_index: BTreeMap::new(),
         }
     }
+    pub fn from_parts(state: CollectionState, members: Vec<HolonReference>) -> Self {
+        let mut keyed_index = BTreeMap::new();
+
+        // TODO: This method should reconstitute the keyed_index from members -- but needs member.get_key to not require context first.
+        // for (index, member) in members.iter().enumerate() {
+        //     if let Some(key) = member.get_key() {
+        //         keyed_index.insert(key, index);
+        //     }
+        // }
+        HolonCollection {
+            state,
+            members,
+            keyed_index,
+        }
+    }
     /// Checks if requested `access_type` is acceptable given the collection's current `state`.
     /// If not, returns `NotAccessible` error
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -104,6 +119,35 @@ impl HolonCollection {
         }
     }
 
+    /// Returns the current state of the HolonCollection.
+    ///
+    /// # Semantics
+    /// The state indicates the lifecycle stage of the collection, such as whether it has been fetched
+    /// from the persistent store, staged for changes, saved after committing changes, or abandoned.
+    ///
+    /// # Usage
+    /// Use this method to inspect the current state of the collection. DO NOT use this method to
+    /// make decisions about whether certain operations (e.g., reading, writing, committing) are
+    /// permissible. Use `is_accessible()` for this purpose instead.
+    pub fn get_state(&self) -> CollectionState {
+        self.state.clone()
+    }
+
+    /// Returns a reference to the vector of HolonReference members in the collection.
+    ///
+    /// # Semantics
+    /// The members represent individual holons that are part of this collection. Each member is a
+    /// reference to a Holon, which can be either staged or saved.
+    ///
+    /// # Usage
+    /// Use this method for read-only access to the members of this collection for iteration,
+    /// inspection, or performing bulk operations. This method does not clone the members,
+    /// thus avoiding unnecessary copying.
+
+    pub fn get_members(&self) -> &Vec<HolonReference> {
+        &self.members
+    }
+
     pub fn add_references(
         &mut self,
         context: &HolonsContext,
@@ -133,8 +177,8 @@ impl HolonCollection {
     ) -> Result<(), HolonError> {
 
         debug!(
-            "Calling commit on each HOLON_REFERENCE in the collection for {:#?}.",
-            name.0.clone()
+            "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
+            source_id,name.0.0.clone()
         );
         for holon_reference in self.members.clone() {
             // Only commit references to holons with id's (i.e., Saved)

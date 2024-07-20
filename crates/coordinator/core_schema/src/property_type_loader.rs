@@ -1,6 +1,7 @@
 use hdi::prelude::info;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
+use strum_macros::EnumIter;
 use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -23,7 +24,7 @@ use crate::value_type_loader::CoreValueTypeName;
 //use crate::value_type_loader::load_core_value_type;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, EnumIter)]
 pub enum CorePropertyTypeName {
     AllowDuplicates, // MapBooleanType
     BaseType, // Enum -- BaseTypeEnumType
@@ -44,6 +45,7 @@ pub enum CorePropertyTypeName {
     Name, // MapDescriptorType
     PropertyTypeName, // MapString --PropertyNameType
     RelationshipName, // MapString --RelationshipNameType
+    #[default]
     SchemaName, // MapStringType
     TypeName, // MapStringType
     VariantName, // MapStringType
