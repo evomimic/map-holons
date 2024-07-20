@@ -25,6 +25,8 @@ pub enum HolonError {
     IndexOutOfRange(String),
     #[error("{0} Not Implemented")]
     NotImplemented(String),
+    #[error("Miscellaneous error: {0}")]
+    Misc(String),
     #[error("{0} relationship is missing StagedCollection")]
     MissingStagedCollection(String),
     #[error("Failed to Borrow {0}")]

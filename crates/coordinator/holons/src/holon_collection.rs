@@ -3,9 +3,9 @@ use crate::holon::{AccessType, HolonGettable};
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::relationship::RelationshipName;
-use crate::smart_link_manager::{create_smart_link, SmartLinkInput};
+use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -18,9 +18,9 @@ pub enum CollectionState {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct HolonCollection {
-    state: CollectionState,
-    members: Vec<HolonReference>,
-    keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
+    pub state: CollectionState,
+    pub members: Vec<HolonReference>,
+    pub keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
 }
 
 impl HolonCollection {
@@ -59,40 +59,31 @@ impl HolonCollection {
         match self.state {
             CollectionState::Fetched => match access_type {
                 AccessType::Read => Ok(()),
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => {
+                AccessType::Write | AccessType::Abandon | AccessType::Commit => {
                     Err(HolonError::NotAccessible(
                         format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                },
+                        format!("{:?}", self.state),
+                    ))
+                }
             },
-            CollectionState::Staged =>match access_type {
-                AccessType::Read |
-                AccessType::Write |
-                AccessType::Abandon |
-                AccessType::Commit => Ok(()),
+            CollectionState::Staged => match access_type {
+                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
+                    Ok(())
+                }
             },
             CollectionState::Saved => match access_type {
-                AccessType::Write |
-                AccessType::Abandon => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                },
-                AccessType::Read |
-                AccessType::Commit => Ok(()),
+                AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+                AccessType::Read | AccessType::Commit => Ok(()),
             },
             CollectionState::Abandoned => match access_type {
-                AccessType::Read |
-                AccessType::Write => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state)))
-                },
-                |
-                AccessType::Commit |
-                AccessType::Abandon => Ok(()),
+                AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+                AccessType::Commit | AccessType::Abandon => Ok(()),
             },
         }
     }
@@ -175,20 +166,36 @@ impl HolonCollection {
         source_id: HolonId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
-
         debug!(
             "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
             source_id,name.0.0.clone()
         );
-        for holon_reference in self.members.clone() {
+        for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id(context) {
-                let input = SmartLinkInput {
-                    from_address: source_id.clone(),
-                    to_address: target_id,
-                    relationship_name: name.clone(),
+                let key_option = holon_reference.get_key(context)?;
+                let input: SmartLink = if let Some(key) = key_option {
+                    let mut prop_vals: PropertyMap = BTreeMap::new();
+                    prop_vals.insert(
+                        PropertyName(MapString("key".to_string())),
+                        BaseValue::StringValue(key),
+                    );
+                    SmartLink {
+                        from_address: source_id.clone(),
+                        to_address: target_id,
+                        relationship_name: name.clone(),
+                        smart_property_values: Some(prop_vals),
+                    }
+                } else {
+                    SmartLink {
+                        from_address: source_id.clone(),
+                        to_address: target_id,
+                        relationship_name: name.clone(),
+                        smart_property_values: None,
+                    }
                 };
-                create_smart_link(input)?;
+
+                save_smartlink(input)?;
             }
         }
         Ok(())

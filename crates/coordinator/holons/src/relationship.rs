@@ -1,9 +1,9 @@
+#![allow(unused_imports)]
+
 use crate::context::HolonsContext;
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::smart_link_manager::create_link_tag;
 use crate::smart_reference::SmartReference;
-use crate::smartlink::get_relationship_name_from_smartlink;
 // use crate::smart_reference::SmartReference;
 use crate::holon_reference::HolonReference;
 use hdk::prelude::*;

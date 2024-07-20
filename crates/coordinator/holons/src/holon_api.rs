@@ -26,13 +26,6 @@ pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
     holon.with_property_value(input.property_name.clone(), input.value.clone());
     Ok(holon)
 }
-#[hdk_extern]
-pub fn get_holon(id: HolonId) -> ExternResult<Option<Holon>> {
-    match Holon::get_holon(id) {
-        Ok(result) => Ok(result),
-        Err(holon_error) => Err(holon_error.into()),
-    }
-}
 
 #[hdk_extern]
 pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {
@@ -51,7 +44,6 @@ pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {
 //         Err(holon_error) => Err(holon_error.into()),
 //     }
 // }
-
 
 #[hdk_extern]
 pub fn delete_holon(target_holon_id: ActionHash) -> ExternResult<ActionHash> {
