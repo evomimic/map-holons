@@ -1,5 +1,6 @@
 use hdi::prelude::info;
 use strum_macros::EnumIter;
+use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::TargetCollectionType;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -8,14 +9,17 @@ use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
 use crate::core_schema_types::{SchemaNamesTrait};
+use crate::holon_type_loader::CoreHolonTypeName::HolonType;
 // use crate::holon_type_loader::CoreHolonTypeName::{DanceRequestType, DanceResponseType, HolonSpaceType, HolonType, PropertyType, RelationshipType, SchemaType};
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::property_type_loader::CorePropertyTypeName::{Description, DescriptorName, Name, TypeName};
+use crate::relationship_type_loader::CoreRelationshipTypeName;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreHolonTypeName {
     DanceRequestType,
     DanceResponseType,
+    HolonCollectionType,
     HolonSpaceType,
     #[default]
     HolonType,
@@ -36,7 +40,7 @@ pub struct HolonTypeLoader {
     pub owned_by: Option<HolonReference>,
     pub properties: Vec<CorePropertyTypeName>, // PropertyDescriptors
     pub key_properties: Option<Vec<CorePropertyTypeName>>, // PropertyDescriptors
-    // pub source_for: Vec<HolonReference>, // RelationshipDescriptors
+    pub source_for: Vec<CoreRelationshipTypeName>, // RelationshipDescriptors
 }
 
 impl SchemaNamesTrait for CoreHolonTypeName {
@@ -95,7 +99,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
 
             },
 
@@ -114,7 +118,24 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
+            },
+            HolonCollectionType => HolonTypeLoader {
+                type_name,
+                descriptor_name,
+                description: MapString("Describes the built-in type that serves as the common \
+                supertype of all HolonCollectionTypes.".into()),
+                label,
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                source_for: vec![
+                ],
             },
 
             HolonSpaceType => HolonTypeLoader {
@@ -132,7 +153,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     Name,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
 
@@ -149,7 +170,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
             PropertyType => HolonTypeLoader {
@@ -167,7 +188,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
             RelationshipType => HolonTypeLoader {
@@ -185,7 +206,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
             SchemaType => HolonTypeLoader {
@@ -203,7 +224,9 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     Name,
                 ]),
-                // source_for: vec![],
+                source_for: vec![
+
+                ],
             },
 
             TypeDescriptor => HolonTypeLoader {
@@ -221,7 +244,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
             ValueType => HolonTypeLoader {
@@ -239,7 +262,7 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
 
             },
 
@@ -260,7 +283,9 @@ impl CoreHolonTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![
+                    CoreRelationshipTypeName::ComponentOf,
+                ],
             }
         }
     }

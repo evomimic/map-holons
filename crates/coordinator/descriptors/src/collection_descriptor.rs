@@ -1,8 +1,8 @@
 use hdi::prelude::debug;
 use holons::context::HolonsContext;
-use holons::holon::{Holon, HolonGettable};
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
+use holons::holon_reference::{HolonGettable, HolonReference};
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{BaseType, PropertyName};
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use derive_new::new;
@@ -19,7 +20,6 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::relationship::{RelationshipMap};
 use crate::smart_reference::SmartReference;
 use crate::smartlink::{get_relationship_links, get_smartlink_from_link};
 use crate::{all_holon_nodes::*, relationship};
@@ -97,83 +97,55 @@ pub enum ValidationState {
     Invalid,
 }
 
-pub trait HolonGettable {
-    fn get_property_value(
-        &self,
-        context: &HolonsContext,
-        property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError>;
-
-    /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon (NOTE: Not all holon types have defined keys.)
-    /// If the holon has a key, but it cannot be returned as a MapString, this function
-    /// returns a HolonError::UnexpectedValueType.
-    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
-
-    // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
-
-    /// In this method, &self is a either a HolonReference, StagedReference, SmartReference or Holon that represents the source holon,
-    /// whose related holons are being requested. relationship_name, if provided, indicates the name of the relationship being navigated.
-    /// In the future, this parameter will be replaced with an optional reference to the RelationshipDescriptor for this relationship.
-    /// If None, then all holons related to the source holon across all of its relationships are retrieved.
-    /// This method populates the cached source holon's HolonCollection for the specified relationship if one is provided.
-    /// If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
-    fn get_related_holons(
-        &self,
-        context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError>;
-}
-
-impl HolonGettable for Holon {
-    fn get_property_value(
-        &self,
-        _context: &HolonsContext,
-        property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        self.property_map
-            .get(property_name)
-            .cloned()
-            .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
-    }
-
-    fn get_key(&self, _context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        let key = self
-            .property_map
-            .get(&PropertyName(MapString("key".to_string())));
-        if let Some(key) = key {
-            let string_value: String = key.try_into().map_err(|_| {
-                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
-            })?;
-            Ok(Some(MapString(string_value)))
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn get_related_holons(
-        &self,
-        _context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        let relationship_map = self.relationship_map.clone();
-        if let Some(name) = relationship_name {
-            let collection_option = relationship_map.0.get(&name);
-            if let Some(collection) = collection_option.clone() {
-                let mut map = BTreeMap::new();
-                map.insert(name, collection.clone());
-                return Ok(RelationshipMap(map));
-            } else {
-                return Ok(RelationshipMap(BTreeMap::new()));
-            }
-        } else {
-            Ok(relationship_map)
-        }
-    }
-}
+// impl HolonGettable for Holon {
+//     fn get_property_value(
+//         &self,
+//         _context: &HolonsContext,
+//         property_name: &PropertyName,
+//     ) -> Result<PropertyValue, HolonError> {
+//         self.is_accessible(AccessType::Read)?;
+//         self.property_map
+//             .get(property_name)
+//             .cloned()
+//             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
+//     }
+//
+//     fn get_key(&self, _context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
+//         self.is_accessible(AccessType::Read)?;
+//         let key = self
+//             .property_map
+//             .get(&PropertyName(MapString("key".to_string())));
+//         if let Some(key) = key {
+//             let string_value: String = key.try_into().map_err(|_| {
+//                 HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
+//             })?;
+//             Ok(Some(MapString(string_value)))
+//         } else {
+//             Ok(None)
+//         }
+//     }
+//
+//     fn get_related_holons(
+//         &self,
+//         _context: &HolonsContext,
+//         relationship_name: Option<RelationshipName>,
+//     ) -> Result<RelationshipMap, HolonError> {
+//         self.is_accessible(AccessType::Read)?;
+//         let relationship_map = self.relationship_map.clone();
+//         if let Some(name) = relationship_name {
+//             let collection_option = relationship_map.0.get(&name);
+//             if let Some(collection) = collection_option.clone() {
+//                 let mut map = BTreeMap::new();
+//                 map.insert(name, collection.clone());
+//                 return Ok(RelationshipMap(map));
+//             } else {
+//                 return Ok(RelationshipMap(BTreeMap::new()));
+//             }
+//         } else {
+//             Ok(relationship_map)
+//         }
+//     }
+// }
 
 impl Holon {
     /// Stages a new empty holon.
@@ -357,12 +329,7 @@ impl Holon {
         }
     }
 
-    pub fn essential_content(
-        &self,
-        context: &HolonsContext,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        let key = self.get_key(context)?;
-        Ok(EssentialHolonContent {
+
     /// This function bypasses the cache (it should be retired in favor of fetch_holon once cache is implemented
     // TODO: replace with cache aware function
     // TODO: Throw None case or remove option
@@ -387,6 +354,9 @@ impl Holon {
             Err(HolonError::HolonNotFound("Node is empty".to_string()))
         }
     }
+
+    // NOTE: Holon does NOT  implement HolonGettableTrait because the functions defined by that
+    // Trait include a context parameter.
 
     /// This function returns the primary key value for the holon or None if there is no key value
     /// for this holon (NOTE: Not all holon types have defined keys.)
@@ -417,6 +387,25 @@ impl Holon {
             .cloned()
             .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
     }
+    pub fn get_related_holons(
+        &self,
+        relationship_name: Option<RelationshipName>,
+    ) -> Result<RelationshipMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let relationship_map = self.relationship_map.clone();
+        if let Some(name) = relationship_name {
+            let collection_option = relationship_map.0.get(&name);
+            if let Some(collection) = collection_option.clone() {
+                let mut map = BTreeMap::new();
+                map.insert(name, collection.clone());
+                return Ok(RelationshipMap(map));
+            } else {
+                return Ok(RelationshipMap(BTreeMap::new()));
+            }
+        } else {
+            Ok(relationship_map)
+        }
+    }
 
     /// Returns the current state of the Holon.
     ///
@@ -432,17 +421,19 @@ impl Holon {
         self.state.clone()
     }
 
-
-
     pub fn into_node(self) -> HolonNode {
         HolonNode {
             property_map: self.property_map.clone(),
-            key,
-            errors: self.errors.clone(),
-        })
-    }
         }
     }
+
+    // pub fn into_node(self) -> HolonNode {
+    //     HolonNode {
+    //         property_map: self.property_map.clone(),
+    //         key,
+    //         errors: self.errors.clone(),
+    //     }
+    // }
 
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.state {
@@ -514,8 +505,29 @@ impl Holon {
 
         // TODO: Populate RelationshipMap from links
 
-        self.state = HolonState::Abandoned;
-        Ok(())
+        Ok(holon)
+    }
+    // NOTE: this function doesn't check if supplied PropertyName is a valid property
+    // for the self holon. It probably needs to be possible to suspend
+    // this checking while the type system is being bootstrapped, since the descriptors
+    // required by the validation may not yet exist.
+    // TODO: Add conditional validation checking when adding properties
+    // TODO: add error checking and HolonError result
+    // Possible Errors: Unrecognized Property Name
+    pub fn with_property_value(
+        &mut self,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.insert(property, value);
+        match self.state {
+            HolonState::Fetched => {
+                self.state = HolonState::Changed;
+            }
+            _ => {}
+        }
+        Ok(self)
     }
 
     /// Builds a full or partial RelationshipMap for an existing holon identified by `source_holon_id`
@@ -560,39 +572,6 @@ impl Holon {
                         .or_insert_with(Vec::new)
                         .push(reference);
                 }
-    // NOTE: this function doesn't check if supplied PropertyName is a valid property
-    // for the self holon. It probably needs to be possible to suspend
-    // this checking while the type system is being bootstrapped, since the descriptors
-    // required by the validation may not yet exist.
-    // TODO: Add conditional validation checking when adding properties
-    // TODO: add error checking and HolonError result
-    // Possible Errors: Unrecognized Property Name
-    pub fn with_property_value(
-        &mut self,
-        property: PropertyName,
-        value: BaseValue,
-    ) -> Result<&mut Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map.insert(property, value);
-        match self.state {
-            HolonState::Fetched => {
-                self.state = HolonState::Changed;
-            }
-            _ => {}
-        }
-        Ok(self)
-    }
-    // // TODO: add error checking and HolonError result
-    // // Possible Errors: Unrecognized Property Name
-    // pub fn remove_property_value(&mut self, property: PropertyName) -> &mut Self {
-    //     self.property_map.remove(&property);
-    //     match self.state {
-    //         HolonState::Fetched => self.state = HolonState::Changed,
-    //         _ => {}
-    //     }
-    //     self
-    // }
-
 
                 // Now create the result
 

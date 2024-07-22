@@ -24,9 +24,9 @@ use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-use holons::holon::{Holon, HolonGettable};
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
+use holons::holon_reference::{HolonGettable, HolonReference};
 use holons::relationship::RelationshipName;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapString, PropertyMap};
@@ -382,7 +382,9 @@ pub fn get_all_holons_dance(
     debug!("Entering get_all_holons dance..");
     let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => Ok(ResponseBody::Holons(holons)),
+        Ok(holons) => {
+            Ok(ResponseBody::Holons(holons))
+        },
         Err(holon_error) => Err(holon_error.into()),
     }
 }

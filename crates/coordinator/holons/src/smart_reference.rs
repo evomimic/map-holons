@@ -8,8 +8,9 @@ use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
 use crate::context::HolonsContext;
-use crate::holon::{Holon, HolonGettable};
+use crate::holon::Holon;
 use crate::holon_error::HolonError;
+use crate::holon_reference::HolonGettable;
 use crate::relationship::{RelationshipMap, RelationshipName};
 
 #[hdk_entry_helper]
@@ -98,29 +99,26 @@ impl HolonGettable for SmartReference {
 
         // Get rc_holon from HolonCacheManager
         let holon = self.get_rc_holon(context)?;
-        let prop_val = holon.borrow().get_property_value(context, property_name)?;
+        let prop_val = holon.borrow().get_property_value(property_name)?;
         Ok(prop_val)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        if let Some(smart_prop_vals) = self.smart_property_values.clone() {
+        return if let Some(smart_prop_vals) = self.smart_property_values.clone() {
             let key_option = smart_prop_vals.get(&PropertyName(MapString("key".to_string())));
             if let Some(key) = key_option {
-                return Ok(Some(MapString(key.into())));
+                Ok(Some(MapString(key.into())))
             } else {
                 let holon = self.get_rc_holon(context)?;
-                let key = holon.borrow().get_key(context)?;
-                return Ok(key);
+                let key = holon.borrow().get_key()?;
+                Ok(key)
             }
         } else {
             let holon = self.get_rc_holon(context)?;
-            let key = holon.borrow().get_key(context)?;
-            return Ok(key);
+            let key = holon.borrow().get_key()?;
+            Ok(key)
         }
     }
-
-    // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
-    // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
     fn get_related_holons(
         &self,
         context: &HolonsContext,
@@ -129,7 +127,21 @@ impl HolonGettable for SmartReference {
         let holon = self.get_rc_holon(context)?;
         let map = holon
             .borrow()
-            .get_related_holons(context, relationship_name)?;
+            .get_related_holons(relationship_name)?;
         Ok(map)
     }
+
+    // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
+    // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
+    // fn get_related_holons(
+    //     &self,
+    //     context: &HolonsContext,
+    //     relationship_name: Option<RelationshipName>,
+    // ) -> Result<RelationshipMap, HolonError> {
+    //     let holon = self.get_rc_holon(context)?;
+    //     let map = holon
+    //         .borrow()
+    //         .get_related_holons(context, relationship_name)?;
+    //     Ok(map)
+    // }
 }

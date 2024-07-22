@@ -10,6 +10,9 @@ use holons::holon_reference::HolonReference;
 use shared_types_holon::{MapString};
 
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
+use holons::holon::Holon;
+use holons::holon_api::get_all_holons;
+use holons::json_adapter::as_json;
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 // use descriptors::holon_descriptor::{define_holon_type};
 //use descriptors::meta_type_loader::load_core_meta_types;
@@ -23,6 +26,7 @@ use crate::enum_type_loader::CoreEnumTypeName;
 // use crate::holon_type_loader::CoreHolonTypeName;
 use crate::holon_type_loader::CoreHolonTypeName::HolonType;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
+use crate::meta_type_loader::CoreMetaTypeName;
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
@@ -97,6 +101,13 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     info!("Holons Saved: {:#?}", r.saved_holons.len());
     info!("Abandoned: {:#?}", r.abandoned_holons.len());
 
+    info!("DATABASE DUMP:");
+
+    let holons = Holon::get_all_holons()?;
+    for holon in holons.iter().take(10) {
+        info!("Holon:\n{}",as_json(holon));
+    }
+
     Ok(response)
 }
 
@@ -151,6 +162,13 @@ fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
     for variant in CoreEnumTypeName::iter() {
         result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::EnumType(variant)));
     }
+
+
+    // Add all CoreMetaTypeName variants
+    for variant in CoreMetaTypeName::iter() {
+        result.push(CoreSchemaTypeName::MetaType(variant));
+    }
+
 
     result
 

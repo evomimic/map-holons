@@ -1,3 +1,4 @@
+use strum_macros::EnumIter;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
@@ -8,15 +9,16 @@ use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::{HolonTypeLoader, load_holon_type_definition};
 use crate::property_type_loader::CorePropertyTypeName;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreMetaTypeName {
-     MetaType,
+     MetaTypeDescriptor,
+    #[default]
      MetaHolonType,
      MetaRelationshipType,
      MetaHolonCollectionType,
      MetaPropertyType,
      //MetaDanceType,
-     // MetaValueType,
+     MetaValueType,
      MetaBooleanType,
      MetaEnumType,
      MetaEnumVariantType,
@@ -66,7 +68,7 @@ impl CoreMetaTypeName {
         use CoreMetaTypeName::*;
         use CorePropertyTypeName::*;
         match self {
-            MetaType => HolonTypeLoader {
+            MetaTypeDescriptor => HolonTypeLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
                 description: MapString("Defines the properties, relationships and dances \
@@ -87,7 +89,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             MetaHolonType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -102,7 +104,8 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![
+                ],
             },
 
             MetaRelationshipType => HolonTypeLoader {
@@ -120,7 +123,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     RelationshipName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
             MetaHolonCollectionType => HolonTypeLoader {
@@ -141,7 +144,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
 
             MetaPropertyType => HolonTypeLoader {
@@ -157,7 +160,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     PropertyTypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             // MetaDanceType => HolonTypeLoader {
             //     type_name: self.derive_type_name(),
@@ -203,7 +206,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             MetaEnumType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -218,7 +221,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             MetaEnumVariantType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -233,7 +236,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     VariantName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             MetaIntegerType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -250,7 +253,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             MetaStringType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -267,7 +270,7 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
             },
             MetaValueArrayType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -284,7 +287,23 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     TypeName,
                 ]),
-                // source_for: vec![],
+                source_for: vec![],
+            },
+            MetaValueType => HolonTypeLoader {
+                type_name: self.derive_type_name(),
+                descriptor_name: self.derive_descriptor_name(),
+                description: MapString("Specifies the properties, relationship, and dances shared \
+                 by all ValueTypes".into()),
+                label: self.derive_label(),
+                described_by: None,
+                owned_by: None,
+                properties: vec![
+                    TypeName,
+                ],
+                key_properties: Some(vec![
+                    TypeName,
+                ]),
+                source_for: vec![],
             },
         }
     }

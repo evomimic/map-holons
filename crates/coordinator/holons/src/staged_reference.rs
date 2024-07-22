@@ -6,10 +6,10 @@ use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, Holon, HolonGettable};
+use crate::holon::{AccessType, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonReference;
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
@@ -29,13 +29,13 @@ impl HolonGettable for StagedReference {
     ) -> Result<PropertyValue, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_property_value(context, property_name)
+        holon.get_property_value(property_name)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_key(context).clone()
+        holon.get_key().clone()
     }
 
     // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.

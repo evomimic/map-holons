@@ -14,18 +14,17 @@ pub mod test_query_relationships;
 pub mod test_stage_new_holon;
 pub mod test_with_properties_command;
 
-use std::collections::BTreeMap;
-
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use holons::{
     context::HolonsContext,
-    holon::{self, Holon, HolonGettable},
-    holon_collection::{CollectionState, HolonCollection},
+    holon::Holon
+    ,
     holon_error::HolonError,
     holon_reference::HolonReference,
-    relationship::{RelationshipMap, RelationshipName},
+    relationship::RelationshipName,
 };
+use holons::holon_reference::HolonGettable;
 use shared_types_holon::{HolonId, MapString};
 use test_data_types::DanceTestState;
 
@@ -66,7 +65,7 @@ pub fn get_holon_by_key_from_test_state(
     test_state: &mut DanceTestState,
 ) -> Result<Option<HolonId>, HolonError> {
     for holon in test_state.created_holons.clone() {
-        let option_key = holon.get_key(context)?;
+        let option_key = holon.get_key()?;
         if let Some(key) = option_key {
             if key == source_key {
                 let id = holon.get_id()?;

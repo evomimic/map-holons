@@ -5,7 +5,7 @@ use hdk::prelude::*;
 use shared_types_holon::MapString;
 
 use crate::context::HolonsContext;
-use crate::holon::HolonGettable;
+use crate::holon_reference::HolonGettable;
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 

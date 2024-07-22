@@ -16,12 +16,13 @@ use rstest::*;
 
 use crate::shared_test::dance_fixtures::*;
 use crate::shared_test::test_data_types::DanceTestStep;
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use holons::helpers::*;
-use holons::holon::{Holon, HolonGettable};
+use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
+use holons::holon_reference::HolonGettable;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapBoolean, MapInteger, MapString};
@@ -47,8 +48,6 @@ pub async fn execute_abandon_staged_changes(
         staged_index.clone(),
     );
 
-    let context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
-
     info!("Dance Request: {:#?}", request);
 
     match request {
@@ -71,7 +70,6 @@ pub async fn execute_abandon_staged_changes(
                             Ok(abandoned_holon) => {
                                 assert!(matches!(
                                     abandoned_holon.get_property_value(
-                                        &context,
                                         &PropertyName(MapString("some_name".to_string()))
                                     ),
                                     Err(HolonError::NotAccessible(_, _))
@@ -79,7 +77,7 @@ pub async fn execute_abandon_staged_changes(
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_property_value`");
 
                                 assert!(matches!(
-                                    abandoned_holon.get_key(&context),
+                                    abandoned_holon.get_key(),
                                     Err(HolonError::NotAccessible(_, _))
                                 ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_key`");
@@ -94,7 +92,7 @@ pub async fn execute_abandon_staged_changes(
                                 debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
 
                                 assert!(matches!(
-                                    abandoned_holon.get_related_holons(&context, None),
+                                    abandoned_holon.get_related_holons(None),
                                     Err(HolonError::NotAccessible(_, _))
                                 ));
                                 debug!("Confirmed abandoned holon is NotAccessible for `get_related_holons`");

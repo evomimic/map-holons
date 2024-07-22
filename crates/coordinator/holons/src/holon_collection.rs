@@ -1,7 +1,7 @@
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, HolonGettable};
+use crate::holon::AccessType;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonReference;
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;

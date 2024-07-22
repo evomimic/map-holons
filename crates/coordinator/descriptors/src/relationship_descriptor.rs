@@ -10,6 +10,7 @@ use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
 
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic};
+use crate::integer_descriptor::define_integer_type;
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 pub struct RelationshipTypeDefinition {
@@ -53,6 +54,14 @@ pub fn define_relationship_type(
     schema: &HolonReference,
     definition: RelationshipTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
+    // Validate the definition
+    // TODO: Move this logic to the shared validation rules layer
+    // Rule: Only the side of the relationship that "owns" the relationship should specify an inverse
+    if !definition.source_owns_relationship.0 && definition.has_inverse.is_some() {
+        return Err(HolonError::InvalidParameter("Validation Error: since source does not own the \
+        relationship, it should not specify an inverse.".into()));
+    }
+
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     // Stage the TypeDescriptor
