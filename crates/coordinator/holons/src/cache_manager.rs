@@ -57,7 +57,7 @@ impl HolonCacheManager {
             Err(HolonError::HolonNotFound(id.0.to_string()))
         }
     }
-    /// This method returns an immutable reference (Rc) to the Holon identified by holon_id within the cache
+    /// This method returns a mutable reference (Rc) to the Holon identified by holon_id within the cache
     /// associated with `holon_space_id` (or within the `local_cache` if `holon_space_id` is `None`).
     /// If the holon is not already resident in the cache, this function first fetches the holon from the persistent
     /// store and inserts it into the cache before returning the reference to that holon.
@@ -77,8 +77,9 @@ impl HolonCacheManager {
 
         // Attempt to borrow the cache immutably
         {
-            let try_cache_borrow = cache.try_borrow()
-                .map_err(|e| HolonError::FailedToBorrow(format!("Unable to borrow holon cache immutably: {}", e)))?;
+            let try_cache_borrow = cache.try_borrow().map_err(|e| {
+                HolonError::FailedToBorrow(format!("Unable to borrow holon cache immutably: {}", e))
+            })?;
 
             // Check if the holon is already in the cache
             debug!("Checking the cache for holon_id: {:#?}", holon_id);
@@ -86,9 +87,7 @@ impl HolonCacheManager {
                 // Return a clone of the Rc<RefCell<Holon>> if found in the cache
                 return Ok(Rc::clone(holon));
             }
-
         }
-
 
         // Holon not found in cache, fetch it
         info!("Holon not cached, fetching holon");
@@ -96,12 +95,18 @@ impl HolonCacheManager {
         debug!("Holon fetched");
 
         // Attempt to borrow the cache mutably
-        let mut cache_mut = cache.try_borrow_mut()
-            .map_err(|e| HolonError::FailedToBorrow(format!("Unable to borrow_mut holon cache: {}", e)))?;
+        let mut cache_mut = cache.try_borrow_mut().map_err(|e| {
+            HolonError::FailedToBorrow(format!("Unable to borrow_mut holon cache: {}", e))
+        })?;
 
         // Insert the fetched holon into the cache
-        debug!("Inserting fetched holon into cache for holon_id: {:#?}", holon_id);
-        cache_mut.0.insert(holon_id.clone(), Rc::new(RefCell::new(fetched_holon)));
+        debug!(
+            "Inserting fetched holon into cache for holon_id: {:#?}",
+            holon_id
+        );
+        cache_mut
+            .0
+            .insert(holon_id.clone(), Rc::new(RefCell::new(fetched_holon)));
 
         // Return a new Rc<RefCell<Holon>> containing the fetched holon
         Ok(Rc::clone(&cache_mut.0.get(holon_id).unwrap()))

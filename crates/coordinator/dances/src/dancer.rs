@@ -14,7 +14,7 @@ use crate::descriptors_dance_adapter::load_core_schema_dance;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
-    get_holon_by_id_dance, stage_new_holon_dance, with_properties_dance,
+    get_holon_by_id_dance, query_relationships_dance, stage_new_holon_dance, with_properties_dance,
 };
 
 use crate::staging_area::StagingArea;
@@ -113,8 +113,15 @@ impl Dancer {
             abandon_staged_changes_dance as DanceFunction,
         );
 
-        dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
+        dispatch_table.insert(
+            "add_related_holons",
+            add_related_holons_dance as DanceFunction,
+        );
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
+        dispatch_table.insert(
+            "query_relationships",
+            query_relationships_dance as DanceFunction,
+        );
 
         // Add more functions as needed
 
@@ -187,6 +194,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 | HolonError::InvalidHolonReference(_)
                 | HolonError::IndexOutOfRange(_)
                 | HolonError::NotImplemented(_)
+                | HolonError::Misc(_)
                 | HolonError::MissingStagedCollection(_)
                 | HolonError::FailedToBorrow(_)
                 | HolonError::UnableToAddHolons(_)
