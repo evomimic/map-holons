@@ -104,7 +104,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     info!("DATABASE DUMP:");
 
     let holons = Holon::get_all_holons()?;
-    for holon in holons.iter().take(10) {
+    for holon in holons.iter().take(30) {
         info!("Holon:\n{}",as_json(holon));
     }
 

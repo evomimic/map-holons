@@ -2,23 +2,15 @@ use hdi::prelude::info;
 use descriptors::collection_descriptor::{CollectionTypeDefinition, define_collection_type};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
+use descriptors::collection_descriptor::CollectionSemantic;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-use crate::core_schema_types::{SchemaNamesTrait};
+use crate::core_schema_types::SchemaNamesTrait;
 // use crate::core_schema_types::CoreSchemaTypeName::HolonType;
-use crate::holon_type_loader::{CoreHolonTypeName};
+use crate::holon_type_loader::CoreHolonTypeName;
 use crate::property_type_loader::CorePropertyTypeName::{Description, Name};
-
-#[derive(Debug)]
-pub enum CollectionSemantic {
-    SingleInstance,
-    OptionalInstance,
-    UniqueList,
-    List,
-    Set,
-}
 
 #[derive(Debug)]
 pub struct CollectionTypeSpec {

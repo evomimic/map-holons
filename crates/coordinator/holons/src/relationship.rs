@@ -28,6 +28,10 @@ impl RelationshipMap {
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
+
+    pub fn get_collection_for_relationship(&self, relationship_name: &RelationshipName) -> Option<&HolonCollection> {
+        self.0.get(&relationship_name)
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

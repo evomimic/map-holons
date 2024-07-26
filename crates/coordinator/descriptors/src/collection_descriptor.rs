@@ -21,6 +21,15 @@ pub struct CollectionTypeDefinition {
 
 }
 
+#[derive(Debug)]
+pub enum CollectionSemantic {
+    SingleInstance,
+    OptionalInstance,
+    UniqueList,
+    List,
+    Set,
+}
+
 /// This function defines and stages (but does not persist) a new CollectionType and its
 /// associated TypeDescriptor.
 /// This function sets values for each of the CollectionDescriptor properties and adds a
@@ -135,3 +144,5 @@ fn generate_collection_type_name(context: &HolonsContext, definition: &Collectio
     }
 
 }
+
+

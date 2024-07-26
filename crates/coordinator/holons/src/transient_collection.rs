@@ -50,7 +50,7 @@ impl TransientCollection {
 
         if let Some(key) = key {
             if let Some(&index) = self.keyed_index.get(&key) {
-                let existing_holon_ref = &self.members[index];
+                // let existing_holon_ref = &self.members[index];
                 warn!("Duplicate holons with key {:#?}", key.0.clone());
             } else {
                 let index = self.members.len();

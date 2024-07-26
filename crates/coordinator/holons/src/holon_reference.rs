@@ -1,8 +1,10 @@
+use std::rc::Rc;
 use hdk::prelude::*;
 
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
@@ -48,8 +50,8 @@ pub trait HolonGettable {
     fn get_related_holons(
         &self,
         context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError>;
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError>;
 }
 
 
@@ -76,11 +78,12 @@ impl HolonGettable for HolonReference {
         }
     }
 
+
     fn get_related_holons(
         &self,
         context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError> {
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
         match self {
             HolonReference::Smart(reference) => {
                 reference.get_related_holons(context, relationship_name)

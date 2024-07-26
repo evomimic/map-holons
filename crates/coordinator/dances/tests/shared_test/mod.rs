@@ -13,6 +13,7 @@ pub mod test_match_db_content;
 pub mod test_query_relationships;
 pub mod test_stage_new_holon;
 pub mod test_with_properties_command;
+pub mod book_authors_setup_fixture;
 
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};

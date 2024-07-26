@@ -7,15 +7,16 @@ use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
+use descriptors::collection_descriptor::CollectionSemantic;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
-use crate::collection_type_loader::{CollectionSemantic, CollectionTypeSpec};
-use crate::core_schema_types::{SchemaNamesTrait};
+use crate::collection_type_loader::CollectionTypeSpec;
+use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, OwnedBy, Owns};
+use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns};
 use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
 #[derive(Debug, Clone, Default, EnumIter)]
@@ -28,10 +29,10 @@ pub enum CoreRelationshipTypeName {
     // DanceOf,
     DescribedBy,
     // ForCollectionType,
-    // HasInverse,
+    HasInverse,
     HasSubtype,
     Instances,
-    // InverseOf
+    InverseOf,
     IsA,
     #[default]
     OwnedBy,
@@ -168,8 +169,9 @@ impl CoreRelationshipTypeName {
             DescribedBy => RelationshipTypeLoader {
                 descriptor_name,
                 description: MapString(
-                    format!("Specifies the Type of this Holon and describes its properties, \
-                    relationships and dances ")
+                    format!("{} specifies the Type of this Holon and describes its properties, \
+                    relationships and dances ",
+                            relationship_type_name.0.clone())
                 ),
                 label,
                 described_by: None,
@@ -185,14 +187,36 @@ impl CoreRelationshipTypeName {
                 has_inverse: Some(Instances),
 
             },
+            HasInverse => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString(
+                    format!("{} specifies the Relationship that is the inverse of this relationship. \
+                    Only relationships that are owned by their source holon type should be the \
+                    source for HAS_INVERSE. ",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Cascade,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec {
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::RelationshipType,
+                },
+                has_inverse: Some(InverseOf),
+            },
             HasSubtype => RelationshipTypeLoader {
                 descriptor_name,
                 description: MapString(
-                    format!("Specifies the Subtypes of this Type. Subtypes inherit the properties, \
+                    format!("{} specifies the Subtypes of this Type. Subtypes inherit the properties, \
                      relationships and dances of their Supertype and may define additional \
                      properties, relationships and dances. Even what a subtype is not the \
                      SOURCE_FOR additional relationships, it may be defined to allow it to be a \
-                     type-specific TARGET_OF a HolonCollection.")
+                     type-specific TARGET_OF a HolonCollection.",
+                            relationship_type_name.0.clone())
                 ),
                 label,
                 described_by: None,
@@ -247,6 +271,29 @@ impl CoreRelationshipTypeName {
                     holon_type: CoreHolonTypeName::TypeDescriptor,
                 },
                 has_inverse: Some(HasSubtype),
+
+            },
+            InverseOf => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString(
+                    format!("{} can be queried to get the (single) relationship type that is the \
+                    inverse of this relationship type. It is not owned by its source holon type, \
+                    so it should not be populated directly. Instead links for this relationship \
+                    are only established during commit of the HAS_INVERSE relationship.",
+                            relationship_type_name.0.clone())
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::RelationshipType,
+                },
+                has_inverse: None, // None because InverseOf is not owned by its source holon type
 
             },
             Owns => RelationshipTypeLoader {

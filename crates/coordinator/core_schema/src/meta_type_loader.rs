@@ -8,6 +8,7 @@ use shared_types_holon::MapString;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::{HolonTypeLoader, load_holon_type_definition};
 use crate::property_type_loader::CorePropertyTypeName;
+use crate::relationship_type_loader::CoreRelationshipTypeName::{ComponentOf, HasInverse, OwnedBy, TargetCollectionType, ValueType};
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreMetaTypeName {
@@ -89,7 +90,9 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     DescriptorName,
                 ]),
-                source_for: vec![],
+                source_for: vec![
+                    ComponentOf,
+                ],
             },
             MetaHolonType => HolonTypeLoader {
                 type_name: self.derive_type_name(),
@@ -105,6 +108,7 @@ impl CoreMetaTypeName {
                     TypeName,
                 ]),
                 source_for: vec![
+                    OwnedBy,
                 ],
             },
 
@@ -123,7 +127,10 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     RelationshipName,
                 ]),
-                source_for: vec![],
+                source_for: vec![
+                    TargetCollectionType,
+                    HasInverse,
+                ],
             },
 
             MetaHolonCollectionType => HolonTypeLoader {
@@ -160,7 +167,9 @@ impl CoreMetaTypeName {
                 key_properties: Some(vec![
                     PropertyTypeName,
                 ]),
-                source_for: vec![],
+                source_for: vec![
+                    ValueType,
+                ],
             },
             // MetaDanceType => HolonTypeLoader {
             //     type_name: self.derive_type_name(),

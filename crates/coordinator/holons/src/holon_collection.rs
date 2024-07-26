@@ -5,7 +5,7 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -18,9 +18,9 @@ pub enum CollectionState {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct HolonCollection {
-    pub state: CollectionState,
-    pub members: Vec<HolonReference>,
-    pub keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
+    state: CollectionState,
+    members: Vec<HolonReference>,
+    keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
 }
 
 impl HolonCollection {
@@ -39,7 +39,7 @@ impl HolonCollection {
         }
     }
     pub fn from_parts(state: CollectionState, members: Vec<HolonReference>) -> Self {
-        let mut keyed_index = BTreeMap::new();
+        let keyed_index = BTreeMap::new();
 
         // TODO: This method should reconstitute the keyed_index from members -- but needs member.get_key to not require context first.
         // for (index, member) in members.iter().enumerate() {
@@ -100,6 +100,14 @@ impl HolonCollection {
         }
     }
 
+    pub fn get_by_index(&self, index: usize) -> Result<HolonReference, HolonError> {
+        if index < self.members.len() {
+            Ok(self.members[index].clone())
+        } else {
+            Err(HolonError::IndexOutOfRange(format!("Index {} is out of bounds", index)))
+        }
+    }
+
     pub fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let index = self.keyed_index.get(key);
@@ -109,6 +117,11 @@ impl HolonCollection {
             Ok(None)
         }
     }
+
+    pub fn get_count(&self) -> MapInteger {
+        MapInteger(self.members.len() as i64)
+    }
+
 
     /// Returns the current state of the HolonCollection.
     ///
@@ -139,6 +152,9 @@ impl HolonCollection {
         &self.members
     }
 
+    /// Adds the supplied HolonReferences to this holon collection and updates the keyed_index
+    /// accordingly. Currently, this method requires a `context`. Use `add_reference_with_key()` to
+    /// add individual references without requiring `context` when the key is known.
     pub fn add_references(
         &mut self,
         context: &HolonsContext,
@@ -155,6 +171,23 @@ impl HolonCollection {
             }
         }
 
+        Ok(())
+    }
+
+    /// Adds the supplied HolonReference to this holon collection and updates the keyed_index
+    /// according to the supplied key. This allows the collection to be populated when key is
+    /// known and context may not be available.
+    pub fn add_reference_with_key(
+        &mut self,
+        key: Option<&MapString>,
+        reference: &HolonReference,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let index = self.members.len();
+        self.members.push(reference.clone());
+        if let Some(key) = key {
+            self.keyed_index.insert(key.clone(), index);
+        }
         Ok(())
     }
 
@@ -215,3 +248,4 @@ impl HolonCollection {
         Ok(())
     }
 }
+

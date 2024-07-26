@@ -2,16 +2,15 @@ use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, HolonId, PropertyMap};
 
 use crate::holon::*;
 use crate::holon_collection::CollectionState;
-use crate::holon_reference::HolonReference;
-use crate::relationship::RelationshipName;
+
 use hdk::prelude::*;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Serialize, Serializer};
 use serde::ser::{SerializeMap, SerializeStruct};
-use std::collections::BTreeMap;
+
 
 // Wrapper for HolonState
 struct HolonStateWrapper<'a>(&'a HolonState);

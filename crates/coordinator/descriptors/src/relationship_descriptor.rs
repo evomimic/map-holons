@@ -10,7 +10,7 @@ use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
 
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic};
-use crate::integer_descriptor::define_integer_type;
+//
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 pub struct RelationshipTypeDefinition {

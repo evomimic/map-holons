@@ -4,8 +4,10 @@ use inflector::cases::titlecase::to_title_case;
 use inflector::Inflector;
 
 use holons::holon::Holon;
+use holons::holon_collection::HolonCollection;
+use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
-use shared_types_holon::PropertyName;
+use shared_types_holon::{BaseType, MapBoolean, MapInteger, PropertyName};
 use shared_types_holon::value_types::{MapEnumValue, MapString};
 use crate::boolean_descriptor::BooleanTypeDefinition;
 use crate::collection_descriptor::CollectionTypeDefinition;
@@ -15,15 +17,13 @@ use crate::integer_descriptor::IntegerTypeDefinition;
 use crate::meta_type_descriptor::MetaTypeDefinition;
 use crate::property_descriptor::PropertyTypeDefinition;
 use crate::relationship_descriptor::RelationshipTypeDefinition;
+use crate::semantic_version::SemanticVersion;
 use crate::string_descriptor::StringTypeDefinition;
 
-/// All MAP Descriptors are stored as TypeDescriptor Holons
-/// This file uses the [newtype pattern](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
-/// to wrap TypeDescriptor Holons in specific types in order to allow type-safe references
-/// to different kinds of descriptors (assuming that guard functions are provided that check
-/// the type of the wrapped holon).
-///
-/// TODO: Implement a full-blown native Rust types layer for descriptors with adaptors to/from Holon representations
+/// All MAP Descriptors are stored as Holons. This file defines structs for each kind of Core Type
+/// in order to allow type-safe references and to provide a higher-level representation. Conversion
+/// back and forth between struct and holon representation is provided by `try_from_holon` and
+/// `into_holon` functions.
 /// TODO: In this type-safe layer, should TypeDescriptor be a Rust Enum with variants for each descriptor type?
 
 pub struct Schema(pub Holon);
@@ -32,14 +32,86 @@ pub struct Schema(pub Holon);
 //     pub description: MapString,
 // }
 
-pub struct TypeDescriptor(pub Holon);
-pub struct HolonType(pub Holon);
-pub struct RelationshipType(pub Holon);
-pub struct PropertyDescriptor(pub Holon);
-pub struct StringType(pub Holon);
-pub struct IntegerType(pub Holon);
-pub struct BooleanType(pub Holon);
-pub struct EnumType(pub Holon);
+
+pub struct TypeDescriptor {
+    descriptor_name: MapString,
+    label: MapString,
+    base_type: BaseType,
+    description: MapString,
+    is_dependent: MapBoolean,
+    is_builtin_type: MapBoolean,
+    is_value_type: MapBoolean,
+    version: SemanticVersion,
+    owned_by: Option<HolonReference>, // to HolonSpace
+    component_of: HolonReference, // to Schema
+    described_by: Option<HolonReference>, // to HolonType
+}
+pub struct HolonCollectionType {
+    header: TypeDescriptor,
+    collection_type_name: MapString,
+    is_ordered: MapBoolean,
+    allows_duplicates: MapBoolean,
+    min_cardinality: MapInteger,
+    max_cardinality: MapInteger,
+    target_holon_type: HolonCollection, // HolonTypeInstance
+    described_by: HolonReference, // MetaHolonCollection Type
+
+}
+pub struct HolonType {
+    header: TypeDescriptor,
+    type_name: MapString,
+    properties: HolonCollection, // PropertyTypeList
+    key_properties: HolonCollection, // PropertyTypeList
+    source_for: HolonCollection,
+    dances: HolonCollection,
+}
+
+pub struct RelationshipType {
+    header: TypeDescriptor,
+    relationship_name: RelationshipName,
+    source_owns_relationship: MapBoolean,
+    deletion_semantic: DeletionSemantic,
+    load_links_immediately: MapBoolean,
+    load_holon_immediately: MapBoolean,
+    is_definitional: MapBoolean,
+    target_collection_type: HolonReference, // HolonCollectionType
+    has_inverse: Option<HolonReference>, // RelationshipType -- None unless source_owns_relationship
+    described_by: HolonReference, // MetaRelationshipType
+
+}
+pub struct PropertyType {
+    header: TypeDescriptor,
+    property_type_name: PropertyName,
+    value_type: HolonReference, // ValueType
+    described_by: HolonReference, // MetaValueType,
+}
+pub struct ValueType {
+    header: TypeDescriptor,
+    type_name: MapString,
+    value_type: HolonReference, // ValueType
+    described_by: HolonReference, // MetaPropertyType
+}
+pub struct StringType {
+    header: TypeDescriptor,
+    type_name: PropertyName,
+    min_length: MapInteger,
+    max_length: MapInteger,
+}
+pub struct IntegerType {
+    header: TypeDescriptor,
+    type_name: MapString,
+    min_value: MapInteger,
+    max_value: MapInteger,
+}
+pub struct BooleanType {
+    header: TypeDescriptor,
+    type_name: MapString,
+}
+pub struct EnumType {
+    header: TypeDescriptor,
+    type_name: MapString,
+    variants: HolonCollection,
+}
 
 #[derive(Debug)]
 pub enum DeletionSemantic {

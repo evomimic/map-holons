@@ -1,7 +1,6 @@
 use derive_new::new;
 use hdk::prelude::*;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
@@ -43,23 +42,17 @@ impl HolonGettable for StagedReference {
     fn get_related_holons(
         &self,
         context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError> {
-        if let Some(name) = relationship_name {
-            let relationship_map = self.get_relationship_map(context)?;
-
-            let collection_option = relationship_map.0.get(&name);
-            if let Some(collection) = collection_option {
-                let mut map = BTreeMap::new();
-                map.insert(name, collection.clone());
-                return Ok(RelationshipMap(map));
-            } else {
-                return Ok(RelationshipMap(BTreeMap::new()));
-            }
-        } else {
-            Ok(self.get_relationship_map(context)?)
-        }
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        let holon = self.get_mut_holon(context)?;
+        let map = {
+            let mut holon_ref = holon.borrow_mut();
+            Rc::clone(&holon_ref.get_related_holons(relationship_name)?)
+        };
+        Ok(map)
     }
+
+
 }
 
 impl StagedReference {
