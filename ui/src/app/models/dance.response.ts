@@ -22,6 +22,10 @@ export class DanceResponse  {
       return []
   }
 
+  getStagingArea(){
+    return this.staging_area
+  }
+
   getStagedHolons(){
       return this.staging_area.staged_holons
   }

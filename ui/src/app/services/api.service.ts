@@ -1,6 +1,7 @@
 import { AppAgentWebsocket, AppSignal, AppSignalCb, CellId, CellType, ClonedCell, DnaModifiers, HoloHash, InstalledAppInfoStatus, ProvisionedCell, RoleName, encodeHashToBase64 } from "@holochain/client";
 import { Observable, Observer } from "rxjs";
-import { Cell } from "../models/cell";
+import { Cell, mockClonedCell, mockProvisionedCell } from "../helpers/interface.cell";
+import { environment } from "@environment";
 
 export enum ConnectionState{
   CONNECTING,
@@ -103,15 +104,18 @@ export class ApiService {
     return this.cell_data
   }
 
-  protected getCellsByRole(role:string):Cell[] { 
+  protected getCellsByRole(role:string):Cell[] {
     if (Object.keys(this.cell_data).length === 0)
-      return []
-    else
+      throw new Error("no cell data available .. check the holochain connection and your happ manifest")
+    else if (!this.cell_data[role])
+      throw new Error("Role: ["+role+"] not found.. check your happ manifest ");
+    else  
       return this.cell_data[role]
   }
 
   protected getProvisionedCell(rolename:string):Cell | undefined{
     const celldata = this.getCellsByRole(rolename);
+    console.log(celldata)
     let result: Cell | undefined = undefined;
     for (const cell of celldata) {
       if (cell.DnaHash64 === cell.original_dna_hash) {
@@ -122,7 +126,7 @@ export class ApiService {
   }
 
   //checks cache first .. then network
-  protected async getCell(rolename:string, dnahash:string):Promise<Cell | undefined>{ 
+  protected getCell(rolename:string, dnahash:string):Cell | undefined{ 
     const celldata = this.getCellsByRole(rolename);
     let result: Cell | undefined = undefined;
     for (const cell of celldata) {

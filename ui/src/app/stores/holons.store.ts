@@ -1,229 +1,92 @@
-import { InjectionToken, ProviderToken, Type, computed, inject } from '@angular/core';
-import { SignalStoreFeature, signalStore, withHooks, withMethods, withState, type, patchState, withComputed } from '@ngrx/signals';
-import { withEntities,setAllEntities } from '@ngrx/signals/entities';
-import { tapResponse } from '@ngrx/operators';
-//import { CrudService } from '../receptors/crud-base.service';
-//import { STATE_SIGNAL, StateSignal } from '@ngrx/signals';
-//import { BaseEntity, AgentProfile, Profile, mockMyAgentProfile } from '../models/profile';
-import { AgentPubKey, encodeHashToBase64 } from '@holochain/client';
-import { Cell } from '../models/cell';
-import { Holon, PropertyMap } from '../models/holon';
+import { inject } from '@angular/core';
+import { signalStore, withHooks, withMethods, withState, patchState, DeepSignal,  } from '@ngrx/signals';
+import { Cell } from '../helpers/interface.cell';
+import { Holon, PropertyMap, StagingArea } from '../models/holon';
 import { DanceClient } from '../clients/dance.client';
 import { DanceResponse } from '../models/dance.response';
-//import { MembraneClient } from '../clients/membrane.client';
-
-export interface StoreState {
-  cell:Cell | undefined
-}
+import { SignalStore, StoreState } from '../helpers/interface.store';
 
 export interface HolonStoreState extends StoreState{
-  staged_holons: Holon[]
+  staging_area: StagingArea
   committed_holons: Holon[];
   last_dance_response: DanceResponse | undefined;
-  loading: boolean;
 }
 
-export const initialState: HolonStoreState = {
-  cell: undefined,
-  staged_holons: [],
-  committed_holons: [],
-  last_dance_response: undefined,
-  loading: false,
-};
+// stateful to every cell instance (previous work without wrapper class)
+//export const HolonStore:SignalStore = signalStore(
+//export type HolonStore = InstanceType<typeof HolonStore>
 
-//const PROFILE_STATE = new InjectionToken<ProfileState>('ProfileState',{
-//  factory: ()
-//})
-
-
-// stateful to every cell instance
-export const HolonStore = signalStore(
- // { providedIn: 'root' },
-
-  withState(initialState),//(s: ProviderToken<'ProfileState'>)=> inject(s)),//initialState),
-  /*withComputed((store) => ({
-  //    myprofile: computed(()=> {
-    //    return store.holons().find(holon => {
-    //      return holon.id === store.cell()!.AgentPubKey64
-     //   })
-     // }),
-      selectOtherProfiles: computed(()=> {
-        return store.agentProfiles().filter(agent => { return agent.agentPubKey64 !== store.cell()!.AgentPubKey64})
-      }),
-      selectAgentKeyNicksDictionary: computed(()=> {
-        return store.agentProfiles().map(agent => { return agent.keyNick})
-      })
-  })),*/
-  //withCrudOperations<AgentProfile>(ProfileClient),
-  //withEntities<AgentProfile>(),
-  withMethods((store, danceClient = inject(DanceClient)) =>({ //, membraneClient = inject(MembraneClient) ) => ({
-    async loadall() { 
-      patchState(store, { loading: true });
-      const danceResponse = await danceClient.readall(store.cell()!)
-      console.log(danceResponse)
-      const staged = danceResponse.getStagedHolons()
-      const committed = danceResponse.getCommittedHolons()
-      patchState(store, { staged_holons: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
-      
-    },
-    initStore(celldata:Cell){
-      patchState(store, {cell: celldata})
-      this.loadall()
-      console.log(store.cell())
-    },
-    async createOneEmpty(){
-      patchState(store, { loading: true });
-      const danceResponse = await danceClient.createOneEmpty(store.cell()!)
-      const staged = danceResponse.getStagedHolons()
-      const committed = danceResponse.getCommittedHolons()
-      patchState(store, { staged_holons: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
-    },
-    async updateOneWithProperties(holonindex:number,properties:PropertyMap) {
-      patchState(store, { loading: true });
-      const danceResponse = await danceClient.updateOneWithProperties(store.cell()!,holonindex,properties)
-      const staged = danceResponse.getStagedHolons()
-      const committed = danceResponse.getCommittedHolons()
-      patchState(store, { staged_holons: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
-    },
-    async createOne(holon:Holon){
-      patchState(store, { loading: true });
-      const danceResponse = await danceClient.createOne(store.cell()!,holon)
-      const staged = danceResponse.getStagedHolons()
-      const committed = danceResponse.getCommittedHolons()
-      patchState(store, { staged_holons: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
-    },
-    async commit(){
-      patchState(store, { loading: true });
-      const danceResponse = await danceClient.commit(store.cell()!)
-      const staged = danceResponse.getStagedHolons()
-      const committed = danceResponse.getCommittedHolons()
-      patchState(store, { staged_holons: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
-    },
-    //async request_connection(id:AgentPubKey){
-    //  patchState(store, { loading: true });
-    //  await membraneClient.requestConnection(id,store.cell()!)
-     // patchState(store, { loading:false})//setAllEntities(agents));
-   // }
-    
-    //return {
-    //  async load(s) {
-    //    const agents = await service.(service.getAgentsWithProfiles());
-    //    patchState(store, setAllEntities(agents));
-    //  },
-   // }
-  })),
-  //withTodoSelectors(),
-  //withMethods((store) => ({
-  //  moveToDone(ap: AgentProfile) {
-   //   store.update({ ...ap, done: true });
-   // },
-  //})),
-  withHooks({
-    onInit({ loadall }){
-      console.log('on init');
-      //loadall();
-    },
-    onDestroy() {
-      console.log('on destroy')
+/// Wrapper class to manage the store, lifetime managed by a receptor not ng
+export class HolonStore {
+  store!:SignalStore
+  initial_state!:HolonStoreState
+  
+  constructor(cell:Cell) { 
+    this.initial_state = {
+      cell: cell,
+      staging_area: {staged_holons:[],index:{}},
+      committed_holons: [],
+      last_dance_response: undefined,
+      loading: false,
     }
-   //})
-  })
-)
-export type HolonStore = InstanceType<typeof HolonStore>;
+    const h_store:SignalStore = signalStore(
 
+      withState(this.initial_state),
+      /* withComputed((store) => ({
+          selectAggregation: computed(()=> {
+            return filter/map/find store
+          })
+        })), */
+      withMethods((store, danceClient = inject(DanceClient)) =>({ 
+        async loadall() { 
+          patchState(store, { loading: true });
+          const danceResponse = await danceClient.readall(store.cell()!,store.staging_area())
+          const staged = danceResponse.getStagingArea()
+          const committed = danceResponse.getCommittedHolons()
+          patchState(store, { staging_area: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
+          
+        },
+        async createOneEmpty(){
+          patchState(store, { loading: true });
+          const danceResponse = await danceClient.createOneEmpty(store.cell()!, store.staging_area())
+          const staged = danceResponse.getStagingArea()
+          const committed = danceResponse.getCommittedHolons()
+          patchState(store, { staging_area: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
+        },
+        async updateOneWithProperties(holonindex:number,properties:PropertyMap) {
+          patchState(store, { loading: true });
+          const danceResponse = await danceClient.updateOneWithProperties(store.cell()!,holonindex,properties,store.staging_area())
+          const staged = danceResponse.getStagingArea()
+          const committed = danceResponse.getCommittedHolons()
+          patchState(store, { staging_area: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
+        },
+        async createOne(holon:Holon){
+          patchState(store, { loading: true });
+          const danceResponse = await danceClient.createOne(store.cell()!,holon,store.staging_area())
+          const staged = danceResponse.getStagingArea()
+          const committed = danceResponse.getCommittedHolons()
+          patchState(store, { staging_area: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
+        },
+        async commit(){
+          patchState(store, { loading: true });
+          const danceResponse = await danceClient.commit(store.cell()!,store.staging_area())
+          const staged = danceResponse.getStagingArea()
+          const committed = danceResponse.getCommittedHolons()
+          patchState(store, { staging_area: staged, committed_holons: committed, last_dance_response: danceResponse, loading:false})
+        },
 
-/*  
-  export function withCrudOperations<Entity extends BaseEntity>(
-    dataServiceType: Type<CrudService<Entity>>
-  ) {
-    return signalStoreFeature(
-      {
-        state: type<BaseState<Entity>>(),
-      },
-      withMethods((store) => {
-        const service = inject(dataServiceType);
-  
-        return {
-          addItem: rxMethod<Profile>(
-            pipe(
-              switchMap((value) => {
-                patchState(store, { loading: true });
-  
-                return service.createProfile(value).pipe(
-                  tapResponse({
-                    next: (addedItem) => {
-                      patchState(store, {
-                        agentProfiles: [...store.agentProfiles(), addedItem],
-                      });
-                    },
-                    error: console.error,
-                    finalize: () => patchState(store, { loading: false }),
-                  })
-                );
-              })
-            )
-          ),
-  
-          async loadAllItemsByPromise() {
-            patchState(store, { loading: true });
-  
-            const items = await (await service.getAgentsProfiles()).map( ap=>{ service.createAgentProfile(ap.}).getItemsAsPromise();
-  
-            patchState(store, { agentProfiles: [], loading: false });
-          },
-  
-          deleteItem: rxMethod<Entity>(
-            pipe(
-              switchMap((item) => {
-                patchState(store, { loading: true });
-  
-                return service.deleteItem(item).pipe(
-                  tapResponse({
-                    next: () => {
-                      patchState(store, {
-                        agentProfiles: [...store.agentProfiles().filter((x) => x.id !== item.id)],
-                      });
-                    },
-                    error: console.error,
-                    finalize: () => patchState(store, { loading: false }),
-                  })
-                );
-              })
-            )
-          ),
-  
-          update: rxMethod<Entity>(
-            pipe(
-              switchMap((item) => {
-                patchState(store, { loading: true });
-  
-                return service.updateProfile(item).pipe(
-                  tapResponse({
-                    next: (updatedItem) => {
-                      const allItems = [...store.agentProfiles()];
-                      const index = allItems.findIndex((x) => x.id === item.id);
-  
-                      allItems[index] = updatedItem;
-  
-                      patchState(store, {
-                        agentProfiles: allItems,
-                      });
-                    },
-                    error: console.error,
-                    finalize: () => patchState(store, { loading: false }),
-                  })
-                );
-              })
-            )
-          ),
-        };
-      }),
-  
-        withComputed(({ agentProfiles }) => ({
-          allItems: computed(() => agentProfiles()),
-          allItemsCount: computed(() => agentProfiles().length),
-        }))
-      );
-    }*/
-  
-
+      })),
+      withHooks({
+        onInit({ loadall }){
+          loadall();
+          console.log('Holon store loaded:');
+        },
+        onDestroy() {
+          console.log('on destroy')
+        }
+      })
+    )
+    this.store = new h_store([])
+    return this
+  }
+}

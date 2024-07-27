@@ -11,36 +11,36 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^18.0.3",
-    "@angular/common": "^18.0.3",
-    "@angular/compiler": "^18.0.3",
-    "@angular/core": "^18.0.3",
-    "@angular/forms": "^18.0.3",
-    "@angular/platform-browser": "^18.0.3",
-    "@angular/platform-browser-dynamic": "^18.0.3",
-    "@angular/router": "^18.0.3",
-    "@holochain/client": "^0.16.11",
-    "@ngrx/operators": "^18.0.0",
-    "@ngrx/signals": "^17.2.0",
-    "@ngrx/store-devtools": "^18.0.0",
+    "@angular/animations": "^18.1.2",
+    "@angular/common": "^18.1.2",
+    "@angular/compiler": "^18.1.2",
+    "@angular/core": "^18.1.2",
+    "@angular/forms": "^18.1.2",
+    "@angular/platform-browser": "^18.1.2",
+    "@angular/platform-browser-dynamic": "^18.1.2",
+    "@angular/router": "^18.1.2",
+    "@holochain/client": "~0.16.11",
+    "@ngrx/operators": "^18.0.1",
+    "@ngrx/signals": "^18.0.0",
+    "@ngrx/store-devtools": "^18.0.1",
     "ngx-image-cropper": "^8.0.0",
-    "@ng-select/ng-select": "^13.2.0",
+    "@ng-select/ng-select": "^13.5.0",
     "rxjs": "~7.8.1",
     "tslib": "^2.6.3"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^18.0.4",
-    "@angular/cli": "^18.0.4",
-    "@angular/compiler-cli": "^18.0.3",
+    "@angular-devkit/build-angular": "^18.1.2",
+    "@angular/cli": "^18.1.2",
+    "@angular/compiler-cli": "^18.1.2",
     "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "typescript": "~5.4.5"
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.7",
+    "typescript": "~5.5.4"
   },
 
   "engines" : { 
     "npm" : ">=9.0.0",
-    "node" : "==20.11.1"
+    "node" : ">=20.11.1"
   }
 
 }

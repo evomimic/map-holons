@@ -1,95 +1,65 @@
-import { InjectionToken, ProviderToken, Type, computed, inject } from '@angular/core';
-import { SignalStoreFeature, signalStore, withHooks, withMethods, withState, type, patchState, withComputed } from '@ngrx/signals';
-//import { CrudService } from '../receptors/crud-base.service';
-//import { STATE_SIGNAL, StateSignal } from '@ngrx/signals';
+import { inject } from '@angular/core';
+import { signalStore, withHooks, withMethods, withState, type, patchState, withComputed } from '@ngrx/signals';
 import { TypeDescriptorClient } from '../clients/typedescriptor.client';
-import { AgentPubKey, encodeHashToBase64 } from '@holochain/client';
-import { Cell } from '../models/cell';
+import { Cell } from '../helpers/interface.cell';
 import { HolonType } from '../models/holontype';
-//import { MembraneClient } from '../clients/membrane.client';
+import { SignalStore, StoreState } from '../helpers/interface.store';
 
 
-export interface HolonTypeStoreState {
-  cell: Cell | undefined
+export interface HolonTypeStoreState extends StoreState{
   typedata: HolonType[];
-  loading: boolean;
 }
 
-export const initialState: HolonTypeStoreState = {
-  cell: undefined,
-  typedata: [],
-  loading: false,
-};
-
-//const PROFILE_STATE = new InjectionToken<ProfileState>('ProfileState',{
-//  factory: ()
-//})
-
-
 // stateful to every cell instance
-export const HolonTypeStore = signalStore(
- // { providedIn: 'root' },
+//export const HolonTypeStore:Store = signalStore(
+//export type HolonTypeStore = InstanceType<typeof HolonTypeStore>;
 
-  withState(initialState),//(s: ProviderToken<'ProfileState'>)=> inject(s)),//initialState),
-  /*withComputed((store) => ({
-  //    myprofile: computed(()=> {
-    //    return store.holons().find(holon => {
-    //      return holon.id === store.cell()!.AgentPubKey64
-     //   })
-     // }),
-      selectOtherProfiles: computed(()=> {
-        return store.agentProfiles().filter(agent => { return agent.agentPubKey64 !== store.cell()!.AgentPubKey64})
-      }),
-      selectAgentKeyNicksDictionary: computed(()=> {
-        return store.agentProfiles().map(agent => { return agent.keyNick})
-      })
-  })),*/
-  //withCrudOperations<AgentProfile>(ProfileClient),
-  //withEntities<AgentProfile>(),
-  withMethods((store, typeDescriptorClient = inject(TypeDescriptorClient)) =>({ //, membraneClient = inject(MembraneClient) ) => ({
-    async loadall() { 
-      patchState(store, { loading: true });
-      const types = await typeDescriptorClient.readall(store.cell()!)
-      patchState(store, { typedata:types, loading:false})
-      
-    },
-    initStore(celldata:Cell){
-      patchState(store, {cell: celldata})
-      this.loadall()
-      console.log(store.cell())
-    },
-    
-    //async request_connection(id:AgentPubKey){
-    //  patchState(store, { loading: true });
-    //  await membraneClient.requestConnection(id,store.cell()!)
-     // patchState(store, { loading:false})//setAllEntities(agents));
-   // }
-    
-    //return {
-    //  async load(s) {
-    //    const agents = await service.(service.getAgentsWithProfiles());
-    //    patchState(store, setAllEntities(agents));
-    //  },
-   // }
-  })),
-  //withTodoSelectors(),
-  //withMethods((store) => ({
-  //  moveToDone(ap: AgentProfile) {
-   //   store.update({ ...ap, done: true });
-   // },
-  //})),
-  withHooks({
-    onInit({ loadall }){
-      console.log('on init');
-      //loadall();
-    },
-    onDestroy() {
-      console.log('on destroy')
+/// Wrapper class to manage the store, lifetime managed by a receptor not ng
+export class HolonTypeStore {
+  store!:SignalStore
+  initial_state!:HolonTypeStoreState
+  
+  constructor(cell:Cell) { //inject a HolonTypeStoreState with typedata instead or patch later?
+    this.initial_state = {
+      cell: cell,
+      typedata: [],
+      loading: false,
     }
-   //})
-  })
-)
-export type HolonTypeStore = InstanceType<typeof HolonTypeStore>;
+    const ht_store:SignalStore = signalStore(
+
+      withState(this.initial_state),
+      /*withComputed((store) => ({
+          selectAggregation: computed(()=> {
+            return filter/map/find store
+          })
+        })),*/
+      withMethods((store, typeDescriptorClient = inject(TypeDescriptorClient)) =>({ //, membraneClient = inject(MembraneClient) ) => ({
+        async loadall() { 
+          patchState(store, { loading: true });
+          const types = await typeDescriptorClient.readall(store.cell()!)
+          patchState(store, { typedata:types, loading:false})
+          
+        },
+        initStore(celldata:Cell){
+          patchState(store, {cell: celldata})
+          this.loadall()
+          console.log(store.typedata())
+        },
+      })),
+      withHooks({
+        onInit({ loadall }){
+          console.log('loadall in HolonTypes store');
+          loadall();
+        },
+        onDestroy() {
+          console.log('on destroy')
+        }
+      })
+    )
+    this.store = new ht_store([])
+    return this
+  }
+}
 
 
 /*  

@@ -1,6 +1,6 @@
 import { inject } from "@angular/core"
 import { AgentPubKey, CellId, CellType, DnaHash, DnaModifiers, HoloHash, encodeHashToBase64, fakeAgentPubKey, fakeDnaHash } from "@holochain/client"
-import { fakeDNAModifiers } from "../helpers/utils"
+import { fakeDNAModifiers } from "./utils"
 
 
 //The generalized cell polymorphs provisioned,cloned and others

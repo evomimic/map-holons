@@ -1,31 +1,43 @@
-import { Component, Inject, OnDestroy, OnInit, effect, inject } from '@angular/core';
+import { Component, EventEmitter, Inject, OnDestroy, OnInit, Output, effect, inject } from '@angular/core';
 import { HolonTypeStore } from '../../stores/holontypes.store';
 import { getState } from '@ngrx/signals';
 import { CommonModule } from '@angular/common';
 import { TypesReceptor } from '../../receptors/types.receptor';
+import { SignalStore } from '../../helpers/interface.store';
+import { ClickOutsideDirective } from '../../helpers/clickout';
 
 
 @Component({
   selector: 'app-toolbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ClickOutsideDirective],
   templateUrl: './toolbar.component.html',
 })
 export class ToolbarComponent implements OnDestroy {
+  private message_upstream?:string
+  @Output() error_message = new EventEmitter()
   public openTypeList:boolean = false
   public showHolonList:boolean = false
-  readonly store: HolonTypeStore// = inject(HolonTypeStore)
+  public store: any //= inject(HolonTypeStore) 
   
-  constructor(private receptor:TypesReceptor) {
-    this.store = receptor.getStore("holontype_store","holontypes")
-    effect(() => {
-      // 👇 The effect will be re-executed whenever the state changes.
-      const state = getState(this.store);
-      console.log('store state changed', state);
-    });
+  constructor(private typereceptor:TypesReceptor) {
+    try {
+      this.store = this.typereceptor.getStore()
+      console.log(this.store)
+      effect(() => {
+        // 👇 The effect will be re-executed whenever the state changes.
+        const state = getState(this.store);
+        console.log('store state changed', state);
+      });
+    } catch(err:any) {
+      console.error(err)
+      this.message_upstream = err
+    }
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    if (this.message_upstream)
+      this.error_message.emit(this.message_upstream)
   }
 
   toggleMenu(){
@@ -50,6 +62,6 @@ export class ToolbarComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     //this.store = null
-    this.receptor.ngOnDestroy()
+    this.typereceptor.ngOnDestroy()
   }
-}
+};

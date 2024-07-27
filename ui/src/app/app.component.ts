@@ -1,10 +1,6 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-
-import { HolonTypeStore } from './stores/holontypes.store';
-import { TypesReceptor } from './receptors/types.receptor';
-import { getState } from '@ngrx/signals';
 import { ToolbarComponent } from './components/toolbar/toolbar.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { ViewerComponent } from './components/viewer/viewer.component';
@@ -19,23 +15,25 @@ import { ViewerComponent } from './components/viewer/viewer.component';
     ViewerComponent
     ],
   templateUrl: './app.component.html',
-  //providers:[{
-   // provide:ProfileStore,
-    //useFactory: (receptor:MyReceptor) => {return receptor.getStore("profile")},
-    //deps:[MyReceptor]
-  //}],
+
 })
 export class AppComponent {
   title = 'my-app';
-  //readonly store = inject(HolonTypeStore)
+  error:string | null = ""
+  errorStyling:string = "text-red-500"
   status:string | null = ""
   statusStyling:string = "text-green-500"
 
   constructor(){
-    effect(() => {
+    //effect(() => {
       // 👇 The effect will be re-executed whenever the state changes.
       //const state = getState(this.store);
       //console.log('profile state changed', state);
-    });
+    //});
+  }
+
+  errorDownstream(message:string){
+    console.log(message)
+    this.error = message
   }
 }
