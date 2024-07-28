@@ -1,14 +1,15 @@
+use ::bytes::BytesMut;
 use hdk::prelude::*;
-use std::{collections::BTreeMap, str};
-//use hdi::prelude::*;
-use holons_integrity::*;
+use holons_integrity::smartlink::NUL_BYTES;
 use holons_integrity::LinkTypes;
+use holons_integrity::*;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName, PropertyValue};
+use std::{collections::BTreeMap, str};
 
-use crate::{holon_error::HolonError, relationship::RelationshipName};
 use crate::helpers::get_key_from_property_map;
 use crate::holon_reference::HolonReference;
 use crate::smart_reference::SmartReference;
+use crate::{holon_error::HolonError, relationship::RelationshipName};
 
 const fn smartlink_tag_header_length() -> usize {
     // leaving this nomenclature for now
@@ -47,11 +48,7 @@ impl SmartLink {
     }
 }
 
-
-
 pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
-
-
     // TODO: convert proxy_id to string
 
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
@@ -78,15 +75,8 @@ pub fn get_smartlink_from_link(
             "No action hash associated with link"
         ))))?;
     let link_tag_bytes = link.tag.clone().into_inner();
-    let link_tag = String::from_utf8(link_tag_bytes.clone()).map_err(|_e| {
-        HolonError::Utf8Conversion(
-            format!("Link tag bytes{:?}", link_tag_bytes),
-            "String (relationship name)".to_string(),
-        )
-    })?;
-    debug!("got: {:?}\n link_tag from smartlink ", link_tag.clone());
 
-    let link_tag_obj = decode_link_tag(link_tag);
+    let link_tag_obj = decode_link_tag(link_tag_bytes);
 
     let smartlink = SmartLink {
         from_address: HolonId(source_holon_id.clone()),
@@ -129,13 +119,17 @@ pub fn get_relationship_links(
     holon_id: ActionHash,
     relationship_name: &RelationshipName,
 ) -> Result<Vec<SmartLink>, HolonError> {
-
-    debug!("Entered get_relationship_links for: {:?}", relationship_name.0.to_string());
+    debug!(
+        "Entered get_relationship_links for: {:?}",
+        relationship_name.0.to_string()
+    );
     // Use the relationship_name reference to encode the link tag
-    let link_tag_filter: Option<LinkTag> =
-        Some(encode_link_tag(relationship_name.clone(), None));
+    let link_tag_filter: Option<LinkTag> = Some(encode_link_tag(relationship_name.clone(), None));
 
-    debug!("getting links for link_tag_filter: {:?}", link_tag_filter.clone());
+    debug!(
+        "getting links for link_tag_filter: {:?}",
+        link_tag_filter.clone()
+    );
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
@@ -153,9 +147,7 @@ pub fn get_relationship_links(
     Ok(smartlinks)
 }
 
-pub fn get_all_relationship_links(
-    holon_id: ActionHash,
-) -> Result<Vec<SmartLink>, HolonError> {
+pub fn get_all_relationship_links(holon_id: ActionHash) -> Result<Vec<SmartLink>, HolonError> {
     let link_tag_filter: Option<LinkTag> = None;
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
@@ -172,9 +164,12 @@ pub fn get_all_relationship_links(
 }
 // HELPER FUNCTIONS //
 
-pub fn decode_link_tag(link_tag: String) -> LinkTagObject {
-    let mut chunks: Vec<&str> = link_tag.split(UNICODE_NUL_STR).collect();
-    debug!("decoding link tag for the following chunks: {:?}", chunks.clone());
+pub fn decode_link_tag(link_tag: Vec<u8>) -> LinkTagObject {
+    let chunks = link_tag.split(|a| a == [0x00]);
+    debug!(
+        "decoding link tag for the following chunks: {:?}",
+        chunks.clone()
+    );
     let relationship_name = chunks[0][smartlink_tag_header_length()..].to_string(); // drop leading header bytes
     debug!(
         "got {:?}\n relationship_name from link_tag",
@@ -258,8 +253,6 @@ pub fn encode_link_tag(
 //     }
 // }
 
-
-
 // #[hdk_extern]
 // pub fn add_smartlink(input: SmartLink) -> ExternResult<()> {
 //     let link_tag = encode_link_tag(input.relationship_name, input.smart_property_values);
@@ -310,4 +303,3 @@ pub fn encode_link_tag(
 //     }
 //     Ok(())
 // }
-

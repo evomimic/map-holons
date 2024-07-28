@@ -1,6 +1,7 @@
 use hdi::prelude::*;
 //use shared_types_holon::holon_node::{HolonNode};
 
+pub const NUL_BYTES: [u8; 1] = [0x00]; // NUL Bytes slice
 pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
 pub const HEADER_BYTES: [u8; 3] = [226, 130, 183]; // Unicode '₷' // hex bytes: [0xE2][0x82][0xB7]
 pub const PROLOG_SEPERATOR: [u8; 3] = [226, 138, 163]; // Unicode '⊣' // hex bytes: [0xE2][0x8A][0xA3]
