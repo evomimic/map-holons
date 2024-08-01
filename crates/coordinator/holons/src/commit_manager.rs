@@ -133,8 +133,12 @@ impl CommitManager {
                         }
                         _ => {}
                     },
-                    Err(_error) => {
+                    Err(error) => {
                         response.status = CommitRequestStatus::Incomplete;
+                        warn!(
+                            "Attempt to commit holon returned error: {:?}",
+                            error.to_string()
+                        );
                     }
                 }
             }
@@ -151,8 +155,12 @@ impl CommitManager {
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit_relationships(context);
                 if let Err(error) = outcome {
-                    rc_holon.borrow_mut().errors.push(error);
+                    rc_holon.borrow_mut().errors.push(error.clone());
                     response.status = CommitRequestStatus::Incomplete;
+                    warn!(
+                        "Attempt to commit relationship returned error: {:?}",
+                        error.to_string()
+                    );
                 }
             }
         }
@@ -162,8 +170,6 @@ impl CommitManager {
         for saved_holon in &response.saved_holons {
             info!("{}", as_json(saved_holon));
         }
-
-
 
         // Handle the final status of the commit process
 
@@ -200,12 +206,10 @@ impl CommitManager {
         let holon_key: Option<MapString> = holon.get_key()?;
         if let Some(key) = holon_key {
             self.keyed_index.insert(key.clone(), holon_index);
-
         }
 
         Ok(StagedReference { holon_index })
     }
-
 
     pub fn clone_holon(
         &mut self,

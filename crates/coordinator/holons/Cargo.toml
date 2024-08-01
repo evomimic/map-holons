@@ -8,7 +8,6 @@ crate-type = ["cdylib", "rlib"]
 name = "holons"
 
 [dependencies]
-bytes = { workspace = true }
 derive-new = { workspace = true }
 hdk = { workspace = true }
 hdi = { workspace = true }

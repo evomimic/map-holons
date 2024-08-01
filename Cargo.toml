@@ -19,7 +19,6 @@ members = ["crates/coordinator/holons",
 
 [workspace.dependencies]
 ahash ="=0.8.11"
-bytes = {version = "1.6.1", features = ["serde"]}
 derive-new = "0.6"
 hdi = "0.3"
 hdk = "0.2"
