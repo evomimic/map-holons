@@ -1,3 +1,4 @@
+use hdi::prelude::debug;
 use strum::IntoEnumIterator;
 use hdk::prelude::info;
 use holons::commit_manager::{CommitManager, CommitResponse};
@@ -7,7 +8,7 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 
 // use holons::staged_reference::StagedReference;
-use shared_types_holon::{MapString};
+use shared_types_holon::{MapString, PropertyName};
 
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
 use holons::holon::Holon;
@@ -101,11 +102,31 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     info!("Holons Saved: {:#?}", r.saved_holons.len());
     info!("Abandoned: {:#?}", r.abandoned_holons.len());
 
-    info!("DATABASE DUMP:");
+    info!("DATABASE DUMP (max 300 records)");
 
     let holons = Holon::get_all_holons()?;
-    for holon in holons.iter().take(30) {
-        info!("Holon:\n{}",as_json(holon));
+    // for holon in holons.iter().take(30) {
+    //     info!("Holon:\n{}",as_json(holon));
+    // }
+
+    for holon in holons.iter().take(300)  {
+        let key_result = holon.get_key();
+        let property_name = PropertyName(MapString("base_type".to_string()));
+        let base_type = holon.get_property_value(&property_name);
+        match key_result {
+            Ok(key) => {info!("key = {:?}, base_type= {:?}",
+                            key.unwrap_or_else(|| MapString("<None>".to_string())).0,
+                            base_type,
+            );
+                debug!("Holon {}", as_json(&holon));}
+            Err(holon_error) => {
+                panic!(
+                    "Attempt to get_key() resulted in error {:?}",
+                    holon_error,
+                );
+            }
+        }
+
     }
 
     Ok(response)

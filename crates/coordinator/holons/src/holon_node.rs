@@ -11,6 +11,7 @@ pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
                 WasmErrorInner::Guest(String::from("Could not find the newly created HolonNode"))
             ),
         )?;
+    trace!("HolonNode successfully created... adding all_holon_nodes link.");
     let path = Path::from("all_holon_nodes");
     create_link(
         path.path_entry_hash()?,
@@ -18,6 +19,7 @@ pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
         LinkTypes::AllHolonNodes,
         (),
     )?;
+    trace!("Returning OK from create_holon_node.");
     Ok(record)
 }
 #[hdk_extern]

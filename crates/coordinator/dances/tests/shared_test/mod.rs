@@ -14,6 +14,7 @@ pub mod test_query_relationships;
 pub mod test_stage_new_holon;
 pub mod test_with_properties_command;
 pub mod book_authors_setup_fixture;
+pub mod test_print_database;
 
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
