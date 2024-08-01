@@ -2,25 +2,31 @@
   "name": "map-holons-dev",
   "private": true,
   "workspaces": [
-    "tests"
+    "tests",
+    "ui"
   ],
   "scripts": {
-    "start": "AGENTS=2 npm run network",
-    "network": "hc s clean && npm run build:happ && UI_PORT=8888 concurrently \"npm start -w ui\" \"npm run launch:happ\" \"holochain-playground\"",
+    "mock": "npm run mock -w ui",
+    "start": "AGENTS=1 npm run network",
+    "local-services": "hc run-local-services -b 54000 -s 55000",
+    "network": "npm run build:happ && UI_PORT=4200 concurrently \"npm run local-services\" \"npm run start:agent\"",    
+    "start:agent": "HC_PORT=$(get-port) HC_ADMIN_PORT=$(get-port) concurrently \"npm run launch:happ\" \"npm start -w ui\"",
+    "launch:happ": "hc s clean && echo \"pass\" | RUST_LOG=warn hc launch --piped -n $AGENTS workdir/map-holons.happ --ui-port $UI_PORT network -b http://127.0.0.1:54000 webrtc ws://127.0.0.1:55000",
     "test": "npm run build:zomes && hc app pack workdir --recursive && npm t -w tests",
     "sweetest": "npm run build:happ && npm run sweetest:quiet",
     "sweetest:quiet": "RUST_LOG=error WASM_LOG=error npm run build:happ && cargo test",
     "sweetest:info": "RUST_LOG=info WASM_LOG=info npm run build:happ && cargo test",
     "sweetest:debug": "RUST_LOG=debug WASM_LOG=debug npm run build:happ && cargo test",
     "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && cargo test",
-    "launch:happ": "echo \"pass\" | RUST_LOG=warn hc launch --piped -n $AGENTS workdir/map-holons.happ --ui-port $UI_PORT network mdns",
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
     "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown",
     "clean": "npx rimraf target && npx rimraf .cargo && npx rimraf Cargo.lock && npx rimraf flake.lock && cargo clean",
+    "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/node_modules",
     "cb": "clear && npm run build:happ"
   },
   "_comments": {
+    "install": "Temporary hack, please use npm i --legacy-peer-deps",
     "sweetest:quiet": "Script to run tests with minimal tracing (warn level)",
     "sweetest:info": "Script to run tests with moderate tracing (info level)",
     "sweetest:debug": "Script to run tests with detailed tracing (debug level)",
@@ -30,7 +36,8 @@
   "devDependencies": {
     "@holochain-playground/cli": "^0.2.0",
     "concurrently": "^8.2.2",
-    "rimraf": "^5.0.5"
+    "rimraf": "^5.0.5",
+    "get-port-cli":"^3.0.0"
   },
   "engines": {
     "npm": ">=7.0.0"
