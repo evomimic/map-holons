@@ -598,7 +598,7 @@ pub fn build_abandon_staged_changes_dance_request(
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
     Ok(DanceRequest::new(
-        MapString("abandon_staged_changes_foo".to_string()),
+        MapString("abandon_staged_changes".to_string()),
         DanceType::CommandMethod(index),
         body,
         staging_area,

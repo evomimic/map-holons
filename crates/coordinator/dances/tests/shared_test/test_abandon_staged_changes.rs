@@ -68,19 +68,22 @@ pub async fn execute_abandon_staged_changes(
                     if let ResponseBody::Index(staged_index) = response.body.clone() {
                         match test_state.staging_area.get_holon_mut(staged_index) {
                             Ok(abandoned_holon) => {
-                                assert!(matches!(
-                                    abandoned_holon.get_property_value(
-                                        &PropertyName(MapString("some_name".to_string()))
-                                    ),
-                                    Err(HolonError::NotAccessible(_, _))
-                                ));
-                                debug!("Confirmed abandoned holon is NotAccessible for `get_property_value`");
-
-                                assert!(matches!(
-                                    abandoned_holon.get_key(),
-                                    Err(HolonError::NotAccessible(_, _))
-                                ));
-                                debug!("Confirmed abandoned holon is NotAccessible for `get_key`");
+                                // NOTE: We changed the access policies to ALLOW read access to
+                                // Abandoned holons, so disabling the following two checks
+                                // TODO: Consider adding checks that these operations are ALLOWED
+                                // assert!(matches!(
+                                //     abandoned_holon.get_property_value(
+                                //         &PropertyName(MapString("some_name".to_string()))
+                                //     ),
+                                //     Err(HolonError::NotAccessible(_, _))
+                                // ));
+                                // debug!("Confirmed abandoned holon is NotAccessible for `get_property_value`");
+                                //
+                                // assert!(matches!(
+                                //     abandoned_holon.get_key(),
+                                //     Err(HolonError::NotAccessible(_, _))
+                                // ));
+                                // debug!("Confirmed abandoned holon is NotAccessible for `get_key`");
 
                                 assert!(matches!(
                                     abandoned_holon.with_property_value(
@@ -96,7 +99,7 @@ pub async fn execute_abandon_staged_changes(
                                 //     abandoned_holon.get_related_holons(None),
                                 //     Err(HolonError::NotAccessible(_, _))
                                 // ));
-                                debug!("Confirmed abandoned holon is NotAccessible for `get_related_holons`");
+                                // debug!("Confirmed abandoned holon is NotAccessible for `get_related_holons`");
                             }
                             Err(e) => {
                                 panic!("Failed to get holon: {:?}", e);
