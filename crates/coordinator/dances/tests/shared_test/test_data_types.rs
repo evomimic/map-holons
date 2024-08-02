@@ -26,6 +26,7 @@ pub enum DanceTestStep {
         ResponseStatusCode,
         Holon,
     ), // Adds relationship between two Holons
+    DatabasePrint, // Writes log messages for each holon in the persistent store
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     Commit,            // Attempts to commit
@@ -47,6 +48,9 @@ impl fmt::Display for DanceTestStep {
                 expected_holon,
             ) => {
                 write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", index, relationship_name, holons_to_add.len(), expected_response, expected_holon)
+            }
+            DanceTestStep::DatabasePrint => {
+                write!(f, "DatabasePrint")
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
@@ -127,6 +131,10 @@ impl DancesTestCase {
             expected_response,
             expected_holon,
         ));
+        Ok(())
+    }
+    pub fn add_database_print_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::DatabasePrint);
         Ok(())
     }
     pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {

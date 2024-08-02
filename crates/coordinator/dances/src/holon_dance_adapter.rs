@@ -529,6 +529,7 @@ pub fn commit_dance(
                 commit_response.saved_holons.len(),
                 commit_response.commits_attempted.0,
             );
+            // TODO: Why turn INCOMPLETE into an Error? Shouldn't we just pass CommitResponse to client?
             Err(HolonError::CommitFailure(completion_message.to_string()))
         }
     }

@@ -119,6 +119,7 @@ impl CommitManager {
             info!("\n\nStarting FIRST PASS... commit staged_holons...");
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
+                trace!(" In commit_manager... getting ready to call commit()");
                 let outcome = rc_holon.borrow_mut().commit();
                 match outcome {
                     Ok(holon) => match holon.state {

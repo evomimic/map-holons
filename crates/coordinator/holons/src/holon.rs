@@ -351,6 +351,7 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
+        trace!(" in get_key()");
         let key = self
             .property_map
             .get(&PropertyName(MapString("key".to_string())));
@@ -358,8 +359,10 @@ impl Holon {
             let string_value: String = key.try_into().map_err(|_| {
                 HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
             })?;
+            trace!(" returning from get_key() with Some(key)");
             Ok(Some(MapString(string_value)))
         } else {
+            trace!(" returning from get_key() with None");
             Ok(None)
         }
     }
@@ -513,6 +516,7 @@ impl Holon {
                 )),
                 AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
             },
+
         }
     }
 
