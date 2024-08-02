@@ -15,6 +15,7 @@
     "test": "npm run build:zomes && hc app pack workdir --recursive && npm t -w tests",
     "sweetest": "npm run build:happ && npm run sweetest:quiet",
     "sweetest:quiet": "RUST_LOG=error WASM_LOG=error npm run build:happ && cargo test",
+    "sweetest:info": "RUST_LOG=info WASM_LOG=info npm run build:happ && cargo test",
     "sweetest:debug": "RUST_LOG=debug WASM_LOG=debug npm run build:happ && cargo test",
     "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && cargo test",
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
@@ -27,7 +28,8 @@
   "_comments": {
     "install": "Temporary hack, please use npm i --legacy-peer-deps",
     "sweetest:quiet": "Script to run tests with minimal tracing (warn level)",
-    "sweetest:trace": "Script to run tests with detailed tracing (debug level)",
+    "sweetest:info": "Script to run tests with moderate tracing (info level)",
+    "sweetest:debug": "Script to run tests with detailed tracing (debug level)",
     "sweetest:custom": "Script to run tests with custom tracing levels. Defaults to 'warn' if env variables not already set"
   },
 

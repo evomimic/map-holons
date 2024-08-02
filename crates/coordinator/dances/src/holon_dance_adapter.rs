@@ -18,15 +18,16 @@
 // use std::rc::Rc;
 
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use derive_new::new;
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-use holons::holon::{Holon, HolonGettable};
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
+use holons::holon_reference::{HolonGettable, HolonReference};
 use holons::relationship::RelationshipName;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapString, PropertyMap};
@@ -61,7 +62,7 @@ pub struct QueryPathMap(pub BTreeMap<RelationshipName, NodeCollection>);
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryExpression {
-    relationship_name: Option<RelationshipName>,
+    relationship_name: RelationshipName,
 }
 
 /// *DanceRequest:*
@@ -155,38 +156,41 @@ pub fn query_relationships_dance(
 ) -> Result<ResponseBody, HolonError> {
     debug!("Entered query_relationships_dance");
 
-    // Match the dance_type
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
             let relationship_name = match request.body {
                 RequestBody::QueryExpression(expression) => expression.relationship_name,
                 _ => {
                     return Err(HolonError::InvalidParameter(
-                        "Invalid RequestBody: expected QueryExpression, didn't get one".to_string(),
+                        "Invalid RequestBody: expected QueryExpression with relationship name, \
+                        didn't get one".to_string(),
                     ))
                 }
             };
+
             let mut result_collection = NodeCollection::new_empty();
+
             for node in node_collection.members {
-                let related_holons_map = node
+                let related_holons_rc = node
                     .source_holon
-                    .get_related_holons(context, relationship_name.clone())?
-                    .0;
+                    .get_related_holons(context, &relationship_name)?;
+
+                let related_holons = Rc::clone(&related_holons_rc);
 
                 let mut query_path_map = QueryPathMap::new(BTreeMap::new());
 
-                for (relationship_name, collection) in related_holons_map {
+                for reference in related_holons.get_members() {
                     let mut related_collection = NodeCollection::new_empty();
-                    for reference in collection.members {
-                        related_collection.members.push(Node::new(reference, None))
-                    }
+                    related_collection.members.push(Node::new(reference.clone(), None));
                     query_path_map
                         .0
-                        .insert(relationship_name, related_collection);
+                        .insert(relationship_name.clone(), related_collection);
                 }
-                let new_node = Node::new(node.source_holon, Some(query_path_map));
+
+                let new_node = Node::new(node.source_holon.clone(), Some(query_path_map));
                 result_collection.members.push(new_node);
             }
+
             Ok(ResponseBody::Collection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
@@ -194,6 +198,56 @@ pub fn query_relationships_dance(
         )),
     }
 }
+
+
+
+
+// pub fn query_relationships_dance(
+//     context: &HolonsContext,
+//     request: DanceRequest,
+// ) -> Result<ResponseBody, HolonError> {
+//     debug!("Entered query_relationships_dance");
+//
+//     // Match the dance_type
+//     match request.dance_type {
+//         DanceType::QueryMethod(node_collection) => {
+//             let relationship_name = match request.body {
+//                 RequestBody::QueryExpression(expression) => expression.relationship_name,
+//                 _ => {
+//                     return Err(HolonError::InvalidParameter(
+//                         "Invalid RequestBody: expected QueryExpression with relationship name, \
+//                         didn't get one".to_string(),
+//                     ))
+//                 }
+//             };
+//             let mut result_collection = NodeCollection::new_empty();
+//             for node in node_collection.members {
+//                 let related_holons_map = node
+//                     .source_holon
+//                     .get_related_holons(context, &relationship_name)?
+//                     .0;
+//
+//                 let mut query_path_map = QueryPathMap::new(BTreeMap::new());
+//
+//                 for (relationship_name, collection) in related_holons_map {
+//                     let mut related_collection = NodeCollection::new_empty();
+//                     for reference in collection.get_members() {
+//                         related_collection.members.push(Node::new(reference, None))
+//                     }
+//                     query_path_map
+//                         .0
+//                         .insert(relationship_name, related_collection);
+//                 }
+//                 let new_node = Node::new(node.source_holon, Some(query_path_map));
+//                 result_collection.members.push(new_node);
+//             }
+//             Ok(ResponseBody::Collection(result_collection))
+//         }
+//         _ => Err(HolonError::InvalidParameter(
+//             "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),
+//         )),
+//     }
+// }
 
 /// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
 pub fn build_query_relationships_dance_request(
@@ -382,7 +436,9 @@ pub fn get_all_holons_dance(
     debug!("Entering get_all_holons dance..");
     let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => Ok(ResponseBody::Holons(holons)),
+        Ok(holons) => {
+            Ok(ResponseBody::Holons(holons))
+        },
         Err(holon_error) => Err(holon_error.into()),
     }
 }
@@ -473,6 +529,7 @@ pub fn commit_dance(
                 commit_response.saved_holons.len(),
                 commit_response.commits_attempted.0,
             );
+            // TODO: Why turn INCOMPLETE into an Error? Shouldn't we just pass CommitResponse to client?
             Err(HolonError::CommitFailure(completion_message.to_string()))
         }
     }
@@ -541,7 +598,7 @@ pub fn build_abandon_staged_changes_dance_request(
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
     Ok(DanceRequest::new(
-        MapString("abandon_staged_changes_foo".to_string()),
+        MapString("abandon_staged_changes".to_string()),
         DanceType::CommandMethod(index),
         body,
         staging_area,

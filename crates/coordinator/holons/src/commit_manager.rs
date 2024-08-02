@@ -4,10 +4,10 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
-use crate::context::{self, HolonsContext};
-use crate::holon::{Holon, HolonGettable, HolonState};
-use crate::holon_collection::HolonCollection;
+use crate::context::HolonsContext;
+use crate::holon::{Holon, HolonState};
 use crate::holon_error::HolonError;
+use crate::json_adapter::as_json;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
@@ -119,6 +119,7 @@ impl CommitManager {
             info!("\n\nStarting FIRST PASS... commit staged_holons...");
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
+                trace!(" In commit_manager... getting ready to call commit()");
                 let outcome = rc_holon.borrow_mut().commit();
                 match outcome {
                     Ok(holon) => match holon.state {
@@ -133,8 +134,12 @@ impl CommitManager {
                         }
                         _ => {}
                     },
-                    Err(_error) => {
+                    Err(error) => {
                         response.status = CommitRequestStatus::Incomplete;
+                        warn!(
+                            "Attempt to commit holon returned error: {:?}",
+                            error.to_string()
+                        );
                     }
                 }
             }
@@ -151,10 +156,20 @@ impl CommitManager {
             for rc_holon in commit_manager.staged_holons.clone() {
                 let outcome = rc_holon.borrow_mut().commit_relationships(context);
                 if let Err(error) = outcome {
-                    rc_holon.borrow_mut().errors.push(error);
+                    rc_holon.borrow_mut().errors.push(error.clone());
                     response.status = CommitRequestStatus::Incomplete;
+                    warn!(
+                        "Attempt to commit relationship returned error: {:?}",
+                        error.to_string()
+                    );
                 }
             }
+        }
+
+        info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
+
+        for saved_holon in &response.saved_holons {
+            info!("{}", as_json(saved_holon));
         }
 
         // Handle the final status of the commit process
@@ -181,11 +196,15 @@ impl CommitManager {
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
 
+    /// Stages the provided holon and returns a reference-counted reference to it
+    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
+    /// to be retrieved by key
+
     pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
-        let holon_key: Option<MapString> = holon.get_key(&HolonsContext::new())?; // passing empty context for now // TODO: determine logic
+        let holon_key: Option<MapString> = holon.get_key()?;
         if let Some(key) = holon_key {
             self.keyed_index.insert(key.clone(), holon_index);
         }

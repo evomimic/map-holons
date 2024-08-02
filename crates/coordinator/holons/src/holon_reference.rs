@@ -1,9 +1,10 @@
+use std::rc::Rc;
 use hdk::prelude::*;
 
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
-use crate::holon::HolonGettable;
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
@@ -24,6 +25,35 @@ pub enum HolonReference {
     Staged(StagedReference),
     Smart(SmartReference),
 }
+
+pub trait HolonGettable {
+    fn get_property_value(
+        &self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError>;
+
+    /// This function returns the primary key value for the holon or None if there is no key value
+    /// for this holon (NOTE: Not all holon types have defined keys.)
+    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// returns a HolonError::UnexpectedValueType.
+    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
+
+    // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
+
+    /// In this method, &self is either a HolonReference, StagedReference, SmartReference or Holon that represents the source holon,
+    /// whose related holons are being requested. relationship_name, if provided, indicates the name of the relationship being navigated.
+    /// In the future, this parameter will be replaced with an optional reference to the RelationshipDescriptor for this relationship.
+    /// If None, then all holons related to the source holon across all of its relationships are retrieved.
+    /// This method populates the cached source holon's HolonCollection for the specified relationship if one is provided.
+    /// If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
+    fn get_related_holons(
+        &self,
+        context: &HolonsContext,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError>;
+}
+
 
 impl HolonGettable for HolonReference {
     fn get_property_value(
@@ -48,11 +78,12 @@ impl HolonGettable for HolonReference {
         }
     }
 
+
     fn get_related_holons(
         &self,
         context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError> {
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
         match self {
             HolonReference::Smart(reference) => {
                 reference.get_related_holons(context, relationship_name)
@@ -131,3 +162,4 @@ impl HolonReference {
     //     }
     // }
 }
+

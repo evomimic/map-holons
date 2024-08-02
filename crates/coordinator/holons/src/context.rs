@@ -31,6 +31,10 @@ impl HolonsContext {
         self.dance_state.borrow_mut().add_references(self, holons)
     }
 
+    pub fn add_reference_to_dance_state(&self, holon_ref: HolonReference) -> Result<(), HolonError> {
+        self.dance_state.borrow_mut().add_reference(self, holon_ref)
+    }
+
     pub fn get_by_key_from_dance_state(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError>  {
         self.dance_state.borrow().get_by_key(key)
     }

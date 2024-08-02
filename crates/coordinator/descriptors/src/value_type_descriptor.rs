@@ -1,5 +1,15 @@
-// NOTE: This file is deprecated... an intermediate holon serving only as shared supertype
-// of value type descriptors is unnecessary and just adds complication
+use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
+use holons::holon_reference::HolonReference;
+use shared_types_holon::MapString;
+use crate::descriptor_types::CoreValueTypeName;
+
+// TODO: Enhance to do a get from cache if not in dance_state
+pub fn get_core_value_type_descriptor_reference(context: &HolonsContext, value_type: CoreValueTypeName) -> Result<HolonReference, HolonError> {
+    let key = MapString(value_type.as_str().to_string());
+    context.get_by_key_from_dance_state(&key)?
+        .ok_or_else(|| HolonError::HolonNotFound(format!("Couldn't find StagedReference for {:?} in dance_state", value_type.as_str())))
+}
 
 /*
 pub fn define_value_type(
@@ -112,7 +122,7 @@ pub fn define_value_type(
     // }
     //TODO: Populate owned_by relationship
     // descriptor.add_related_holon(
-    //     RelationshipName(MapString("OWNED_BY".to_string())),
+    //     RelationshipName(MapString("OwnedBy".to_string())),
     //     owned_by.clone(),
 
     TypeDescriptor(descriptor)
