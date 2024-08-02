@@ -92,7 +92,7 @@ impl HolonCacheManager {
         // Holon not found in cache, fetch it
         info!("Holon not cached, fetching holon");
         let fetched_holon = Self::fetch_holon(holon_id)?;
-        debug!("Holon fetched");
+        debug!("Holon with key {:?} fetched", fetched_holon.get_key());
 
         // Attempt to borrow the cache mutably
         let mut cache_mut = cache.try_borrow_mut().map_err(|e| {

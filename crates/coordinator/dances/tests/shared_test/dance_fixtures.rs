@@ -1,16 +1,3 @@
-// Simple Create Test Fixture
-//
-// This file is used to creates a TestCase that exercises the following steps:
-// - Ensure database is empty
-// - stage a new holon
-// - update the staged holon's properties
-// - commit the holon
-// - get the holon
-// - delete holon
-// - ensure database is empty
-//
-//
-
 #![allow(dead_code)]
 
 use crate::get_holon_by_key_from_test_state;
@@ -28,6 +15,7 @@ use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
+use holochain::core::author_key_is_valid;
 
 use dances::dance_response::ResponseStatusCode;
 use holons::commit_manager::{CommitManager, StagedIndex};
@@ -43,11 +31,13 @@ use crate::shared_test::test_data_types::DancesTestCase;
 // };
 
 use holons::holon_error::HolonError;
+use holons::holon_reference::HolonReference::Staged;
 use holons::relationship::RelationshipName;
 
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
+use crate::shared_test::book_authors_setup_fixture::setup_book_author_steps;
 
 /// This function creates a set of simple (undescribed) holons
 ///
@@ -125,7 +115,15 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
-    // Create book Holon with properties //
+    //
+    // H1, H2, H3, etc. refer to order of Holons added to staging area.
+    // Before the commit process, these Holons are identified by their index in the staging_area Vec,
+    // therefore it is necessary to maintain their order.
+    // Each Holon's index can be figured by subtracting 1. Ex H1 is index 0, H2 index 1
+    //
+    //
+
+    //  ADD STEP:  STAGE:  Book Holon (H1)  //
     let mut book_holon = Holon::new();
     let book_holon_key = MapString(
         "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -139,85 +137,93 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         BaseValue::StringValue(MapString(
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
         )),
-    )?;
-
-    //// Stage Holons & add properties
-    test_case.add_stage_holon_step(book_holon.clone())?;
-    let book_index: StagedIndex = 0;
-
-    let mut properties = PropertyMap::new();
-    properties.insert(
+    )?.with_property_value(
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
-    );
-    test_case.add_with_properties_step(book_index, properties, ResponseStatusCode::OK)?;
+    )?;
+    test_case.add_stage_holon_step(book_holon.clone())?;
+    let book_index: usize = 0; // assume book is at this position in staged_holons vector
 
-    // Create person Holons //
-    let person_holon_briggs = Holon::new();
-
-    test_case.add_stage_holon_step(person_holon_briggs)?;
-    let briggs_index: StagedIndex = 1;
-    let briggs_staged_reference = StagedReference {
-        holon_index: briggs_index,
-    };
-    let briggs_holon_reference = HolonReference::Staged(briggs_staged_reference);
-
-    let mut properties = PropertyMap::new();
-    properties.insert(
-        PropertyName(MapString("first name".to_string())),
-        BaseValue::StringValue(MapString("Roger".to_string())),
-    );
-    properties.insert(
-        PropertyName(MapString("last name".to_string())),
-        BaseValue::StringValue(MapString("Briggs".to_string())),
-    );
-    test_case.add_with_properties_step(briggs_index, properties, ResponseStatusCode::OK)?;
-
-    let mut person_holon_gebser = Holon::new();
-    person_holon_gebser
+    //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
+    let mut person_1 = Holon::new();
+    let person_1_key = MapString("RogerBriggs".to_string());
+    person_1
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
-            BaseValue::StringValue(MapString("Jean".to_string())),
+            BaseValue::StringValue(MapString("Roger".to_string())),
         )?
         .with_property_value(
             PropertyName(MapString("last name".to_string())),
-            BaseValue::StringValue(MapString("Gebser".to_string())),
+            BaseValue::StringValue(MapString("Briggs".to_string())),
+        )?
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(person_1_key.clone()),
         )?;
-    test_case.add_stage_holon_step(person_holon_gebser)?;
-    ////
+    test_case.add_stage_holon_step(person_1.clone())?;
+    let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
+    let person_1_reference = Staged(StagedReference {
+        holon_index: person_1_index,
+    });
 
-    // Add related holons //
-    book_holon.with_property_value(
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
-    )?;
-    let authors_relationship_name = RelationshipName(MapString("AUTHORS".to_string()));
-    let gebser_index: StagedIndex = 2;
-    let gebser_staged_reference = StagedReference {
-        holon_index: gebser_index,
-    };
-    let gebser_holon_reference = HolonReference::Staged(gebser_staged_reference);
+    //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
+    let mut person_holon_2 = Holon::new();
+    let person_2_key = MapString("GeorgeSmith".to_string());
+    person_holon_2
+        .with_property_value(
+            PropertyName(MapString("first name".to_string())),
+            BaseValue::StringValue(MapString("George".to_string())),
+        )?
+        .with_property_value(
+            PropertyName(MapString("last name".to_string())),
+            BaseValue::StringValue(MapString("Smith".to_string())),
+        )?
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(person_2_key.clone()),
+        )?;
+    test_case.add_stage_holon_step(person_holon_2.clone())?;
+    let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
+    let person_2_reference = Staged(StagedReference {
+        holon_index: person_2_index,
+    });
 
-    let mut holons_to_add: Vec<HolonReference> = Vec::new();
+    // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
 
-    holons_to_add.push(briggs_holon_reference);
-    holons_to_add.push(gebser_holon_reference);
+
+    let authored_by_relationship_name = RelationshipName(MapString("AUTHORED_BY".to_string()));
+
+    // Create the expected_holon
+    let mut authored_by_collection = HolonCollection::new_staged();
+    authored_by_collection.add_reference_with_key(
+        Some(&person_1_key),
+        &person_1_reference)?;
+
+    authored_by_collection.add_reference_with_key(
+        Some(&person_2_key),
+        &person_2_reference)?;
+
 
     book_holon.relationship_map.0.insert(
-        authors_relationship_name.clone(),
-        HolonCollection {
-            state: CollectionState::Staged,
-            members: holons_to_add.to_vec(),
-            keyed_index: BTreeMap::new(),
-        },
+        authored_by_relationship_name.clone(),
+        authored_by_collection,
     );
 
+
+    let mut holons_to_add: Vec<HolonReference> = Vec::new();
+    holons_to_add.push(person_1_reference);
+    holons_to_add.push(person_2_reference);
+
+
+
+
+
     test_case.add_related_holons_step(
-        book_index,
-        authors_relationship_name.clone(),
-        holons_to_add,
+        book_index, // source holon
+        authored_by_relationship_name.clone(),
+        holons_to_add.to_vec(),
         ResponseStatusCode::OK,
-        book_holon,
+        book_holon.clone(),
     )?;
 
     // Commit & ensure DB count again //
@@ -226,7 +232,7 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
 
     // Query Relationships //
 
-    let query_expression = QueryExpression::new(Some(authors_relationship_name.clone()));
+    let query_expression = QueryExpression::new(authored_by_relationship_name.clone());
     test_case.add_query_relationships_step(
         book_holon_key,
         query_expression,
@@ -245,95 +251,23 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     );
 
     test_case.add_ensure_database_count_step(MapInteger(0))?;
-    //
-    // H1, H2, H3, etc refer to order of Holons added to staging area.
-    // Before the commit process, these Holons are only able to be identified by their index in the staging_area Vec,
-    // therefore it is necessary to maintain their order.
-    // Each Holon's index can be figured by subtracting 1. Ex H1 is index 0, H2 index 1
-    //
-    //
-
-    //  ADD STEP:  STAGE:  Book Holon (H1)  //
-    let mut book_holon = Holon::new();
-    let book_holon_key = MapString(
-        "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
-    );
-    book_holon.with_property_value(
-        PropertyName(MapString("key".to_string())),
-        BaseValue::StringValue(MapString(
-            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
-        )),
-    )?;
-    book_holon.with_property_value(
-        PropertyName(MapString("title".to_string())),
-        BaseValue::StringValue(MapString(
-            "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
-        )),
-    )?.with_property_value(
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
-    )?;
-    test_case.add_stage_holon_step(book_holon.clone())?;
-    let book_index: usize = 0; // assume book is at this position in staged_holons vector
-
-    //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
-    let mut person_1 = Holon::new();
-    person_1
-        .with_property_value(
-            PropertyName(MapString("first name".to_string())),
-            BaseValue::StringValue(MapString("Roger".to_string())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("last name".to_string())),
-            BaseValue::StringValue(MapString("Briggs".to_string())),
-        )?;
-    test_case.add_stage_holon_step(person_1.clone())?;
-    let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
-    let person_1_staged_reference = StagedReference {
-        holon_index: person_1_index,
-    };
-
-    //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
-    let mut person_holon_2 = Holon::new();
-    person_holon_2
-        .with_property_value(
-            PropertyName(MapString("first name".to_string())),
-            BaseValue::StringValue(MapString("George".to_string())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("last name".to_string())),
-            BaseValue::StringValue(MapString("Smith".to_string())),
-        )?;
-    test_case.add_stage_holon_step(person_holon_2.clone())?;
-    let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
-    let person_2_staged_reference = StagedReference {
-        holon_index: person_2_index,
-    };
-
-    // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
-    let authored_by_relationship_name = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
-    holons_to_add.push(HolonReference::Staged(person_1_staged_reference));
-    holons_to_add.push(HolonReference::Staged(person_2_staged_reference));
-
-    book_holon.relationship_map.0.insert(
-        authored_by_relationship_name.clone(),
-        HolonCollection {
-            state: CollectionState::Staged,
-            members: holons_to_add.to_vec(),
-            keyed_index: BTreeMap::new(),
-        },
-    );
-
-    test_case.add_related_holons_step(
-        book_index, // source holon
-        authored_by_relationship_name.clone(),
-        holons_to_add.to_vec(),
-        ResponseStatusCode::OK,
-        book_holon.clone(),
+    // Use helper function to set up a book holon, 2 persons, and an AUTHORED_BY relationship from
+    // the book to both persons.
+    let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
+    let test_data = setup_book_author_steps(
+        &mut test_case,
+        &mut holons_to_add,
+        &desired_test_relationship
     )?;
+
+    let person_1_index= test_data[1].staged_index;
+    let book_holon_key = test_data[0].key.clone();
+    let book_holon = test_data[0].expected_holon
+        .clone()
+        .expect("Expected setup method to return Some book holon at index 0, got none.");
 
     // ADD STEP:  ABANDON:  H2
     // This step verifies the abandon dance succeeds and that subsequent operations on the
@@ -390,8 +324,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // ADD STEP:  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
 
-    // ADD STEP: QUERY RELATINSHIPS //
-    let query_expression = QueryExpression::new(Some(authored_by_relationship_name.clone()));
+    // ADD STEP: QUERY RELATIONSHIPS //
+    let query_expression = QueryExpression::new(desired_test_relationship.clone());
     test_case.add_query_relationships_step(
         book_holon_key,
         query_expression,

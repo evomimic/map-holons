@@ -109,7 +109,7 @@ impl Dancer {
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
 
         dispatch_table.insert(
-            "abandon_staged_changes_foo",
+            "abandon_staged_changes",
             abandon_staged_changes_dance as DanceFunction,
         );
 

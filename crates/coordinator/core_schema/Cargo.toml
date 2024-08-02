@@ -1,0 +1,35 @@
+[package]
+name = "core_schema"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "core_schema"
+
+[dependencies]
+
+# General Dependencies
+serde = { workspace = true }
+derive-new = { workspace = true }
+thiserror = { workspace = true }
+Inflector = {workspace = true}
+strum = {workspace = true}
+strum_macros ={workspace = true}
+
+# Holochain Dependencies
+hdi = { workspace = true }
+hdk = { workspace = true }
+#holochain_integrity_types = { workspace = true }
+
+# MAP Dependencies
+
+holons_integrity = { workspace = true }
+holons = {workspace = true}
+shared_types_holon = {workspace = true}
+descriptors = {workspace = true}
+
+
+

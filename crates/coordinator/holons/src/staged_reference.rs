@@ -1,19 +1,18 @@
 use derive_new::new;
 use hdk::prelude::*;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, Holon, HolonGettable};
+use crate::holon::{AccessType, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonReference;
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
-use shared_types_holon::{HolonId, MapString, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -29,13 +28,13 @@ impl HolonGettable for StagedReference {
     ) -> Result<PropertyValue, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_property_value(context, property_name)
+        holon.get_property_value(property_name)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.commit_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_key(context).clone()
+        holon.get_key().clone()
     }
 
     // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
@@ -43,23 +42,17 @@ impl HolonGettable for StagedReference {
     fn get_related_holons(
         &self,
         context: &HolonsContext,
-        relationship_name: Option<RelationshipName>,
-    ) -> Result<RelationshipMap, HolonError> {
-        if let Some(name) = relationship_name {
-            let relationship_map = self.get_relationship_map(context)?;
-
-            let collection_option = relationship_map.0.get(&name);
-            if let Some(collection) = collection_option {
-                let mut map = BTreeMap::new();
-                map.insert(name, collection.clone());
-                return Ok(RelationshipMap(map));
-            } else {
-                return Ok(RelationshipMap(BTreeMap::new()));
-            }
-        } else {
-            Ok(self.get_relationship_map(context)?)
-        }
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        let holon = self.get_mut_holon(context)?;
+        let map = {
+            let mut holon_ref = holon.borrow_mut();
+            Rc::clone(&holon_ref.get_related_holons(relationship_name)?)
+        };
+        Ok(map)
     }
+
+
 }
 
 impl StagedReference {
@@ -98,6 +91,26 @@ impl StagedReference {
             .map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
 
         Ok(holon_ref.clone())
+    }
+    pub fn with_property_value(
+        &self,
+        context: &HolonsContext,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&Self, HolonError> {
+        // Borrow the CommitManager immutably from the context
+        let commit_manager = context.commit_manager.borrow();
+
+        // Get the holon from the CommitManager
+        let holon_rc = commit_manager.staged_holons.get(self.holon_index)
+            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
+
+        let mut holon_ref = holon_rc.borrow_mut();
+
+        // Call the Holon's with_property_value method
+        holon_ref.with_property_value(property, value)?;
+
+        Ok(self)
     }
 
     pub fn add_related_holons(

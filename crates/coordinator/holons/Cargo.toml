@@ -8,27 +8,30 @@ crate-type = ["cdylib", "rlib"]
 name = "holons"
 
 [dependencies]
+derive-new = { workspace = true }
 hdk = { workspace = true }
 hdi = { workspace = true }
 holochain_integrity_types = { workspace = true }
 #holochain = "0.1.7"
 
 holons_integrity = { workspace = true }
-serde = { workspace = true }
-derive-new = { workspace = true }
-thiserror = { workspace = true }
+
 quick_cache = { workspace = true }
+thiserror = { workspace = true }
 
 shared_types_holon = { workspace = true }
 shared_validation = { workspace = true }
 
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-
-holochain = { version = "0.2", default-features = false, features = ["test_utils",] }
-tokio = { version = "1.35.1", features = ["full"] }
-futures = { version = "0.3.1", default-features = false }
-rstest = "0.18.1"
 async-std = "1.1.12"
-
+futures = { version = "0.3.1", default-features = false }
+holochain = { version = "0.2", default-features = false, features = ["test_utils",] }
 pretty_assertions = "1.4.0"
+rstest = "0.18.1"
+tokio = { version = "1.35.1", features = ["full"] }
+
 #[dev-dependencies]

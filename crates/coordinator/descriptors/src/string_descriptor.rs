@@ -1,4 +1,6 @@
+use CoreSchemaPropertyTypeName::TypeName;
 use holons::context::HolonsContext;
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
@@ -7,10 +9,13 @@ use shared_types_holon::value_types::{
     BaseType, BaseValue, MapInteger, MapString, ValueType,
 };
 
-use crate::type_descriptor::{define_type_descriptor, TypeDefinitionHeader};
+use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use crate::descriptor_types::CoreSchemaPropertyTypeName::{MaxLength, MinLength};
+use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
-pub struct StringDefinition {
-    pub header:TypeDefinitionHeader,
+pub struct StringTypeDefinition {
+    pub header: TypeDescriptorDefinition,
+    pub type_name: MapString,
     pub min_length: MapInteger,
     pub max_length: MapInteger,
 }
@@ -30,30 +35,54 @@ pub struct StringDefinition {
 pub fn define_string_type(
     context: &HolonsContext,
     schema: &HolonReference,
-    definition: StringDefinition,
+    definition: StringTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
 
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let descriptor = define_type_descriptor(
+    let type_descriptor_ref = define_type_descriptor(
         context,
         schema,
         BaseType::Value(ValueType::String),
         definition.header,
     )?;
 
-    let mut mut_holon = descriptor.get_mut_holon(context)?;
+    let mut string_type = Holon::new();
 
-    mut_holon
-        .borrow_mut()
+    // Add its properties
+
+    string_type
         .with_property_value(
-            PropertyName(MapString("min_length".to_string())),
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(definition.type_name.clone()),
+        )?
+        .with_property_value(
+            TypeName.as_property_name(),
+            BaseValue::StringValue(definition.type_name.clone()),
+        )?
+        .with_property_value(
+            MinLength.as_property_name(),
             BaseValue::IntegerValue(definition.min_length),
         )?
         .with_property_value(
-            PropertyName(MapString("max_length".to_string())),
+            MaxLength.as_property_name(),
             BaseValue::IntegerValue(definition.max_length),
         )?;
 
+    // Stage new string type
+    let string_type_ref = context
+        .commit_manager
+        .borrow_mut()
+        .stage_new_holon(string_type.clone())?;
 
-    Ok(descriptor)
+
+    // Add some relationships
+    string_type_ref
+        .add_related_holons(
+            context,
+            CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+            vec![HolonReference::Staged(type_descriptor_ref)]
+        )?;
+
+
+    Ok(string_type_ref)
 }

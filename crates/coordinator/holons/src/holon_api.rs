@@ -4,7 +4,7 @@ use hdk::prelude::*;
 
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::HolonId;
+
 
 use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
@@ -23,9 +23,13 @@ pub struct WithPropertyInput {
 #[hdk_extern]
 pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
     let mut holon = input.holon.clone();
-    holon.with_property_value(input.property_name.clone(), input.value.clone());
-    Ok(holon)
+    match holon.with_property_value(input.property_name.clone(), input.value.clone()) {
+        Ok(_) => Ok(holon),
+        Err(holon_error) => Err(holon_error.into()),
+    }
 }
+
+
 
 #[hdk_extern]
 pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {

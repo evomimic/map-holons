@@ -28,6 +28,8 @@ holons_integrity = { workspace = true }
 holons = {workspace = true}
 shared_types_holon = {workspace = true}
 
+Inflector = {workspace = true}
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 
 holochain = {version = "0.2", default-features = false, features = ["test_utils"] }
