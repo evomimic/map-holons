@@ -58,13 +58,11 @@ impl HolonCollection {
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.state {
             CollectionState::Fetched => match access_type {
-                AccessType::Read => Ok(()),
-                AccessType::Write | AccessType::Abandon | AccessType::Commit => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state),
-                    ))
-                }
+                AccessType::Read | AccessType::Write => Ok(()), // Write access to cached Holons are ok
+                AccessType::Abandon | AccessType::Commit => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
             },
             CollectionState::Staged => match access_type {
                 AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
@@ -104,7 +102,10 @@ impl HolonCollection {
         if index < self.members.len() {
             Ok(self.members[index].clone())
         } else {
-            Err(HolonError::IndexOutOfRange(format!("Index {} is out of bounds", index)))
+            Err(HolonError::IndexOutOfRange(format!(
+                "Index {} is out of bounds",
+                index
+            )))
         }
     }
 
@@ -121,7 +122,6 @@ impl HolonCollection {
     pub fn get_count(&self) -> MapInteger {
         MapInteger(self.members.len() as i64)
     }
-
 
     /// Returns the current state of the HolonCollection.
     ///
@@ -248,4 +248,3 @@ impl HolonCollection {
         Ok(())
     }
 }
-
