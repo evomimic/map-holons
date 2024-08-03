@@ -1,7 +1,6 @@
 import { Injectable, OnDestroy } from "@angular/core";
 import { environment } from '@environment';
-import { AppSignalCb, AppSignal, AppWebsocket, AppAgentWebsocket, AppCreateCloneCellRequest, HoloHashB64 } from '@holochain/client'
-import { Dictionary, fakeCellId, fakeDNAModifiers, serializeHash } from "../helpers/utils";
+import { AppSignalCb, AppSignal, AppWebsocket, HoloHashB64, CreateCloneCellRequest } from '@holochain/client'
 import { ApiService, ConnectionState } from "./api.service"
 import { Cell, ClonedCellInput, mockClonedCell, mockProvisionedCell } from "../helpers/interface.cell";
 
@@ -27,7 +26,8 @@ export class HolochainService extends ApiService implements OnDestroy{
       sessionStorage.clear()
       try{
         console.log("Connecting to holochain")
-        this.appWS = await AppAgentWebsocket.connect(new URL(environment.HOST_URL),environment.APP_ID,1500)
+        this.setInstalledAppId("map-holons")
+        this.appWS = await AppWebsocket.connect()//new URL(environment.HOST_URL))
         //const appWSp =  await AppWebsocket.connect(environment.HOST_URL,1500)
         this.appWS.on("signal",(s)=>this.signalHandler(s))
         //this.appInfo = await this.appWS.appInfo()//{ installed_app_id: environment.APP_ID});
@@ -93,18 +93,18 @@ export class HolochainService extends ApiService implements OnDestroy{
 
     //TODO add event listener and relay state change back to UI
     getConnectionState():string{
-     if (this.appWS && this.appWS.appWebsocket){
-      return ConnectionState[this.appWS.appWebsocket.client.socket.readyState]
+     if (this.appWS && this.appWS){
+      return ConnectionState[this.appWS.client.socket.readyState]
     } else
       return ConnectionState[3]
     }
 
-    createClone(clone_request:AppCreateCloneCellRequest){
+    createClone(clone_request:CreateCloneCellRequest){
       this.appWS.createCloneCell(clone_request)
     }
 
     ngOnDestroy(){
-      this.appWS.appWebsocket.client.close();
+      this.appWS.client.close();
     }
 
 }

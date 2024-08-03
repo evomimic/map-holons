@@ -123,16 +123,16 @@
     "holochain": {
       "flake": false,
       "locked": {
-        "lastModified": 1714468636,
-        "narHash": "sha256-3pdzVmU2uKh7ikcD1K2/YbbYiZGVvWiR46mkdYx3ZbA=",
+        "lastModified": 1722347117,
+        "narHash": "sha256-Jv4DxaVtdbO+fOD4woFoepCCOtRN/HF94xJSwViz3ck=",
         "owner": "holochain",
         "repo": "holochain",
-        "rev": "5b5c177dab35582b6190209762fc57c20d8f157a",
+        "rev": "97d86050b177829b623461970db5c3b64fbd74c1",
         "type": "github"
       },
       "original": {
         "owner": "holochain",
-        "ref": "holochain-0.2.8",
+        "ref": "holochain-0.3.2",
         "repo": "holochain",
         "type": "github"
       }
@@ -172,11 +172,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1722509204,
-        "narHash": "sha256-mVPZ52L3/8ydW0GbKHFu16Una5vZq3FKsofmP4xAZD4=",
+        "lastModified": 1722598765,
+        "narHash": "sha256-k4SYTJlMvrJRefEuUmITdXbsVzd5vjmw4Wl/U9bYYb0=",
         "owner": "holochain",
         "repo": "holochain",
-        "rev": "c59a4dff985c2308edac58a40ae0b56c46eed27d",
+        "rev": "2bda9c4dc68acf467022833911e3c1d76073f3d4",
         "type": "github"
       },
       "original": {
@@ -188,16 +188,16 @@
     "lair": {
       "flake": false,
       "locked": {
-        "lastModified": 1706550351,
-        "narHash": "sha256-psVjtb+zj0pZnHTj1xNP2pGBd5Ua1cSwdOAdYdUe3yQ=",
+        "lastModified": 1717684904,
+        "narHash": "sha256-vcXt67Tl1qwVUkx8CBevdQocqZXUEeoXjaYw86ljsYo=",
         "owner": "holochain",
         "repo": "lair",
-        "rev": "b11e65eff11c8ac3bf938607946f5c7201298a65",
+        "rev": "6a84ed490fc7074d107e38bbb4a8d707e9b8e066",
         "type": "github"
       },
       "original": {
         "owner": "holochain",
-        "ref": "lair_keystore-v0.4.2",
+        "ref": "lair_keystore-v0.4.5",
         "repo": "lair",
         "type": "github"
       }
@@ -205,16 +205,16 @@
     "launcher": {
       "flake": false,
       "locked": {
-        "lastModified": 1684183666,
-        "narHash": "sha256-rOE/W/BBYyZKOyypKb8X9Vpc4ty1TNRoI/fV5+01JPw=",
+        "lastModified": 1717431387,
+        "narHash": "sha256-+VvWwBmxcgePV1L6kU2mSkg3emMiMgpdQnCqvQJkRPk=",
         "owner": "holochain",
         "repo": "hc-launch",
-        "rev": "75ecdd0aa191ed830cc209a984a6030e656042ff",
+        "rev": "9d9cab5e6b57e1c278113921ff203e515c8bbd2e",
         "type": "github"
       },
       "original": {
         "owner": "holochain",
-        "ref": "holochain-0.2",
+        "ref": "holochain-0.3",
         "repo": "hc-launch",
         "type": "github"
       }
@@ -327,16 +327,16 @@
     "scaffolding": {
       "flake": false,
       "locked": {
-        "lastModified": 1718795177,
-        "narHash": "sha256-TES8dHfS/Y5j5UwcfAoDGnqkXgITQlmIsPWa/SZimio=",
+        "lastModified": 1722439136,
+        "narHash": "sha256-TlCogFMYSZtep5AhG7IrMDxq0Grze2B5LL59+j6am1E=",
         "owner": "holochain",
         "repo": "scaffolding",
-        "rev": "c6acd6663c88fcc824f0682d881071e5d3a7ebd2",
+        "rev": "19567b5b2ac550216b3a1479893acf3f734921b4",
         "type": "github"
       },
       "original": {
         "owner": "holochain",
-        "ref": "holochain-0.2",
+        "ref": "holochain-0.3",
         "repo": "scaffolding",
         "type": "github"
       }
@@ -349,16 +349,16 @@
         "scaffolding": "scaffolding"
       },
       "locked": {
-        "dir": "versions/0_2",
-        "lastModified": 1722509204,
-        "narHash": "sha256-mVPZ52L3/8ydW0GbKHFu16Una5vZq3FKsofmP4xAZD4=",
+        "dir": "versions/0_3",
+        "lastModified": 1722598765,
+        "narHash": "sha256-k4SYTJlMvrJRefEuUmITdXbsVzd5vjmw4Wl/U9bYYb0=",
         "owner": "holochain",
         "repo": "holochain",
-        "rev": "c59a4dff985c2308edac58a40ae0b56c46eed27d",
+        "rev": "2bda9c4dc68acf467022833911e3c1d76073f3d4",
         "type": "github"
       },
       "original": {
-        "dir": "versions/0_2",
+        "dir": "versions/0_3",
         "owner": "holochain",
         "repo": "holochain",
         "type": "github"

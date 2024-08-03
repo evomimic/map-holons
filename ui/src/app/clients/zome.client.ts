@@ -1,6 +1,6 @@
 import { inject } from "@angular/core";
 import { HolochainService } from "../services/holochain.service";
-import { AgentPubKey, AppAgentWebsocket, AppSignal, CreateCloneCellRequest, MembraneProof, Timestamp, encodeHashToBase64 } from "@holochain/client";
+import { AgentPubKey, AppSignal, CreateCloneCellRequest, MembraneProof, Timestamp, encodeHashToBase64 } from "@holochain/client";
 import { environment } from '@environment';
 
 export class ZomeClient{
@@ -31,7 +31,7 @@ export class ZomeClient{
    // props = { progenitor:progenitor_agent }
  // }
  let cloneRequest:CreateCloneCellRequest = {
-  app_id: environment.APP_ID,
+  //app_id: "test",//environment.APP_ID,
   role_name: rolename,
   modifiers: {
     network_seed: net_seed,

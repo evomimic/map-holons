@@ -1,4 +1,4 @@
-import { AppAgentWebsocket, AppSignal, AppSignalCb, CellId, CellType, ClonedCell, DnaModifiers, HoloHash, InstalledAppInfoStatus, ProvisionedCell, RoleName, encodeHashToBase64 } from "@holochain/client";
+import { AppWebsocket, AppSignal, AppSignalCb, CellId, CellType, ClonedCell, DnaModifiers, HoloHash, InstalledAppInfoStatus, ProvisionedCell, RoleName, encodeHashToBase64 } from "@holochain/client";
 import { Observable, Observer } from "rxjs";
 import { Cell, mockClonedCell, mockProvisionedCell } from "../helpers/interface.cell";
 import { environment } from "@environment";
@@ -13,7 +13,8 @@ export enum ConnectionState{
 export type SignalCallback = {rolename:string, cell_instance:string, zome_name:string, cb_fn:AppSignalCb }
 
 export class ApiService {
-  protected appWS!: AppAgentWebsocket
+  protected appWS!: AppWebsocket
+  protected InstalledAppId:Object = {installed_app_id:"undefined"}
   //private socketObservable: Observable<MessageEvent>;
   protected signalCallbacks: SignalCallback[] = []
   private cell_data: Record<RoleName, Cell[]> = {}
@@ -47,9 +48,9 @@ export class ApiService {
    */
   protected async queryCellData(role_filter?:string):Promise<Record<RoleName, Cell[]>> { // Dictionary<Dictionary<Cell>>{
     let records: Record<RoleName,Cell[]> = {} 
-    if (this.appWS && this.appWS.appWebsocket) {
+    if (this.appWS && this.appWS) {
       const appInfo = await this.appWS.appInfo()
-      Object.entries(appInfo.cell_info).forEach(([role, cellInfoArr]) => {
+      Object.entries(appInfo!.cell_info).forEach(([role, cellInfoArr]) => {
         console.log(role)
         if(role_filter && (role !== role_filter)) return
         const cellarr:Cell[] = []
@@ -100,6 +101,10 @@ export class ApiService {
     return records 
   }
 
+  protected setInstalledAppId(installedAppId:string){
+    this.InstalledAppId = {installed_app_id: installedAppId}
+  }
+
   protected getCellData():Record<RoleName, Cell[]> { 
     return this.cell_data
   }
@@ -140,7 +145,7 @@ export class ApiService {
 
   protected async getSocketStatus():Promise<InstalledAppInfoStatus> {
     let info = await this.appWS.appInfo()
-    return info.status
+    return info!.status
   }
 
 

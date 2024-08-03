@@ -7,6 +7,6 @@ export const environment = {
   mock: false,
   HOST_URL: 'ws://127.0.0.1:8889',
   //HOST_URL:'ws://192.168.1.100:8889',
-  APP_ID:'my-app',
+  APP_ID:'map-holons',
   cells:['team'] //'profile_invitation'
 };
