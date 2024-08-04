@@ -12,7 +12,6 @@ derive-new = { workspace = true }
 hdk = { workspace = true }
 hdi = { workspace = true }
 holochain_integrity_types = { workspace = true }
-#holochain = "0.1.7"
 
 holons_integrity = { workspace = true }
 
@@ -29,9 +28,9 @@ serde_json = { workspace = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 async-std = "1.1.12"
 futures = { version = "0.3.1", default-features = false }
-holochain = { version = "0.2", default-features = false, features = ["test_utils",] }
+holochain = { version = "0.3", default-features = false, features = ["test_utils",] }
 pretty_assertions = "1.4.0"
-rstest = "0.18.1"
+rstest = "0.21"
 tokio = { version = "1.35.1", features = ["full"] }
 
 #[dev-dependencies]

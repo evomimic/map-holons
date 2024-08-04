@@ -49,11 +49,14 @@ impl SmartLink {
 // UTILITY FUNCTIONS //
 
 pub fn get_all_relationship_links(holon_id: ActionHash) -> Result<Vec<SmartLink>, HolonError> {
-    let link_tag_filter: Option<LinkTag> = None;
+    //let link_tag_filter: Option<LinkTag> = None;
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
-    let links = get_links(holon_id.clone(), LinkTypes::SmartLink, link_tag_filter)
+    let links = get_links(GetLinksInputBuilder::try_new(
+        holon_id.clone(),
+        LinkTypes::SmartLink,
+        )?.build())
         .map_err(|e| HolonError::from(e))?;
 
     for link in links {
@@ -74,7 +77,7 @@ pub fn get_relationship_links(
         relationship_name.0.to_string()
     );
     // Use the relationship_name reference to encode the link tag
-    let link_tag_filter: Option<LinkTag> = Some(encode_link_tag(relationship_name.clone(), None)?);
+    let link_tag_filter: LinkTag = encode_link_tag(relationship_name.clone(), None)?;
 
     debug!(
         "getting links for link_tag_filter: {:?}",
@@ -84,7 +87,10 @@ pub fn get_relationship_links(
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
     // Retrieve links using the specified link tag filter
-    let links = get_links(holon_id.clone(), LinkTypes::SmartLink, link_tag_filter)
+    let links = get_links(GetLinksInputBuilder::try_new(
+        holon_id.clone(),
+        LinkTypes::SmartLink,
+        )?.tag_prefix(link_tag_filter).build())
         .map_err(|e| HolonError::from(e))?;
 
     debug!("got {:?} links", links.len());

@@ -19,15 +19,15 @@ pub fn validate_create_holon_node(
 pub fn validate_update_holon_node(
     _action: Update,
     _holon_node: HolonNode,
-    _original_action: EntryCreationAction,
-    _original_holon_node: HolonNode,
+   // _original_action: EntryCreationAction,
+    //_original_holon_node: HolonNode,
 ) -> ExternResult<ValidateCallbackResult> {
     Ok(ValidateCallbackResult::Valid)
 }
 pub fn validate_delete_holon_node(
     _action: Delete,
-    _original_action: EntryCreationAction,
-    _original_holon_node: HolonNode,
+    //_original_action: EntryCreationAction,
+    //_original_holon_node: HolonNode,
 ) -> ExternResult<ValidateCallbackResult> {
     Ok(ValidateCallbackResult::Valid)
 }

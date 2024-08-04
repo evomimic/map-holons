@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use async_std::task;
 use hdk::prelude::*;
 
-use holochain::prelude::kitsune_p2p::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
+use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
@@ -84,7 +84,7 @@ use shared_types_holon::HolonId;
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
-    let _ = holochain_trace::test_run().ok();
+    let _ = holochain_trace::test_run();
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
         setup_conductor().await;

@@ -5,7 +5,7 @@ import {  } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 
 import { DanceRequest, createHolon } from './common.js';
-import { BaseValueType, Holon, PropertyMap, ResponseStatusCodeMap, ResponseBodyEnum  } from "./types.js";
+import { BaseValueType, Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
 
 test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
   await runScenario(async scenario => {
@@ -51,10 +51,9 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     let properties:PropertyMap = {}
     properties["title"] = {[BaseValueType.StringValue]:"mybook"}
     response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
-    //console.log(response)
     //assertions:
     assert.equal(response.getStagedObjects().length, 1);
-    assert.equal(Object.keys(response.status_code)[0], ResponseStatusCodeMap.OK);
+    assert.equal(response.status_code, ResponseStatusCode.OK);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
     holonindex = Object.values(response.body)[0]
     assert.equal(holonindex, 0);
@@ -69,7 +68,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     //assertions
     //console.log("property add result:",response)
     assert.equal(response.getStagedObjects().length, 1);
-    assert.equal(Object.keys(response.status_code)[0], ResponseStatusCodeMap.OK);
+    assert.equal(response.status_code, ResponseStatusCode.OK);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
     holonindex = Object.values(response.body)[0]
     assert.equal(holonindex, 0);
@@ -86,7 +85,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     //assertions
     //console.log("New holon result",response)
     assert.equal(response.getStagedObjects().length, 2);
-    assert.equal(Object.keys(response.status_code)[0], ResponseStatusCodeMap.OK);
+    assert.equal(response.status_code, ResponseStatusCode.OK);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
     holonindex = Object.values(response.body)[0]
     assert.equal(holonindex, 1);

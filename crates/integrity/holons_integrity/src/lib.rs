@@ -8,7 +8,7 @@ pub use holon_node::*;
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
-#[hdk_entry_defs]
+#[hdk_entry_types]
 #[unit_enum(UnitEntryTypes)]
 pub enum EntryTypes {
     //    Holon(Holon),
@@ -66,21 +66,21 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         FlatOp::RegisterUpdate(update_entry) => {
             match update_entry {
                 OpUpdate::Entry {
-                    original_action,
-                    original_app_entry,
+                    //original_action,
+                    //original_app_entry,
                     app_entry,
                     action,
                 } => {
-                    match (app_entry, original_app_entry) {
-                        (
-                            EntryTypes::HolonNode(holon_node),
-                            EntryTypes::HolonNode(original_holon_node),
-                        ) => {
+                    match app_entry {//, original_app_entry) {
+                        
+                            EntryTypes::HolonNode(holon_node)
+                            //EntryTypes::HolonNode(original_holon_node)
+                        => {
                             validate_update_holon_node(
                                 action,
                                 holon_node,
-                                original_action,
-                                original_holon_node,
+                                //original_action,
+                              //  original_holon_node,
                             )
                         }
                         _ => {
@@ -98,18 +98,18 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         }
         FlatOp::RegisterDelete(delete_entry) => {
             match delete_entry {
-                OpDelete::Entry { original_action, original_app_entry, action } => {
-                    match original_app_entry {
-                        EntryTypes::HolonNode(holon_node) => {
+                OpDelete { action } => {
+                   // match action {
+                     //   EntryTypes::HolonNode(holon_node) => {
                             validate_delete_holon_node(
                                 action,
-                                original_action,
-                                holon_node,
+                               // original_action,
+                               // holon_node,
                             )
-                        }
-                    }
+                        //}
+                   // }
                 }
-                _ => Ok(ValidateCallbackResult::Valid),
+                //_ => Ok(ValidateCallbackResult::Valid),
             }
         }
         FlatOp::RegisterCreateLink {
@@ -241,8 +241,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                 validate_update_holon_node(
                                     action,
                                     holon_node,
-                                    original_action,
-                                    original_holon_node,
+                                   // original_action,
+                                   // original_holon_node,
                                 )
                             } else {
                                 Ok(result)
@@ -305,8 +305,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         EntryTypes::HolonNode(original_holon_node) => {
                             validate_delete_holon_node(
                                 action,
-                                original_action,
-                                original_holon_node,
+                               // original_action,
+                                //original_holon_node,
                             )
                         }
                     }

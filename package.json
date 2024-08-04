@@ -26,7 +26,6 @@
     "cb": "clear && npm run build:happ"
   },
   "_comments": {
-    "install": "Temporary hack, please use npm i --legacy-peer-deps",
     "sweetest:quiet": "Script to run tests with minimal tracing (warn level)",
     "sweetest:info": "Script to run tests with moderate tracing (info level)",
     "sweetest:debug": "Script to run tests with detailed tracing (debug level)",

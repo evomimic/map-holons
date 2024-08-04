@@ -26,11 +26,7 @@ pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
 pub fn get_holon_node(
     original_holon_node_hash: ActionHash,
 ) -> ExternResult<Option<Record>> {
-    let links = get_links(
-        original_holon_node_hash.clone(),
-        LinkTypes::HolonNodeUpdates,
-        None,
-    )?;
+    let links = get_links(GetLinksInputBuilder::try_new(original_holon_node_hash.clone(),LinkTypes::HolonNodeUpdates)?.build())?;
     let latest_link = links
         .into_iter()
         .max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
