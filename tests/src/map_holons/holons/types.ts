@@ -77,18 +77,7 @@ export type RequestBody = string | [string,Holon] | [string,TargetHolons] | [str
 
 
 export enum ResponseStatusCode {
-  OK,                 // 200
-  Accepted,           // 202
-  BadRequest,         // 400,
-  Unauthorized,       // 401
-  NotFound,           // 404
-  ServerError,        // 500
-  NotImplemented,     // 501
-  ServiceUnavailable, // 503
-}
-
-export enum ResponseStatusCodeMap {
-  OK = "OK",                 
+  OK = "OK",            
   Accepted = "Accepted",
   BadRequest = "BadRequest",
   Unauthorized = "Unauthorized",
