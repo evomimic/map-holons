@@ -43,28 +43,36 @@ pub enum CommitRequestStatus {
 }
 
 impl CommitManager {
-    /// This function converts a StagedIndex into a StagedReference
-    /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
-    /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
-    /// TODO: The latter is only reliable if staged_holons is made private
-    pub fn to_staged_reference(
-        &self,
-        staged_index: StagedIndex,
-    ) -> Result<StagedReference, HolonError> {
-        if let Some(staged_holon) = self.staged_holons.get(staged_index) {
-            let holon = staged_holon.borrow();
-            if let HolonState::Abandoned = holon.state {
-                return Err(HolonError::NotAccessible(
-                    "to_staged_reference".to_string(),
-                    "Abandoned".to_string(),
-                ));
-            }
-            Ok(StagedReference {
-                holon_index: staged_index,
-            })
-        } else {
-            Err(HolonError::IndexOutOfRange(staged_index.to_string()))
+    pub fn new() -> CommitManager {
+        CommitManager {
+            staged_holons: Vec::new(),
+            keyed_index: Default::default(),
         }
+    }
+
+    pub fn clear_staged_objects(&mut self) {
+        self.staged_holons.clear();
+        self.keyed_index.clear();
+    }
+
+    pub fn clone_holon(
+        &mut self,
+        context: &HolonsContext,
+        existing_holon: &mut SmartReference,
+    ) -> Result<StagedReference, HolonError> {
+        let holon = existing_holon.clone_holon(context)?;
+
+        // Add the new holon into the CommitManager's staged_holons list, remembering its index
+        let index = self.staged_holons.len() - 1;
+        self.staged_holons
+            .push(Rc::new(RefCell::new(holon.clone())));
+
+        // Return a staged reference to the staged holon
+        let staged_reference = StagedReference { holon_index: index };
+
+        Ok(staged_reference)
+
+        // Ok(staged_reference)
     }
 
     /// This function attempts to persist the state of all staged_holons AND their relationships.
@@ -185,177 +193,6 @@ impl CommitManager {
         }
     }
 
-    pub fn new() -> CommitManager {
-        CommitManager {
-            staged_holons: Vec::new(),
-            keyed_index: Default::default(),
-        }
-    }
-
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
-    /// to be retrieved by key
-
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
-    /// to be retrieved by key
-
-    pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
-        let rc_holon = Rc::new(RefCell::new(holon.clone()));
-        self.staged_holons.push(Rc::clone(&rc_holon));
-        let holon_index = self.staged_holons.len() - 1;
-        let holon_key: Option<MapString> = holon.get_key()?;
-        if let Some(key) = holon_key {
-            self.keyed_index.insert(key.clone(), holon_index);
-        }
-
-        Ok(StagedReference { holon_index })
-    }
-
-    pub fn clone_holon(
-        &mut self,
-        context: &HolonsContext,
-        existing_holon: &mut SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        // Create a new empty Holon
-        let mut holon = Holon::new();
-
-        // Add the new holon into the CommitManager's staged_holons list, remembering its index
-        let index = self.staged_holons.len();
-        self.staged_holons
-            .push(Rc::new(RefCell::new(holon.clone())));
-
-        // Return a staged reference to the staged holon
-        let staged_reference = StagedReference { holon_index: index };
-
-        // Copy the existing holon's PropertyMap into the new holon
-        holon.property_map = existing_holon.get_property_map(context)?;
-
-        // Iterate through existing holon's RelationshipMap
-        // For each HolonCollection, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
-        let existing_relationship_map = existing_holon.get_relationship_map(context)?;
-        holon.relationship_map = RelationshipMap::new();
-        for (relationship_name, holon_collection) in existing_relationship_map.0 {
-            holon_collection.to_staged()?;
-
-            holon
-                .relationship_map
-                .0
-                .insert(relationship_name, holon_collection);
-        }
-
-        Ok(staged_reference)
-    }
-
-    /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the
-    /// specified key.
-    /// NOTE: Only staged holons are searched and some holon types do not define unique keys
-    /// This means that:
-    ///    (1) even if this function returns `None` a holon with the specified key may exist in the DHT
-    ///    (2) There might be some holons staged for update that you cannot find by key
-    ///
-    pub fn get_holon_by_key(&self, key: MapString) -> Option<Rc<RefCell<Holon>>> {
-        if let Some(&index) = self.keyed_index.get(&key) {
-            Some(Rc::clone(&self.staged_holons[index]))
-        } else {
-            None
-        }
-    }
-
-    // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
-    //     self.staged_holons.get(index.0 as usize)
-    // }
-    pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
-        let holons = &self.staged_holons;
-        let holon_ref = holons
-            .get(reference.holon_index)
-            .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
-
-        match holon_ref.try_borrow() {
-            Ok(holon) => Ok(holon),
-            Err(_) => Err(HolonError::FailedToBorrow(
-                "Holon Reference from staged_holons vector".to_string(),
-            )),
-        }
-    }
-
-    /// Private helper function the encapsulates the logic for getting a mutable reference to a
-    /// holon from a Staged
-    fn get_mut_holon_internal(
-        &self,
-        holon_index: Option<StagedIndex>,
-    ) -> Result<RefMut<Holon>, HolonError> {
-        if let Some(index) = holon_index {
-            if let Some(holon) = self.staged_holons.get(index) {
-                return if let Ok(holon_ref) = holon.try_borrow_mut() {
-                    Ok(holon_ref)
-                } else {
-                    Err(HolonError::FailedToBorrow(
-                        "for StagedReference".to_string(),
-                    ))
-                };
-            }
-        }
-        Err(HolonError::InvalidHolonReference(
-            "Invalid holon index".to_string(),
-        ))
-    }
-
-    pub fn get_mut_holon_by_index(
-        &self,
-        holon_index: StagedIndex,
-    ) -> Result<RefMut<Holon>, HolonError> {
-        self.get_mut_holon_internal(Some(holon_index))
-    }
-
-    pub fn get_mut_holon(
-        &self,
-        staged_reference: &StagedReference,
-    ) -> Result<RefMut<Holon>, HolonError> {
-        self.get_mut_holon_internal(Some(staged_reference.holon_index))
-    }
-
-    // pub fn get_mut_holon_by_index(
-    //     &self,
-    //     holon_index: StagedIndex,
-    // ) -> Result<RefMut<Holon>, HolonError> {
-    //     return if let Some(holon) = self.staged_holons.get(holon_index.0 as usize) {
-    //         if let Ok(holon_ref) = holon.try_borrow_mut() {
-    //             Ok(holon_ref)
-    //         } else {
-    //             Err(HolonError::FailedToBorrow(
-    //                 "for StagedReference".to_string(),
-    //             ))
-    //         }
-    //     } else {
-    //         Err(HolonError::InvalidHolonReference(
-    //             "Invalid holon index".to_string(),
-    //         ))
-    //     };
-    // }
-    // pub fn get_mut_holon(
-    //     &self,
-    //     staged_reference: &StagedReference,
-    // ) -> Result<RefMut<Holon>, HolonError> {
-    //     return if let Some(holon) = self.staged_holons.get(staged_reference.holon_index) {
-    //         if let Ok(holon_ref) = holon.try_borrow_mut() {
-    //             Ok(holon_ref)
-    //         } else {
-    //             Err(HolonError::FailedToBorrow(
-    //                 "for StagedReference".to_string(),
-    //             ))
-    //         }
-    //     } else {
-    //         Err(HolonError::InvalidHolonReference(
-    //             "Invalid holon index".to_string(),
-    //         ))
-    //     };
-    // }
-    pub fn clear_staged_objects(&mut self) {
-        self.staged_holons.clear();
-        self.keyed_index.clear();
-    }
-
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
     pub fn edit_holon(
         &mut self,
@@ -395,5 +232,154 @@ impl CommitManager {
         }
 
         Ok(staged_reference)
+    }
+
+    // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
+    //     self.staged_holons.get(index.0 as usize)
+    // }
+    pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
+        let holons = &self.staged_holons;
+        let holon_ref = holons
+            .get(reference.holon_index)
+            .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
+
+        match holon_ref.try_borrow() {
+            Ok(holon) => Ok(holon),
+            Err(_) => Err(HolonError::FailedToBorrow(
+                "Holon Reference from staged_holons vector".to_string(),
+            )),
+        }
+    }
+
+    /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the
+    /// specified key.
+    /// NOTE: Only staged holons are searched and some holon types do not define unique keys
+    /// This means that:
+    ///    (1) even if this function returns `None` a holon with the specified key may exist in the DHT
+    ///    (2) There might be some holons staged for update that you cannot find by key
+    ///
+    pub fn get_holon_by_key(&self, key: MapString) -> Option<Rc<RefCell<Holon>>> {
+        if let Some(&index) = self.keyed_index.get(&key) {
+            Some(Rc::clone(&self.staged_holons[index]))
+        } else {
+            None
+        }
+    }
+
+    /// Private helper function the encapsulates the logic for getting a mutable reference to a
+    /// holon from a Staged
+    fn get_mut_holon_internal(
+        &self,
+        holon_index: Option<StagedIndex>,
+    ) -> Result<RefMut<Holon>, HolonError> {
+        if let Some(index) = holon_index {
+            if let Some(holon) = self.staged_holons.get(index) {
+                return if let Ok(holon_ref) = holon.try_borrow_mut() {
+                    Ok(holon_ref)
+                } else {
+                    Err(HolonError::FailedToBorrow(
+                        "for StagedReference".to_string(),
+                    ))
+                };
+            }
+        }
+        Err(HolonError::InvalidHolonReference(
+            "Invalid holon index".to_string(),
+        ))
+    }
+
+    pub fn get_mut_holon(
+        &self,
+        staged_reference: &StagedReference,
+    ) -> Result<RefMut<Holon>, HolonError> {
+        self.get_mut_holon_internal(Some(staged_reference.holon_index))
+    }
+
+    pub fn get_mut_holon_by_index(
+        &self,
+        holon_index: StagedIndex,
+    ) -> Result<RefMut<Holon>, HolonError> {
+        self.get_mut_holon_internal(Some(holon_index))
+    }
+
+    // pub fn get_mut_holon_by_index(
+    //     &self,
+    //     holon_index: StagedIndex,
+    // ) -> Result<RefMut<Holon>, HolonError> {
+    //     return if let Some(holon) = self.staged_holons.get(holon_index.0 as usize) {
+    //         if let Ok(holon_ref) = holon.try_borrow_mut() {
+    //             Ok(holon_ref)
+    //         } else {
+    //             Err(HolonError::FailedToBorrow(
+    //                 "for StagedReference".to_string(),
+    //             ))
+    //         }
+    //     } else {
+    //         Err(HolonError::InvalidHolonReference(
+    //             "Invalid holon index".to_string(),
+    //         ))
+    //     };
+    // }
+    // pub fn get_mut_holon(
+    //     &self,
+    //     staged_reference: &StagedReference,
+    // ) -> Result<RefMut<Holon>, HolonError> {
+    //     return if let Some(holon) = self.staged_holons.get(staged_reference.holon_index) {
+    //         if let Ok(holon_ref) = holon.try_borrow_mut() {
+    //             Ok(holon_ref)
+    //         } else {
+    //             Err(HolonError::FailedToBorrow(
+    //                 "for StagedReference".to_string(),
+    //             ))
+    //         }
+    //     } else {
+    //         Err(HolonError::InvalidHolonReference(
+    //             "Invalid holon index".to_string(),
+    //         ))
+    //     };
+    // }
+
+    /// Stages the provided holon and returns a reference-counted reference to it
+    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
+    /// to be retrieved by key
+
+    /// Stages the provided holon and returns a reference-counted reference to it
+    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
+    /// to be retrieved by key
+
+    pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
+        let rc_holon = Rc::new(RefCell::new(holon.clone()));
+        self.staged_holons.push(Rc::clone(&rc_holon));
+        let holon_index = self.staged_holons.len() - 1;
+        let holon_key: Option<MapString> = holon.get_key()?;
+        if let Some(key) = holon_key {
+            self.keyed_index.insert(key.clone(), holon_index);
+        }
+
+        Ok(StagedReference { holon_index })
+    }
+
+    /// This function converts a StagedIndex into a StagedReference
+    /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
+    /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
+    /// TODO: The latter is only reliable if staged_holons is made private
+    pub fn to_staged_reference(
+        &self,
+        staged_index: StagedIndex,
+    ) -> Result<StagedReference, HolonError> {
+        if let Some(staged_holon) = self.staged_holons.get(staged_index) {
+            let holon = staged_holon.borrow();
+            if let HolonState::Abandoned = holon.state {
+                return Err(HolonError::NotAccessible(
+                    "to_staged_reference".to_string(),
+                    "Abandoned".to_string(),
+                ));
+            }
+            Ok(StagedReference {
+                holon_index: staged_index,
+            })
+        } else {
+            Err(HolonError::IndexOutOfRange(staged_index.to_string()))
+        }
     }
 }

@@ -24,6 +24,8 @@ pub struct HolonCollection {
 }
 
 impl HolonCollection {
+    // CONSTRUCTORS //
+
     pub fn new_staged() -> Self {
         HolonCollection {
             state: CollectionState::Staged,
@@ -38,6 +40,17 @@ impl HolonCollection {
             keyed_index: BTreeMap::new(),
         }
     }
+
+    pub fn clone_for_new_source(&self) -> Result<Self, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let mut collection = self.clone();
+        collection.state = CollectionState::Staged;
+
+        Ok(collection)
+    }
+
+    // METHODS //
+
     pub fn from_parts(state: CollectionState, members: Vec<HolonReference>) -> Self {
         let keyed_index = BTreeMap::new();
 
