@@ -11,12 +11,11 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, Prope
 use shared_types_holon::{HolonId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
-use shared_validation::ValidationError;
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
-use crate::holon_collection::HolonCollection;
+use crate::holon_collection::{CollectionState, HolonCollection};
 use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
@@ -171,6 +170,37 @@ impl Holon {
         Ok(())
     }
 
+    /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit,
+    /// which retains no lineage to the original Holon.
+    pub fn clone_holon(&self) -> Result<Holon, HolonError> {
+        let mut holon = Holon::new();
+
+        // Copy the existing holon's PropertyMap and Descriptor into the new Holon
+        holon.property_map = self.property_map.clone();
+        holon.descriptor = self.descriptor.clone();
+
+        // Update in place each relationship's HolonCollection State to Staged
+        holon.relationship_map = self.relationship_map.clone_for_new_source()?;
+
+        Ok(holon)
+    }
+
+    /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
+    /// which retains lineage to its predecessor.
+    pub fn edit_holon(&self) -> Result<Holon, HolonError> {
+        let mut holon = Holon::new();
+
+        // Copy the existing holon's PropertyMap and Descriptor into the new Holon
+        holon.property_map = self.property_map.clone();
+        holon.descriptor = self.descriptor.clone();
+
+        // Update in place each relationship's HolonCollection State to Staged
+        holon.relationship_map = self.relationship_map.clone_for_new_source()?;
+
+        // TODO: set predecessor
+
+        Ok(holon)
+    }
     /// commit() saves a staged holon to the persistent store.
     ///
     /// If the staged holon is already  `Fetched`, `Saved`, or `Abandoned`, commit does nothing.
@@ -516,7 +546,6 @@ impl Holon {
                 )),
                 AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
             },
-
         }
     }
 
