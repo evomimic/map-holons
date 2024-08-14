@@ -124,6 +124,86 @@ pub fn add_related_holons_dance(
     }
 }
 
+/// *DanceRequest:*
+/// - dance_name: "remove_related_holons"
+/// - dance_type: CommandMethod(StagedIndex) -- identifies the holon that is the `source` of the relationship being navigated
+/// - request_body:
+///     TargetHolons(RelationshipName, Vec<HolonReference>),
+///
+/// *ResponseBody:*
+/// - Index(StagedIndex) -- index for the staged_holon for which related holons were removed
+///   
+///
+pub fn remove_related_holons_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("Entered remove_related_holons_dance");
+
+    // Match the dance_type
+    match request.dance_type {
+        DanceType::CommandMethod(staged_index) => {
+            // Borrow a read-only reference to the CommitManager
+            let staged_reference_result = {
+                let commit_manager = context.commit_manager.borrow();
+                debug!("Matched CommandMethod as dance_type.");
+                // Convert the staged_index into a StagedReference
+                commit_manager.to_staged_reference(staged_index)
+            };
+
+            // Handle the result of to_staged_reference
+            match staged_reference_result {
+                Ok(source_reference) => {
+                    match request.body {
+                        RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
+                            // Convert Vec<PortableReference> to Vec<HolonReference> inline
+                            debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
+
+                            debug!("Got the holon_refs_vec, about to call remove_related_holons");
+                            // Call the add_related_holons method on StagedReference
+                            source_reference.remove_related_holons(
+                                context,
+                                relationship_name,
+                                holons_to_remove,
+                            )?;
+
+                            Ok(ResponseBody::Index(staged_index))
+                        }
+                        _ => Err(HolonError::InvalidParameter(
+                            "Invalid RequestBody: expected TargetHolons, didn't get one"
+                                .to_string(),
+                        )),
+                    }
+                }
+                Err(e) => Err(e),
+            }
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected CommandMethod(StagedIndex), didn't get one".to_string(),
+        )),
+    }
+}
+
+
+
+
+/// Builds a DanceRequest for removing related holons to a source_holon.
+pub fn build_remove_related_holons_dance_request(
+    staging_area: StagingArea,
+    index: StagedIndex,
+    relationship_name: RelationshipName,
+    holons_to_remove: Vec<HolonReference>,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::new_target_holons(relationship_name, holons_to_remove);
+    Ok(DanceRequest::new(
+        MapString("remove_related_holons".to_string()),
+        DanceType::CommandMethod(index),
+        body,
+        staging_area,
+    ))
+}
+
+
 ///
 /// Builds a DanceRequest for adding related holons to a source_holon.
 pub fn build_add_related_holons_dance_request(

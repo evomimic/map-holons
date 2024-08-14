@@ -174,6 +174,22 @@ impl HolonCollection {
         Ok(())
     }
 
+    pub fn remove_references(
+        &mut self,
+        context: &HolonsContext,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        for holon in holons {
+            self.members.retain(|x| x != &holon);
+            if let Some(key) = holon.get_key(context)? {
+                self.keyed_index.remove(&key);
+            }
+        }
+        Ok(())
+    }
+
     /// Adds the supplied HolonReference to this holon collection and updates the keyed_index
     /// according to the supplied key. This allows the collection to be populated when key is
     /// known and context may not be available.
