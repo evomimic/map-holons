@@ -26,6 +26,13 @@ pub enum DanceTestStep {
         ResponseStatusCode,
         Holon,
     ), // Adds relationship between two Holons
+    RemoveRelatedHolons(
+         StagedIndex,
+         RelationshipName, 
+         Vec<HolonReference>, 
+         ResponseStatusCode,
+         Holon
+    ), 
     DatabasePrint, // Writes log messages for each holon in the persistent store
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
@@ -48,6 +55,15 @@ impl fmt::Display for DanceTestStep {
                 expected_holon,
             ) => {
                 write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", index, relationship_name, holons_to_add.len(), expected_response, expected_holon)
+            }
+            DanceTestStep::RemoveRelatedHolons(
+                index,
+                relationship_name,
+                holons_to_remove,
+                expected_response,
+                expected_holon,
+            ) => {
+                write!(f, "RemoveRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", index, relationship_name, holons_to_remove.len(), expected_response, expected_holon)
             }
             DanceTestStep::DatabasePrint => {
                 write!(f, "DatabasePrint")
@@ -125,6 +141,24 @@ impl DancesTestCase {
         expected_holon: Holon,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::AddRelatedHolons(
+            source_index,
+            relationship_name,
+            related_holons,
+            expected_response,
+            expected_holon,
+        ));
+        Ok(())
+    }
+
+    pub fn remove_related_holons_step(
+        &mut self,
+        source_index: StagedIndex, // "owning" source Holon, which owns the Relationship
+        relationship_name: RelationshipName,
+        related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
+        expected_response: ResponseStatusCode,
+        expected_holon: Holon,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::RemoveRelatedHolons(
             source_index,
             relationship_name,
             related_holons,
