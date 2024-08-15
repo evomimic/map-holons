@@ -160,7 +160,6 @@ pub fn remove_related_holons_dance(
                             debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
 
                             debug!("Got the holon_refs_vec, about to call remove_related_holons");
-                            // Call the add_related_holons method on StagedReference
                             source_reference.remove_related_holons(
                                 context,
                                 relationship_name,

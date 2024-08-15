@@ -104,11 +104,12 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     Ok(test_case.clone())
 }
+
 #[fixture]
-pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
+pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Simple Add Related Holon Testcase".to_string(),
-        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count is 2".to_string(),
+        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count is 3".to_string(),
 
     );
 
@@ -206,22 +207,54 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
 
     book_holon.relationship_map.0.insert(
         authored_by_relationship_name.clone(),
-        authored_by_collection,
+        authored_by_collection.clone(),
     );
 
 
-    let mut holons_to_add: Vec<HolonReference> = Vec::new();
-    holons_to_add.push(person_1_reference);
-    holons_to_add.push(person_2_reference);
-
-
-
+    let mut related_holons: Vec<HolonReference> = Vec::new();
+    related_holons.push(person_1_reference);
+    related_holons.push(person_2_reference);
 
 
     test_case.add_related_holons_step(
         book_index, // source holon
         authored_by_relationship_name.clone(),
-        holons_to_add.to_vec(),
+        related_holons.to_vec(),
+        ResponseStatusCode::OK,
+        book_holon.clone(),
+    )?;
+
+    // TODO - add function to get the stage and see number of actual holons?
+    //assert_eq!(HolonCollection::get_count(),3);
+
+    let empty_collection = HolonCollection::new_staged();
+
+    book_holon.relationship_map.0.clear();
+    book_holon.relationship_map.0.insert(authored_by_relationship_name.clone(),empty_collection);
+
+    test_case.remove_related_holons_step(
+        book_index, // source holon
+        authored_by_relationship_name.clone(),
+        related_holons.to_vec(),
+        ResponseStatusCode::OK,
+        book_holon.clone(), //expected
+    )?;
+
+
+    // TODO - add function to get the stage and see number of actual holons?
+    //assert_eq!(HolonCollection::get_count(),1);
+    
+    // repeat add related holons
+
+    book_holon.relationship_map.0.insert(
+        authored_by_relationship_name.clone(),
+        authored_by_collection,
+    );
+
+    test_case.add_related_holons_step(
+        book_index, // source holon
+        authored_by_relationship_name.clone(),
+        related_holons.to_vec(),
         ResponseStatusCode::OK,
         book_holon.clone(),
     )?;
@@ -238,7 +271,7 @@ pub fn simple_add_related_holons_fixture() -> Result<DancesTestCase, HolonError>
         query_expression,
         ResponseStatusCode::OK,
     )?;
-
+    
     Ok(test_case.clone())
 }
 
