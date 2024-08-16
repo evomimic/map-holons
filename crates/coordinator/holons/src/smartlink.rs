@@ -17,7 +17,7 @@ const fn smartlink_tag_header_length() -> usize {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SmartLink {
     pub from_address: LocalId,
-    pub to_address: HolonId,
+    pub to_address: HolonId, // NOTE: this could be an External HolonId
     pub relationship_name: RelationshipName, // temporarily using RelationshipName as descriptor
     pub smart_property_values: Option<PropertyMap>,
 }
@@ -25,11 +25,16 @@ pub struct SmartLink {
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct LinkTagObject {
     pub relationship_name: String,
-    // pub proxy_id: ActionHash,
+    // pub proxy_id: HolonSpaceId,
     pub smart_property_values: Option<PropertyMap>,
 }
 
 impl SmartLink {
+    /// The implementation of this function currently relies on a "key" property being stored
+    /// in the property_map. The intended design is to derive the key from the HolonDescriptor's
+    /// KEY_PROPERTIES relationship. However, the current parameters to this function are not
+    /// sufficient to do this.
+    /// TODO: update this function to align with described key property list design
     pub fn get_key(&self) -> Option<MapString> {
         if let Some(ref map) = self.smart_property_values {
             get_key_from_property_map(map)
@@ -38,29 +43,29 @@ impl SmartLink {
         }
     }
     pub fn to_holon_reference(&self) -> HolonReference {
-        let smart_reference = SmartReference {
-            holon_id: self.to_address.clone(),
-            smart_property_values: self.smart_property_values.clone(),
-        };
+        let smart_reference = SmartReference::new(
+          self.to_address.clone(),
+          self.smart_property_values.clone(),
+        );
         HolonReference::Smart(smart_reference)
     }
 }
 
 // UTILITY FUNCTIONS //
 
-pub fn get_all_relationship_links(holon_id: ActionHash) -> Result<Vec<SmartLink>, HolonError> {
+pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartLink>, HolonError> {
     //let link_tag_filter: Option<LinkTag> = None;
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
     let links = get_links(GetLinksInputBuilder::try_new(
-        holon_id.clone(),
+        local_source_id.0.clone(),
         LinkTypes::SmartLink,
         )?.build())
         .map_err(|e| HolonError::from(e))?;
 
     for link in links {
-        let smartlink = get_smartlink_from_link(holon_id.clone(), link)?;
+        let smartlink = get_smartlink_from_link(local_source_id.0.clone(), link)?;
         smartlinks.push(smartlink);
     }
 
@@ -107,7 +112,7 @@ pub fn get_smartlink_from_link(
     source_local_hash: ActionHash,
     link: Link,
 ) -> Result<SmartLink, HolonError> {
-    let target = link
+    let local_target = link
         .target
         .into_action_hash()
         .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
@@ -116,9 +121,10 @@ pub fn get_smartlink_from_link(
 
     let link_tag_obj = decode_link_tag(link.tag.clone())?;
 
+    // TODO: Enhance the following to support External HolonIds (by pulling proxy_id from LinkTagObj)
     let smartlink = SmartLink {
         from_address: LocalId(source_local_hash.clone()),
-        to_address: HolonId(target),
+        to_address: LocalId(local_target).into(),
         relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
         smart_property_values: link_tag_obj.smart_property_values,
     };
@@ -135,7 +141,7 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
 
     create_link(
         input.from_address.clone().0,
-        input.to_address.clone().0,
+        input.to_address.local_id().clone().0,
         LinkTypes::SmartLink,
         link_tag,
     )?;
@@ -163,8 +169,8 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
         .iter()
         .position(|&b| b == RELATIONSHIP_NAME_SEPERATOR.as_bytes()[0]);
     // let name_end_option = cursor
-    //     .windows(PROLOG_SEPERATOR.len())
-    //     .position(|window| window == PROLOG_SEPERATOR);
+    //     .windows(PROLOG_SEPARATOR.len())
+    //     .position(|window| window == PROLOG_SEPARATOR);
 
     if let Some(name_end) = name_end_option {
         let relationship_name = str::from_utf8(&cursor[..name_end]).map_err(|_| {
@@ -177,12 +183,12 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
         info!("DECODED relationship_name: {:#?}", relationship_name);
 
         cursor = &cursor[name_end + RELATIONSHIP_NAME_SEPERATOR.len()..];
-        // Confirm PROLOG_SEPERATOR reached
+        // Confirm PROLOG_SEPARATOR reached
         if cursor.starts_with(&PROLOG_SEPERATOR) {
             cursor = &cursor[PROLOG_SEPERATOR.len()..];
         } else {
             return Err(HolonError::InvalidParameter(
-                "Invalid LinkTag: Missing PROLOG_SEPERATOR bytes".to_string(),
+                "Invalid LinkTag: Missing PROLOG_SEPARATOR bytes".to_string(),
             ));
         }
     }
@@ -226,7 +232,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
                 cursor = &cursor[PROPERTY_VALUE_SEPERATOR.len()..];
             } else {
                 return Err(HolonError::InvalidParameter(
-                    format!("Invalid LinkTag: No PROPERTY_VALUE_SEPERATOR found, missing value for property_name: {:?}", property_name)
+                    format!("Invalid LinkTag: No PROPERTY_VALUE_SEPARATOR found, missing value for property_name: {:?}", property_name)
                 ));
             }
 

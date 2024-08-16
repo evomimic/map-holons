@@ -40,14 +40,17 @@ impl HolonId {
         matches!(self, HolonId::External(_))
     }
 
-    pub fn local_id(&self) -> Option<&LocalId> {
-        if let HolonId::Local(ref local_id) = self {
-            Some(local_id)
-        } else {
-            None
+    /// Extracts LocalId from BOTH Local and External HolonIds
+    pub fn local_id(&self) -> &LocalId {
+        match self {
+            HolonId::Local(ref local_id) => local_id,
+            HolonId::External(ref external_id) => &external_id.local_id,
         }
     }
 
+
+
+    /// Returns Some(ExternalId) from External variants of HolonId and None otherwise
     pub fn external_id(&self) -> Option<&ExternalId> {
         if let HolonId::External(ref external_id) = self {
             Some(external_id)

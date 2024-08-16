@@ -47,6 +47,9 @@ impl SmartReference {
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
+    pub fn get_smart_properties(&self) -> Option<PropertyMap> {
+        self.smart_property_values.clone()
+    }
     pub fn get_property_map(&self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_refcell = holon.borrow();

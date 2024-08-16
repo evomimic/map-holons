@@ -317,14 +317,6 @@ impl Holon {
         })
     }
 
-    /// This method allows you to ask a Holon for its HolonId.
-    ///
-    /// **NOTE: Holons only KNOW their local_id, so this method will ONLY return the Local
-    /// variant of HolonId
-    pub fn get_id(&self) -> Result<HolonId, HolonError> {
-        let local_id = self.get_local_id()?;  // Extract LocalId or propagate the error
-        Ok(local_id.into())  // Convert LocalId to HolonId::Local and wrap it in Ok
-    }
     pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
         let records = get_all_holon_nodes(());
         match records {
@@ -619,7 +611,7 @@ impl Holon {
         let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
 
         let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
-        let smartlinks = get_all_relationship_links(self.get_local_id()?.0)?;
+        let smartlinks = get_all_relationship_links(self.get_local_id()?)?;
         debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {

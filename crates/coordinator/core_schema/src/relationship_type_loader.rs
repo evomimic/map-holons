@@ -16,7 +16,7 @@ use shared_types_holon::{MapBoolean, MapString};
 use crate::collection_type_loader::CollectionTypeSpec;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns};
+use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
 use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
 #[derive(Debug, Clone, Default, EnumIter)]
@@ -37,10 +37,12 @@ pub enum CoreRelationshipTypeName {
     #[default]
     OwnedBy,
     Owns,
+    Predecessor,
     Properties,
     PropertyOf,
     SourceFor,
     SourceHolonType,
+    Successor,
     TargetCollectionType,
     TargetHolonType,
     TargetOfCollectionType,
@@ -333,6 +335,22 @@ impl CoreRelationshipTypeName {
                 },
                 has_inverse: Some(Owns),
             },
+            Predecessor => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString("Specifies the previous version of this Holon".to_string()),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::OptionalInstance,
+                    holon_type: CoreHolonTypeName::HolonType,
+                },
+                has_inverse: Some(Successor),
+            },
             Properties => RelationshipTypeLoader {
                 descriptor_name,
                 description : MapString(
@@ -415,6 +433,22 @@ impl CoreRelationshipTypeName {
                 },
                 has_inverse: None,
 
+            },
+            Successor => RelationshipTypeLoader {
+                descriptor_name,
+                description: MapString("Specifies the a later version of this Holon".to_string()),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Block,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::Set,
+                    holon_type: CoreHolonTypeName::HolonType,
+                },
+                has_inverse: Some(Predecessor),
             },
             TargetCollectionType => RelationshipTypeLoader {
                 descriptor_name,

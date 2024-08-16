@@ -119,7 +119,8 @@ impl HolonReference {
     pub fn get_holon_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
+            HolonReference::Staged(staged_reference) =>
+                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
         }
     }
 
