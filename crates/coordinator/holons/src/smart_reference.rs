@@ -18,8 +18,8 @@ use crate::relationship::{RelationshipMap, RelationshipName};
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct SmartReference {
     //holon_space_id: Option<SpaceId>
-    pub holon_id: HolonId,
-    pub smart_property_values: Option<PropertyMap>,
+    holon_id: HolonId,
+    smart_property_values: Option<PropertyMap>,
 }
 
 impl SmartReference {
@@ -43,15 +43,7 @@ impl SmartReference {
     //
     // }
 
-    // Constructor function for creating Holon Reference from an rc_holon
-    pub fn from_holon(rc_holon: Rc<Holon>) -> Result<SmartReference, HolonError> {
-        let id = rc_holon.get_id()?;
 
-        Ok(SmartReference {
-            holon_id: id,
-            smart_property_values: None, // TODO: need fn to build smart_property_map, this requires descriptor
-        })
-    }
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
@@ -75,7 +67,7 @@ impl SmartReference {
         Ok(context
             .cache_manager
             .borrow_mut()
-            .get_rc_holon(None, &self.holon_id)?)
+            .get_rc_holon(&self.holon_id)?)
     }
 }
 impl HolonGettable for SmartReference {

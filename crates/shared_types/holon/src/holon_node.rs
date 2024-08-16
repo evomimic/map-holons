@@ -13,11 +13,88 @@ pub type PropertyValue = BaseValue;
 pub type PropertyMap = BTreeMap<PropertyName, PropertyValue>;
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct HolonId(pub ActionHash);
-impl From<ActionHash> for HolonId {
-    fn from(action_hash: ActionHash) -> Self {
-        HolonId(action_hash)
+pub enum HolonId {
+    Local(LocalId),
+    External(ExternalId),
+}
+/// Construct a (Local variant) of a HolonId from a LocalId
+impl From<LocalId> for HolonId {
+    fn from(local_id: LocalId) -> Self {
+        HolonId::Local(local_id)
     }
+}
+
+
+impl From<(HolonSpaceId, LocalId)> for HolonId {
+    fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
+        let (space_id, local_id) = tuple;
+        HolonId::External(ExternalId { space_id, local_id })
+    }
+}
+impl HolonId {
+    pub fn is_local(&self) -> bool {
+        matches!(self, HolonId::Local(_))
+    }
+
+    pub fn is_external(&self) -> bool {
+        matches!(self, HolonId::External(_))
+    }
+
+    pub fn local_id(&self) -> Option<&LocalId> {
+        if let HolonId::Local(ref local_id) = self {
+            Some(local_id)
+        } else {
+            None
+        }
+    }
+
+    pub fn external_id(&self) -> Option<&ExternalId> {
+        if let HolonId::External(ref external_id) = self {
+            Some(external_id)
+        } else {
+            None
+        }
+    }
+}
+
+
+
+
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct HolonSpaceId(pub ActionHash);
+
+impl From<ActionHash> for HolonSpaceId {
+    fn from(action_hash: ActionHash) -> Self {
+        HolonSpaceId(action_hash)
+    }
+}
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct LocalId(pub ActionHash);
+
+impl From<ActionHash> for LocalId {
+    fn from(action_hash: ActionHash) -> Self {
+        LocalId(action_hash)
+    }
+}
+
+
+#[hdk_entry_helper]
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ExternalId {
+    pub space_id : HolonSpaceId,
+    pub local_id : LocalId,
+}
+impl From<(HolonSpaceId, LocalId)> for ExternalId {
+fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
+    ExternalId {
+        space_id: tuple.0,
+        local_id: tuple.1,
+    }
+}
 }
 
 #[hdk_entry_helper]

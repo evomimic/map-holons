@@ -12,7 +12,7 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -58,8 +58,9 @@ impl HolonGettable for StagedReference {
 impl StagedReference {
     pub fn get_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         let binding = context.commit_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        holon.get_id()
+        let local_id = binding.get_holon(&self)?.get_local_id()?;
+
+        Ok(HolonId::Local(LocalId (local_id.0)))
     }
     pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let holon_ref = self.get_mut_holon(context)?;

@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
 use std::{collections::BTreeMap, str};
 
 use crate::helpers::get_key_from_property_map;
@@ -16,7 +16,7 @@ const fn smartlink_tag_header_length() -> usize {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SmartLink {
-    pub from_address: HolonId,
+    pub from_address: LocalId,
     pub to_address: HolonId,
     pub relationship_name: RelationshipName, // temporarily using RelationshipName as descriptor
     pub smart_property_values: Option<PropertyMap>,
@@ -67,9 +67,9 @@ pub fn get_all_relationship_links(holon_id: ActionHash) -> Result<Vec<SmartLink>
     Ok(smartlinks)
 }
 
-/// Gets links for a specific relationship from this holon_id
+/// Gets links for a specific relationship from this source
 pub fn get_relationship_links(
-    holon_id: ActionHash,
+    source_action_hash: ActionHash,
     relationship_name: &RelationshipName,
 ) -> Result<Vec<SmartLink>, HolonError> {
     debug!(
@@ -88,7 +88,7 @@ pub fn get_relationship_links(
 
     // Retrieve links using the specified link tag filter
     let links = get_links(GetLinksInputBuilder::try_new(
-        holon_id.clone(),
+        source_action_hash.clone(),
         LinkTypes::SmartLink,
         )?.tag_prefix(link_tag_filter).build())
         .map_err(|e| HolonError::from(e))?;
@@ -96,7 +96,7 @@ pub fn get_relationship_links(
     debug!("got {:?} links", links.len());
     // Process each link to convert it into a SmartLink
     for link in links {
-        let smartlink = get_smartlink_from_link(holon_id.clone(), link)?;
+        let smartlink = get_smartlink_from_link(source_action_hash.clone(), link)?;
         smartlinks.push(smartlink);
     }
 
@@ -104,7 +104,7 @@ pub fn get_relationship_links(
 }
 
 pub fn get_smartlink_from_link(
-    source_holon_id: ActionHash,
+    source_local_hash: ActionHash,
     link: Link,
 ) -> Result<SmartLink, HolonError> {
     let target = link
@@ -117,7 +117,7 @@ pub fn get_smartlink_from_link(
     let link_tag_obj = decode_link_tag(link.tag.clone())?;
 
     let smartlink = SmartLink {
-        from_address: HolonId(source_holon_id.clone()),
+        from_address: LocalId(source_local_hash.clone()),
         to_address: HolonId(target),
         relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
         smart_property_values: link_tag_obj.smart_property_values,
