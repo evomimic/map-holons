@@ -456,7 +456,7 @@ pub fn build_get_all_holons_dance_request(
     ))
 }
 
-/// Gets Holon from persistent store, located by HolonId (ActionHash)
+/// Gets Holon from persistent store, located by HolonId
 ///
 /// *DanceRequest:*
 /// - dance_name: "get_holon_by_id"
@@ -484,7 +484,7 @@ pub fn get_holon_by_id_dance(
     let cache_manager = context.cache_manager.borrow();
 
     info!("asking cache_manager to get rc_holon");
-    let rc_holon = cache_manager.get_rc_holon(None, &holon_id)?;
+    let rc_holon = cache_manager.get_rc_holon(&holon_id)?;
 
     let holon = rc_holon.borrow().clone();
     Ok(ResponseBody::Holon(holon))

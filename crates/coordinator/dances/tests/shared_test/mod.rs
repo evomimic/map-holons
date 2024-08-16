@@ -70,7 +70,7 @@ pub fn get_holon_by_key_from_test_state(
         let option_key = holon.get_key()?;
         if let Some(key) = option_key {
             if key == source_key {
-                let id = holon.get_id()?;
+                let id = holon.get_local_id()?.into();
                 return Ok(Some(id));
             }
         } else {

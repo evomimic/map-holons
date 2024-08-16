@@ -5,7 +5,7 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -196,7 +196,7 @@ impl HolonCollection {
     pub fn save_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
-        source_id: HolonId,
+        source_id: LocalId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         debug!(
@@ -238,7 +238,7 @@ impl HolonCollection {
     pub fn commit_relationship(
         &self,
         context: &HolonsContext,
-        source_id: HolonId,
+        source_id: LocalId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Commit)?;

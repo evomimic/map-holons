@@ -41,7 +41,7 @@ pub async fn execute_match_db_content(
 
     for expected_holon in test_state.created_holons.clone() {
         // get HolonId
-        let holon_id = expected_holon.get_id().unwrap();
+        let holon_id : HolonId= expected_holon.get_local_id().unwrap().into();
         // Build a get_holon_by_id DanceRequest
         let request =
             build_get_holon_by_id_dance_request(test_state.staging_area.clone(), holon_id.clone());

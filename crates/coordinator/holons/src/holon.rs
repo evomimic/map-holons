@@ -8,7 +8,7 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use shared_types_holon::{HolonId, LocalId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
 use shared_validation::ValidationError;
@@ -272,13 +272,13 @@ impl Holon {
             HolonState::Saved => {
                 match self.saved_node.clone() {
                     Some(record) => {
-                        let source_holon_id = record.action_address().clone();
+                        let source_local_id = LocalId(record.action_address().clone());
                         // Iterate through the holon's relationship map, invoking commit on each
                         for (name, holon_collection) in self.relationship_map.0.clone() {
                             debug!("COMMITTING {:#?} relationship", name.0 .0.clone());
                             holon_collection.commit_relationship(
                                 context,
-                                HolonId::from(source_holon_id.clone()),
+                                source_local_id.clone(),
                                 name.clone(),
                             )?;
                         }
@@ -298,7 +298,7 @@ impl Holon {
         }
     }
 
-    pub fn delete_holon(id: HolonId) -> Result<ActionHash, HolonError> {
+    pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
         let result = delete_holon_node(id.0);
         match result {
             Ok(result) => Ok(result),
@@ -332,11 +332,11 @@ impl Holon {
         }
     }
 
-    pub fn get_id(&self) -> Result<HolonId, HolonError> {
+    pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let node = self.saved_node.clone();
         if let Some(record) = node {
-            Ok(HolonId(record.action_address().clone()))
+            Ok(LocalId(record.action_address().clone()))
         } else {
             Err(HolonError::HolonNotFound("Node is empty".to_string()))
         }
@@ -573,7 +573,7 @@ impl Holon {
 
                         // fetch the smartlinks for this relationship (if any)
                         let smartlinks =
-                            get_relationship_links(self.get_id()?.0, relationship_name)?;
+                            get_relationship_links(self.get_local_id()?.0, relationship_name)?;
 
                         for smartlink in smartlinks {
                             let holon_reference = smartlink.to_holon_reference();
@@ -611,7 +611,7 @@ impl Holon {
         let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
 
         let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
-        let smartlinks = get_all_relationship_links(self.get_id()?.0)?;
+        let smartlinks = get_all_relationship_links(self.get_local_id()?)?;
         debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {

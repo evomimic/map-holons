@@ -21,7 +21,7 @@ use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::HolonId;
+use shared_types_holon::{HolonId, LocalId};
 
 /// This function iterates through the Vec of Holons provided by the test fixture
 ///
@@ -64,7 +64,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
 
     println!("Success! Initial DB state has no Holons");
 
-    let mut created_action_hashes: Vec<HolonId> = Vec::new();
+    let mut created_action_hashes: Vec<LocalId> = Vec::new();
 
     // Iterate through the vector of test holons, building & creating each holon,
     // then get the created holon and compare it to the generated descriptor.

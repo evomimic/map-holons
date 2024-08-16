@@ -2,18 +2,22 @@ use crate::holon::Holon;
 use crate::holon_error::HolonError;
 use hdk::prelude::*;
 use std::cell::RefCell;
+use std::collections::HashMap;
 // use hdk::prelude::*;
 use quick_cache::unsync::Cache;
-use shared_types_holon::HolonId;
+use shared_types_holon::{HolonId, HolonSpaceId, ExternalId, LocalId};
 
 use std::rc::Rc;
+use shared_types_holon::HolonId::{Local,External};
+
 #[derive(Debug)]
 pub struct HolonCache(Cache<HolonId, Rc<RefCell<Holon>>>);
 
 #[derive(Debug)]
 pub struct HolonCacheManager {
     pub local_cache: Rc<RefCell<HolonCache>>,
-    //pub external_caches: HashMap<HolonSpaceId, HolonCache>,
+    // pub external_caches: HashMap<HolonSpaceId, HolonCache>,
+    pub external_caches: HashMap<HolonSpaceId, Rc<RefCell<HolonCache>>>,
 }
 
 impl HolonCacheManager {
@@ -27,53 +31,62 @@ impl HolonCacheManager {
         // Create and return a new HolonCacheManager
         HolonCacheManager {
             local_cache: local_cache_rc,
-            //external_caches: HashMap::new(),
+            external_caches: HashMap::new(),
         }
     }
-    /// This method returns a sharable reference to the HolonCache for the specified holon_space_id.
-    /// If holon_space_id is None, return reference to the local HolonCache.
-    pub fn get_cache(
+    /// This method returns a sharable reference to the HolonCache for the specified HolonId.
+    /// If HolonId is Local, return the local cache. Otherwise, extract the space_id from the
+    /// External HolonId, and lookup the cache for that proxy in external_caches. Returns
+    /// a HolonError::CacheError if this lookup fails.
+        fn get_cache(
         &self,
-        holon_space_id: Option<&HolonId>,
+        holon_id: &HolonId,
     ) -> Result<Rc<RefCell<HolonCache>>, HolonError> {
-        if let Some(_) = holon_space_id {
-            return Err(HolonError::NotImplemented(
-                "External HolonReference not implemented".to_string(),
-            ));
+
+        match holon_id {
+            Local(_) => {Ok(Rc::clone(&self.local_cache))}
+            External(external_id) => {
+                return if let Some(external_cache)
+                    = self.external_caches.get(&external_id.space_id) {
+                    Ok(Rc::clone(external_cache))
+                } else {
+                    Err(HolonError::CacheError("No cache found for this proxy_id".to_string()))
+                }
+            }
         }
-        // Return a reference to the local cache
-        Ok(Rc::clone(&self.local_cache))
+
     }
 
-    /// fetch_holon gets a specific HolonNode from the persistent store based on its ActionHash, it then
+    /// fetch_local_holon gets a specific HolonNode from the local persistent store based on its ActionHash, it then
     /// "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon(id: &HolonId) -> Result<Holon, HolonError> {
-        let holon_node_record = get(id.0.clone(), GetOptions::default())?;
+    fn fetch_local_holon(local_id: &LocalId) -> Result<Holon, HolonError> {
+        let holon_node_record = get(local_id.0.clone(), GetOptions::default())?;
         if let Some(node) = holon_node_record {
             let holon = Holon::try_from_node(node)?;
             return Ok(holon);
         } else {
             // no holon_node fetched for specified holon_id
-            Err(HolonError::HolonNotFound(id.0.to_string()))
+            Err(HolonError::HolonNotFound(local_id.0.to_string()))
         }
     }
-    /// This method returns a mutable reference (Rc) to the Holon identified by holon_id within the cache
-    /// associated with `holon_space_id` (or within the `local_cache` if `holon_space_id` is `None`).
-    /// If the holon is not already resident in the cache, this function first fetches the holon from the persistent
+    /// This method returns a mutable reference (Rc<RefCell>) to the Holon identified by holon_id.
+    /// If holon_id is `Local`, it retrieves the holon from the local cache. If the holon is not
+    /// already resident in the cache, this function first fetches the holon from the persistent
     /// store and inserts it into the cache before returning the reference to that holon.
     ///
-    /// TODO: Investigate whether quick_cache supports this behavior natively by passing in a closure to the
-    /// fetch_holon function.
+    /// If the holon_id is `External`, this method currently returns a `NotImplemented` HolonError
     ///
+    /// TODO: Enhance to support `External` HolonIds
     ///
 
     pub fn get_rc_holon(
         &self,
-        holon_space_id: Option<&HolonId>,
+        // holon_space_id: Option<&HolonId>,
         holon_id: &HolonId,
     ) -> Result<Rc<RefCell<Holon>>, HolonError> {
         info!("-------ENTERED: get_rc_holon, getting cache");
-        let cache = self.get_cache(holon_space_id)?;
+
+        let cache = self.get_cache(holon_id)?;
 
         // Attempt to borrow the cache immutably
         {
@@ -82,7 +95,7 @@ impl HolonCacheManager {
             })?;
 
             // Check if the holon is already in the cache
-            debug!("Checking the cache for holon_id: {:#?}", holon_id);
+            debug!("Checking the cache for local_id: {:#?}", holon_id.local_id());
             if let Some(holon) = try_cache_borrow.0.get(holon_id) {
                 // Return a clone of the Rc<RefCell<Holon>> if found in the cache
                 return Ok(Rc::clone(holon));
@@ -91,7 +104,16 @@ impl HolonCacheManager {
 
         // Holon not found in cache, fetch it
         info!("Holon not cached, fetching holon");
-        let fetched_holon = Self::fetch_holon(holon_id)?;
+
+        let fetched_holon = match holon_id {
+            Local(local_id) => {
+                HolonCacheManager::fetch_local_holon(local_id)?
+            }
+            External(_) => {
+                return Err(HolonError::NotImplemented("Fetch from external caches is not yet \
+                implemented:".to_string()))
+            }
+        };
         debug!("Holon with key {:?} fetched", fetched_holon.get_key());
 
         // Attempt to borrow the cache mutably
@@ -101,64 +123,15 @@ impl HolonCacheManager {
 
         // Insert the fetched holon into the cache
         debug!(
-            "Inserting fetched holon into cache for holon_id: {:#?}",
-            holon_id
+            "Inserting fetched holon into cache for local_id: {:#?}",
+            fetched_holon.get_local_id(),
         );
         cache_mut
             .0
             .insert(holon_id.clone(), Rc::new(RefCell::new(fetched_holon)));
 
         // Return a new Rc<RefCell<Holon>> containing the fetched holon
-        Ok(Rc::clone(&cache_mut.0.get(holon_id).unwrap()))
+        Ok(Rc::clone(cache_mut.0.get(holon_id).expect("Holon should be present in the cache")))
     }
 
-    // pub fn get_rc_holon(
-    //     &mut self,
-    //     holon_space_id: Option<&HolonId>,
-    //     holon_id: &HolonId,
-    // ) -> Result<Rc<RefCell<Holon>>, HolonError> {
-    //
-    //     info!("-------ENTERED: get_rc_holon, getting cache");
-    //     let cache = self.get_cache(holon_space_id)?;
-    //
-    //     {
-    //         // Check if the holon is already in the cache
-    //         debug!("borrowing the cache from the cache_manager");
-    //         let try_cache_borrow = cache.try_borrow();
-    //         match try_cache_borrow {
-    //             Ok(cache) => {
-    //                 debug!("checking the cache for holon_id: {:#?}", holon_id.clone());
-    //                 if let Some(holon) = cache.0.get(holon_id) {
-    //                     // Return the holon if found in the cache
-    //                     return Ok(holon.clone());
-    //                 }
-    //             }
-    //             Err(_e) => {
-    //                 return Err(HolonError::FailedToBorrow("Unable borrow holon cache immutably".to_string()));
-    //             }
-    //         }
-    //     }
-    //
-    //     info!("holon not cached, fetching holon");
-    //     let fetched_holon = RefCell::new(Self::fetch_holon(holon_id))?;
-    //     debug!("holon fetched");
-    //
-    //
-    //     debug!("getting mutable reference to cache");
-    //     let try_cache_mut = cache.try_borrow_mut();
-    //     match try_cache_mut {
-    //         Ok(mut cache) => {
-    //             debug!("inserting fetched holon in the cache for holon_id: {:#?}", holon_id.clone());
-    //             cache.0.insert(holon_id.clone(), Rc::new(fetched_holon));
-    //             // Return the holon if found in the cache
-    //             Ok(Rc::new(fetched_holon))
-    //
-    //         }
-    //         Err(_e) => {
-    //             return Err(HolonError::FailedToBorrow("Unable borrow_mut holon cache".to_string()));
-    //         }
-    //     }
-    //
-    //
-    // }
 }

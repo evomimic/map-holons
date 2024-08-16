@@ -28,7 +28,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 
-/// This function builds and dances a `query_relationshipss` DanceRequest for the supplied NodeCollection and QueryExpression.
+/// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(
     conductor: &SweetConductor,
     cell: &SweetCell,
@@ -45,10 +45,11 @@ pub async fn execute_query_relationships(
     match source_holon_id {
         Ok(holon_id) => {
             if let Some(id) = holon_id {
-                let holon_reference: HolonReference = HolonReference::Smart(SmartReference {
-                    holon_id: id,
-                    smart_property_values: None,
-                });
+                let holon_reference: HolonReference = HolonReference::Smart(SmartReference::new(
+                   id,
+                   None,
+                )
+                );
 
                 let node_collection = NodeCollection {
                     members: vec![Node::new(holon_reference, None)],
