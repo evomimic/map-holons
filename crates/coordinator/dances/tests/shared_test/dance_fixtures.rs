@@ -198,7 +198,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let mut authored_by_collection = HolonCollection::new_staged();
     authored_by_collection.add_reference_with_key(
         Some(&person_1_key),
-        &person_1_reference)?;
+        &person_1_reference.clone())?;
 
     authored_by_collection.add_reference_with_key(
         Some(&person_2_key),
@@ -212,7 +212,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
 
     let mut related_holons: Vec<HolonReference> = Vec::new();
-    related_holons.push(person_1_reference);
+    related_holons.push(person_1_reference.clone());
     related_holons.push(person_2_reference);
 
 
@@ -224,30 +224,64 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_holon.clone(),
     )?;
 
-    // TODO - add function to get the stage and see number of actual holons?
-    //assert_eq!(HolonCollection::get_count(),3);
 
     let empty_collection = HolonCollection::new_staged();
 
-    book_holon.relationship_map.0.clear();
-    book_holon.relationship_map.0.insert(authored_by_relationship_name.clone(),empty_collection);
+    let mut book_holon_with_no_related= book_holon.clone();
+    book_holon_with_no_related.relationship_map.0.clear();
+    book_holon_with_no_related.relationship_map.0.insert(authored_by_relationship_name.clone(),empty_collection);
 
+    let mut one_in_collection = HolonCollection::new_staged();
+    one_in_collection.add_reference_with_key(
+        Some(&person_1_key),
+        &person_1_reference)?;
+
+    let mut book_holon_with_one_related= book_holon.clone();
+    book_holon_with_one_related.relationship_map.0.clear();
+    book_holon_with_one_related.relationship_map.0.insert(authored_by_relationship_name.clone(),one_in_collection);
+
+
+    // test invalid source holon
+    let wrong_book_index: usize = 8;
+    // the cache manager returns a IndexOutOfRange ServerError .. not a Notfound 404
+    test_case.remove_related_holons_step(
+        wrong_book_index, // source holon
+        authored_by_relationship_name.clone(),
+        related_holons.to_vec(),
+        ResponseStatusCode::ServerError,
+        book_holon.clone(), //expected
+    )?;
+
+
+    // test invalid relationship name
+    let wrong_relationship_name: RelationshipName = RelationshipName(MapString("WRONG".into()));
+    test_case.remove_related_holons_step(
+        book_index, // source holon
+        wrong_relationship_name,
+        related_holons.to_vec(),
+        ResponseStatusCode::BadRequest,
+        book_holon.clone(), //expected
+    )?;
+
+    //test remove one related holon
+    test_case.remove_related_holons_step(
+        book_index, // source holon
+        authored_by_relationship_name.clone(),
+        related_holons.clone().split_off(1),  //takes the second person holon
+        ResponseStatusCode::OK,
+        book_holon_with_one_related.clone(), //expected
+    )?;
+
+
+    //test remove all related holons including ignoring a previous one that was already removed
     test_case.remove_related_holons_step(
         book_index, // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
         ResponseStatusCode::OK,
-        book_holon.clone(), //expected
+        book_holon_with_no_related.clone(), //expected none
     )?;
 
-
-    // TODO - add function to get the stage and see number of actual holons?
-    //assert_eq!(HolonCollection::get_count(),1);
-    
-    // repeat add related holons
-
-    book_holon.relationship_map.0.insert(
-        authored_by_relationship_name.clone(),
         authored_by_collection,
     );
 
@@ -271,7 +305,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         query_expression,
         ResponseStatusCode::OK,
     )?;
-    
+
     Ok(test_case.clone())
 }
 
