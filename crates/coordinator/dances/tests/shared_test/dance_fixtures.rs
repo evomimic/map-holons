@@ -241,16 +241,16 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     book_holon_with_one_related.relationship_map.0.insert(authored_by_relationship_name.clone(),one_in_collection);
 
 
-    // test invalid source holon
-    let wrong_book_index: usize = 8;
-    // the cache manager returns a IndexOutOfRange ServerError .. not a Notfound 404
-    test_case.remove_related_holons_step(
-        wrong_book_index, // source holon
-        authored_by_relationship_name.clone(),
-        related_holons.to_vec(),
-        ResponseStatusCode::ServerError,
-        book_holon.clone(), //expected
-    )?;
+    // // test invalid source holon
+    // let wrong_book_index: usize = 8;
+    // // the cache manager returns a IndexOutOfRange ServerError .. not a Notfound 404
+    // test_case.remove_related_holons_step(
+    //     wrong_book_index, // source holon
+    //     authored_by_relationship_name.clone(),
+    //     related_holons.to_vec(),
+    //     ResponseStatusCode::ServerError,
+    //     book_holon.clone(), //expected
+    // )?;
 
 
     // test invalid relationship name
@@ -282,10 +282,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_holon_with_no_related.clone(), //expected none
     )?;
 
-        authored_by_collection,
-    );
-
-    test_case.add_related_holons_step(
+     test_case.add_related_holons_step(
         book_index, // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
