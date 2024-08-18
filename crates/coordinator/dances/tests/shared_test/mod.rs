@@ -6,6 +6,7 @@ pub mod test_data_types;
 pub mod descriptor_dance_fixtures;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
+pub mod test_remove_related_holon;
 pub mod test_commit;
 pub mod test_ensure_database_count;
 pub mod test_load_core_schema;

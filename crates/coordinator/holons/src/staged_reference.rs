@@ -145,6 +145,41 @@ impl StagedReference {
         Ok(())
     }
 
+    pub fn remove_related_holons(  
+        &self,  
+        context: &HolonsContext,   
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,  
+     
+    ) -> Result<(), HolonError> {
+        debug!("Entered StagedReference::remove_related_holons");
+
+        // Get mutable access to the source holon
+        let holon_ref = self.get_mut_holon(context)?;
+
+        // Borrow the holon from the RefCell
+        let mut holon = holon_ref.borrow_mut();
+        debug!("In StagedReference::remove_related_holons, getting collection for relationship name");
+
+        // Ensure is accessible for Write
+        holon.is_accessible(AccessType::Write)?;
+
+        debug!("In StagedReference::remove_related_holons, about to remove the holons from the editable collections:");
+
+        // Retrieve the editable collection for the specified relationship name
+        if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
+            collection.is_accessible(AccessType::Write)?;
+            collection.remove_references(context, holons)?;
+        } else {
+            return Err(HolonError::InvalidRelationship(format!(
+                "Invalid relationship: {}",
+                &relationship_name
+            ),format!("For holon {:?}",&holon.descriptor)));
+        }
+        Ok(())
+    }
+
+
     pub fn get_relationship_map(
         &self,
         context: &HolonsContext,
