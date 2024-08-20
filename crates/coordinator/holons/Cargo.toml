@@ -9,6 +9,7 @@ name = "holons"
 
 [dependencies]
 derive-new = { workspace = true }
+descriptors = { workspace = true }
 hdk = { workspace = true }
 hdi = { workspace = true }
 holochain_integrity_types = { workspace = true }

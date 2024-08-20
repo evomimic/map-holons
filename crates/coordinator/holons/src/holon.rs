@@ -48,10 +48,8 @@ pub struct Holon {
     pub state: HolonState,
     pub validation_state: ValidationState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
-    pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
-    pub descriptor: Option<HolonReference>,
     // pub holon_space: HolonReference,
     // pub dancer : Dancer,
     pub errors: Vec<HolonError>,
@@ -155,10 +153,8 @@ impl Holon {
             state: HolonState::New,
             validation_state: ValidationState::NoDescriptor,
             saved_node: None,
-            predecessor: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
-            descriptor: None,
             errors: Vec::new(),
         }
     }
@@ -192,7 +188,6 @@ impl Holon {
 
         // Copy the existing holon's PropertyMap and Descriptor into the new Holon
         holon.property_map = self.property_map.clone();
-        holon.descriptor = self.descriptor.clone();
 
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
@@ -742,10 +737,8 @@ impl Holon {
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
             saved_node: Some(holon_node_record),
-            predecessor: None,
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
-            descriptor: None,
             errors: Vec::new(),
         };
 

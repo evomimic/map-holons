@@ -51,61 +51,25 @@ impl HolonGettable for StagedReference {
         };
         Ok(map)
     }
-
-
 }
 
 impl StagedReference {
-    pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+    pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
+        debug!(
+            "Entered: abandon_staged_changes for staged_index: {:#?}",
+            self.holon_index
+        );
+        // Get mutable access to the source holon
         let holon_ref = self.get_mut_holon(context)?;
-        let mut borrowed_holon = holon_ref.borrow_mut();
-        borrowed_holon.commit()
-    }
 
-    pub fn clone_reference(&self) -> StagedReference {
-        StagedReference {
-            holon_index: self.holon_index.clone(),
-        }
-    }
+        // Borrow the holon from the RefCell
+        let mut holon = holon_ref.borrow_mut();
 
-    /// Use this method to get a copy of the staged holon referenced by this StagedReference.
-    /// NOTE: The cloned holon is NOT, itself, staged by the CommitManager
-    pub fn clone_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
-        let commit_manager = context
-            .commit_manager
-            .try_borrow()
-            .map_err(|_| HolonError::FailedToBorrow("commit_manager".to_string()))?;
+        debug!("borrowed mut for holon: {:#?}", self.holon_index);
 
-        let holon_rc = commit_manager
-            .staged_holons
-            .get(self.holon_index)
-            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
+        holon.abandon_staged_changes()?;
 
-        let holon_ref = holon_rc
-            .try_borrow()
-            .map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
-
-        Ok(holon_ref.clone())
-    }
-    pub fn with_property_value(
-        &self,
-        context: &HolonsContext,
-        property: PropertyName,
-        value: BaseValue,
-    ) -> Result<&Self, HolonError> {
-        // Borrow the CommitManager immutably from the context
-        let commit_manager = context.commit_manager.borrow();
-
-        // Get the holon from the CommitManager
-        let holon_rc = commit_manager.staged_holons.get(self.holon_index)
-            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
-
-        let mut holon_ref = holon_rc.borrow_mut();
-
-        // Call the Holon's with_property_value method
-        holon_ref.with_property_value(property, value)?;
-
-        Ok(self)
+        Ok(())
     }
 
     pub fn add_related_holons(
@@ -145,48 +109,36 @@ impl StagedReference {
         Ok(())
     }
 
-    pub fn remove_related_holons(  
-        &self,  
-        context: &HolonsContext,   
-        relationship_name: RelationshipName,
-        holons: Vec<HolonReference>,  
-     
-    ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::remove_related_holons");
-
-        // Get mutable access to the source holon
+    pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let holon_ref = self.get_mut_holon(context)?;
-
-        // Borrow the holon from the RefCell
-        let mut holon = holon_ref.borrow_mut();
-        debug!("In StagedReference::remove_related_holons, getting collection for relationship name");
-
-        // Ensure is accessible for Write
-        holon.is_accessible(AccessType::Write)?;
-
-        debug!("In StagedReference::remove_related_holons, about to remove the holons from the editable collections:");
-
-        // Retrieve the editable collection for the specified relationship name
-        if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
-            collection.is_accessible(AccessType::Write)?;
-            collection.remove_references(context, holons)?;
-        } else {
-            return Err(HolonError::InvalidRelationship(format!(
-                "Invalid relationship: {}",
-                &relationship_name
-            ),format!("For holon {:?}",&holon.descriptor)));
-        }
-        Ok(())
+        let mut borrowed_holon = holon_ref.borrow_mut();
+        borrowed_holon.commit()
     }
 
+    /// Use this method to get a copy of the staged holon referenced by this StagedReference.
+    /// NOTE: The cloned holon is NOT, itself, staged by the CommitManager
+    pub fn clone_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        let commit_manager = context
+            .commit_manager
+            .try_borrow()
+            .map_err(|_| HolonError::FailedToBorrow("commit_manager".to_string()))?;
 
-    pub fn get_relationship_map(
-        &self,
-        context: &HolonsContext,
-    ) -> Result<RelationshipMap, HolonError> {
-        let binding = context.commit_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        Ok(holon.relationship_map.clone())
+        let holon_rc = commit_manager
+            .staged_holons
+            .get(self.holon_index)
+            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
+
+        let holon_ref = holon_rc
+            .try_borrow()
+            .map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
+
+        Ok(holon_ref.clone())
+    }
+
+    pub fn clone_reference(&self) -> StagedReference {
+        StagedReference {
+            holon_index: self.holon_index.clone(),
+        }
     }
 
     pub fn get_mut_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
@@ -220,21 +172,138 @@ impl StagedReference {
         }
     }
 
-    pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
-        debug!(
-            "Entered: abandon_staged_changes for staged_index: {:#?}",
-            self.holon_index
-        );
+    pub fn get_relationship_map(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<RelationshipMap, HolonError> {
+        let binding = context.commit_manager.borrow();
+        let holon = binding.get_holon(&self)?;
+        Ok(holon.relationship_map.clone())
+    }
+
+    pub fn remove_related_holons(
+        &self,
+        context: &HolonsContext,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        debug!("Entered StagedReference::remove_related_holons");
+
         // Get mutable access to the source holon
         let holon_ref = self.get_mut_holon(context)?;
 
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
+        debug!(
+            "In StagedReference::remove_related_holons, getting collection for relationship name"
+        );
 
-        debug!("borrowed mut for holon: {:#?}", self.holon_index);
+        // Ensure is accessible for Write
+        holon.is_accessible(AccessType::Write)?;
 
-        holon.abandon_staged_changes()?;
+        debug!("In StagedReference::remove_related_holons, about to remove the holons from the editable collections:");
 
+        // Retrieve the editable collection for the specified relationship name
+        if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
+            collection.is_accessible(AccessType::Write)?;
+            collection.remove_references(context, holons)?;
+        } else {
+            return Err(HolonError::InvalidRelationship(
+                format!("Invalid relationship: {}", &relationship_name),
+                format!("For holon {:?}", &holon.descriptor),
+            ));
+        }
         Ok(())
+    }
+
+    pub fn with_descriptor(
+        &self,
+        context: &HolonsContext,
+        descriptor_reference: HolonReference,
+    ) -> Result<Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let existing_descriptor_option = self.get_descriptor(context)?;
+        if let Some(descriptor) = existing_descriptor_option {
+            self.remove_related_holons(
+                context,
+                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
+                descriptor,
+            )?;
+            debug!("removed existing descriptor: {:#?}", descriptor);
+            self.add_related_holons(
+                context,
+                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
+                vec![descriptor_reference],
+            )?;
+            debug!("added descriptor: {:#?}", descriptor);
+
+            Ok(Self)
+        } else {
+            self.add_related_holons(
+                context,
+                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
+                vec![descriptor_reference],
+            )?;
+            debug!("added descriptor: {:#?}", descriptor);
+
+            Ok(Self)
+        }
+    }
+
+    pub fn with_predecessor(
+        &self,
+        context: &HolonsContext,
+        predecessor_reference: HolonReference,
+    ) -> Result<Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let existing_predecessor_option = self.get_predecessor(context)?;
+        if let Some(predecessor) = existing_predecessor_option {
+            self.remove_related_holons(
+                context,
+                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
+                predecessor,
+            )?;
+            debug!("removed existing predecessor: {:#?}", predecessor);
+            self.add_related_holons(
+                context,
+                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
+                vec![predecessor_reference],
+            )?;
+            debug!("added predecessor: {:#?}", predecessor);
+
+            Ok(Self)
+        } else {
+            self.add_related_holons(
+                context,
+                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
+                vec![predecessor_reference],
+            )?;
+            debug!("added predecessor: {:#?}", predecessor);
+
+            Ok(Self)
+        }
+    }
+
+    pub fn with_property_value(
+        &self,
+        context: &HolonsContext,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&Self, HolonError> {
+        // Borrow the CommitManager immutably from the context
+        let commit_manager = context.commit_manager.borrow();
+
+        // Get the holon from the CommitManager
+        let holon_rc = commit_manager
+            .staged_holons
+            .get(self.holon_index)
+            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
+
+        let mut holon_ref = holon_rc.borrow_mut();
+
+        // Call the Holon's with_property_value method
+        holon_ref.with_property_value(property, value)?;
+
+        Ok(self)
     }
 }
