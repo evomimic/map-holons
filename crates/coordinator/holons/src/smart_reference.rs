@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::rc::Rc;
 
 use derive_new::new;
@@ -17,9 +18,20 @@ use crate::relationship::{RelationshipMap, RelationshipName};
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct SmartReference {
-    //holon_space_id: Option<SpaceId>
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
+}
+
+impl PartialOrd for SmartReference {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.holon_id.partial_cmp(&other.holon_id)
+    }
+}
+
+impl Ord for SmartReference {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.holon_id.cmp(&other.holon_id)
+    }
 }
 
 impl SmartReference {
@@ -44,9 +56,6 @@ impl SmartReference {
     // }
 
 
-    pub fn get_id(&self) -> Result<HolonId, HolonError> {
-        Ok(self.holon_id.clone())
-    }
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
         self.smart_property_values.clone()
     }
@@ -74,6 +83,9 @@ impl SmartReference {
     }
 }
 impl HolonGettable for SmartReference {
+    fn get_holon_id(&self, _context: &HolonsContext) -> Result<Option<HolonId>, HolonError> {
+        Ok(Some(self.holon_id.clone()))
+    }
     /// This function gets the value for the specified property name
     /// It will attempt to get it from the smart_property_values map first to avoid having to
     /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache manager in the context.

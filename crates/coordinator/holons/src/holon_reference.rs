@@ -1,3 +1,4 @@
+use std::fmt;
 use std::rc::Rc;
 use hdk::prelude::*;
 
@@ -15,7 +16,7 @@ use crate::staged_reference::StagedReference;
 //     fn get_rc_holon(&self) -> Result<Rc<RefCell<Holon>>, HolonError>;
 // }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
 /// state (and therefore owned by the CacheManager) or being staged for creation/update (and therefore owned by the
 /// CommitManager).
@@ -26,7 +27,24 @@ pub enum HolonReference {
     Smart(SmartReference),
 }
 
+impl fmt::Display for HolonReference {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HolonReference::Staged(staged_ref) => {
+                write!(f, "Staged({})", staged_ref.holon_index)
+            }
+            HolonReference::Smart(smart_ref) => {
+                write!(f, "Smart({})", smart_ref.get_id())
+            }
+        }
+    }
+}
+
 pub trait HolonGettable {
+    fn get_holon_id(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<Option<HolonId>, HolonError>;
     fn get_property_value(
         &self,
         context: &HolonsContext,
@@ -42,7 +60,7 @@ pub trait HolonGettable {
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
 
     /// In this method, &self is either a HolonReference, StagedReference, SmartReference or Holon that represents the source holon,
-    /// whose related holons are being requested. relationship_name, if provided, indicates the name of the relationship being navigated.
+    /// whose related holons are being requested. `relationship_name`, if provided, indicates the name of the relationship being navigated.
     /// In the future, this parameter will be replaced with an optional reference to the RelationshipDescriptor for this relationship.
     /// If None, then all holons related to the source holon across all of its relationships are retrieved.
     /// This method populates the cached source holon's HolonCollection for the specified relationship if one is provided.
@@ -56,6 +74,13 @@ pub trait HolonGettable {
 
 
 impl HolonGettable for HolonReference {
+    fn get_holon_id(&self,   context: &HolonsContext) -> Result<Option<HolonId>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
+            // Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
+        }
+    }
     fn get_property_value(
         &self,
         context: &HolonsContext,
@@ -96,6 +121,24 @@ impl HolonGettable for HolonReference {
 }
 
 impl HolonReference {
+    pub fn clone_reference(&self) -> HolonReference {
+        match self {
+            HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
+            HolonReference::Staged(staged_ref) => {
+                HolonReference::Staged(staged_ref.clone_reference())
+            }
+        }
+    }
+    pub fn from_holon_id(holon_id: HolonId) -> Self {
+        HolonReference::Smart(
+            SmartReference::new(
+            holon_id,
+            None,
+            )
+        )
+    }
+
+
     pub fn get_relationship_map(
         &mut self,
         context: &HolonsContext,
@@ -107,22 +150,7 @@ impl HolonReference {
             }
         }
     }
-    pub fn clone_reference(&self) -> HolonReference {
-        match self {
-            HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
-            HolonReference::Staged(staged_ref) => {
-                HolonReference::Staged(staged_ref.clone_reference())
-            }
-        }
-    }
 
-    pub fn get_holon_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(staged_reference) =>
-                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
-        }
-    }
 
     // /// Commit on HolonReference persists the reference as a SmartLink for the specified
     // /// relationship and source_id
