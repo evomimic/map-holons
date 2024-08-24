@@ -1,7 +1,10 @@
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{
+    BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName,
+    PropertyValue,
+};
 use std::{collections::BTreeMap, str};
 
 use crate::helpers::get_key_from_property_map;
@@ -25,7 +28,7 @@ pub struct SmartLink {
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct LinkTagObject {
     pub relationship_name: String,
-    // pub proxy_id: HolonSpaceId,
+    pub proxy_id: Option<HolonSpaceId>,
     pub smart_property_values: Option<PropertyMap>,
 }
 
@@ -43,10 +46,8 @@ impl SmartLink {
         }
     }
     pub fn to_holon_reference(&self) -> HolonReference {
-        let smart_reference = SmartReference::new(
-          self.to_address.clone(),
-          self.smart_property_values.clone(),
-        );
+        let smart_reference =
+            SmartReference::new(self.to_address.clone(), self.smart_property_values.clone());
         HolonReference::Smart(smart_reference)
     }
 }
@@ -58,11 +59,10 @@ pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartL
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
-    let links = get_links(GetLinksInputBuilder::try_new(
-        local_source_id.0.clone(),
-        LinkTypes::SmartLink,
-        )?.build())
-        .map_err(|e| HolonError::from(e))?;
+    let links = get_links(
+        GetLinksInputBuilder::try_new(local_source_id.0.clone(), LinkTypes::SmartLink)?.build(),
+    )
+    .map_err(|e| HolonError::from(e))?;
 
     for link in links {
         let smartlink = get_smartlink_from_link(local_source_id.0.clone(), link)?;
@@ -76,13 +76,14 @@ pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartL
 pub fn get_relationship_links(
     source_action_hash: ActionHash,
     relationship_name: &RelationshipName,
+    proxy_id: Option<HolonSpaceId>,
 ) -> Result<Vec<SmartLink>, HolonError> {
     debug!(
         "Entered get_relationship_links for: {:?}",
         relationship_name.0.to_string()
     );
     // Use the relationship_name reference to encode the link tag
-    let link_tag_filter: LinkTag = encode_link_tag(relationship_name.clone(), None)?;
+    let link_tag_filter: LinkTag = encode_link_tag(relationship_name.clone(), proxy_id, None)?;
 
     debug!(
         "getting links for link_tag_filter: {:?}",
@@ -92,11 +93,12 @@ pub fn get_relationship_links(
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
     // Retrieve links using the specified link tag filter
-    let links = get_links(GetLinksInputBuilder::try_new(
-        source_action_hash.clone(),
-        LinkTypes::SmartLink,
-        )?.tag_prefix(link_tag_filter).build())
-        .map_err(|e| HolonError::from(e))?;
+    let links = get_links(
+        GetLinksInputBuilder::try_new(source_action_hash.clone(), LinkTypes::SmartLink)?
+            .tag_prefix(link_tag_filter)
+            .build(),
+    )
+    .map_err(|e| HolonError::from(e))?;
 
     debug!("got {:?} links", links.len());
     // Process each link to convert it into a SmartLink
@@ -122,32 +124,67 @@ pub fn get_smartlink_from_link(
     let link_tag_obj = decode_link_tag(link.tag.clone())?;
 
     // TODO: Enhance the following to support External HolonIds (by pulling proxy_id from LinkTagObj)
-    let smartlink = SmartLink {
-        from_address: LocalId(source_local_hash.clone()),
-        to_address: LocalId(local_target).into(),
-        relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
-        smart_property_values: link_tag_obj.smart_property_values,
-    };
+    if let Some(proxy_id) = link_tag_obj.proxy_id {
+        let holon_id = HolonId::External(ExternalId::from((proxy_id, LocalId(local_target))));
 
-    Ok(smartlink)
+        let smartlink = SmartLink {
+            from_address: LocalId(source_local_hash.clone()),
+            to_address: holon_id,
+            relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
+            smart_property_values: link_tag_obj.smart_property_values,
+        };
+
+        Ok(smartlink)
+    } else {
+        let smartlink = SmartLink {
+            from_address: LocalId(source_local_hash.clone()),
+            to_address: LocalId(local_target).into(),
+            relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
+            smart_property_values: link_tag_obj.smart_property_values,
+        };
+
+        Ok(smartlink)
+    }
 }
 
 pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
-    // TODO: convert proxy_id to string
-
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
 
-    let link_tag = encode_link_tag(input.relationship_name.clone(), input.smart_property_values)?;
+    match input.to_address.clone() {
+        HolonId::External(external_id) => {
+            let link_tag = encode_link_tag(
+                input.relationship_name.clone(),
+                Some(external_id.space_id),
+                input.smart_property_values,
+            )?;
 
-    create_link(
-        input.from_address.clone().0,
-        input.to_address.local_id().clone().0,
-        LinkTypes::SmartLink,
-        link_tag,
-    )?;
-    Ok(())
+            create_link(
+                input.from_address.0.clone(),
+                input.to_address.local_id().0.clone(),
+                LinkTypes::SmartLink,
+                link_tag,
+            )?;
+
+            Ok(())
+        }
+        HolonId::Local(_local_id) => {
+            let link_tag = encode_link_tag(
+                input.relationship_name.clone(),
+                None,
+                input.smart_property_values,
+            )?;
+
+            create_link(
+                input.from_address.0.clone(),
+                input.to_address.local_id().0.clone(),
+                LinkTypes::SmartLink,
+                link_tag,
+            )?;
+
+            Ok(())
+        }
+    }
 }
-
 
 // HELPER FUNCTIONS //
 
@@ -195,9 +232,8 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
     // TODO:
     // -reference_types
-    // -proxy_id
     //
-    // assuming both are default set to None for now
+    // assuming the default is set to None for now
 
     // property values //
 
@@ -265,6 +301,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
 pub fn encode_link_tag(
     relationship_name: RelationshipName,
+    proxy_id: Option<HolonSpaceId>,
     property_values: Option<PropertyMap>,
 ) -> Result<LinkTag, HolonError> {
     let name = relationship_name.0 .0;
@@ -277,15 +314,16 @@ pub fn encode_link_tag(
 
     bytes.extend_from_slice(name.as_bytes());
 
-    // TODO: optional descriptor_proxy_id which will need to have a prefix dude Hash being able to contain a Nul byte
     bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes()); // therefore remove this in the future
     bytes.extend_from_slice(&PROLOG_SEPERATOR);
 
+    if let Some(proxy_id) = proxy_id {
+        bytes.extend_from_slice(&proxy_id.0.into_inner());
+        bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
+    }
+
     // TODO: determine reference type
     // bytes.extend_from_slice(reference_type.as_bytes());
-    // bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
-    // TODO: proxy_id
-    // bytes.extend_from_slice(proxy_id_string.as_bytes());
     // bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
 
     if let Some(property_map) = &property_values {
@@ -383,8 +421,12 @@ mod tests {
         let value_3 = BaseValue::StringValue(MapString("ex_value_3".to_string()));
         property_values.insert(name_3, value_3);
 
-        let encoded_link_tag =
-            encode_link_tag(relationship_name.clone(), Some(property_values.clone())).unwrap();
+        let encoded_link_tag = encode_link_tag(
+            relationship_name.clone(),
+            None,
+            Some(property_values.clone()),
+        )
+        .unwrap();
 
         let decoded_link_tag_object = decode_link_tag(encoded_link_tag.clone()).unwrap();
 

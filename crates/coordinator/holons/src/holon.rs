@@ -516,7 +516,6 @@ impl Holon {
                 )),
                 AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
             },
-
         }
     }
 
@@ -572,8 +571,11 @@ impl Holon {
                         let mut collection = HolonCollection::new_existing();
 
                         // fetch the smartlinks for this relationship (if any)
-                        let smartlinks =
-                            get_relationship_links(self.get_local_id()?.0, relationship_name)?;
+                        let smartlinks = get_relationship_links(
+                            self.get_local_id()?.0,
+                            relationship_name,
+                            None, // default to None for now
+                        )?;
 
                         for smartlink in smartlinks {
                             let holon_reference = smartlink.to_holon_reference();
