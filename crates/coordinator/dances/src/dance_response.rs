@@ -1,7 +1,7 @@
 use derive_new::new;
 use std::fmt;
 
-use crate::holon_dance_adapter::NodeCollection;
+use holons::query::NodeCollection;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;

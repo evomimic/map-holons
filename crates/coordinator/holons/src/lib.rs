@@ -16,6 +16,7 @@ pub mod smartlink;
 pub mod staged_reference;
 pub mod transient_collection;
 pub mod json_adapter;
+pub mod query;
 
 
 use hdk::prelude::*;

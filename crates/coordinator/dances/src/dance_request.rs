@@ -1,12 +1,10 @@
-use crate::{
-    holon_dance_adapter::{NodeCollection, QueryExpression},
-    staging_area::StagingArea,
-};
+use crate::{staging_area::StagingArea};
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
 use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
+use holons::query::{NodeCollection, QueryExpression};
 
 use shared_types_holon::{HolonId, MapString, PropertyMap};
 
