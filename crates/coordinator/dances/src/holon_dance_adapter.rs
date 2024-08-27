@@ -14,56 +14,21 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-// use std::borrow::Borrow;
-// use std::rc::Rc;
-
-use std::collections::BTreeMap;
-use std::rc::Rc;
-
-use derive_new::new;
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::{HolonGettable, HolonReference};
+use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
+use holons::query::*;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapString, PropertyMap};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::staging_area::StagingArea;
-
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct Node {
-    pub source_holon: HolonReference,
-    pub relationships: Option<QueryPathMap>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct NodeCollection {
-    pub members: Vec<Node>,
-    pub query_spec: Option<QueryExpression>,
-}
-
-impl NodeCollection {
-    pub fn new_empty() -> Self {
-        Self {
-            members: Vec::new(),
-            query_spec: None,
-        }
-    }
-}
-
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct QueryPathMap(pub BTreeMap<RelationshipName, NodeCollection>);
-
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct QueryExpression {
-    relationship_name: RelationshipName,
-}
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
@@ -247,29 +212,7 @@ pub fn query_relationships_dance(
                 }
             };
 
-            let mut result_collection = NodeCollection::new_empty();
-
-            for node in node_collection.members {
-                let related_holons_rc = node
-                    .source_holon
-                    .get_related_holons(context, &relationship_name)?;
-
-                let related_holons = Rc::clone(&related_holons_rc);
-
-                let mut query_path_map = QueryPathMap::new(BTreeMap::new());
-
-                for reference in related_holons.get_members() {
-                    let mut related_collection = NodeCollection::new_empty();
-                    related_collection.members.push(Node::new(reference.clone(), None));
-                    query_path_map
-                        .0
-                        .insert(relationship_name.clone(), related_collection);
-                }
-
-                let new_node = Node::new(node.source_holon.clone(), Some(query_path_map));
-                result_collection.members.push(new_node);
-            }
-
+            let result_collection = evaluate_query(node_collection,context,relationship_name)?;
             Ok(ResponseBody::Collection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(

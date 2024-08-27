@@ -1,5 +1,5 @@
 use dances::dance_response::ResponseStatusCode;
-use dances::holon_dance_adapter::{NodeCollection, QueryExpression};
+use holons::query::{QueryExpression};
 use dances::staging_area::StagingArea;
 use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
