@@ -9,7 +9,7 @@ use crate::holon::{AccessType, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
-use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::relationship::{self, RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
 use shared_types_holon::{BaseValue, MapString, PropertyValue};
@@ -223,27 +223,17 @@ impl StagedReference {
     ) -> Result<Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         let existing_descriptor_option = self.get_descriptor(context)?;
+        let relationship_name = RelationshipName("DESCRIBED_BY".to_string());
+        // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
         if let Some(descriptor) = existing_descriptor_option {
-            self.remove_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
-                descriptor,
-            )?;
+            self.remove_related_holons(context, &relationship_name, descriptor)?;
             debug!("removed existing descriptor: {:#?}", descriptor);
-            self.add_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
-                vec![descriptor_reference],
-            )?;
+            self.add_related_holons(context, &relationship_name, vec![descriptor_reference])?;
             debug!("added descriptor: {:#?}", descriptor);
 
             Ok(Self)
         } else {
-            self.add_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
-                vec![descriptor_reference],
-            )?;
+            self.add_related_holons(context, &relationship_name, vec![descriptor_reference])?;
             debug!("added descriptor: {:#?}", descriptor);
 
             Ok(Self)
@@ -257,27 +247,17 @@ impl StagedReference {
     ) -> Result<Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         let existing_predecessor_option = self.get_predecessor(context)?;
+        let relationship_name = RelationshipName("PREDECESSOR".to_string());
+        // let relationship_name = CoreSchemaRelationshipTypeName::Predecessor.to_string();
         if let Some(predecessor) = existing_predecessor_option {
-            self.remove_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
-                predecessor,
-            )?;
+            self.remove_related_holons(context, &relationship_name, predecessor)?;
             debug!("removed existing predecessor: {:#?}", predecessor);
-            self.add_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
-                vec![predecessor_reference],
-            )?;
+            self.add_related_holons(context, &relationship_name, vec![predecessor_reference])?;
             debug!("added predecessor: {:#?}", predecessor);
 
             Ok(Self)
         } else {
-            self.add_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::DescribedBy.to_string(),
-                vec![predecessor_reference],
-            )?;
+            self.add_related_holons(context, &relationship_name, vec![predecessor_reference])?;
             debug!("added predecessor: {:#?}", predecessor);
 
             Ok(Self)

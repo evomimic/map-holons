@@ -1,13 +1,13 @@
+use hdk::prelude::*;
 use std::borrow::Borrow;
 use std::rc::Rc;
-use hdk::prelude::*;
 
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::relationship::{self, RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 
@@ -55,7 +55,6 @@ pub trait HolonGettable {
     ) -> Result<Rc<HolonCollection>, HolonError>;
 }
 
-
 impl HolonGettable for HolonReference {
     fn get_property_value(
         &self,
@@ -78,7 +77,6 @@ impl HolonGettable for HolonReference {
             HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
         }
     }
-
 
     fn get_related_holons(
         &self,
@@ -106,75 +104,98 @@ impl HolonReference {
         }
     }
 
-    pub fn get_descriptor(&self, context: &HolonsContext) -> Result<Option<HolonReference>, HolonError> {
+    pub fn get_descriptor(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Smart(smart_ref) => {
-                let collection = smart_ref.get_related_holons(context, CoreSchemaRelationshipTypeName::DescribedBy.to_string())?;
+                let relationship_name = RelationshipName("DESCRIBED_BY".to_string());
+                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+                let collection = smart_ref.get_related_holons(context, &relationship_name)?;
                 let members = collection.borrow().members;
                 if members.len() > 1 {
-                    return Err(HolonError::Misc(format!("get_related_holons for DESCRIBED_BY returned multiple members: {:#?}", members)));
+                    return Err(HolonError::Misc(format!(
+                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        members
+                    )));
                 }
                 if let Some(members) = members {
                     Ok(members[0])
-                }
-                else {
+                } else {
                     Ok(None)
                 }
-                },
+            }
             HolonReference::Staged(staged_ref) => {
-                let collection = smart_ref.get_related_holons(context, CoreSchemaRelationshipTypeName::DescribedBy.to_string())?;
+                let relationship_name = RelationshipName("DESCRIBED_BY".to_string());
+                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+                let collection = smart_ref.get_related_holons(context)?;
                 let members = collection.borrow().members;
                 if members.len() > 1 {
-                    return Err(HolonError::Misc(format!("get_related_holons for DESCRIBED_BY returned multiple members: {:#?}", members)));
+                    return Err(HolonError::Misc(format!(
+                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        members
+                    )));
                 }
                 if let Some(members) = members {
                     Ok(members[0])
-                }
-                else {
+                } else {
                     Ok(None)
-                }
                 }
             }
         }
+    }
 
     pub fn get_holon_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(staged_reference) =>
-                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
+            HolonReference::Staged(staged_reference) => Err(HolonError::HolonNotFound(
+                "HolonId not yet assigned for Staged Holons".to_string(),
+            )),
         }
     }
 
-    pub fn get_predecessor(&self, context: &HolonsContext) -> Result<Option<HolonReference>, HolonError> {
+    pub fn get_predecessor(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Smart(smart_ref) => {
-                let collection = smart_ref.get_related_holons(context, CoreSchemaRelationshipTypeName::DescribedBy.to_string())?;
+                let relationship_name = RelationshipName("PREDECESSOR".to_string());
+                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+                let collection = smart_ref.get_related_holons(context, &relationship_name)?;
                 let members = collection.borrow().members;
                 if members.len() > 1 {
-                    return Err(HolonError::Misc(format!("get_related_holons for PREDECESSOR returned multiple members: {:#?}", members)));
+                    return Err(HolonError::Misc(format!(
+                        "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                        members
+                    )));
                 }
                 if let Some(members) = members {
                     Ok(members[0])
-                }
-                else {
+                } else {
                     Ok(None)
                 }
-                },
+            }
             HolonReference::Staged(staged_ref) => {
-                let collection = smart_ref.get_related_holons(context, CoreSchemaRelationshipTypeName::DescribedBy.to_string())?;
+                let relationship_name = RelationshipName("PREDECESSOR".to_string());
+                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+                let collection = smart_ref.get_related_holons(context, &relationship_name)?;
                 let members = collection.borrow().members;
                 if members.len() > 1 {
-                    return Err(HolonError::Misc(format!("get_related_holons for PREDECESSOR returned multiple members: {:#?}", members)));
+                    return Err(HolonError::Misc(format!(
+                        "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                        members
+                    )));
                 }
                 if let Some(members) = members {
                     Ok(members[0])
-                }
-                else {
+                } else {
                     Ok(None)
-                }
                 }
             }
         }
+    }
 
     pub fn get_relationship_map(
         &mut self,
@@ -227,4 +248,3 @@ impl HolonReference {
     //     }
     // }
 }
-
