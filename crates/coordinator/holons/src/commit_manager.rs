@@ -205,6 +205,7 @@ impl CommitManager {
         // Set state to fetched, set predecessor to existing_holon
         holon.state = HolonState::Fetched;
 
+
         // Add the new holon into the CommitManager's staged_holons list, remembering its index
         let index = self.staged_holons.len();
         self.staged_holons

@@ -173,6 +173,7 @@ impl Holon {
         // Copy the existing holon's PropertyMap into the new Holon
         holon.property_map = self.property_map.clone();
 
+
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
 
@@ -187,8 +188,13 @@ impl Holon {
         // Copy the existing holon's PropertyMap and Descriptor into the new Holon
         holon.property_map = self.property_map.clone();
 
+        // holon.descriptor = self.descriptor.clone();
+
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
+
+        // TODO: set predecessor
+
 
         Ok(holon)
     }
