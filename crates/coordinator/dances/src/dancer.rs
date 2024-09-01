@@ -13,8 +13,7 @@ use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::load_core_schema_dance;
 
 use crate::holon_dance_adapter::{
-    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
-    get_holon_by_id_dance, query_relationships_dance, stage_new_holon_dance, with_properties_dance,
+    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance, stage_new_holon_dance, with_properties_dance
 };
 
 use crate::staging_area::StagingArea;
@@ -116,6 +115,10 @@ impl Dancer {
         dispatch_table.insert(
             "add_related_holons",
             add_related_holons_dance as DanceFunction,
+        );
+        dispatch_table.insert(
+            "remove_related_holons",
+            remove_related_holons_dance as DanceFunction,
         );
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert(

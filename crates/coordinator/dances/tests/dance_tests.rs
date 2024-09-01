@@ -37,6 +37,8 @@ use tracing::{debug, error, info, trace, warn, Level};
 
 use crate::shared_test::test_abandon_staged_changes::execute_abandon_staged_changes;
 use crate::shared_test::test_add_related_holon::execute_add_related_holons;
+use crate::shared_test::test_remove_related_holon::execute_remove_related_holons;
+
 use crate::shared_test::test_commit::execute_commit;
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep};
 use crate::shared_test::test_ensure_database_count::execute_ensure_database_count;
@@ -76,14 +78,13 @@ use shared_types_holon::HolonId;
 #[rstest]
 
 #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
-#[case::simple_add_related_holon_test(simple_add_related_holons_fixture())]
+#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::load_core_schema(load_core_schema_test_fixture())]
 
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
-
     let _ = holochain_trace::test_run();
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
@@ -121,6 +122,25 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     staged_index,
                     relationship_name,
                     holons_to_add,
+                    expected_response,
+                    expected_holon,
+                )
+                .await
+            }
+            DanceTestStep::RemoveRelatedHolons(
+                staged_index,
+                relationship_name,
+                holons_to_remove,
+                expected_response,
+                expected_holon,
+            ) => {
+                execute_remove_related_holons(
+                    &conductor,
+                    &cell,
+                    &mut test_state,
+                    staged_index,
+                    relationship_name,
+                    holons_to_remove,
                     expected_response,
                     expected_holon,
                 )

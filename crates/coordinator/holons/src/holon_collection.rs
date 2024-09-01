@@ -5,7 +5,7 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -187,6 +187,22 @@ impl HolonCollection {
         Ok(())
     }
 
+    pub fn remove_references(
+        &mut self,
+        context: &HolonsContext,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        for holon in holons {
+            self.members.retain(|x| x != &holon);
+            if let Some(key) = holon.get_key(context)? {
+                self.keyed_index.remove(&key);
+            }
+        }
+        Ok(())
+    }
+
     /// Adds the supplied HolonReference to this holon collection and updates the keyed_index
     /// according to the supplied key. This allows the collection to be populated when key is
     /// known and context may not be available.
@@ -209,7 +225,7 @@ impl HolonCollection {
     pub fn save_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
-        source_id: HolonId,
+        source_id: LocalId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         debug!(
@@ -251,7 +267,7 @@ impl HolonCollection {
     pub fn commit_relationship(
         &self,
         context: &HolonsContext,
-        source_id: HolonId,
+        source_id: LocalId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Commit)?;
