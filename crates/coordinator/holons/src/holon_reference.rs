@@ -1,13 +1,13 @@
 use hdk::prelude::*;
-use std::borrow::Borrow;
 use std::rc::Rc;
 
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
+use crate::holon::AccessType;
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::relationship::{self, RelationshipMap, RelationshipName};
+use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 
@@ -110,46 +110,48 @@ impl HolonReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Smart(smart_ref) => {
-                let relationship_name = RelationshipName("DESCRIBED_BY".to_string());
+                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
                 // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
                 let collection = smart_ref.get_related_holons(context, &relationship_name)?;
-                let members = collection.borrow().members;
+                collection.is_accessible(AccessType::Read)?;
+                let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
                         "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
                         members
                     )));
                 }
-                if let Some(members) = members {
-                    Ok(members[0])
-                } else {
+                if members.is_empty() {
                     Ok(None)
+                } else {
+                    Ok(Some(members[0].clone()))
                 }
             }
             HolonReference::Staged(staged_ref) => {
-                let relationship_name = RelationshipName("DESCRIBED_BY".to_string());
+                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
                 // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection = smart_ref.get_related_holons(context)?;
-                let members = collection.borrow().members;
+                let collection = staged_ref.get_related_holons(context, &relationship_name)?;
+                collection.is_accessible(AccessType::Read)?;
+                let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
                         "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
                         members
                     )));
                 }
-                if let Some(members) = members {
-                    Ok(members[0])
-                } else {
+                if members.is_empty() {
                     Ok(None)
+                } else {
+                    Ok(Some(members[0].clone()))
                 }
             }
         }
     }
 
-    pub fn get_holon_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+    pub fn get_holon_id(&self, _context: &HolonsContext) -> Result<HolonId, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(staged_reference) => Err(HolonError::HolonNotFound(
+            HolonReference::Staged(_staged_reference) => Err(HolonError::HolonNotFound(
                 "HolonId not yet assigned for Staged Holons".to_string(),
             )),
         }
@@ -161,37 +163,39 @@ impl HolonReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Smart(smart_ref) => {
-                let relationship_name = RelationshipName("PREDECESSOR".to_string());
+                let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
                 // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
                 let collection = smart_ref.get_related_holons(context, &relationship_name)?;
-                let members = collection.borrow().members;
+                collection.is_accessible(AccessType::Read)?;
+                let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
                         "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
                         members
                     )));
                 }
-                if let Some(members) = members {
-                    Ok(members[0])
-                } else {
+                if members.is_empty() {
                     Ok(None)
+                } else {
+                    Ok(Some(members[0].clone()))
                 }
             }
             HolonReference::Staged(staged_ref) => {
-                let relationship_name = RelationshipName("PREDECESSOR".to_string());
+                let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
                 // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection = smart_ref.get_related_holons(context, &relationship_name)?;
-                let members = collection.borrow().members;
+                let collection = staged_ref.get_related_holons(context, &relationship_name)?;
+                collection.is_accessible(AccessType::Read)?;
+                let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
                         "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
                         members
                     )));
                 }
-                if let Some(members) = members {
-                    Ok(members[0])
-                } else {
+                if members.is_empty() {
                     Ok(None)
+                } else {
+                    Ok(Some(members[0].clone()))
                 }
             }
         }

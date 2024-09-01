@@ -9,7 +9,7 @@ use crate::holon::{AccessType, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
-use crate::relationship::{self, RelationshipMap, RelationshipName};
+use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
 use shared_types_holon::{BaseValue, MapString, PropertyValue};
@@ -210,7 +210,7 @@ impl StagedReference {
         } else {
             return Err(HolonError::InvalidRelationship(
                 format!("Invalid relationship: {}", &relationship_name),
-                format!("For holon {:?}", &holon.descriptor),
+                format!("For holon {:?}", holon),
             ));
         }
         Ok(())
@@ -220,23 +220,32 @@ impl StagedReference {
         &self,
         context: &HolonsContext,
         descriptor_reference: HolonReference,
-    ) -> Result<Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        let existing_descriptor_option = self.get_descriptor(context)?;
-        let relationship_name = RelationshipName("DESCRIBED_BY".to_string());
+    ) -> Result<&Self, HolonError> {
+        let holon = self.get_mut_holon(context)?;
+        holon.borrow().is_accessible(AccessType::Write)?;
+        let existing_descriptor_option = descriptor_reference.get_descriptor(context)?;
+        let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
         // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
         if let Some(descriptor) = existing_descriptor_option {
-            self.remove_related_holons(context, &relationship_name, descriptor)?;
+            self.remove_related_holons(
+                context,
+                relationship_name.clone(),
+                vec![descriptor.clone()],
+            )?;
             debug!("removed existing descriptor: {:#?}", descriptor);
-            self.add_related_holons(context, &relationship_name, vec![descriptor_reference])?;
+            self.add_related_holons(context, relationship_name, vec![descriptor_reference])?;
             debug!("added descriptor: {:#?}", descriptor);
 
-            Ok(Self)
+            Ok(self)
         } else {
-            self.add_related_holons(context, &relationship_name, vec![descriptor_reference])?;
-            debug!("added descriptor: {:#?}", descriptor);
+            self.add_related_holons(
+                context,
+                relationship_name,
+                vec![descriptor_reference.clone()],
+            )?;
+            debug!("added descriptor: {:#?}", descriptor_reference);
 
-            Ok(Self)
+            Ok(self)
         }
     }
 
@@ -244,23 +253,32 @@ impl StagedReference {
         &self,
         context: &HolonsContext,
         predecessor_reference: HolonReference,
-    ) -> Result<Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        let existing_predecessor_option = self.get_predecessor(context)?;
-        let relationship_name = RelationshipName("PREDECESSOR".to_string());
+    ) -> Result<&Self, HolonError> {
+        let holon = self.get_mut_holon(context)?;
+        holon.borrow().is_accessible(AccessType::Write)?;
+        let existing_predecessor_option = predecessor_reference.get_predecessor(context)?;
+        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
         // let relationship_name = CoreSchemaRelationshipTypeName::Predecessor.to_string();
         if let Some(predecessor) = existing_predecessor_option {
-            self.remove_related_holons(context, &relationship_name, predecessor)?;
+            self.remove_related_holons(
+                context,
+                relationship_name.clone(),
+                vec![predecessor.clone()],
+            )?;
             debug!("removed existing predecessor: {:#?}", predecessor);
-            self.add_related_holons(context, &relationship_name, vec![predecessor_reference])?;
+            self.add_related_holons(context, relationship_name, vec![predecessor_reference])?;
             debug!("added predecessor: {:#?}", predecessor);
 
-            Ok(Self)
+            Ok(self)
         } else {
-            self.add_related_holons(context, &relationship_name, vec![predecessor_reference])?;
-            debug!("added predecessor: {:#?}", predecessor);
+            self.add_related_holons(
+                context,
+                relationship_name,
+                vec![predecessor_reference.clone()],
+            )?;
+            debug!("added predecessor: {:#?}", predecessor_reference);
 
-            Ok(Self)
+            Ok(self)
         }
     }
 

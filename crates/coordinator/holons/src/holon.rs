@@ -21,7 +21,7 @@ use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::smart_reference::SmartReference;
+// use crate::smart_reference::SmartReference;
 use crate::smartlink::{get_all_relationship_links, get_relationship_links};
 
 #[derive(Debug)]
@@ -62,7 +62,6 @@ pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
     //pub relationship_map: RelationshipMap,
     key: Option<MapString>,
-    pub descriptor: Option<HolonReference>,
     pub errors: Vec<HolonError>,
 }
 
@@ -171,9 +170,8 @@ impl Holon {
     pub fn clone_holon(&self) -> Result<Holon, HolonError> {
         let mut holon = Holon::new();
 
-        // Copy the existing holon's PropertyMap and Descriptor into the new Holon
+        // Copy the existing holon's PropertyMap into the new Holon
         holon.property_map = self.property_map.clone();
-        holon.descriptor = self.descriptor.clone();
 
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
@@ -191,8 +189,6 @@ impl Holon {
 
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
-
-        // TODO: set predecessor
 
         Ok(holon)
     }
@@ -336,7 +332,6 @@ impl Holon {
         Ok(EssentialHolonContent {
             property_map: self.property_map.clone(),
             //relationship_map: self.relationship_map.clone(),
-            descriptor: self.descriptor.clone(),
             key,
             errors: self.errors.clone(),
         })
@@ -663,76 +658,11 @@ impl Holon {
         Ok(RelationshipMap(relationship_map))
     }
 
-    /// This private method is used to populate a holon's descriptor field by retrieving a
-    /// reference to it from the holon's relationships. This function returns:
-    /// `Ok(Some(HolonReference))` -- where HolonReference refers to the retrieved descriptor
-    /// `Ok(None)` -- If the holon doesn't have a related descriptor.
-    /// `Err<HolonError>` -- if any errors are encountered
-    fn populate_descriptor(&mut self) -> Result<Option<HolonReference>, HolonError> {
-        // Define the "DESCRIBED_BY" relationship key -- TODO: get this name as Enum variant
-        let relationship_name = RelationshipName(MapString("DESCRIBED_BY".into()));
-
-        // Attempt to load the relationship and get the count of related descriptors
-        let descriptor_count = self.load_relationship(&relationship_name)?;
-
-        match descriptor_count.0 {
-            0 => Ok(None),
-            1 => {
-                if let Some(collection) = self
-                    .relationship_map
-                    .get_collection_for_relationship(&relationship_name)
-                {
-                    let descriptor = collection.get_by_index(0)?;
-                    self.descriptor = Some(descriptor.clone());
-                    Ok(Some(descriptor))
-                } else {
-                    // This case should be unreachable since descriptor_count.0 == 1
-                    Err(HolonError::HolonNotFound(format!(
-                        "Descriptor expected but not found for relationship: {:?}",
-                        relationship_name
-                    )))
-                }
-            }
-            _ => Err(HolonError::IndexOutOfRange(
-                "Expected only a single descriptor".to_string(),
-            )),
-        }
-    }
-
-    // /// This private method is used to populate a holon's descriptor field by retrieving a
-    // /// reference to it from the holon's relationships. This function returns:
-    // /// `Ok(Some(HolonReference))` -- where HolonReference refers to the retrieved descriptor
-    // /// `Ok(None)` --If the holon doesn't have a related descriptor.
-    // /// `Err<HolonError>` -- if any errors are encountered
-    // fn populate_descriptor(&mut self) -> Result<Option<HolonReference>, HolonError> {
-    //     // Define the "DESCRIBED_BY" relationship key -- TODO: get this name as Enum variant
-    //     let relationship_name = RelationshipName(MapString("DESCRIBED_BY".into()));
-    //
-    //     let descriptor_count = self.load_relationship(&relationship_name)?;
-    //
-    //     if descriptor_count.0 == 1 {
-    //         let collection_option =
-    //             self.relationship_map.get_collection_for_relationship(&relationship_name);
-    //         if let Some(collection) = collection_option {
-    //             let descriptor = collection.get_by_index(0)?;
-    //             self.descriptor = Some(descriptor.clone());
-    //             Ok(Some(descriptor.clone()))
-    //         }  else {
-    //         if descriptor_count.0 == 0 {
-    //             Ok(None)
-    //         } else {
-    //             Err(HolonError::IndexOutOfRange("Expected only a single descriptor".to_string()))
-    //         }
-    //
-    //     }
-    //
-    // }
-
     /// try_from_node inflates a Holon from a HolonNode.
     /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
         let holon_node = get_holon_node_from_record(holon_node_record.clone())?;
-
+        #[allow(unused_mut)]
         let mut holon = Holon {
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
@@ -745,7 +675,6 @@ impl Holon {
         // TODO: Populate RelationshipMap from links
 
         // TODO: Populate Descriptor from links
-        holon.populate_descriptor()?;
 
         // TODO: populate predecessor from link to previous record for this Holon
 
