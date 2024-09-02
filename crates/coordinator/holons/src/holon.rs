@@ -173,7 +173,6 @@ impl Holon {
         // Copy the existing holon's PropertyMap into the new Holon
         holon.property_map = self.property_map.clone();
 
-
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
 
@@ -182,22 +181,13 @@ impl Holon {
 
     /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
     /// which retains lineage to its predecessor.
-    pub fn edit_holon(&self) -> Result<Holon, HolonError> {
-        let mut holon = Holon::new();
-
-        // Copy the existing holon's PropertyMap and Descriptor into the new Holon
-        holon.property_map = self.property_map.clone();
-
-        // holon.descriptor = self.descriptor.clone();
-
-        // Update in place each relationship's HolonCollection State to Staged
-        holon.relationship_map = self.relationship_map.clone_for_new_source()?;
-
-        // TODO: set predecessor
-
+    pub fn new_version(&self) -> Result<Holon, HolonError> {
+        let mut holon = self.clone_holon()?;
+        holon.state = HolonState::Changed;
 
         Ok(holon)
     }
+
     /// commit() saves a staged holon to the persistent store.
     ///
     /// If the staged holon is already  `Fetched`, `Saved`, or `Abandoned`, commit does nothing.
@@ -358,89 +348,6 @@ impl Holon {
         }
     }
 
-    pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        let node = self.saved_node.clone();
-        if let Some(record) = node {
-            Ok(LocalId(record.action_address().clone()))
-        } else {
-            Err(HolonError::HolonNotFound("Node is empty".to_string()))
-        }
-    }
-
-    // NOTE: Holon does NOT  implement HolonGettableTrait because the functions defined by that
-    // Trait include a context parameter.
-
-    /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon (NOTE: Not all holon types have defined keys.)
-    /// If the holon has a key, but it cannot be returned as a MapString, this function
-    /// returns a HolonError::UnexpectedValueType.
-    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        trace!(" in get_key()");
-        let key = self
-            .property_map
-            .get(&PropertyName(MapString("key".to_string())));
-        if let Some(key) = key {
-            let string_value: String = key.try_into().map_err(|_| {
-                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
-            })?;
-            trace!(" returning from get_key() with Some(key)");
-            Ok(Some(MapString(string_value)))
-        } else {
-            trace!(" returning from get_key() with None");
-            Ok(None)
-        }
-    }
-
-    pub fn get_property_value(
-        &self,
-        property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        self.property_map
-            .get(property_name)
-            .cloned()
-            .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
-    }
-    /// This method returns a HolonCollection containing the holons (if any) that are related
-    /// to the source holon via the specified relationship_name. Prior to this call, the holons
-    /// for the specified relationship may or may not have been loaded. So it first ensures they
-    /// have been loaded before retrieving and returning the HolonCollection for this relationship.
-    ///
-    /// NOTE: Even if there are no holons related via that relationship, an entry will be added to
-    /// the relationship_map for that relationship (referencing a possibly empty HolonCollection).
-    ///
-
-    pub fn get_related_holons(
-        &mut self,
-        relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        // Check if the holon is accessible with the required access type
-        self.is_accessible(AccessType::Read)?;
-        debug!(
-            "Entered get_related_holons for source holon({:?})-{:?}>",
-            self.get_key(),
-            relationship_name
-        );
-
-        // Load the relationship and get the count
-        let _count = self.load_relationship(relationship_name)?;
-
-        // Retrieve the collection for the given relationship name
-        let collection =
-            self.relationship_map
-                .0
-                .get(relationship_name)
-                .ok_or(HolonError::HolonNotFound(format!(
-                    "Even after load_relationships, no collection found for relationship: {:?}",
-                    relationship_name
-                )))?;
-
-        // Return the collection wrapped in a Rc
-        Ok(Rc::new(collection.clone()))
-    }
-
     /// This method gets ALL holons related to this holon via ANY relationship this holon is
     /// EITHER the SOURCE_FOR or TARGET_OF. It returns a RelationshipMap containing
     /// one entry for every relationship that has related holons. NOTE: this means that the
@@ -487,6 +394,88 @@ impl Holon {
         //         Ok(RelationshipMap(result_map))
         //     }
         // }
+    }
+
+    // NOTE: Holon does NOT  implement HolonGettableTrait because the functions defined by that
+    // Trait include a context parameter.
+
+    /// This function returns the primary key value for the holon or None if there is no key value
+    /// for this holon (NOTE: Not all holon types have defined keys.)
+    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// returns a HolonError::UnexpectedValueType.
+    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        trace!(" in get_key()");
+        let key = self
+            .property_map
+            .get(&PropertyName(MapString("key".to_string())));
+        if let Some(key) = key {
+            let string_value: String = key.try_into().map_err(|_| {
+                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
+            })?;
+            trace!(" returning from get_key() with Some(key)");
+            Ok(Some(MapString(string_value)))
+        } else {
+            trace!(" returning from get_key() with None");
+            Ok(None)
+        }
+    }
+
+    pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let node = self.saved_node.clone();
+        if let Some(record) = node {
+            Ok(LocalId(record.action_address().clone()))
+        } else {
+            Err(HolonError::HolonNotFound("Node is empty".to_string()))
+        }
+    }
+
+    pub fn get_property_value(
+        &self,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        self.property_map
+            .get(property_name)
+            .cloned()
+            .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
+    }
+    /// This method returns a HolonCollection containing the holons (if any) that are related
+    /// to the source holon via the specified relationship_name. Prior to this call, the holons
+    /// for the specified relationship may or may not have been loaded. So it first ensures they
+    /// have been loaded before retrieving and returning the HolonCollection for this relationship.
+    ///
+    /// NOTE: Even if there are no holons related via that relationship, an entry will be added to
+    /// the relationship_map for that relationship (referencing a possibly empty HolonCollection).
+    ///
+    pub fn get_related_holons(
+        &mut self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        // Check if the holon is accessible with the required access type
+        self.is_accessible(AccessType::Read)?;
+        debug!(
+            "Entered get_related_holons for source holon({:?})-{:?}>",
+            self.get_key(),
+            relationship_name
+        );
+
+        // Load the relationship and get the count
+        let _count = self.load_relationship(relationship_name)?;
+
+        // Retrieve the collection for the given relationship name
+        let collection =
+            self.relationship_map
+                .0
+                .get(relationship_name)
+                .ok_or(HolonError::HolonNotFound(format!(
+                    "Even after load_relationships, no collection found for relationship: {:?}",
+                    relationship_name
+                )))?;
+
+        // Return the collection wrapped in a Rc
+        Ok(Rc::new(collection.clone()))
     }
 
     /// Returns the current state of the Holon.
@@ -552,6 +541,45 @@ impl Holon {
     //         errors: self.errors.clone(),
     //     }
     // }
+
+    /// Populates a full RelationshipMap by retrieving all SmartLinks for which this holon is the
+    /// source. The map returned will ONLY contain entries for relationships that have at least
+    /// one related holon (i.e., none of the holon collections returned via the result map will have
+    /// zero members).
+    pub fn load_all_relationships(
+        &mut self,
+        context: &HolonsContext,
+    ) -> Result<RelationshipMap, HolonError> {
+        let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
+
+        let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
+        let smartlinks = get_all_relationship_links(self.get_local_id()?)?;
+        debug!("Retrieved {:?} smartlinks", smartlinks.len());
+
+        for smartlink in smartlinks {
+            let reference = smartlink.to_holon_reference();
+
+            // The following:
+            // 1) adds an entry for relationship name if not already present (via `entry` API)
+            // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+            // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+            reference_map
+                .entry(smartlink.relationship_name)
+                .or_insert_with(Vec::new)
+                .push(reference);
+        }
+
+        // Now create the result
+
+        for (map_name, holons) in reference_map {
+            let mut collection = HolonCollection::new_existing();
+            collection.add_references(context, holons)?;
+            relationship_map.insert(map_name, collection);
+        }
+
+        Ok(RelationshipMap(relationship_map))
+    }
 
     /// Ensures that the holon's `relationship_map` includes an entry for the specified relationship
     /// and returns a count of the number of holons in the holon collection for the specified
@@ -622,46 +650,6 @@ impl Holon {
                 }
             }
         }
-    }
-
-    /// Populates a full RelationshipMap by retrieving all SmartLinks for which this holon is the
-    /// source. The map returned will ONLY contain entries for relationships that have at least
-    /// one related holon (i.e., none of the holon collections returned via the result map will have
-    /// zero members).
-
-    pub fn load_all_relationships(
-        &mut self,
-        context: &HolonsContext,
-    ) -> Result<RelationshipMap, HolonError> {
-        let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
-
-        let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
-        let smartlinks = get_all_relationship_links(self.get_local_id()?)?;
-        debug!("Retrieved {:?} smartlinks", smartlinks.len());
-
-        for smartlink in smartlinks {
-            let reference = smartlink.to_holon_reference();
-
-            // The following:
-            // 1) adds an entry for relationship name if not already present (via `entry` API)
-            // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
-            // 3) pushes the new HolonReference into the vector -- without having to clone the vector
-
-            reference_map
-                .entry(smartlink.relationship_name)
-                .or_insert_with(Vec::new)
-                .push(reference);
-        }
-
-        // Now create the result
-
-        for (map_name, holons) in reference_map {
-            let mut collection = HolonCollection::new_existing();
-            collection.add_references(context, holons)?;
-            relationship_map.insert(map_name, collection);
-        }
-
-        Ok(RelationshipMap(relationship_map))
     }
 
     /// try_from_node inflates a Holon from a HolonNode.

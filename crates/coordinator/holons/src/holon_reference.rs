@@ -4,7 +4,7 @@ use std::rc::Rc;
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
-use crate::holon::AccessType;
+use crate::holon::{AccessType, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
@@ -95,6 +95,13 @@ impl HolonGettable for HolonReference {
 }
 
 impl HolonReference {
+    pub fn clone_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        match self {
+            HolonReference::Smart(smart_ref) => smart_ref.clone_holon(context),
+            HolonReference::Staged(staged_ref) => staged_ref.clone_holon(context),
+        }
+    }
+
     pub fn clone_reference(&self) -> HolonReference {
         match self {
             HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
@@ -162,42 +169,8 @@ impl HolonReference {
         context: &HolonsContext,
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
-            HolonReference::Smart(smart_ref) => {
-                let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection = smart_ref.get_related_holons(context, &relationship_name)?;
-                collection.is_accessible(AccessType::Read)?;
-                let members = collection.get_members();
-                if members.len() > 1 {
-                    return Err(HolonError::Misc(format!(
-                        "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
-                        members
-                    )));
-                }
-                if members.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(members[0].clone()))
-                }
-            }
-            HolonReference::Staged(staged_ref) => {
-                let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection = staged_ref.get_related_holons(context, &relationship_name)?;
-                collection.is_accessible(AccessType::Read)?;
-                let members = collection.get_members();
-                if members.len() > 1 {
-                    return Err(HolonError::Misc(format!(
-                        "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
-                        members
-                    )));
-                }
-                if members.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(members[0].clone()))
-                }
-            }
+            HolonReference::Smart(smart_ref) => smart_ref.get_predecessor(context),
+            HolonReference::Staged(staged_ref) => staged_ref.get_predecessor(context),
         }
     }
 

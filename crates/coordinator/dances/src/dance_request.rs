@@ -26,6 +26,7 @@ pub enum DanceType {
     Standalone,                  // i.e., a dance not associated with a specific holon
     QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
     CommandMethod(StagedIndex), // a mutating method operating on a specific staged_holon identified by its index into the staged_holons vector
+    CloneMethod(HolonReference) // a specific method for cloning a Holon
 }
 
 #[hdk_entry_helper]

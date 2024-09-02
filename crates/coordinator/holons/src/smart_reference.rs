@@ -8,10 +8,10 @@ use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
 use crate::context::HolonsContext;
-use crate::holon::Holon;
+use crate::holon::{AccessType, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonGettable;
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 
 #[hdk_entry_helper]
@@ -37,20 +37,35 @@ impl SmartReference {
         Ok(holon)
     }
 
-    pub fn edit_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow().clone();
-
-        Ok(holon)
-    }
-
-
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
         self.smart_property_values.clone()
     }
+
+    pub fn get_predecessor(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
+        // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+        let collection = self.get_related_holons(context, &relationship_name)?;
+        collection.is_accessible(AccessType::Read)?;
+        let members = collection.get_members();
+        if members.len() > 1 {
+            return Err(HolonError::Misc(format!(
+                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                members
+            )));
+        }
+        if members.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(members[0].clone()))
+        }
+    }
+
     pub fn get_property_map(&self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_refcell = holon.borrow();
@@ -72,6 +87,13 @@ impl SmartReference {
             .cache_manager
             .borrow_mut()
             .get_rc_holon(&self.holon_id)?)
+    }
+
+    pub fn new_version(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow().clone();
+
+        Ok(holon)
     }
 }
 impl HolonGettable for SmartReference {
@@ -148,8 +170,8 @@ impl HolonGettable for SmartReference {
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let map = {
-            let mut holon_ref = holon.borrow_mut();
-            holon_ref.get_related_holons(relationship_name)?.clone()
+            let mut holon_refcell = holon.borrow_mut();
+            holon_refcell.get_related_holons(relationship_name)?.clone()
         };
         Ok(map)
     }

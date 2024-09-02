@@ -13,7 +13,9 @@ use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::load_core_schema_dance;
 
 use crate::holon_dance_adapter::{
-    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance, stage_new_holon_dance, with_properties_dance
+    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
+    get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance,
+    stage_new_holon_dance, with_properties_dance,
 };
 
 use crate::staging_area::StagingArea;
@@ -101,10 +103,15 @@ impl Dancer {
         let mut dispatch_table = HashMap::new();
 
         // Register functions into the dispatch table
+        dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert("commit", commit_dance as DanceFunction);
+        dispatch_table.insert(
+            "stage_new_from_clone",
+            stage_new_holon_dance as DanceFunction,
+        );
+        dispatch_table.insert("stage_new_version", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
 
         dispatch_table.insert(

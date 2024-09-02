@@ -25,10 +25,12 @@ use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-use holons::holon::Holon;
+use holons::holon::{self, Holon};
 use holons::holon_error::HolonError;
 use holons::holon_reference::{HolonGettable, HolonReference};
 use holons::relationship::RelationshipName;
+use holons::smart_reference;
+use holons::staged_reference::StagedReference;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapString, PropertyMap};
 
@@ -65,6 +67,64 @@ pub struct QueryExpression {
     relationship_name: RelationshipName,
 }
 
+/// Abandon staged changes
+///
+/// *DanceRequest:*
+/// - dance_name: "abandon_staged_changes"
+/// - dance_type: Command(StagedIndex) -- references the staged holon whose changes are being abandoned
+/// - request_body: None
+///   
+///
+/// *ResponseBody:*
+/// - an Index into staged_holons that references the updated holon.
+///
+pub fn abandon_staged_changes_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    // Get the staged holon
+    debug!("Entered: abandon_staged_changes_dance");
+    match request.dance_type {
+        DanceType::CommandMethod(staged_index) => {
+            debug!("trying to borrow_mut commit_manager");
+            // Try to get a mutable reference to the staged holon referenced by its index
+            let commit_manager_mut = context.commit_manager.borrow_mut();
+            debug!("commit_manager borrowed_mut");
+            let staged_holon = commit_manager_mut.get_mut_holon_by_index(staged_index.clone());
+            //debug!("Result of borrow_mut on the staged holon  {:#?}", staged_holon.clone());
+
+            match staged_holon {
+                Ok(mut holon_mut) => {
+                    holon_mut.abandon_staged_changes()?;
+                    Ok(ResponseBody::Index(staged_index))
+                }
+                Err(_) => Err(HolonError::IndexOutOfRange(
+                    "Unable to borrow a mutable reference to holon at supplied staged_index"
+                        .to_string(),
+                )),
+            }
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Expected Command(StagedIndex) DanceType, didn't get one".to_string(),
+        )),
+    }
+}
+///
+/// Builds a DanceRequest for abandoning changes to a staged Holon.
+pub fn build_abandon_staged_changes_dance_request(
+    staging_area: StagingArea,
+    index: StagedIndex,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::None;
+    Ok(DanceRequest::new(
+        MapString("abandon_staged_changes".to_string()),
+        DanceType::CommandMethod(index),
+        body,
+        staging_area,
+    ))
+}
+/// Add related Holons
+///
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
 /// - dance_type: Command(StagedIndex) -- references the staged holon that is the `source` of the relationship being extended
@@ -97,9 +157,11 @@ pub fn add_related_holons_dance(
                     match request.body {
                         RequestBody::TargetHolons(relationship_name, holons_to_add) => {
                             // Convert Vec<PortableReference> to Vec<HolonReference> inline
-                            debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
+                            debug!(
+                                "Matched TargetHolons as RequestBody, building Vec<HolonReference>"
+                            );
 
-                            debug!("Got the holon_refs_vec, about to call add_related_holons");
+                            debug!("Got the Vec<HolonReference>, about to call add_related_holons");
                             // Call the add_related_holons method on StagedReference
                             source_reference.add_related_holons(
                                 context,
@@ -123,86 +185,6 @@ pub fn add_related_holons_dance(
         )),
     }
 }
-
-/// *DanceRequest:*
-/// - dance_name: "remove_related_holons"
-/// - dance_type: CommandMethod(StagedIndex) -- identifies the holon that is the `source` of the relationship being navigated
-/// - request_body:
-///     TargetHolons(RelationshipName, Vec<HolonReference>),
-///
-/// *ResponseBody:*
-/// - Index(StagedIndex) -- index for the staged_holon for which related holons were removed
-///   
-///
-pub fn remove_related_holons_dance(
-    context: &HolonsContext,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
-    debug!("Entered remove_related_holons_dance");
-
-    // Match the dance_type
-    match request.dance_type {
-        DanceType::CommandMethod(staged_index) => {
-            // Borrow a read-only reference to the CommitManager
-            let staged_reference_result = {
-                let commit_manager = context.commit_manager.borrow();
-                debug!("Matched CommandMethod as dance_type.");
-                // Convert the staged_index into a StagedReference
-                commit_manager.to_staged_reference(staged_index)
-            };
-
-            // Handle the result of to_staged_reference
-            match staged_reference_result {
-                Ok(source_reference) => {
-                    match request.body {
-                        RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
-                            // Convert Vec<PortableReference> to Vec<HolonReference> inline
-                            debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
-
-                            debug!("Got the holon_refs_vec, about to call remove_related_holons");
-                            source_reference.remove_related_holons(
-                                context,
-                                relationship_name,
-                                holons_to_remove,
-                            )?;
-
-                            Ok(ResponseBody::Index(staged_index))
-                        }
-                        _ => Err(HolonError::InvalidParameter(
-                            "Invalid RequestBody: expected TargetHolons, didn't get one"
-                                .to_string(),
-                        )),
-                    }
-                }
-                Err(e) => Err(e),
-            }
-        }
-        _ => Err(HolonError::InvalidParameter(
-            "Invalid DanceType: expected CommandMethod(StagedIndex), didn't get one".to_string(),
-        )),
-    }
-}
-
-
-
-
-/// Builds a DanceRequest for removing related holons to a source_holon.
-pub fn build_remove_related_holons_dance_request(
-    staging_area: StagingArea,
-    index: StagedIndex,
-    relationship_name: RelationshipName,
-    holons_to_remove: Vec<HolonReference>,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_target_holons(relationship_name, holons_to_remove);
-    Ok(DanceRequest::new(
-        MapString("remove_related_holons".to_string()),
-        DanceType::CommandMethod(index),
-        body,
-        staging_area,
-    ))
-}
-
-
 ///
 /// Builds a DanceRequest for adding related holons to a source_holon.
 pub fn build_add_related_holons_dance_request(
@@ -220,6 +202,136 @@ pub fn build_add_related_holons_dance_request(
     ))
 }
 
+/// Commit all staged holons to the persistent store
+///
+/// *DanceRequest:*
+/// - dance_name: "commit"
+/// - dance_type: Standalone
+/// - request_body: None
+///
+/// *ResponseBody:*
+/// - Holons -- a vector of clones of all successfully committed holons
+///
+pub fn commit_dance(
+    context: &HolonsContext,
+    _request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("Entered: commit_dance");
+    let commit_response = CommitManager::commit(context);
+
+    match commit_response.status {
+        Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
+        Incomplete => {
+            let completion_message = format!(
+                "{} of {:?} were successfully committed",
+                commit_response.saved_holons.len(),
+                commit_response.commits_attempted.0,
+            );
+            // TODO: Why turn INCOMPLETE into an Error? Shouldn't we just pass CommitResponse to client?
+            Err(HolonError::CommitFailure(completion_message.to_string()))
+        }
+    }
+}
+///
+/// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
+/// in the body of the request.
+pub fn build_commit_dance_request(staging_area: StagingArea) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::None;
+    Ok(DanceRequest::new(
+        MapString("commit".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
+}
+
+/// Get all holons from the persistent store
+///
+/// *DanceRequest:*
+/// - dance_name: "get_all_holons"
+/// - dance_type: Standalone
+/// - request_body: None
+///
+/// *ResponseBody:*
+/// - Holons -- will be replaced by SmartCollection once supported
+///
+pub fn get_all_holons_dance(
+    _context: &HolonsContext,
+    _request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    // TODO: add support for descriptor parameter
+    //
+    //
+    debug!("Entering get_all_holons dance..");
+    let query_result = Holon::get_all_holons();
+    match query_result {
+        Ok(holons) => Ok(ResponseBody::Holons(holons)),
+        Err(holon_error) => Err(holon_error.into()),
+    }
+}
+///
+/// Builds a DanceRequest for retrieving all holons from the persistent store
+pub fn build_get_all_holons_dance_request(
+    staging_area: StagingArea,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::new();
+    Ok(DanceRequest::new(
+        MapString("get_all_holons".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
+}
+
+/// Gets Holon from persistent store, located by HolonId
+///
+/// *DanceRequest:*
+/// - dance_name: "get_holon_by_id"
+/// - dance_type: Standalone
+/// - request_body:
+///     - HolonId(HolonId)
+///
+/// *ResponseBody:*
+///     - Holon(Holon)
+///
+pub fn get_holon_by_id_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    info!("-------ENTERED: get_holon_by_id_dance.");
+    let holon_id = match request.body {
+        RequestBody::HolonId(id) => id,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "RequestBody variant must be HolonId".to_string(),
+            ))
+        }
+    };
+    info!("getting cache_manager from context");
+    let cache_manager = context.cache_manager.borrow();
+
+    info!("asking cache_manager to get rc_holon");
+    let rc_holon = cache_manager.get_rc_holon(&holon_id)?;
+
+    let holon = rc_holon.borrow().clone();
+    Ok(ResponseBody::Holon(holon))
+}
+///
+/// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
+pub fn build_get_holon_by_id_dance_request(
+    staging_area: StagingArea,
+    holon_id: HolonId,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::HolonId(holon_id);
+    Ok(DanceRequest::new(
+        MapString("get_holon_by_id".to_string()),
+        DanceType::Standalone,
+        body,
+        staging_area,
+    ))
+}
+/// Query relationships
+///
 /// *DanceRequest:*
 /// - dance_name: "query_relationships"
 /// - dance_type: QueryMethod(NodeCollection) -- specifies the Collection to use as the source of the query
@@ -237,15 +349,15 @@ pub fn query_relationships_dance(
 
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
-            let relationship_name = match request.body {
-                RequestBody::QueryExpression(expression) => expression.relationship_name,
-                _ => {
-                    return Err(HolonError::InvalidParameter(
+            let relationship_name =
+                match request.body {
+                    RequestBody::QueryExpression(expression) => expression.relationship_name,
+                    _ => return Err(HolonError::InvalidParameter(
                         "Invalid RequestBody: expected QueryExpression with relationship name, \
-                        didn't get one".to_string(),
-                    ))
-                }
-            };
+                        didn't get one"
+                            .to_string(),
+                    )),
+                };
 
             let mut result_collection = NodeCollection::new_empty();
 
@@ -260,7 +372,9 @@ pub fn query_relationships_dance(
 
                 for reference in related_holons.get_members() {
                     let mut related_collection = NodeCollection::new_empty();
-                    related_collection.members.push(Node::new(reference.clone(), None));
+                    related_collection
+                        .members
+                        .push(Node::new(reference.clone(), None));
                     query_path_map
                         .0
                         .insert(relationship_name.clone(), related_collection);
@@ -277,9 +391,6 @@ pub fn query_relationships_dance(
         )),
     }
 }
-
-
-
 
 // pub fn query_relationships_dance(
 //     context: &HolonsContext,
@@ -327,7 +438,7 @@ pub fn query_relationships_dance(
 //         )),
 //     }
 // }
-
+///
 /// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
 pub fn build_query_relationships_dance_request(
     staging_area: StagingArea,
@@ -339,6 +450,130 @@ pub fn build_query_relationships_dance_request(
         MapString("query_relationships".to_string()),
         DanceType::QueryMethod(node_collection),
         body,
+        staging_area,
+    ))
+}
+/// Remove related Holons
+///
+/// *DanceRequest:*
+/// - dance_name: "remove_related_holons"
+/// - dance_type: CommandMethod(StagedIndex) -- identifies the holon that is the `source` of the relationship being navigated
+/// - request_body:
+///     TargetHolons(RelationshipName, Vec<HolonReference>),
+///
+/// *ResponseBody:*
+/// - Index(StagedIndex) -- index for the staged_holon for which related holons were removed
+///   
+///
+pub fn remove_related_holons_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("Entered remove_related_holons_dance");
+
+    // Match the dance_type
+    match request.dance_type {
+        DanceType::CommandMethod(staged_index) => {
+            // Borrow a read-only reference to the CommitManager
+            let staged_reference_result = {
+                let commit_manager = context.commit_manager.borrow();
+                debug!("Matched CommandMethod as dance_type.");
+                // Convert the staged_index into a StagedReference
+                commit_manager.to_staged_reference(staged_index)
+            };
+
+            // Handle the result of to_staged_reference
+            match staged_reference_result {
+                Ok(source_reference) => {
+                    match request.body {
+                        RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
+                            // Convert Vec<PortableReference> to Vec<HolonReference> inline
+                            debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
+
+                            debug!("Got the holon_refs_vec, about to call remove_related_holons");
+                            source_reference.remove_related_holons(
+                                context,
+                                &relationship_name,
+                                holons_to_remove,
+                            )?;
+
+                            Ok(ResponseBody::Index(staged_index))
+                        }
+                        _ => Err(HolonError::InvalidParameter(
+                            "Invalid RequestBody: expected TargetHolons, didn't get one"
+                                .to_string(),
+                        )),
+                    }
+                }
+                Err(e) => Err(e),
+            }
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected CommandMethod(StagedIndex), didn't get one".to_string(),
+        )),
+    }
+}
+///
+/// Builds a DanceRequest for removing related holons to a source_holon.
+pub fn build_remove_related_holons_dance_request(
+    staging_area: StagingArea,
+    index: StagedIndex,
+    relationship_name: RelationshipName,
+    holons_to_remove: Vec<HolonReference>,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::new_target_holons(relationship_name, holons_to_remove);
+    Ok(DanceRequest::new(
+        MapString("remove_related_holons".to_string()),
+        DanceType::CommandMethod(index),
+        body,
+        staging_area,
+    ))
+}
+
+/// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+///
+/// *DanceRequest:*
+/// - dance_name: "stage_new_from_clone"
+/// - dance_type: CloneMethod(HolonReference)
+/// - request_body: None
+///   
+///
+/// *ResponseBody:*
+/// Index(StagedIndex), // a reference to the newly staged holon
+///
+pub fn stage_new_from_clone_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("== Entered stage_new_from_clone dance ==");
+
+    let staged_reference: StagedReference = match request.dance_type {
+        DanceType::CloneMethod(holon_reference) => {
+            // Stage the new holon
+            context
+                .commit_manager
+                .borrow_mut()
+                .stage_new_from_clone(context, holon_reference)?
+        }
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+            ))
+        }
+    };
+
+    Ok(ResponseBody::Index(staged_reference.holon_index))
+}
+///
+/// Builds a dance request for staging a new cloned Holon
+pub fn build_stage_new_from_clone_dance_request(
+    staging_area: StagingArea,
+    holon: HolonReference,
+) -> Result<DanceRequest, HolonError> {
+    Ok(DanceRequest::new(
+        MapString("stage_new_from_clone".to_string()),
+        DanceType::CloneMethod(holon),
+        RequestBody::None,
         staging_area,
     ))
 }
@@ -394,7 +629,7 @@ pub fn stage_new_holon_dance(
 
     Ok(ResponseBody::Index(staged_reference.holon_index))
 }
-
+///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
 // pub fn build_stage_new_holon_dance_request(
@@ -418,6 +653,65 @@ pub fn build_stage_new_holon_dance_request(
         MapString("stage_new_holon".to_string()),
         DanceType::Standalone,
         body,
+        staging_area,
+    ))
+}
+
+/// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+/// This operation is only allowed for smart references.
+///
+/// *DanceRequest:*
+/// - dance_name: "stage_new_version"
+/// - dance_type: CloneMethod(HolonReference)
+/// - request_body: None
+///   
+///
+/// *ResponseBody:*
+/// Index(StagedIndex), // a reference to the newly staged holon
+///
+pub fn stage_new_version_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("== Entered stage_new_version dance ==");
+
+    let staged_reference: StagedReference = match request.dance_type {
+        DanceType::CloneMethod(holon_reference) => {
+            match holon_reference {
+                HolonReference::Smart(smart_reference) => {
+                    // Stage the new holon
+                    context
+                        .commit_manager
+                        .borrow_mut()
+                        .stage_new_version(context, smart_reference)?
+                }
+                HolonReference::Staged(_) => {
+                    return Err(HolonError::InvalidHolonReference(
+                        "Invalid HolonReference: expected SmartReference, didn't get one"
+                            .to_string(),
+                    ))
+                }
+            }
+        }
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+            ))
+        }
+    };
+
+    Ok(ResponseBody::Index(staged_reference.holon_index))
+}
+///
+/// Builds a dance request for staging a new cloned Holon
+pub fn build_stage_new_version_dance_request(
+    staging_area: StagingArea,
+    holon: HolonReference,
+) -> Result<DanceRequest, HolonError> {
+    Ok(DanceRequest::new(
+        MapString("stage_new_version".to_string()),
+        DanceType::CloneMethod(holon),
+        RequestBody::None,
         staging_area,
     ))
 }
@@ -478,7 +772,7 @@ pub fn with_properties_dance(
         )),
     }
 }
-
+///
 /// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
 pub fn build_with_properties_dance_request(
     staging_area: StagingArea,
@@ -489,195 +783,6 @@ pub fn build_with_properties_dance_request(
 
     Ok(DanceRequest::new(
         MapString("with_properties".to_string()),
-        DanceType::CommandMethod(index),
-        body,
-        staging_area,
-    ))
-}
-
-/// Get all holons from the persistent store
-///
-/// *DanceRequest:*
-/// - dance_name: "get_all_holons"
-/// - dance_type: Standalone
-/// - request_body: None
-///
-/// *ResponseBody:*
-/// - Holons -- will be replaced by SmartCollection once supported
-///
-pub fn get_all_holons_dance(
-    _context: &HolonsContext,
-    _request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
-    // TODO: add support for descriptor parameter
-    //
-    //
-    debug!("Entering get_all_holons dance..");
-    let query_result = Holon::get_all_holons();
-    match query_result {
-        Ok(holons) => {
-            Ok(ResponseBody::Holons(holons))
-        },
-        Err(holon_error) => Err(holon_error.into()),
-    }
-}
-
-/// Builds a DanceRequest for retrieving all holons from the persistent store
-pub fn build_get_all_holons_dance_request(
-    staging_area: StagingArea,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new();
-    Ok(DanceRequest::new(
-        MapString("get_all_holons".to_string()),
-        DanceType::Standalone,
-        body,
-        staging_area,
-    ))
-}
-
-/// Gets Holon from persistent store, located by HolonId
-///
-/// *DanceRequest:*
-/// - dance_name: "get_holon_by_id"
-/// - dance_type: Standalone
-/// - request_body:
-///     - HolonId(HolonId)
-///
-/// *ResponseBody:*
-///     - Holon(Holon)
-///
-pub fn get_holon_by_id_dance(
-    context: &HolonsContext,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
-    info!("-------ENTERED: get_holon_by_id_dance.");
-    let holon_id = match request.body {
-        RequestBody::HolonId(id) => id,
-        _ => {
-            return Err(HolonError::InvalidParameter(
-                "RequestBody variant must be HolonId".to_string(),
-            ))
-        }
-    };
-    info!("getting cache_manager from context");
-    let cache_manager = context.cache_manager.borrow();
-
-    info!("asking cache_manager to get rc_holon");
-    let rc_holon = cache_manager.get_rc_holon(&holon_id)?;
-
-    let holon = rc_holon.borrow().clone();
-    Ok(ResponseBody::Holon(holon))
-}
-
-/// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
-pub fn build_get_holon_by_id_dance_request(
-    staging_area: StagingArea,
-    holon_id: HolonId,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::HolonId(holon_id);
-    Ok(DanceRequest::new(
-        MapString("get_holon_by_id".to_string()),
-        DanceType::Standalone,
-        body,
-        staging_area,
-    ))
-}
-
-/// Commit all staged holons to the persistent store
-///
-/// *DanceRequest:*
-/// - dance_name: "commit"
-/// - dance_type: Standalone
-/// - request_body: None
-///
-/// *ResponseBody:*
-/// - Holons -- a vector of clones of all successfully committed holons
-///
-pub fn commit_dance(
-    context: &HolonsContext,
-    _request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
-    debug!("Entered: commit_dance");
-    let commit_response = CommitManager::commit(context);
-
-    match commit_response.status {
-        Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
-        Incomplete => {
-            let completion_message = format!(
-                "{} of {:?} were successfully committed",
-                commit_response.saved_holons.len(),
-                commit_response.commits_attempted.0,
-            );
-            // TODO: Why turn INCOMPLETE into an Error? Shouldn't we just pass CommitResponse to client?
-            Err(HolonError::CommitFailure(completion_message.to_string()))
-        }
-    }
-}
-
-///
-/// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
-/// in the body of the request.
-pub fn build_commit_dance_request(staging_area: StagingArea) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::None;
-    Ok(DanceRequest::new(
-        MapString("commit".to_string()),
-        DanceType::Standalone,
-        body,
-        staging_area,
-    ))
-}
-/// Abandon staged changes
-///
-/// *DanceRequest:*
-/// - dance_name: "abandon_staged_changes"
-/// - dance_type: Command(StagedIndex) -- references the staged holon whose changes are being abandoned
-/// - request_body: None
-///   
-///
-/// *ResponseBody:*
-/// - an Index into staged_holons that references the updated holon.
-///
-pub fn abandon_staged_changes_dance(
-    context: &HolonsContext,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
-    // Get the staged holon
-    debug!("Entered: abandon_staged_changes_dance");
-    match request.dance_type {
-        DanceType::CommandMethod(staged_index) => {
-            debug!("trying to borrow_mut commit_manager");
-            // Try to get a mutable reference to the staged holon referenced by its index
-            let commit_manager_mut = context.commit_manager.borrow_mut();
-            debug!("commit_manager borrowed_mut");
-            let staged_holon = commit_manager_mut.get_mut_holon_by_index(staged_index.clone());
-            //debug!("Result of borrow_mut on the staged holon  {:#?}", staged_holon.clone());
-
-            match staged_holon {
-                Ok(mut holon_mut) => {
-                    holon_mut.abandon_staged_changes()?;
-                    Ok(ResponseBody::Index(staged_index))
-                }
-                Err(_) => Err(HolonError::IndexOutOfRange(
-                    "Unable to borrow a mutable reference to holon at supplied staged_index"
-                        .to_string(),
-                )),
-            }
-        }
-        _ => Err(HolonError::InvalidParameter(
-            "Expected Command(StagedIndex) DanceType, didn't get one".to_string(),
-        )),
-    }
-}
-
-///
-/// Builds a DanceRequest for abandoning changes to a staged Holon.
-pub fn build_abandon_staged_changes_dance_request(
-    staging_area: StagingArea,
-    index: StagedIndex,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::None;
-    Ok(DanceRequest::new(
-        MapString("abandon_staged_changes".to_string()),
         DanceType::CommandMethod(index),
         body,
         staging_area,

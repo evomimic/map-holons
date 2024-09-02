@@ -4,11 +4,12 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
-use crate::context::HolonsContext;
+use crate::context::{self, HolonsContext};
 use crate::holon::{Holon, HolonState};
 use crate::holon_error::HolonError;
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::json_adapter::as_json;
-use crate::relationship::RelationshipMap;
+use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 use shared_types_holon::{MapInteger, MapString};
@@ -53,26 +54,6 @@ impl CommitManager {
     pub fn clear_staged_objects(&mut self) {
         self.staged_holons.clear();
         self.keyed_index.clear();
-    }
-
-    pub fn clone_holon(
-        &mut self,
-        context: &HolonsContext,
-        existing_holon: &mut SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        let holon = existing_holon.clone_holon(context)?;
-
-        // Add the new holon into the CommitManager's staged_holons list, remembering its index
-        let index = self.staged_holons.len() - 1;
-        self.staged_holons
-            .push(Rc::new(RefCell::new(holon.clone())));
-
-        // Return a staged reference to the staged holon
-        let staged_reference = StagedReference { holon_index: index };
-
-        Ok(staged_reference)
-
-        // Ok(staged_reference)
     }
 
     /// This function attempts to persist the state of all staged_holons AND their relationships.
@@ -193,57 +174,16 @@ impl CommitManager {
         }
     }
 
-    /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
-    pub fn edit_holon(
-        &mut self,
-        context: &HolonsContext,
-        existing_holon: &mut SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        // Create empty Holon
-        let mut holon = Holon::new();
-
-        // Set state to fetched, set predecessor to existing_holon
-        holon.state = HolonState::Fetched;
-
-
-        // Add the new holon into the CommitManager's staged_holons list, remembering its index
-        let index = self.staged_holons.len();
-        self.staged_holons
-            .push(Rc::new(RefCell::new(holon.clone())));
-
-        // Return a staged reference to the staged holon
-        let staged_reference = StagedReference { holon_index: index };
-
-        // Copy the existing holon's PropertyMap into the new holon
-        holon.property_map = existing_holon.get_property_map(context)?;
-
-        // Iterate through existing holon's RelationshipMap
-        // For each HolonCollection, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
-        let existing_relationship_map = existing_holon.get_relationship_map(context)?;
-        holon.relationship_map = RelationshipMap::new();
-        for (relationship_name, holon_collection) in existing_relationship_map.0 {
-            // *Note: temp implementation, populate 0th cursor. TODO: set strategy for how to determine which SmartCollection (cursor) to choose
-            holon_collection.to_staged()?;
-
-            holon
-                .relationship_map
-                .0
-                .insert(relationship_name, holon_collection);
-        }
-
-        Ok(staged_reference)
-    }
-
     // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
     //     self.staged_holons.get(index.0 as usize)
     // }
     pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
         let holons = &self.staged_holons;
-        let holon_ref = holons
+        let rc_holon = holons
             .get(reference.holon_index)
             .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
 
-        match holon_ref.try_borrow() {
+        match rc_holon.try_borrow() {
             Ok(holon) => Ok(holon),
             Err(_) => Err(HolonError::FailedToBorrow(
                 "Holon Reference from staged_holons vector".to_string(),
@@ -274,8 +214,8 @@ impl CommitManager {
     ) -> Result<RefMut<Holon>, HolonError> {
         if let Some(index) = holon_index {
             if let Some(holon) = self.staged_holons.get(index) {
-                return if let Ok(holon_ref) = holon.try_borrow_mut() {
-                    Ok(holon_ref)
+                return if let Ok(holon_refcell) = holon.try_borrow_mut() {
+                    Ok(holon_refcell)
                 } else {
                     Err(HolonError::FailedToBorrow(
                         "for StagedReference".to_string(),
@@ -339,14 +279,38 @@ impl CommitManager {
     //     };
     // }
 
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
-    /// to be retrieved by key
+    /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+    pub fn stage_new_from_clone(
+        &mut self,
+        context: &HolonsContext,
+        existing_holon: HolonReference,
+    ) -> Result<StagedReference, HolonError> {
+        let holon = existing_holon.clone_holon(context)?;
+
+        // Add the new holon into the CommitManager's staged_holons list, remembering its index
+        let index = self.staged_holons.len() - 1;
+        self.staged_holons
+            .push(Rc::new(RefCell::new(holon.clone())));
+
+        // Return a staged reference to the staged holon
+        let staged_reference = StagedReference { holon_index: index };
+
+        // Remove PREDECESSOR by passing None
+        staged_reference.with_predecessor(
+            context,
+            None,
+        )?;
+
+        Ok(staged_reference)
+    }
 
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
 
+    /// Stages the provided holon and returns a reference-counted reference to it
+    /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
+    /// to be retrieved by key
     pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
@@ -357,6 +321,28 @@ impl CommitManager {
         }
 
         Ok(StagedReference { holon_index })
+    }
+
+    /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
+    pub fn stage_new_version(
+        &mut self,
+        context: &HolonsContext,
+        existing_holon: SmartReference,
+    ) -> Result<StagedReference, HolonError> {
+        let holon = existing_holon.clone_holon(context)?;
+
+        // Add the new holon into the CommitManager's staged_holons list, remembering its index
+        let index = self.staged_holons.len() - 1;
+        self.staged_holons
+            .push(Rc::new(RefCell::new(holon.clone())));
+
+        // Return a staged reference to the staged holon
+        let staged_reference = StagedReference { holon_index: index };
+
+        // Set PREDECESSOR to refer to the Holon it was cloned from
+        staged_reference.with_predecessor(context, Some(HolonReference::Smart(existing_holon)))?;
+
+        Ok(staged_reference)
     }
 
     /// This function converts a StagedIndex into a StagedReference
