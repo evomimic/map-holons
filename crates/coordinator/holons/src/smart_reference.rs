@@ -54,12 +54,14 @@ impl SmartReference {
     //     }
     //
     // }
-
-
-    pub fn get_smart_properties(&self) -> Option<PropertyMap> {
-        self.smart_property_values.clone()
+    /// This method allows the HolonId for a SmartReference to be retrieved without having to
+    /// provide a context
+    pub(crate) fn get_holon_id_no_context(&self) -> HolonId {
+        self.holon_id.clone()
     }
-    pub fn get_property_map(&self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
+
+
+   pub fn get_property_map(&self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_refcell = holon.borrow();
         Ok(holon_refcell.property_map.clone())
@@ -80,6 +82,9 @@ impl SmartReference {
             .cache_manager
             .borrow_mut()
             .get_rc_holon(&self.holon_id)?)
+    }
+    pub fn get_smart_properties(&self) -> Option<PropertyMap> {
+        self.smart_property_values.clone()
     }
 }
 impl HolonGettable for SmartReference {

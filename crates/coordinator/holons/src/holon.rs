@@ -8,7 +8,7 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{HolonId, LocalId, MapInteger, MapString, SavedPropertyMap};
+use shared_types_holon::{LocalId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
 use shared_validation::ValidationError;
@@ -21,7 +21,6 @@ use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::holon_property_map::{HolonPropertyMap, HolonPropertyMapExt};
-use crate::{holon_property_map, property_map};
 use crate::holon_reference::HolonReference;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
@@ -205,7 +204,7 @@ impl Holon {
             HolonState::New => {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("HolonState is New... requesting new HolonNode be created in the DHT");
-                let result = create_holon_node(self.clone().into_node());
+                let result = create_holon_node(self.clone().into_node()?);
 
                 match result {
                     Ok(record) => {
@@ -228,7 +227,7 @@ impl Holon {
                         // TEMP solution for original hash is to keep it the same //
                         original_holon_node_hash: node.action_address().clone(), // TODO: find way to populate this correctly
                         previous_holon_node_hash: node.action_address().clone(),
-                        updated_holon_node: self.clone().into_node(),
+                        updated_holon_node: self.clone().into_node()?,
                     };
                     debug!("Requesting HolonNode be updated in the DHT");
                     let result = update_holon_node(input);
@@ -485,10 +484,10 @@ impl Holon {
     }
 
     pub fn into_node(self) -> Result<HolonNode,HolonError> {
-        HolonNode {
+        Ok(HolonNode {
             property_map: self.property_map.clone(),
-            saved_property_map: self.holon_property_map.to_saved_map(),
-        }
+            saved_property_map: self.holon_property_map.to_saved_map()?,
+        })
     }
 
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {

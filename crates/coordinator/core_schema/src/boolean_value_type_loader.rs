@@ -62,7 +62,7 @@ impl SchemaNamesTrait for CoreBooleanValueTypeName {
 impl CoreBooleanValueTypeName {
     /// This function returns the variant definition for a given variant type
     fn get_boolean_type_loader(&self) -> BooleanTypeLoader {
-        use CoreBooleanValueTypeName::*;
+        // use CoreBooleanValueTypeName::*;
         match self {
             CoreBooleanValueTypeName::MapBooleanType => BooleanTypeLoader {
                 type_name: self.derive_type_name(),

@@ -5,7 +5,7 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -207,8 +207,8 @@ impl HolonCollection {
         Ok(())
     }
 
-    /// This method creates smartlinks from the specified source_id for the specified relationship name
-    /// to each holon its collection that has a holon_id.
+    /// This method creates smartlinks from the specified source_id for the specified relationship
+    /// name to each holon its collection that has a holon_id.
     pub fn save_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
@@ -216,39 +216,50 @@ impl HolonCollection {
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         debug!(
-            "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
-            source_id,name.0.0.clone()
-        );
+        "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
+        source_id, name.0.0.clone()
+    );
         for holon_reference in &self.members {
-            // Only commit references to holons with id's (i.e., Saved)
-            if let Ok(target_id) = holon_reference.get_holon_id() {
-                let key_option = holon_reference.get_key(context)?;
-                let input: SmartLink = if let Some(key) = key_option {
-                    let mut prop_vals: PropertyMap = BTreeMap::new();
-                    prop_vals.insert(
-                        PropertyName(MapString("key".to_string())),
-                        BaseValue::StringValue(key),
-                    );
-                    SmartLink {
-                        from_address: source_id.clone(),
-                        to_address: target_id,
-                        relationship_name: name.clone(),
-                        smart_property_values: Some(prop_vals),
-                    }
-                } else {
-                    SmartLink {
-                        from_address: source_id.clone(),
-                        to_address: target_id,
-                        relationship_name: name.clone(),
-                        smart_property_values: None,
-                    }
-                };
+            // Handle the Result<Option<HolonId>, HolonError> returned by get_holon_id
+            match holon_reference.get_holon_id(context) {
+                Ok(Some(target_id)) => {
+                    let key_option = holon_reference.get_key(context)?;
+                    let input: SmartLink = if let Some(key) = key_option {
+                        let mut prop_vals: PropertyMap = BTreeMap::new();
+                        prop_vals.insert(
+                            PropertyName(MapString("key".to_string())),
+                            BaseValue::StringValue(key),
+                        );
+                        SmartLink {
+                            from_address: source_id.clone(),
+                            to_address: target_id,
+                            relationship_name: name.clone(),
+                            smart_property_values: Some(prop_vals),
+                        }
+                    } else {
+                        SmartLink {
+                            from_address: source_id.clone(),
+                            to_address: target_id,
+                            relationship_name: name.clone(),
+                            smart_property_values: None,
+                        }
+                    };
 
-                save_smartlink(input)?;
+                    save_smartlink(input)?;
+                }
+                Ok(None) => {
+                    // Skip saving if get_holon_id returns None
+                    continue;
+                }
+                Err(e) => {
+                    // Return the error if get_holon_id fails
+                    return Err(e);
+                }
             }
         }
         Ok(())
     }
+
 
     /// The method
     pub fn commit_relationship(

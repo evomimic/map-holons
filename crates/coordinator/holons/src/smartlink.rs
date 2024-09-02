@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName};
 use std::{collections::BTreeMap, str};
 
 use crate::helpers::get_key_from_property_map;

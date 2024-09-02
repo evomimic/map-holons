@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use shared_types_holon::{PropertyValue, SavedPropertyMap};
-use crate::context::HolonsContext;
 
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
@@ -41,18 +40,22 @@ impl HolonPropertyMapExt for HolonPropertyMap {
         }).collect()
     }
 
+    /// This method converts a HolonPropertyMap into a SavedPropertyMap
     fn to_saved_map(&self) -> Result<SavedPropertyMap, HolonError> {
-        self.iter().try_fold(
-            BTreeMap::new(),
-            |
-                mut acc,
-                (holon_reference, property_value)
-            | {
-                let holon_id = holon_reference.get_holon_id()?;
-                acc.insert(holon_id, property_value.clone());
-                Ok(acc)
-            }
-        )
+        self.iter().try_fold(BTreeMap::new(), |mut acc,
+           (holon_reference, property_value)| {
+                match holon_reference {
+                    HolonReference::Smart(smart_ref) => {
+                        let holon_id = smart_ref.get_holon_id_no_context();
+                        acc.insert(holon_id, property_value.clone());
+                        Ok(acc)
+                    },
+                    HolonReference::Staged(_) => {
+                        Err(HolonError::InvalidHolonReference("Expected only SmartReferences in the\
+                        HolonPropertyMap, but found a StagedReference instead".to_string()))
+                    }
+                }
+           })
     }
     fn get_property_value(
         &self,

@@ -74,15 +74,18 @@ impl<'a> Serialize for SmartReferenceWrapper<'a> {
     {
         let mut state = serializer.serialize_struct("SmartReference", 2)?;
 
-        match self.0.get_id() {
-            Ok(holon_id) => state.serialize_field("holon_id", &HolonIdWrapper(&holon_id))?,
-            Err(_) => state.serialize_field("holon_id", &"Error fetching ID")?, // or handle the error differently
-        }
+        // D
+        // irectly use the HolonId from get_holon_id_no_context
+        let holon_id = self.0.get_holon_id_no_context();
+        state.serialize_field("holon_id", &HolonIdWrapper(&holon_id))?;
 
+        // Serialize the smart_property_values field
         state.serialize_field("smart_property_values", &self.0.get_smart_properties())?;
+
         state.end()
     }
 }
+
 
 // Wrapper for HolonId
 struct HolonIdWrapper<'a>(&'a HolonId);

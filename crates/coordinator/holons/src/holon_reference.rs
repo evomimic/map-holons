@@ -34,7 +34,7 @@ impl fmt::Display for HolonReference {
                 write!(f, "Staged({})", staged_ref.holon_index)
             }
             HolonReference::Smart(smart_ref) => {
-                write!(f, "Smart({})", smart_ref.get_id())
+                write!(f, "Smart({})", smart_ref.get_holon_id_no_context())
             }
         }
     }
@@ -77,7 +77,7 @@ impl HolonGettable for HolonReference {
     fn get_holon_id(&self,   context: &HolonsContext) -> Result<Option<HolonId>, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(context),
-            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_holon_id(context),
             // Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
         }
     }
