@@ -753,7 +753,7 @@ impl Holon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         // TODO: add self.is_defined_property(property_id) check before delegating call to the property_map
-        self.holon_property_map.with_property_value(property_id, value);
+        self.holon_property_map.with_property_value_by_id(property_id, value);
 
         match self.state {
             HolonState::Fetched => {
