@@ -1,3 +1,4 @@
+use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
@@ -406,9 +407,22 @@ pub fn encode_link_tag(
 mod tests {
 
     use super::*;
+    use hash_type::Action;
+    use holo_hash::ActionHash;
+
+    fn create_dummy_action_hash(data: Vec<u8>) -> ExternResult<ActionHash> {
+        let hash = hash_blake2b(data, 36)?;
+        Ok(ActionHash::from_raw_36_and_type(hash, Action))
+    }
 
     #[test]
     fn test_encode_and_decode_link_tag() {
+        // let mut mock_hdi = holochain_mock_hdi::MockHdiT::new();
+        // set_hdi(mock_hdi);
+        // Create a dummy ActionHash for testing
+        let dummy_hash = create_dummy_action_hash(b"example action hash bytes".to_vec()).unwrap();
+        let proxy_id = Some(HolonSpaceId(dummy_hash));
+
         let relationship_name = RelationshipName(MapString("ex_relationship_name".to_string()));
         let mut property_values: PropertyMap = BTreeMap::new();
         let name_1 = PropertyName(MapString("ex_name_1".to_string()));
@@ -423,7 +437,7 @@ mod tests {
 
         let encoded_link_tag = encode_link_tag(
             relationship_name.clone(),
-            None,
+            proxy_id.clone(),
             Some(property_values.clone()),
         )
         .unwrap();
@@ -434,6 +448,7 @@ mod tests {
             relationship_name.0 .0,
             decoded_link_tag_object.relationship_name
         );
+        assert_eq!(proxy_id, decoded_link_tag_object.proxy_id);
         assert!(decoded_link_tag_object.smart_property_values.is_some());
         assert_eq!(
             Some(property_values),
