@@ -1,5 +1,6 @@
 use crate::cache_manager::HolonCacheManager;
 use crate::commit_manager::CommitManager;
+use crate::staged_reference::StagedReference;
 use std::cell::RefCell;
 use shared_types_holon::MapString;
 use crate::holon_error::HolonError;
@@ -10,6 +11,7 @@ pub struct HolonsContext {
     pub commit_manager: RefCell<CommitManager>,
     pub cache_manager: RefCell<HolonCacheManager>,
     pub dance_state: RefCell<TransientCollection>,
+    pub local_holon_space: HolonReference
 }
 
 impl HolonsContext {
@@ -18,6 +20,7 @@ impl HolonsContext {
             commit_manager: CommitManager::new().into(),
             cache_manager: HolonCacheManager::new().into(),
             dance_state: TransientCollection::new().into(),
+            local_holon_space: HolonReference::Staged(StagedReference::new(0)).into()
         }
     }
     pub fn init_context(commit_manager: CommitManager, cache_manager: HolonCacheManager) -> HolonsContext {
@@ -25,6 +28,7 @@ impl HolonsContext {
             commit_manager: RefCell::from(commit_manager),
             cache_manager: RefCell::from(cache_manager),
             dance_state: TransientCollection::new().into(),
+            local_holon_space: HolonReference::Staged(StagedReference::new(0)).into()
         }
     }
     pub fn add_references_to_dance_state(&self, holons: Vec<HolonReference>) -> Result<(), HolonError> {

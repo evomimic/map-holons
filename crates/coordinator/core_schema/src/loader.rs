@@ -1,4 +1,5 @@
 use hdi::prelude::debug;
+use holons::{commit_manager, holon_space};
 use strum::IntoEnumIterator;
 use hdk::prelude::info;
 use holons::commit_manager::{CommitManager, CommitResponse};
@@ -55,6 +56,14 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
 
+    let holon_space = holon_space::HolonSpace::new(Holon::new());
+    
+    context.local_holon_space = HolonReference::Staged(context
+        .commit_manager
+        .borrow_mut()
+        .stage_new_holon(holon_space.into_holon())
+        ?);
+
     let schema = Schema::new(
         CoreSchemaName::SchemaName.as_map_string(),
         MapString("The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string()),
@@ -68,6 +77,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         )?);
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
+
+
+    //context.local_holon_space.clone_from(source).borrow_mut().get_holon(commit_holon(staged_schema_ref.clone())?;
 
     let initial_load_set = get_initial_load_set();
 
