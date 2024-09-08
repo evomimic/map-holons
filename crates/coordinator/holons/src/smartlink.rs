@@ -407,21 +407,25 @@ pub fn encode_link_tag(
 mod tests {
 
     use super::*;
-    use hash_type::Action;
-    use holo_hash::ActionHash;
+    // use hash_type::Action;
+    // use holo_hash::ActionHash;
 
-    fn create_dummy_action_hash(data: Vec<u8>) -> ExternResult<ActionHash> {
-        let hash = hash_blake2b(data, 36)?;
-        Ok(ActionHash::from_raw_36_and_type(hash, Action))
-    }
+    // fn create_dummy_action_hash(data: Vec<u8>) -> ExternResult<ActionHash> {
+    //     let hash = hash_blake2b(data, 36)?;
+    //     Ok(ActionHash::from_raw_36_and_type(hash, Action))
+    // }
 
     #[test]
     fn test_encode_and_decode_link_tag() {
-        // let mut mock_hdi = holochain_mock_hdi::MockHdiT::new();
-        // set_hdi(mock_hdi);
-        // Create a dummy ActionHash for testing
-        let dummy_hash = create_dummy_action_hash(b"example action hash bytes".to_vec()).unwrap();
-        let proxy_id = Some(HolonSpaceId(dummy_hash));
+        // let dummy_hash = create_dummy_action_hash(b"example action hash bytes".to_vec()).unwrap();
+        // let proxy_id = Some(HolonSpaceId(dummy_hash));
+
+        let mock_action_hash_string =
+            "uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC".to_string();
+        let mock_action_hash =
+            ActionHash::from_raw_39(mock_action_hash_string.as_bytes().to_vec()).unwrap();
+
+        let proxy_id = Some(HolonSpaceId(mock_action_hash));
 
         let relationship_name = RelationshipName(MapString("ex_relationship_name".to_string()));
         let mut property_values: PropertyMap = BTreeMap::new();
