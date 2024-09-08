@@ -6,7 +6,10 @@ use hdk::prelude::*;
 use crate::dance_request::DanceRequest;
 use holons::cache_manager::HolonCacheManager;
 use holons::context::HolonsContext;
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
+use holons::holon_reference::HolonReference;
+use holons::holon_space;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
@@ -47,7 +50,17 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     let commit_manager = request.clone().staging_area.to_commit_manager();
     // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
     //info!("initializing context");
-    let context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
+
+
+    let mut context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
+    // If there is no HolonSpace, create one
+    let holon_space = holon_space::HolonSpace::new(Holon::new());
+
+    context.local_holon_space = HolonReference::Staged(context
+        .commit_manager
+        .borrow_mut()
+        .stage_new_holon(holon_space.into_holon())
+        ?);
 
     // Get the Dancer
     let dancer = Dancer::new();
