@@ -60,7 +60,7 @@ pub struct Holon {
 #[derive(Clone, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
-    //pub relationship_map: RelationshipMap,
+    // pub relationship_map: RelationshipMap,
     key: Option<MapString>,
     pub errors: Vec<HolonError>,
 }

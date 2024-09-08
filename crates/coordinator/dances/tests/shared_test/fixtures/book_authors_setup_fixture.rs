@@ -71,7 +71,7 @@ pub fn setup_book_author_steps(
     //
 
 
-    //  ADD STEP:  STAGE:  Book Holon (H1)  //
+    //  STAGE:  Book Holon (H1)  //
     let mut book_holon = Holon::new();
     let book_holon_key = MapString(
         "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -93,7 +93,7 @@ pub fn setup_book_author_steps(
 
     let book_index: usize = 0; // assume book is at this position in staged_holons vector
 
-    //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
+    //  STAGE:  Person 1 Holon (H2)  //
     let mut person_1 = Holon::new();
     let person_1_key = MapString("RogerBriggs".to_string());
     person_1
@@ -115,7 +115,7 @@ pub fn setup_book_author_steps(
     let person_1_reference = HolonReference::Staged(StagedReference {holon_index: person_1_index,});
 
 
-    //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
+    //  STAGE:  Person 2 Holon (H3)  //
     let mut person_holon_2 = Holon::new();
     let person_2_key = MapString("GeorgeSmith".to_string());
     person_holon_2
@@ -136,7 +136,7 @@ pub fn setup_book_author_steps(
     let person_2_reference = HolonReference::Staged(StagedReference {holon_index: person_2_index,});
 
 
-    // ADD STEP:  RELATIONSHIP:  (H1)-relationship_name>[(H2),(H3)]//
+    //  RELATIONSHIP:  (H1)-relationship_name>[(H2),(H3)]  //
 
 
     // Create the expected_holon

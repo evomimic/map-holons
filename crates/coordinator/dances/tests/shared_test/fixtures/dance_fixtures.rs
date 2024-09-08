@@ -4,6 +4,7 @@ use crate::get_holon_by_key_from_test_state;
 use crate::tracing::{error, info, warn};
 use core::panic;
 use dances::holon_dance_adapter::{Node, NodeCollection, QueryExpression};
+use holochain::core::author_key_is_valid;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
@@ -15,7 +16,6 @@ use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-use holochain::core::author_key_is_valid;
 
 use dances::dance_response::ResponseStatusCode;
 use holons::commit_manager::{CommitManager, StagedIndex};
@@ -37,7 +37,8 @@ use holons::relationship::RelationshipName;
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
-use crate::shared_test::book_authors_setup_fixture::setup_book_author_steps;
+
+use super::book_authors_setup_fixture::setup_book_author_steps;
 
 /// This function creates a set of simple (undescribed) holons
 ///
@@ -51,7 +52,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     let mut expected_holons = Vec::new();
 
-    // Ensure DB count //
+    //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
     // Create book Holon with properties //
@@ -69,10 +70,11 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         )),
     )?;
 
-    //// Stage Holons & add properties
+    //  STAGE:  Book Holon  //
     test_case.add_stage_holon_step(book_holon.clone())?;
     expected_holons.push(book_holon.clone());
 
+    //  PROPERTIES:  Book  //
     let mut properties = PropertyMap::new();
     properties.insert(
         PropertyName(MapString("description".to_string())),
@@ -80,11 +82,12 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     );
     test_case.add_with_properties_step(0, properties, ResponseStatusCode::OK)?;
 
-    // Create person Holon //
+    //  STAGE:  Person Holon  //
     let person_holon = Holon::new();
     test_case.add_stage_holon_step(person_holon.clone())?;
     expected_holons.push(person_holon.clone());
 
+    //  PROPERTIES:  Book  //
     let mut properties = PropertyMap::new();
     properties.insert(
         PropertyName(MapString("first name".to_string())),
@@ -95,11 +98,14 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         BaseValue::StringValue(MapString("Briggs".to_string())),
     );
     test_case.add_with_properties_step(1, properties, ResponseStatusCode::OK)?;
-    ////
 
-    // Commit, match content, & ensure DB count again //
+    //  COMMIT  //
     test_case.add_commit_step()?;
+
+    //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
+
+    // ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(2))?;
 
     Ok(test_case.clone())
@@ -113,7 +119,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     );
 
-    // Ensure DB count //
+    //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(0))?;
 
     //
@@ -124,7 +130,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     //
     //
 
-    //  ADD STEP:  STAGE:  Book Holon (H1)  //
+    //  STAGE:  Book Holon (H1)  //
     let mut book_holon = Holon::new();
     let book_holon_key = MapString(
         "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -145,7 +151,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     test_case.add_stage_holon_step(book_holon.clone())?;
     let book_index: usize = 0; // assume book is at this position in staged_holons vector
 
-    //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
+    //  STAGE:  Person 1 Holon (H2)  //
     let mut person_1 = Holon::new();
     let person_1_key = MapString("RogerBriggs".to_string());
     person_1
@@ -167,7 +173,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         holon_index: person_1_index,
     });
 
-    //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
+    //  STAGE:  Person 2 Holon (H3)  //
     let mut person_holon_2 = Holon::new();
     let person_2_key = MapString("GeorgeSmith".to_string());
     person_holon_2
@@ -189,32 +195,25 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         holon_index: person_2_index,
     });
 
-    // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
-
+    //  RELATIONSHIP:  Book H1-> Author H2 & H3  //
 
     let authored_by_relationship_name = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     // Create the expected_holon
     let mut authored_by_collection = HolonCollection::new_staged();
-    authored_by_collection.add_reference_with_key(
-        Some(&person_1_key),
-        &person_1_reference.clone())?;
+    authored_by_collection
+        .add_reference_with_key(Some(&person_1_key), &person_1_reference.clone())?;
 
-    authored_by_collection.add_reference_with_key(
-        Some(&person_2_key),
-        &person_2_reference)?;
-
+    authored_by_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
     book_holon.relationship_map.0.insert(
         authored_by_relationship_name.clone(),
         authored_by_collection.clone(),
     );
 
-
     let mut related_holons: Vec<HolonReference> = Vec::new();
     related_holons.push(person_1_reference.clone());
     related_holons.push(person_2_reference);
-
 
     test_case.add_related_holons_step(
         book_index, // source holon
@@ -224,22 +223,24 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_holon.clone(),
     )?;
 
-
     let empty_collection = HolonCollection::new_staged();
 
-    let mut book_holon_with_no_related= book_holon.clone();
+    let mut book_holon_with_no_related = book_holon.clone();
     book_holon_with_no_related.relationship_map.0.clear();
-    book_holon_with_no_related.relationship_map.0.insert(authored_by_relationship_name.clone(),empty_collection);
+    book_holon_with_no_related
+        .relationship_map
+        .0
+        .insert(authored_by_relationship_name.clone(), empty_collection);
 
     let mut one_in_collection = HolonCollection::new_staged();
-    one_in_collection.add_reference_with_key(
-        Some(&person_1_key),
-        &person_1_reference)?;
+    one_in_collection.add_reference_with_key(Some(&person_1_key), &person_1_reference)?;
 
-    let mut book_holon_with_one_related= book_holon.clone();
+    let mut book_holon_with_one_related = book_holon.clone();
     book_holon_with_one_related.relationship_map.0.clear();
-    book_holon_with_one_related.relationship_map.0.insert(authored_by_relationship_name.clone(),one_in_collection);
-
+    book_holon_with_one_related
+        .relationship_map
+        .0
+        .insert(authored_by_relationship_name.clone(), one_in_collection);
 
     // // test invalid source holon
     // let wrong_book_index: usize = 8;
@@ -252,7 +253,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     //     book_holon.clone(), //expected
     // )?;
 
-
     // test invalid relationship name
     let wrong_relationship_name: RelationshipName = RelationshipName(MapString("WRONG".into()));
     test_case.remove_related_holons_step(
@@ -263,17 +263,16 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_holon.clone(), //expected
     )?;
 
-    //test remove one related holon
+    // test remove one related holon
     test_case.remove_related_holons_step(
         book_index, // source holon
         authored_by_relationship_name.clone(),
-        related_holons.clone().split_off(1),  //takes the second person holon
+        related_holons.clone().split_off(1), //takes the second person holon
         ResponseStatusCode::OK,
         book_holon_with_one_related.clone(), //expected
     )?;
 
-
-    //test remove all related holons including ignoring a previous one that was already removed
+    // test remove all related holons including ignoring a previous one that was already removed
     test_case.remove_related_holons_step(
         book_index, // source holon
         authored_by_relationship_name.clone(),
@@ -282,7 +281,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_holon_with_no_related.clone(), //expected none
     )?;
 
-     test_case.add_related_holons_step(
+    test_case.add_related_holons_step(
         book_index, // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
@@ -290,11 +289,13 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_holon.clone(),
     )?;
 
-    // Commit & ensure DB count again //
+    //  COMMIT  //
     test_case.add_commit_step()?;
+
+    //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(3))?;
 
-    // Query Relationships //
+    //  QUERY RELATIONSHIPS  //
 
     let query_expression = QueryExpression::new(authored_by_relationship_name.clone());
     test_case.add_query_relationships_step(
@@ -324,21 +325,22 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let test_data = setup_book_author_steps(
         &mut test_case,
         &mut holons_to_add,
-        &desired_test_relationship
+        &desired_test_relationship,
     )?;
 
-    let person_1_index= test_data[1].staged_index;
+    let person_1_index = test_data[1].staged_index;
     let book_holon_key = test_data[0].key.clone();
-    let book_holon = test_data[0].expected_holon
+    let book_holon = test_data[0]
+        .expected_holon
         .clone()
         .expect("Expected setup method to return Some book holon at index 0, got none.");
 
-    // ADD STEP:  ABANDON:  H2
+    //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
     test_case.add_abandon_staged_changes_step(person_1_index, ResponseStatusCode::OK)?;
 
-    // ADD STEP:  RELATIONSHIP:  Author H2 -> H3  //
+    //  RELATIONSHIP:  Author H2 -> H3  //
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     test_case.add_related_holons_step(
         person_1_index, // source holons
@@ -348,16 +350,16 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         book_holon.clone(),
     )?;
 
-    // ADD STEP:  COMMIT  // all Holons in staging_area
+    //  COMMIT  //  all Holons in staging_area
     test_case.add_commit_step()?;
 
-    // ADD STEP:  ENSURE DATABASE COUNT
+    //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(2))?;
 
-    // ADD STEP:  MATCH SAVED CONTENT
+    //  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
 
-    //  ADD STEP:  STAGE:  Abandoned Holon1 (H4)  //
+    //  STAGE:  Abandoned Holon1 (H4)  //
     let mut abandoned_holon_1 = Holon::new();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("example abandon".to_string())),
@@ -365,7 +367,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
 
-    //  ADD STEP:  STAGE:  Abandoned Holon2 (H5)  //
+    //  STAGE:  Abandoned Holon2 (H5)  //
     let mut abandoned_holon_2 = Holon::new();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("example abandon".to_string())),
@@ -373,19 +375,19 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
 
-    // ADD STEP:  ABANDON:  H4
+    // ABANDON:  H4
     test_case.add_abandon_staged_changes_step(0, ResponseStatusCode::OK)?;
 
-    // ADD STEP:  ABANDON:  H5
+    // ABANDON:  H5
     test_case.add_abandon_staged_changes_step(1, ResponseStatusCode::OK)?;
 
-    // ADD STEP:  COMMIT  // all Holons in staging_area
+    // COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
 
-    // ADD STEP:  ENSURE DATABASE COUNT
+    // ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(MapInteger(2))?;
 
-    // ADD STEP:  MATCH SAVED CONTENT
+    // MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
 
     // ADD STEP: QUERY RELATIONSHIPS //

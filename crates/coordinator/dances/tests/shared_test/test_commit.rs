@@ -16,7 +16,6 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::dance_fixtures::*;
 use crate::shared_test::test_data_types::DanceTestStep;
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
@@ -28,7 +27,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 
-/// This function builds and dances a `stage_new_holon` DanceRequest for the supplied Holon
+/// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
 pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_state: &mut DanceTestState) ->() {

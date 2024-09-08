@@ -1,7 +1,9 @@
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{
+    BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName, PropertyValue,
+};
 use std::{collections::BTreeMap, str};
 
 use crate::helpers::get_key_from_property_map;
@@ -43,10 +45,8 @@ impl SmartLink {
         }
     }
     pub fn to_holon_reference(&self) -> HolonReference {
-        let smart_reference = SmartReference::new(
-          self.to_address.clone(),
-          self.smart_property_values.clone(),
-        );
+        let smart_reference =
+            SmartReference::new(self.to_address.clone(), self.smart_property_values.clone());
         HolonReference::Smart(smart_reference)
     }
 }
@@ -58,11 +58,10 @@ pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartL
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
-    let links = get_links(GetLinksInputBuilder::try_new(
-        local_source_id.0.clone(),
-        LinkTypes::SmartLink,
-        )?.build())
-        .map_err(|e| HolonError::from(e))?;
+    let links = get_links(
+        GetLinksInputBuilder::try_new(local_source_id.0.clone(), LinkTypes::SmartLink)?.build(),
+    )
+    .map_err(|e| HolonError::from(e))?;
 
     for link in links {
         let smartlink = get_smartlink_from_link(local_source_id.0.clone(), link)?;
@@ -92,11 +91,12 @@ pub fn get_relationship_links(
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
     // Retrieve links using the specified link tag filter
-    let links = get_links(GetLinksInputBuilder::try_new(
-        source_action_hash.clone(),
-        LinkTypes::SmartLink,
-        )?.tag_prefix(link_tag_filter).build())
-        .map_err(|e| HolonError::from(e))?;
+    let links = get_links(
+        GetLinksInputBuilder::try_new(source_action_hash.clone(), LinkTypes::SmartLink)?
+            .tag_prefix(link_tag_filter)
+            .build(),
+    )
+    .map_err(|e| HolonError::from(e))?;
 
     debug!("got {:?} links", links.len());
     // Process each link to convert it into a SmartLink
@@ -147,7 +147,6 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
     )?;
     Ok(())
 }
-
 
 // HELPER FUNCTIONS //
 
