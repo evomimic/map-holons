@@ -7,6 +7,7 @@ use holons::relationship::RelationshipName;
 use holons::query::{NodeCollection, QueryExpression};
 
 use shared_types_holon::{HolonId, MapString, PropertyMap};
+use crate::session_state::SessionState;
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -14,9 +15,11 @@ pub struct DanceRequest {
     pub dance_name: MapString, // unique key within the (single) dispatch table
     pub dance_type: DanceType,
     pub body: RequestBody,
-    pub staging_area: StagingArea,
+    // pub staging_area: StagingArea,
+    state: SessionState,
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
+
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -73,12 +76,30 @@ impl DanceRequest {
         dance_type: DanceType,
         body: RequestBody,
         staging_area: StagingArea,
+        local_holon_space : Option<HolonReference>
     ) -> Self {
+        // Initialize the SessionState with staging_area and local_holon_space
+        let state = SessionState::new(
+            staging_area,
+            local_holon_space,
+        );
         Self {
             dance_name,
             dance_type,
             body,
-            staging_area,
+            state,
         }
     }
+    pub fn get_state(&self) -> &SessionState {
+        &self.state
+    }
+    // Optionally, you can provide a mutable getter for state if needed
+    pub fn get_state_mut(&mut self) -> &mut SessionState {
+        &mut self.state
+    }
+    pub fn set_state(&mut self, state: SessionState) {
+        self.state = state;
+    }
+
+
 }

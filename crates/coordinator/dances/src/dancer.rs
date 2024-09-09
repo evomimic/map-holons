@@ -40,15 +40,18 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
             description: MapString("Invalid Request".to_string()),
             body: ResponseBody::None,
             descriptor: None,
-            staging_area: request.staging_area.clone(),
+            staging_area: request.get_state().get_staging_area(),
         };
         return Ok(response);
     }
 
     // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
     //info!("initializing commit_manager from staging_area");
-    let commit_manager = request.clone().staging_area.to_commit_manager();
+    let commit_manager = request.get_state().get_staging_area().to_commit_manager();
     // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
+
+
+
     //info!("initializing context");
 
 
