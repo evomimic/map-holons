@@ -26,7 +26,7 @@ pub struct SmartLink {
     pub smart_property_values: Option<PropertyMap>,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct LinkTagObject {
     pub relationship_name: String,
     pub proxy_id: Option<HolonSpaceId>,
@@ -218,7 +218,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
             )
         })?;
         link_tag_object.relationship_name = relationship_name.to_string();
-        info!("DECODED relationship_name: {:#?}", relationship_name);
+        debug!("DECODED relationship_name: {:#?}", relationship_name);
 
         cursor = &cursor[name_end + RELATIONSHIP_NAME_SEPERATOR.len()..];
         // Confirm PROLOG_SEPARATOR reached
@@ -229,6 +229,31 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
                 "Invalid LinkTag: Missing PROLOG_SEPARATOR bytes".to_string(),
             ));
         }
+    } else {
+        return Err(HolonError::InvalidParameter(
+            "Invalid LinkTag: Missing RELATIONSHIP_NAME_SEPARATOR bytes".to_string(),
+        ));
+    }
+
+    let proxy_id_end_option = cursor
+        .iter()
+        .position(|&b| b == PROXY_ID_SEPERATOR.as_bytes()[0]);
+
+    if let Some(proxy_id_end) = proxy_id_end_option {
+        link_tag_object.proxy_id = Some(HolonSpaceId(
+            ActionHash::from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
+                HolonError::HashConversion(
+                    "link_tag proxy_id bytes".to_string(),
+                    "ActionHash".to_string(),
+                )
+            })?,
+        ));
+        debug!("DECODED proxy_id: {:#?}", link_tag_object.proxy_id.clone());
+        cursor = &cursor[proxy_id_end + RELATIONSHIP_NAME_SEPERATOR.len()..];
+    } else {
+        return Err(HolonError::InvalidParameter(
+            "Invalid LinkTag: Missing PROXY_ID_SEPARATOR bytes".to_string(),
+        ));
     }
 
     // TODO:
@@ -244,6 +269,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
     let mut property_map: PropertyMap = BTreeMap::new();
 
+    // Iterate over each PropertyName and Value pair, adding them to the property_map
     while !cursor.is_empty() {
         if cursor.starts_with(&PROPERTY_NAME_SEPERATOR) {
             cursor = &cursor[PROPERTY_NAME_SEPERATOR.len()..];
@@ -262,7 +288,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
                     "property_name str".to_string(),
                 )
             })?;
-            info!("property_name: {:#?}", property_name);
+            debug!("property_name: {:#?}", property_name);
             cursor = &cursor[property_name_end + UNICODE_NUL_STR.len()..];
 
             if cursor.starts_with(&PROPERTY_VALUE_SEPERATOR) {
@@ -285,7 +311,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
                             "property_value str".to_string(),
                         )
                     })?;
-                info!("property_value: {:#?}", property_value);
+                debug!("property_value: {:#?}", property_value);
                 cursor = &cursor[property_value_end + UNICODE_NUL_STR.len()..];
 
                 property_map.insert(
@@ -296,6 +322,10 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
         }
     }
     link_tag_object.smart_property_values = Some(property_map);
+    debug!(
+        "DECODED {:#?}",
+        link_tag_object.smart_property_values.clone()
+    );
 
     Ok(link_tag_object)
 }
@@ -307,7 +337,7 @@ pub fn encode_link_tag(
 ) -> Result<LinkTag, HolonError> {
     let name = relationship_name.0 .0;
 
-    debug!("Encoding LinkTag for {:?} relationship", name);
+    debug!("ENCODING LinkTag for {:?} relationship", name);
 
     let mut bytes: Vec<u8> = vec![];
 
@@ -407,23 +437,11 @@ pub fn encode_link_tag(
 mod tests {
 
     use super::*;
-    // use hash_type::Action;
-    // use holo_hash::ActionHash;
-
-    // fn create_dummy_action_hash(data: Vec<u8>) -> ExternResult<ActionHash> {
-    //     let hash = hash_blake2b(data, 36)?;
-    //     Ok(ActionHash::from_raw_36_and_type(hash, Action))
-    // }
 
     #[test]
     fn test_encode_and_decode_link_tag() {
-        // let dummy_hash = create_dummy_action_hash(b"example action hash bytes".to_vec()).unwrap();
-        // let proxy_id = Some(HolonSpaceId(dummy_hash));
-
-        let mock_action_hash_string =
-            "uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC".to_string();
         let mock_action_hash =
-            ActionHash::from_raw_39(mock_action_hash_string.as_bytes().to_vec()).unwrap();
+            ActionHash::try_from("uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC").unwrap();
 
         let proxy_id = Some(HolonSpaceId(mock_action_hash));
 
