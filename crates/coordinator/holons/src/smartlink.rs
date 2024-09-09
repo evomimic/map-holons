@@ -26,10 +26,10 @@ pub struct SmartLink {
     pub smart_property_values: Option<PropertyMap>,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LinkTagObject {
     pub relationship_name: String,
-    pub proxy_id: Option<HolonSpaceId>,
+    pub holon_id: HolonId,
     pub smart_property_values: Option<PropertyMap>,
 }
 
@@ -77,14 +77,14 @@ pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartL
 pub fn get_relationship_links(
     source_action_hash: ActionHash,
     relationship_name: &RelationshipName,
-    proxy_id: Option<HolonSpaceId>,
+    // proxy_id: Option<HolonSpaceId>,
 ) -> Result<Vec<SmartLink>, HolonError> {
     debug!(
         "Entered get_relationship_links for: {:?}",
         relationship_name.0.to_string()
     );
     // Use the relationship_name reference to encode the link tag
-    let link_tag_filter: LinkTag = encode_link_tag(relationship_name.clone(), proxy_id, None)?;
+    let link_tag_filter: LinkTag = encode_link_tag_prolog(relationship_name)?;
 
     debug!(
         "getting links for link_tag_filter: {:?}",
@@ -124,67 +124,69 @@ pub fn get_smartlink_from_link(
 
     let link_tag_obj = decode_link_tag(link.tag.clone())?;
 
-    // TODO: Enhance the following to support External HolonIds (by pulling proxy_id from LinkTagObj)
-    if let Some(proxy_id) = link_tag_obj.proxy_id {
-        let holon_id = HolonId::External(ExternalId::from((proxy_id, LocalId(local_target))));
+    let smartlink = SmartLink {
+        from_address: LocalId(source_local_hash.clone()),
+        to_address: link_tag_obj.holon_id,
+        relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
+        smart_property_values: link_tag_obj.smart_property_values,
+    };
 
-        let smartlink = SmartLink {
-            from_address: LocalId(source_local_hash.clone()),
-            to_address: holon_id,
-            relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
-            smart_property_values: link_tag_obj.smart_property_values,
-        };
+    Ok(smartlink)
 
-        Ok(smartlink)
-    } else {
-        let smartlink = SmartLink {
-            from_address: LocalId(source_local_hash.clone()),
-            to_address: LocalId(local_target).into(),
-            relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
-            smart_property_values: link_tag_obj.smart_property_values,
-        };
-
-        Ok(smartlink)
-    }
 }
 
 pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
 
-    match input.to_address.clone() {
-        HolonId::External(external_id) => {
-            let link_tag = encode_link_tag(
-                input.relationship_name.clone(),
-                Some(external_id.space_id),
-                input.smart_property_values,
-            )?;
+    let link_tag = encode_link_tag(
+        &input.relationship_name,
+        input.to_address.clone(),
+        input.smart_property_values,
+    )?;
+    create_link(
+        input.from_address.0.clone(),
+        input.to_address.local_id().0.clone(),
+        LinkTypes::SmartLink,
+        link_tag,
+    )?;
 
-            create_link(
-                input.from_address.0.clone(),
-                input.to_address.local_id().0.clone(),
-                LinkTypes::SmartLink,
-                link_tag,
-            )?;
-
-            Ok(())
-        }
-        HolonId::Local(_local_id) => {
-            let link_tag = encode_link_tag(
-                input.relationship_name.clone(),
-                None,
-                input.smart_property_values,
-            )?;
-
-            create_link(
-                input.from_address.0.clone(),
-                input.to_address.local_id().0.clone(),
-                LinkTypes::SmartLink,
-                link_tag,
-            )?;
-
-            Ok(())
-        }
-    }
+    Ok(())
+// }
+//
+//     match input.to_address.clone() {
+//         HolonId::External(external_id) => {
+//             let link_tag = encode_link_tag(
+//                 input.relationship_name.clone(),
+//                 Some(external_id.space_id),
+//                 input.smart_property_values,
+//             )?;
+//
+//             create_link(
+//                 input.from_address.0.clone(),
+//                 input.to_address.local_id().0.clone(),
+//                 LinkTypes::SmartLink,
+//                 link_tag,
+//             )?;
+//
+//             Ok(())
+//         }
+//         HolonId::Local(_local_id) => {
+//             let link_tag = encode_link_tag(
+//                 input.relationship_name.clone(),
+//                 None,
+//                 input.smart_property_values,
+//             )?;
+//
+//             create_link(
+//                 input.from_address.0.clone(),
+//                 input.to_address.local_id().0.clone(),
+//                 LinkTypes::SmartLink,
+//                 link_tag,
+//             )?;
+//
+//             Ok(())
+//         }
+//     }
 }
 
 // HELPER FUNCTIONS //
@@ -205,7 +207,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
     let name_end_option = cursor
         .iter()
-        .position(|&b| b == RELATIONSHIP_NAME_SEPERATOR.as_bytes()[0]);
+        .position(|&b| b == RELATIONSHIP_NAME_SEPARATOR.as_bytes()[0]);
     // let name_end_option = cursor
     //     .windows(PROLOG_SEPARATOR.len())
     //     .position(|window| window == PROLOG_SEPARATOR);
@@ -220,10 +222,10 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
         link_tag_object.relationship_name = relationship_name.to_string();
         debug!("DECODED relationship_name: {:#?}", relationship_name);
 
-        cursor = &cursor[name_end + RELATIONSHIP_NAME_SEPERATOR.len()..];
+        cursor = &cursor[name_end + RELATIONSHIP_NAME_SEPARATOR.len()..];
         // Confirm PROLOG_SEPARATOR reached
-        if cursor.starts_with(&PROLOG_SEPERATOR) {
-            cursor = &cursor[PROLOG_SEPERATOR.len()..];
+        if cursor.starts_with(&PROLOG_SEPARATOR) {
+            cursor = &cursor[PROLOG_SEPARATOR.len()..];
         } else {
             return Err(HolonError::InvalidParameter(
                 "Invalid LinkTag: Missing PROLOG_SEPARATOR bytes".to_string(),
@@ -237,7 +239,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
     let proxy_id_end_option = cursor
         .iter()
-        .position(|&b| b == PROXY_ID_SEPERATOR.as_bytes()[0]);
+        .position(|&b| b == PROXY_ID_SEPARATOR.as_bytes()[0]);
 
     if let Some(proxy_id_end) = proxy_id_end_option {
         link_tag_object.proxy_id = Some(HolonSpaceId(
@@ -249,7 +251,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
             })?,
         ));
         debug!("DECODED proxy_id: {:#?}", link_tag_object.proxy_id.clone());
-        cursor = &cursor[proxy_id_end + RELATIONSHIP_NAME_SEPERATOR.len()..];
+        cursor = &cursor[proxy_id_end + RELATIONSHIP_NAME_SEPARATOR.len()..];
     } else {
         return Err(HolonError::InvalidParameter(
             "Invalid LinkTag: Missing PROXY_ID_SEPARATOR bytes".to_string(),
@@ -271,8 +273,8 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
     // Iterate over each PropertyName and Value pair, adding them to the property_map
     while !cursor.is_empty() {
-        if cursor.starts_with(&PROPERTY_NAME_SEPERATOR) {
-            cursor = &cursor[PROPERTY_NAME_SEPERATOR.len()..];
+        if cursor.starts_with(&PROPERTY_NAME_SEPARATOR) {
+            cursor = &cursor[PROPERTY_NAME_SEPARATOR.len()..];
         } else {
             break;
         }
@@ -291,8 +293,8 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
             debug!("property_name: {:#?}", property_name);
             cursor = &cursor[property_name_end + UNICODE_NUL_STR.len()..];
 
-            if cursor.starts_with(&PROPERTY_VALUE_SEPERATOR) {
-                cursor = &cursor[PROPERTY_VALUE_SEPERATOR.len()..];
+            if cursor.starts_with(&PROPERTY_VALUE_SEPARATOR) {
+                cursor = &cursor[PROPERTY_VALUE_SEPARATOR.len()..];
             } else {
                 return Err(HolonError::InvalidParameter(
                     format!("Invalid LinkTag: No PROPERTY_VALUE_SEPARATOR found, missing value for property_name: {:?}", property_name)
@@ -331,13 +333,44 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 }
 
 pub fn encode_link_tag(
-    relationship_name: RelationshipName,
-    proxy_id: Option<HolonSpaceId>,
+    relationship_name: &RelationshipName,
+    to_address: HolonId,
     property_values: Option<PropertyMap>,
 ) -> Result<LinkTag, HolonError> {
-    let name = relationship_name.0 .0;
 
-    debug!("ENCODING LinkTag for {:?} relationship", name);
+    debug!("ENCODING LinkTag for {:?} relationship", relationship_name);
+    let mut bytes = encode_link_tag_prolog(relationship_name)?.into_inner();
+
+    if let HolonId::External(external_id) = to_address {
+        bytes.extend_from_slice(EXTERNAL_REFERENCE_TYPE.as_bytes());
+        bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
+        bytes.extend_from_slice(&external_id.space_id.0.into_inner());
+        bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
+    }
+    else {
+        bytes.extend_from_slice(LOCAL_REFERENCE_TYPE.as_bytes());
+        bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
+    }
+
+    if let Some(property_map) = &property_values {
+        for (property, value) in property_map {
+            bytes.extend_from_slice(&PROPERTY_NAME_SEPARATOR);
+            bytes.extend_from_slice(property.0 .0.as_bytes());
+            bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
+            bytes.extend_from_slice(&PROPERTY_VALUE_SEPARATOR);
+            bytes.extend_from_slice(&value.into_bytes().0);
+            bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
+        }
+    }
+
+    Ok(LinkTag(bytes))
+}
+pub fn encode_link_tag_prolog(
+    relationship_name: &RelationshipName,
+) -> Result<LinkTag, HolonError> {
+    let name = relationship_name.clone().0;
+
+    debug!("ENCODING LinkTag Filter for {:?} relationship", name);
 
     let mut bytes: Vec<u8> = vec![];
 
@@ -346,27 +379,7 @@ pub fn encode_link_tag(
     bytes.extend_from_slice(name.as_bytes());
 
     bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes()); // therefore remove this in the future
-    bytes.extend_from_slice(&PROLOG_SEPERATOR);
-
-    if let Some(proxy_id) = proxy_id {
-        bytes.extend_from_slice(&proxy_id.0.into_inner());
-        bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
-    }
-
-    // TODO: determine reference type
-    // bytes.extend_from_slice(reference_type.as_bytes());
-    // bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
-
-    if let Some(property_map) = &property_values {
-        for (property, value) in property_map {
-            bytes.extend_from_slice(&PROPERTY_NAME_SEPERATOR);
-            bytes.extend_from_slice(property.0 .0.as_bytes());
-            bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
-            bytes.extend_from_slice(&PROPERTY_VALUE_SEPERATOR);
-            bytes.extend_from_slice(&value.into_bytes().0);
-            bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
-        }
-    }
+    bytes.extend_from_slice(&PROLOG_SEPARATOR);
 
     Ok(LinkTag(bytes))
 }
@@ -440,10 +453,12 @@ mod tests {
 
     #[test]
     fn test_encode_and_decode_link_tag() {
-        let mock_action_hash =
-            ActionHash::try_from("uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC").unwrap();
 
-        let proxy_id = Some(HolonSpaceId(mock_action_hash));
+        let space_id = HolonSpaceId(ActionHash::try_from("uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC").unwrap());
+        let local_id = LocalId(ActionHash::try_from("uhCkkLQ8hxxrt27W8TtkpcX1XAqbUyfD5_Rv5Us0X").unwrap());
+
+        let holon_id = HolonId::External(ExternalId {
+            space_id, local_id });
 
         let relationship_name = RelationshipName(MapString("ex_relationship_name".to_string()));
         let mut property_values: PropertyMap = BTreeMap::new();
@@ -458,8 +473,8 @@ mod tests {
         property_values.insert(name_3, value_3);
 
         let encoded_link_tag = encode_link_tag(
-            relationship_name.clone(),
-            proxy_id.clone(),
+            &relationship_name,
+            holon_id,
             Some(property_values.clone()),
         )
         .unwrap();
@@ -470,7 +485,7 @@ mod tests {
             relationship_name.0 .0,
             decoded_link_tag_object.relationship_name
         );
-        assert_eq!(proxy_id, decoded_link_tag_object.proxy_id);
+        assert_eq!(space_id, decoded_link_tag_object.proxy_id);
         assert!(decoded_link_tag_object.smart_property_values.is_some());
         assert_eq!(
             Some(property_values),

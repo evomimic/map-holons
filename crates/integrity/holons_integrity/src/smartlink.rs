@@ -1,16 +1,18 @@
 use hdi::prelude::*;
 //use shared_types_holon::holon_node::{HolonNode};
 
+pub const EXTERNAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 141]; // Unicode 'Ⓧ' // hex bytes: [0xE2] [0x93] [0x8D]
+pub const LOCAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 129]; // Unicode 'Ⓛ' // hex bytes: [0xE2] [0x93] [0x81]
 pub const NUL_BYTES: u8 = b'\0'; // NUL Bytes
-pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
+pub const PROLOG_SEPARATOR: [u8; 3] = [226, 138, 163]; // Unicode '⊣' // hex bytes: [0xE2][0x8A][0xA3]
+pub const PROPERTY_NAME_SEPARATOR: [u8; 3] = [226, 147, 131]; // Unicode 'Ⓝ' // hex bytes: [0xE2][0x93][0x83]
+pub const PROPERTY_VALUE_SEPARATOR: [u8; 3] = [226, 147, 11]; // Unicode 'Ⓥ' // hex bytes: [0xE2][0x93][0x8B]
+pub const PROXY_ID_SEPARATOR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
+pub const RELATIONSHIP_NAME_SEPARATOR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
 pub const SMARTLINK_HEADER_BYTES: [u8; 3] = [226, 130, 183]; // Unicode '₷' // hex bytes: [0xE2][0x82][0xB7]
-pub const RELATIONSHIP_NAME_SEPERATOR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
-pub const PROLOG_SEPERATOR: [u8; 3] = [226, 138, 163]; // Unicode '⊣' // hex bytes: [0xE2][0x8A][0xA3]
-pub const PROXY_ID_SEPERATOR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
-pub const PROPERTY_NAME_SEPERATOR: [u8; 3] = [226, 147, 131]; // Unicode 'Ⓝ' // hex bytes: [0xE2][0x93][0x83]
-pub const PROPERTY_VALUE_SEPERATOR: [u8; 3] = [226, 147, 11]; // Unicode 'Ⓥ' // hex bytes: [0xE2][0x93][0x8B]
-                                                              // pub const LOCAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 129]; // Unicode 'Ⓛ' // hex bytes: [0xE2] [0x93] [0x81]
-                                                              // pub const EXTERNAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 141]; // Unicode 'Ⓧ' // hex bytes: [0xE2] [0x93] [0x8D]
+pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
+
+
 
 pub fn validate_create_smartlink(
     _action: CreateLink,
