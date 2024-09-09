@@ -51,10 +51,10 @@ pub async fn execute_stage_new_from_clone(
                     let holons = response.staging_area.staged_holons;
 
                     warn!("holons:{:#?}", holons);
-                    // assert_eq!(
-                    //     expected_holon.essential_content(),
-                    //     holons[index].essential_content(),
-                    // );
+                    assert_eq!(
+                        expected_holon.essential_content(),
+                        holons[index].essential_content(),
+                    );
                     info!("Success! DB fetched holon matched expected");
                 } else {
                     panic!("Expected `index` to staged_holon in the response body, but didn't get one!");

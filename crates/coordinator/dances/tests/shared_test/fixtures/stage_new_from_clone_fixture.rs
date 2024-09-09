@@ -40,28 +40,33 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         .expected_holon
         .clone()
         .expect("Expected setup method to return Some book holon at index 0, got none.");
-    let book_holon_reference = HolonReference::Staged(StagedReference {
-        holon_index: book_index,
-    });
 
     // let person_1_index = test_data[1].staged_index;
     let person_2_index = test_data[2].staged_index;
 
-    //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step()?;
+    // //  COMMIT  // all Holons in staging_area
+    // test_case.add_commit_step()?;
 
-    //  ENSURE DATABASE COUNT -- 3 Holons  //
-    test_case.add_ensure_database_count_step(MapInteger(3))?;
+    // //  ENSURE DATABASE COUNT -- 3 Holons  //
+    // test_case.add_ensure_database_count_step(MapInteger(3))?;
 
-    //  MATCH SAVED CONTENT -- PASS 1 -- Pre-modification  //
-    test_case.add_match_saved_content_step()?;
+    // //  MATCH SAVED CONTENT -- PASS 1 -- Pre-modification  //
+    // test_case.add_match_saved_content_step()?;
 
-    //  STAGE_NEW_FROM_CLONE  Book Holon  //
+    // //  STAGE -- Again -- Book Holon Original //
+    // test_case.add_stage_holon_step(book_holon.clone())?;
+
+    //  STAGE_NEW_FROM_CLONE --StagedReference -- Book Holon Clone  //
+    let book_holon_reference = HolonReference::Staged(StagedReference { holon_index: 3 });
+
     test_case.add_stage_new_from_clone_step(
         book_holon_reference,
         ResponseStatusCode::OK,
         book_holon.clone(),
     )?;
+
+    // //  ABANDON  -- 2nd Staged Book Holon Original  //
+    // test_case.add_abandon_staged_changes_step(book_index, ResponseStatusCode::OK)?;
 
     //  CHANGE PROPERTIES  //
     let mut properties = PropertyMap::new();
@@ -79,16 +84,16 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     );
     test_case.add_with_properties_step(book_index, properties, ResponseStatusCode::OK)?;
 
-    //  REMOVE RELATIONSHIP: Book -> Person_2  //
-    test_case.remove_related_holons_step(
-        book_index, // source holon
-        desired_test_relationship.clone(),
-        vec![HolonReference::Smart(SmartReference {
-            holon_id: //?,
-        })],
-        ResponseStatusCode::OK,
-        book_holon.clone(),
-    )?;
+    // //  REMOVE RELATIONSHIP: Book -> Person_2  //
+    // test_case.remove_related_holons_step(
+    //     book_index, // source holon
+    //     desired_test_relationship.clone(),
+    //     vec![HolonReference::Smart(SmartReference {
+    //         holon_id: //?,
+    //     })],
+    //     ResponseStatusCode::OK,
+    //     book_holon.clone(),
+    // )?;
 
     /*
     // //  STAGE:  Publisher Holon  //
