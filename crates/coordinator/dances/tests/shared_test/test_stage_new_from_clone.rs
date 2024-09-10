@@ -10,7 +10,7 @@ use holons::holon::{self, Holon};
 use holons::holon_reference::HolonReference;
 use rstest::*;
 
-use super::test_data_types::DanceTestState;
+use super::data_types::DanceTestState;
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied Holon
 /// and confirms a Success response

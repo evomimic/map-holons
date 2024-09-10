@@ -158,7 +158,7 @@ impl StagedReference {
         let commit_manager = match context.commit_manager.try_borrow() {
             Ok(cm) => cm,
             Err(e) => {
-                error!("Failed to borrow commit_manager mutably: {:?}", e);
+                error!("Failed to borrow commit_manager, it is already borrowed mutably: {:?}", e);
                 return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
             }
         };

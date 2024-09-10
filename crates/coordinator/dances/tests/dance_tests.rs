@@ -39,7 +39,7 @@ use tracing::{debug, error, info, trace, warn, Level};
 use self::test_abandon_staged_changes::execute_abandon_staged_changes;
 use self::test_add_related_holon::execute_add_related_holons;
 use self::test_commit::execute_commit;
-use self::test_data_types::{DanceTestState, DanceTestStep};
+use self::data_types::{DanceTestState, DanceTestStep};
 use self::test_ensure_database_count::execute_ensure_database_count;
 use self::test_load_core_schema::execute_load_new_schema;
 use self::test_match_db_content::execute_match_db_content;
@@ -56,7 +56,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 
-use shared_test::test_data_types::DancesTestCase;
+use shared_test::data_types::DancesTestCase;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;

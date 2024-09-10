@@ -8,7 +8,7 @@ use holons::{
 use rstest::*;
 use shared_types_holon::{BaseValue, MapInteger, MapString, PropertyMap, PropertyName};
 
-use crate::test_data_types::DancesTestCase;
+use crate::data_types::DancesTestCase;
 
 use super::book_authors_setup_fixture::setup_book_author_steps;
 
@@ -41,7 +41,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         .clone()
         .expect("Expected setup method to return Some book holon at index 0, got none.");
 
-    // let person_1_index = test_data[1].staged_index;
+    let person_1_index = test_data[1].staged_index;
     let person_2_index = test_data[2].staged_index;
 
     // //  COMMIT  // all Holons in staging_area
@@ -53,11 +53,13 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // //  MATCH SAVED CONTENT -- PASS 1 -- Pre-modification  //
     // test_case.add_match_saved_content_step()?;
 
+    ////
     // //  STAGE -- Again -- Book Holon Original //
     // test_case.add_stage_holon_step(book_holon.clone())?;
+    ////
 
-    //  STAGE_NEW_FROM_CLONE --StagedReference -- Book Holon Clone  //
-    let book_holon_reference = HolonReference::Staged(StagedReference { holon_index: 3 });
+    //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
+    let book_holon_reference = HolonReference::Staged(StagedReference { holon_index: 0 });
 
     test_case.add_stage_new_from_clone_step(
         book_holon_reference,
@@ -65,24 +67,30 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         book_holon.clone(),
     )?;
 
+    ////
     // //  ABANDON  -- 2nd Staged Book Holon Original  //
     // test_case.add_abandon_staged_changes_step(book_index, ResponseStatusCode::OK)?;
+    ////
 
-    //  CHANGE PROPERTIES  //
-    let mut properties = PropertyMap::new();
-    properties.insert(
-        PropertyName(MapString("title".to_string())),
-        BaseValue::StringValue(MapString("A clone from: Emerging World".to_string())),
-    );
-    properties.insert(
-        PropertyName(MapString("key".to_string())),
-        BaseValue::StringValue(MapString("A clone from: Emerging World".to_string())),
-    );
-    properties.insert(
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString("example property change".to_string())),
-    );
-    test_case.add_with_properties_step(book_index, properties, ResponseStatusCode::OK)?;
+    // // let mut cloned_book = book_holon.clone();
+    // let cloned_book_index = 3;
+    // let cloned_book_key =
+    //     BaseValue::StringValue(MapString("A clone from: Emerging World".to_string()));
+    // //  CHANGE PROPERTIES  //
+    // let mut properties = PropertyMap::new();
+    // properties.insert(
+    //     PropertyName(MapString("title".to_string())),
+    //     cloned_book_key.clone(),
+    // );
+    // properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key);
+    // properties.insert(
+    //     PropertyName(MapString("description".to_string())),
+    //     BaseValue::StringValue(MapString("example property change".to_string())),
+    // );
+    // // cloned_book.property_map = properties.clone();
+    // // test_data.push(TestHolon { staged_index: cloned_book_index, key: cloned_book_key, expected_holon: Some(cloned_book)});
+
+    // test_case.add_with_properties_step(cloned_book_index, properties, ResponseStatusCode::OK)?;
 
     // //  REMOVE RELATIONSHIP: Book -> Person_2  //
     // test_case.remove_related_holons_step(
@@ -135,7 +143,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     //  COMMIT  // the cloned & modified Book Holon
     test_case.add_commit_step()?;
 
-    //  ENSURE DATABASE COUNT -- 5 Holons  //
+    //  ENSURE DATABASE COUNT -- 4 Holons  //
     test_case.add_ensure_database_count_step(MapInteger(4))?;
 
     //  MATCH SAVED CONTENT -- PASS 2 -- Post-modification  //

@@ -6,7 +6,7 @@ pub use fixtures::*;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
 pub mod test_commit;
-pub mod test_data_types;
+pub mod data_types;
 pub mod test_ensure_database_count;
 pub mod test_load_core_schema;
 pub mod test_match_db_content;
@@ -25,7 +25,7 @@ use holons::{
     relationship::RelationshipName,
 };
 use shared_types_holon::{HolonId, MapString};
-use test_data_types::DanceTestState;
+use data_types::DanceTestState;
 
 const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
 

@@ -83,10 +83,20 @@ impl SmartReference {
 
     // Private function for getting a mutable reference from the context
     fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        Ok(context
-            .cache_manager
-            .borrow_mut()
-            .get_rc_holon(&self.holon_id)?)
+        let cache_manager = match context.cache_manager.try_borrow() {
+            Ok(cm) => cm,
+            Err(e) => {
+                error!(
+                    "Failed to borrow cache_manager, it is already borrowed mutably: {:?}",
+                    e
+                );
+                return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+            }
+        };
+
+        let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
+
+        Ok(rc_holon)
     }
 
     pub fn new_version(&self, context: &HolonsContext) -> Result<Holon, HolonError> {

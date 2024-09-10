@@ -22,8 +22,8 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 
-use crate::shared_test::test_data_types::DanceTestStep;
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::data_types::DanceTestStep;
+use crate::shared_test::data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;

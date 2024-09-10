@@ -86,12 +86,21 @@ pub fn abandon_staged_changes_dance(
     debug!("Entered: abandon_staged_changes_dance");
     match request.dance_type {
         DanceType::CommandMethod(staged_index) => {
-            debug!("trying to borrow_mut commit_manager");
+            debug!("trying to borrow commit_manager");
             // Try to get a mutable reference to the staged holon referenced by its index
-            let commit_manager_mut = context.commit_manager.borrow_mut();
+            let commit_manager = match context.commit_manager.try_borrow() {
+                Ok(cm) => cm,
+                Err(e) => {
+                    error!(
+                        "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+                        e
+                    );
+                    return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+                }
+            };
             debug!("commit_manager borrowed_mut");
-            let staged_holon = commit_manager_mut.get_mut_holon_by_index(staged_index.clone());
-            //debug!("Result of borrow_mut on the staged holon  {:#?}", staged_holon.clone());
+            let staged_holon = commit_manager.get_mut_holon_by_index(staged_index.clone());
+            //debug!("Result of borrow on the staged holon  {:#?}", staged_holon.clone());
 
             match staged_holon {
                 Ok(mut holon_mut) => {
@@ -549,11 +558,18 @@ pub fn stage_new_from_clone_dance(
 
     let staged_reference: StagedReference = match request.dance_type {
         DanceType::CloneMethod(holon_reference) => {
+            let commit_manager = match context.commit_manager.try_borrow() {
+                Ok(cm) => cm,
+                Err(e) => {
+                    error!(
+                        "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+                        e
+                    );
+                    return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+                }
+            };
             // Stage the new holon
-            context
-                .commit_manager
-                .borrow_mut()
-                .stage_new_from_clone(context, holon_reference)?
+            commit_manager.stage_new_from_clone(context, holon_reference)?
         }
         _ => {
             return Err(HolonError::InvalidParameter(
@@ -737,8 +753,17 @@ pub fn with_properties_dance(
         DanceType::CommandMethod(staged_index) => {
             debug!("looking for StagedHolon at index: {:#?}", staged_index);
             // Try to get a mutable reference to the staged holon referenced by its index
-            let commit_manage_mut = context.commit_manager.borrow_mut();
-            let staged_holon = commit_manage_mut.get_mut_holon_by_index(staged_index.clone());
+            let commit_manager = match context.commit_manager.try_borrow() {
+                Ok(cm) => cm,
+                Err(e) => {
+                    error!(
+                        "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+                        e
+                    );
+                    return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+                }
+            };
+            let staged_holon = commit_manager.get_mut_holon_by_index(staged_index.clone());
 
             match staged_holon {
                 Ok(mut holon_mut) => {
