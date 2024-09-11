@@ -44,11 +44,48 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let person_1_index = test_data[1].staged_index;
     let person_2_index = test_data[2].staged_index;
 
+
+    //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
+    let book_holon_reference = HolonReference::Staged(StagedReference { holon_index: 0 });
+
+    test_case.add_stage_new_from_clone_step(
+        book_holon_reference, // holon_key: Option<MapString>,
+        ResponseStatusCode::OK,
+        book_holon.clone(),
+    )?;
+
+    // let cloned_book_index = 3;
+    // let cloned_book_key =
+    //     BaseValue::StringValue(MapString("A clone from: Emerging World".to_string()));
+    // //  CHANGE PROPERTIES  //
+    // let mut properties = PropertyMap::new();
+    // properties.insert(
+    //     PropertyName(MapString("title".to_string())),
+    //     cloned_book_key.clone(),
+    // );
+    // properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key);
+    // properties.insert(
+    //     PropertyName(MapString("description".to_string())),
+    //     BaseValue::StringValue(MapString("example property change".to_string())),
+    // );
+    // // cloned_book.property_map = properties.clone();
+    // // test_data.push(TestHolon { staged_index: cloned_book_index, key: cloned_book_key, expected_holon: Some(cloned_book)});
+
+    // test_case.add_with_properties_step(cloned_book_index, properties, ResponseStatusCode::OK)?;
+
     // //  COMMIT  // all Holons in staging_area
     // test_case.add_commit_step()?;
 
     // //  ENSURE DATABASE COUNT -- 3 Holons  //
-    // test_case.add_ensure_database_count_step(MapInteger(3))?;
+    // test_case.add_ensure_database_count_step(MapInteger(4))?;
+
+    // CLONE A SAVED HOLON
+
+    // add a step to
+
+    // //  COMMIT  // all Holons in staging_area
+    // test_case.add_commit_step()?;
+
 
     // //  MATCH SAVED CONTENT -- PASS 1 -- Pre-modification  //
     // test_case.add_match_saved_content_step()?;
@@ -58,14 +95,6 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // test_case.add_stage_holon_step(book_holon.clone())?;
     ////
 
-    //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
-    let book_holon_reference = HolonReference::Staged(StagedReference { holon_index: 0 });
-
-    test_case.add_stage_new_from_clone_step(
-        book_holon_reference,
-        ResponseStatusCode::OK,
-        book_holon.clone(),
-    )?;
 
     ////
     // //  ABANDON  -- 2nd Staged Book Holon Original  //
