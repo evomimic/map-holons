@@ -516,7 +516,6 @@ impl Holon {
                 )),
                 AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
             },
-
         }
     }
 
