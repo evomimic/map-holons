@@ -27,7 +27,7 @@ pub struct SmartLink {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct LinkTagObject {
+struct LinkTagObject {
     pub relationship_name: String,
     pub proxy_id: Option<HolonSpaceId>,
     pub smart_property_values: Option<PropertyMap>,
