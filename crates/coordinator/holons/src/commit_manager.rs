@@ -279,38 +279,38 @@ impl CommitManager {
     //     };
     // }
 
-    /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
-    pub fn stage_new_from_clone(
-        &self,
-        context: &HolonsContext,
-        existing_holon: HolonReference,
-    ) -> Result<StagedReference, HolonError> {
-        let holon = existing_holon.clone_holon(context)?;
-
-        // Add the new holon into the CommitManager's staged_holons list, remembering its index
-        let index = self.staged_holons.len() - 1;
-        let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-            Ok(cm) => cm,
-            Err(e) => {
-                error!(
-                    "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
-                    e
-                );
-                return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
-            }
-        };
-        commit_manager
-            .staged_holons
-            .push(Rc::new(RefCell::new(holon.clone())));
-
-        // Return a staged reference to the staged holon
-        let staged_reference = StagedReference { holon_index: index };
-
-        // Remove PREDECESSOR by passing None
-        staged_reference.with_predecessor(context, None)?;
-
-        Ok(staged_reference)
-    }
+    // /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+    // pub fn stage_new_from_clone(
+    //     &self,
+    //     context: &HolonsContext,
+    //     existing_holon: HolonReference,
+    // ) -> Result<StagedReference, HolonError> {
+    //     let holon = existing_holon.clone_holon(context)?;
+    //
+    //     // Add the new holon into the CommitManager's staged_holons list, remembering its index
+    //     let index = self.staged_holons.len() - 1;
+    //     let mut commit_manager = match context.commit_manager.try_borrow_mut() {
+    //         Ok(cm) => cm,
+    //         Err(e) => {
+    //             error!(
+    //                 "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+    //                 e
+    //             );
+    //             return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+    //         }
+    //     };
+    //     commit_manager
+    //         .staged_holons
+    //         .push(Rc::new(RefCell::new(holon.clone())));
+    //
+    //     // Return a staged reference to the staged holon
+    //     let staged_reference = StagedReference { holon_index: index };
+    //
+    //     // Remove PREDECESSOR by passing None
+    //     staged_reference.with_predecessor(context, None)?;
+    //
+    //     Ok(staged_reference)
+    // }
 
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon

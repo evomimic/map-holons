@@ -545,7 +545,7 @@ pub fn build_remove_related_holons_dance_request(
 /// - dance_name: "stage_new_from_clone"
 /// - dance_type: CloneMethod(HolonReference)
 /// - request_body: None
-///   
+///
 ///
 /// *ResponseBody:*
 /// Index(StagedIndex), // a reference to the newly staged holon
@@ -556,30 +556,107 @@ pub fn stage_new_from_clone_dance(
 ) -> Result<ResponseBody, HolonError> {
     debug!("== Entered stage_new_from_clone dance ==");
 
-    let staged_reference: StagedReference = match request.dance_type {
-        DanceType::CloneMethod(holon_reference) => {
-            let commit_manager = match context.commit_manager.try_borrow() {
-                Ok(cm) => cm,
-                Err(e) => {
-                    error!(
-                        "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
-                        e
-                    );
-                    return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
-                }
-            };
-            // Stage the new holon
-            commit_manager.stage_new_from_clone(context, holon_reference)?
-        }
+    // Step 1: Clone the holon from the request
+    let holon_reference = match request.dance_type {
+        DanceType::CloneMethod(holon_reference) => holon_reference,
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
-            ))
+            ));
         }
     };
 
+    let cloned_holon = holon_reference.clone_holon(context)?;
+
+    // Step 2: Mutably borrow the commit_manager and call stage_new_holon
+    let staged_reference: StagedReference = {
+        let mut commit_manager = match context.commit_manager.try_borrow_mut() {
+            Ok(cm) => cm,
+            Err(e) => {
+                error!(
+                    "Failed to borrow commit_manager mutably: {:?}",
+                    e
+                );
+                return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+            }
+        };
+
+        // Use the existing stage_new_holon method
+        commit_manager.stage_new_holon(cloned_holon)?
+    };
+
+    // Step 3: Remove the predecessor by passing None
+    staged_reference.with_predecessor(context, None)?;
+
+    // Return the staged holon reference as the response
     Ok(ResponseBody::Index(staged_reference.holon_index))
 }
+
+// pub fn stage_new_from_clone_dance(
+//     context: &HolonsContext,
+//     request: DanceRequest,
+// ) -> Result<ResponseBody, HolonError> {
+//     debug!("== Entered stage_new_from_clone dance ==");
+//
+//     // Call the commit_manager's method directly by first borrowing it mutably
+//     let staged_reference: StagedReference = match request.dance_type {
+//         DanceType::CloneMethod(holon_reference) => {
+//             // First, borrow the commit_manager mutably, since stage_new_from_clone requires mutation
+//             let mut commit_manager = match context.commit_manager.try_borrow_mut() {
+//                 Ok(cm) => cm,
+//                 Err(e) => {
+//                     error!(
+//                         "Failed to borrow commit_manager mutably: {:?}",
+//                         e
+//                     );
+//                     return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+//                 }
+//             };
+//
+//             // Now call the method stage_new_from_clone using the mutable borrow
+//             commit_manager.stage_new_from_clone(context, holon_reference)?
+//         }
+//         _ => {
+//             return Err(HolonError::InvalidParameter(
+//                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+//             ))
+//         }
+//     };
+//
+//     Ok(ResponseBody::Index(staged_reference.holon_index))
+// }
+
+
+// pub fn stage_new_from_clone_dance(
+//     context: &HolonsContext,
+//     request: DanceRequest,
+// ) -> Result<ResponseBody, HolonError> {
+    // debug!("== Entered stage_new_from_clone dance ==");
+    //
+    // let staged_reference: StagedReference = match request.dance_type {
+    //     DanceType::CloneMethod(holon_reference) => {
+    //         let commit_manager = match context.commit_manager.try_borrow() {
+    //             Ok(cm) => cm,
+    //             Err(e) => {
+    //                 error!(
+    //                     "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+    //                     e
+    //                 );
+    //                 return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+    //             }
+    //         };
+    //         // Stage the new holon
+    //         commit_manager.stage_new_from_clone(context, holon_reference)?
+    //     }
+    //     _ => {
+    //         return Err(HolonError::InvalidParameter(
+    //             "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+    //         ))
+    //     }
+    // };
+    //
+    // Ok(ResponseBody::Index(staged_reference.holon_index))
+// }
 ///
 /// Builds a dance request for staging a new cloned Holon
 pub fn build_stage_new_from_clone_dance_request(

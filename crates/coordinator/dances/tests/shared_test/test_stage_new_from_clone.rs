@@ -64,7 +64,7 @@ pub async fn execute_stage_new_from_clone(
             }
         }
         Err(error) => {
-            panic!("{:?} Unable to build a stage_holon request ", error);
+            panic!("{:?} Unable to build a stage_new_from_clone request ", error);
         }
     }
 }
