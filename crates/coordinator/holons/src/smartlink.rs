@@ -55,6 +55,7 @@ impl SmartLink {
 
 // UTILITY FUNCTIONS //
 
+/// Gets all SmartLinks across all relationships from the given source
 pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartLink>, HolonError> {
     //let link_tag_filter: Option<LinkTag> = None;
 
@@ -110,8 +111,8 @@ pub fn get_relationship_links(
 
     Ok(smartlinks)
 }
-
-pub fn get_smartlink_from_link(
+/// Converts a Holochain Link into a SmartLink
+fn get_smartlink_from_link(
     source_local_hash: ActionHash,
     link: Link,
 ) -> Result<SmartLink, HolonError> {
@@ -198,7 +199,7 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
 
 // HELPER FUNCTIONS //
 
-pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
+fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
     let mut link_tag_object = LinkTagObject::default();
     let bytes = link_tag.into_inner();
     let mut cursor = &bytes[..];
@@ -349,7 +350,7 @@ pub fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
     Ok(link_tag_object)
 }
 
-pub fn encode_link_tag(
+fn encode_link_tag(
     relationship_name: &RelationshipName,
     to_address: HolonId,
     property_values: Option<PropertyMap>,
@@ -378,7 +379,7 @@ pub fn encode_link_tag(
 
     Ok(LinkTag(bytes))
 }
-pub fn encode_link_tag_prolog(relationship_name: &RelationshipName) -> Result<LinkTag, HolonError> {
+fn encode_link_tag_prolog(relationship_name: &RelationshipName) -> Result<LinkTag, HolonError> {
     let name = &relationship_name.0 .0;
 
     debug!("ENCODING LinkTag Filter for {:?} relationship", name);
