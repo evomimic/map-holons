@@ -35,7 +35,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     )?;
 
     let book_index = test_data[0].staged_index;
-    // let book_holon_key = test_data[0].key.clone();
+    let book_holon_key = test_data[0].key.clone();
     let book_holon = test_data[0]
         .expected_holon
         .clone()
@@ -44,62 +44,92 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let person_1_index = test_data[1].staged_index;
     let person_2_index = test_data[2].staged_index;
 
+    // //  STAGE:  Publisher Holon  //
+    // An additional Holon for adding relationships to.
+
+    let mut publisher_holon = Holon::new();
+    let publisher_index: usize = 3; // assume pubsliher is at this position in new staged_holons vector
+    let publisher_holon_reference = HolonReference::Staged(StagedReference {
+        holon_index: publisher_index,
+    });
+    let publisher_key = MapString("Publishing Company".to_string());
+    publisher_holon
+        .with_property_value(
+            PropertyName(MapString("name".to_string())),
+            BaseValue::StringValue(MapString("Publishing Company".to_string())),
+        )?
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(publisher_key.clone()),
+        )?
+        .with_property_value(
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString(
+                "We publish Holons for testing purposes".to_string(),
+            )),
+        )?;
+
+    test_case.add_stage_holon_step(publisher_holon.clone())?;
+
+    // //  ADD RELATIONSHIP: Book -> Publisher  //
+
+    // test_case.add_related_holons_step(
+    //     book_index, // source holon
+    //     RelationshipName(MapString("PUBLISHED_BY".to_string())),
+    //     vec![publisher_holon_reference],
+    //     ResponseStatusCode::OK,
+    //     book_holon.clone(),
+    // )?;
 
     //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
-    let book_holon_reference = HolonReference::Staged(StagedReference { holon_index: 0 });
+    let mut cloned_book_holon = Holon::new();
+    let cloned_book_index = 4;
+    let cloned_book_key =
+        BaseValue::StringValue(MapString("A clone from: Emerging World".to_string()));
 
-    test_case.add_stage_new_from_clone_step(
-        book_holon_reference, // holon_key: Option<MapString>,
-        ResponseStatusCode::OK,
-        book_holon.clone(),
+    //  CHANGE PROPERTIES  //
+    cloned_book_holon.with_property_value(
+        PropertyName(MapString("title".to_string())),
+        cloned_book_key.clone(),
+    )?;
+    cloned_book_holon
+        .with_property_value(PropertyName(MapString("key".to_string())), cloned_book_key)?;
+    cloned_book_holon.with_property_value(
+        PropertyName(MapString("description".to_string())),
+        BaseValue::StringValue(MapString("example property change".to_string())),
     )?;
 
-    // let cloned_book_index = 3;
-    // let cloned_book_key =
-    //     BaseValue::StringValue(MapString("A clone from: Emerging World".to_string()));
-    // //  CHANGE PROPERTIES  //
-    // let mut properties = PropertyMap::new();
-    // properties.insert(
-    //     PropertyName(MapString("title".to_string())),
-    //     cloned_book_key.clone(),
-    // );
-    // properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key);
-    // properties.insert(
-    //     PropertyName(MapString("description".to_string())),
-    //     BaseValue::StringValue(MapString("example property change".to_string())),
-    // );
-    // // cloned_book.property_map = properties.clone();
-    // // test_data.push(TestHolon { staged_index: cloned_book_index, key: cloned_book_key, expected_holon: Some(cloned_book)});
+    // test_data.push(TestHolon { staged_index: cloned_book_index, key: cloned_book_key, expected_holon: Some(cloned_book)});
 
-    // test_case.add_with_properties_step(cloned_book_index, properties, ResponseStatusCode::OK)?;
+    test_case.add_stage_new_from_clone_step(
+        book_holon.clone(),
+        ResponseStatusCode::OK,
+        cloned_book_holon,
+    )?;
 
-    // //  COMMIT  // all Holons in staging_area
-    // test_case.add_commit_step()?;
+    // //  REMOVE RELATIONSHIP: Book -> Person_1  //
+    // test_case.remove_related_holons_step(
+    //     book_index, // source holon
+    //     desired_test_relationship.clone(),
+    //     vec![HolonReference::Smart(SmartReference {
+    //         holon_id: //?,
+    //     })],
+    //     ResponseStatusCode::OK,
+    //     book_holon.clone(),
+    // )?;
 
-    // //  ENSURE DATABASE COUNT -- 3 Holons  //
-    // test_case.add_ensure_database_count_step(MapInteger(4))?;
+    //  COMMIT  // all Holons in staging_area
+    test_case.add_commit_step()?;
+
+    //  ENSURE DATABASE COUNT -- 5 Holons  //
+    test_case.add_ensure_database_count_step(MapInteger(5))?;
+
+    //  MATCH SAVED CONTENT -- PASS 1 -- Pre-modification  //
+    test_case.add_match_saved_content_step()?;
 
     // CLONE A SAVED HOLON
 
     // add a step to
-
-    // //  COMMIT  // all Holons in staging_area
-    // test_case.add_commit_step()?;
-
-
-    // //  MATCH SAVED CONTENT -- PASS 1 -- Pre-modification  //
-    // test_case.add_match_saved_content_step()?;
-
-    ////
-    // //  STAGE -- Again -- Book Holon Original //
-    // test_case.add_stage_holon_step(book_holon.clone())?;
-    ////
-
-
-    ////
-    // //  ABANDON  -- 2nd Staged Book Holon Original  //
-    // test_case.add_abandon_staged_changes_step(book_index, ResponseStatusCode::OK)?;
-    ////
 
     // // let mut cloned_book = book_holon.clone();
     // let cloned_book_index = 3;
@@ -169,14 +199,14 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // )?;
     */
 
-    //  COMMIT  // the cloned & modified Book Holon
-    test_case.add_commit_step()?;
+    // //  COMMIT  // the cloned & modified Book Holon
+    // test_case.add_commit_step()?;
 
-    //  ENSURE DATABASE COUNT -- 4 Holons  //
-    test_case.add_ensure_database_count_step(MapInteger(4))?;
+    // //  ENSURE DATABASE COUNT -- 4 Holons  //
+    // test_case.add_ensure_database_count_step(MapInteger(4))?;
 
-    //  MATCH SAVED CONTENT -- PASS 2 -- Post-modification  //
-    test_case.add_match_saved_content_step()?;
+    // //  MATCH SAVED CONTENT -- PASS 2 -- Post-modification  //
+    // test_case.add_match_saved_content_step()?;
 
     Ok(test_case.clone())
 }

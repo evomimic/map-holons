@@ -19,15 +19,16 @@ pub async fn execute_stage_new_from_clone(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
-    holon_reference: HolonReference,
     expected_response: ResponseStatusCode,
     expected_holon: Holon,
 ) -> () {
     info!("\n\n--- TEST STEP: Stage_New_From_Clone ---- :");
 
     // Build a stage_new_from_clone DanceRequest
-    let request =
-        build_stage_new_from_clone_dance_request(test_state.staging_area.clone(), holon_reference);
+    let request = build_stage_new_from_clone_dance_request(
+        test_state.staging_area.clone(),
+        expected_holon.clone(),
+    );
     debug!("Dance Request: {:#?}", request);
 
     match request {
@@ -64,7 +65,10 @@ pub async fn execute_stage_new_from_clone(
             }
         }
         Err(error) => {
-            panic!("{:?} Unable to build a stage_new_from_clone request ", error);
+            panic!(
+                "{:?} Unable to build a stage_new_from_clone request ",
+                error
+            );
         }
     }
 }

@@ -29,7 +29,7 @@ use holons::holon::{self, Holon};
 use holons::holon_error::HolonError;
 use holons::holon_reference::{HolonGettable, HolonReference};
 use holons::relationship::RelationshipName;
-use holons::smart_reference;
+use holons::smart_reference::{self, SmartReference};
 use holons::staged_reference::StagedReference;
 use shared_types_holon::HolonId;
 use shared_types_holon::{MapString, PropertyMap};
@@ -557,8 +557,8 @@ pub fn stage_new_from_clone_dance(
     debug!("== Entered stage_new_from_clone dance ==");
 
     // Step 1: Clone the holon from the request
-    let holon_reference = match request.dance_type {
-        DanceType::CloneMethod(holon_reference) => holon_reference,
+    let holon = match request.dance_type {
+        DanceType::CloneMethod(holon) => holon,
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
@@ -566,23 +566,18 @@ pub fn stage_new_from_clone_dance(
         }
     };
 
-    let cloned_holon = holon_reference.clone_holon(context)?;
-
     // Step 2: Mutably borrow the commit_manager and call stage_new_holon
     let staged_reference: StagedReference = {
         let mut commit_manager = match context.commit_manager.try_borrow_mut() {
             Ok(cm) => cm,
             Err(e) => {
-                error!(
-                    "Failed to borrow commit_manager mutably: {:?}",
-                    e
-                );
+                error!("Failed to borrow commit_manager mutably: {:?}", e);
                 return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
             }
         };
 
         // Use the existing stage_new_holon method
-        commit_manager.stage_new_holon(cloned_holon)?
+        commit_manager.stage_new_holon(holon)?
     };
 
     // Step 3: Remove the predecessor by passing None
@@ -591,77 +586,11 @@ pub fn stage_new_from_clone_dance(
     // Return the staged holon reference as the response
     Ok(ResponseBody::Index(staged_reference.holon_index))
 }
-
-// pub fn stage_new_from_clone_dance(
-//     context: &HolonsContext,
-//     request: DanceRequest,
-// ) -> Result<ResponseBody, HolonError> {
-//     debug!("== Entered stage_new_from_clone dance ==");
-//
-//     // Call the commit_manager's method directly by first borrowing it mutably
-//     let staged_reference: StagedReference = match request.dance_type {
-//         DanceType::CloneMethod(holon_reference) => {
-//             // First, borrow the commit_manager mutably, since stage_new_from_clone requires mutation
-//             let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-//                 Ok(cm) => cm,
-//                 Err(e) => {
-//                     error!(
-//                         "Failed to borrow commit_manager mutably: {:?}",
-//                         e
-//                     );
-//                     return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
-//                 }
-//             };
-//
-//             // Now call the method stage_new_from_clone using the mutable borrow
-//             commit_manager.stage_new_from_clone(context, holon_reference)?
-//         }
-//         _ => {
-//             return Err(HolonError::InvalidParameter(
-//                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
-//             ))
-//         }
-//     };
-//
-//     Ok(ResponseBody::Index(staged_reference.holon_index))
-// }
-
-
-// pub fn stage_new_from_clone_dance(
-//     context: &HolonsContext,
-//     request: DanceRequest,
-// ) -> Result<ResponseBody, HolonError> {
-    // debug!("== Entered stage_new_from_clone dance ==");
-    //
-    // let staged_reference: StagedReference = match request.dance_type {
-    //     DanceType::CloneMethod(holon_reference) => {
-    //         let commit_manager = match context.commit_manager.try_borrow() {
-    //             Ok(cm) => cm,
-    //             Err(e) => {
-    //                 error!(
-    //                     "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
-    //                     e
-    //                 );
-    //                 return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
-    //             }
-    //         };
-    //         // Stage the new holon
-    //         commit_manager.stage_new_from_clone(context, holon_reference)?
-    //     }
-    //     _ => {
-    //         return Err(HolonError::InvalidParameter(
-    //             "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
-    //         ))
-    //     }
-    // };
-    //
-    // Ok(ResponseBody::Index(staged_reference.holon_index))
-// }
 ///
 /// Builds a dance request for staging a new cloned Holon
 pub fn build_stage_new_from_clone_dance_request(
     staging_area: StagingArea,
-    holon: HolonReference,
+    holon: Holon,
 ) -> Result<DanceRequest, HolonError> {
     Ok(DanceRequest::new(
         MapString("stage_new_from_clone".to_string()),
@@ -757,7 +686,7 @@ pub fn build_stage_new_holon_dance_request(
 ///
 /// *DanceRequest:*
 /// - dance_name: "stage_new_version"
-/// - dance_type: CloneMethod(HolonReference)
+/// - dance_type: CloneMethod(Holon)
 /// - request_body: None
 ///   
 ///
@@ -771,8 +700,8 @@ pub fn stage_new_version_dance(
     debug!("== Entered stage_new_version dance ==");
 
     // Step 1: Clone the holon from the request
-    let holon_reference = match request.dance_type {
-        DanceType::CloneMethod(holon_reference) => holon_reference,
+    let holon = match request.dance_type {
+        DanceType::CloneMethod(holon) => holon,
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
@@ -780,68 +709,34 @@ pub fn stage_new_version_dance(
         }
     };
 
-    let cloned_holon = holon_reference.clone_holon(context)?;
-
     // Step 2: Mutably borrow the commit_manager and call stage_new_holon
     let staged_reference: StagedReference = {
         let mut commit_manager = match context.commit_manager.try_borrow_mut() {
             Ok(cm) => cm,
             Err(e) => {
-                error!(
-                    "Failed to borrow commit_manager mutably: {:?}",
-                    e
-                );
+                error!("Failed to borrow commit_manager mutably: {:?}", e);
                 return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
             }
         };
-        commit_manager.stage_new_holon(cloned_holon)?
+        commit_manager.stage_new_holon(holon.clone())?
     };
 
+    let predecessor_reference = HolonReference::Smart(SmartReference::new(
+        HolonId::Local(holon.get_local_id()?), // throws error if no LocalId found since new_version can only be used for a persisted Holon
+        Some(holon.property_map),
+    ));
+
     // Step 3: Set the cloned holon's predecessor to refer to the holon it was cloned from
-    staged_reference.with_predecessor(context, Some(holon_reference))?;
+    staged_reference.with_predecessor(context, Some(predecessor_reference))?;
 
     // Return the staged holon reference as the response
     Ok(ResponseBody::Index(staged_reference.holon_index))
-
 }
-// pub fn stage_new_version_dance(
-//     context: &HolonsContext,
-//     request: DanceRequest,
-// ) -> Result<ResponseBody, HolonError> {
-//     debug!("== Entered stage_new_version dance ==");
-//
-//     let staged_reference: StagedReference = match request.dance_type {
-//         DanceType::CloneMethod(holon_reference) => {
-//             match holon_reference {
-//                 HolonReference::Smart(smart_reference) => {
-//                     // Stage the new holon
-//                     context
-//                         .commit_manager
-//                         .borrow_mut()
-//                         .stage_new_version(context, smart_reference)?
-//                 }
-//                 HolonReference::Staged(_) => {
-//                     return Err(HolonError::InvalidHolonReference(
-//                         "Invalid HolonReference: expected SmartReference, didn't get one"
-//                             .to_string(),
-//                     ))
-//                 }
-//             }
-//         }
-//         _ => {
-//             return Err(HolonError::InvalidParameter(
-//                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
-//             ))
-//         }
-//     };
-//
-//     Ok(ResponseBody::Index(staged_reference.holon_index))
-// }
 ///
 /// Builds a dance request for staging a new cloned Holon
 pub fn build_stage_new_version_dance_request(
     staging_area: StagingArea,
-    holon: HolonReference,
+    holon: Holon,
 ) -> Result<DanceRequest, HolonError> {
     Ok(DanceRequest::new(
         MapString("stage_new_version".to_string()),

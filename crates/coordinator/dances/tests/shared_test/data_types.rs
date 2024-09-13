@@ -32,7 +32,7 @@ pub enum DanceTestStep {
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     LoadCoreSchema,
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
-    // NewVersion(HolonReference),
+    NewVersion(ResponseStatusCode, Holon),
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(
         StagedIndex,
@@ -42,7 +42,7 @@ pub enum DanceTestStep {
         Holon,
     ),
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
-    StageNewFromClone(HolonReference, ResponseStatusCode, Holon),
+    StageNewFromClone(ResponseStatusCode, Holon),
     WithProperties(StagedIndex, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedIndex with PropertyMap
 }
 
@@ -80,9 +80,13 @@ impl fmt::Display for DanceTestStep {
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
-            // DanceTestStep::NewVersion(holon) => {
-            //     write!(f, "NewVersion({:#?})", holon)
-            // }
+            DanceTestStep::NewVersion(expected_response, expected_holon) => {
+                write!(
+                    f,
+                    "NewVersion for expecting holon: {:#?}, and response: {:#?}",
+                    expected_response, expected_holon
+                )
+            }
             DanceTestStep::QueryRelationships(
                 node_collection,
                 query_expression,
@@ -102,12 +106,12 @@ impl fmt::Display for DanceTestStep {
             DanceTestStep::StageHolon(holon) => {
                 write!(f, "StageHolon({:#?})", holon)
             }
-            DanceTestStep::StageNewFromClone(
-                holon_reference,
-                expected_response,
-                expected_holon,
-            ) => {
-                write!(f, "StageNewFromClone for holon_reference: {:#?}, expecting holon: {:#?}, and response: {:#?}", holon_reference, expected_response, expected_holon )
+            DanceTestStep::StageNewFromClone(expected_response, expected_holon) => {
+                write!(
+                    f,
+                    "StageNewFromClone for expecting holon: {:#?}, and response: {:#?}",
+                    expected_response, expected_holon
+                )
             }
             DanceTestStep::WithProperties(index, properties, expected_response) => {
                 write!(
@@ -186,12 +190,11 @@ impl DancesTestCase {
 
     pub fn add_stage_new_from_clone_step(
         &mut self,
-        holon_reference: HolonReference,
+        original_holon: Holon,
         expected_response: ResponseStatusCode,
         expected_holon: Holon,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::StageNewFromClone(
-            holon_reference,
             expected_response,
             expected_holon,
         ));

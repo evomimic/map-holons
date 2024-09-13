@@ -15,7 +15,8 @@ use crate::descriptors_dance_adapter::load_core_schema_dance;
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
     get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance,
-    stage_new_from_clone_dance, stage_new_holon_dance, with_properties_dance,
+    stage_new_from_clone_dance, stage_new_holon_dance, stage_new_version_dance,
+    with_properties_dance,
 };
 
 use crate::staging_area::StagingArea;
@@ -101,49 +102,49 @@ struct Dancer {
 impl Dancer {
     fn new() -> Self {
         let mut dispatch_table = HashMap::new();
-
         // Register functions into the dispatch table
-        dispatch_table.insert("commit", commit_dance as DanceFunction);
-        dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
-        dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
-        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert(
-            "stage_new_from_clone",
-            stage_new_from_clone_dance as DanceFunction,
-        );
-        dispatch_table.insert("stage_new_version", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
-
         dispatch_table.insert(
             "abandon_staged_changes",
             abandon_staged_changes_dance as DanceFunction,
         );
-
         dispatch_table.insert(
             "add_related_holons",
             add_related_holons_dance as DanceFunction,
+        );
+        dispatch_table.insert("commit", commit_dance as DanceFunction);
+        dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
+        dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
+        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
+        dispatch_table.insert("new_version", remove_related_holons_dance as DanceFunction);
+        dispatch_table.insert(
+            "query_relationships",
+            query_relationships_dance as DanceFunction,
         );
         dispatch_table.insert(
             "remove_related_holons",
             remove_related_holons_dance as DanceFunction,
         );
-        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert(
-            "query_relationships",
-            query_relationships_dance as DanceFunction,
+            "stage_new_from_clone",
+            stage_new_from_clone_dance as DanceFunction,
         );
-
+        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
+        dispatch_table.insert(
+            "stage_new_version",
+            stage_new_version_dance as DanceFunction,
+        );
+        dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
         // Add more functions as needed
 
         Dancer { dispatch_table }
     }
+
     // Function to register a new function with the dispatch manager
     // If we want to allow dynamic registration, we will need to change the definition of the key
     // in the dispatch_table to String instead of &'static str
     // fn register_function(&mut self, name: String, func: DanceFunction) {
     //     self.dispatch_table.insert(name.clone().as_str(), func);
     // }
-
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
         info!(
             "checking that dance_name: {:#?} is dispatchable",
@@ -166,6 +167,7 @@ impl Dancer {
         }
     }
 }
+
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///
 /// If `dispatch_result` is `Ok`,
@@ -179,7 +181,6 @@ impl Dancer {
 /// * `description` holds the error message associated with the HolonError
 /// * `body`, `descriptor` and `staging_area` are all set to None
 ///
-
 fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
         Ok(body) => {

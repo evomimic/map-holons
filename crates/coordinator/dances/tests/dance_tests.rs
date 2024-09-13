@@ -36,10 +36,10 @@ use test_query_relationships::execute_query_relationships;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
+use self::data_types::{DanceTestState, DanceTestStep};
 use self::test_abandon_staged_changes::execute_abandon_staged_changes;
 use self::test_add_related_holon::execute_add_related_holons;
 use self::test_commit::execute_commit;
-use self::data_types::{DanceTestState, DanceTestStep};
 use self::test_ensure_database_count::execute_ensure_database_count;
 use self::test_load_core_schema::execute_load_new_schema;
 use self::test_match_db_content::execute_match_db_content;
@@ -88,6 +88,7 @@ use shared_types_holon::HolonId;
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
+    use test_new_version::execute_new_version;
     use test_stage_new_from_clone::execute_stage_new_from_clone;
     let _ = holochain_trace::test_run();
 
@@ -155,9 +156,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&conductor, &cell, &mut test_state).await
             }
-            // DanceTestStep::NewVersion(holon) => {
-            //     execute__new_version(&conductor, &cell, &mut test_state, holon).await
-            // }
+            DanceTestStep::NewVersion(expected_response, holon) => {
+                execute_new_version(&conductor, &cell, &mut test_state, expected_response, holon).await
+            }
             DanceTestStep::QueryRelationships(
                 node_collection,
                 query_expression,
@@ -195,16 +196,11 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::StageHolon(holon) => {
                 execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await
             }
-            DanceTestStep::StageNewFromClone(
-                holon_reference,
-                expected_response,
-                expected_holon,
-            ) => {
+            DanceTestStep::StageNewFromClone(expected_response, expected_holon) => {
                 execute_stage_new_from_clone(
                     &conductor,
                     &cell,
                     &mut test_state,
-                    holon_reference,
                     expected_response,
                     expected_holon,
                 )

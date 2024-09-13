@@ -36,7 +36,7 @@ pub async fn execute_match_db_content(
     test_state: &mut DanceTestState,
 ) {
     info!("\n\n--- TEST STEP: Ensuring database matches expected holons ---");
-    let context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
+    let _context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
 
     for expected_holon in test_state.created_holons.clone() {
         // get HolonId
