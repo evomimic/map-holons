@@ -5,7 +5,9 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{
+    BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName,
+};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -200,6 +202,15 @@ impl HolonCollection {
                 self.keyed_index.remove(&key);
             }
         }
+        // adjust new order of members in the keyed_index
+        let mut i = 0;
+        for member in self.members.clone() {
+            if let Some(key) = member.get_key(context)? {
+                self.keyed_index.insert(key, i);
+                i += 1;
+            }
+        }
+
         Ok(())
     }
 

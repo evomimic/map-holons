@@ -98,7 +98,7 @@ pub async fn execute_remove_related_holons(
 
                     let source_holon = response.staging_area.staged_holons[index].clone();
 
-                    assert_eq!(expected_holon, source_holon);
+                    assert_eq!(source_holon, expected_holon);
 
                     info!("Success! Related Holons have been removed");
                 } else {

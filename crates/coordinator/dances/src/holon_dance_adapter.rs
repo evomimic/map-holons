@@ -543,7 +543,7 @@ pub fn build_remove_related_holons_dance_request(
 ///
 /// *DanceRequest:*
 /// - dance_name: "stage_new_from_clone"
-/// - dance_type: CloneMethod(HolonReference)
+/// - dance_type: CloneMethod(Holon)
 /// - request_body: None
 ///
 ///
