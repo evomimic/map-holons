@@ -242,7 +242,7 @@ pub fn commit_dance(
     }
 }
 ///
-/// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
+/// Builds a DanceRequest for commiting all Holons in staging area
 /// in the body of the request.
 pub fn build_commit_dance_request(staging_area: StagingArea) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;

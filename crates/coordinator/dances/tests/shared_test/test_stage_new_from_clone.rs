@@ -1,8 +1,6 @@
 use dances::dance_response::ResponseBody;
 use dances::dance_response::{DanceResponse, ResponseBody::Index, ResponseStatusCode};
-use dances::holon_dance_adapter::{
-    build_stage_new_from_clone_dance_request, build_stage_new_holon_dance_request,
-};
+use dances::holon_dance_adapter::build_stage_new_from_clone_dance_request;
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -19,6 +17,7 @@ pub async fn execute_stage_new_from_clone(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
+    original_holon: Holon,
     expected_response: ResponseStatusCode,
     expected_holon: Holon,
 ) -> () {
@@ -51,7 +50,7 @@ pub async fn execute_stage_new_from_clone(
 
                     let holons = response.staging_area.staged_holons;
 
-                    warn!("holons:{:#?}", holons);
+                    debug!("holons:{:#?}", holons);
                     assert_eq!(
                         expected_holon.essential_content(),
                         holons[index].essential_content(),

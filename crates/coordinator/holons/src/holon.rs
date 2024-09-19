@@ -518,18 +518,18 @@ impl Holon {
                 }
             },
             HolonState::Saved => match access_type {
+                AccessType::Read | AccessType::Commit => Ok(()),
                 AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
-                AccessType::Read | AccessType::Commit => Ok(()),
             },
             HolonState::Abandoned => match access_type {
+                AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
                 AccessType::Write => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
-                AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
             },
         }
     }

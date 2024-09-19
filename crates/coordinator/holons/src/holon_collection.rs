@@ -85,18 +85,18 @@ impl HolonCollection {
                 }
             },
             CollectionState::Saved => match access_type {
+                AccessType::Read | AccessType::Commit => Ok(()),
                 AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
-                AccessType::Read | AccessType::Commit => Ok(()),
             },
             CollectionState::Abandoned => match access_type {
+                AccessType::Commit | AccessType::Abandon => Ok(()),
                 AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
-                AccessType::Commit | AccessType::Abandon => Ok(()),
             },
         }
     }
