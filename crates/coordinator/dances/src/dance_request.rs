@@ -1,6 +1,8 @@
 use crate::{staging_area::StagingArea};
 use hdk::prelude::*;
+use holons::cache_manager::HolonCacheManager;
 use holons::commit_manager::StagedIndex;
+use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
@@ -97,9 +99,23 @@ impl DanceRequest {
     pub fn get_state_mut(&mut self) -> &mut SessionState {
         &mut self.state
     }
-    pub fn set_state(&mut self, state: SessionState) {
-        self.state = state;
+    pub fn set_context_from_state(&self) {
+        let commit_manager = self.get_state().get_staging_area().to_commit_manager();
+        // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
+
+        let local_holon_space = self.get_state().get_local_holon_space();
+        //info!("initializing context");
+
+
+        let mut context = HolonsContext::init_context(
+            commit_manager,
+            HolonCacheManager::new(),
+            local_holon_space,
+        );
+        self.state.set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
+        self.state.set_local_holon_space(context.local_holon_space.borrow().clone());
     }
 
-
 }
+
+

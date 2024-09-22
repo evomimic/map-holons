@@ -13,11 +13,8 @@ use holons::holon_space;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::descriptors_dance_adapter::load_core_schema_dance;
-
-use crate::holon_dance_adapter::{
-    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance, stage_new_holon_dance, with_properties_dance
-};
+use crate::descriptors_dance_adapter::*;
+use crate::holon_dance_adapter::*;
 
 use crate::staging_area::StagingArea;
 
@@ -35,27 +32,18 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     let valid = true; // TODO: Validate the dance request
 
     if !valid {
-        let response = DanceResponse {
-            status_code: ResponseStatusCode::BadRequest,
-            description: MapString("Invalid Request".to_string()),
-            body: ResponseBody::None,
-            descriptor: None,
-            staging_area: request.get_state().get_staging_area(),
-        };
+        let response = DanceResponse::new(
+            ResponseStatusCode::BadRequest,
+            MapString("Invalid Request".to_string()),
+            ResponseBody::None,
+            None,
+            request.get_state().get_staging_area().clone(),
+            request.get_state().get_local_holon_space().clone());
         return Ok(response);
     }
 
-    // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
-    //info!("initializing commit_manager from staging_area");
-    let commit_manager = request.get_state().get_staging_area().to_commit_manager();
-    // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
+    let mut context = request.init_context_from_state();
 
-
-
-    //info!("initializing context");
-
-
-    let mut context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
     // If there is no HolonSpace, create one
     let holon_space = holon_space::HolonSpace::new(Holon::new());
 
@@ -83,8 +71,8 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     let mut result = process_dispatch_result(dispatch_result);
 
-    // Restore the StagingArea from CommitManager
-    result.staging_area = StagingArea::from_commit_manager(&context.commit_manager.borrow());
+    // Restore the SessionState from the context
+    result.restore_state(*context);
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
     info!(

@@ -4,6 +4,8 @@ use hdk::prelude::*;
 
 
 use hdi::hdk_entry_helper;
+use holons::cache_manager::HolonCacheManager;
+use holons::context::HolonsContext;
 use holons::holon_reference::HolonReference;
 use crate::staging_area::StagingArea;
 
@@ -33,6 +35,17 @@ impl SessionState {
     }
     pub fn get_staging_area(&self) -> &StagingArea {
         &self.staging_area
+    }
+    pub fn init_context_from_state(&self)-> HolonsContext {
+        let commit_manager = self.staging_area.to_commit_manager();
+        let local_holon_space = self.get_local_holon_space();
+        //info!("initializing context");
+        HolonsContext::init_context(
+            commit_manager,
+            HolonCacheManager::new(),
+            local_holon_space,
+        )
+
     }
 
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {

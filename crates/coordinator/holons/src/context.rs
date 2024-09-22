@@ -26,7 +26,7 @@ impl HolonsContext {
     pub fn init_context(
         commit_manager: CommitManager,
         cache_manager: HolonCacheManager,
-        local_holon_space: Option<HolonReference>
+        local_holon_space: Option<&HolonReference>
     ) -> HolonsContext {
         // Set local_holon_space to the provided value or None
         let space_ref = RefCell::new(local_holon_space);

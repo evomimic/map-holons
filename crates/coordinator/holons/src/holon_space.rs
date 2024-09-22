@@ -12,4 +12,6 @@ impl HolonSpace {
     pub fn into_holon(self) -> Holon {
         self.0
     }
+
+
 }
