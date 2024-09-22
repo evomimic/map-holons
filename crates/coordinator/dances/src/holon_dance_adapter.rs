@@ -21,9 +21,9 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
 use holons::query::*;
-use shared_types_holon::HolonId;
+use holons::relationship::RelationshipName;
+use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
@@ -88,6 +88,60 @@ pub fn add_related_holons_dance(
         )),
     }
 }
+///
+/// Builds a DanceRequest for adding related holons to a source_holon.
+pub fn build_add_related_holons_dance_request(
+    staging_area: StagingArea,
+    index: StagedIndex,
+    relationship_name: RelationshipName,
+    holons_to_add: Vec<HolonReference>,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::new_target_holons(relationship_name, holons_to_add);
+    Ok(DanceRequest::new(
+        MapString("add_related_holons".to_string()),
+        DanceType::CommandMethod(index),
+        body,
+        staging_area,
+    ))
+}
+
+/// *DanceRequest:*
+/// - dance_name: "delete_holon"
+/// - dance_type: DeleteMethod(HolonId)
+/// - request_body: None
+///   
+///
+/// *ResponseBody:*
+/// None
+///
+pub fn delete_holon_dance(
+    _context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("Entering delete_holon dance..");
+    match request.dance_type {
+        DanceType::DeleteMethod(holon_id) => {
+            Holon::delete_holon(holon_id).map(|_| ResponseBody::None)
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected DeleteMethod(HolonId), didn't get one".to_string(),
+        )),
+    }
+}
+
+/// Builds a DanceRequest for deleting a local Holon from the persistent store
+pub fn build_delete_holon_dance_request(
+    staging_area: StagingArea,
+    holon_id: LocalId,
+) -> Result<DanceRequest, HolonError> {
+    let body = RequestBody::new();
+    Ok(DanceRequest::new(
+        MapString("delete_holon".to_string()),
+        DanceType::DeleteMethod(holon_id),
+        body,
+        staging_area,
+    ))
+}
 
 /// *DanceRequest:*
 /// - dance_name: "remove_related_holons"
@@ -148,9 +202,6 @@ pub fn remove_related_holons_dance(
     }
 }
 
-
-
-
 /// Builds a DanceRequest for removing related holons to a source_holon.
 pub fn build_remove_related_holons_dance_request(
     staging_area: StagingArea,
@@ -161,24 +212,6 @@ pub fn build_remove_related_holons_dance_request(
     let body = RequestBody::new_target_holons(relationship_name, holons_to_remove);
     Ok(DanceRequest::new(
         MapString("remove_related_holons".to_string()),
-        DanceType::CommandMethod(index),
-        body,
-        staging_area,
-    ))
-}
-
-
-///
-/// Builds a DanceRequest for adding related holons to a source_holon.
-pub fn build_add_related_holons_dance_request(
-    staging_area: StagingArea,
-    index: StagedIndex,
-    relationship_name: RelationshipName,
-    holons_to_add: Vec<HolonReference>,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_target_holons(relationship_name, holons_to_add);
-    Ok(DanceRequest::new(
-        MapString("add_related_holons".to_string()),
         DanceType::CommandMethod(index),
         body,
         staging_area,
@@ -202,17 +235,17 @@ pub fn query_relationships_dance(
 
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
-            let relationship_name = match request.body {
-                RequestBody::QueryExpression(expression) => expression.relationship_name,
-                _ => {
-                    return Err(HolonError::InvalidParameter(
+            let relationship_name =
+                match request.body {
+                    RequestBody::QueryExpression(expression) => expression.relationship_name,
+                    _ => return Err(HolonError::InvalidParameter(
                         "Invalid RequestBody: expected QueryExpression with relationship name, \
-                        didn't get one".to_string(),
-                    ))
-                }
-            };
+                        didn't get one"
+                            .to_string(),
+                    )),
+                };
 
-            let result_collection = evaluate_query(node_collection,context,relationship_name)?;
+            let result_collection = evaluate_query(node_collection, context, relationship_name)?;
             Ok(ResponseBody::Collection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
@@ -220,9 +253,6 @@ pub fn query_relationships_dance(
         )),
     }
 }
-
-
-
 
 // pub fn query_relationships_dance(
 //     context: &HolonsContext,
@@ -458,9 +488,7 @@ pub fn get_all_holons_dance(
     debug!("Entering get_all_holons dance..");
     let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => {
-            Ok(ResponseBody::Holons(holons))
-        },
+        Ok(holons) => Ok(ResponseBody::Holons(holons)),
         Err(holon_error) => Err(holon_error.into()),
     }
 }
