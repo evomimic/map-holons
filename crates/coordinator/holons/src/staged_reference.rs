@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, Holon};
+use crate::holon::{AccessType, EssentialHolonContent, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
@@ -115,19 +115,19 @@ impl StagedReference {
         borrowed_holon.commit()
     }
 
-    /// Use this method to get a copy of the staged holon referenced by this StagedReference.
-    /// NOTE: The cloned holon is NOT, itself, staged by the CommitManager
-    pub fn clone_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let cloned_holon = holon.borrow().clone_holon()?;
-
-        Ok(cloned_holon)
-    }
-
     pub fn clone_reference(&self) -> StagedReference {
         StagedReference {
             holon_index: self.holon_index.clone(),
         }
+    }
+
+    pub fn essential_content(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.essential_content()
     }
 
     pub fn get_predecessor(
@@ -156,10 +156,13 @@ impl StagedReference {
         debug!("Entered: get_rc_holon, trying to get the commit_manager");
         // Attempt to borrow commit_manager
         let commit_manager = match context.commit_manager.try_borrow() {
-            Ok(cm) => cm,
-            Err(e) => {
-                error!("Failed to borrow commit_manager, it is already borrowed mutably: {:?}", e);
-                return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
+            Ok(commit_manager) => commit_manager,
+            Err(borrow_error) => {
+                error!(
+                    "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+                    borrow_error
+                );
+                return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
             }
         };
 
@@ -226,6 +229,14 @@ impl StagedReference {
         Ok(())
     }
 
+    /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+    pub fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        let holon = self.get_rc_holon(context)?;
+        let cloned_holon = holon.borrow().clone_holon()?;
+
+        Ok(cloned_holon)
+    }
+
     pub fn with_descriptor(
         &self,
         context: &HolonsContext,
@@ -259,13 +270,13 @@ impl StagedReference {
         &self,
         context: &HolonsContext,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
-    ) -> Result<&Self, HolonError> {
+    ) -> Result<Self, HolonError> {
         let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-        let existing_predecessor_option = self.clone().get_predecessor(context)?;
-        if let Some(predecessor) = existing_predecessor_option {
-            self.remove_related_holons(context, &relationship_name, vec![predecessor.clone()])?;
-            debug!("removed existing predecessor: {:#?}", predecessor);
-        }
+        // let existing_predecessor_option = self.clone().get_predecessor(context)?;
+        // if let Some(predecessor) = existing_predecessor_option {
+        //     self.remove_related_holons(context, &relationship_name, vec![predecessor.clone()])?;
+        //     debug!("removed existing predecessor: {:#?}", predecessor);
+        // }
         if let Some(predecessor_reference) = predecessor_reference_option {
             let holon = self.get_rc_holon(context)?;
             holon.borrow().is_accessible(AccessType::Write)?;
@@ -284,7 +295,8 @@ impl StagedReference {
             )?;
             debug!("added predecessor: {:#?}", predecessor_reference);
         }
-        Ok(self)
+
+        Ok(self.clone())
     }
 
     pub fn with_property_value(

@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use crate::get_holon_by_key_from_test_state;
 use crate::tracing::{error, info, warn};
 use core::panic;
 use dances::holon_dance_adapter::{Node, NodeCollection, QueryExpression};
@@ -87,8 +86,12 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_stage_holon_step(person_holon.clone())?;
     expected_holons.push(person_holon.clone());
 
-    //  PROPERTIES:  Book  //
+    //  PROPERTIES:  Person  //
     let mut properties = PropertyMap::new();
+    properties.insert(
+        PropertyName(MapString("key".to_string())),
+        BaseValue::StringValue(MapString("RogerBriggs".to_string())),
+    );
     properties.insert(
         PropertyName(MapString("first name".to_string())),
         BaseValue::StringValue(MapString("Roger".to_string())),
@@ -319,7 +322,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
-    // Use helper function to set up a book holon, 2 persons, and an AUTHORED_BY relationship from
+    // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
     let test_data = setup_book_author_steps(
@@ -354,7 +357,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT  //
-    test_case.add_ensure_database_count_step(MapInteger(2))?;
+    test_case.add_ensure_database_count_step(MapInteger(3))?;
 
     //  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
@@ -362,13 +365,21 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  STAGE:  Abandoned Holon1 (H4)  //
     let mut abandoned_holon_1 = Holon::new();
     abandoned_holon_1.with_property_value(
+        PropertyName(MapString("key".to_string())),
+        BaseValue::StringValue(MapString("Abandon1".to_string())),
+    )?;
+    abandoned_holon_1.with_property_value(
         PropertyName(MapString("example abandon".to_string())),
-        BaseValue::StringValue(MapString("test2".to_string())),
+        BaseValue::StringValue(MapString("test1".to_string())),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
     let mut abandoned_holon_2 = Holon::new();
+    abandoned_holon_2.with_property_value(
+        PropertyName(MapString("key".to_string())),
+        BaseValue::StringValue(MapString("Abandon2".to_string())),
+    )?;
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("example abandon".to_string())),
         BaseValue::StringValue(MapString("test2".to_string())),
@@ -385,7 +396,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step()?;
 
     // ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(MapInteger(2))?;
+    test_case.add_ensure_database_count_step(MapInteger(3))?;
 
     // MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;

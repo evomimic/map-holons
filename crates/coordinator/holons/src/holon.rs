@@ -146,6 +146,8 @@ pub enum ValidationState {
 // }
 
 impl Holon {
+    // CONSTRUCTORS //
+
     /// Stages a new empty holon.
     pub fn new() -> Holon {
         Holon {
@@ -157,6 +159,17 @@ impl Holon {
             errors: Vec::new(),
         }
     }
+
+    /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
+    /// which retains lineage to its predecessor.
+    pub fn new_version(&self) -> Result<Holon, HolonError> {
+        let mut holon = self.clone_holon()?;
+        holon.state = HolonState::Changed;
+
+        Ok(holon)
+    }
+
+    // METHODS //
 
     pub fn abandon_staged_changes(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Abandon)?;
@@ -175,15 +188,6 @@ impl Holon {
 
         // Update in place each relationship's HolonCollection State to Staged
         holon.relationship_map = self.relationship_map.clone_for_new_source()?;
-
-        Ok(holon)
-    }
-
-    /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
-    /// which retains lineage to its predecessor.
-    pub fn new_version(&self) -> Result<Holon, HolonError> {
-        let mut holon = self.clone_holon()?;
-        holon.state = HolonState::Changed;
 
         Ok(holon)
     }

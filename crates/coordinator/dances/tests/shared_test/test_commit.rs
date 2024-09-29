@@ -1,6 +1,3 @@
-//! Holon Descriptor Test Cases
-
-#![allow(unused_imports)]
 
 use std::collections::BTreeMap;
 
@@ -51,18 +48,20 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
             let description = response.description.clone();
             if code == ResponseStatusCode::OK {
                 // Check that staging area is empty
-                assert!(response.staging_area.staged_holons.is_empty());
+                assert!(response.staging_area.is_empty());
 
                 info!("Success! Commit succeeded");
 
                 // get saved holons out of response body and add them to the test_state created holons
                 match response.body {
                     ResponseBody::Holon(holon) => {
-                        test_state.created_holons.push(holon);
+                        let key = holon.get_key().unwrap().unwrap(); // test Holons should always have a key
+                        test_state.created_holons.insert(key, holon);
                     }
                     ResponseBody::Holons(holons) => {
                         for holon in holons {
-                            test_state.created_holons.push(holon);
+                            let key = holon.get_key().unwrap().unwrap();
+                            test_state.created_holons.insert(key, holon);
                         }
                     }
                     _ => panic!("Invalid ResponseBody: {:?}", response.body),

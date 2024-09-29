@@ -1,6 +1,3 @@
-//! Holon Descriptor Test Cases
-
-#![allow(unused_imports)]
 
 use std::collections::BTreeMap;
 
@@ -60,7 +57,7 @@ pub async fn execute_stage_new_holon(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let holons = response.staging_area.staged_holons;
+                    let holons = response.staging_area.get_staged_holons();
                     assert_eq!(expected_holon, holons[index as usize]);
 
                     info!("Success! Holon has been staged, as expected");

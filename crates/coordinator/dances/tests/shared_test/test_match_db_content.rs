@@ -1,4 +1,3 @@
-// #![allow(unused_imports)]
 
 use std::collections::BTreeMap;
 
@@ -38,7 +37,7 @@ pub async fn execute_match_db_content(
     info!("\n\n--- TEST STEP: Ensuring database matches expected holons ---");
     let _context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
 
-    for expected_holon in test_state.created_holons.clone() {
+    for (_key, expected_holon) in test_state.created_holons.clone() {
         // get HolonId
         let holon_id : HolonId= expected_holon.get_local_id().unwrap().into();
         // Build a get_holon_by_id DanceRequest

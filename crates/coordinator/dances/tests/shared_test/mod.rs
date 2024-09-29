@@ -57,26 +57,3 @@ pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
     (conductor, agent, cell)
 }
 
-// TEST HELPERS //
-
-pub fn get_holon_by_key_from_test_state(
-    context: &HolonsContext,
-    source_key: MapString,
-    test_state: &mut DanceTestState,
-) -> Result<Option<HolonId>, HolonError> {
-    for holon in test_state.created_holons.clone() {
-        let option_key = holon.get_key()?;
-        if let Some(key) = option_key {
-            if key == source_key {
-                let id = holon.get_local_id()?.into();
-                return Ok(Some(id));
-            }
-        } else {
-            return Err(HolonError::Misc(
-                "Returned multiple Holons for key".to_string(),
-            ));
-        }
-    }
-
-    Ok(None)
-}

@@ -7,12 +7,14 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
+use crate::commit_manager::{self, StagedIndex};
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, Holon};
+use crate::holon::{AccessType, EssentialHolonContent, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::staged_reference::StagedReference;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -30,18 +32,17 @@ impl SmartReference {
         }
     }
 
-    pub fn clone_holon(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+    pub fn essential_content(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<EssentialHolonContent, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow().clone();
-
-        Ok(holon)
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.essential_content()
     }
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
-    }
-    pub fn get_smart_properties(&self) -> Option<PropertyMap> {
-        self.smart_property_values.clone()
     }
 
     pub fn get_predecessor(
@@ -72,6 +73,27 @@ impl SmartReference {
         Ok(holon_refcell.property_map.clone())
     }
 
+    // Private function for getting a mutable reference from the context
+    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        debug!("Entered: get_rc_holon, trying to get the cache_manager");
+        let cache_manager = match context.cache_manager.try_borrow() {
+            Ok(cache_manager) => cache_manager,
+            Err(borrow_error) => {
+                error!(
+                    "Failed to borrow cache_manager, it is already borrowed mutably: {:?}",
+                    borrow_error
+                );
+                return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
+            }
+        };
+        debug!("Cache manager borrowed successfully");
+
+        let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
+        debug!("Got a reference to rc_holon from the cache manager");
+
+        Ok(rc_holon)
+    }
+
     pub fn get_relationship_map(
         &self,
         context: &HolonsContext,
@@ -81,31 +103,42 @@ impl SmartReference {
         Ok(holon_refcell.relationship_map.clone())
     }
 
-    // Private function for getting a mutable reference from the context
-    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        let cache_manager = match context.cache_manager.try_borrow() {
-            Ok(cm) => cm,
-            Err(e) => {
-                error!(
-                    "Failed to borrow cache_manager, it is already borrowed mutably: {:?}",
-                    e
-                );
-                return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
-            }
-        };
-
-        let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
-
-        Ok(rc_holon)
+    pub fn get_smart_properties(&self) -> Option<PropertyMap> {
+        self.smart_property_values.clone()
     }
 
-    pub fn new_version(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+    /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by creating a PREDECESSOR relationship.
+    pub fn new_version(&self, context: &HolonsContext) -> Result<StagedReference, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow().clone();
+        let new_holon = rc_holon.borrow().new_version()?;
+
+        // Mutably borrow the commit_manager
+        let mut commit_manager = match context.commit_manager.try_borrow_mut() {
+            Ok(commit_manager) => commit_manager,
+            Err(borrow_error) => {
+                error!(
+                    "Failed to borrow commit_manager mutably: {:?}",
+                    borrow_error
+                );
+                return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
+            }
+        };
+        // Stage the clone
+        let staged_reference = commit_manager.stage_new_holon(new_holon)?;
+
+        // Set PREDECESSOR and return StagedReference
+        staged_reference.with_predecessor(context, Some(HolonReference::Smart(self.clone())))
+    }
+
+    /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
+    pub fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow().clone_holon()?;
 
         Ok(holon)
     }
 }
+
 impl HolonGettable for SmartReference {
     /// This function gets the value for the specified property name
     /// It will attempt to get it from the smart_property_values map first to avoid having to

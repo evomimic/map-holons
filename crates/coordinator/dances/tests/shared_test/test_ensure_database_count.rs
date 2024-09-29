@@ -1,6 +1,3 @@
-//! Holon Descriptor Test Cases
-
-#![allow(unused_imports)]
 
 use std::collections::BTreeMap;
 

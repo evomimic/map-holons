@@ -15,8 +15,7 @@ use crate::descriptors_dance_adapter::load_core_schema_dance;
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
     get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance,
-    stage_new_from_clone_dance, stage_new_holon_dance, stage_new_version_dance,
-    with_properties_dance,
+    stage_new_from_clone_dance, stage_new_holon_dance, with_properties_dance,
 };
 
 use crate::staging_area::StagingArea;
@@ -66,7 +65,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     //     .into());
     // }
     info!("dispatching dance");
-    let dispatch_result = dancer.dispatch(&context, request);
+    let dispatch_result = dancer.dispatch(&context, request.clone());
 
     let mut result = process_dispatch_result(dispatch_result);
 
@@ -75,7 +74,8 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
     info!(
-        "======== RETURNING FROM  Dancer::dance() with {:#?}",
+        "======== RETURNING FROM {:?} Dance with {:#?}",
+        request.dance_name.0,
         result.clone()
     );
 
@@ -115,7 +115,6 @@ impl Dancer {
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
-        dispatch_table.insert("new_version", remove_related_holons_dance as DanceFunction);
         dispatch_table.insert(
             "query_relationships",
             query_relationships_dance as DanceFunction,
@@ -129,10 +128,10 @@ impl Dancer {
             stage_new_from_clone_dance as DanceFunction,
         );
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert(
-            "stage_new_version",
-            stage_new_version_dance as DanceFunction,
-        );
+        // dispatch_table.insert(
+        //     "stage_new_version",
+        //     stage_new_version_dance as DanceFunction,
+        // );
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
         // Add more functions as needed
 

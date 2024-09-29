@@ -279,22 +279,6 @@ impl CommitManager {
     //     };
     // }
 
-    // ///Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
-    // pub fn stage_new_from_clone(
-    //     &self,
-    //     context: &HolonsContext,
-    //     existing_holon: HolonReference,
-    // ) -> Result<StagedReference, HolonError> {
-    //     let holon = existing_holon.clone_holon(context)?;
-    //
-    //     let staged_reference = self.stage_new_holon(context,holon);
-    //
-    //     // Remove PREDECESSOR by passing None
-    //     staged_reference.with_predecessor(context, None)?;
-    //
-    //     Ok(staged_reference)
-    // }
-
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
@@ -313,28 +297,6 @@ impl CommitManager {
 
         Ok(StagedReference { holon_index })
     }
-
-    // /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by populating its (new) predecessor field existing_holon value provided.
-    // pub fn stage_new_version(
-    //     &mut self,
-    //     context: &HolonsContext,
-    //     existing_holon: SmartReference,
-    // ) -> Result<StagedReference, HolonError> {
-    //     let holon = existing_holon.clone_holon(context)?;
-
-    //     // Add the new holon into the CommitManager's staged_holons list, remembering its index
-    //     let index = self.staged_holons.len() - 1;
-    //     self.staged_holons
-    //         .push(Rc::new(RefCell::new(holon.clone())));
-
-    //     // Return a staged reference to the staged holon
-    //     let staged_reference = StagedReference { holon_index: index };
-
-    //     // Set PREDECESSOR to refer to the Holon it was cloned from
-    //     staged_reference.with_predecessor(context, Some(HolonReference::Smart(existing_holon)))?;
-
-    //     Ok(staged_reference)
-    // }
 
     /// This function converts a StagedIndex into a StagedReference
     /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector

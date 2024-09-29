@@ -1,4 +1,3 @@
-// #![allow(unused_imports)]
 
 use std::collections::BTreeMap;
 
@@ -38,57 +37,56 @@ pub async fn execute_query_relationships(
 ) {
     info!("\n\n--- TEST STEP: query_relationships QueryCommand:");
 
-    let dummy_context = HolonsContext::new();
-    let source_holon_id =
-        get_holon_by_key_from_test_state(&dummy_context, source_key.clone(), test_state);
+    let source_holon = test_state
+        .created_holons
+        .get(&source_key)
+        .expect("Holon with key: {source_key} not found in created_holons");
+
+    let source_holon_id = source_holon.get_local_id();
     match source_holon_id {
-        Ok(holon_id) => {
-            if let Some(id) = holon_id {
-                let holon_reference: HolonReference = HolonReference::Smart(SmartReference::new(
-                   id,
-                   None,
-                )
-                );
+        Ok(local_id) => {
+            let holon_reference: HolonReference =
+                HolonReference::Smart(SmartReference::new(HolonId::Local(local_id), None));
 
-                let node_collection = NodeCollection {
-                    members: vec![Node::new(holon_reference, None)],
-                    query_spec: None,
-                };
+            let node_collection = NodeCollection {
+                members: vec![Node::new(holon_reference, None)],
+                query_spec: None,
+            };
 
-                let request = build_query_relationships_dance_request(
-                    test_state.staging_area.clone(),
-                    node_collection,
-                    query_expression,
-                );
-                debug!("Dance Request: {:#?}", request);
+            let request = build_query_relationships_dance_request(
+                test_state.staging_area.clone(),
+                node_collection,
+                query_expression,
+            );
+            debug!("Dance Request: {:#?}", request);
 
-                match request {
-                    Ok(valid_request) => {
-                        let response: DanceResponse = conductor
-                            .call(&cell.zome("dances"), "dance", valid_request)
-                            .await;
-                        debug!("Dance Response: {:#?}", response.clone());
-                        let code = response.status_code;
-                        let description = response.description.clone();
-                        test_state.staging_area = response.staging_area.clone();
+            match request {
+                Ok(valid_request) => {
+                    let response: DanceResponse = conductor
+                        .call(&cell.zome("dances"), "dance", valid_request)
+                        .await;
+                    debug!("Dance Response: {:#?}", response.clone());
+                    let code = response.status_code;
+                    let description = response.description.clone();
+                    test_state.staging_area = response.staging_area.clone();
 
-                        if let ResponseStatusCode::OK = code {
-                            if let Collection(_node_collection) = response.body {
-                                info!("Success! NodeCollection returned");
-                            }
-                        } else {
-                            panic!("DanceRequest returned {code} for {description}");
+                    if let ResponseStatusCode::OK = code {
+                        if let Collection(_node_collection) = response.body {
+                            info!("Success! NodeCollection returned");
                         }
-                        assert_eq!(expected_response, code.clone());
+                    } else {
+                        panic!("DanceRequest returned {code} for {description}");
                     }
-                    Err(error) => {
-                        panic!("{:?} Unable to build a query_relationships request ", error);
-                    }
+                    assert_eq!(expected_response, code.clone());
                 }
-            } else {
-                panic!("Failed to get Holon by key:{:?}", source_key)
+                Err(error) => {
+                    panic!("{:?} Unable to build a query_relationships request ", error);
+                }
             }
         }
-        Err(e) => panic!("get_holon_by_key_from_test_state returned error: {:?}", e),
+        Err(holon_error) => panic!(
+            "Get local_id for Holon: {:#?} \n returned error: {:?}",
+            source_holon, holon_error
+        ),
     }
 }
