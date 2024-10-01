@@ -529,19 +529,20 @@ impl Holon {
     // }
 
     pub fn is_deletable(&mut self) -> Result<(), HolonError> {
-        let related_holons = self.get_all_related_holons()?;
-        if !related_holons.0.is_empty() {
-            let relationships = related_holons
-                .0
-                .keys()
-                .map(|name| name.0 .0.clone())
-                .collect::<Vec<String>>()
-                .join(", ");
+        // let related_holons = self.get_all_related_holons()?;
+        // if !related_holons.0.is_empty() {
+        //     let relationships = related_holons
+        //         .0
+        //         .keys()
+        //         .map(|name| name.0 .0.clone())
+        //         .collect::<Vec<String>>()
+        //         .join(", ");
 
-            Err(HolonError::DeletionNotAllowed(relationships))
-        } else {
-            Ok(())
-        }
+        //     Err(HolonError::DeletionNotAllowed(relationships))
+        // } else {
+        //     Ok(())
+        // }
+        Ok(()) // always return Ok until support for get_all_related_holons
     }
 
     /// Ensures that the holon's `relationship_map` includes an entry for the specified relationship

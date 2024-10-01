@@ -28,7 +28,7 @@ use shared_types_holon::{MapString, PropertyMap};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
-use crate::staging_area::StagingArea;
+use crate::staging_area::{self, StagingArea};
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
@@ -105,6 +105,8 @@ pub fn build_add_related_holons_dance_request(
     ))
 }
 
+/// This dance deletes an existing holon from the persistent store.
+/// 
 /// *DanceRequest:*
 /// - dance_name: "delete_holon"
 /// - dance_type: DeleteMethod(HolonId)
@@ -114,6 +116,13 @@ pub fn build_add_related_holons_dance_request(
 /// *ResponseBody:*
 /// None
 ///
+// In the absence of descriptors that can specify the DeletionSemantic,
+// this enhancement will adopt Allow as a default policy. When we have RelationshipDescriptors, we can use their properties 
+// to drive a richer range of deletion behaviors.
+//
+// NOTE: This dance implements an immediate delete. We may want to consider staging holons for deletion and postponing the actual deletion until commit. 
+// This would allow the cascaded effects of the delete to be determined and shared with the agent, leaving them free to cancel the deletion if desired. 
+// A staged deletion process would be more consistent with the staged creation process.
 pub fn delete_holon_dance(
     _context: &HolonsContext,
     request: DanceRequest,
@@ -132,12 +141,12 @@ pub fn delete_holon_dance(
 /// Builds a DanceRequest for deleting a local Holon from the persistent store
 pub fn build_delete_holon_dance_request(
     staging_area: StagingArea,
-    holon_id: LocalId,
+    holon_to_delete: LocalId,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
     Ok(DanceRequest::new(
         MapString("delete_holon".to_string()),
-        DanceType::DeleteMethod(holon_id),
+        DanceType::DeleteMethod(holon_to_delete),
         body,
         staging_area,
     ))
