@@ -1,7 +1,7 @@
 use crate::cache_manager::HolonCacheManager;
 use crate::commit_manager::CommitManager;
 use crate::staged_reference::StagedReference;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use shared_types_holon::MapString;
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
@@ -11,7 +11,7 @@ pub struct HolonsContext {
     pub commit_manager: RefCell<CommitManager>,
     pub cache_manager: RefCell<HolonCacheManager>,
     pub dance_state: RefCell<TransientCollection>,
-    pub local_holon_space: RefCell<Option<HolonReference>>,
+    pub local_holon_space: Option<HolonReference>,
 }
 
 impl HolonsContext {
@@ -20,24 +20,26 @@ impl HolonsContext {
             commit_manager: CommitManager::new().into(),
             cache_manager: HolonCacheManager::new().into(),
             dance_state: TransientCollection::new().into(),
-            local_holon_space: RefCell::new(None),
+            local_holon_space: None,
         }
     }
     pub fn init_context(
         commit_manager: CommitManager,
         cache_manager: HolonCacheManager,
-        local_holon_space: Option<&HolonReference>
+        local_holon_space: Option<HolonReference>
     ) -> HolonsContext {
-        // Set local_holon_space to the provided value or None
-        let space_ref = RefCell::new(local_holon_space);
 
         // Return the initialized context
         HolonsContext {
             commit_manager: RefCell::from(commit_manager),
             cache_manager: RefCell::from(cache_manager),
             dance_state: TransientCollection::new().into(),
-            local_holon_space: space_ref, // Uses the provided HolonReference or None
+            local_holon_space: local_holon_space.clone(),
         }
+    }
+    /// This method returns a reference to the LocalHolonSpace
+    pub fn get_local_holon_space(&self) -> Result<HolonReference, HolonError> {
+        self.local_holon_space.borrow()
     }
     fn set_local_holon_space(&self, new_holon_space: HolonReference) {
         // Borrow mutably and replace the None with Some(new_holon_space)

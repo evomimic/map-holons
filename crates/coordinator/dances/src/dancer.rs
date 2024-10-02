@@ -1,3 +1,4 @@
+use std::cell::Ref;
 use std::collections::HashMap;
 
 use hdk::prelude::*;
@@ -43,6 +44,12 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     }
 
     let mut context = request.init_context_from_state();
+
+    match context.get_local_holon_space().borrow() {
+        &_ => {}
+    }
+
+
 
     // If there is no HolonSpace, create one
     let holon_space = holon_space::HolonSpace::new(Holon::new());

@@ -105,11 +105,11 @@ impl DanceResponse {
         body: ResponseBody,
         descriptor: Option<HolonReference>,
         staging_area: StagingArea,
-        local_holon_space: Option<&HolonReference>,
+        local_holon_space: Option<HolonReference>,
     ) -> DanceResponse {
         let state = SessionState::new(
             staging_area,
-            local_holon_space.cloned()
+            local_holon_space.clone()
         );
         DanceResponse {
             status_code,
