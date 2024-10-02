@@ -3,7 +3,7 @@
 use crate::get_holon_by_key_from_test_state;
 use crate::tracing::{error, info, warn};
 use core::panic;
-use holochain::core::author_key_is_valid;
+//use holochain::core::author_key_is_valid;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
