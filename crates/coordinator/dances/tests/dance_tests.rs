@@ -79,17 +79,18 @@ use shared_types_holon::HolonId;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
-#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::load_core_schema(load_core_schema_test_fixture())]
-#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-// #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+// #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+// #[case::load_core_schema(load_core_schema_test_fixture())]
+// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
     use test_stage_new_from_clone::execute_stage_new_from_clone;
+    use test_stage_new_version::execute_stage_new_version;
     // use test_stage_new_version::execute_stage_new_version;
     let _ = holochain_trace::test_run();
 
@@ -157,17 +158,16 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&conductor, &cell, &mut test_state).await
             }
-            // DanceTestStep::StageNewVersion(original_holon, expected_response, expected_holon) => {
-            //     execute_stage_new_version(
-            //         &conductor,
-            //         &cell,
-            //         &mut test_state,
-            //         original_holon,
-            //         expected_response,
-            //         expected_holon,
-            //     )
-            //     .await
-            // }
+            DanceTestStep::StageNewVersion(original_holon_key, expected_response) => {
+                execute_stage_new_version(
+                    &conductor,
+                    &cell,
+                    &mut test_state,
+                    original_holon_key,
+                    expected_response,
+                )
+                .await
+            }
             DanceTestStep::QueryRelationships(
                 node_collection,
                 query_expression,

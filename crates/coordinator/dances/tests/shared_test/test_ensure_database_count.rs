@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -32,9 +31,7 @@ pub async fn execute_ensure_database_count(
     cell: &SweetCell,
     test_state: &mut DanceTestState,
     expected_count: MapInteger,
-
 ) {
-
     let expected_count_string = expected_count.0.to_string();
     info!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
     // Build a get_all_holons DanceRequest
@@ -49,11 +46,10 @@ pub async fn execute_ensure_database_count(
             test_state.staging_area = response.staging_area.clone();
 
             if let Holons(holons) = response.body.clone() {
-                assert_eq!(expected_count, MapInteger(holons.len() as i64));
+                assert_eq!(MapInteger(holons.len() as i64), expected_count);
                 let actual_count = holons.len().to_string();
 
                 info!("Success! DB has {actual_count} holons, as expected");
-
             } else {
                 panic!(
                     "Expected get_all_holons to return Holons response, but it returned {:?}",

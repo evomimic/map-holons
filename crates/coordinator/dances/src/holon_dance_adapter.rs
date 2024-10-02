@@ -664,70 +664,52 @@ pub fn build_stage_new_holon_dance_request(
     ))
 }
 
-// /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
-// /// This operation is only allowed for smart references.
-// ///
-// /// *DanceRequest:*
-// /// - dance_name: "stage_new_version"
-// /// - dance_type: NewVersionMethod(HolonId)
-// /// - request_body: None
-// ///   
-// ///
-// /// *ResponseBody:*
-// /// Index(StagedIndex), // a reference to the newly staged holon
-// ///
-// pub fn stage_new_version_dance(
-//     context: &HolonsContext,
-//     request: DanceRequest,
-// ) -> Result<ResponseBody, HolonError> {
-//     debug!("== Entered stage_new_version dance ==");
+/// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+/// This operation is only allowed for smart references.
+///
+/// *DanceRequest:*
+/// - dance_name: "stage_new_version"
+/// - dance_type: NewVersionMethod(HolonId)
+/// - request_body: None
+///   
+///
+/// *ResponseBody:*
+/// Index(StagedIndex), // a reference to the newly staged holon
+///
+pub fn stage_new_version_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    debug!("== Entered stage_new_version dance ==");
 
-//     // Step 1: Clone the holon from the request
-//     let holon = match request.dance_type {
-//         DanceType::CloneMethod(holon) => holon,
-//         _ => {
-//             return Err(HolonError::InvalidParameter(
-//                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
-//             ));
-//         }
-//     };
+    let smart_reference = match request.dance_type {
+        DanceType::NewVersionMethod(holon_id) => 
+            SmartReference::new(holon_id, None), // TODO: handle getting smart_prop_vals
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+            ));
+        }
+    };
 
-//     // Step 2: Mutably borrow the commit_manager and call stage_new_holon
-//     let staged_reference: StagedReference = {
-//         let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-//             Ok(commit_manager) => commit_manager,
-//             Err(borrow_error) => {
-//                 error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
-//                 return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
-//             }
-//         };
-//         commit_manager.stage_new_holon(holon.clone())?
-//     };
+    let staged_reference = smart_reference.stage_new_version(context)?;
 
-//     let predecessor_reference = HolonReference::Smart(SmartReference::new(
-//         HolonId::Local(holon.get_local_id()?), // throws error if no LocalId found since new_version can only be used for a persisted Holon
-//         Some(holon.property_map),
-//     ));
+    Ok(ResponseBody::Index(staged_reference.holon_index))
 
-//     // Step 3: Set the cloned holon's predecessor to refer to the holon it was cloned from
-//     staged_reference.with_predecessor(context, Some(predecessor_reference))?;
-
-//     // Return the staged holon reference as the response
-//     Ok(ResponseBody::Index(staged_reference.holon_index))
-// }
-// ///
-// /// Builds a dance request for staging a new cloned Holon
-// pub fn build_stage_new_version_dance_request(
-//     staging_area: StagingArea,
-//     holon: Holon,
-// ) -> Result<DanceRequest, HolonError> {
-//     Ok(DanceRequest::new(
-//         MapString("stage_new_version".to_string()),
-//         DanceType::CloneMethod(holon),
-//         RequestBody::None,
-//         staging_area,
-//     ))
-// }
+}
+///
+/// Builds a dance request for staging a new cloned Holon
+pub fn build_stage_new_version_dance_request(
+    staging_area: StagingArea,
+    holon_id: HolonId,
+) -> Result<DanceRequest, HolonError> {
+    Ok(DanceRequest::new(
+        MapString("stage_new_version".to_string()),
+        DanceType::NewVersionMethod(holon_id),
+        RequestBody::None,
+        staging_area,
+    ))
+}
 
 /// Add property values to an already staged holon
 ///

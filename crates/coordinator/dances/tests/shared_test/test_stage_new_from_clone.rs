@@ -80,10 +80,7 @@ pub async fn execute_stage_new_from_clone(
                     // the StagingArea and confirm it matches the expected Holon.
 
                     let holons = response.staging_area.get_staged_holons();
-                    println!(
-                        "**** EXECUTED  STAGE_NEW_FROM_CLONE  HOLON **** {:#?}",
-                        holons[index]
-                    );
+
                     // debug!("holons:{:#?}", holons);
                     assert_eq!(
                         original_holon.essential_content(),

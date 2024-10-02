@@ -7,7 +7,6 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
-use crate::commit_manager::{self, StagedIndex};
 use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent, Holon};
 use crate::holon_collection::HolonCollection;
@@ -108,26 +107,32 @@ impl SmartReference {
     }
 
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by creating a PREDECESSOR relationship.
-    pub fn new_version(&self, context: &HolonsContext) -> Result<StagedReference, HolonError> {
+    pub fn stage_new_version(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<StagedReference, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let new_holon = rc_holon.borrow().new_version()?;
+        let cloned_holon = rc_holon.borrow().new_version()?;
 
-        // Mutably borrow the commit_manager
-        let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-            Ok(commit_manager) => commit_manager,
-            Err(borrow_error) => {
-                error!(
-                    "Failed to borrow commit_manager mutably: {:?}",
-                    borrow_error
-                );
-                return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
-            }
+        let cloned_staged_reference = {
+            // Mutably borrow the commit_manager
+            let mut commit_manager = match context.commit_manager.try_borrow_mut() {
+                Ok(commit_manager) => commit_manager,
+                Err(borrow_error) => {
+                    error!(
+                        "Failed to borrow commit_manager mutably: {:?}",
+                        borrow_error
+                    );
+                    return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
+                }
+            };
+
+            // Stage the clone
+            commit_manager.stage_new_holon(cloned_holon)?
         };
-        // Stage the clone
-        let staged_reference = commit_manager.stage_new_holon(new_holon)?;
 
         // Set PREDECESSOR and return StagedReference
-        staged_reference.with_predecessor(context, Some(HolonReference::Smart(self.clone())))
+        cloned_staged_reference.with_predecessor(context, Some(HolonReference::Smart(self.clone())))
     }
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.

@@ -178,10 +178,12 @@ impl Holon {
         Ok(())
     }
 
-    /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit,
-    /// which retains no lineage to the original Holon.
+    /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit.
     pub fn clone_holon(&self) -> Result<Holon, HolonError> {
         let mut holon = Holon::new();
+
+        // Retain the saved_node Option
+        holon.saved_node = self.saved_node.clone();
 
         // Copy the existing holon's PropertyMap into the new Holon
         holon.property_map = self.property_map.clone();

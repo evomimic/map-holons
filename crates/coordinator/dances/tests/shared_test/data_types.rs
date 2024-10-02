@@ -7,7 +7,7 @@ use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
-use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 
@@ -55,7 +55,7 @@ pub enum DanceTestStep {
     ),
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     StageNewFromClone(TestReference, ResponseStatusCode),
-    // StageNewVersion(Holon, ResponseStatusCode),
+    StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedIndex, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedIndex with PropertyMap
 }
 
@@ -112,13 +112,13 @@ impl fmt::Display for DanceTestStep {
             DanceTestStep::StageHolon(holon) => {
                 write!(f, "StageHolon({:#?})", holon)
             }
-            // DanceTestStep::StageNewVersion(original_holon, expected_response, expected_holon) => {
-            //     write!(
-            //         f,
-            //         "NewVersion for original_holon: {:#?}, expecting new holon: {:#?}, and response: {:#?}",
-            //         original_holon,expected_response, expected_holon
-            //     )
-            // }
+            DanceTestStep::StageNewVersion(original_holon_id, expected_response) => {
+                write!(
+                    f,
+                    "NewVersion for original_holon_id: {:#?}, expecting response: {:#?}",
+                    original_holon_id, expected_response
+                )
+            }
             DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
                 write!(
                     f,
@@ -213,19 +213,17 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // pub fn add_stage_new_version_step(
-    //     &mut self,
-    //     original_holon: Holon,
-    //     expected_response: ResponseStatusCode,
-    //     expected_holon: Holon,
-    // ) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::StageNewVersion(
-    //         original_holon,
-    //         expected_response,
-    //         expected_holon,
-    //     ));
-    //     Ok(())
-    // }
+    pub fn add_stage_new_version_step(
+        &mut self,
+        original_holon_key: MapString,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::StageNewVersion(
+            original_holon_key,
+            expected_response,
+        ));
+        Ok(())
+    }
 
     pub fn add_query_relationships_step(
         &mut self,
