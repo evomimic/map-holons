@@ -76,6 +76,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
             HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
+            HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
         }
     }
 }

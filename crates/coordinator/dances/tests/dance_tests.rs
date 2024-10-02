@@ -76,15 +76,16 @@ use shared_types_holon::HolonId;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-
 #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::load_core_schema(load_core_schema_test_fixture())]
-
+#[case::delete_holon(delete_holon_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
+
+    use test_delete_holon::execute_delete_holon;
     let _ = holochain_trace::test_run();
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
@@ -146,7 +147,12 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
-            DanceTestStep::DatabasePrint => execute_commit(&conductor, &cell, &mut test_state).await,
+            DanceTestStep::DatabasePrint => {
+                execute_commit(&conductor, &cell, &mut test_state).await
+            }
+            DanceTestStep::DeleteHolon(expected_response) => {
+                execute_delete_holon(&conductor, &cell, &mut test_state, expected_response).await
+            }
             DanceTestStep::EnsureDatabaseCount(expected_count) => {
                 execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
                     .await

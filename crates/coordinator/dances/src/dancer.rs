@@ -13,7 +13,9 @@ use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::load_core_schema_dance;
 
 use crate::holon_dance_adapter::{
-    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance, stage_new_holon_dance, with_properties_dance
+    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, delete_holon_dance,
+    get_all_holons_dance, get_holon_by_id_dance, query_relationships_dance,
+    remove_related_holons_dance, stage_new_holon_dance, with_properties_dance,
 };
 
 use crate::staging_area::StagingArea;
@@ -105,6 +107,7 @@ impl Dancer {
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
+        dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
 
         dispatch_table.insert(
@@ -189,6 +192,7 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
             // If the dispatch_result is an error, extract the associated string value
             let error_message = match error.clone() {
                 HolonError::EmptyField(_)
+                | HolonError::DeletionNotAllowed(_)
                 | HolonError::InvalidParameter(_)
                 | HolonError::HolonNotFound(_)
                 | HolonError::CommitFailure(_)
