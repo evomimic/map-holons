@@ -77,14 +77,9 @@ impl DanceRequest {
         dance_name: MapString,
         dance_type: DanceType,
         body: RequestBody,
-        staging_area: StagingArea,
-        local_holon_space : Option<HolonReference>
+        state: SessionState,
     ) -> Self {
-        // Initialize the SessionState with staging_area and local_holon_space
-        let state = SessionState::new(
-            staging_area,
-            local_holon_space,
-        );
+
         Self {
             dance_name,
             dance_type,

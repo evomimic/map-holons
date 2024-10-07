@@ -28,6 +28,7 @@ use shared_types_holon::{MapString, PropertyMap};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
+use crate::session_state::SessionState;
 use crate::staging_area::StagingArea;
 
 /// *DanceRequest:*
@@ -153,7 +154,7 @@ pub fn remove_related_holons_dance(
 
 /// Builds a DanceRequest for removing related holons to a source_holon.
 pub fn build_remove_related_holons_dance_request(
-    staging_area: StagingArea,
+    session_state: SessionState,
     index: StagedIndex,
     relationship_name: RelationshipName,
     holons_to_remove: Vec<HolonReference>,
@@ -163,7 +164,7 @@ pub fn build_remove_related_holons_dance_request(
         MapString("remove_related_holons".to_string()),
         DanceType::CommandMethod(index),
         body,
-        staging_area,
+        session_state,
     ))
 }
 
@@ -171,7 +172,7 @@ pub fn build_remove_related_holons_dance_request(
 ///
 /// Builds a DanceRequest for adding related holons to a source_holon.
 pub fn build_add_related_holons_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
     index: StagedIndex,
     relationship_name: RelationshipName,
     holons_to_add: Vec<HolonReference>,
@@ -181,7 +182,7 @@ pub fn build_add_related_holons_dance_request(
         MapString("add_related_holons".to_string()),
         DanceType::CommandMethod(index),
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 
@@ -273,7 +274,7 @@ pub fn query_relationships_dance(
 
 /// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
 pub fn build_query_relationships_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
     node_collection: NodeCollection,
     query_expression: QueryExpression,
 ) -> Result<DanceRequest, HolonError> {
@@ -282,7 +283,7 @@ pub fn build_query_relationships_dance_request(
         MapString("query_relationships".to_string()),
         DanceType::QueryMethod(node_collection),
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 
@@ -301,7 +302,7 @@ pub fn stage_new_holon_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("== Entered staged new holon dance ==");
+    debug!("== Entered stage new holon dance ==");
     // Create and stage new Holon
     let mut new_holon = Holon::new();
 
@@ -341,7 +342,7 @@ pub fn stage_new_holon_dance(
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
 // pub fn build_stage_new_holon_dance_request(
-//     staging_area: StagingArea,
+//     session_state: &SessionState,
 //     properties: PropertyMap,
 // ) -> Result<DanceRequest, HolonError> {
 //     let body = RequestBody::new_parameter_values(properties);
@@ -349,11 +350,11 @@ pub fn stage_new_holon_dance(
 //         MapString("stage_new_holon".to_string()),
 //         DanceType::Standalone,
 //         body,
-//         staging_area,
+//         session_state.clone(),
 //     ))
 // }
 pub fn build_stage_new_holon_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
     holon: Holon,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new_holon(holon);
@@ -361,7 +362,7 @@ pub fn build_stage_new_holon_dance_request(
         MapString("stage_new_holon".to_string()),
         DanceType::Standalone,
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 
@@ -424,7 +425,7 @@ pub fn with_properties_dance(
 
 /// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
 pub fn build_with_properties_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
     index: StagedIndex,
     properties: PropertyMap,
 ) -> Result<DanceRequest, HolonError> {
@@ -434,7 +435,7 @@ pub fn build_with_properties_dance_request(
         MapString("with_properties".to_string()),
         DanceType::CommandMethod(index),
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 
@@ -467,14 +468,14 @@ pub fn get_all_holons_dance(
 
 /// Builds a DanceRequest for retrieving all holons from the persistent store
 pub fn build_get_all_holons_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
     Ok(DanceRequest::new(
         MapString("get_all_holons".to_string()),
         DanceType::Standalone,
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 
@@ -514,7 +515,7 @@ pub fn get_holon_by_id_dance(
 
 /// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
 pub fn build_get_holon_by_id_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
     holon_id: HolonId,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::HolonId(holon_id);
@@ -522,7 +523,7 @@ pub fn build_get_holon_by_id_dance_request(
         MapString("get_holon_by_id".to_string()),
         DanceType::Standalone,
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 
@@ -560,13 +561,13 @@ pub fn commit_dance(
 ///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
-pub fn build_commit_dance_request(staging_area: StagingArea) -> Result<DanceRequest, HolonError> {
+pub fn build_commit_dance_request(session_state: &SessionState) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
     Ok(DanceRequest::new(
         MapString("commit".to_string()),
         DanceType::Standalone,
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 /// Abandon staged changes
@@ -615,7 +616,7 @@ pub fn abandon_staged_changes_dance(
 ///
 /// Builds a DanceRequest for abandoning changes to a staged Holon.
 pub fn build_abandon_staged_changes_dance_request(
-    staging_area: StagingArea,
+    session_state: &SessionState,
     index: StagedIndex,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
@@ -623,7 +624,7 @@ pub fn build_abandon_staged_changes_dance_request(
         MapString("abandon_staged_changes".to_string()),
         DanceType::CommandMethod(index),
         body,
-        staging_area,
+        session_state.clone(),
     ))
 }
 

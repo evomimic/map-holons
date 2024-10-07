@@ -50,9 +50,11 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     );
 
     let mut expected_holons = Vec::new();
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count:i64  = 1;
 
     // Ensure DB count //
-    test_case.add_ensure_database_count_step(MapInteger(0))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     // Create book Holon with properties //
     let mut book_holon = Holon::new();
@@ -72,6 +74,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     //// Stage Holons & add properties
     test_case.add_stage_holon_step(book_holon.clone())?;
     expected_holons.push(book_holon.clone());
+    expected_count += 1;
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -84,6 +87,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     let person_holon = Holon::new();
     test_case.add_stage_holon_step(person_holon.clone())?;
     expected_holons.push(person_holon.clone());
+    expected_count += 1;
 
     let mut properties = PropertyMap::new();
     properties.insert(
@@ -100,7 +104,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
     // Commit, match content, & ensure DB count again //
     test_case.add_commit_step()?;
     test_case.add_match_saved_content_step()?;
-    test_case.add_ensure_database_count_step(MapInteger(2))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     Ok(test_case.clone())
 }
@@ -113,8 +117,12 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     );
 
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count:i64  = 1;
+
     // Ensure DB count //
-    test_case.add_ensure_database_count_step(MapInteger(0))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+
 
     //
     // H1, H2, H3, etc. refer to order of Holons added to staging area.
@@ -144,6 +152,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     )?;
     test_case.add_stage_holon_step(book_holon.clone())?;
     let book_index: usize = 0; // assume book is at this position in staged_holons vector
+    expected_count += 1;
 
     //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
     let mut person_1 = Holon::new();
@@ -166,6 +175,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let person_1_reference = Staged(StagedReference {
         holon_index: person_1_index,
     });
+    expected_count += 1;
 
     //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
     let mut person_holon_2 = Holon::new();
@@ -188,6 +198,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let person_2_reference = Staged(StagedReference {
         holon_index: person_2_index,
     });
+    expected_count += 1;
 
     // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
 
@@ -292,7 +303,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Commit & ensure DB count again //
     test_case.add_commit_step()?;
-    test_case.add_ensure_database_count_step(MapInteger(3))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+
 
     // Query Relationships //
 
@@ -314,7 +326,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible".to_string(),
     );
 
-    test_case.add_ensure_database_count_step(MapInteger(0))?;
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count:i64  = 1;
+
+    // Ensure DB count //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
@@ -326,6 +342,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut holons_to_add,
         &desired_test_relationship
     )?;
+    expected_count += test_data.len() as i64;
 
     let person_1_index= test_data[1].staged_index;
     let book_holon_key = test_data[0].key.clone();
@@ -337,6 +354,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
     test_case.add_abandon_staged_changes_step(person_1_index, ResponseStatusCode::OK)?;
+    expected_count -= 1;
 
     // ADD STEP:  RELATIONSHIP:  Author H2 -> H3  //
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
@@ -352,7 +370,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step()?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(MapInteger(2))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     // ADD STEP:  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
@@ -364,6 +382,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         BaseValue::StringValue(MapString("test2".to_string())),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
+    expected_count += 1;
 
     //  ADD STEP:  STAGE:  Abandoned Holon2 (H5)  //
     let mut abandoned_holon_2 = Holon::new();
@@ -372,18 +391,21 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         BaseValue::StringValue(MapString("test2".to_string())),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
+    expected_count += 1;
 
     // ADD STEP:  ABANDON:  H4
     test_case.add_abandon_staged_changes_step(0, ResponseStatusCode::OK)?;
+    expected_count -= 1;
 
     // ADD STEP:  ABANDON:  H5
     test_case.add_abandon_staged_changes_step(1, ResponseStatusCode::OK)?;
+    expected_count -= 1;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(MapInteger(2))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     // ADD STEP:  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;

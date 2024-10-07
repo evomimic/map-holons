@@ -1,8 +1,8 @@
 use hdi::prelude::info;
-use holons::smart_reference::SmartReference;
+// use holons::smart_reference::SmartReference;
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
 use strum_macros::EnumIter;
-use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::CollectionFor;
+// use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::CollectionFor;
 // use inflector::cases::snakecase::to_snake_case;
 use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
@@ -13,12 +13,12 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{HolonId, MapBoolean, MapString};
+use shared_types_holon::{MapBoolean, MapString};
 use crate::collection_type_loader::CollectionTypeSpec;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
-use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
+// use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
+// use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreRelationshipTypeName {

@@ -1,7 +1,6 @@
 use crate::cache_manager::HolonCacheManager;
 use crate::commit_manager::CommitManager;
-use crate::staged_reference::StagedReference;
-use std::cell::{Ref, RefCell};
+use std::cell::{RefCell};
 use shared_types_holon::MapString;
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
@@ -11,7 +10,7 @@ pub struct HolonsContext {
     pub commit_manager: RefCell<CommitManager>,
     pub cache_manager: RefCell<HolonCacheManager>,
     pub dance_state: RefCell<TransientCollection>,
-    pub local_holon_space: Option<HolonReference>,
+    pub local_holon_space: RefCell<Option<HolonReference>>,
 }
 
 impl HolonsContext {
@@ -20,7 +19,7 @@ impl HolonsContext {
             commit_manager: CommitManager::new().into(),
             cache_manager: HolonCacheManager::new().into(),
             dance_state: TransientCollection::new().into(),
-            local_holon_space: None,
+            local_holon_space: RefCell::new(None),
         }
     }
     pub fn init_context(
@@ -34,16 +33,25 @@ impl HolonsContext {
             commit_manager: RefCell::from(commit_manager),
             cache_manager: RefCell::from(cache_manager),
             dance_state: TransientCollection::new().into(),
-            local_holon_space: local_holon_space.clone(),
+            local_holon_space: RefCell::new(local_holon_space),
         }
     }
-    /// This method returns a reference to the LocalHolonSpace
-    pub fn get_local_holon_space(&self) -> Result<HolonReference, HolonError> {
-        self.local_holon_space.borrow()
+    /// This method returns a clone of the LocalHolonSpace reference from the context
+    /// NOTE: This will panic on borrow failure
+    pub fn get_local_holon_space(&self) -> Option<HolonReference> {
+        let local_holon_space = self.local_holon_space.borrow();
+        local_holon_space.clone() // If no panic, return cloned value
     }
-    fn set_local_holon_space(&self, new_holon_space: HolonReference) {
-        // Borrow mutably and replace the None with Some(new_holon_space)
-        *self.local_holon_space.borrow_mut() = Some(new_holon_space);
+
+    /// This method sets the LocalHolonSpace reference within the context
+    pub fn set_local_holon_space(&self, new_holon_space: HolonReference) -> Result<(), HolonError> {
+        match self.local_holon_space.try_borrow_mut() {
+            Ok(mut local_holon_space) => {
+                *local_holon_space = Some(new_holon_space); // Successfully borrowed and mutated
+                Ok(())
+            },
+            Err(_) => Err(HolonError::FailedToBorrow("Failed to borrow local_holon_space mutably".into())),
+        }
     }
     pub fn add_references_to_dance_state(&self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
         self.dance_state.borrow_mut().add_references(self, holons)

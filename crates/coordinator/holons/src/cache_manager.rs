@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 // use hdk::prelude::*;
 use quick_cache::unsync::Cache;
-use shared_types_holon::{HolonId, HolonSpaceId, ExternalId, LocalId};
+use shared_types_holon::{HolonId, HolonSpaceId, LocalId};
 
 use std::rc::Rc;
 use shared_types_holon::HolonId::{Local,External};
@@ -16,7 +16,6 @@ pub struct HolonCache(Cache<HolonId, Rc<RefCell<Holon>>>);
 #[derive(Debug)]
 pub struct HolonCacheManager {
     pub local_cache: Rc<RefCell<HolonCache>>,
-    // pub external_caches: HashMap<HolonSpaceId, HolonCache>,
     pub external_caches: HashMap<HolonSpaceId, Rc<RefCell<HolonCache>>>,
 }
 

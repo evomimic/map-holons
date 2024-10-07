@@ -1,60 +1,74 @@
-use hdi::map_extern::ExternResult;
-use hdi::prelude::Path;
-use hdk::hdk::HDK;
-use hdk::link::{get_links, GetLinksInputBuilder};
-use hdk::prelude::{GetInput, GetOptions};
-use holochain_integrity_types::Record;
-use holons_integrity::LinkTypes;
-use shared_types_holon::{HolonId, MapString};
-use crate::context::HolonsContext;
+use hdi::prelude::{Deserialize, Serialize};
+
+use shared_types_holon::{MapString, PropertyName, PropertyValue};
+
 use crate::holon::Holon;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonReference;
-use crate::smart_reference::SmartReference;
 
-
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct HolonSpace(pub Holon);
 
 impl HolonSpace {
     pub fn new(holon: Holon) -> HolonSpace {
         HolonSpace(holon)
     }
+    pub fn get_description(&self) -> Result<MapString, HolonError> {
+        let property_name = PropertyName(MapString("description".to_string()));
 
-    pub fn into_holon(self) -> Holon {
-        self.0
-    }
-    /// get_local_holon_space retrieves the local holon space from the persistent store
-    pub fn get_local_holon_space(context: &HolonsContext) -> Result<HolonReference, HolonError> {
-        // For now, it just uses a brute force linear search through all saved holons, searching
-        // for a holon with key "LocalHolonSpace". If found, it extracts its HolonId and
-        // A HolonReference to the cached HolonSpace Holon is then returned
-        // TODO: Scaffold a new `LocalHolonSpace` LinkType and search by path instead of linear search
-        let all_holons = Holon::get_all_holons()?;
-        let search_key = MapString("LocalHolonSpace".to_string());
-
-        for holon in &all_holons {
-            match holon.get_key()? {
-                Some(key) if key == search_key  => {
-                    let holon_id = HolonId::Local(holon.get_local_id()?);
-                    // use get_rc_holon on the cache_manager to populate the HolonSpace holon in the cache
-                    let holon_space_rc_holon = context
-                        .cache_manager
-                        .borrow_mut()
-                        .get_rc_holon(&holon_id)?;
-                    // build a HolonReference from the holon_space_rc_holon.
-                    // TODO: We should have a helper function that creates a new SmartReference from a Holon.
-                    // This function could populate the smart_property_values from the holon's descriptor
-                    // But for now, we'll just construct the HolonReference from holon_id
-
-                    return Ok(HolonReference::Smart(SmartReference::new(holon_id, None)));
-                }
-                _ => continue,
-            }
+        match self.0.get_property_value(&property_name)? {
+            PropertyValue::StringValue(name) => Ok(name),
+            _ => Err(HolonError::InvalidType(format!(
+                "Expected StringValue for '{}'", property_name.0
+            ))),
         }
+    }
+    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+        self.0.get_key()
+    }
+    pub fn get_name(&self) -> Result<MapString, HolonError> {
+        let property_name = PropertyName(MapString("name".to_string()));
 
-        // Return HolonError::NotFound if no matching holon is found
-        Err(HolonError::HolonNotFound(search_key.to_string()))
+        match self.0.get_property_value(&property_name)? {
+            PropertyValue::StringValue(name) => Ok(name),
+            _ => Err(HolonError::InvalidType(format!(
+                "Expected StringValue for '{}'", property_name.0
+            ))),
+        }
+    }
+    fn holon_mut(&mut self) -> &mut Holon {
+        &mut self.0 // Return a mutable reference to the inner `Holon`
+    }
+    pub fn into_holon(self) -> Holon {
+        self.0.clone()
     }
 
-
+    /// get_local_holon_space retrieves the local holon space from the persistent store
+    /// This currently does a brute force linear search through all saved holons
+    /// TODO: Replace this logic with a fetch based on HolonSpace LinkType
+    pub fn with_description(&mut self, description: &MapString) -> Result<&mut Self, HolonError> {
+        self
+            .holon_mut()
+            .with_property_value(
+                PropertyName(MapString("description".to_string())),
+                description.clone().into_base_value(),
+            )?;
+        Ok(self)
+    }
+    /// Sets the name property for the HolonSpace (and currently the "key" property)
+    ///
+    pub fn with_name(&mut self, name: &MapString) -> Result<&mut Self, HolonError> {
+        self
+            .holon_mut()
+            .with_property_value(
+                PropertyName(MapString("name".to_string())),
+                name.clone().into_base_value(),
+            )?
+            // TODO: drop this once descriptor-based key support is implemented
+            .with_property_value(
+                PropertyName(MapString("key".to_string())),
+                name.clone().into_base_value(),
+            )?;
+        Ok(self)
+    }
 }
+

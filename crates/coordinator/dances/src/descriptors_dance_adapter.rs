@@ -15,25 +15,19 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 
-use std::borrow::Borrow;
-use std::rc::Rc;
+
+
 
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
-use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
 use core_schema::loader::load_core_schema;
-use holons::relationship::RelationshipName;
 use shared_types_holon::{MapString, MapInteger, PropertyMap};
 use shared_types_holon::HolonId;
-
-
-
 use crate::dance_request::{DanceRequest, DanceType,RequestBody};
 use crate::dance_response::ResponseBody;
+use crate::session_state::SessionState;
 use crate::staging_area::StagingArea;
 
 /// *DanceRequest:*
@@ -71,9 +65,9 @@ pub fn load_core_schema_dance(context: &HolonsContext, request: DanceRequest) ->
 
 
 pub fn build_load_core_schema_dance_request(
-    staging_area: StagingArea,
+    session_state:&SessionState,
 )->Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
-    Ok(DanceRequest::new(MapString("load_core_schema".to_string()), DanceType::Standalone,body, staging_area))
+    Ok(DanceRequest::new(MapString("load_core_schema".to_string()), DanceType::Standalone,body, session_state.clone()))
 }
 

@@ -60,6 +60,7 @@ impl From<HolonError> for ResponseStatusCode {
         match error {
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
             HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::WasmError(_) => ResponseStatusCode::ServerError,
@@ -104,13 +105,8 @@ impl DanceResponse {
         description: MapString,
         body: ResponseBody,
         descriptor: Option<HolonReference>,
-        staging_area: StagingArea,
-        local_holon_space: Option<HolonReference>,
+        state: SessionState,
     ) -> DanceResponse {
-        let state = SessionState::new(
-            staging_area,
-            local_holon_space.clone()
-        );
         DanceResponse {
             status_code,
             description,
@@ -122,9 +118,9 @@ impl DanceResponse {
     /// Restores the session state within the DanceResponse from context. This should always
     /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
     /// between client and guest.
+    /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
     pub fn restore_state(&mut self, context: &HolonsContext) {
         self.state.set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
-        self.state.set_local_holon_space(context.local_holon_space.borrow().clone());
+        self.state.set_local_holon_space(context.get_local_holon_space());
     }
-
 }

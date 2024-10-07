@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName};
 use std::{collections::BTreeMap, str};
 
 use crate::helpers::get_key_from_property_map;
@@ -9,10 +9,10 @@ use crate::holon_reference::HolonReference;
 use crate::smart_reference::SmartReference;
 use crate::{holon_error::HolonError, relationship::RelationshipName};
 
-const fn smartlink_tag_header_length() -> usize {
-    // leaving this nomenclature for now
-    SMARTLINK_HEADER_BYTES.len()
-}
+// const fn smartlink_tag_header_length() -> usize {
+//     // leaving this nomenclature for now
+//     SMARTLINK_HEADER_BYTES.len()
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SmartLink {
