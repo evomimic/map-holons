@@ -1,12 +1,12 @@
 use dances::dance_response::ResponseStatusCode;
-use holons::query::{QueryExpression};
+use holons::query::QueryExpression;
 use dances::staging_area::StagingArea;
 use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
-use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
+use shared_types_holon::{HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::VecDeque;
 use std::fmt;
 use dances::session_state::SessionState;
@@ -35,6 +35,7 @@ pub enum DanceTestStep {
          Holon
     ), 
     DatabasePrint, // Writes log messages for each holon in the persistent store
+    DeleteHolon(ResponseStatusCode),
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     Commit,            // Attempts to commit
@@ -68,6 +69,9 @@ impl fmt::Display for DanceTestStep {
             }
             DanceTestStep::DatabasePrint => {
                 write!(f, "DatabasePrint")
+            }
+            DanceTestStep::DeleteHolon(local_id) => {
+                write!(f, "DeleteHolon({:?})", local_id)
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
@@ -170,6 +174,11 @@ impl DancesTestCase {
     }
     pub fn add_database_print_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::DatabasePrint);
+        Ok(())
+    }
+    pub fn add_delete_holon_step(&mut self, expected_response: ResponseStatusCode) -> Result<(), HolonError> {
+        self.steps
+            .push_back(DanceTestStep::DeleteHolon(expected_response));
         Ok(())
     }
     pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {

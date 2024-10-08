@@ -18,7 +18,6 @@ use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
 use crate::session_state::SessionState;
 
-// use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -120,6 +119,7 @@ impl Dancer {
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
+        dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
 
         dispatch_table.insert(
@@ -203,7 +203,10 @@ fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<Resp
             }
         }
         Err(error) => {
+ };
+
             let error_message = extract_error_message(&error);
+
 
             // Construct DanceResponse with error details
             DanceResponse {

@@ -3,31 +3,28 @@
 pub mod dance_fixtures;
 pub mod test_data_types;
 
+pub mod book_authors_setup_fixture;
 pub mod descriptor_dance_fixtures;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
-pub mod test_remove_related_holon;
 pub mod test_commit;
+pub mod test_delete_holon;
 pub mod test_ensure_database_count;
 pub mod test_load_core_schema;
 pub mod test_match_db_content;
+pub mod test_print_database;
 pub mod test_query_relationships;
+pub mod test_remove_related_holon;
 pub mod test_stage_new_holon;
 pub mod test_with_properties_command;
-pub mod book_authors_setup_fixture;
-pub mod test_print_database;
 
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
+use holons::holon_reference::HolonGettable;
 use holons::{
-    context::HolonsContext,
-    holon::Holon
-    ,
-    holon_error::HolonError,
-    holon_reference::HolonReference,
+    context::HolonsContext, holon::Holon, holon_error::HolonError, holon_reference::HolonReference,
     relationship::RelationshipName,
 };
-use holons::holon_reference::HolonGettable;
 use shared_types_holon::{HolonId, MapString};
 use test_data_types::DanceTestState;
 
