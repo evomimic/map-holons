@@ -55,6 +55,11 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
+    let space_reference = context.get_local_holon_space()
+        .ok_or(HolonError::HolonNotFound(
+            "Local holon space not found".to_string(),
+        ));
+
 
     let schema = Schema::new(
         CoreSchemaName::SchemaName.as_map_string(),
@@ -80,14 +85,14 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         let _type_ref = type_name.lazy_get_core_type_definition(context, &staged_schema_ref)?;
 
     }
-    // Let's add all of the CoreRelationshipTypes to the initial load set
+    // Let's add all the CoreRelationshipTypes to the initial load set
 
     for variant in CoreRelationshipTypeName::iter() {
         info!("Attempting to load {:?}", variant);
         let _type_ref = variant.lazy_get_core_type_definition(context, &staged_schema_ref)?;
     }
 
-    // Let's add all of the CorePropertyTypes to the initial load set
+    // Let's add all the CorePropertyTypes to the initial load set
 
     for variant in CorePropertyTypeName::iter() {
         info!("Attempting to load {:?}", variant);
@@ -167,7 +172,7 @@ fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
 
     ];
 
-    // Let's add all of the CoreSchemaValueTypes to the initial load set
+    // Let's add all the CoreSchemaValueTypes to the initial load set
 
     for variant in CoreStringValueTypeName::iter() {
         result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::StringType(variant)));

@@ -2,7 +2,7 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName};
 
 use std::{collections::BTreeMap, str};
 

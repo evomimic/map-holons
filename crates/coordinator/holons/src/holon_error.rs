@@ -27,8 +27,10 @@ pub enum HolonError {
     InvalidHolonReference(String),
     #[error("Invalid Type, {0}")]
     InvalidType(String),
-    #[error("{0} Not Implemented")]
-    NotImplemented(String),
+    #[error("Invalid Parameter: {0}")]
+    InvalidParameter(String),
+    #[error("{0} is not a valid relationship for this source holon type {1}")]
+    InvalidRelationship(String, String), // TODO: move this error to ValidationError
     #[error("Miscellaneous error: {0}")]
     Misc(String),
     #[error("{0} relationship is missing StagedCollection")]

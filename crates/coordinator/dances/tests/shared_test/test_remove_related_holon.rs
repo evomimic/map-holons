@@ -68,7 +68,7 @@ pub async fn execute_remove_related_holons(
 
     // Build the DanceRequest
     let request = build_remove_related_holons_dance_request(
-        test_state.session_state.clone(),
+        &test_state.session_state,
         source_holon_index,
         relationship_name,
         holons_to_remove,

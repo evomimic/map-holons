@@ -72,7 +72,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidRelationship(_, _) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidRelationship(_,_) => ResponseStatusCode::BadRequest,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
             HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,

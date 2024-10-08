@@ -203,11 +203,8 @@ fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<Resp
             }
         }
         Err(error) => {
- };
 
             let error_message = extract_error_message(&error);
-
-
             // Construct DanceResponse with error details
             DanceResponse {
                 status_code: ResponseStatusCode::from(error), // Convert HolonError to ResponseStatusCode
@@ -227,6 +224,7 @@ fn extract_error_message(error:&HolonError)->String {
         | HolonError::InvalidParameter(_)
         | HolonError::HolonNotFound(_)
         | HolonError::CommitFailure(_)
+        | HolonError::DeletionNotAllowed(_)
         | HolonError::WasmError(_)
         | HolonError::RecordConversion(_)
         | HolonError::InvalidHolonReference(_)
@@ -244,6 +242,7 @@ fn extract_error_message(error:&HolonError)->String {
         | HolonError::HashConversion(_, _)
         | HolonError::CacheError(_) => error.to_string(),
         HolonError::ValidationError(validation_error) => validation_error.to_string(),
+
 
     }
 }

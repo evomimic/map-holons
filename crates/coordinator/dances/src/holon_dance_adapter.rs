@@ -28,10 +28,8 @@ use shared_types_holon::{MapString, PropertyMap};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
-
 use crate::session_state::SessionState;
 use crate::staging_area::StagingArea;
-
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
@@ -91,40 +89,23 @@ pub fn add_related_holons_dance(
         )),
     }
 }
-///
-/// Builds a DanceRequest for adding related holons to a source_holon.
-pub fn build_add_related_holons_dance_request(
-    staging_area: StagingArea,
-    index: StagedIndex,
-    relationship_name: RelationshipName,
-    holons_to_add: Vec<HolonReference>,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_target_holons(relationship_name, holons_to_add);
-    Ok(DanceRequest::new(
-        MapString("add_related_holons".to_string()),
-        DanceType::CommandMethod(index),
-        body,
-        staging_area,
-    ))
-}
-
 /// This dance deletes an existing holon from the persistent store.
-/// 
+///
 /// *DanceRequest:*
 /// - dance_name: "delete_holon"
 /// - dance_type: DeleteMethod(HolonId)
 /// - request_body: None
-///   
+///
 ///
 /// *ResponseBody:*
 /// None
 ///
 // In the absence of descriptors that can specify the DeletionSemantic,
-// this enhancement will adopt Allow as a default policy. When we have RelationshipDescriptors, we can use their properties 
+// this enhancement will adopt Allow as a default policy. When we have RelationshipDescriptors, we can use their properties
 // to drive a richer range of deletion behaviors.
 //
-// NOTE: This dance implements an immediate delete. We may want to consider staging holons for deletion and postponing the actual deletion until commit. 
-// This would allow the cascaded effects of the delete to be determined and shared with the agent, leaving them free to cancel the deletion if desired. 
+// NOTE: This dance implements an immediate delete. We may want to consider staging holons for deletion and postponing the actual deletion until commit.
+// This would allow the cascaded effects of the delete to be determined and shared with the agent, leaving them free to cancel the deletion if desired.
 // A staged deletion process would be more consistent with the staged creation process.
 pub fn delete_holon_dance(
     _context: &HolonsContext,
@@ -151,7 +132,7 @@ pub fn build_delete_holon_dance_request(
         MapString("delete_holon".to_string()),
         DanceType::DeleteMethod(holon_to_delete),
         body,
-        session_state,
+        session_state.clone(),
     ))
 }
 
@@ -214,9 +195,12 @@ pub fn remove_related_holons_dance(
     }
 }
 
+
+
+
 /// Builds a DanceRequest for removing related holons to a source_holon.
 pub fn build_remove_related_holons_dance_request(
-    session_state: SessionState,
+    session_state: &SessionState,
     index: StagedIndex,
     relationship_name: RelationshipName,
     holons_to_remove: Vec<HolonReference>,
@@ -226,7 +210,7 @@ pub fn build_remove_related_holons_dance_request(
         MapString("remove_related_holons".to_string()),
         DanceType::CommandMethod(index),
         body,
-        session_state,
+        session_state.clone(),
     ))
 }
 
@@ -248,7 +232,6 @@ pub fn build_add_related_holons_dance_request(
     ))
 }
 
-
 /// *DanceRequest:*
 /// - dance_name: "query_relationships"
 /// - dance_type: QueryMethod(NodeCollection) -- specifies the Collection to use as the source of the query
@@ -266,17 +249,17 @@ pub fn query_relationships_dance(
 
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
-            let relationship_name =
-                match request.body {
-                    RequestBody::QueryExpression(expression) => expression.relationship_name,
-                    _ => return Err(HolonError::InvalidParameter(
+            let relationship_name = match request.body {
+                RequestBody::QueryExpression(expression) => expression.relationship_name,
+                _ => {
+                    return Err(HolonError::InvalidParameter(
                         "Invalid RequestBody: expected QueryExpression with relationship name, \
-                        didn't get one"
-                            .to_string(),
-                    )),
-                };
+                        didn't get one".to_string(),
+                    ))
+                }
+            };
 
-            let result_collection = evaluate_query(node_collection, context, relationship_name)?;
+            let result_collection = evaluate_query(node_collection,context,relationship_name)?;
             Ok(ResponseBody::Collection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
@@ -284,6 +267,9 @@ pub fn query_relationships_dance(
         )),
     }
 }
+
+
+
 
 // pub fn query_relationships_dance(
 //     context: &HolonsContext,
@@ -519,7 +505,9 @@ pub fn get_all_holons_dance(
     debug!("Entering get_all_holons dance..");
     let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => Ok(ResponseBody::Holons(holons)),
+        Ok(holons) => {
+            Ok(ResponseBody::Holons(holons))
+        },
         Err(holon_error) => Err(holon_error.into()),
     }
 }
