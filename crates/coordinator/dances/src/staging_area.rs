@@ -16,7 +16,7 @@ pub struct StagingArea {
 
 impl StagingArea {
 
-    pub fn new()->Self {
+    pub fn empty()->Self {
         StagingArea {
             staged_holons: Vec::new(),
             index: BTreeMap::new(),

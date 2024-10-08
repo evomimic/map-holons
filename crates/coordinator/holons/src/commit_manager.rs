@@ -11,7 +11,7 @@ use crate::json_adapter::as_json;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
-use shared_types_holon::{MapInteger, MapString};
+use shared_types_holon::{LocalId, MapInteger, MapString};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
@@ -29,6 +29,37 @@ pub struct CommitResponse {
     pub saved_holons: Vec<Holon>, // should this be index? where else used?
     pub abandoned_holons: Vec<Holon>, // should this be index?
 }
+impl CommitResponse {
+    /// This helper method returns true if the supplied CommitResponse indicates that the commit
+    /// was complete and false otherwise
+    pub fn is_complete(&self)->bool {
+        match self.status {
+            CommitRequestStatus::Complete => true,
+            CommitRequestStatus::Incomplete => false,
+        }
+    }
+    pub(crate) fn find_local_id_by_key(&self, k: &MapString) -> Result<LocalId, HolonError> {
+        for holon in &self.saved_holons {
+            if let Some(key) = holon.get_key()? {
+                // Check if the key matches the given key `k`
+                if &key == k {
+                    // Return the LocalId if a match is found
+                    return holon.get_local_id();
+                }
+            }
+        }
+        // Return an error if no matching Holon is found
+        Err(HolonError::HolonNotFound(
+            format!(
+                "No saved Holon with key {:?} was found in commit response",
+                k.to_string(),
+            ),
+
+        ))
+    }
+
+}
+
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 /// *Complete* means all staged holons have been committed and staged_holons cleared
@@ -279,8 +310,8 @@ impl CommitManager {
         }
     }
 
-    /// Private helper function the encapsulates the logic for getting a mutable reference to a
-    /// holon from a Staged
+    /// Private helper function that encapsulates the logic for getting a mutable reference to a
+    /// holon from a StagedReference
     fn get_mut_holon_internal(
         &self,
         holon_index: Option<StagedIndex>,
@@ -314,6 +345,7 @@ impl CommitManager {
     ) -> Result<RefMut<Holon>, HolonError> {
         self.get_mut_holon_internal(Some(staged_reference.holon_index))
     }
+
 
     // pub fn get_mut_holon_by_index(
     //     &self,

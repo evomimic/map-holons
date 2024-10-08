@@ -79,6 +79,7 @@ pub struct RelationshipType {
     described_by: HolonReference, // MetaRelationshipType
 
 }
+
 pub struct PropertyType {
     header: TypeDescriptor,
     property_type_name: PropertyName,
