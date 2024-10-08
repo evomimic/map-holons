@@ -1,4 +1,5 @@
 use hdi::prelude::info;
+// use holons::smart_reference::SmartReference;
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
 use strum_macros::EnumIter;
 
@@ -19,8 +20,9 @@ use crate::holon_type_loader::CoreHolonTypeName;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreRelationshipTypeName {
+    CoreSchema,
+    CoreSchemaFor,
     CollectionFor,
-
     Components,
     ComponentOf,
     // Dances,
@@ -103,6 +105,43 @@ impl CoreRelationshipTypeName {
         let label = self.derive_label();
 
         match self {
+            CoreSchemaFor => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("Specifies the HolonSpace(s) for which this Schema is used to create instances of L0 types.")
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::HolonSpaceType,
+                },
+                has_inverse: Some(CoreSchema), 
+            },
+            CoreSchema => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("Specifies the (single) Core Schema used to create instances of L0 types within this HolonSpace.")
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::SchemaType,
+                },
+                has_inverse: None, // Should be None because `source_owns_relationship` is `false`
+
+            },
             CollectionFor => RelationshipTypeLoader {
                 descriptor_name,
                 description : MapString(

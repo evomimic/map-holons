@@ -1,4 +1,5 @@
 use hdi::prelude::debug;
+
 use strum::IntoEnumIterator;
 use hdk::prelude::info;
 use holons::commit_manager::{CommitManager, CommitResponse};
@@ -12,6 +13,7 @@ use shared_types_holon::{MapString, PropertyName};
 
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
 use holons::holon::Holon;
+
 use holons::json_adapter::as_json;
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 // use descriptors::holon_descriptor::{define_holon_type};
@@ -43,6 +45,11 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
+    let space_reference = context.get_local_holon_space()
+        .ok_or(HolonError::HolonNotFound(
+            "Local holon space not found".to_string(),
+        ));
+
 
     let schema = Schema::new(
         CoreSchemaName::SchemaName.as_map_string(),
@@ -58,6 +65,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
 
+
+    //context.local_holon_space.clone_from(source).borrow_mut().get_holon(commit_holon(staged_schema_ref.clone())?;
+
     let initial_load_set = get_initial_load_set();
 
     for type_name in initial_load_set {
@@ -65,14 +75,14 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         let _type_ref = type_name.lazy_get_core_type_definition(context, &staged_schema_ref)?;
 
     }
-    // Let's add all of the CoreRelationshipTypes to the initial load set
+    // Let's add all the CoreRelationshipTypes to the initial load set
 
     for variant in CoreRelationshipTypeName::iter() {
         info!("Attempting to load {:?}", variant);
         let _type_ref = variant.lazy_get_core_type_definition(context, &staged_schema_ref)?;
     }
 
-    // Let's add all of the CorePropertyTypes to the initial load set
+    // Let's add all the CorePropertyTypes to the initial load set
 
     for variant in CorePropertyTypeName::iter() {
         info!("Attempting to load {:?}", variant);
@@ -152,7 +162,7 @@ fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
 
     ];
 
-    // Let's add all of the CoreSchemaValueTypes to the initial load set
+    // Let's add all the CoreSchemaValueTypes to the initial load set
 
     for variant in CoreStringValueTypeName::iter() {
         result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::StringType(variant)));

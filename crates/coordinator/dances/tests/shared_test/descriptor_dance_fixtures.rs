@@ -55,7 +55,7 @@ pub fn load_core_schema_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     //let mut expected_holons = Vec::new();
 
-    test_case.add_ensure_database_count_step(MapInteger(0))?;
+    test_case.add_ensure_database_count_step(MapInteger(1))?;
 
     test_case.add_load_core_schema()?;
 

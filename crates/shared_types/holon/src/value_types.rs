@@ -22,6 +22,11 @@ impl fmt::Display for MapString {
         write!(f, "{}", self.0)
     }
 }
+impl MapString {
+    pub fn into_base_value(self) -> BaseValue {
+        BaseValue::StringValue(self)
+    }
+}
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq)]

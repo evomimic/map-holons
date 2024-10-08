@@ -220,30 +220,32 @@ impl HolonCollection {
         source_id, name.0.0.clone()
     );
         for holon_reference in &self.members {
-            // Handle the Result<Option<HolonId>, HolonError> returned by get_holon_id
-            match holon_reference.get_holon_id(context) {
-                Ok(Some(target_id)) => {
-                    let key_option = holon_reference.get_key(context)?;
-                    let input: SmartLink = if let Some(key) = key_option {
-                        let mut prop_vals: PropertyMap = BTreeMap::new();
-                        prop_vals.insert(
-                            PropertyName(MapString("key".to_string())),
-                            BaseValue::StringValue(key),
-                        );
-                        SmartLink {
-                            from_address: source_id.clone(),
-                            to_address: target_id,
-                            relationship_name: name.clone(),
-                            smart_property_values: Some(prop_vals),
-                        }
-                    } else {
-                        SmartLink {
-                            from_address: source_id.clone(),
-                            to_address: target_id,
-                            relationship_name: name.clone(),
-                            smart_property_values: None,
-                        }
-                    };
+
+            // Only commit references to holons with id's (i.e., Saved)
+            if let Ok(target_id) = holon_reference.get_holon_id() {
+                let key_option = holon_reference.get_key(context)?;
+                let input: SmartLink = if let Some(key) = key_option {
+                    let mut prop_vals: PropertyMap = BTreeMap::new();
+                    prop_vals.insert(
+                        PropertyName(MapString("key".to_string())),
+                        BaseValue::StringValue(key),
+                    );
+                    SmartLink {
+                        from_address: source_id.clone(),
+                        to_address: target_id,
+                        relationship_name: name.clone(),
+                        smart_property_values: Some(prop_vals),
+                    }
+                } else {
+                    SmartLink {
+                        from_address: source_id.clone(),
+                        to_address: target_id,
+                        relationship_name: name.clone(),
+                        smart_property_values: None,
+                    }
+                };
+
+
 
                     save_smartlink(input)?;
                 }

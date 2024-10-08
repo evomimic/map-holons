@@ -139,6 +139,15 @@ impl HolonReference {
     }
 
 
+    pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
+            HolonReference::Staged(_staged_reference) =>
+                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
+      }
+  }
+
+
     pub fn get_relationship_map(
         &mut self,
         context: &HolonsContext,
@@ -148,6 +157,7 @@ impl HolonReference {
             HolonReference::Staged(staged_reference) => {
                 staged_reference.get_relationship_map(context)
             }
+
         }
     }
 
