@@ -1,4 +1,5 @@
 use hdi::prelude::debug;
+
 use strum::IntoEnumIterator;
 use hdk::prelude::info;
 use holons::commit_manager::{CommitManager, CommitResponse};
@@ -12,7 +13,7 @@ use shared_types_holon::{MapString, PropertyName};
 
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
 use holons::holon::Holon;
-use holons::holon_api::get_all_holons;
+// use holons::holon_api::get_all_holons;
 use holons::json_adapter::as_json;
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 // use descriptors::holon_descriptor::{define_holon_type};
@@ -25,7 +26,7 @@ use crate::enum_type_loader::CoreEnumTypeName;
 // use crate::string_value_type_loader::CoreStringValueTypeName;
 // use crate::enum_type_loader::CoreEnumTypeName;
 // use crate::holon_type_loader::CoreHolonTypeName;
-use crate::holon_type_loader::CoreHolonTypeName::HolonType;
+// use crate::holon_type_loader::CoreHolonTypeName::HolonType;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::meta_type_loader::CoreMetaTypeName;
 use crate::property_type_loader::CorePropertyTypeName;
@@ -68,6 +69,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
         )?);
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
+
+
+    //context.local_holon_space.clone_from(source).borrow_mut().get_holon(commit_holon(staged_schema_ref.clone())?;
 
     let initial_load_set = get_initial_load_set();
 

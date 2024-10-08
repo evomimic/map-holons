@@ -5,10 +5,12 @@ use holons::query::NodeCollection;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
+use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use shared_types_holon::MapString;
+use crate::session_state::SessionState;
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -17,7 +19,7 @@ pub struct DanceResponse {
     pub description: MapString,
     pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
-    pub staging_area: StagingArea,
+    pub state: SessionState,
 }
 
 /// Define a standard set of statuses that may be returned by DanceRequests.
@@ -58,6 +60,7 @@ impl From<HolonError> for ResponseStatusCode {
         match error {
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
             HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::WasmError(_) => ResponseStatusCode::ServerError,
@@ -103,14 +106,22 @@ impl DanceResponse {
         description: MapString,
         body: ResponseBody,
         descriptor: Option<HolonReference>,
-        staging_area: StagingArea,
+        state: SessionState,
     ) -> DanceResponse {
         DanceResponse {
             status_code,
             description,
             body,
             descriptor,
-            staging_area,
+            state,
         }
+    }
+    /// Restores the session state within the DanceResponse from context. This should always
+    /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
+    /// between client and guest.
+    /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
+    pub fn restore_state(&mut self, context: &HolonsContext) {
+        self.state.set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
+        self.state.set_local_holon_space(context.get_local_holon_space());
     }
 }

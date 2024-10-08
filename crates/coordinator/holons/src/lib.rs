@@ -17,6 +17,9 @@ pub mod staged_reference;
 pub mod transient_collection;
 pub mod json_adapter;
 pub mod query;
+pub mod holon_space;
+pub mod holon_space_manager;
+
 
 
 use hdk::prelude::*;

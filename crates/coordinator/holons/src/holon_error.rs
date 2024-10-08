@@ -25,10 +25,10 @@ pub enum HolonError {
     IndexOutOfRange(String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
-    #[error("{0} parameter is not valid")]
-    InvalidParameter(String),
-    #[error("{0} is not a valid relationship for this source holon type {1}")]
-    InvalidRelationship(String, String), // TODO: move this error to ValidationError
+    #[error("Invalid Type, {0}")]
+    InvalidType(String),
+    #[error("{0} Not Implemented")]
+    NotImplemented(String),
     #[error("Miscellaneous error: {0}")]
     Misc(String),
     #[error("{0} relationship is missing StagedCollection")]
@@ -57,9 +57,14 @@ impl From<WasmError> for HolonError {
     }
 }
 
+// impl Into<WasmError> for HolonError {
+//     fn into(self) -> WasmError {
+//         wasm_error!("HolonError {:?}", self.to_string())
+//     }
+// }
 impl Into<WasmError> for HolonError {
     fn into(self) -> WasmError {
-        wasm_error!("HolonError {:?}", self.to_string())
+        wasm_error!(WasmErrorInner::Guest(self.to_string()))  // Correct usage of the `wasm_error!` macro
     }
 }
 
