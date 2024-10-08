@@ -41,7 +41,7 @@ pub async fn execute_delete_holon(
     let local_id = holon_to_delete.get_local_id().unwrap();
     // Build a stage_holon DanceRequest
     let delete_holon_request =
-        build_delete_holon_dance_request(test_state.staging_area.clone(), local_id.clone());
+        build_delete_holon_dance_request(&test_state.session_state, local_id.clone());
     debug!("delete_holon Dance Request: {:#?}", delete_holon_request);
 
     match delete_holon_request {
@@ -68,7 +68,7 @@ pub async fn execute_delete_holon(
                 Ok(_) => {
                     info!("Success! delete_holon returned OK response, confirming deletion...");
                     let get_holon_by_id_request = build_get_holon_by_id_dance_request(
-                        test_state.staging_area.clone(),
+                        &test_state.session_state,
                         HolonId::Local(local_id.clone()),
                     );
                     match get_holon_by_id_request {

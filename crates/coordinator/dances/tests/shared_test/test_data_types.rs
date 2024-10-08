@@ -9,6 +9,7 @@ use holons::relationship::RelationshipName;
 use shared_types_holon::{HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::VecDeque;
 use std::fmt;
+use dances::session_state::SessionState;
 
 #[derive(Clone, Debug)]
 pub struct DancesTestCase {
@@ -114,14 +115,14 @@ impl fmt::Display for DanceTestStep {
 }
 
 pub struct DanceTestState {
-    pub staging_area: StagingArea,
+    pub session_state: SessionState,
     pub created_holons: Vec<Holon>,
 }
 
 impl DanceTestState {
     pub fn new() -> DanceTestState {
         DanceTestState {
-            staging_area: StagingArea::new(),
+            session_state: SessionState::empty(),
             created_holons: Vec::new(),
         }
     }

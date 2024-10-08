@@ -52,7 +52,8 @@ pub async fn execute_remove_related_holons(
 
     // Get the state of the holon prior to dancing the request
     let source_holon = test_state
-        .staging_area
+        .session_state
+        .get_staging_area()
         .staged_holons
         .get(source_holon_index);
     if source_holon.is_none() {
@@ -67,7 +68,7 @@ pub async fn execute_remove_related_holons(
 
     // Build the DanceRequest
     let request = build_remove_related_holons_dance_request(
-        test_state.staging_area.clone(),
+        &test_state.session_state,
         source_holon_index,
         relationship_name,
         holons_to_remove,
@@ -82,7 +83,7 @@ pub async fn execute_remove_related_holons(
             info!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
 
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state.clone();
 
             assert_eq!(code, expected_response);
             info!(
@@ -97,7 +98,7 @@ pub async fn execute_remove_related_holons(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let source_holon = response.staging_area.staged_holons[index].clone();
+                    let source_holon = response.state.get_staging_area().staged_holons[index].clone();
 
                     assert_eq!(expected_holon, source_holon);
 

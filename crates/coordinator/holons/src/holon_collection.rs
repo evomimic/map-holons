@@ -5,7 +5,7 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use hdk::prelude::*;
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -221,7 +221,7 @@ impl HolonCollection {
         );
         for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
-            if let Ok(target_id) = holon_reference.get_holon_id(context) {
+            if let Ok(target_id) = holon_reference.get_holon_id() {
                 let key_option = holon_reference.get_key(context)?;
                 let input: SmartLink = if let Some(key) = key_option {
                     let mut prop_vals: PropertyMap = BTreeMap::new();

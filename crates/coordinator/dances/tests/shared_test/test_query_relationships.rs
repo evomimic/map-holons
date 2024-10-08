@@ -57,7 +57,7 @@ pub async fn execute_query_relationships(
                 };
 
                 let request = build_query_relationships_dance_request(
-                    test_state.staging_area.clone(),
+                    &test_state.session_state,
                     node_collection,
                     query_expression,
                 );
@@ -71,7 +71,7 @@ pub async fn execute_query_relationships(
                         debug!("Dance Response: {:#?}", response.clone());
                         let code = response.status_code;
                         let description = response.description.clone();
-                        test_state.staging_area = response.staging_area.clone();
+                        test_state.session_state = response.state.clone();
 
                         if let ResponseStatusCode::OK = code {
                             if let Collection(_node_collection) = response.body {

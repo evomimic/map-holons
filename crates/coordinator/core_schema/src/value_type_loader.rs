@@ -1,12 +1,11 @@
-use strum_macros::EnumIter;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::MapString;
-use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 
-use crate::core_schema_types::{SchemaNamesTrait};
+use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
+use crate::core_schema_types::SchemaNamesTrait;
 use crate::enum_type_loader::CoreEnumTypeName;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;

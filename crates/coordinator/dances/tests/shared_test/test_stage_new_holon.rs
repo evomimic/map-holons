@@ -41,7 +41,7 @@ pub async fn execute_stage_new_holon(
     // println!("{:#?}", expected_holon.clone());
     // Build a stage_holon DanceRequest
     let request = build_stage_new_holon_dance_request(
-        test_state.staging_area.clone(),
+        &test_state.session_state,
         expected_holon.clone(),
     );
     debug!("Dance Request: {:#?}", request);
@@ -52,7 +52,7 @@ pub async fn execute_stage_new_holon(
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
             debug!("Dance Response: {:#?}", response.clone());
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state.clone();
             let code = response.status_code;
             let description = response.description.clone();
             if let ResponseStatusCode::OK = code {
@@ -62,7 +62,7 @@ pub async fn execute_stage_new_holon(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let holons = response.staging_area.staged_holons;
+                    let holons = &response.state.get_staging_area().staged_holons;
                     assert_eq!(expected_holon, holons[index as usize]);
 
                     info!("Success! Holon has been staged, as expected");
