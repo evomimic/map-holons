@@ -207,8 +207,8 @@ impl HolonCollection {
         Ok(())
     }
 
-    /// This method creates smartlinks from the specified source_id for the specified relationship name
-    /// to each holon its collection that has a holon_id.
+    /// This method creates smartlinks from the specified source_id for the specified relationship
+    /// name to each holon its collection that has a holon_id.
     pub fn save_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
@@ -216,10 +216,11 @@ impl HolonCollection {
         name: RelationshipName,
     ) -> Result<(), HolonError> {
         debug!(
-            "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
-            source_id,name.0.0.clone()
-        );
+        "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
+        source_id, name.0.0.clone()
+    );
         for holon_reference in &self.members {
+
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id() {
                 let key_option = holon_reference.get_key(context)?;
@@ -244,11 +245,23 @@ impl HolonCollection {
                     }
                 };
 
-                save_smartlink(input)?;
+
+
+                    save_smartlink(input)?;
+                }
+                Ok(None) => {
+                    // Skip saving if get_holon_id returns None
+                    continue;
+                }
+                Err(e) => {
+                    // Return the error if get_holon_id fails
+                    return Err(e);
+                }
             }
         }
         Ok(())
     }
+
 
     /// The method
     pub fn commit_relationship(

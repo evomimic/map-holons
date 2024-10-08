@@ -15,16 +15,20 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 
-
-
-
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
+//<<<<<<< main
+//use core_schema::loader::load_core_schema;
+//use shared_types_holon::{MapString, MapInteger, PropertyMap};
+//use shared_types_holon::HolonId;
+//=======
+
 use core_schema::loader::load_core_schema;
-use shared_types_holon::{MapString, MapInteger, PropertyMap};
-use shared_types_holon::HolonId;
+use holons::relationship::RelationshipName;
+use shared_types_holon::{MapString};
+//>>>>>>> 139-use-descriptorid-in-propertymap-instead-of-propertyname
 use crate::dance_request::{DanceRequest, DanceType,RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::session_state::SessionState;

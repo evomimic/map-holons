@@ -16,10 +16,14 @@ pub mod smartlink;
 pub mod staged_reference;
 pub mod transient_collection;
 pub mod json_adapter;
-pub mod query;
-pub mod holon_space;
-pub mod holon_space_manager;
-
+//<<<<<<< main
+//pub mod query;
+//pub mod holon_space;
+//pub mod holon_space_manager;
+//
+//=======
+pub mod holon_property_map;
+//>>>>>>> 139-use-descriptorid-in-propertymap-instead-of-propertyname
 
 
 use hdk::prelude::*;

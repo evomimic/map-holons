@@ -2,8 +2,12 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName};
-
+//<<<<<<< main
+//use shared_types_holon::{BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName};
+//
+//=======
+use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName};
+//>>>>>>> 139-use-descriptorid-in-propertymap-instead-of-propertyname
 use std::{collections::BTreeMap, str};
 
 use crate::helpers::get_key_from_property_map;

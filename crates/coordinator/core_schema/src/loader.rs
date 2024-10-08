@@ -13,7 +13,7 @@ use shared_types_holon::{MapString, PropertyName};
 
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
 use holons::holon::Holon;
-// use holons::holon_api::get_all_holons;
+
 use holons::json_adapter::as_json;
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 // use descriptors::holon_descriptor::{define_holon_type};
@@ -22,23 +22,13 @@ use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 // use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
 use crate::enum_type_loader::CoreEnumTypeName;
-// use crate::integer_value_type_loader::CoreIntegerValueTypeName;
-// use crate::string_value_type_loader::CoreStringValueTypeName;
-// use crate::enum_type_loader::CoreEnumTypeName;
-// use crate::holon_type_loader::CoreHolonTypeName;
-// use crate::holon_type_loader::CoreHolonTypeName::HolonType;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::meta_type_loader::CoreMetaTypeName;
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
 use crate::value_type_loader::CoreValueTypeName;
-// use crate::meta_type_loader::CoreMetaTypeName;
-// use crate::meta_type_loader::CoreMetaTypeName::{MetaBooleanType, MetaEnumType, MetaEnumVariantType, MetaHolonCollectionType, MetaHolonType, MetaIntegerType, MetaPropertyType, MetaRelationshipType, MetaStringType, MetaType, MetaValueArrayType};
-// use crate::value_type_loader::CoreValueTypeName;
 
-
-//use descriptors::value_type_loader::load_core_value_types;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
 /// MAP L0 Schema Descriptors defined in `CoreSchemaNames`

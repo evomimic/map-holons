@@ -1,6 +1,6 @@
 use hdi::prelude::info;
 use strum_macros::EnumIter;
-// use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::TargetCollectionType;
+
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
@@ -9,7 +9,7 @@ use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
 use crate::core_schema_types::{SchemaNamesTrait};
-// use crate::holon_type_loader::CoreHolonTypeName::{DanceRequestType, DanceResponseType, HolonSpaceType, HolonType, PropertyType, RelationshipType, SchemaType};
+
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::property_type_loader::CorePropertyTypeName::{Description, DescriptorName, Name, TypeName};
 use crate::relationship_type_loader::CoreRelationshipTypeName;

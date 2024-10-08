@@ -12,15 +12,34 @@ use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
-use shared_types_holon::{BaseValue, MapString, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+#[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StagedReference {
     // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
 impl HolonGettable for StagedReference {
+    /// This method returns Some(HolonId) is the referenced holon has been Saved (and therefore
+    /// has been assigned a LocalId). Otherwise, it will return None unless some other error
+    /// is encountered.
+    fn get_holon_id(&self, context: &HolonsContext) -> Result<Option<HolonId>, HolonError> {
+        let commit_manager = context.commit_manager.borrow();
+        let holon = commit_manager.get_holon(&self)?;
+        let local_id = holon.get_local_id();
+        match local_id {
+            Ok(local_id) => {Ok(Some(HolonId::from(local_id)))}
+            Err(err) => {
+                if let HolonError::HolonNotFound(_) = err {
+                    Ok(None)
+                }
+                else {
+                    Err(err)
+                }
+            }
+        }
+    }
     fn get_property_value(
         &self,
         context: &HolonsContext,
@@ -87,6 +106,7 @@ impl StagedReference {
 
         Ok(holon_ref.clone())
     }
+
     pub fn with_property_value(
         &self,
         context: &HolonsContext,
