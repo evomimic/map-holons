@@ -35,6 +35,7 @@ pub trait HolonPropertyMapExt {
     /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
     /// does a lookup via the CoreSchema for its DescriptorId and then delegates the call to
     /// `get_property_value_by_id`.
+    #[deprecated]
     fn get_property_value(&self,
               _context: &HolonsContext,
               _property_name: &PropertyName
@@ -44,6 +45,7 @@ pub trait HolonPropertyMapExt {
     /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
     ///  does a lookup via the CoreSchema for its DescriptorId and then delegates the call to
     /// `with_property_value_by_id`.
+    #[deprecated]
     fn with_property_value(&mut self,
                            _context: &HolonsContext,
                            _property_name: &PropertyName,
