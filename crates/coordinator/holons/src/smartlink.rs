@@ -6,7 +6,7 @@ use holons_integrity::*;
 //use shared_types_holon::{BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName};
 //
 //=======
-use shared_types_holon::{BaseValue, HolonId, LocalId, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName};
 //>>>>>>> 139-use-descriptorid-in-propertymap-instead-of-propertyname
 use std::{collections::BTreeMap, str};
 
