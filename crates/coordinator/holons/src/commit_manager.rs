@@ -6,6 +6,7 @@ use std::rc::Rc;
 // use crate::cache_manager::HolonCacheManager;
 use crate::context::{self, HolonsContext};
 use crate::holon::{Holon, HolonState};
+use crate::holon_collection::CollectionState;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::json_adapter::as_json;
@@ -287,13 +288,36 @@ impl CommitManager {
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
     pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
-        let rc_holon = Rc::new(RefCell::new(holon.clone()));
+        let mut cloned_holon = holon.clone();
+        for (name, collection) in cloned_holon.relationship_map.0.iter_mut() {
+            let state = collection.get_state();
+            match state {
+                CollectionState::Fetched => {
+                    collection.to_staged()?;
+                }
+                CollectionState::Staged => {}
+                CollectionState::Saved | CollectionState::Abandoned => {
+                    return Err(HolonError::InvalidParameter(format!(
+                        "CollectionState::{:?}",
+                        state
+                    )))
+                }
+            }
+        }
+
+        let rc_holon = Rc::new(RefCell::new(cloned_holon));
         self.staged_holons.push(Rc::clone(&rc_holon));
+        trace!("Added to StagingArea, Holon: {:#?}", rc_holon);
         let holon_index = self.staged_holons.len() - 1;
         let holon_key: Option<MapString> = holon.get_key()?;
-        if let Some(key) = holon_key {
+        if let Some(key) = holon_key.clone() {
             self.keyed_index.insert(key.clone(), holon_index);
         }
+        trace!(
+            "Success! Holon staged, with key: {:?}, at index: {:?}",
+            holon_key,
+            holon_index
+        );
 
         Ok(StagedReference { holon_index })
     }

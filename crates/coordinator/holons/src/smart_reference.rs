@@ -88,7 +88,10 @@ impl SmartReference {
         debug!("Cache manager borrowed successfully");
 
         let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
-        debug!("Got a reference to rc_holon from the cache manager");
+        trace!(
+            "Got a reference to rc_holon from the cache manager: {:#?}",
+            rc_holon
+        );
 
         Ok(rc_holon)
     }
@@ -106,15 +109,61 @@ impl SmartReference {
         self.smart_property_values.clone()
     }
 
+    // /// Populates a full RelationshipMap by retrieving all SmartLinks for which this SmartReference is the
+    // /// source. The map returned will ONLY contain entries for relationships that have at least
+    // /// one related holon (i.e., none of the holon collections returned via the result map will have
+    // /// zero members).
+    // pub fn get_all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
+    //     let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
+
+    //     let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
+    //     let smartlinks = get_all_relationship_links(self.get_local_id()?)?;
+    //     debug!("Retrieved {:?} smartlinks", smartlinks.len());
+
+    //     for smartlink in smartlinks {
+    //         let reference = smartlink.to_holon_reference();
+
+    //         // The following:
+    //         // 1) adds an entry for relationship name if not already present (via `entry` API)
+    //         // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+    //         // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+    //         reference_map
+    //             .entry(smartlink.relationship_name)
+    //             .or_insert_with(Vec::new)
+    //             .push(reference);
+    //     }
+
+    //     // Now create the result
+
+    //     for (map_name, holon_reference) in reference_map {
+    //         let mut collection = HolonCollection::new_existing();
+    //         let key = holon_reference.get_key()?.ok_or_else(|| {
+    //             HolonError::Misc("Expected Smartlink to have a key, didn't get one.".to_string())
+    //         })?; // At least for now, all SmartLinks should be encoded with a key
+    //         collection.add_reference_with_key(key, holon_reference)?;
+    //         relationship_map.insert(map_name, collection);
+    //     }
+
+    //     Ok(relationship_map)
+    // }
+
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by creating a PREDECESSOR relationship.
     pub fn stage_new_version(
         &self,
         context: &HolonsContext,
     ) -> Result<StagedReference, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let cloned_holon = rc_holon.borrow().new_version()?;
 
-        let cloned_staged_reference = {
+        let mut cloned_holon = rc_holon.borrow().new_version()?;
+        cloned_holon.load_all_relationships(context)?;
+
+        trace!(
+            "Entering SmartReference::stage_new_version, here is the Cloned Holon: {:#?}",
+            cloned_holon
+        );
+
+        let new_version_staged_reference = {
             // Mutably borrow the commit_manager
             let mut commit_manager = match context.commit_manager.try_borrow_mut() {
                 Ok(commit_manager) => commit_manager,
@@ -131,16 +180,20 @@ impl SmartReference {
             commit_manager.stage_new_holon(cloned_holon)?
         };
 
-        // Set PREDECESSOR and return StagedReference
-        cloned_staged_reference.with_predecessor(context, Some(HolonReference::Smart(self.clone())))
+        // Set PREDECESSOR
+        new_version_staged_reference
+            .with_predecessor(context, Some(HolonReference::Smart(self.clone())))?;
+
+        Ok(new_version_staged_reference)
     }
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
     pub fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow().clone_holon()?;
+        let mut cloned_holon = rc_holon.borrow().clone_holon()?;
+        // cloned_holon.load_all_relationships(context)?;
 
-        Ok(holon)
+        Ok(cloned_holon)
     }
 }
 

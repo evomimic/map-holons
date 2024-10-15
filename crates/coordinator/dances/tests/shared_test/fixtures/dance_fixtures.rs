@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use crate::tracing::{error, info, warn};
 use core::panic;
 use dances::holon_dance_adapter::{Node, NodeCollection, QueryExpression};
 use holochain::core::author_key_is_valid;
@@ -246,15 +245,15 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         .insert(authored_by_relationship_name.clone(), one_in_collection);
 
     // // test invalid source holon
-    // let wrong_book_index: usize = 8;
-    // // the cache manager returns a IndexOutOfRange ServerError .. not a Notfound 404
-    // test_case.remove_related_holons_step(
-    //     wrong_book_index, // source holon
-    //     authored_by_relationship_name.clone(),
-    //     related_holons.to_vec(),
-    //     ResponseStatusCode::ServerError,
-    //     book_holon.clone(), //expected
-    // )?;
+    let wrong_book_index: usize = 8;
+    // the cache manager returns a IndexOutOfRange ServerError .. not a Notfound 404
+    test_case.remove_related_holons_step(
+        wrong_book_index, // source holon
+        authored_by_relationship_name.clone(),
+        related_holons.to_vec(),
+        ResponseStatusCode::ServerError,
+        book_holon.clone(), //expected
+    )?;
 
     // test invalid relationship name
     let wrong_relationship_name: RelationshipName = RelationshipName(MapString("WRONG".into()));
@@ -299,7 +298,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     test_case.add_ensure_database_count_step(MapInteger(3))?;
 
     //  QUERY RELATIONSHIPS  //
-
     let query_expression = QueryExpression::new(authored_by_relationship_name.clone());
     test_case.add_query_relationships_step(
         book_holon_key,

@@ -11,6 +11,7 @@ use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap,
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 
+
 #[derive(new, Clone, Debug)]
 pub struct TestHolonData {
     pub holon: Holon,

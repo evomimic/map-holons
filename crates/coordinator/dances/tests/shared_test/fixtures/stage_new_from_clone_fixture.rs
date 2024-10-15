@@ -1,5 +1,4 @@
 use dances::{dance_response::ResponseStatusCode, holon_dance_adapter::QueryExpression};
-use hdi::prelude::warn;
 use holons::{
     holon::Holon, holon_collection::HolonCollection, holon_error::HolonError,
     holon_reference::HolonReference, relationship::RelationshipName,
@@ -85,6 +84,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // //  ADD RELATIONSHIP: Cloned Book -> Publisher  //
     let published_by_relationship_name = RelationshipName(MapString("PUBLISHED_BY".to_string()));
+    let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
     // set expected
     let mut expected_book_holon = book_holon.clone();
     expected_book_holon.property_map = properties;
@@ -94,6 +94,11 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     expected_book_holon.relationship_map.0.insert(
         published_by_relationship_name.clone(),
         expected_publisher_holon_collection,
+    );
+    let mut expected_predecessor_holon_collection = HolonCollection::new_staged();
+    expected_book_holon.relationship_map.0.insert(
+        predecessor_relationship_name.clone(),
+        expected_predecessor_holon_collection,
     );
 
     test_case.add_related_holons_step(

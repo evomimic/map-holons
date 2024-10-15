@@ -2,7 +2,6 @@
 
 #![allow(dead_code)]
 
-use crate::tracing::{error, info, warn};
 use core::panic;
 use dances::holon_dance_adapter::{Node, NodeCollection, QueryExpression};
 use holons::helpers::*;

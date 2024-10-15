@@ -14,11 +14,11 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-// use std::borrow::Borrow;
-// use std::rc::Rc;
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use std::collections::BTreeMap;
-use std::rc::Rc;
 
 use derive_new::new;
 use hdk::prelude::*;
@@ -371,24 +371,22 @@ pub fn query_relationships_dance(
             let mut result_collection = NodeCollection::new_empty();
 
             for node in node_collection.members {
-                let related_holons_rc = node
+                let related_holons = node
                     .source_holon
                     .get_related_holons(context, &relationship_name)?;
 
-                let related_holons = Rc::clone(&related_holons_rc);
-
                 let mut query_path_map = QueryPathMap::new(BTreeMap::new());
 
+                let mut related_collection = NodeCollection::new_empty();
+
                 for reference in related_holons.get_members() {
-                    let mut related_collection = NodeCollection::new_empty();
                     related_collection
                         .members
-                        .push(Node::new(reference.clone(), None));
-                    query_path_map
-                        .0
-                        .insert(relationship_name.clone(), related_collection);
+                        .push(Node::new(reference.clone(), None)); // Defaulting Query Spec to None
                 }
-
+                query_path_map
+                    .0
+                    .insert(relationship_name.clone(), related_collection);
                 let new_node = Node::new(node.source_holon.clone(), Some(query_path_map));
                 result_collection.members.push(new_node);
             }
@@ -664,7 +662,7 @@ pub fn build_stage_new_holon_dance_request(
     ))
 }
 
-/// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
+/// Stages a new version of a Holon by cloning an existing Holon, retaining lineage to the Holon its cloned from.
 /// This operation is only allowed for smart references.
 ///
 /// *DanceRequest:*
@@ -683,8 +681,7 @@ pub fn stage_new_version_dance(
     debug!("== Entered stage_new_version dance ==");
 
     let smart_reference = match request.dance_type {
-        DanceType::NewVersionMethod(holon_id) => 
-            SmartReference::new(holon_id, None), // TODO: handle getting smart_prop_vals
+        DanceType::NewVersionMethod(holon_id) => SmartReference::new(holon_id, None), // TODO: handle getting smart_prop_vals
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
@@ -695,7 +692,6 @@ pub fn stage_new_version_dance(
     let staged_reference = smart_reference.stage_new_version(context)?;
 
     Ok(ResponseBody::Index(staged_reference.holon_index))
-
 }
 ///
 /// Builds a dance request for staging a new cloned Holon

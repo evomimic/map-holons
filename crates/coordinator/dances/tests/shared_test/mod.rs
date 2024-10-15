@@ -3,21 +3,22 @@
 pub mod fixtures;
 pub use fixtures::*;
 
+pub mod data_types;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
 pub mod test_commit;
-pub mod data_types;
 pub mod test_ensure_database_count;
 pub mod test_load_core_schema;
 pub mod test_match_db_content;
-pub mod test_stage_new_version;
 pub mod test_print_database;
 pub mod test_query_relationships;
 pub mod test_remove_related_holon;
 pub mod test_stage_new_from_clone;
 pub mod test_stage_new_holon;
+pub mod test_stage_new_version;
 pub mod test_with_properties_command;
 
+use data_types::DanceTestState;
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use holons::holon_reference::HolonGettable;
@@ -26,7 +27,6 @@ use holons::{
     relationship::RelationshipName,
 };
 use shared_types_holon::{HolonId, MapString};
-use data_types::DanceTestState;
 
 const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
 
@@ -56,4 +56,3 @@ pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
 
     (conductor, agent, cell)
 }
-

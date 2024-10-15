@@ -4,6 +4,7 @@ use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
+use core::fmt;
 use hdk::prelude::*;
 use shared_types_holon::{
     BaseValue, HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyName,
@@ -16,6 +17,17 @@ pub enum CollectionState {
     Staged,    // the links for this collection have not been persisted
     Saved,     // a staged collection for which SmartLinks have been successfully committed
     Abandoned, // a previously staged collection that was abandoned prior to being committed
+}
+
+impl fmt::Display for CollectionState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CollectionState::Fetched => write!(f, "Fetched"),
+            CollectionState::Staged => write!(f, "Staged"),
+            CollectionState::Saved => write!(f, "Saved"),
+            CollectionState::Abandoned => write!(f, "Abandoned"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -100,17 +112,12 @@ impl HolonCollection {
             },
         }
     }
-    pub fn to_staged(&self) -> Result<HolonCollection, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        if self.state == CollectionState::Fetched {
-            Ok(HolonCollection {
-                state: CollectionState::Staged,
-                members: self.members.clone(),
-                keyed_index: self.keyed_index.clone(),
-            })
-        } else {
-            Err(HolonError::InvalidParameter("CollectionState".to_string()))
-        }
+    pub fn to_staged(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        self.state = CollectionState::Staged;
+
+        Ok(())
     }
 
     pub fn get_by_index(&self, index: usize) -> Result<HolonReference, HolonError> {
@@ -136,6 +143,10 @@ impl HolonCollection {
 
     pub fn get_count(&self) -> MapInteger {
         MapInteger(self.members.len() as i64)
+    }
+
+    pub fn get_keyed_index(&self) -> BTreeMap<MapString, usize> {
+        self.keyed_index.clone()
     }
 
     /// Returns the current state of the HolonCollection.
@@ -239,15 +250,15 @@ impl HolonCollection {
         source_id: LocalId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
-        debug!(
+        info!(
             "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
-            source_id,name.0.0.clone()
+            source_id,name.0.0.clone() 
         );
         for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
             if let Ok(target_id) = holon_reference.get_holon_id(context) {
                 let key_option = holon_reference.get_key(context)?;
-                let input: SmartLink = if let Some(key) = key_option {
+                let smartlink: SmartLink = if let Some(key) = key_option {
                     let mut prop_vals: PropertyMap = BTreeMap::new();
                     prop_vals.insert(
                         PropertyName(MapString("key".to_string())),
@@ -267,8 +278,11 @@ impl HolonCollection {
                         smart_property_values: None,
                     }
                 };
-
-                save_smartlink(input)?;
+                debug!("saving smartlink: {:#?}", smartlink);
+                save_smartlink(smartlink)?;
+            }
+            else {
+                warn!("Tried to commit target : {:#?} without HolonId", holon_reference);
             }
         }
         Ok(())

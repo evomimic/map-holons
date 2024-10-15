@@ -11,6 +11,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, Prope
 use shared_types_holon::{HolonId, LocalId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
+use tracing::field::debug;
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
@@ -163,6 +164,10 @@ impl Holon {
     /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
     /// which retains lineage to its predecessor.
     pub fn new_version(&self) -> Result<Holon, HolonError> {
+        trace!(
+            "Entering Holon::new_version, here is the Holon before cloning: {:#?}",
+            self
+        );
         let mut holon = self.clone_holon()?;
         holon.state = HolonState::Changed;
 
@@ -552,10 +557,8 @@ impl Holon {
     /// source. The map returned will ONLY contain entries for relationships that have at least
     /// one related holon (i.e., none of the holon collections returned via the result map will have
     /// zero members).
-    pub fn load_all_relationships(
-        &mut self,
-        context: &HolonsContext,
-    ) -> Result<RelationshipMap, HolonError> {
+    pub fn load_all_relationships(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
+        debug!("Loading all relationships...");
         let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
 
         let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
@@ -583,8 +586,9 @@ impl Holon {
             collection.add_references(context, holons)?;
             relationship_map.insert(map_name, collection);
         }
+        self.relationship_map = RelationshipMap(relationship_map);
 
-        Ok(RelationshipMap(relationship_map))
+        Ok(())
     }
 
     /// Ensures that the holon's `relationship_map` includes an entry for the specified relationship
@@ -633,6 +637,7 @@ impl Holon {
                         // fetch the smartlinks for this relationship (if any)
                         let smartlinks =
                             get_relationship_links(self.get_local_id()?.0, relationship_name)?;
+                        debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
                         for smartlink in smartlinks {
                             let holon_reference = smartlink.to_holon_reference();
@@ -643,6 +648,7 @@ impl Holon {
                         }
                         // Add an entry for this relationship to relationship_map
                         let count = collection.get_count();
+                        debug!("Created Collection: {:#?}", collection);
                         self.relationship_map
                             .0
                             .insert(relationship_name.clone(), collection);
@@ -662,7 +668,7 @@ impl Holon {
     /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
         let holon_node = get_holon_node_from_record(holon_node_record.clone())?;
-        #[allow(unused_mut)]
+
         let mut holon = Holon {
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
@@ -671,8 +677,6 @@ impl Holon {
             relationship_map: RelationshipMap::new(),
             errors: Vec::new(),
         };
-
-        // TODO: Populate RelationshipMap from links
 
         // TODO: Populate Descriptor from links
 

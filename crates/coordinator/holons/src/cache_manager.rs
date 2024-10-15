@@ -5,10 +5,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 // use hdk::prelude::*;
 use quick_cache::unsync::Cache;
-use shared_types_holon::{HolonId, HolonSpaceId, ExternalId, LocalId};
+use shared_types_holon::{ExternalId, HolonId, HolonSpaceId, LocalId};
 
+use shared_types_holon::HolonId::{External, Local};
 use std::rc::Rc;
-use shared_types_holon::HolonId::{Local,External};
 
 #[derive(Debug)]
 pub struct HolonCache(Cache<HolonId, Rc<RefCell<Holon>>>);
@@ -38,23 +38,20 @@ impl HolonCacheManager {
     /// If HolonId is Local, return the local cache. Otherwise, extract the space_id from the
     /// External HolonId, and lookup the cache for that proxy in external_caches. Returns
     /// a HolonError::CacheError if this lookup fails.
-        fn get_cache(
-        &self,
-        holon_id: &HolonId,
-    ) -> Result<Rc<RefCell<HolonCache>>, HolonError> {
-
+    fn get_cache(&self, holon_id: &HolonId) -> Result<Rc<RefCell<HolonCache>>, HolonError> {
         match holon_id {
-            Local(_) => {Ok(Rc::clone(&self.local_cache))}
+            Local(_) => Ok(Rc::clone(&self.local_cache)),
             External(external_id) => {
-                return if let Some(external_cache)
-                    = self.external_caches.get(&external_id.space_id) {
+                return if let Some(external_cache) = self.external_caches.get(&external_id.space_id)
+                {
                     Ok(Rc::clone(external_cache))
                 } else {
-                    Err(HolonError::CacheError("No cache found for this proxy_id".to_string()))
+                    Err(HolonError::CacheError(
+                        "No cache found for this proxy_id".to_string(),
+                    ))
                 }
             }
         }
-
     }
 
     /// fetch_local_holon gets a specific HolonNode from the local persistent store based on its ActionHash, it then
@@ -95,7 +92,10 @@ impl HolonCacheManager {
             })?;
 
             // Check if the holon is already in the cache
-            debug!("Checking the cache for local_id: {:#?}", holon_id.local_id());
+            debug!(
+                "Checking the cache for local_id: {:#?}",
+                holon_id.local_id()
+            );
             if let Some(holon) = try_cache_borrow.0.get(holon_id) {
                 // Return a clone of the Rc<RefCell<Holon>> if found in the cache
                 return Ok(Rc::clone(holon));
@@ -106,12 +106,13 @@ impl HolonCacheManager {
         info!("Holon not cached, fetching holon");
 
         let fetched_holon = match holon_id {
-            Local(local_id) => {
-                HolonCacheManager::fetch_local_holon(local_id)?
-            }
+            Local(local_id) => HolonCacheManager::fetch_local_holon(local_id)?,
             External(_) => {
-                return Err(HolonError::NotImplemented("Fetch from external caches is not yet \
-                implemented:".to_string()))
+                return Err(HolonError::NotImplemented(
+                    "Fetch from external caches is not yet \
+                implemented:"
+                        .to_string(),
+                ))
             }
         };
         debug!("Holon with key {:?} fetched", fetched_holon.get_key());
@@ -131,7 +132,11 @@ impl HolonCacheManager {
             .insert(holon_id.clone(), Rc::new(RefCell::new(fetched_holon)));
 
         // Return a new Rc<RefCell<Holon>> containing the fetched holon
-        Ok(Rc::clone(cache_mut.0.get(holon_id).expect("Holon should be present in the cache")))
+        Ok(Rc::clone(
+            cache_mut
+                .0
+                .get(holon_id)
+                .expect("Holon should be present in the cache"),
+        ))
     }
-
 }

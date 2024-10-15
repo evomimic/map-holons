@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use dances::{dance_response::ResponseStatusCode, holon_dance_adapter::QueryExpression};
-use hdi::prelude::warn;
 use holons::{
     holon::Holon,
     holon_collection::HolonCollection,

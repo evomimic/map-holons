@@ -62,6 +62,7 @@ pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartL
         GetLinksInputBuilder::try_new(local_source_id.0.clone(), LinkTypes::SmartLink)?.build(),
     )
     .map_err(|e| HolonError::from(e))?;
+    debug!("Got {:?} links", links.len());
 
     for link in links {
         let smartlink = get_smartlink_from_link(local_source_id.0.clone(), link)?;
@@ -98,10 +99,11 @@ pub fn get_relationship_links(
     )
     .map_err(|e| HolonError::from(e))?;
 
-    debug!("got {:?} links", links.len());
+    debug!("Got {:?} # links", links.len());
     // Process each link to convert it into a SmartLink
     for link in links {
         let smartlink = get_smartlink_from_link(source_action_hash.clone(), link)?;
+        debug!("Got SmartLink {:?}", smartlink);
         smartlinks.push(smartlink);
     }
 
@@ -132,16 +134,22 @@ pub fn get_smartlink_from_link(
     Ok(smartlink)
 }
 
-pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
+pub fn save_smartlink(smartlink: SmartLink) -> Result<(), HolonError> {
     // TODO: convert proxy_id to string
 
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
 
-    let link_tag = encode_link_tag(input.relationship_name.clone(), input.smart_property_values)?;
-
+    let link_tag = encode_link_tag(
+        smartlink.relationship_name.clone(),
+        smartlink.smart_property_values,
+    )?;
+    warn!(
+        "saving smartlink... for relationship: {:?}",
+        smartlink.relationship_name.clone()
+    );
     create_link(
-        input.from_address.clone().0,
-        input.to_address.local_id().clone().0,
+        smartlink.from_address.clone().0,
+        smartlink.to_address.local_id().clone().0,
         LinkTypes::SmartLink,
         link_tag,
     )?;

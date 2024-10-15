@@ -5,14 +5,14 @@ use std::rc::Rc;
 
 use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
-use crate::holon::{AccessType, EssentialHolonContent, Holon};
+use crate::holon::{AccessType, EssentialHolonContent, Holon, HolonState};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
-use shared_types_holon::{BaseValue, MapString, PropertyValue};
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -85,6 +85,10 @@ impl StagedReference {
 
         // Borrow the holon from the RefCell
         let mut holon = rc_holon.borrow_mut();
+        trace!(
+            "Here is the RelationshipMap before adding related Holons: {:#?} \n\n",
+            holon.relationship_map
+        );
         debug!("In StagedReference::add_related_holons, getting collection for relationship name");
 
         // Ensure is accessible for Write
@@ -95,6 +99,8 @@ impl StagedReference {
         // Retrieve the editable collection for the specified relationship name
         if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
             collection.is_accessible(AccessType::Write)?;
+            collection.to_staged()?;
+            debug!("Collection after to_staged: {:?}", collection);
             collection.add_references(context, holons)?;
         } else {
             let mut collection = HolonCollection::new_staged();
@@ -105,6 +111,10 @@ impl StagedReference {
                 .0
                 .insert(relationship_name, collection);
         }
+        debug!(
+            "Here is the RelationshipMap after adding related Holons: {:#?}",
+            holon.relationship_map
+        );
 
         Ok(())
     }
@@ -128,6 +138,19 @@ impl StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         borrowed_holon.essential_content()
+    }
+
+    pub fn get_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        if borrowed_holon.state == HolonState::Saved {
+            Ok(HolonId::from(borrowed_holon.get_local_id()?))
+        } else {
+            Err(HolonError::NotAccessible(
+                "Id".to_string(),
+                format!("{:?}", borrowed_holon.state),
+            ))
+        }
     }
 
     pub fn get_predecessor(
@@ -232,7 +255,8 @@ impl StagedReference {
     /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
     pub fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let holon = self.get_rc_holon(context)?;
-        let cloned_holon = holon.borrow().clone_holon()?;
+        let mut cloned_holon = holon.borrow().clone_holon()?;
+        // cloned_holon.load_all_relationships(context)?;
 
         Ok(cloned_holon)
     }
@@ -270,23 +294,17 @@ impl StagedReference {
         &self,
         context: &HolonsContext,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
-    ) -> Result<Self, HolonError> {
+    ) -> Result<(), HolonError> {
         let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-        // let existing_predecessor_option = self.clone().get_predecessor(context)?;
-        // if let Some(predecessor) = existing_predecessor_option {
-        //     self.remove_related_holons(context, &relationship_name, vec![predecessor.clone()])?;
-        //     debug!("removed existing predecessor: {:#?}", predecessor);
-        // }
+        let existing_predecessor_option = self.clone().get_predecessor(context)?;
+        if let Some(predecessor) = existing_predecessor_option {
+            self.remove_related_holons(context, &relationship_name, vec![predecessor.clone()])?;
+            debug!("removed existing predecessor: {:#?}", predecessor);
+        }
         if let Some(predecessor_reference) = predecessor_reference_option {
             let holon = self.get_rc_holon(context)?;
             holon.borrow().is_accessible(AccessType::Write)?;
             // let relationship_name = CoreSchemaRelationshipTypeName::Predecessor.to_string();
-            self.add_related_holons(
-                context,
-                relationship_name.clone(),
-                vec![predecessor_reference.clone()],
-            )?;
-            debug!("added predecessor: {:#?}", predecessor_reference);
 
             self.add_related_holons(
                 context,
@@ -296,7 +314,7 @@ impl StagedReference {
             debug!("added predecessor: {:#?}", predecessor_reference);
         }
 
-        Ok(self.clone())
+        Ok(())
     }
 
     pub fn with_property_value(
