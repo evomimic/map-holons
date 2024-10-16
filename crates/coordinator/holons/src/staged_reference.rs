@@ -79,6 +79,8 @@ impl StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::add_related_holons");
+        // Ensure is accessible for Write
+        self.is_accessible(context, AccessType::Write)?;
 
         // Get mutable access to the source holon
         let rc_holon = self.get_rc_holon(context)?;
@@ -91,20 +93,14 @@ impl StagedReference {
         );
         debug!("In StagedReference::add_related_holons, getting collection for relationship name");
 
-        // Ensure is accessible for Write
-        holon.is_accessible(AccessType::Write)?;
-
         debug!("In StagedReference::add_related_holons, about to add the holons to the editable collections:");
 
         // Retrieve the editable collection for the specified relationship name
         if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
-            collection.is_accessible(AccessType::Write)?;
-            collection.to_staged()?;
             debug!("Collection after to_staged: {:?}", collection);
             collection.add_references(context, holons)?;
         } else {
             let mut collection = HolonCollection::new_staged();
-            collection.is_accessible(AccessType::Write)?;
             collection.add_references(context, holons)?;
             holon
                 .relationship_map
@@ -217,6 +213,18 @@ impl StagedReference {
         Ok(holon.relationship_map.clone())
     }
 
+    pub fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow();
+        holon.is_accessible(access_type)?;
+
+        Ok(())
+    }
+
     pub fn remove_related_holons(
         &self,
         context: &HolonsContext,
@@ -224,6 +232,8 @@ impl StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::remove_related_holons");
+        // Ensure is accessible for Write
+        self.is_accessible(context, AccessType::Write)?;
 
         // Get mutable access to the source holon
         let rc_holon = self.get_rc_holon(context)?;
@@ -233,9 +243,6 @@ impl StagedReference {
         debug!(
             "In StagedReference::remove_related_holons, getting collection for relationship name"
         );
-
-        // Ensure is accessible for Write
-        holon.is_accessible(AccessType::Write)?;
 
         debug!("In StagedReference::remove_related_holons, about to remove the holons from the editable collections:");
 
@@ -295,6 +302,7 @@ impl StagedReference {
         context: &HolonsContext,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
     ) -> Result<(), HolonError> {
+        self.is_accessible(context, AccessType::Write)?;
         let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
         let existing_predecessor_option = self.clone().get_predecessor(context)?;
         if let Some(predecessor) = existing_predecessor_option {
@@ -302,8 +310,6 @@ impl StagedReference {
             debug!("removed existing predecessor: {:#?}", predecessor);
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
-            let holon = self.get_rc_holon(context)?;
-            holon.borrow().is_accessible(AccessType::Write)?;
             // let relationship_name = CoreSchemaRelationshipTypeName::Predecessor.to_string();
 
             self.add_related_holons(

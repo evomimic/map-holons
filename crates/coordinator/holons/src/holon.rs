@@ -620,7 +620,7 @@ impl Holon {
                 // No entry found for this relationship
 
                 match self.get_state() {
-                    HolonState::New => {
+                    HolonState::New | HolonState::Changed => {
                         // Initialize a new holon_collection
                         let collection = HolonCollection::new_staged();
 
@@ -630,7 +630,7 @@ impl Holon {
                             .insert(relationship_name.clone(), collection.clone());
                         Ok(collection.get_count())
                     }
-                    HolonState::Fetched | HolonState::Changed => {
+                    HolonState::Fetched => {
                         // Initialize a new holon_collection
                         let mut collection = HolonCollection::new_existing();
 

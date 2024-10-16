@@ -229,6 +229,21 @@ impl HolonReference {
         }
     }
 
+    fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.is_accessible(context, access_type)
+            }
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.is_accessible(context, access_type)
+            }
+        }
+    }
+
     // /// Commit on HolonReference persists the reference as a SmartLink for the specified
     // /// relationship and source_id
     // /// This function assumes all StagedHolons have been committed before ANY relationships. Thus,

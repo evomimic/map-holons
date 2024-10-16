@@ -148,6 +148,14 @@ impl SmartReference {
     //     Ok(relationship_map)
     // }
 
+    pub fn is_accessible(&self, context: &HolonsContext, access_type: AccessType) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow();
+        holon.is_accessible(access_type)?;
+
+        Ok(())
+    }
+
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by creating a PREDECESSOR relationship.
     pub fn stage_new_version(
         &self,
