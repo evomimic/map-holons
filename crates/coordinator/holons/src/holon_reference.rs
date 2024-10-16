@@ -41,15 +41,20 @@ impl fmt::Display for HolonReference {
 }
 
 pub trait HolonGettable {
+
     fn get_holon_id(
         &self,
         context: &HolonsContext,
     ) -> Result<Option<HolonId>, HolonError>;
-    fn get_property_value(
-        &self,
+
+    /// This method gets a property value for a property whose descriptor is identified
+    /// by `property_id`.
+    fn get_property_value_by_descriptor(
+        &self, // the source holon
         context: &HolonsContext,
-        property_name: &PropertyName,
+        property_descriptor: &HolonReference,
     ) -> Result<PropertyValue, HolonError>;
+
 
     /// This function returns the primary key value for the holon or None if there is no key value
     /// for this holon (NOTE: Not all holon types have defined keys.)
@@ -59,12 +64,15 @@ pub trait HolonGettable {
 
     // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
 
-    /// In this method, &self is either a HolonReference, StagedReference, SmartReference or Holon that represents the source holon,
-    /// whose related holons are being requested. `relationship_name`, if provided, indicates the name of the relationship being navigated.
-    /// In the future, this parameter will be replaced with an optional reference to the RelationshipDescriptor for this relationship.
-    /// If None, then all holons related to the source holon across all of its relationships are retrieved.
-    /// This method populates the cached source holon's HolonCollection for the specified relationship if one is provided.
-    /// If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
+    /// In this method, &self is either a HolonReference, StagedReference, SmartReference or Holon
+    /// that represents the source holon, whose related holons are being requested.
+    /// `relationship_name`, if provided, indicates the name of the relationship being navigated.
+    /// In the future, this parameter will be replaced with an optional reference to the
+    /// RelationshipDescriptor for this relationship. If None, then all holons related to the source
+    /// holon across all of its relationships are retrieved. This method populates the cached source
+    /// holon's HolonCollection for the specified relationship if one is provided.
+    /// If relationship_name is None, the source holon's HolonCollections are populated for all
+    /// relationships that have related holons.
     fn get_related_holons(
         &self,
         context: &HolonsContext,
@@ -74,6 +82,7 @@ pub trait HolonGettable {
 
 
 impl HolonGettable for HolonReference {
+
     fn get_holon_id(&self,   context: &HolonsContext) -> Result<Option<HolonId>, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(context),
@@ -81,18 +90,17 @@ impl HolonGettable for HolonReference {
             // Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
         }
     }
-    fn get_property_value(
+
+    fn get_property_value_by_descriptor(
         &self,
         context: &HolonsContext,
-        property_name: &PropertyName,
+        property_descriptor: &HolonReference,
     ) -> Result<PropertyValue, HolonError> {
         match self {
-            HolonReference::Smart(smart_reference) => {
-                smart_reference.get_property_value(context, property_name)
-            }
-            HolonReference::Staged(staged_reference) => {
-                staged_reference.get_property_value(context, property_name)
-            }
+            HolonReference::Smart(smart_reference) => smart_reference
+                .get_property_value_by_descriptor(context, property_descriptor),
+            HolonReference::Staged(staged_reference) => staged_reference
+                .get_property_value_by_descriptor(context, property_descriptor),
         }
     }
 
@@ -137,16 +145,75 @@ impl HolonReference {
             )
         )
     }
+    /// The method returns the HolonDescriptor for self's referenced holon
+    fn get_descriptor(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<HolonReference, HolonError> {
+        let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
+        let collection = self
+            .get_related_holons(context, &relationship_name )?;
+        let members = collection.get_members();
+        match members.len() {
+            0 => Err(HolonError::NoDescriptor(format!(
+                "Holon with key {:?} has NO HolonDescriptors",
+                self.get_key(context)))),
+            1 => Ok(members[0].clone()),
+            _ => Err(HolonError::Misc(format!(
+                "Holon with key {:?} has >1 HolonDescriptors",
+                self.get_key(context)
+            )))
+
+        }
 
 
-    pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => Ok(smart_reference.get_holon_id_no_context()),
-            HolonReference::Staged(_staged_reference) =>
-                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
-      }
-  }
+    }
+    /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
+    /// does a lookup via this holon's HolonDescriptor to find the PropertyDescriptorId and then
+    /// delegates the call to `get_property_value_by_id`.
+    pub fn get_property_value(
+        &self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        let descriptor_reference = self
+            .get_property_descriptor_by_name(context, property_name)?;
+        self.get_property_value_by_descriptor(context, &descriptor_reference)
 
+    }
+    /// Private helper method that searches the source holon's descriptor's properties and either
+    /// returns a reference to the PropertyDescriptor whose name matches property_name or one of
+    /// the following HolonErrors:
+    /// * HolonError::NoSuchProperty -- No entry for the specified property name in the source holon's property descriptors
+    /// * HolonError::NoDescriptor -- Source holon (self) does not have a HolonDescriptor
+    ///
+    fn get_property_descriptor_by_name(
+        &self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<HolonReference, HolonError> {
+        // 1. Get a HolonReference to the HolonDescriptor for self
+        let holon_descriptor = self.get_descriptor(context)?;
+
+        // 2. Get the related holons for the "PROPERTIES" relationship
+        let relationship_name = RelationshipName(MapString("PROPERTIES".to_string()));
+        let collection = holon_descriptor.get_related_holons(
+            context,
+            &relationship_name)?;
+
+        // 3. Retrieve the property descriptor reference by key (property_name)
+        let property_name_string = MapString(property_name.to_string());
+        let property_descriptor_result = collection.get_by_key(&property_name_string);
+
+        // 4. Match on the result of `get_by_key`
+        match property_descriptor_result {
+            Ok(Some(property_descriptor_ref)) => Ok(property_descriptor_ref),  // Found the property descriptor
+            Ok(None) => Err(HolonError::NoSuchProperty(property_name.to_string())),  // No entry for the specified property name
+            Err(error) => Err(error),  // Error while retrieving the descriptor
+
+        }
+
+    }
 
     pub fn get_relationship_map(
         &mut self,
@@ -201,4 +268,52 @@ impl HolonReference {
     //     }
     // }
 }
+
+
+//
+// pub trait HolonPropertyMutators {
+//         /// This method assigns a value to the property identified by `property_id`
+//     /// It does NOT check if `property_id` is a valid property for the owner of this property map.
+//     /// Such validation checks are the owner's responsibility
+//     fn with_property_value_by_id(
+//         &mut self,
+//         property_id: &HolonId,
+//         value: PropertyValue
+//     ) -> &mut Self;
+//
+//
+//     /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
+//     /// does a lookup via this holon's HolonDescriptor to find the PropertyDescriptorId and then
+//     /// delegates the call to `with_property_value_by_id`.
+//     #[deprecated]
+//     fn with_property_value(&mut self,
+//                            _context: &HolonsContext,
+//                            _property_name: &PropertyName,
+//                            _value: PropertyValue
+//     ) -> Result<&mut Self, HolonError>;
+// }
+//
+// impl HolonPropertyMutators for HolonPropertyMap {
+//
+//     fn with_property_value_by_id(
+//         &mut self,
+//         property_id: HolonReference,
+//         value: PropertyValue
+//     ) -> &mut Self {
+//         self.insert(property_id, value);
+//         self
+//     }
+//
+//     fn with_property_value(&mut self,
+//                            _context: &HolonsContext,
+//                            _property_name: &PropertyName,
+//                            _value: PropertyValue
+//     ) -> Result<&mut Self, HolonError> {
+//         // Implementing this depends on being able to find and query the CoreSchema object
+//         // let schema = context.get_core_schema();
+//         // let descriptor_id = schema.get_related_holon_by_key(property_name)?;
+//         // Ok(with_property_value_by_id(self, descriptor_id, value))
+//         todo!()
+//     }
+// }
 

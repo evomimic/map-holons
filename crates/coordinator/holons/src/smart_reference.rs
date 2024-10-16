@@ -12,7 +12,7 @@ use crate::context::HolonsContext;
 use crate::holon::Holon;
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonGettable;
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 
 #[hdk_entry_helper]
@@ -83,7 +83,7 @@ impl SmartReference {
         Ok(holon_refcell.relationship_map.clone())
     }
 
-    // Private function for getting a mutable reference from the context
+    // Private function for getting direct access to the referenced holon
     fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
         Ok(context
             .cache_manager
@@ -95,32 +95,35 @@ impl SmartReference {
     }
 }
 impl HolonGettable for SmartReference {
+
     fn get_holon_id(&self, _context: &HolonsContext) -> Result<Option<HolonId>, HolonError> {
         Ok(Some(self.holon_id.clone()))
     }
-    /// This function gets the value for the specified property name
+
+    /// This function gets the value for the specified property descriptor
     /// It will attempt to get it from the smart_property_values map first to avoid having to
-    /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache manager in the context.
+    /// retrieve the underlying holon. But, failing that, it will get its referenced holon from
+    /// the cache and delegate the call to its referenced holon.
     ///
     /// Possible Errors:
-    /// This function returns an EmptyFiled error if no value is found for the specified property
+    /// This function returns an EmptyField error if no value is found for the specified property
     /// Or (less likely) an InvalidHolonReference
-    fn get_property_value(
+    fn get_property_value_by_descriptor(
         &self,
         context: &HolonsContext,
-        property_name: &PropertyName,
+        property_descriptor: &HolonReference,
     ) -> Result<PropertyValue, HolonError> {
+        // TODO: Issue #164 -- uncomment the following
         // Check if the property value is available in smart_property_values
-        if let Some(smart_map) = &self.smart_property_values {
-            if let Some(value) = smart_map.get(property_name) {
-                return Ok(value.clone());
-            }
-        }
+        // if let Some(smart_map) = &self.smart_property_values {
+        //     if let Some(value) = smart_map.get(property_descriptor) {
+        //         return Ok(value.clone());
+        //     }
+        // }
 
-        // Get rc_holon from HolonCacheManager
         let holon = self.get_rc_holon(context)?;
-        let prop_val = holon.borrow().get_property_value(property_name)?;
-        Ok(prop_val)
+        let holon_refcell = holon.borrow();
+        holon_refcell.get_property_value_by_descriptor(property_descriptor).clone()
     }
 
     /// This function extracts the key from the smart_property_values,

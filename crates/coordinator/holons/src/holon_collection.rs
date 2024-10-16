@@ -215,15 +215,16 @@ impl HolonCollection {
         source_id: LocalId,
         name: RelationshipName,
     ) -> Result<(), HolonError> {
-        debug!(
-            "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
-            source_id,name.0.0.clone()
-        );
+        info!(
+        "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
+        source_id, name.0.0.clone()
+    );
+
         for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
-            if let Ok(target_id) = holon_reference.get_holon_id() {
+            if let Some(target_id) = holon_reference.get_holon_id(context).ok().flatten() {
                 let key_option = holon_reference.get_key(context)?;
-                let input: SmartLink = if let Some(key) = key_option {
+                let smartlink: SmartLink = if let Some(key) = key_option {
                     let mut prop_vals: PropertyMap = BTreeMap::new();
                     prop_vals.insert(
                         PropertyName(MapString("key".to_string())),
@@ -243,12 +244,16 @@ impl HolonCollection {
                         smart_property_values: None,
                     }
                 };
-
-                save_smartlink(input)?;
+                debug!("saving smartlink: {:#?}", smartlink);
+                save_smartlink(smartlink)?;
+            } else {
+                warn!("Tried to commit target : {:#?} without HolonId", holon_reference);
             }
         }
+
         Ok(())
     }
+
 
 
 

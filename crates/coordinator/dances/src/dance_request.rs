@@ -4,6 +4,7 @@ use holons::cache_manager::HolonCacheManager;
 use holons::commit_manager::StagedIndex;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
+use holons::holon_property_map::HolonPropertyMap;
 use holons::holon_reference::HolonReference;
 use holons::query::{NodeCollection, QueryExpression};
 use holons::relationship::RelationshipName;
@@ -41,7 +42,7 @@ pub enum RequestBody {
     Holon(Holon),
     TargetHolons(RelationshipName, Vec<HolonReference>),
     HolonId(HolonId),
-    ParameterValues(PropertyMap),
+    ParameterValues(HolonPropertyMap),
     Index(StagedIndex),
     QueryExpression(QueryExpression),
 }
@@ -55,7 +56,7 @@ impl RequestBody {
         Self::Holon(holon)
     }
 
-    pub fn new_parameter_values(parameters: PropertyMap) -> Self {
+    pub fn new_parameter_values(parameters: HolonPropertyMap) -> Self {
         Self::ParameterValues(parameters)
     }
 

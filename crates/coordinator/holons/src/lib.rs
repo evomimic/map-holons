@@ -9,7 +9,7 @@ pub mod holon_collection;
 pub mod holon_error;
 pub mod holon_node;
 pub mod holon_reference;
-pub mod property_map;
+// pub mod property_map;
 pub mod relationship;
 pub mod smart_reference;
 pub mod smartlink;

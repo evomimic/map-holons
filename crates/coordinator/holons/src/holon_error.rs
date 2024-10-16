@@ -35,6 +35,10 @@ pub enum HolonError {
     Misc(String),
     #[error("{0} relationship is missing StagedCollection")]
     MissingStagedCollection(String),
+    #[error("No HolonDescriptor found for this Holon with id: {0}")]
+    NoDescriptor(String),
+    #[error("{0} is not a valid property identifier for this HolonType")]
+    NoSuchProperty(String),
     #[error("{0} access not allowed while holon is in {1} state")]
     NotAccessible(String, String),
     #[error("{0} Not Implemented")]

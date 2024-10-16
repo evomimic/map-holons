@@ -40,14 +40,14 @@ impl HolonGettable for StagedReference {
             }
         }
     }
-    fn get_property_value(
+    fn get_property_value_by_descriptor(
         &self,
         context: &HolonsContext,
-        property_name: &PropertyName,
+        property_descriptor: &HolonReference,
     ) -> Result<PropertyValue, HolonError> {
-        let binding = context.commit_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        holon.get_property_value(property_name)
+        let holon = self.get_rc_holon(context)?;
+        let holon_refcell = holon.borrow();
+        holon_refcell.get_property_value_by_descriptor(property_descriptor).clone()
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
@@ -63,7 +63,7 @@ impl HolonGettable for StagedReference {
         context: &HolonsContext,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
-        let holon = self.get_mut_holon(context)?;
+        let holon = self.get_rc_holon(context)?;
         let map = {
             let mut holon_ref = holon.borrow_mut();
             Rc::clone(&holon_ref.get_related_holons(relationship_name)?)
@@ -76,7 +76,7 @@ impl HolonGettable for StagedReference {
 
 impl StagedReference {
     pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
-        let holon_ref = self.get_mut_holon(context)?;
+        let holon_ref = self.get_rc_holon(context)?;
         let mut borrowed_holon = holon_ref.borrow_mut();
         borrowed_holon.commit()
     }
@@ -137,7 +137,7 @@ impl StagedReference {
         debug!("Entered StagedReference::add_related_holons");
 
         // Get mutable access to the source holon
-        let holon_ref = self.get_mut_holon(context)?;
+        let holon_ref = self.get_rc_holon(context)?;
 
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
@@ -175,7 +175,7 @@ impl StagedReference {
         debug!("Entered StagedReference::remove_related_holons");
 
         // Get mutable access to the source holon
-        let holon_ref = self.get_mut_holon(context)?;
+        let holon_ref = self.get_rc_holon(context)?;
 
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
@@ -209,27 +209,23 @@ impl StagedReference {
         Ok(holon.relationship_map.clone())
     }
 
-    pub fn get_mut_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        debug!("Entered: get_mut_holon, trying to get the commit_manager");
-        // let mut commit_manager = context.commit_manager.borrow_mut();
-        // Attempt to borrow commit_manager mutably
-        let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-            Ok(cm) => cm,
-            Err(e) => {
-                error!("Failed to borrow commit_manager mutably: {:?}", e);
-                return Err(HolonError::FailedToBorrow(format!("{:?}", e)));
-            }
-        };
+    /// This method allows direct access to the holon referenced by self. Use borrow() on the
+    /// Rc<RefCell<Holon> returned on an OK result to use the result immutably or borrow_mut() to
+    /// modify the holon.
+    pub fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        debug!("Entered: get_rc_holon, trying to get the commit_manager");
+
+        // Borrow the commit_manager immutably
+        let commit_manager = context.commit_manager.borrow();
 
         debug!("Commit manager borrowed successfully");
 
-        // Obtain the staged_holons vector from the CommitManager
-        let staged_holons = &mut commit_manager.staged_holons;
-        debug!("Got a reference to staged_holons from the commit manager");
+        // Obtain the staged_holons vector from the CommitManager immutably
+        let staged_holons = &commit_manager.staged_holons;
 
         // Attempt to get the holon at the specified index
         if let Some(holon_ref) = staged_holons.get(self.holon_index) {
-            // Return a clone of the holon reference
+            // Return a clone of the Rc<RefCell<Holon>>
             Ok(holon_ref.clone())
         } else {
             // If index is out of range, return an error
@@ -246,7 +242,7 @@ impl StagedReference {
             self.holon_index
         );
         // Get mutable access to the source holon
-        let holon_ref = self.get_mut_holon(context)?;
+        let holon_ref = self.get_rc_holon(context)?;
 
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
