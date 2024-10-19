@@ -51,7 +51,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     let mut expected_holons = Vec::new();
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count:i64  = 1;
+    let mut expected_count: i64 = 1;
 
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
@@ -118,11 +118,10 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     );
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count:i64  = 1;
+    let mut expected_count: i64 = 1;
 
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
-
 
     //
     // H1, H2, H3, etc. refer to order of Holons added to staging area.
@@ -298,7 +297,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     test_case.add_commit_step()?;
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-
     // Query Relationships //
 
     let query_expression = QueryExpression::new(authored_by_relationship_name.clone());
@@ -320,7 +318,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     );
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count:i64  = 1;
+    let mut expected_count: i64 = 1;
 
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;

@@ -18,7 +18,6 @@ use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
 use crate::session_state::SessionState;
 
-
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
 /// initializing the context from the session state and, after getting the result of the call,
@@ -30,7 +29,7 @@ use crate::session_state::SessionState;
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     info!("Entered Dancer::dance() with {:#?}", request);
 
-// -------------------------- ENSURE VALID REQUEST---------------------------------
+    // -------------------------- ENSURE VALID REQUEST---------------------------------
     let valid = true; // TODO: Validate the dance request
 
     if !valid {
@@ -43,8 +42,6 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
         );
         return Ok(response);
     }
-
-
 
     let context = request.init_context_from_state();
     let holon_space_manager = HolonSpaceManager::new(&context);
@@ -62,7 +59,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
             descriptor: None,         // Provide appropriate value if needed
             state: SessionState::restore_session_state_from_context(&context),
         };
-        return Ok(response)
+        return Ok(response);
     }
 
     // Get the Dancer
@@ -190,7 +187,10 @@ impl Dancer {
 /// * `state` is restored from context
 ///
 
-fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
+fn process_dispatch_result(
+    context: &HolonsContext,
+    dispatch_result: Result<ResponseBody, HolonError>,
+) -> DanceResponse {
     match dispatch_result {
         Ok(body) => {
             // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
@@ -203,7 +203,6 @@ fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<Resp
             }
         }
         Err(error) => {
-
             let error_message = extract_error_message(&error);
             // Construct DanceResponse with error details
             DanceResponse {
@@ -218,7 +217,7 @@ fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<Resp
 }
 /// This helper function extracts the error message from a HolonError so that the message
 /// can be included in the DanceResponse
-fn extract_error_message(error:&HolonError)->String {
+fn extract_error_message(error: &HolonError) -> String {
     match error.clone() {
         HolonError::EmptyField(_)
         | HolonError::InvalidParameter(_)
@@ -242,8 +241,5 @@ fn extract_error_message(error:&HolonError)->String {
         | HolonError::HashConversion(_, _)
         | HolonError::CacheError(_) => error.to_string(),
         HolonError::ValidationError(validation_error) => validation_error.to_string(),
-
-
     }
 }
-

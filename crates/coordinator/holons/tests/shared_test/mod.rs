@@ -3,7 +3,6 @@
 pub mod holon_fixtures;
 pub mod test_data_types;
 
-
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 

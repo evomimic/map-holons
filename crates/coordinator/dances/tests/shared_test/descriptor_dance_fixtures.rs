@@ -14,17 +14,16 @@
 #![allow(dead_code)]
 
 use core::panic;
+use dances::dance_response::ResponseStatusCode;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-use dances::dance_response::ResponseStatusCode;
 
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
@@ -40,8 +39,9 @@ use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 
-use shared_types_holon::{MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue};
-
+use shared_types_holon::{
+    MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
+};
 
 /// This function creates a set of simple (undescribed) holons
 ///
@@ -50,7 +50,6 @@ pub fn load_core_schema_test_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Load the MAP Core (L0) Schema Testcase".to_string(),
         "Bulk of work is on the guest-side load_core_schema function".to_string(),
-
     );
 
     //let mut expected_holons = Vec::new();
@@ -60,7 +59,6 @@ pub fn load_core_schema_test_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_core_schema()?;
 
     test_case.add_database_print_step()?;
-
 
     //expected_holons.push(book_holon.clone());
 

@@ -66,7 +66,6 @@ pub async fn execute_add_related_holons(
 
     // Create the expected_holon from the source_holon + the supplied related holons
 
-
     // Build the DanceRequest
     let request = build_add_related_holons_dance_request(
         &test_state.session_state,
@@ -99,7 +98,8 @@ pub async fn execute_add_related_holons(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let source_holon = response.state.get_staging_area().staged_holons[index].clone();
+                    let source_holon =
+                        response.state.get_staging_area().staged_holons[index].clone();
 
                     assert_eq!(expected_holon, source_holon);
 

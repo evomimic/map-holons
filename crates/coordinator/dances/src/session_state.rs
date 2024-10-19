@@ -1,13 +1,11 @@
-
 use hdk::prelude::*;
 // use serde::Serialize;
 
-
+use crate::staging_area::StagingArea;
 use hdi::hdk_entry_helper;
 use holons::cache_manager::HolonCacheManager;
 use holons::context::HolonsContext;
 use holons::holon_reference::HolonReference;
-use crate::staging_area::StagingArea;
 
 /// SessionState provides a way to distinguish information associated with a specific request from
 /// state info that is just being maintained via the ping pong process. This also should make it
@@ -16,7 +14,7 @@ use crate::staging_area::StagingArea;
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct SessionState {
-    staging_area : StagingArea,
+    staging_area: StagingArea,
     local_holon_space: Option<HolonReference>,
 }
 
@@ -27,10 +25,7 @@ impl SessionState {
             local_holon_space: None,
         }
     }
-    pub fn new(staging_area: StagingArea,
-               local_holon_space: Option<HolonReference>,
-
-    ) -> Self {
+    pub fn new(staging_area: StagingArea, local_holon_space: Option<HolonReference>) -> Self {
         Self {
             staging_area,
             local_holon_space,
@@ -45,17 +40,12 @@ impl SessionState {
     pub fn get_staging_area_mut(&mut self) -> &mut StagingArea {
         &mut self.staging_area
     }
-    pub fn init_context_from_state(&self)-> HolonsContext {
+    pub fn init_context_from_state(&self) -> HolonsContext {
         let commit_manager = self.staging_area.to_commit_manager();
 
         let local_holon_space = self.get_local_holon_space();
         //info!("initializing context");
-        HolonsContext::init_context(
-            commit_manager,
-            HolonCacheManager::new(),
-            local_holon_space,
-        )
-
+        HolonsContext::init_context(commit_manager, HolonCacheManager::new(), local_holon_space)
     }
     pub fn restore_session_state_from_context(context: &HolonsContext) -> SessionState {
         SessionState::new(
@@ -85,5 +75,4 @@ impl SessionState {
     pub fn set_staging_area(&mut self, staging_area: StagingArea) {
         self.staging_area = staging_area;
     }
-
 }

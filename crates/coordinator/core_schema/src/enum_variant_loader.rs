@@ -1,15 +1,20 @@
-use hdi::prelude::info;
-use strum_macros::EnumIter;
+use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::enum_variant_descriptor::{define_enum_variant_type, EnumVariantTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
+use hdi::prelude::info;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-use crate::core_schema_types::SchemaNamesTrait;
+use strum_macros::EnumIter;
 // use crate::enum_variant_loader;
-use crate::enum_variant_loader::CoreEnumVariantTypeName::{BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship, BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray, BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
+use crate::enum_variant_loader::CoreEnumVariantTypeName::{
+    BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship,
+    BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray,
+    BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray,
+    DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade,
+};
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreEnumVariantTypeName {
@@ -42,11 +47,14 @@ pub struct EnumVariantLoader {
 }
 
 impl SchemaNamesTrait for CoreEnumVariantTypeName {
-    fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+    fn load_core_type(
+        &self,
+        context: &HolonsContext,
+        schema: &HolonReference,
+    ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
         let loader = self.get_variant_loader();
         load_enum_variant_definition(context, schema, loader)
-
     }
     /// This method returns the unique type_name for this property type in "snake_case"
     fn derive_type_name(&self) -> MapString {
@@ -61,15 +69,18 @@ impl SchemaNamesTrait for CoreEnumVariantTypeName {
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {
-        panic!("This trait function is not intended to be used for this type. \
-        The 'label' for this type is explicitly defined in get_variant_loader()")
+        panic!(
+            "This trait function is not intended to be used for this type. \
+        The 'label' for this type is explicitly defined in get_variant_loader()"
+        )
     }
-
 
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
-        panic!("This trait function is not intended to be used for this type. \
-        The 'description' for this type is explicitly defined in get_variant_loader()")
+        panic!(
+            "This trait function is not intended to be used for this type. \
+        The 'description' for this type is explicitly defined in get_variant_loader()"
+        )
     }
 }
 
@@ -117,7 +128,7 @@ impl CoreEnumVariantTypeName {
                 owned_by: None,
                 variant_order: MapInteger(4),
             },
-            BaseTypeEnumVariant =>EnumVariantLoader {
+            BaseTypeEnumVariant => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
                 description: MapString("Describes a BaseType::EnumVariant".into()),
@@ -189,7 +200,7 @@ impl CoreEnumVariantTypeName {
                 owned_by: None,
                 variant_order: MapInteger(12),
             },
-            BaseTypeValueStringArray =>EnumVariantLoader {
+            BaseTypeValueStringArray => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
                 description: MapString("Describes a BaseType::ValueArray(String)".into()),
@@ -201,18 +212,24 @@ impl CoreEnumVariantTypeName {
             DeletionSemanticAllow => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Deleting a source holon has no impact on the \
-                holon(s) for this relationship.".into()),
+                description: MapString(
+                    "Deleting a source holon has no impact on the \
+                holon(s) for this relationship."
+                        .into(),
+                ),
                 label: MapString("Allow".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(1),
             },
-            DeletionSemanticBlock =>EnumVariantLoader {
+            DeletionSemanticBlock => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Prevent deletion of source_holon if any target_holons \
-                are related via this relationship.".into()),
+                description: MapString(
+                    "Prevent deletion of source_holon if any target_holons \
+                are related via this relationship."
+                        .into(),
+                ),
                 label: MapString("Block".into()),
                 described_by: None,
                 owned_by: None,
@@ -221,8 +238,11 @@ impl CoreEnumVariantTypeName {
             DeletionSemanticCascade => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("if source_holon is deleted, then also delete any \
-                target_holons related via this relationship.".into()),
+                description: MapString(
+                    "if source_holon is deleted, then also delete any \
+                target_holons related via this relationship."
+                        .into(),
+                ),
                 label: MapString("Cascade".into()),
                 described_by: None,
                 owned_by: None,
@@ -257,21 +277,15 @@ fn load_enum_variant_definition(
         variant_order: loader.variant_order,
     };
 
-    info!("Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone());
-    let staged_ref = define_enum_variant_type(
-        context,
-        schema,
-        definition,
-    )?;
+    info!(
+        "Preparing to stage descriptor for {:#?}",
+        loader.type_name.clone()
+    );
+    let staged_ref = define_enum_variant_type(context, schema, definition)?;
 
-    context.add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
+    context
+        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
         .expect("Unable to add reference to dance_state");
 
     Ok(staged_ref)
 }
-
-
-
-
-

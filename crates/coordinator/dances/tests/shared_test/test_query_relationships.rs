@@ -7,7 +7,7 @@ use dances::dance_response::ResponseBody::Collection;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_get_all_holons_dance_request, build_query_relationships_dance_request,
-    build_stage_new_holon_dance_request, build_with_properties_dance_request
+    build_stage_new_holon_dance_request, build_with_properties_dance_request,
 };
 use hdk::prelude::*;
 use holochain::sweettest::*;
@@ -45,11 +45,8 @@ pub async fn execute_query_relationships(
     match source_holon_id {
         Ok(holon_id) => {
             if let Some(id) = holon_id {
-                let holon_reference: HolonReference = HolonReference::Smart(SmartReference::new(
-                   id,
-                   None,
-                )
-                );
+                let holon_reference: HolonReference =
+                    HolonReference::Smart(SmartReference::new(id, None));
 
                 let node_collection = NodeCollection {
                     members: vec![Node::new(holon_reference, None)],

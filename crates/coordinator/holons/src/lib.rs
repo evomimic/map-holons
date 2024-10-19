@@ -9,18 +9,16 @@ pub mod holon_collection;
 pub mod holon_error;
 pub mod holon_node;
 pub mod holon_reference;
+pub mod holon_space;
+pub mod holon_space_manager;
+pub mod json_adapter;
 pub mod property_map;
+pub mod query;
 pub mod relationship;
 pub mod smart_reference;
 pub mod smartlink;
 pub mod staged_reference;
 pub mod transient_collection;
-pub mod json_adapter;
-pub mod query;
-pub mod holon_space;
-pub mod holon_space_manager;
-
-
 
 use hdk::prelude::*;
 use holons_integrity::*;

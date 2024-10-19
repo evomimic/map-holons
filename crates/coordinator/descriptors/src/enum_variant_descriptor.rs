@@ -5,20 +5,17 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapInteger, MapString, ValueType,
-};
 
 use crate::descriptor_types::CoreSchemaPropertyTypeName::{TypeName, VariantOrder};
-use crate::descriptor_types::{CoreSchemaRelationshipTypeName};
+use crate::descriptor_types::CoreSchemaRelationshipTypeName;
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 pub struct EnumVariantTypeDefinition {
-    pub header:TypeDescriptorDefinition,
+    pub header: TypeDescriptorDefinition,
     pub type_name: MapString, // unique variant name
     pub variant_order: MapInteger,
 }
-
 
 /// This function defines and stages (but does not persist) a new EnumVariantType
 /// It sets each of its properties based on supplied parameters.
@@ -39,7 +36,6 @@ pub fn define_enum_variant_type(
     schema: &HolonReference,
     definition: EnumVariantTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
-
     // ----------------  STAGE A NEW ENUM VARIANT TYPE DESCRIPTOR -------------------------------
     let enum_variant_type_descriptor_ref = define_type_descriptor(
         context,
@@ -64,8 +60,8 @@ pub fn define_enum_variant_type(
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
-        VariantOrder.as_property_name(),
-        BaseValue::IntegerValue(definition.variant_order),
+            VariantOrder.as_property_name(),
+            BaseValue::IntegerValue(definition.variant_order),
         )?;
 
     // Stage the type
@@ -79,13 +75,11 @@ pub fn define_enum_variant_type(
 
     // Add some relationships
 
-
-    enum_variant_type_ref
-        .add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-            vec![HolonReference::Staged(enum_variant_type_descriptor_ref)]
-        )?;
+    enum_variant_type_ref.add_related_holons(
+        context,
+        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        vec![HolonReference::Staged(enum_variant_type_descriptor_ref)],
+    )?;
 
     Ok(enum_variant_type_ref)
 }

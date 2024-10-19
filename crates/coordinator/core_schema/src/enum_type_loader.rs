@@ -1,15 +1,15 @@
-use hdi::prelude::info;
-use inflector::cases::snakecase::to_snake_case;
-use inflector::cases::titlecase::to_title_case;
-use strum_macros::EnumIter;
+use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::enum_descriptor::{define_enum_type, EnumTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
+use hdi::prelude::info;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use inflector::cases::snakecase::to_snake_case;
+use inflector::cases::titlecase::to_title_case;
 use shared_types_holon::{MapBoolean, MapString};
-use crate::core_schema_types::SchemaNamesTrait;
+use strum_macros::EnumIter;
 
 use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
@@ -31,8 +31,11 @@ pub struct EnumTypeLoader {
     pub variants: Vec<CoreEnumVariantTypeName>,
 }
 impl SchemaNamesTrait for CoreEnumTypeName {
-
-    fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+    fn load_core_type(
+        &self,
+        context: &HolonsContext,
+        schema: &HolonReference,
+    ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
         let loader = EnumTypeLoader {
             type_name: self.derive_type_name(),
@@ -44,7 +47,6 @@ impl SchemaNamesTrait for CoreEnumTypeName {
             variants: self.specify_variants(),
         };
         load_enum_type_definition(context, schema, loader)
-
     }
     /// This method returns the unique type_name for this property type in "snake_case"
     fn derive_type_name(&self) -> MapString {
@@ -64,16 +66,17 @@ impl SchemaNamesTrait for CoreEnumTypeName {
         MapString(to_title_case(&format!("{:?}", self)))
     }
 
-
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
         // use CoreEnumTypeName::*;
         // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
         match self {
             MapBaseType => MapString("Specifies the MAP BaseType of this object. ".to_string()),
-            DeletionSemanticType => MapString("Offers different options handling requests to delete a \
-            source Holon of  relationship.".to_string()),
-
+            DeletionSemanticType => MapString(
+                "Offers different options handling requests to delete a \
+            source Holon of  relationship."
+                    .to_string(),
+            ),
         }
     }
 }
@@ -102,19 +105,16 @@ impl CoreEnumTypeName {
                 ]
             }
 
-            ,
             DeletionSemanticType => {
                 vec![
                     DeletionSemanticAllow,
                     DeletionSemanticBlock,
                     DeletionSemanticCascade,
                 ]
-
-            },
+            }
         }
     }
 }
-
 
 /// This function handles the aspects of staging a new enum type definition that are common
 /// to all enum types. It assumes the type-specific parameters have been set by the caller.
@@ -142,28 +142,20 @@ fn load_enum_type_definition(
 
     // Add HolonReferences to the variants for this enum type
     for variant in loader.variants {
-        definition.variants.push(variant.lazy_get_core_type_definition(
-                context,
-                schema
-            )?);
+        definition
+            .variants
+            .push(variant.lazy_get_core_type_definition(context, schema)?);
     }
 
-    info!("Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone());
-    let staged_ref = define_enum_type(
-        context,
-        schema,
-        definition,
-    )?;
+    info!(
+        "Preparing to stage descriptor for {:#?}",
+        loader.type_name.clone()
+    );
+    let staged_ref = define_enum_type(context, schema, definition)?;
 
-
-    context.add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
+    context
+        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
         .expect("Unable to add reference to dance_state");
 
     Ok(staged_ref)
 }
-
-
-
-
-
