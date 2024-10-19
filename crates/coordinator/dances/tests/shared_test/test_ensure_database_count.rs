@@ -36,9 +36,7 @@ pub async fn execute_ensure_database_count(
     cell: &SweetCell,
     test_state: &mut DanceTestState,
     expected_count: MapInteger,
-
 ) {
-
     let expected_count_string = expected_count.0.to_string();
     let actual_count_string = "0".to_string();
     info!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
@@ -59,11 +57,10 @@ pub async fn execute_ensure_database_count(
                 let actual_count_string = actual_count.0.to_string();
 
                 info!("Success! DB has {actual_count_string} holons, as expected");
-
             } else {
                 panic!(
                     "Expected get_all_holons to return {:?} holons, but it returned {:?}",
-                    expected_count_string,actual_count_string
+                    expected_count_string, actual_count_string
                 );
             }
         }

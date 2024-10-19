@@ -50,7 +50,6 @@ impl SmartReference {
     //
     // }
 
-
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
@@ -122,7 +121,7 @@ impl HolonGettable for SmartReference {
             let holon = self.get_rc_holon(context)?;
             let key = holon.borrow().get_key()?;
             Ok(key)
-        }
+        };
     }
     // pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
     //     Ok(self
@@ -159,7 +158,6 @@ impl HolonGettable for SmartReference {
         };
         Ok(map)
     }
-
 
     // fn get_related_holons(
     //     &self,

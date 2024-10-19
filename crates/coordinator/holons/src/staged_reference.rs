@@ -51,8 +51,6 @@ impl HolonGettable for StagedReference {
         };
         Ok(map)
     }
-
-
 }
 
 impl StagedReference {
@@ -97,7 +95,9 @@ impl StagedReference {
         let commit_manager = context.commit_manager.borrow();
 
         // Get the holon from the CommitManager
-        let holon_rc = commit_manager.staged_holons.get(self.holon_index)
+        let holon_rc = commit_manager
+            .staged_holons
+            .get(self.holon_index)
             .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
 
         let mut holon_ref = holon_rc.borrow_mut();
@@ -145,12 +145,11 @@ impl StagedReference {
         Ok(())
     }
 
-    pub fn remove_related_holons(  
-        &self,  
-        context: &HolonsContext,   
+    pub fn remove_related_holons(
+        &self,
+        context: &HolonsContext,
         relationship_name: RelationshipName,
-        holons: Vec<HolonReference>,  
-     
+        holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::remove_related_holons");
 
@@ -159,7 +158,9 @@ impl StagedReference {
 
         // Borrow the holon from the RefCell
         let mut holon = holon_ref.borrow_mut();
-        debug!("In StagedReference::remove_related_holons, getting collection for relationship name");
+        debug!(
+            "In StagedReference::remove_related_holons, getting collection for relationship name"
+        );
 
         // Ensure is accessible for Write
         holon.is_accessible(AccessType::Write)?;
@@ -171,14 +172,13 @@ impl StagedReference {
             collection.is_accessible(AccessType::Write)?;
             collection.remove_references(context, holons)?;
         } else {
-            return Err(HolonError::InvalidRelationship(format!(
-                "Invalid relationship: {}",
-                &relationship_name
-            ),format!("For holon {:?}",&holon.descriptor)));
+            return Err(HolonError::InvalidRelationship(
+                format!("Invalid relationship: {}", &relationship_name),
+                format!("For holon {:?}", &holon.descriptor),
+            ));
         }
         Ok(())
     }
-
 
     pub fn get_relationship_map(
         &self,

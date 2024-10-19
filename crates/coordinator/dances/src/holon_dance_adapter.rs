@@ -195,9 +195,6 @@ pub fn remove_related_holons_dance(
     }
 }
 
-
-
-
 /// Builds a DanceRequest for removing related holons to a source_holon.
 pub fn build_remove_related_holons_dance_request(
     session_state: &SessionState,
@@ -213,7 +210,6 @@ pub fn build_remove_related_holons_dance_request(
         session_state.clone(),
     ))
 }
-
 
 ///
 /// Builds a DanceRequest for adding related holons to a source_holon.
@@ -249,17 +245,17 @@ pub fn query_relationships_dance(
 
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
-            let relationship_name = match request.body {
-                RequestBody::QueryExpression(expression) => expression.relationship_name,
-                _ => {
-                    return Err(HolonError::InvalidParameter(
+            let relationship_name =
+                match request.body {
+                    RequestBody::QueryExpression(expression) => expression.relationship_name,
+                    _ => return Err(HolonError::InvalidParameter(
                         "Invalid RequestBody: expected QueryExpression with relationship name, \
-                        didn't get one".to_string(),
-                    ))
-                }
-            };
+                        didn't get one"
+                            .to_string(),
+                    )),
+                };
 
-            let result_collection = evaluate_query(node_collection,context,relationship_name)?;
+            let result_collection = evaluate_query(node_collection, context, relationship_name)?;
             Ok(ResponseBody::Collection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
@@ -267,9 +263,6 @@ pub fn query_relationships_dance(
         )),
     }
 }
-
-
-
 
 // pub fn query_relationships_dance(
 //     context: &HolonsContext,
@@ -505,9 +498,7 @@ pub fn get_all_holons_dance(
     debug!("Entering get_all_holons dance..");
     let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => {
-            Ok(ResponseBody::Holons(holons))
-        },
+        Ok(holons) => Ok(ResponseBody::Holons(holons)),
         Err(holon_error) => Err(holon_error.into()),
     }
 }
@@ -607,7 +598,9 @@ pub fn commit_dance(
 ///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
-pub fn build_commit_dance_request(session_state: &SessionState) -> Result<DanceRequest, HolonError> {
+pub fn build_commit_dance_request(
+    session_state: &SessionState,
+) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
     Ok(DanceRequest::new(
         MapString("commit".to_string()),

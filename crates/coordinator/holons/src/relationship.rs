@@ -29,7 +29,10 @@ impl RelationshipMap {
         Self(BTreeMap::new())
     }
 
-    pub fn get_collection_for_relationship(&self, relationship_name: &RelationshipName) -> Option<&HolonCollection> {
+    pub fn get_collection_for_relationship(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Option<&HolonCollection> {
         self.0.get(&relationship_name)
     }
 }
@@ -148,8 +151,6 @@ pub struct SmartLinkHolder {
 //
 //     Ok(RelationshipMap(relationship_map))
 // }
-
-
 
 // Gets relationships optionally filtered by name
 // pub fn get_relationship_links(

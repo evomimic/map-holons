@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use hdk::prelude::*;
+use std::rc::Rc;
 
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
@@ -54,7 +54,6 @@ pub trait HolonGettable {
     ) -> Result<Rc<HolonCollection>, HolonError>;
 }
 
-
 impl HolonGettable for HolonReference {
     fn get_property_value(
         &self,
@@ -77,7 +76,6 @@ impl HolonGettable for HolonReference {
             HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
         }
     }
-
 
     fn get_related_holons(
         &self,
@@ -119,8 +117,9 @@ impl HolonReference {
     pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(_staged_reference) =>
-                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
+            HolonReference::Staged(_staged_reference) => Err(HolonError::HolonNotFound(
+                "HolonId not yet assigned for Staged Holons".to_string(),
+            )),
         }
     }
 
@@ -163,4 +162,3 @@ impl HolonReference {
     //     }
     // }
 }
-

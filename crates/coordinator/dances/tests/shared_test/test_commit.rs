@@ -31,10 +31,12 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 /// This function builds and dances a `stage_new_holon` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
-pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_state: &mut DanceTestState) ->() {
-
+pub async fn execute_commit(
+    conductor: &SweetConductor,
+    cell: &SweetCell,
+    test_state: &mut DanceTestState,
+) -> () {
     info!("\n\n--- TEST STEP: Committing Staged Holons ---- :");
-
 
     // Build a commit DanceRequest
     let request = build_commit_dance_request(&test_state.session_state);
@@ -68,7 +70,6 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
                     }
                     _ => panic!("Invalid ResponseBody: {:?}", response.body),
                 }
-
             } else {
                 panic!("DanceRequest returned {code} for {description}");
             }

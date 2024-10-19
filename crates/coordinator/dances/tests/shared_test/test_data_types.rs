@@ -1,15 +1,15 @@
 use dances::dance_response::ResponseStatusCode;
-use holons::query::QueryExpression;
+use dances::session_state::SessionState;
 use dances::staging_area::StagingArea;
 use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::query::QueryExpression;
 use holons::relationship::RelationshipName;
 use shared_types_holon::{HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::VecDeque;
 use std::fmt;
-use dances::session_state::SessionState;
 
 #[derive(Clone, Debug)]
 pub struct DancesTestCase {
@@ -28,12 +28,12 @@ pub enum DanceTestStep {
         Holon,
     ), // Adds relationship between two Holons
     RemoveRelatedHolons(
-         StagedIndex,
-         RelationshipName, 
-         Vec<HolonReference>, 
-         ResponseStatusCode,
-         Holon
-    ), 
+        StagedIndex,
+        RelationshipName,
+        Vec<HolonReference>,
+        ResponseStatusCode,
+        Holon,
+    ),
     DatabasePrint, // Writes log messages for each holon in the persistent store
     DeleteHolon(ResponseStatusCode),
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
@@ -176,7 +176,10 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::DatabasePrint);
         Ok(())
     }
-    pub fn add_delete_holon_step(&mut self, expected_response: ResponseStatusCode) -> Result<(), HolonError> {
+    pub fn add_delete_holon_step(
+        &mut self,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
         self.steps
             .push_back(DanceTestStep::DeleteHolon(expected_response));
         Ok(())

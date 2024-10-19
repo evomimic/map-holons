@@ -10,13 +10,13 @@ use shared_types_holon::{HolonId, MapString, PropertyValue};
 // `Create` test steps will trigger create and get tests
 #[derive(Clone, Debug)]
 pub struct HolonsTestCase {
-    pub steps : Vec<HolonTestStep>,
+    pub steps: Vec<HolonTestStep>,
 }
 #[derive(Clone, Debug)]
 pub enum HolonTestStep {
-    EnsureEmpty(), // Does a get_all_holons to confirm database is empty
-    Create(Holon), // Associated data is expected Holon
-    Update(Holon), // Associated data is expected Holon after update
+    EnsureEmpty(),   // Does a get_all_holons to confirm database is empty
+    Create(Holon),   // Associated data is expected Holon
+    Update(Holon),   // Associated data is expected Holon after update
     Delete(HolonId), // Associated data is id of Holon to delete
 }
 #[derive(Clone, Debug)]
@@ -25,8 +25,9 @@ pub enum HolonTestCase {
     Updates(HolonUpdatesTestCase),
 }
 #[derive(Clone, Debug)]
-pub struct HolonUpdatesTestCase { // this is equivalent to current HolonDescriptorTestCase
-pub original: Holon,
+pub struct HolonUpdatesTestCase {
+    // this is equivalent to current HolonDescriptorTestCase
+    pub original: Holon,
     pub updates: Vec<Holon>,
     // pub message_level: Level,
 }

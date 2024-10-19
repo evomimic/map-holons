@@ -12,8 +12,6 @@ pub const RELATIONSHIP_NAME_SEPARATOR: &str = "\u{0}"; // Unicode NUL character 
 pub const SMARTLINK_HEADER_BYTES: [u8; 3] = [226, 130, 183]; // Unicode '₷' // hex bytes: [0xE2][0x82][0xB7]
 pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
 
-
-
 pub fn validate_create_smartlink(
     _action: CreateLink,
     base_address: AnyLinkableHash,

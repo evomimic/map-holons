@@ -32,7 +32,7 @@ pub struct CommitResponse {
 impl CommitResponse {
     /// This helper method returns true if the supplied CommitResponse indicates that the commit
     /// was complete and false otherwise
-    pub fn is_complete(&self)->bool {
+    pub fn is_complete(&self) -> bool {
         match self.status {
             CommitRequestStatus::Complete => true,
             CommitRequestStatus::Incomplete => false,
@@ -49,17 +49,12 @@ impl CommitResponse {
             }
         }
         // Return an error if no matching Holon is found
-        Err(HolonError::HolonNotFound(
-            format!(
-                "No saved Holon with key {:?} was found in commit response",
-                k.to_string(),
-            ),
-
-        ))
+        Err(HolonError::HolonNotFound(format!(
+            "No saved Holon with key {:?} was found in commit response",
+            k.to_string(),
+        )))
     }
-
 }
-
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 /// *Complete* means all staged holons have been committed and staged_holons cleared
@@ -345,7 +340,6 @@ impl CommitManager {
     ) -> Result<RefMut<Holon>, HolonError> {
         self.get_mut_holon_internal(Some(staged_reference.holon_index))
     }
-
 
     // pub fn get_mut_holon_by_index(
     //     &self,

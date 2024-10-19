@@ -4,13 +4,11 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use shared_types_holon::value_types::{BaseType, BaseValue, MapString, ValueType};
 use shared_types_holon::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapString, ValueType,
-};
 
-use crate::descriptor_types::CoreSchemaPropertyTypeName::{TypeName};
-use crate::descriptor_types::{CoreSchemaRelationshipTypeName};
+use crate::descriptor_types::CoreSchemaPropertyTypeName::TypeName;
+use crate::descriptor_types::CoreSchemaRelationshipTypeName;
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 pub struct EnumTypeDefinition {
@@ -41,7 +39,6 @@ pub fn define_enum_type(
     schema: &HolonReference,
     definition: EnumTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
-
     // ----------------  STAGE A NEW ENUM TYPE DESCRIPTOR -------------------------------
     let enum_type_descriptor_ref = define_type_descriptor(
         context,
@@ -75,25 +72,20 @@ pub fn define_enum_type(
         .borrow_mut()
         .stage_new_holon(enum_type.clone())?;
 
-
     // Add its relationships
 
-    enum_type_ref
-        .add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-            vec![HolonReference::Staged(enum_type_descriptor_ref)]
-        )?;
-
+    enum_type_ref.add_related_holons(
+        context,
+        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        vec![HolonReference::Staged(enum_type_descriptor_ref)],
+    )?;
 
     // Add the variants to the EnumType
-    enum_type_ref
-        .add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::Variants.as_rel_name(),
-            definition.variants,
-        )?;
-
+    enum_type_ref.add_related_holons(
+        context,
+        CoreSchemaRelationshipTypeName::Variants.as_rel_name(),
+        definition.variants,
+    )?;
 
     Ok(enum_type_ref)
 }

@@ -40,10 +40,8 @@ pub async fn execute_stage_new_holon(
     info!("\n\n--- TEST STEP: Staging a new Holon:");
     // println!("{:#?}", expected_holon.clone());
     // Build a stage_holon DanceRequest
-    let request = build_stage_new_holon_dance_request(
-        &test_state.session_state,
-        expected_holon.clone(),
-    );
+    let request =
+        build_stage_new_holon_dance_request(&test_state.session_state, expected_holon.clone());
     debug!("Dance Request: {:#?}", request);
 
     match request {

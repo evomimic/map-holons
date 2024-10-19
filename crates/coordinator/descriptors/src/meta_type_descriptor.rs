@@ -7,9 +7,9 @@
 // use shared_types_holon::{BaseType, MapBoolean, MapInteger, MapString, ValueType};
 // use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 // use crate::descriptor_types::{CoreSchemaName, DeletionSemantic};
-use crate::property_descriptor::{PropertyTypeDefinition};
-use crate::relationship_descriptor::{RelationshipTypeDefinition};
-use crate::type_descriptor::{TypeDescriptorDefinition};
+use crate::property_descriptor::PropertyTypeDefinition;
+use crate::relationship_descriptor::RelationshipTypeDefinition;
+use crate::type_descriptor::TypeDescriptorDefinition;
 
 pub struct MetaTypeDefinition {
     pub header: TypeDescriptorDefinition,

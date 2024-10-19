@@ -90,7 +90,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
                 .await;
         }
     }
-        println!("SKIPPING REMAINDER OF TESTS... move them to Dance API tests");
+    println!("SKIPPING REMAINDER OF TESTS... move them to Dance API tests");
     //     let created_holon: Holon = conductor
     //         .call(&cell.zome("holons"), "commit", builder_holon.clone())
     //         .await;

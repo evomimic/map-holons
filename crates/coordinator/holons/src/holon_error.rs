@@ -66,7 +66,7 @@ impl From<WasmError> for HolonError {
 // }
 impl Into<WasmError> for HolonError {
     fn into(self) -> WasmError {
-        wasm_error!(WasmErrorInner::Guest(self.to_string()))  // Correct usage of the `wasm_error!` macro
+        wasm_error!(WasmErrorInner::Guest(self.to_string())) // Correct usage of the `wasm_error!` macro
     }
 }
 

@@ -1,16 +1,14 @@
-use CoreSchemaPropertyTypeName::TypeName;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapInteger, MapString, ValueType,
-};
+use CoreSchemaPropertyTypeName::TypeName;
 
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::descriptor_types::CoreSchemaPropertyTypeName::{MaxLength, MinLength};
+use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 pub struct StringTypeDefinition {
@@ -37,7 +35,6 @@ pub fn define_string_type(
     schema: &HolonReference,
     definition: StringTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
-
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_descriptor_ref = define_type_descriptor(
         context,
@@ -74,15 +71,12 @@ pub fn define_string_type(
         .borrow_mut()
         .stage_new_holon(string_type.clone())?;
 
-
     // Add some relationships
-    string_type_ref
-        .add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-            vec![HolonReference::Staged(type_descriptor_ref)]
-        )?;
-
+    string_type_ref.add_related_holons(
+        context,
+        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        vec![HolonReference::Staged(type_descriptor_ref)],
+    )?;
 
     Ok(string_type_ref)
 }

@@ -2,7 +2,9 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{
+    BaseValue, ExternalId, HolonId, HolonSpaceId, LocalId, MapString, PropertyMap, PropertyName,
+};
 
 use std::{collections::BTreeMap, str};
 
@@ -393,6 +395,7 @@ fn encode_link_tag_prolog(relationship_name: &RelationshipName) -> Result<LinkTa
 
     Ok(LinkTag(bytes))
 }
+
 
 // fn convert_link_type(link_type: LinkTypes) -> ScopedLinkType {
 //     match link_type {

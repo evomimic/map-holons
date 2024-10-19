@@ -1,14 +1,21 @@
+use crate::descriptor_types::CoreValueTypeName;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use shared_types_holon::MapString;
-use crate::descriptor_types::CoreValueTypeName;
 
 // TODO: Enhance to do a get from cache if not in dance_state
-pub fn get_core_value_type_descriptor_reference(context: &HolonsContext, value_type: CoreValueTypeName) -> Result<HolonReference, HolonError> {
+pub fn get_core_value_type_descriptor_reference(
+    context: &HolonsContext,
+    value_type: CoreValueTypeName,
+) -> Result<HolonReference, HolonError> {
     let key = MapString(value_type.as_str().to_string());
-    context.get_by_key_from_dance_state(&key)?
-        .ok_or_else(|| HolonError::HolonNotFound(format!("Couldn't find StagedReference for {:?} in dance_state", value_type.as_str())))
+    context.get_by_key_from_dance_state(&key)?.ok_or_else(|| {
+        HolonError::HolonNotFound(format!(
+            "Couldn't find StagedReference for {:?} in dance_state",
+            value_type.as_str()
+        ))
+    })
 }
 
 /*
