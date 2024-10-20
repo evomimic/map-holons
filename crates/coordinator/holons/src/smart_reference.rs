@@ -24,6 +24,13 @@ pub struct SmartReference {
 }
 
 impl SmartReference {
+    /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
+    pub fn new_from_id(holon_id: HolonId) -> Self {
+        SmartReference {
+            holon_id,
+            smart_property_values: None,
+        }
+    }
     pub fn clone_reference(&self) -> SmartReference {
         SmartReference {
             holon_id: self.holon_id.clone(),

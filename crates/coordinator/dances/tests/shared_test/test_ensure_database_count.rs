@@ -33,9 +33,10 @@ pub async fn execute_ensure_database_count(
     expected_count: MapInteger,
 ) {
     let expected_count_string = expected_count.0.to_string();
+    let actual_count_string = "0".to_string();
     info!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
     // Build a get_all_holons DanceRequest
-    let request = build_get_all_holons_dance_request(test_state.staging_area.clone());
+    let request = build_get_all_holons_dance_request(&test_state.session_state);
     debug!("Dance Request: {:#?}", request);
 
     match request {
@@ -43,17 +44,19 @@ pub async fn execute_ensure_database_count(
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state;
 
             if let Holons(holons) = response.body.clone() {
-                assert_eq!(MapInteger(holons.len() as i64), expected_count);
-                let actual_count = holons.len().to_string();
+                let actual_count = MapInteger(holons.len() as i64);
+                assert_eq!(expected_count, actual_count);
+                let actual_count_string = actual_count.0.to_string();
 
-                info!("Success! DB has {actual_count} holons, as expected");
+                info!("Success! DB has {actual_count_string} holons, as expected");
+
             } else {
                 panic!(
-                    "Expected get_all_holons to return Holons response, but it returned {:?}",
-                    response.body
+                    "Expected get_all_holons to return {:?} holons, but it returned {:?}",
+                    expected_count_string,actual_count_string
                 );
             }
         }

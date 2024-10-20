@@ -43,7 +43,7 @@ pub async fn execute_abandon_staged_changes(
 ) {
     info!("\n\n--- TEST STEP: Abandon Staged Changes ---");
     let request = build_abandon_staged_changes_dance_request(
-        test_state.staging_area.clone(),
+        &test_state.session_state,
         staged_index.clone(),
     );
 
@@ -54,7 +54,7 @@ pub async fn execute_abandon_staged_changes(
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state.clone();
 
             assert_eq!(response.status_code, expected_response);
 
@@ -65,7 +65,7 @@ pub async fn execute_abandon_staged_changes(
                     // Dance response was OK, confirm that operations disallowed for Holons in an
                     // Abandoned state return NotAccessible error.
                     if let ResponseBody::Index(staged_index) = response.body.clone() {
-                        match test_state.staging_area.get_holon_mut(staged_index) {
+                        match test_state.session_state.get_staging_area_mut().get_holon_mut(staged_index) {
                             Ok(abandoned_holon) => {
                                 // NOTE: We changed the access policies to ALLOW read access to
                                 // Abandoned holons, so disabling the following two checks

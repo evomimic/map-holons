@@ -33,7 +33,7 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
 
 
     // Build a commit DanceRequest
-    let request = build_commit_dance_request(test_state.staging_area.clone());
+    let request = build_commit_dance_request(&test_state.session_state);
     debug!("Dance Request: {:#?}", request);
 
     match request {
@@ -43,12 +43,12 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
                 .await;
 
             debug!("Dance Response: {:#?}", response.clone());
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state.clone();
             let code = response.status_code;
             let description = response.description.clone();
             if code == ResponseStatusCode::OK {
                 // Check that staging area is empty
-                assert!(response.staging_area.is_empty());
+                assert!(response.state.get_staging_area().staged_holons.is_empty());
 
                 info!("Success! Commit succeeded");
 

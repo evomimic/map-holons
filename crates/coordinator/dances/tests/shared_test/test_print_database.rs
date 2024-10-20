@@ -40,7 +40,7 @@ pub async fn execute_database_print(
     info!("\n\n--- TEST STEP: print database contents ---");
 
     // Build a get_all_holons DanceRequest
-    let request = build_get_all_holons_dance_request(test_state.staging_area.clone());
+    let request = build_get_all_holons_dance_request(&test_state.session_state);
     debug!("Dance Request: {:#?}", request);
 
     match request {
@@ -48,7 +48,7 @@ pub async fn execute_database_print(
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state.clone();
 
             if let Holons(holons) = response.body.clone() {
                 let actual_count = holons.len().to_string();

@@ -16,7 +16,6 @@ pub struct HolonCache(Cache<HolonId, Rc<RefCell<Holon>>>);
 #[derive(Debug)]
 pub struct HolonCacheManager {
     pub local_cache: Rc<RefCell<HolonCache>>,
-    // pub external_caches: HashMap<HolonSpaceId, HolonCache>,
     pub external_caches: HashMap<HolonSpaceId, Rc<RefCell<HolonCache>>>,
 }
 

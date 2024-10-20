@@ -36,7 +36,7 @@ pub async fn execute_load_new_schema(
     info!("\n\n--- TEST STEP: Loading Core Schema:");
     // println!("{:#?}", expected_holon.clone());
     // Build a stage_holon DanceRequest
-    let request = build_load_core_schema_dance_request(test_state.staging_area.clone());
+    let request = build_load_core_schema_dance_request(&test_state.session_state);
     debug!("Dance Request: {:#?}", request);
 
     match request {
@@ -47,7 +47,7 @@ pub async fn execute_load_new_schema(
             debug!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
             let description = response.description.clone();
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state.clone();
             if let ResponseStatusCode::OK = code {
                 if let ResponseBody::None = response.body.clone() {
                     info!("Success! Load Schema Completed without error");

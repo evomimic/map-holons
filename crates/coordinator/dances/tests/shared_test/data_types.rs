@@ -1,5 +1,5 @@
 use dances::dance_response::ResponseStatusCode;
-use dances::holon_dance_adapter::{NodeCollection, QueryExpression};
+use holons::query::QueryExpression;
 use dances::staging_area::StagingArea;
 use derive_new::new;
 use holons::commit_manager::StagedIndex;
@@ -7,9 +7,11 @@ use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
+use std::collections::VecDeque;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
+use dances::session_state::SessionState;
 
 
 #[derive(new, Clone, Debug)]
@@ -48,12 +50,15 @@ pub enum DanceTestStep {
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(
-        StagedIndex,
-        RelationshipName,
-        Vec<HolonReference>,
-        ResponseStatusCode,
-        Holon,
-    ),
+         StagedIndex,
+         RelationshipName, 
+         Vec<HolonReference>, 
+         ResponseStatusCode,
+         Holon
+    ), 
+    DatabasePrint, // Writes log messages for each holon in the persistent store
+    DeleteHolon(ResponseStatusCode),
+    EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     StageNewFromClone(TestReference, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
@@ -110,6 +115,15 @@ impl fmt::Display for DanceTestStep {
             ) => {
                 write!(f, "RemoveRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", index, relationship_name, holons_to_remove.len(), expected_response, expected_holon)
             }
+            DanceTestStep::DatabasePrint => {
+                write!(f, "DatabasePrint")
+            }
+            DanceTestStep::DeleteHolon(local_id) => {
+                write!(f, "DeleteHolon({:?})", local_id)
+            }
+            DanceTestStep::EnsureDatabaseCount(count) => {
+                write!(f, "EnsureDatabaseCount = {}", count.0)
+            }
             DanceTestStep::StageHolon(holon) => {
                 write!(f, "StageHolon({:#?})", holon)
             }
@@ -139,15 +153,15 @@ impl fmt::Display for DanceTestStep {
 }
 
 pub struct DanceTestState {
-    pub staging_area: StagingArea,
-    pub created_holons: BTreeMap<MapString, Holon>,
+    pub session_state: SessionState,
+    pub created_holons: Vec<Holon>,
 }
 
 impl DanceTestState {
     pub fn new() -> DanceTestState {
         DanceTestState {
-            staging_area: StagingArea::new(),
-            created_holons: BTreeMap::new(),
+            session_state: SessionState::empty(),
+            created_holons: Vec::new(),
         }
     }
 }
@@ -273,6 +287,24 @@ impl DancesTestCase {
             expected_response,
             expected_holon,
         ));
+        Ok(())
+    }
+    pub fn add_database_print_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::DatabasePrint);
+        Ok(())
+    }
+    pub fn add_delete_holon_step(&mut self, expected_response: ResponseStatusCode) -> Result<(), HolonError> {
+        self.steps
+            .push_back(DanceTestStep::DeleteHolon(expected_response));
+        Ok(())
+    }
+    pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {
+        self.steps
+            .push_back(DanceTestStep::EnsureDatabaseCount(count));
+        Ok(())
+    }
+    pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::MatchSavedContent);
         Ok(())
     }
 

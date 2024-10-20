@@ -8,10 +8,11 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::{HolonId, LocalId, MapInteger, MapString};
+use shared_types_holon::{LocalId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
 use tracing::field::debug;
+// use shared_validation::ValidationError;
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
@@ -327,11 +328,12 @@ impl Holon {
     }
 
     pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
-        let result = delete_holon_node(id.0);
-        match result {
-            Ok(result) => Ok(result),
-            Err(error) => Err(HolonError::WasmError(error.to_string())),
-        }
+        let record = get(id.0.clone(), GetOptions::default())
+            .map_err(|e| HolonError::from(e))?
+            .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
+        let mut holon = Holon::try_from_node(record)?;
+        holon.is_deletable()?;
+        delete_holon_node(id.0).map_err(|e| HolonError::from(e))
     }
 
     pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
@@ -416,7 +418,6 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        trace!(" in get_key()");
         let key = self
             .property_map
             .get(&PropertyName(MapString("key".to_string())));
@@ -424,7 +425,6 @@ impl Holon {
             let string_value: String = key.try_into().map_err(|_| {
                 HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
             })?;
-            trace!(" returning from get_key() with Some(key)");
             Ok(Some(MapString(string_value)))
         } else {
             trace!(" returning from get_key() with None");
@@ -552,6 +552,23 @@ impl Holon {
     //         errors: self.errors.clone(),
     //     }
     // }
+
+    pub fn is_deletable(&mut self) -> Result<(), HolonError> {
+        // let related_holons = self.get_all_related_holons()?;
+        // if !related_holons.0.is_empty() {
+        //     let relationships = related_holons
+        //         .0
+        //         .keys()
+        //         .map(|name| name.0 .0.clone())
+        //         .collect::<Vec<String>>()
+        //         .join(", ");
+
+        //     Err(HolonError::DeletionNotAllowed(relationships))
+        // } else {
+        //     Ok(())
+        // }
+        Ok(()) // always return Ok until support for get_all_related_holons
+    }
 
     /// Populates a full RelationshipMap by retrieving all SmartLinks for which this holon is the
     /// source. The map returned will ONLY contain entries for relationships that have at least

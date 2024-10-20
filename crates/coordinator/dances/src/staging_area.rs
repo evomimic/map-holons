@@ -1,12 +1,8 @@
 use hdk::prelude::*;
-use holons::commit_manager::{CommitManager, StagedIndex};
-use holons::holon::{Holon, HolonState};
+use holons::commit_manager::{CommitManager};
+use holons::holon::{Holon};
 use holons::holon_error::HolonError;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::MapString;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
+use shared_types_holon::{MapString};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -16,7 +12,8 @@ pub struct StagingArea {
 }
 
 impl StagingArea {
-    pub fn new() -> Self {
+
+    pub fn empty()->Self {
         StagingArea {
             staged_holons: Vec::new(),
             index: BTreeMap::new(),

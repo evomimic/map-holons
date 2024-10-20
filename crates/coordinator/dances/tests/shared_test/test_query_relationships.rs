@@ -5,8 +5,7 @@ use dances::dance_response::ResponseBody::Collection;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_get_all_holons_dance_request, build_query_relationships_dance_request,
-    build_stage_new_holon_dance_request, build_with_properties_dance_request, Node, NodeCollection,
-    QueryExpression,
+    build_stage_new_holon_dance_request, build_with_properties_dance_request
 };
 use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
@@ -22,6 +21,7 @@ use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
+use holons::query::{Node, NodeCollection, QueryExpression};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
@@ -55,12 +55,12 @@ pub async fn execute_query_relationships(
         query_spec: None,
     };
 
-    let request = build_query_relationships_dance_request(
-        test_state.staging_area.clone(),
-        node_collection,
-        query_expression,
-    ).expect("Unable to build a query_relationships request, got:");
-    debug!("Dance Request: {:#?}", request);
+                let request = build_query_relationships_dance_request(
+                    &test_state.session_state,
+                    node_collection,
+                    query_expression,
+                ).expect("Unable to build a query_relationships request, got:");
+                debug!("Dance Request: {:#?}", request);
 
     let response: DanceResponse = conductor
         .call(&cell.zome("dances"), "dance", request)
@@ -68,7 +68,7 @@ pub async fn execute_query_relationships(
     debug!("Dance Response: {:#?}", response.clone());
     let code = response.status_code;
     let description = response.description.clone();
-    test_state.staging_area = response.staging_area.clone();
+    test_state.session_state = response.state.clone();
     assert_eq!(
         expected_response, code,
         "DanceRequest returned {:?} for {:?}",

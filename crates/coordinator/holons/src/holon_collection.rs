@@ -252,11 +252,11 @@ impl HolonCollection {
     ) -> Result<(), HolonError> {
         info!(
             "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
-            source_id,name.0.0.clone() 
+            source_id,name.0.0.clone()
         );
         for holon_reference in &self.members {
             // Only commit references to holons with id's (i.e., Saved)
-            if let Ok(target_id) = holon_reference.get_holon_id(context) {
+            if let Ok(target_id) = holon_reference.get_holon_id() {
                 let key_option = holon_reference.get_key(context)?;
                 let smartlink: SmartLink = if let Some(key) = key_option {
                     let mut prop_vals: PropertyMap = BTreeMap::new();

@@ -85,6 +85,7 @@ use shared_types_holon::HolonId;
 #[case::load_core_schema(load_core_schema_test_fixture())]
 #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+#[case::delete_holon(delete_holon_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
@@ -92,6 +93,8 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     use test_stage_new_from_clone::execute_stage_new_from_clone;
     use test_stage_new_version::execute_stage_new_version;
     // use test_stage_new_version::execute_stage_new_version;
+
+    use test_delete_holon::execute_delete_holon;
     let _ = holochain_trace::test_run();
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
@@ -201,6 +204,16 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expected_holon,
                 )
                 .await
+            }
+            DanceTestStep::DatabasePrint => {
+                execute_commit(&conductor, &cell, &mut test_state).await
+            }
+            DanceTestStep::DeleteHolon(expected_response) => {
+                execute_delete_holon(&conductor, &cell, &mut test_state, expected_response).await
+            }
+            DanceTestStep::EnsureDatabaseCount(expected_count) => {
+                execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
+                    .await
             }
             DanceTestStep::StageHolon(holon) => {
                 execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await

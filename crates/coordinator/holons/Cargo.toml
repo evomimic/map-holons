@@ -28,7 +28,7 @@ serde_json = { workspace = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 async-std = "1.1.12"
 futures = { version = "0.3.1", default-features = false }
-holochain = { version = "0.3", default-features = false, features = ["test_utils",] }
+holochain = { version = "0.3", default-features = false, features = ["test_utils"] }
 pretty_assertions = "1.4.0"
 rstest = "0.21"
 tokio = { version = "1.35.1", features = ["full"] }

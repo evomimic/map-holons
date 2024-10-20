@@ -13,7 +13,7 @@ use crate::json_adapter::as_json;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
-use shared_types_holon::{MapInteger, MapString};
+use shared_types_holon::{LocalId, MapInteger, MapString};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitManager {
@@ -31,6 +31,37 @@ pub struct CommitResponse {
     pub saved_holons: Vec<Holon>, // should this be index? where else used?
     pub abandoned_holons: Vec<Holon>, // should this be index?
 }
+impl CommitResponse {
+    /// This helper method returns true if the supplied CommitResponse indicates that the commit
+    /// was complete and false otherwise
+    pub fn is_complete(&self)->bool {
+        match self.status {
+            CommitRequestStatus::Complete => true,
+            CommitRequestStatus::Incomplete => false,
+        }
+    }
+    pub(crate) fn find_local_id_by_key(&self, k: &MapString) -> Result<LocalId, HolonError> {
+        for holon in &self.saved_holons {
+            if let Some(key) = holon.get_key()? {
+                // Check if the key matches the given key `k`
+                if &key == k {
+                    // Return the LocalId if a match is found
+                    return holon.get_local_id();
+                }
+            }
+        }
+        // Return an error if no matching Holon is found
+        Err(HolonError::HolonNotFound(
+            format!(
+                "No saved Holon with key {:?} was found in commit response",
+                k.to_string(),
+            ),
+
+        ))
+    }
+
+}
+
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 /// *Complete* means all staged holons have been committed and staged_holons cleared
@@ -175,22 +206,6 @@ impl CommitManager {
         }
     }
 
-    // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
-    //     self.staged_holons.get(index.0 as usize)
-    // }
-    pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
-        let holons = &self.staged_holons;
-        let rc_holon = holons
-            .get(reference.holon_index)
-            .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
-
-        match rc_holon.try_borrow() {
-            Ok(holon) => Ok(holon),
-            Err(_) => Err(HolonError::FailedToBorrow(
-                "Holon Reference from staged_holons vector".to_string(),
-            )),
-        }
-    }
 
     /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the
     /// specified key.
@@ -209,6 +224,25 @@ impl CommitManager {
 
     /// Private helper function the encapsulates the logic for getting a mutable reference to a
     /// holon from a Staged
+    // pub fn get_staged_reference(&self, index:StagedIndex)->Result<StagedReference, HolonError> {
+    //     self.staged_holons.get(index.0 as usize)
+    // }
+    pub fn get_holon(&self, reference: &StagedReference) -> Result<Ref<Holon>, HolonError> {
+        let holons = &self.staged_holons;
+        let holon_ref = holons
+            .get(reference.holon_index)
+            .ok_or_else(|| HolonError::IndexOutOfRange(reference.holon_index.to_string()))?;
+
+        match holon_ref.try_borrow() {
+            Ok(holon) => Ok(holon),
+            Err(_) => Err(HolonError::FailedToBorrow(
+                "Holon Reference from staged_holons vector".to_string(),
+            )),
+        }
+    }
+
+    /// Private helper function that encapsulates the logic for getting a mutable reference to a
+    /// holon from a StagedReference
     fn get_mut_holon_internal(
         &self,
         holon_index: Option<StagedIndex>,

@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use core::panic;
-use dances::holon_dance_adapter::{Node, NodeCollection, QueryExpression};
+use holons::query::{QueryExpression};
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;

@@ -1,7 +1,8 @@
 use hdi::prelude::info;
+// use holons::smart_reference::SmartReference;
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
 use strum_macros::EnumIter;
-use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::CollectionFor;
+// use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::CollectionFor;
 // use inflector::cases::snakecase::to_snake_case;
 use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
@@ -16,13 +17,14 @@ use shared_types_holon::{MapBoolean, MapString};
 use crate::collection_type_loader::CollectionTypeSpec;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
-use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
+// use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
+// use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreRelationshipTypeName {
+    CoreSchema,
+    CoreSchemaFor,
     CollectionFor,
-
     Components,
     ComponentOf,
     // Dances,
@@ -105,6 +107,43 @@ impl CoreRelationshipTypeName {
         let label = self.derive_label();
 
         match self {
+            CoreSchemaFor => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("Specifies the HolonSpace(s) for which this Schema is used to create instances of L0 types.")
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(true),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::HolonSpaceType,
+                },
+                has_inverse: Some(CoreSchema), 
+            },
+            CoreSchema => RelationshipTypeLoader {
+                descriptor_name,
+                description : MapString(
+                    format!("Specifies the (single) Core Schema used to create instances of L0 types within this HolonSpace.")
+                ),
+                label,
+                described_by: None,
+                owned_by: None,
+                relationship_type_name,
+                source_owns_relationship: MapBoolean(false),
+                deletion_semantic: DeletionSemantic::Allow,
+                load_links_immediate: MapBoolean(false),
+                target_collection_type: CollectionTypeSpec{
+                    semantic: CollectionSemantic::SingleInstance,
+                    holon_type: CoreHolonTypeName::SchemaType,
+                },
+                has_inverse: None, // Should be None because `source_owns_relationship` is `false`
+
+            },
             CollectionFor => RelationshipTypeLoader {
                 descriptor_name,
                 description : MapString(

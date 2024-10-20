@@ -4,13 +4,19 @@ use hdk::prelude::*;
 
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
-use holons::cache_manager::HolonCacheManager;
 use holons::context::HolonsContext;
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
+use holons::holon_reference::HolonReference;
+use holons::holon_space;
+use holons::holon_space::HolonSpace;
+use holons::holon_space_manager::HolonSpaceManager;
 use shared_types_holon::MapString;
 
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-use crate::descriptors_dance_adapter::load_core_schema_dance;
+use crate::descriptors_dance_adapter::*;
+use crate::holon_dance_adapter::*;
+use crate::session_state::SessionState;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
@@ -23,34 +29,49 @@ use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
-/// initializing the context (including converting the StagingArea into CommitManager) and,
-/// after getting the result of the call, converting the CommitManager back into StagingArea.
+/// initializing the context from the session state and, after getting the result of the call,
+/// restoring the session state from the context.
 ///
 /// This function always returns a DanceResponse (instead of an Error) because
 /// errors are encoded in the DanceResponse's status_code.
-
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     info!("Entered Dancer::dance() with {:#?}", request);
+
+// -------------------------- ENSURE VALID REQUEST---------------------------------
     let valid = true; // TODO: Validate the dance request
 
     if !valid {
-        let response = DanceResponse {
-            status_code: ResponseStatusCode::BadRequest,
-            description: MapString("Invalid Request".to_string()),
-            body: ResponseBody::None,
-            descriptor: None,
-            staging_area: request.staging_area.clone(),
-        };
+        let response = DanceResponse::new(
+            ResponseStatusCode::BadRequest,
+            MapString("Invalid Request".to_string()),
+            ResponseBody::None,
+            None,
+            request.get_state().clone(),
+        );
         return Ok(response);
     }
 
-    // Initialize the context, mapping the StagingArea (if there is one) into a CommitManager
-    //info!("initializing commit_manager from staging_area");
-    let commit_manager = request.clone().staging_area.to_commit_manager();
-    // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
-    //info!("initializing context");
-    let context = HolonsContext::init_context(commit_manager, HolonCacheManager::new());
+
+
+    let context = request.init_context_from_state();
+    let holon_space_manager = HolonSpaceManager::new(&context);
+
+    // ------------------ ENSURE LOCAL HOLON SPACE IS IN CONTEXT ---------------------------------
+    let space_reference = holon_space_manager.ensure_local_holon_space_in_context();
+    if let Err(space_error) = space_reference {
+        let error_message = extract_error_message(&space_error);
+
+        // Construct DanceResponse with error details
+        let response = DanceResponse {
+            status_code: ResponseStatusCode::from(space_error), // Convert HolonError to ResponseStatusCode
+            description: MapString(error_message),
+            body: ResponseBody::None, // No body since it's an error
+            descriptor: None,         // Provide appropriate value if needed
+            state: SessionState::restore_session_state_from_context(&context),
+        };
+        return Ok(response)
+    }
 
     // Get the Dancer
     let dancer = Dancer::new();
@@ -68,10 +89,8 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     info!("dispatching dance");
     let dispatch_result = dancer.dispatch(&context, request.clone());
 
-    let mut result = process_dispatch_result(dispatch_result);
+    let mut result = process_dispatch_result(&context, dispatch_result);
 
-    // Restore the StagingArea from CommitManager
-    result.staging_area = StagingArea::from_commit_manager(&context.commit_manager.borrow());
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
     info!(
@@ -113,6 +132,7 @@ impl Dancer {
             add_related_holons_dance as DanceFunction,
         );
         dispatch_table.insert("commit", commit_dance as DanceFunction);
+        dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
@@ -174,12 +194,14 @@ impl Dancer {
 /// * `status_code` is set to Ok,
 /// * `description` is set to "Success".
 /// * `body` is set to the body returned in the dispatch_result
-/// * `descriptor`, and `staging_area` are all initialized to None
+/// * `descriptor` is all initialized to None
+/// * `state` is restored from context
 ///
 /// If the `dispatch_result` is `Err`,
-/// * status_code is set from the mapping of HolonError `ResponseStatusCode`
+/// * `status_code` is set from the mapping of HolonError `ResponseStatusCode`
 /// * `description` holds the error message associated with the HolonError
-/// * `body`, `descriptor` and `staging_area` are all set to None
+/// * `body` and `descriptor` are set to None
+/// * `state` is restored from context
 ///
 fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
@@ -189,43 +211,52 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
                 status_code: ResponseStatusCode::OK,
                 description: MapString("Success".to_string()),
                 body,
-                descriptor: None, // Provide appropriate value if needed
-                staging_area: StagingArea::new(), // Provide appropriate value if needed
+                descriptor: None,
+                state: SessionState::restore_session_state_from_context(context),
             }
         }
         Err(error) => {
-            // If the dispatch_result is an error, extract the associated string value
-            let error_message = match error.clone() {
-                HolonError::EmptyField(_)
-                | HolonError::InvalidParameter(_)
-                | HolonError::HolonNotFound(_)
-                | HolonError::CommitFailure(_)
-                | HolonError::WasmError(_)
-                | HolonError::RecordConversion(_)
-                | HolonError::InvalidHolonReference(_)
-                | HolonError::IndexOutOfRange(_)
-                | HolonError::NotImplemented(_)
-                | HolonError::Misc(_)
-                | HolonError::MissingStagedCollection(_)
-                | HolonError::FailedToBorrow(_)
-                | HolonError::UnableToAddHolons(_)
-                | HolonError::InvalidRelationship(_, _)
-                | HolonError::NotAccessible(_, _)
-                | HolonError::UnexpectedValueType(_, _)
-                | HolonError::Utf8Conversion(_, _)
-                | HolonError::HashConversion(_, _)
-                | HolonError::CacheError(_) => error.to_string(),
-                HolonError::ValidationError(validation_error) => validation_error.to_string(),
-            };
 
+            let error_message = extract_error_message(&error);
             // Construct DanceResponse with error details
             DanceResponse {
                 status_code: ResponseStatusCode::from(error), // Convert HolonError to ResponseStatusCode
                 description: MapString(error_message),
                 body: ResponseBody::None, // No body since it's an error
                 descriptor: None,         // Provide appropriate value if needed
-                staging_area: StagingArea::new(), // Provide appropriate value if needed
+                state: SessionState::restore_session_state_from_context(context),
             }
         }
     }
 }
+/// This helper function extracts the error message from a HolonError so that the message
+/// can be included in the DanceResponse
+fn extract_error_message(error:&HolonError)->String {
+    match error.clone() {
+        HolonError::EmptyField(_)
+        | HolonError::InvalidParameter(_)
+        | HolonError::HolonNotFound(_)
+        | HolonError::CommitFailure(_)
+        | HolonError::DeletionNotAllowed(_)
+        | HolonError::WasmError(_)
+        | HolonError::RecordConversion(_)
+        | HolonError::InvalidHolonReference(_)
+        | HolonError::InvalidType(_)
+        | HolonError::IndexOutOfRange(_)
+        | HolonError::NotImplemented(_)
+        | HolonError::Misc(_)
+        | HolonError::MissingStagedCollection(_)
+        | HolonError::FailedToBorrow(_)
+        | HolonError::UnableToAddHolons(_)
+        | HolonError::InvalidRelationship(_, _)
+        | HolonError::NotAccessible(_, _)
+        | HolonError::UnexpectedValueType(_, _)
+        | HolonError::Utf8Conversion(_, _)
+        | HolonError::HashConversion(_, _)
+        | HolonError::CacheError(_) => error.to_string(),
+        HolonError::ValidationError(validation_error) => validation_error.to_string(),
+
+
+    }
+}
+

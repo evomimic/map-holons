@@ -4,9 +4,12 @@ pub mod fixtures;
 pub use fixtures::*;
 
 pub mod data_types;
+pub mod book_authors_setup_fixture;
+pub mod descriptor_dance_fixtures;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
 pub mod test_commit;
+pub mod test_delete_holon;
 pub mod test_ensure_database_count;
 pub mod test_load_core_schema;
 pub mod test_match_db_content;

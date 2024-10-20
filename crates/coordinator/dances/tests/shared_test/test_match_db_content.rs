@@ -42,7 +42,7 @@ pub async fn execute_match_db_content(
         let holon_id : HolonId= expected_holon.get_local_id().unwrap().into();
         // Build a get_holon_by_id DanceRequest
         let request =
-            build_get_holon_by_id_dance_request(test_state.staging_area.clone(), holon_id.clone());
+            build_get_holon_by_id_dance_request(&test_state.session_state, holon_id.clone());
         info!("Dance Request: {:#?}", request);
 
         match request {
@@ -50,7 +50,7 @@ pub async fn execute_match_db_content(
                 let response: DanceResponse = conductor
                     .call(&cell.zome("dances"), "dance", valid_request)
                     .await;
-                test_state.staging_area = response.staging_area.clone();
+                test_state.session_state = response.state.clone();
 
                 if let ResponseBody::Holon(actual_holon) = response.body.clone() {
                     assert_eq!(
