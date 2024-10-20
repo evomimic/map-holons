@@ -4,7 +4,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{BaseType, BaseValue, MapBoolean, MapString, PropertyName};
+use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
@@ -50,10 +50,12 @@ pub fn define_property_type(
 
     property_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.property_name.0.clone()),
         )?
         .with_property_value(
+            context,
             CoreSchemaPropertyTypeName::PropertyTypeName.as_property_name(),
             BaseValue::StringValue(definition.property_name.0.clone()),
         )?
@@ -68,7 +70,7 @@ pub fn define_property_type(
     let property_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(property_type.clone())?;
+        .stage_new_holon(context, property_type.clone())?;
 
     // Populate the relationships
 

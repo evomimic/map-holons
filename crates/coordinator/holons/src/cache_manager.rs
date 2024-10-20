@@ -9,6 +9,7 @@ use shared_types_holon::{HolonId, HolonSpaceId, LocalId};
 
 use std::rc::Rc;
 use shared_types_holon::HolonId::{Local,External};
+use crate::context::HolonsContext;
 
 #[derive(Debug)]
 pub struct HolonCache(Cache<HolonId, Rc<RefCell<Holon>>>);
@@ -79,7 +80,8 @@ impl HolonCacheManager {
     ///
 
     pub fn get_rc_holon(
-        &self,
+        &mut self,
+        context: &HolonsContext,
         // holon_space_id: Option<&HolonId>,
         holon_id: &HolonId,
     ) -> Result<Rc<RefCell<Holon>>, HolonError> {
@@ -104,7 +106,7 @@ impl HolonCacheManager {
         // Holon not found in cache, fetch it
         info!("Holon not cached, fetching holon");
 
-        let fetched_holon = match holon_id {
+        let mut fetched_holon = match holon_id {
             Local(local_id) => {
                 HolonCacheManager::fetch_local_holon(local_id)?
             }
@@ -113,7 +115,7 @@ impl HolonCacheManager {
                 implemented:".to_string()))
             }
         };
-        debug!("Holon with key {:?} fetched", fetched_holon.get_key());
+        debug!("Holon with key {:?} fetched", fetched_holon.get_key(context));
 
         // Attempt to borrow the cache mutably
         let mut cache_mut = cache.try_borrow_mut().map_err(|e| {

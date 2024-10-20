@@ -101,12 +101,14 @@ pub fn add_related_holons_dance(
 /// None
 ///
 // In the absence of descriptors that can specify the DeletionSemantic,
-// this enhancement will adopt Allow as a default policy. When we have RelationshipDescriptors, we can use their properties
-// to drive a richer range of deletion behaviors.
+// this enhancement will adopt Allow as a default policy. When we have RelationshipDescriptors, we
+// can use their properties // to drive a richer range of deletion behaviors.
 //
-// NOTE: This dance implements an immediate delete. We may want to consider staging holons for deletion and postponing the actual deletion until commit.
-// This would allow the cascaded effects of the delete to be determined and shared with the agent, leaving them free to cancel the deletion if desired.
-// A staged deletion process would be more consistent with the staged creation process.
+// NOTE: This dance implements an immediate delete. We may want to consider staging holons for
+// deletion and postponing the actual deletion until commit. This would allow the cascaded effects
+// of the deletion to be determined and shared with the agent, leaving them free to cancel the
+// deletion if desired. A staged deletion process would be more consistent with the staged creation
+// process.
 pub fn delete_holon_dance(
     _context: &HolonsContext,
     request: DanceRequest,
@@ -378,7 +380,7 @@ pub fn stage_new_holon_dance(
     let staged_reference = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(new_holon)?;
+        .stage_new_holon(context, new_holon)?;
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
@@ -448,6 +450,7 @@ pub fn with_properties_dance(
                             // Populate parameters into the new Holon
                             for (property_name, base_value) in parameters {
                                 holon_mut.with_property_value(
+                                    context,
                                     property_name.clone(),
                                     base_value.clone(),
                                 )?;
@@ -550,10 +553,10 @@ pub fn get_holon_by_id_dance(
         }
     };
     info!("getting cache_manager from context");
-    let cache_manager = context.cache_manager.borrow();
+    let mut cache_manager = context.cache_manager.borrow_mut();
 
     info!("asking cache_manager to get rc_holon");
-    let rc_holon = cache_manager.get_rc_holon(&holon_id)?;
+    let rc_holon = cache_manager.get_rc_holon(context, &holon_id)?;
 
     let holon = rc_holon.borrow().clone();
     Ok(ResponseBody::Holon(holon))

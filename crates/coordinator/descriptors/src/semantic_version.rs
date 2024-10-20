@@ -1,6 +1,7 @@
 use derive_new::new;
 
 use hdk::prelude::*;
+use holons::context::HolonsContext;
 use holons::holon::Holon;
 
 use holons::holon_error::HolonError;
@@ -32,21 +33,24 @@ impl SemanticVersion {
 }
 
 
-pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon, HolonError> {
+pub fn set_semantic_version(context: &HolonsContext, major: i64, minor: i64, patch: i64) -> Result<Holon, HolonError> {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut version = Holon::new();
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     version
         .with_property_value(
+            context,
             PropertyName(MapString("major".to_string())),
             BaseValue::IntegerValue(MapInteger(major)),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("minor".to_string())),
             BaseValue::IntegerValue(MapInteger(minor)),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("patch".to_string())),
             BaseValue::IntegerValue(MapInteger(patch)),
         )?;

@@ -2,14 +2,18 @@ use dances::dance_response::ResponseStatusCode;
 use holons::query::QueryExpression;
 use dances::staging_area::StagingArea;
 use holons::commit_manager::StagedIndex;
-use holons::holon::{Holon, HolonState};
+use holons::holon::{EssentialHolonContent, Holon, HolonState, ValidationState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
+use holons::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::{HolonId, LocalId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::VecDeque;
 use std::fmt;
+use holochain_integrity_types::Record;
 use dances::session_state::SessionState;
+use holons::context::HolonsContext;
+use holons::holon_property_map::HolonPropertyMap;
+use holons::smart_reference::SmartReference;
 
 #[derive(Clone, Debug)]
 pub struct DancesTestCase {

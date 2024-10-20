@@ -2,7 +2,7 @@ use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::RelationshipMap;
 use crate::smart_reference::SmartReference;
-use shared_types_holon::{BaseValue, HolonId, PropertyMap};
+use shared_types_holon::{BaseValue, HolonId};
 
 use crate::holon::*;
 use crate::holon_collection::CollectionState;
@@ -10,6 +10,7 @@ use crate::holon_collection::CollectionState;
 use hdk::prelude::*;
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeMap, SerializeStruct};
+
 
 
 // Wrapper for HolonState
@@ -74,8 +75,7 @@ impl<'a> Serialize for SmartReferenceWrapper<'a> {
     {
         let mut state = serializer.serialize_struct("SmartReference", 2)?;
 
-        // D
-        // irectly use the HolonId from get_holon_id_no_context
+        // Directly use the HolonId from get_holon_id_no_context
         let holon_id = self.0.get_holon_id_no_context();
         state.serialize_field("holon_id", &HolonIdWrapper(&holon_id))?;
 
@@ -106,27 +106,48 @@ impl<'a> Serialize for HolonIdWrapper<'a> {
     }
 }
 
-// Wrapper for PropertyMap
-// Wrapper for PropertyMap
-struct PropertyMapWrapper<'a>(&'a PropertyMap);
+
+// Wrapper for HolonPropertyMap
+struct PropertyMapWrapper<'a>(&'a Holon);
 
 impl<'a> Serialize for PropertyMapWrapper<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
     {
-        let mut map = serializer.serialize_map(Some(self.0.len()))?;
-        for (k, v) in self.0 {
+        let mut map = serializer.serialize_map(None)?;
+
+        // Use the iterator from iter_properties() to access key-value pairs
+        for (k, v) in self.0.iter_properties() {
             match v {
-                BaseValue::StringValue(s) => map.serialize_entry(&k.0, &s.0)?,
-                BaseValue::BooleanValue(b) => map.serialize_entry(&k.0, &b.0)?,
-                BaseValue::IntegerValue(i) => map.serialize_entry(&k.0, &i.0)?,
-                BaseValue::EnumValue(e) => map.serialize_entry(&k.0, &e.0)?,
+                BaseValue::StringValue(s) => map.serialize_entry(&k, &s.0)?,
+                BaseValue::BooleanValue(b) => map.serialize_entry(&k, &b.0)?,
+                BaseValue::IntegerValue(i) => map.serialize_entry(&k, &i.0)?,
+                BaseValue::EnumValue(e) => map.serialize_entry(&k, &e.0)?,
             }
         }
+
         map.end()
     }
 }
+
+// impl<'a> Serialize for PropertyMapWrapper<'a> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//         where
+//             S: Serializer,
+//     {
+//         let mut map = serializer.serialize_map(Some(self.0.len()))?;
+//         for (k, v) in self.0 {
+//             match v {
+//                 BaseValue::StringValue(s) => map.serialize_entry(&k.0, &s.0)?,
+//                 BaseValue::BooleanValue(b) => map.serialize_entry(&k.0, &b.0)?,
+//                 BaseValue::IntegerValue(i) => map.serialize_entry(&k.0, &i.0)?,
+//                 BaseValue::EnumValue(e) => map.serialize_entry(&k.0, &e.0)?,
+//             }
+//         }
+//         map.end()
+//     }
+// }
 
 
 // Wrapper for RelationshipMap
@@ -238,7 +259,7 @@ pub fn as_json(holon: &Holon) -> String {
     let validation_state_wrapper = ValidationStateWrapper(&holon.validation_state);
     let saved_node_wrapper = SavedNodeWrapper(&holon.saved_node);
     let predecessor_wrapper = SmartReferenceOptionWrapper(&holon.predecessor);
-    let property_map_wrapper = PropertyMapWrapper(&holon.property_map);
+    let property_map_wrapper = PropertyMapWrapper(holon);
     let relationship_map_wrapper = RelationshipMapWrapper(&holon.relationship_map);
     let errors_wrappers: Vec<HolonErrorWrapper> = holon.errors.iter().map(|e| HolonErrorWrapper(e)).collect();
 

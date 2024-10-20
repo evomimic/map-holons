@@ -20,14 +20,14 @@ pub struct WithPropertyInput {
     pub value: BaseValue,
 }
 
-#[hdk_extern]
-pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
-    let mut holon = input.holon.clone();
-    match holon.with_property_value(input.property_name.clone(), input.value.clone()) {
-        Ok(_) => Ok(holon),
-        Err(holon_error) => Err(holon_error.into()),
-    }
-}
+// #[hdk_extern]
+// pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
+//     let mut holon = input.holon.clone();
+//     match holon.with_property_value(input.property_name.clone(), input.value.clone()) {
+//         Ok(_) => Ok(holon),
+//         Err(holon_error) => Err(holon_error.into()),
+//     }
+// }
 
 
 

@@ -58,10 +58,12 @@ pub fn define_enum_type(
 
     enum_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             TypeName.as_property_name(),
             BaseValue::StringValue(definition.type_name),
         )?;
@@ -73,7 +75,7 @@ pub fn define_enum_type(
     let enum_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(enum_type.clone())?;
+        .stage_new_holon(context, enum_type.clone())?;
 
 
     // Add its relationships

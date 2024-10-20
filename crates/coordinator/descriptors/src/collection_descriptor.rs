@@ -2,7 +2,7 @@ use hdi::prelude::debug;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::{HolonGettable, HolonReference};
+use holons::holon_reference::{HolonReference};
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{BaseType, PropertyName};
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
@@ -74,26 +74,32 @@ pub fn define_collection_type(
 
     collection_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(collection_type_name.clone()),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString(CoreSchemaPropertyTypeName::MaxCardinality.as_snake_case().to_string())),
             BaseValue::IntegerValue(definition.max_cardinality),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString(CoreSchemaPropertyTypeName::MinCardinality.as_snake_case().to_string())),
             BaseValue::IntegerValue(definition.min_cardinality),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString(CoreSchemaPropertyTypeName::AllowsDuplicates.as_snake_case().to_string())),
             BaseValue::BooleanValue(definition.allows_duplicates),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString(CoreSchemaPropertyTypeName::IsOrdered.as_snake_case().to_string())),
             BaseValue::BooleanValue(definition.is_ordered),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString(CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string())),
             BaseValue::StringValue(collection_type_name),
         )?;
@@ -105,7 +111,7 @@ pub fn define_collection_type(
     let collection_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(collection_type.clone())?;
+        .stage_new_holon(context, collection_type.clone())?;
 
 
     // Add its relationships

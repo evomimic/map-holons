@@ -1,3 +1,4 @@
+use holons::context::HolonsContext;
 /// MAP Schema objects maintain a set of MAP Descriptors
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
@@ -10,7 +11,7 @@ use shared_types_holon::value_types::{BaseValue, MapString};
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
-    pub fn new(name: MapString, description: MapString) -> Result<Schema, HolonError> {
+    pub fn new(context: &HolonsContext, name: MapString, description: MapString) -> Result<Schema, HolonError> {
         let mut schema_holon = Holon::new();
         let key_property_name: MapString = MapString("key".to_string());
         let name_property_name: MapString = MapString("name".to_string());
@@ -18,14 +19,17 @@ impl Schema {
 
         schema_holon
             .with_property_value(
+                context,
                 PropertyName(key_property_name),
                 BaseValue::StringValue(name.clone()),
             )?
             .with_property_value(
+                context,
                 PropertyName(name_property_name),
                 BaseValue::StringValue(name.clone()),
             )?
             .with_property_value(
+                context,
                 PropertyName(description_property_name),
                 BaseValue::StringValue(description),
             )?;

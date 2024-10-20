@@ -11,6 +11,14 @@ pub type SavedPropertyMap = BTreeMap<HolonId, PropertyValue>;
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PropertyName(pub MapString);
+
+impl From<&str> for PropertyName {
+    /// This is a convenience method that constructs a PropertyName from a &str
+    /// Example Usage : let property_name: PropertyName = "example_name".into();
+    fn from(s: &str) -> Self {
+        PropertyName(MapString(s.to_string()))
+    }
+}
 impl fmt::Display for PropertyName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Delegate formatting to the inner MapString
@@ -23,7 +31,7 @@ impl fmt::Display for PropertyName {
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct HolonNode {
-    pub property_map: PropertyMap,
+    //pub property_map: PropertyMap,
     pub saved_property_map: SavedPropertyMap,
 }
 

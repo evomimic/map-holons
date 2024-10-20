@@ -52,8 +52,8 @@ impl HolonGettable for StagedReference {
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.commit_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        holon.get_key().clone()
+        let mut holon = binding.get_mut_holon(&self)?;
+        holon.get_key(context).clone()
     }
 
     // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
@@ -66,7 +66,7 @@ impl HolonGettable for StagedReference {
         let holon = self.get_rc_holon(context)?;
         let map = {
             let mut holon_ref = holon.borrow_mut();
-            Rc::clone(&holon_ref.get_related_holons(relationship_name)?)
+            Rc::clone(&holon_ref.get_related_holons(context, relationship_name)?)
         };
         Ok(map)
     }
@@ -78,7 +78,7 @@ impl StagedReference {
     pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let holon_ref = self.get_rc_holon(context)?;
         let mut borrowed_holon = holon_ref.borrow_mut();
-        borrowed_holon.commit()
+        borrowed_holon.commit(context)
     }
 
     pub fn clone_reference(&self) -> StagedReference {
@@ -107,12 +107,39 @@ impl StagedReference {
         Ok(holon_ref.clone())
     }
 
+    /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
+    /// does a lookup via this holon's HolonDescriptor to get a HolonReference to the property's
+    /// PropertyDescriptor and then delegates the call to `get_property_value_by_descriptor`.
+    pub fn get_property_value(
+        &self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        let holon_ref = HolonReference::Staged(self.clone());
+        let descriptor_reference = holon_ref
+            .get_property_descriptor_by_name(context, property_name)?;
+        self.get_property_value_by_descriptor(context, &descriptor_reference)
+
+    }
+
     pub fn with_property_value(
         &self,
         context: &HolonsContext,
-        property: PropertyName,
+        property_name: PropertyName,
         value: BaseValue,
     ) -> Result<&Self, HolonError> {
+        let holon_ref = HolonReference::Staged(self.clone());
+        let descriptor_reference = holon_ref
+            .get_property_descriptor_by_name(context, &property_name)?;
+        self.with_property_value_by_descriptor(context, &descriptor_reference, value)
+    }
+    pub fn with_property_value_by_descriptor(
+        &self,
+        context: &HolonsContext,
+        property_descriptor: &HolonReference,
+        value: BaseValue,
+    ) -> Result<&Self, HolonError> {
+
         // Borrow the CommitManager immutably from the context
         let commit_manager = context.commit_manager.borrow();
 
@@ -123,7 +150,7 @@ impl StagedReference {
         let mut holon_ref = holon_rc.borrow_mut();
 
         // Call the Holon's with_property_value method
-        holon_ref.with_property_value(property, value)?;
+        holon_ref.with_property_value_by_descriptor(&property_descriptor, value)?;
 
         Ok(self)
     }

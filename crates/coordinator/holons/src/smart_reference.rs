@@ -12,6 +12,7 @@ use crate::context::HolonsContext;
 use crate::holon::Holon;
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
+use crate::holon_property_map::HolonPropertyMap;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 
@@ -68,10 +69,25 @@ impl SmartReference {
     }
 
 
-   pub fn get_property_map(&self, context: &HolonsContext) -> Result<PropertyMap, HolonError> {
+   pub fn get_holon_property_map(&self, context: &HolonsContext) -> Result<HolonPropertyMap, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_refcell = holon.borrow();
-        Ok(holon_refcell.property_map.clone())
+        Ok(holon_refcell.get_holon_property_map()?.clone())
+    }
+
+    /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
+    /// does a lookup via this holon's HolonDescriptor to get a HolonReference to the property's
+    /// PropertyDescriptor and then delegates the call to `get_property_value_by_descriptor`.
+    pub fn get_property_value(
+        &self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<PropertyValue, HolonError> {
+        let holon_ref = HolonReference::Smart(self.clone());
+        let descriptor_reference = holon_ref
+            .get_property_descriptor_by_name(context, property_name)?;
+        self.get_property_value_by_descriptor(context, &descriptor_reference)
+
     }
 
     pub fn get_relationship_map(
@@ -88,7 +104,7 @@ impl SmartReference {
         Ok(context
             .cache_manager
             .borrow_mut()
-            .get_rc_holon(&self.holon_id)?)
+            .get_rc_holon(context, &self.holon_id)?)
     }
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
         self.smart_property_values.clone()
@@ -135,12 +151,12 @@ impl HolonGettable for SmartReference {
                 Ok(Some(MapString(key.into())))
             } else {
                 let holon = self.get_rc_holon(context)?;
-                let key = holon.borrow().get_key()?;
+                let key = holon.borrow_mut().get_key(context)?;
                 Ok(key)
             }
         } else {
             let holon = self.get_rc_holon(context)?;
-            let key = holon.borrow().get_key()?;
+            let key = holon.borrow_mut().get_key(context)?;
             Ok(key)
         }
     }
@@ -175,7 +191,7 @@ impl HolonGettable for SmartReference {
         let holon = self.get_rc_holon(context)?;
         let map = {
             let mut holon_ref = holon.borrow_mut();
-            holon_ref.get_related_holons(relationship_name)?.clone()
+            holon_ref.get_related_holons(context, relationship_name)?.clone()
         };
         Ok(map)
     }

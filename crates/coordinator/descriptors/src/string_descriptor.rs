@@ -52,18 +52,22 @@ pub fn define_string_type(
 
     string_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             TypeName.as_property_name(),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             MinLength.as_property_name(),
             BaseValue::IntegerValue(definition.min_length),
         )?
         .with_property_value(
+            context,
             MaxLength.as_property_name(),
             BaseValue::IntegerValue(definition.max_length),
         )?;
@@ -72,7 +76,7 @@ pub fn define_string_type(
     let string_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(string_type.clone())?;
+        .stage_new_holon(context, string_type.clone())?;
 
 
     // Add some relationships

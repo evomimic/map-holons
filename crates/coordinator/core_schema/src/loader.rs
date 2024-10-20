@@ -52,6 +52,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
 
     let schema = Schema::new(
+        context,
         CoreSchemaName::SchemaName.as_map_string(),
         MapString("The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string()),
     )?;
@@ -60,7 +61,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     let staged_schema_ref = HolonReference::Staged(context
         .commit_manager
         .borrow_mut().
-        stage_new_holon(schema.0.clone()
+        stage_new_holon(
+            context,
+            schema.0.clone()
         )?);
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
@@ -103,15 +106,15 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("DATABASE DUMP (max 300 records)");
 
-    let holons = Holon::get_all_holons()?;
+    let mut holons = Holon::get_all_holons()?;
     // for holon in holons.iter().take(30) {
     //     info!("Holon:\n{}",as_json(holon));
     // }
 
-    for holon in holons.iter().take(300)  {
-        let key_result = holon.get_key();
+    for mut holon in holons.iter_mut().take(300)  {
+        let key_result = holon.get_key(context);
         let property_name = PropertyName(MapString("base_type".to_string()));
-        let base_type = holon.get_property_value(&property_name);
+        let base_type = holon.get_property_value(context, &property_name);
         match key_result {
             Ok(key) => {info!("key = {:?}, base_type= {:?}",
                             key.unwrap_or_else(|| MapString("<None>".to_string())).0,

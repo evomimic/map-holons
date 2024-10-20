@@ -56,14 +56,17 @@ pub fn define_enum_variant_type(
 
     enum_variant_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             TypeName.as_property_name(),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
         VariantOrder.as_property_name(),
         BaseValue::IntegerValue(definition.variant_order),
         )?;
@@ -75,7 +78,7 @@ pub fn define_enum_variant_type(
     let enum_variant_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(enum_variant_type.clone())?;
+        .stage_new_holon(context, enum_variant_type.clone())?;
 
     // Add some relationships
 

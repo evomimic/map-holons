@@ -41,18 +41,22 @@ pub fn define_integer_type(
 
     integer_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString(CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string())),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             CoreSchemaPropertyTypeName::MinValue.as_property_name(),
             BaseValue::IntegerValue(definition.min_value),
         )?
         .with_property_value(
+            context,
             CoreSchemaPropertyTypeName::MaxValue.as_property_name(),
             BaseValue::IntegerValue(definition.max_value),
         )?;
@@ -61,7 +65,7 @@ pub fn define_integer_type(
     let integer_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(integer_type.clone())?;
+        .stage_new_holon(context, integer_type.clone())?;
 
 
     // Add some relationships

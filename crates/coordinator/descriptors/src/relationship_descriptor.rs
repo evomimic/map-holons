@@ -79,26 +79,32 @@ pub fn define_relationship_type(
     // Add its properties
     relationship_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.relationship_type_name.0.clone()),
         )?
         .with_property_value(
+            context,
             CoreSchemaPropertyTypeName::RelationshipName.as_property_name(),
             BaseValue::StringValue(definition.relationship_type_name.0.clone()),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("source_owns_relationship".to_string())),
             BaseValue::BooleanValue(definition.source_owns_relationship),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("load_links_immediate".to_string())),
             BaseValue::BooleanValue(definition.load_links_immediate),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("load_holons_immediate".to_string())),
             BaseValue::BooleanValue(definition.load_holons_immediate),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("deletion_semantic".to_string())),
             BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant()),
         )?;
@@ -109,7 +115,7 @@ pub fn define_relationship_type(
     let relationship_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(relationship_type.clone())?;
+        .stage_new_holon(context, relationship_type.clone())?;
 
     // Add its relationships
 

@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 

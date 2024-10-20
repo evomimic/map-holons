@@ -169,25 +169,26 @@ impl HolonReference {
 
     }
     /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
-    /// does a lookup via this holon's HolonDescriptor to find the PropertyDescriptorId and then
-    /// delegates the call to `get_property_value_by_id`.
+    /// does a lookup via this holon's HolonDescriptor to get a HolonReference to the property's
+    /// PropertyDescriptor and then delegates the call to `get_property_value_by_descriptor`.
     pub fn get_property_value(
         &self,
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
-        let descriptor_reference = self
-            .get_property_descriptor_by_name(context, property_name)?;
-        self.get_property_value_by_descriptor(context, &descriptor_reference)
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_property_value(context, property_name),
+            HolonReference::Staged(staged_reference) => staged_reference.get_property_value(context, property_name),
+        }
 
     }
-    /// Private helper method that searches the source holon's descriptor's properties and either
+    /// Helper method that searches the source holon's descriptor's properties and either
     /// returns a reference to the PropertyDescriptor whose name matches property_name or one of
     /// the following HolonErrors:
     /// * HolonError::NoSuchProperty -- No entry for the specified property name in the source holon's property descriptors
     /// * HolonError::NoDescriptor -- Source holon (self) does not have a HolonDescriptor
     ///
-    fn get_property_descriptor_by_name(
+    pub fn get_property_descriptor_by_name(
         &self,
         context: &HolonsContext,
         property_name: &PropertyName,

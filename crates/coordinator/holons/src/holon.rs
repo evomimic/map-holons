@@ -7,7 +7,7 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::holon_node::{HolonNode, PropertyName, PropertyValue};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
@@ -21,7 +21,7 @@ use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
 use crate::holon_property_map::HolonPropertyMap;
-use crate::holon_reference::{HolonReference};
+use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
 use crate::smartlink::{get_all_relationship_links, get_relationship_links};
@@ -51,7 +51,7 @@ pub struct Holon {
     pub validation_state: ValidationState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub predecessor: Option<SmartReference>, // Linkage to previous Holon version. None = cloned template
-    pub property_map: PropertyMap,
+    // pub property_map: PropertyMap,
     holon_property_map: HolonPropertyMap,
     pub relationship_map: RelationshipMap,
     pub descriptor: Option<HolonReference>,
@@ -64,7 +64,7 @@ pub struct Holon {
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct EssentialHolonContent {
-    pub property_map: PropertyMap,
+    //pub property_map: PropertyMap,
     holon_property_map: HolonPropertyMap,
     //pub relationship_map: RelationshipMap,
     key: Option<MapString>,
@@ -112,7 +112,7 @@ impl Holon {
             validation_state: ValidationState::NoDescriptor,
             saved_node: None,
             predecessor: None,
-            property_map: PropertyMap::new(),
+            //property_map: PropertyMap::new(),
             holon_property_map: HolonPropertyMap::new(),
             relationship_map: RelationshipMap::new(),
             descriptor: None,
@@ -143,10 +143,10 @@ impl Holon {
     /// is left unchanged and an Err is returned.
     ///
 
-    pub fn commit(&mut self) -> Result<Holon, HolonError> {
+    pub fn commit(&mut self, context: &HolonsContext) -> Result<Holon, HolonError> {
         debug!(
             "Entered Holon::commit for holon with key {:#?} in {:#?} state",
-            self.get_key()?
+            self.get_key(context)?
                 .unwrap_or_else(|| MapString("<None>".to_string()))
                 .0,
             self.state
@@ -258,15 +258,15 @@ impl Holon {
         let record = get(id.0.clone(), GetOptions::default())
             .map_err(|e| HolonError::from(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
-        let mut holon = Holon::try_from_node(record)?;
+        let holon = Holon::try_from_node(record)?;
         holon.is_deletable()?;
         delete_holon_node(id.0).map_err(|e| HolonError::from(e))
     }
 
-    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        let key = self.get_key()?;
+    pub fn essential_content(&mut self, context: &HolonsContext) -> Result<EssentialHolonContent, HolonError> {
+        let key = self.get_key(context)?;
         Ok(EssentialHolonContent {
-            property_map: self.property_map.clone(),
+            //property_map: self.property_map.clone(),
             holon_property_map: self.holon_property_map.clone(),
             //relationship_map: self.relationship_map.clone(),
             descriptor: self.descriptor.clone(),
@@ -290,6 +290,35 @@ impl Holon {
         }
     }
 
+    /// The method returns the HolonDescriptor for self
+    fn get_descriptor(
+        &mut self,
+        context: &HolonsContext,
+    ) -> Result<HolonReference, HolonError> {
+        let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
+        let collection = self
+            .get_related_holons(context, &relationship_name)?;
+        let members = collection.get_members();
+        match members.len() {
+            0 => Err(HolonError::NoDescriptor(format!(
+                "Holon with key {:?} has NO HolonDescriptors",
+                self.get_key(context)))),
+            1 => Ok(members[0].clone()),
+            _ => Err(HolonError::Misc(format!(
+                "Holon with key {:?} has >1 HolonDescriptors",
+                self.get_key(context)
+            )))
+
+        }
+
+
+    }
+
+    pub fn get_holon_property_map(&self) -> Result<&HolonPropertyMap,HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        Ok(&self.holon_property_map)
+    }
+
     pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let node = self.saved_node.clone();
@@ -303,64 +332,103 @@ impl Holon {
     // NOTE: Holon does NOT  implement HolonGettableTrait because the functions defined by that
     // Trait include a context parameter.
 
-    /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon (NOTE: Not all holon types have defined keys.)
-    /// If the holon has a key, but it cannot be returned as a MapString, this function
-    /// returns a HolonError::UnexpectedValueType.
-    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+    /// This function returns the primary key value for the holon, if it is available.
+    /// This function depends on self having a descriptor.
+    /// This function returns:
+    /// * `Ok(Some(MapString))` if a key is found for this holon
+    /// * `Ok(None)` if this holon type does not specify a "key" property
+    /// * `Err(HolonError::NoDescriptor)` if this Holon is missing a descriptor
+    /// * `Err(HolonError::NotAccessible)` if this Holon is not in a state that allows `Read Access`
+    /// * `Err(HolonError::UnexpectedValueType)` if a key value is found, but it is not a MapString
+
+    pub fn get_key(&mut self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let key = self
-            .property_map
-            .get(&PropertyName(MapString("key".to_string())));
-        if let Some(key) = key {
-            let string_value: String = key.try_into().map_err(|_| {
-                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
-            })?;
-            Ok(Some(MapString(string_value)))
-        } else {
-            trace!(" returning from get_key() with None");
-            Ok(None)
+
+        let property_name = PropertyName(MapString("key".to_string()));
+        let key_result = self.get_property_value(context, &property_name);
+
+        match key_result {
+            Ok(key) => {
+                // Match against the BaseValue enum
+                match key {
+                    BaseValue::StringValue(map_string) => {
+                        Ok(Some(map_string))
+                    }
+                    _ => {
+                        // Handle unexpected value types
+                        Err(HolonError::UnexpectedValueType(
+                            format!("{:?}", key),
+                            "MapString".to_string(),
+                        ))
+                    }
+                }
+            }
+            Err(error) => match error {
+                HolonError::NoSuchProperty(_) => {
+                    trace!(" returning from get_key() with None");
+                    Ok(None)
+                }
+                _ => Err(error),
+            },
         }
     }
 
-    // /// Private helper method that searches the source holon's descriptor's properties and either
-    // /// returns a reference to the PropertyDescriptor whose name matches property_name or one of
-    // /// the following HolonErrors:
-    // /// * HolonError::NoSuchProperty -- No entry for the specified property name in the source holon's property descriptors
-    // /// * HolonError::NoDescriptor -- Source holon (self) does not have a HolonDescriptor
-    // ///
-    // fn get_property_descriptor_by_name(
-    //     &self,
-    //     property_name: &PropertyName,
-    // ) -> Result<HolonReference, HolonError> {
-    //     // 1. Get a HolonReference to the HolonDescriptor for self
-    //     let holon_descriptor = self.descriptor.as_ref().ok_or(
-    //         HolonError::HolonNotFound(format!(
-    //             "Holon with key {:?} is lacking a HolonDescriptor",
-    //             self.get_key()
-    //         ))
-    //     )?;
-    //
-    //     // 2. Get the related holons for the "PROPERTIES" relationship
-    //     let collection = holon_descriptor.get_related_holons(context,"PROPERTIES")?;
-    //
-    //     // 3. Retrieve the property descriptor reference by key (property_name)
-    //     let property_descriptor_ref = collection.get_holon_by_key(property_name)?;
-    //
-    //     // 4. Return the HolonReference
-    //     Ok(property_descriptor_ref)
-    //
-    // }
+
+
+    /// Helper method that searches the source holon's descriptor's properties and either
+    /// returns a reference to the PropertyDescriptor whose name matches property_name or one of
+    /// the following HolonErrors:
+    /// * HolonError::NoSuchProperty -- No entry for the specified property name in the source
+    ///   holon's property descriptors
+    /// * HolonError::NoDescriptor -- Source holon (self) does not have a HolonDescriptor
+    ///
+    pub fn get_property_descriptor_by_name(
+        &mut self,
+        context: &HolonsContext,
+        property_name: &PropertyName,
+    ) -> Result<HolonReference, HolonError> {
+        // 1. Get a HolonReference to the HolonDescriptor for self
+        let holon_descriptor = self.get_descriptor(context)?;
+
+        // 2. Get the related holons for the "PROPERTIES" relationship
+        let relationship_name = RelationshipName(MapString("PROPERTIES".to_string()));
+        let collection = holon_descriptor.get_related_holons(
+            context,
+            &relationship_name)?;
+
+        // 3. Retrieve the property descriptor reference by key (property_name)
+        let property_name_string = MapString(property_name.to_string());
+        let property_descriptor_result = collection.get_by_key(&property_name_string);
+
+        // 4. Match on the result of `get_by_key`
+        match property_descriptor_result {
+            Ok(Some(property_descriptor_ref)) => Ok(property_descriptor_ref),  // Found the property descriptor
+            Ok(None) => Err(HolonError::NoSuchProperty(property_name.to_string())),  // No entry for the specified property name
+            Err(error) => Err(error),  // Error while retrieving the descriptor
+
+        }
+
+    }
+
+
+    /// This method is provided for backwards compatibility. It accepts a PropertyName parameter and
+    /// does a lookup via this holon's HolonDescriptor to get a HolonReference to the property's
+    /// PropertyDescriptor and then delegates the call to `get_property_value_by_descriptor`.
+    /// This method returns:
+    /// * `Ok(MapString)` the value of the specified property is found for this holon
+    /// * `Err(HolonError::NoDescriptor)` if this Holon is missing a descriptor
+    /// * See `get_property_value_by_descriptor` for other potential results`
 
     pub fn get_property_value(
-        &self,
+        &mut self,
+        context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        self.property_map
-            .get(property_name)
-            .cloned()
-            .ok_or_else(|| HolonError::EmptyField(property_name.to_string()))
+
+        let descriptor_reference = self
+            .get_property_descriptor_by_name(context, property_name)?;
+        self.get_property_value_by_descriptor(&descriptor_reference)
+
     }
 
     pub fn get_property_value_by_descriptor(
@@ -385,17 +453,18 @@ impl Holon {
 
     pub fn get_related_holons(
         &mut self,
+        context: &HolonsContext,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         // Check if the holon is accessible with the required access type
         self.is_accessible(AccessType::Read)?;
         debug!(
             "Entered get_related_holons for source holon({:?})-{:?}>",
-            self.get_key(),
+            self.get_key(context),
             relationship_name
         );
 
-        // Load the relationship and get the count
+        // Load the relationship
         let _count = self.load_relationship(relationship_name)?;
 
         // Retrieve the collection for the given relationship name
@@ -476,7 +545,7 @@ impl Holon {
 
     pub fn into_node(self) -> Result<HolonNode,HolonError> {
         Ok(HolonNode {
-            property_map: self.property_map.clone(),
+            //property_map: self.property_map.clone(),
             saved_property_map: self.holon_property_map.to_saved_map()?,
         })
     }
@@ -540,6 +609,11 @@ impl Holon {
         //     Ok(())
         // }
         Ok(()) // always return Ok until support for get_all_related_holons
+    }
+
+    /// Expose an iterator over the holon_property_map
+    pub fn iter_properties(&self) -> impl Iterator<Item = (&HolonReference, &PropertyValue)> {
+        self.holon_property_map.0.iter()
     }
 
     /// Ensures that the holon's `relationship_map` includes an entry for the specified relationship
@@ -718,6 +792,21 @@ impl Holon {
     //
     // }
 
+    /// Used to replace the current holon_property_map with the provided holon_property_map
+    pub fn set_holon_property_map(
+        &mut self,
+        holon_property_map: HolonPropertyMap,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.holon_property_map = holon_property_map;
+        match self.state {
+            HolonState::Fetched => {
+                self.state = HolonState::Changed;
+            }
+            _ => {}
+        }
+        Ok(self)
+    }
     /// try_from_node inflates a Holon from a HolonNode.
     /// Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
@@ -729,7 +818,7 @@ impl Holon {
             validation_state: ValidationState::Validated,
             saved_node: Some(holon_node_record),
             predecessor: None,
-            property_map: holon_node.property_map,
+            //property_map: holon_node.property_map,
             holon_property_map,
             relationship_map: RelationshipMap::new(),
             descriptor: None,
@@ -747,43 +836,33 @@ impl Holon {
 
         Ok(holon)
     }
-    // // NOTE: this function doesn't check if supplied property_id is a valid property
-    // // for the self holon. It probably needs to be possible to suspend
-    // // this checking while the type system is being bootstrapped, since the descriptors
-    // // required by the validation may not yet exist.
-    // // TODO: add error checking and HolonError result
-    // // Possible Errors: Unrecognized Property Name
-    // pub fn with_holon_property_value(
-    //     &mut self,
-    //     property_id: HolonReference,
-    //     value: BaseValue,
-    // ) -> Result<&mut Self, HolonError> {
-    //     self.is_accessible(AccessType::Write)?;
-    //     // TODO: add self.is_defined_property(property_id) check before delegating call to the property_map
-    //     self.with_property_value_by_descriptor(property_id, value);
-    //
-    //     match self.state {
-    //         HolonState::Fetched => {
-    //             self.state = HolonState::Changed;
-    //         }
-    //         _ => {}
-    //     }
-    //     Ok(self)
-    // }
-    // NOTE: this function doesn't check if supplied PropertyName is a valid property
+
+    // NOTE: this function doesn't check if supplied property_id is a valid property
     // for the self holon. It probably needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors
     // required by the validation may not yet exist.
-    // TODO: Add conditional validation checking when adding properties
     // TODO: add error checking and HolonError result
     // Possible Errors: Unrecognized Property Name
     pub fn with_property_value(
         &mut self,
-        property: PropertyName,
+        context: &HolonsContext,
+        property_name: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+
+        let descriptor_reference = self
+            .get_property_descriptor_by_name(context, &property_name)?;
+        self.with_property_value_by_descriptor(&descriptor_reference, value)
+    }
+    pub fn with_property_value_by_descriptor(
+        &mut self,
+        property_descriptor: &HolonReference,
         value: BaseValue,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.property_map.insert(property, value);
+        // TODO: add self.is_defined_property(property_id) check before delegating call to the property_map
+        self.holon_property_map.0.insert(property_descriptor.clone(), value);
+
         match self.state {
             HolonState::Fetched => {
                 self.state = HolonState::Changed;
@@ -792,4 +871,26 @@ impl Holon {
         }
         Ok(self)
     }
+    // NOTE: this function doesn't check if supplied PropertyName is a valid property
+    // for the self holon. It probably needs to be possible to suspend
+    // this checking while the type system is being bootstrapped, since the descriptors
+    // required by the validation may not yet exist.
+    // TODO: Add conditional validation checking when adding properties
+    // TODO: add error checking and HolonError result
+    // Possible Errors: Unrecognized Property Name
+    // pub fn with_property_value(
+    //     &mut self,
+    //     property: PropertyName,
+    //     value: BaseValue,
+    // ) -> Result<&mut Self, HolonError> {
+    //     self.is_accessible(AccessType::Write)?;
+    //     self.property_map.insert(property, value);
+    //     match self.state {
+    //         HolonState::Fetched => {
+    //             self.state = HolonState::Changed;
+    //         }
+    //         _ => {}
+    //     }
+    //     Ok(self)
+    // }
 }

@@ -42,7 +42,7 @@ pub enum RequestBody {
     Holon(Holon),
     TargetHolons(RelationshipName, Vec<HolonReference>),
     HolonId(HolonId),
-    ParameterValues(HolonPropertyMap),
+    ParameterValues(PropertyMap),
     Index(StagedIndex),
     QueryExpression(QueryExpression),
 }
@@ -56,7 +56,7 @@ impl RequestBody {
         Self::Holon(holon)
     }
 
-    pub fn new_parameter_values(parameters: HolonPropertyMap) -> Self {
+    pub fn new_parameter_values(parameters: PropertyMap) -> Self {
         Self::ParameterValues(parameters)
     }
 

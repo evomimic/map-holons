@@ -65,35 +65,43 @@ pub fn define_type_descriptor(
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.descriptor_name.clone()),
         )?
         .with_property_value(
+            context,
             DescriptorName.as_property_name(),
             BaseValue::StringValue(definition.descriptor_name.clone()),
         )?
         .with_property_value(
+            context,
             Description.as_property_name(),
             BaseValue::StringValue(definition.description),
         )?
         .with_property_value(
+            context,
             Label.as_property_name(),
             BaseValue::StringValue(definition.label),
         )?
         .with_property_value(
+            context,
             CoreSchemaPropertyTypeName::BaseType.as_property_name(),
             BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string()))),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("is_dependent".to_string())),
             BaseValue::BooleanValue(definition.is_dependent),
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("is_value_descriptor".to_string())),
             BaseValue::BooleanValue(definition.is_value_type),
 
         )?
         .with_property_value(
+            context,
             PropertyName(MapString("version".to_string())),
             BaseValue::StringValue(initial_version),
         )?;
@@ -105,7 +113,7 @@ pub fn define_type_descriptor(
     let staged_reference = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(descriptor.clone())?;
+        .stage_new_holon(context, descriptor.clone())?;
 
     // Add related holons
 

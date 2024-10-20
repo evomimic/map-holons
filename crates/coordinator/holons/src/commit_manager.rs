@@ -38,9 +38,9 @@ impl CommitResponse {
             CommitRequestStatus::Incomplete => false,
         }
     }
-    pub(crate) fn find_local_id_by_key(&self, k: &MapString) -> Result<LocalId, HolonError> {
-        for holon in &self.saved_holons {
-            if let Some(key) = holon.get_key()? {
+    pub(crate) fn find_local_id_by_key(&mut self, context: &HolonsContext, k: &MapString) -> Result<LocalId, HolonError> {
+        for holon in &mut self.saved_holons {
+            if let Some(key) = holon.get_key(context)? {
                 // Check if the key matches the given key `k`
                 if &key == k {
                     // Return the LocalId if a match is found
@@ -54,7 +54,6 @@ impl CommitResponse {
                 "No saved Holon with key {:?} was found in commit response",
                 k.to_string(),
             ),
-
         ))
     }
 
@@ -151,7 +150,7 @@ impl CommitManager {
             let commit_manager = context.commit_manager.borrow();
             for rc_holon in commit_manager.staged_holons.clone() {
                 trace!(" In commit_manager... getting ready to call commit()");
-                let outcome = rc_holon.borrow_mut().commit();
+                let outcome = rc_holon.borrow_mut().commit(context);
                 match outcome {
                     Ok(holon) => match holon.state {
                         HolonState::Abandoned => {
@@ -231,11 +230,11 @@ impl CommitManager {
     /// If the holon has a key, update the CommitManager's keyed_index to allow the staged holon
     /// to be retrieved by key
 
-    pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
+    pub fn stage_new_holon(&mut self, context: &HolonsContext, mut holon: Holon) -> Result<StagedReference, HolonError> {
         let rc_holon = Rc::new(RefCell::new(holon.clone()));
         self.staged_holons.push(Rc::clone(&rc_holon));
         let holon_index = self.staged_holons.len() - 1;
-        let holon_key: Option<MapString> = holon.get_key()?;
+        let holon_key: Option<MapString> = holon.get_key(context)?;
         if let Some(key) = holon_key {
             self.keyed_index.insert(key.clone(), holon_index);
         }
@@ -260,7 +259,7 @@ impl CommitManager {
         let staged_reference = StagedReference { holon_index: index };
 
         // Copy the existing holon's PropertyMap into the new holon
-        holon.property_map = existing_holon.get_property_map(context)?;
+        holon.set_holon_property_map(existing_holon.get_holon_property_map(context)?)?;
 
         // Iterate through existing holon's RelationshipMap
         // For each HolonCollection, create a new StagedCollection in the new holon, from the existing holon's SmartCollection
@@ -410,7 +409,7 @@ impl CommitManager {
         let staged_reference = StagedReference { holon_index: index };
 
         // Copy the existing holon's PropertyMap into the new holon
-        holon.property_map = existing_holon.get_property_map(context)?;
+        holon.set_holon_property_map(existing_holon.get_holon_property_map(context)?)?;
 
         // Iterate through existing holon's RelationshipMap
         // For each HolonCollection, create a new StagedCollection in the new holon, from the existing holon's SmartCollection

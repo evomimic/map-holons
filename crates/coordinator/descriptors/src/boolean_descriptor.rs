@@ -42,10 +42,12 @@ pub fn define_boolean_type(
 
     boolean_type
         .with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
+            context,
             TypeName.as_property_name(),
             BaseValue::StringValue(definition.type_name),
         )?;
@@ -57,7 +59,7 @@ pub fn define_boolean_type(
     let boolean_type_ref = context
         .commit_manager
         .borrow_mut()
-        .stage_new_holon(boolean_type.clone())?;
+        .stage_new_holon(context, boolean_type.clone())?;
 
 
     // Add its relationships

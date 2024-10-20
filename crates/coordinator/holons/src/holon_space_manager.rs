@@ -29,21 +29,21 @@ impl<'a> HolonSpaceManager<'a> {
         loaded from DNA properties.".to_string());
 
         holon_space
-            .with_name(&name)?
-            .with_description(&description)?
+            .with_name(self.context, &name)?
+            .with_description(self.context, &description)?
         ;
 
         // Stage the new holon space and set it in the context
         let _staged_holon_space_ref = self.context
             .commit_manager
             .borrow_mut()
-            .stage_new_holon(holon_space.into_holon())?;
+            .stage_new_holon(self.context, holon_space.into_holon())?;
 
         // Commit the staged holon space
-        let commit_response = CommitManager::commit(self.context);
+        let mut commit_response = CommitManager::commit(self.context);
 
         if commit_response.is_complete() {
-            let local_id =commit_response.find_local_id_by_key(&name)?;
+            let local_id = commit_response.find_local_id_by_key(self.context, &name)?;
             info!("Created LocalHolonSpace with id {:#?}", local_id.clone());
             return Ok(HolonReference::Smart(SmartReference::new_from_id(local_id.into())))
             // TODO: Tie the newly saved holon to the holon space LinkType anchor
@@ -89,11 +89,11 @@ impl<'a> HolonSpaceManager<'a> {
         // for a holon with key "LocalHolonSpace". If found, it extracts its HolonId and
         // a HolonReference for that HolonId is returned
         // TODO: Scaffold a new `LocalHolonSpace` LinkType and search by path instead of linear search
-        let all_holons = Holon::get_all_holons()?;
+        let mut all_holons = Holon::get_all_holons()?;
         let search_key = MapString("LocalHolonSpace".to_string());
 
-        for holon in &all_holons {
-            match holon.get_key()? {
+        for mut holon in &mut all_holons {
+            match holon.get_key(self.context)? {
                 Some(key) if key == search_key => {
                     let holon_id = HolonId::Local(holon.get_local_id()?);
                     let holon_space_reference = HolonReference::Smart(SmartReference::new_from_id(holon_id));
