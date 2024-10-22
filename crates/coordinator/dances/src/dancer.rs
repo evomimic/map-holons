@@ -89,9 +89,9 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
     info!(
-        "======== RETURNING FROM {:?} Dance with {:#?}",
+        "\n\n======== RETURNING FROM {:?} Dance with {}",
         request.dance_name.0,
-        result.clone()
+        result.summarize()
     );
 
     Ok(result)

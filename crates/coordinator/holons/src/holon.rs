@@ -703,23 +703,29 @@ impl Holon {
         }
     }
 
-    pub fn summarize(&self) -> Result<HolonSummary, HolonError> {
-        // Extract key from the property_map (if present)
-        let key = self.get_key()?.map(|k| k.0); // Convert MapString to String
-
-        // Extract local_id using get_local_id method
-        let local_id = match self.get_local_id() {
-            Ok(local_id) => Some(local_id.0.to_string()), // Convert LocalId to String
-            Err(_) => None, // If local_id is not found, return None
+    // Returns a String summary of the Holon
+    pub fn summarize(&self) -> String {
+        // Attempt to extract key from the property_map (if present), default to "None" if not available
+        let key = match self.get_key() {
+            Ok(Some(key)) => key.0,  // Extract the key from MapString
+            Ok(None) => "<None>".to_string(), // Key is None
+            Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
         };
 
-        // Return a new HolonSummary instance
-        Ok(HolonSummary {
+        // Attempt to extract local_id using get_local_id method, default to "None" if not available
+        let local_id = match self.get_local_id() {
+            Ok(local_id) => local_id.0.to_string(), // Convert LocalId to String
+            Err(_) => "<None>".to_string(),         // If local_id is not found or error occurred
+        };
+
+        // Format the summary string
+        format!(
+            "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
             key,
             local_id,
-            state: self.state.clone(),
-            validation_state: self.validation_state.clone(),
-        })
+            self.state,
+            self.validation_state
+        )
     }
 
     /// try_from_node inflates a Holon from a HolonNode.

@@ -1,6 +1,7 @@
 use hdk::prelude::*;
 use shared_types_holon::holon_node::HolonNode;
 use shared_types_holon::{MapString, PropertyMap, PropertyName};
+use crate::holon::Holon;
 
 use crate::holon_error::HolonError;
 
@@ -21,4 +22,9 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {
     } else {
         None
     }
+}
+// Standalone function to summarize a vector of Holons
+pub fn summarize_holons(holons: &Vec<Holon>) -> String {
+    let summaries: Vec<String> = holons.iter().map(|holon| holon.summarize()).collect();
+    format!("Holons: [{}]", summaries.join(", "))
 }
