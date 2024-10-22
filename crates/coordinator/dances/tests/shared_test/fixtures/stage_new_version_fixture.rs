@@ -141,7 +141,11 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
 
-    //  ENSURE DATABASE COUNT -- 5 Holons  //
+    //  ENSURE DATABASE COUNT //
+    // TODO: Remove the "-1" from expected count, only using it now to get test to pass
+    // The get_all_holons dance is not returning the cloned() holon,
+    // but the match_saved_content step is confirming the both the original and cloned holons
+    // have been committed to the DHT
     test_case.add_ensure_database_count_step(MapInteger(expected_count-1))?;
 
     //  MATCH SAVED CONTENT  //
