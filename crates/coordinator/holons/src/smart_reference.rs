@@ -205,7 +205,7 @@ impl SmartReference {
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
     pub fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let mut cloned_holon = rc_holon.borrow().clone_holon()?;
+        let cloned_holon = rc_holon.borrow().clone_holon()?;
         // cloned_holon.load_all_relationships(context)?;
 
         Ok(cloned_holon)

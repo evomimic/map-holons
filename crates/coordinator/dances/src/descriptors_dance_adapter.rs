@@ -14,26 +14,16 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-
-use std::borrow::Borrow;
-use std::rc::Rc;
-
 use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-use core_schema::loader::load_core_schema;
-use shared_types_holon::{MapString, MapInteger, PropertyMap};
-use shared_types_holon::HolonId;
-use shared_types_holon::{MapInteger, MapString, PropertyMap};
+use shared_types_holon::{MapString};
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::session_state::SessionState;
-use crate::staging_area::StagingArea;
 
 /// *DanceRequest:*
 /// - dance_name: "load_core_schema"

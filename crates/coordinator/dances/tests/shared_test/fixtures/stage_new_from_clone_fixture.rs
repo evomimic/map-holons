@@ -1,4 +1,4 @@
-use dances::{dance_response::ResponseStatusCode, holon_dance_adapter::QueryExpression};
+use dances::{dance_response::ResponseStatusCode};
 use holons::{
     holon::Holon, holon_collection::HolonCollection, holon_error::HolonError,
     holon_reference::HolonReference, relationship::RelationshipName,
@@ -7,7 +7,7 @@ use holons::{
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
-use crate::data_types::{DancesTestCase, TestReference};
+use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase, DanceTestStep, TestReference};
 
 use super::book_authors_setup_fixture::setup_book_author_steps;
 
@@ -18,9 +18,12 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         "Simple StageNewFromClone Testcase".to_string(),
         "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some properties, adds a relationship, commits it and then compares essential content of existing holon and cloned holon".to_string(),
     );
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count:i64  = 1;
 
-    //  ENSURE DATABASE COUNT -- Empty  //
-    test_case.add_ensure_database_count_step(MapInteger(0))?;
+    //  ENSURE DATABASE COUNT -- Empty except for HolonSpace  //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+
 
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
@@ -33,6 +36,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         &mut holons_to_add,
         &desired_test_relationship,
     )?;
+    expected_count += test_data.len() as i64;
 
     // Get and set the various Holons data.
     let book_holon = test_data[0]
@@ -58,6 +62,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         TestReference::StagedHolon(book_index),
         ResponseStatusCode::OK,
     )?;
+    expected_count += 1;
 
     //  CHANGE PROPERTIES  //
     let mut properties = PropertyMap::new();
@@ -95,7 +100,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         published_by_relationship_name.clone(),
         expected_publisher_holon_collection,
     );
-    let mut expected_predecessor_holon_collection = HolonCollection::new_staged();
+    let expected_predecessor_holon_collection = HolonCollection::new_staged();
     expected_book_holon.relationship_map.0.insert(
         predecessor_relationship_name.clone(),
         expected_predecessor_holon_collection,
@@ -113,7 +118,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT -- 5 Holons  //
-    test_case.add_ensure_database_count_step(MapInteger(5))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

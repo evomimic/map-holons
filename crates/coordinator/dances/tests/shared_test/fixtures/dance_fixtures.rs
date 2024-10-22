@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::get_holon_by_key_from_test_state;
+// use crate::get_holon_by_key_from_test_state;
 use crate::tracing::{error, info, warn};
 use core::panic;
 //use holochain::core::author_key_is_valid;
@@ -21,7 +21,7 @@ use dances::dance_response::ResponseStatusCode;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 
-use crate::shared_test::data_types::DancesTestCase;
+use crate::shared_test::test_data_types::DancesTestCase;
 
 // use hdk::prelude::*;
 
@@ -34,7 +34,7 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference::Staged;
 use holons::relationship::RelationshipName;
 
-use crate::shared_test::book_authors_setup_fixture::setup_book_author_steps;
+// use crate::shared_test::book_authors_setup_fixture::setup_book_author_steps;
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
@@ -122,7 +122,7 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Simple Add Related Holon Testcase".to_string(),
-        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count is 3".to_string(),
+        "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count".to_string(),
 
     );
 
@@ -258,7 +258,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // // test invalid source holon
     let wrong_book_index: usize = 8;
-    // the cache manager returns a IndexOutOfRange ServerError .. not a Notfound 404
+    // the cache manager returns a IndexOutOfRange ServerError, not a Notfound 404
     test_case.remove_related_holons_step(
         wrong_book_index, // source holon
         authored_by_relationship_name.clone(),
@@ -462,11 +462,12 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
 
+
     // ADD STEP: DELETE HOLON - Valid //
-    test_case.add_delete_holon_step(ResponseStatusCode::OK)?;
+    test_case.add_delete_holon_step(book_holon_key.clone(), ResponseStatusCode::OK)?;
 
     // ADD STEP: DELETE HOLON - Invalid //
-    test_case.add_delete_holon_step(ResponseStatusCode::NotFound)?;
+    test_case.add_delete_holon_step(book_holon_key.clone(),ResponseStatusCode::NotFound)?;
 
     Ok(test_case.clone())
 }

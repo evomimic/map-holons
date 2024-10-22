@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 // use hdk::prelude::*;
 use quick_cache::unsync::Cache;
-use shared_types_holon::{ExternalId, HolonId, HolonSpaceId, LocalId};
+use shared_types_holon::{HolonId, HolonSpaceId, LocalId};
 
 use shared_types_holon::HolonId::{External, Local};
 use std::rc::Rc;

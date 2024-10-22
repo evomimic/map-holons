@@ -13,8 +13,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::data_types::DanceTestStep;
-use crate::shared_test::data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -48,7 +47,7 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
             let description = response.description.clone();
             if code == ResponseStatusCode::OK {
                 // Check that staging area is empty
-                assert!(response.state.get_staging_area().staged_holons.is_empty());
+                assert!(response.state.get_staging_area().get_staged_holons().is_empty());
 
                 info!("Success! Commit succeeded");
 

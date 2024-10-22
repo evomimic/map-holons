@@ -16,7 +16,7 @@ use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyName};
 use std::collections::BTreeMap;
 
-use super::data_types::DanceTestState;
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TestHolonData, TestReference};
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -37,10 +37,10 @@ pub async fn execute_stage_new_version(
         .get(&original_holon_key)
         .expect("Holon with key: {key} not found in created_holons");
 
-    let holon_id = HolonId::Local(original_holon.get_local_id().unwrap());
+    let original_holon_id = HolonId::Local(original_holon.get_local_id().unwrap());
     // Build a stage_new_version DanceRequest
     let request =
-        build_stage_new_version_dance_request(test_state.staging_area.clone(), holon_id.clone());
+        build_stage_new_version_dance_request(&test_state.session_state, original_holon_id.clone());
     debug!("Dance Request: {:#?}", request);
 
     match request {
@@ -48,8 +48,8 @@ pub async fn execute_stage_new_version(
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
-            debug!("Dance Response: {:#?}", response.clone());
-            test_state.staging_area = response.staging_area.clone();
+            info!("Dance Response: {:#?}", response.clone());
+            test_state.session_state = response.state.clone();
             let code = response.status_code;
             assert_eq!(code.clone(), expected_response);
             let description = response.description.clone();
@@ -61,7 +61,7 @@ pub async fn execute_stage_new_version(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let holons = response.staging_area.get_staged_holons();
+                    let holons = response.state.get_staging_area().get_staged_holons();
 
                     // debug!("holons:{:#?}", holons);
                     assert_eq!(
@@ -100,10 +100,11 @@ pub async fn execute_stage_new_version(
                         .get_members()[0];
                     assert_eq!(
                         predecessor,
-                        &HolonReference::Smart(SmartReference::new(holon_id, None))
+                        &HolonReference::Smart(SmartReference::new(original_holon_id, None))
                     );
 
                     info!("Success! DB fetched holon matched expected");
+                    info!("Session State Returned is: {:?}", test_state.session_state);
                 } else {
                     panic!("Expected `index` to staged_holon in the response body, but didn't get one!");
                 }

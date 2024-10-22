@@ -26,7 +26,7 @@ use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 
 
-use crate::shared_test::data_types::DancesTestCase;
+use crate::shared_test::test_data_types::DancesTestCase;
 
 // use hdk::prelude::*;
 

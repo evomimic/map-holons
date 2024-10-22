@@ -16,9 +16,7 @@ use holons::staged_reference::StagedReference;
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
 
-use crate::data_types::TestHolonData;
-
-use super::data_types::{DanceTestState, TestReference};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TestHolonData, TestReference};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -37,8 +35,11 @@ pub async fn execute_stage_new_from_clone(
     let original_holon_data: TestHolonData = match original_holon {
         TestReference::StagedHolon(index) => {
             let holon_reference = HolonReference::Staged(StagedReference::new(index));
-            let staged_holon = test_state.staging_area.get_holon(index).unwrap();
-            TestHolonData::new(staged_holon, holon_reference)
+            let staging_area = test_state.session_state.get_staging_area();
+            let staged_holons = staging_area.get_staged_holons();
+            let staged_holon = staged_holons.get(index).unwrap();
+            // let staged_holon = test_state.staging_area.get_holon(index).unwrap();
+            TestHolonData::new(staged_holon.clone(), holon_reference)
         },
         TestReference::SavedHolon(key) => {
             let saved_holon = test_state
@@ -56,7 +57,7 @@ pub async fn execute_stage_new_from_clone(
     let original_holon = original_holon_data.holon;
     // Build a stage_new_from_clone DanceRequest
     let request = build_stage_new_from_clone_dance_request(
-        test_state.staging_area.clone(),
+        &test_state.session_state,
         original_holon_data.holon_reference,
     );
     debug!("Dance Request: {:#?}", request);
@@ -67,7 +68,7 @@ pub async fn execute_stage_new_from_clone(
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
             debug!("Dance Response: {:#?}", response.clone());
-            test_state.staging_area = response.staging_area.clone();
+            test_state.session_state = response.state;
             let code = response.status_code;
             assert_eq!(code.clone(), expected_response);
             let description = response.description.clone();
@@ -79,7 +80,7 @@ pub async fn execute_stage_new_from_clone(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let holons = response.staging_area.get_staged_holons();
+                    let holons = test_state.session_state.get_staging_area().get_staged_holons();
 
                     // debug!("holons:{:#?}", holons);
                     assert_eq!(

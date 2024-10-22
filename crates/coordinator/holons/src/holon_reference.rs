@@ -234,19 +234,13 @@ impl HolonReference {
         context: &HolonsContext,
         access_type: AccessType,
     ) -> Result<(), HolonError> {
-        HolonReference::Smart(smart_reference) => {
-            smart_reference.is_accessible(context, access_type)
-        }
-        HolonReference::Staged(staged_reference) => {
-            staged_reference.is_accessible(context, access_type)
-        }
-    }
-    pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
         match self {
-
-            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(_staged_reference) =>
-                Err(HolonError::HolonNotFound("HolonId not yet assigned for Staged Holons".to_string()))
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.is_accessible(context, access_type)
+            }
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.is_accessible(context, access_type)
+            }
         }
     }
 

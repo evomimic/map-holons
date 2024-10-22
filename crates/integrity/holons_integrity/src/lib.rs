@@ -204,7 +204,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 } => {
                     let original_record = must_get_valid_record(original_action_hash)?;
                     let original_action = original_record.action().clone();
-                    let original_action = match original_action {
+                    // TODO Figure out proper use and method for setting original_action
+                    let _original_action = match original_action {
                         Action::Create(create) => EntryCreationAction::Create(create),
                         Action::Update(update) => EntryCreationAction::Update(update),
                         _ => {

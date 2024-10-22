@@ -4,14 +4,11 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
-use crate::context::{self, HolonsContext};
+use crate::context::{HolonsContext};
 use crate::holon::{Holon, HolonState};
 use crate::holon_collection::CollectionState;
 use crate::holon_error::HolonError;
-use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::json_adapter::as_json;
-use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::smart_reference::SmartReference;
 use crate::staged_reference::StagedReference;
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
@@ -323,7 +320,7 @@ impl CommitManager {
     /// to be retrieved by key
     pub fn stage_new_holon(&mut self, holon: Holon) -> Result<StagedReference, HolonError> {
         let mut cloned_holon = holon.clone();
-        for (name, collection) in cloned_holon.relationship_map.0.iter_mut() {
+        for (_relationship_name, collection) in cloned_holon.relationship_map.0.iter_mut() {
             let state = collection.get_state();
             match state {
                 CollectionState::Fetched => {

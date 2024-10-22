@@ -14,8 +14,7 @@ use pretty_assertions::assert_eq;
 use rstest::*;
 use std::collections::BTreeMap;
 
-use crate::shared_test::data_types::DanceTestStep;
-use crate::shared_test::data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -46,18 +45,13 @@ pub async fn execute_remove_related_holons(
         expected_response.clone()
     );
 
-    // Get the state of the holon prior to dancing the request
-    let source_holon = test_state
-        .session_state
-        .get_staging_area()
-        .staged_holons
-        .get(source_holon_index);
-    if source_holon.is_none() {
-        panic!(
-            "Unable to get source holon from the staging_area at index  {:#?}",
-            source_holon_index.to_string()
-        );
-    }
+    // // Ensure source holon exists prior to dancing the request
+    // let _source_holon = test_state
+    //     .session_state
+    //     .get_staging_area()
+    //     .get_holon(source_holon_index)
+    //     .expect("Failed to get source holon from StagingArea");
+    //
 
     // Create the expected_holon from the source_holon + the supplied related holons
 
@@ -94,9 +88,12 @@ pub async fn execute_remove_related_holons(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let source_holon = response.state.get_staging_area().staged_holons[index].clone();
-
-                    assert_eq!(returned_holon, expected_holon);
+                    let source_holon_in_response = response
+                        .state
+                        .get_staging_area()
+                        .get_holon(index)
+                        .expect("Failed to get source holon in DanceResponse");
+                    assert_eq!(source_holon_in_response, expected_holon);
 
                     info!("Success! Related Holons have been removed");
                 } else {

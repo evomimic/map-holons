@@ -5,14 +5,9 @@ use hdk::prelude::*;
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
 use holons::context::HolonsContext;
-use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_space;
-use holons::holon_space::HolonSpace;
 use holons::holon_space_manager::HolonSpaceManager;
 use shared_types_holon::MapString;
-
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
@@ -25,7 +20,6 @@ use crate::holon_dance_adapter::{
     with_properties_dance,
 };
 
-use crate::staging_area::StagingArea;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -36,7 +30,7 @@ use crate::staging_area::StagingArea;
 /// errors are encoded in the DanceResponse's status_code.
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
-    info!("Entered Dancer::dance() with {:#?}", request);
+    info!("***********************  Entered Dancer::dance() with {:#?}", request);
 
 // -------------------------- ENSURE VALID REQUEST---------------------------------
     let valid = true; // TODO: Validate the dance request
@@ -49,6 +43,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
             None,
             request.get_state().clone(),
         );
+
         return Ok(response);
     }
 
@@ -89,7 +84,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     info!("dispatching dance");
     let dispatch_result = dancer.dispatch(&context, request.clone());
 
-    let mut result = process_dispatch_result(&context, dispatch_result);
+    let result = process_dispatch_result(&context, dispatch_result);
 
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
@@ -165,6 +160,8 @@ impl Dancer {
     // fn register_function(&mut self, name: String, func: DanceFunction) {
     //     self.dispatch_table.insert(name.clone().as_str(), func);
     // }
+
+    #[allow(dead_code)]
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
         info!(
             "checking that dance_name: {:#?} is dispatchable",
@@ -203,7 +200,8 @@ impl Dancer {
 /// * `body` and `descriptor` are set to None
 /// * `state` is restored from context
 ///
-fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
+
+fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
         Ok(body) => {
             // If the dispatch_result is Ok, construct DanceResponse with appropriate fields

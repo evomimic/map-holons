@@ -14,8 +14,7 @@ use holons::commit_manager::StagedIndex;
 use holons::context::HolonsContext;
 use rstest::*;
 
-use crate::shared_test::data_types::DanceTestStep;
-use crate::shared_test::data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;

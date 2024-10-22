@@ -11,8 +11,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::data_types::DanceTestStep;
-use crate::shared_test::data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -47,11 +46,15 @@ pub async fn execute_ensure_database_count(
             test_state.session_state = response.state;
 
             if let Holons(holons) = response.body.clone() {
-                let actual_count = MapInteger(holons.len() as i64);
-                assert_eq!(expected_count, actual_count);
-                let actual_count_string = actual_count.0.to_string();
 
-                info!("Success! DB has {actual_count_string} holons, as expected");
+                let actual_count = MapInteger(holons.len() as i64);
+                info!("\nExpected: {:?}, Retrieved: {:?} Holons", expected_count, actual_count.0);
+                for holon in holons {
+                    info!("\n {:?}",holon.summarize());
+                }
+
+                assert_eq!(expected_count, actual_count);
+
 
             } else {
                 panic!(

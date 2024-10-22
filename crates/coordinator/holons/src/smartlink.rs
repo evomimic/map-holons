@@ -143,63 +143,22 @@ fn get_smartlink_from_link(
     Ok(smartlink)
 }
 
-pub fn save_smartlink(smartlink: SmartLink) -> Result<(), HolonError> {
-    // TODO: convert proxy_id to string
-
+pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
 
     let link_tag = encode_link_tag(
-        smartlink.relationship_name.clone(),
-        smartlink.smart_property_values,
+        &input.relationship_name,
+        input.to_address.clone(),
+        input.smart_property_values,
     )?;
-    warn!(
-        "saving smartlink... for relationship: {:?}",
-        smartlink.relationship_name.clone()
-    );
     create_link(
-        smartlink.from_address.clone().0,
-        smartlink.to_address.local_id().clone().0,
+        input.from_address.0.clone(),
+        input.to_address.local_id().0.clone(),
         LinkTypes::SmartLink,
         link_tag,
     )?;
 
     Ok(())
-    // }
-    //
-    //     match input.to_address.clone() {
-    //         HolonId::External(external_id) => {
-    //             let link_tag = encode_link_tag(
-    //                 input.relationship_name.clone(),
-    //                 Some(external_id.space_id),
-    //                 input.smart_property_values,
-    //             )?;
-    //
-    //             create_link(
-    //                 input.from_address.0.clone(),
-    //                 input.to_address.local_id().0.clone(),
-    //                 LinkTypes::SmartLink,
-    //                 link_tag,
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //         HolonId::Local(_local_id) => {
-    //             let link_tag = encode_link_tag(
-    //                 input.relationship_name.clone(),
-    //                 None,
-    //                 input.smart_property_values,
-    //             )?;
-    //
-    //             create_link(
-    //                 input.from_address.0.clone(),
-    //                 input.to_address.local_id().0.clone(),
-    //                 LinkTypes::SmartLink,
-    //                 link_tag,
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //     }
 }
 
 // HELPER FUNCTIONS //

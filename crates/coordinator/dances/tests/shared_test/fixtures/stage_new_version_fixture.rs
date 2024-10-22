@@ -1,19 +1,19 @@
 use std::collections::BTreeMap;
 
-use dances::{dance_response::ResponseStatusCode, holon_dance_adapter::QueryExpression};
+use dances::{dance_response::ResponseStatusCode};
 use holons::{
     holon::Holon,
     holon_collection::HolonCollection,
     holon_error::HolonError,
     holon_reference::HolonReference,
-    relationship::{self, RelationshipName},
+    relationship::RelationshipName,
     smart_reference::SmartReference,
     staged_reference::StagedReference,
 };
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
-use crate::data_types::DancesTestCase;
+use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase, DanceTestStep};
 
 use super::book_authors_setup_fixture::setup_book_author_steps;
 
@@ -25,8 +25,11 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
         "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some properties, adds and removes some relationships, commits it and then compares essential content of existing holon and cloned holon".to_string(),
     );
 
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count:i64  = 1;
+
     //  ENSURE DATABASE COUNT -- Empty  //
-    test_case.add_ensure_database_count_step(MapInteger(0))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
@@ -40,6 +43,8 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
         &desired_test_relationship,
     )?;
 
+    expected_count += test_data.len() as i64;
+
     let book_holon = test_data[0]
         .expected_holon
         .clone()
@@ -49,8 +54,8 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
 
-    //  ENSURE DATABASE COUNT -- 4 Holons  //
-    test_case.add_ensure_database_count_step(MapInteger(4))?;
+    //  ENSURE DATABASE COUNT  //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
@@ -61,6 +66,8 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
         BaseValue::StringValue(MapString("A new version of: Emerging World".to_string()));
 
     test_case.add_stage_new_version_step(book_key, ResponseStatusCode::OK)?;
+    expected_count += 1;
+
 
     //  CHANGE PROPERTIES  //
     let mut changed_properties = BTreeMap::new();
@@ -135,7 +142,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT -- 5 Holons  //
-    test_case.add_ensure_database_count_step(MapInteger(4))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count-1))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

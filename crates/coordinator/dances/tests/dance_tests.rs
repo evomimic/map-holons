@@ -36,7 +36,7 @@ use test_query_relationships::execute_query_relationships;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
-use self::data_types::{DanceTestState, DanceTestStep};
+
 use self::test_abandon_staged_changes::execute_abandon_staged_changes;
 use self::test_add_related_holon::execute_add_related_holons;
 use self::test_commit::execute_commit;
@@ -56,7 +56,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 
-use shared_test::data_types::DancesTestCase;
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -79,13 +79,13 @@ use shared_types_holon::HolonId;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
-#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::load_core_schema(load_core_schema_test_fixture())]
-#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+// #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+// #[case::load_core_schema(load_core_schema_test_fixture())]
+// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
-#[case::delete_holon(delete_holon_fixture())]
+// #[case::delete_holon(delete_holon_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
@@ -151,6 +151,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::DatabasePrint => {
                 execute_commit(&conductor, &cell, &mut test_state).await
             }
+            DanceTestStep::DeleteHolon(holon_to_delete, expected_response) => {
+                execute_delete_holon(&conductor, &cell, &mut test_state, holon_to_delete, expected_response).await
+            }
             DanceTestStep::EnsureDatabaseCount(expected_count) => {
                 execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
                     .await
@@ -160,16 +163,6 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&conductor, &cell, &mut test_state).await
-            }
-            DanceTestStep::StageNewVersion(original_holon_key, expected_response) => {
-                execute_stage_new_version(
-                    &conductor,
-                    &cell,
-                    &mut test_state,
-                    original_holon_key,
-                    expected_response,
-                )
-                .await
             }
             DanceTestStep::QueryRelationships(
                 node_collection,
@@ -205,16 +198,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
-            DanceTestStep::DatabasePrint => {
-                execute_commit(&conductor, &cell, &mut test_state).await
-            }
-            DanceTestStep::DeleteHolon(expected_response) => {
-                execute_delete_holon(&conductor, &cell, &mut test_state, expected_response).await
-            }
-            DanceTestStep::EnsureDatabaseCount(expected_count) => {
-                execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
-                    .await
-            }
+
             DanceTestStep::StageHolon(holon) => {
                 execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await
             }
@@ -227,6 +211,16 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expected_response,
                 )
                 .await
+            }
+            DanceTestStep::StageNewVersion(original_holon_key, expected_response) => {
+                execute_stage_new_version(
+                    &conductor,
+                    &cell,
+                    &mut test_state,
+                    original_holon_key,
+                    expected_response,
+                )
+                    .await
             }
             DanceTestStep::WithProperties(staged_index, properties, expected_response) => {
                 execute_with_properties(

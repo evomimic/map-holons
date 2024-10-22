@@ -14,8 +14,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::context::HolonsContext;
 use rstest::*;
 
-use crate::shared_test::data_types::DanceTestStep;
-use crate::shared_test::data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -35,6 +34,8 @@ pub async fn execute_match_db_content(
     test_state: &mut DanceTestState,
 ) {
     info!("\n\n--- TEST STEP: Ensuring database matches expected holons ---");
+    info!("test_state {:#?}", test_state.clone());
+
     let _context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
 
     for (_key, expected_holon) in test_state.created_holons.clone() {
@@ -57,7 +58,7 @@ pub async fn execute_match_db_content(
                         expected_holon.essential_content(),
                         actual_holon.essential_content(),
                     );
-                    info!("Success! DB fetched holon matched expected");
+                    info!("\nSUCCESS! DB fetched holon matched expected for: \n {:?}", actual_holon.summarize());
                 } else {
                     panic!(
                         "Expected get_holon_by_id to return a Holon response for id: {:?}, but it returned {:?}",

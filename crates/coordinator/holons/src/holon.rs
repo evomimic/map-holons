@@ -11,13 +11,13 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, Prope
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
 use shared_types_holon::value_types::BaseValue;
-use tracing::field::debug;
+// use tracing::field::debug;
 // use shared_validation::ValidationError;
 
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
-use crate::holon_collection::{CollectionState, HolonCollection};
+use crate::holon_collection::{HolonCollection};
 use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
@@ -96,6 +96,28 @@ pub enum ValidationState {
     Validated,
     Invalid,
 }
+
+#[derive(Debug, Clone)]
+pub struct HolonSummary {
+    pub key: Option<String>,
+    pub local_id: Option<String>,
+    pub state: HolonState,
+    pub validation_state: ValidationState,
+}
+
+impl fmt::Display for HolonSummary {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "HolonSummary {{ key: {:?}, local_id: {:?}, state: {}, validation_state: {:?} }}",
+            self.key,
+            self.local_id,
+            self.state,
+            self.validation_state,
+        )
+    }
+}
+
 
 // impl HolonGettable for Holon {
 //     fn get_property_value(
@@ -681,12 +703,31 @@ impl Holon {
         }
     }
 
+    pub fn summarize(&self) -> Result<HolonSummary, HolonError> {
+        // Extract key from the property_map (if present)
+        let key = self.get_key()?.map(|k| k.0); // Convert MapString to String
+
+        // Extract local_id using get_local_id method
+        let local_id = match self.get_local_id() {
+            Ok(local_id) => Some(local_id.0.to_string()), // Convert LocalId to String
+            Err(_) => None, // If local_id is not found, return None
+        };
+
+        // Return a new HolonSummary instance
+        Ok(HolonSummary {
+            key,
+            local_id,
+            state: self.state.clone(),
+            validation_state: self.validation_state.clone(),
+        })
+    }
+
     /// try_from_node inflates a Holon from a HolonNode.
     /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
         let holon_node = get_holon_node_from_record(holon_node_record.clone())?;
 
-        let mut holon = Holon {
+        let holon = Holon {
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
             saved_node: Some(holon_node_record),
