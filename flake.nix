@@ -24,10 +24,12 @@
         ]) ++ (with pkgs; [
           nodejs_20 # For UI development
           binaryen # For WASM optimisation
-          libiconv
-          pkgs.darwin.apple_sdk.frameworks.CoreFoundation
-          pkgs.darwin.apple_sdk.frameworks.Security
-          pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          (lib.optional pkgs.stdenv.isDarwin [
+            libiconv
+            pkgs.darwin.apple_sdk.frameworks.CoreFoundation
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ])
           # Add any other packages you need here
         ]);
 
