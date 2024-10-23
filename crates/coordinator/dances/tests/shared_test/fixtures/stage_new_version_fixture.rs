@@ -45,7 +45,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
 
     expected_count += test_data.len() as i64;
 
-    let book_holon = test_data[0]
+    let _book_holon = test_data[0]
         .expected_holon
         .clone()
         .expect("Expected setup method to return Some book holon at index 0, got none.");

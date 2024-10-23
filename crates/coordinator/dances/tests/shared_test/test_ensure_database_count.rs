@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use async_std::task;
+// use dances::dance_request::DanceRequest;
 use dances::dance_response::ResponseBody::Holons;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
@@ -36,10 +37,11 @@ pub async fn execute_ensure_database_count(
     info!("\n\n--- TEST STEP: Ensuring database holds {expected_count_string} holons ---");
     // Build a get_all_holons DanceRequest
     let request = build_get_all_holons_dance_request(&test_state.session_state);
-    debug!("Dance Request: {:#?}", request);
+
 
     match request {
         Ok(valid_request) => {
+
             let response: DanceResponse = conductor
                 .call(&cell.zome("dances"), "dance", valid_request)
                 .await;
@@ -48,7 +50,7 @@ pub async fn execute_ensure_database_count(
             if let Holons(holons) = response.body.clone() {
 
                 let actual_count = MapInteger(holons.len() as i64);
-                info!("\nExpected: {:?}, Retrieved: {:?} Holons", expected_count, actual_count.0);
+                info!("\n--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons", expected_count, actual_count.0);
                 for holon in holons {
                     info!("\n {:?}",holon.summarize());
                 }

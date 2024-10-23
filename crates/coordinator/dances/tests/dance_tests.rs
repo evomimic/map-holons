@@ -56,7 +56,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TEST_CLIENT_PREFIX};
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -112,8 +112,8 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Initialize the DanceTestState
     let mut test_state = DanceTestState::new();
 
-    info!("******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
-    info!("******* {description}  ***************************");
+    info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
+    info!("\n   Test Case Description: {description}");
 
     for step in test_case.steps {
         //println!("\n\n============= STARTING NEXT STEP: {}", step);
@@ -235,5 +235,5 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
         }
     }
-    info!("-------------- END OF {name} TEST CASE  ------------------");
+    warn!("\n{{TEST_CLIENT_PREFIX}} ------- END OF {name} TEST CASE  ---------------");
 }

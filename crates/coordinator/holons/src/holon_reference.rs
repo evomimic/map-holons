@@ -229,6 +229,7 @@ impl HolonReference {
         }
     }
 
+    #[allow(dead_code)]
     fn is_accessible(
         &self,
         context: &HolonsContext,

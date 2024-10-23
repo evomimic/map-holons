@@ -30,7 +30,7 @@ use crate::holon_dance_adapter::{
 /// errors are encoded in the DanceResponse's status_code.
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
-    info!("***********************  Entered Dancer::dance() with {:#?}", request);
+    info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
 
 // -------------------------- ENSURE VALID REQUEST---------------------------------
     let valid = true; // TODO: Validate the dance request
@@ -81,7 +81,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     //     )
     //     .into());
     // }
-    info!("dispatching dance");
+    debug!("dispatching dance");
     let dispatch_result = dancer.dispatch(&context, request.clone());
 
     let result = process_dispatch_result(&context, dispatch_result);
@@ -89,7 +89,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
     info!(
-        "\n\n======== RETURNING FROM {:?} Dance with {}",
+        "\n======== RETURNING FROM {:?} Dance with {}",
         request.dance_name.0,
         result.summarize()
     );

@@ -30,7 +30,7 @@ pub async fn execute_stage_new_from_clone(
 ) -> () {
     info!("\n\n--- TEST STEP: Stage_New_From_Clone ---- :");
 
-    let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
+    let _predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
 
     let original_holon_data: TestHolonData = match original_holon {
         TestReference::StagedHolon(index) => {

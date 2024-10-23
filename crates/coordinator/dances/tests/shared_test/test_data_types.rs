@@ -13,6 +13,7 @@ use std::fmt::Display;
 use dances::session_state::SessionState;
 use holons::query::QueryExpression;
 
+pub const TEST_CLIENT_PREFIX : &str = "TEST CLIENT: ";
 
 #[derive(new, Clone, Debug)]
 pub struct TestHolonData {
@@ -71,7 +72,7 @@ impl fmt::Display for DanceTestStep {
             DanceTestStep::AbandonStagedChanges(index, expected_response) => {
                 write!(
                     f,
-                    "Marking Holon at ({:#?}) as Abandoned, expecting ({:#?})",
+                    "Marking Holon at ({:?}) as Abandoned, expecting ({:?})",
                     index, expected_response
                 )
             }
@@ -91,7 +92,7 @@ impl fmt::Display for DanceTestStep {
                 write!(f, "DatabasePrint")
             }
             DanceTestStep::DeleteHolon(local_id,expected_response) => {
-                write!(f, "DeleteHolon({:?})", local_id)
+                write!(f, "DeleteHolon({:?}, expecting: {:?},)", local_id, expected_response)
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)

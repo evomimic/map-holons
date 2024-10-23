@@ -44,7 +44,7 @@ pub fn add_related_holons_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("Entered add_related_holons_dance");
+    info!("----- Entered add_related_holons_dance");
 
     // Match the dance_type
     match request.dance_type {
@@ -122,7 +122,7 @@ pub fn commit_dance(
     context: &HolonsContext,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("Entered: commit_dance");
+    info!("----- Entered commit_dance");
     let commit_response = CommitManager::commit(context);
 
     match commit_response.status {
@@ -174,7 +174,7 @@ pub fn delete_holon_dance(
     _context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("Entering delete_holon dance..");
+    info!("----- Entered delete_holon dance");
     match request.dance_type {
         DanceType::DeleteMethod(holon_id) => {
             Holon::delete_holon(holon_id).map(|_| ResponseBody::None)
@@ -216,7 +216,7 @@ pub fn get_all_holons_dance(
     // TODO: add support for descriptor parameter
     //
     //
-    debug!("Entering get_all_holons dance..");
+    info!("----- Entered get_all_holons dance");
     let query_result = Holon::get_all_holons();
     match query_result {
         Ok(holons) => {
@@ -254,7 +254,7 @@ pub fn get_holon_by_id_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    info!("-------ENTERED: get_holon_by_id_dance.");
+    info!("----- Entered get_holon_by_id_dance.");
     let holon_id = match request.body {
         RequestBody::HolonId(id) => id,
         _ => {
@@ -263,10 +263,10 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    info!("getting cache_manager from context");
+    debug!("getting cache_manager from context");
     let cache_manager = context.cache_manager.borrow();
 
-    info!("asking cache_manager to get rc_holon");
+    debug!("asking cache_manager to get rc_holon");
     let rc_holon = cache_manager.get_rc_holon(&holon_id)?;
 
     let holon = rc_holon.borrow().clone();
@@ -301,7 +301,7 @@ pub fn query_relationships_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("Entered query_relationships_dance");
+    info!("Entered query_relationships_dance");
 
     match request.dance_type {
         DanceType::QueryMethod(node_collection) => {
@@ -356,7 +356,7 @@ pub fn remove_related_holons_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("Entered remove_related_holons_dance");
+    info!("Entered remove_related_holons_dance");
 
     // Match the dance_type
     match request.dance_type {
@@ -431,7 +431,7 @@ pub fn stage_new_from_clone_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("== Entered stage_new_from_clone dance ==");
+    info!("----- Entered stage_new_from_clone dance");
 
     let holon_reference = match request.dance_type {
         DanceType::CloneMethod(holon_reference) => holon_reference,
@@ -477,7 +477,7 @@ pub fn stage_new_holon_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("== Entered stage new holon dance ==");
+    info!("----- Entered stage new holon dance");
     // Create and stage new Holon
     let mut new_holon = Holon::new();
 
@@ -557,7 +557,7 @@ pub fn stage_new_version_dance(
     context: &HolonsContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
-    debug!("== Entered stage_new_version dance ==");
+    info!("----- Entered stage_new_version dance ==");
 
     let smart_reference = match request.dance_type {
         DanceType::NewVersionMethod(holon_id) => SmartReference::new(holon_id, None), // TODO: handle getting smart_prop_vals
@@ -602,7 +602,7 @@ pub fn with_properties_dance(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
-    debug!("===== ENTERED with_properties_dance");
+    info!("----- Entered with_properties_dance");
     match request.dance_type {
         DanceType::CommandMethod(staged_index) => {
             debug!("looking for StagedHolon at index: {:#?}", staged_index);
@@ -690,7 +690,7 @@ pub fn abandon_staged_changes_dance(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
-    debug!("Entered: abandon_staged_changes_dance");
+    info!("----- Entered abandon_staged_changes_dance");
     match request.dance_type {
         DanceType::CommandMethod(staged_index) => {
             debug!("trying to borrow_mut commit_manager");

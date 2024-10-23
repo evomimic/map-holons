@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::fmt;
-use std::fmt::Display;
 use std::rc::Rc;
 use hdk::prelude::*;
 use holons::commit_manager::{CommitManager};
+use holons::helpers::summarize_holons;
 use holons::holon::{Holon};
 use holons::holon_error::HolonError;
 use shared_types_holon::{MapString};
@@ -73,5 +72,14 @@ impl StagingArea {
             staged_holons,
             keyed_index: self.index.clone(),
         }
+    }
+
+    //Method to summarize the StagingArea into a String for logging purposes
+    pub fn summarize(&self) -> String {
+
+        format!(
+            "\n    StagingArea: {{ Staged Holons {} }}",
+            summarize_holons(&self.staged_holons)
+        )
     }
 }

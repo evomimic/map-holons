@@ -125,7 +125,7 @@ impl DanceResponse {
         self.state.set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
         self.state.set_local_holon_space(context.get_local_holon_space());
     }
-    // Method to summarize the DanceResponse
+    // Method to summarize the DanceResponse for logging purposes
     pub fn summarize(&self) -> String {
         let body_summary = match &self.body {
             ResponseBody::Holon(holon) => holon.summarize(),
@@ -134,12 +134,12 @@ impl DanceResponse {
         };
 
         format!(
-            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  state: {:?},\n body: {} }}",
+            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
             self.status_code,
             self.description,
             self.descriptor,
-            self.state,
             body_summary,
+            self.state.summarize(),
         )
     }
 }

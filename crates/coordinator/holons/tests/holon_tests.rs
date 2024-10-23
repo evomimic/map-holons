@@ -71,7 +71,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
     // Iterate through the vector of test holons, building & creating each holon,
     // then get the created holon and compare it to the generated descriptor.
     for test_holon in test_holons.clone() {
-        let p_count = test_holon.property_map.len();
+        let _p_count = test_holon.property_map.len();
 
         println!("\n****** Starting create/get test for the following Holon:");
         // print_holon_without_saved_node(&test_holon);

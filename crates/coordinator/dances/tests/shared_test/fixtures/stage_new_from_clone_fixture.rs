@@ -44,7 +44,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         .clone()
         .expect("Expected setup method to return Some book holon at index 0, got none.");
     let book_index = test_data[0].staged_index;
-    let book_key = test_data[0].key.clone();
+    let _book_key = test_data[0].key.clone();
 
     let publisher_index = test_data[3].staged_index;
     let publisher_key = test_data[3].key.clone();

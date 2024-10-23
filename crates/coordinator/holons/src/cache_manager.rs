@@ -80,7 +80,7 @@ impl HolonCacheManager {
         // holon_space_id: Option<&HolonId>,
         holon_id: &HolonId,
     ) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        info!("-------ENTERED: get_rc_holon, getting cache");
+        debug!("-------ENTERED: get_rc_holon, getting cache");
 
         let cache = self.get_cache(holon_id)?;
 
@@ -102,7 +102,7 @@ impl HolonCacheManager {
         }
 
         // Holon not found in cache, fetch it
-        info!("Holon not cached, fetching holon");
+        debug!("Holon not cached, fetching holon");
 
         let fetched_holon = match holon_id {
             Local(local_id) => HolonCacheManager::fetch_local_holon(local_id)?,

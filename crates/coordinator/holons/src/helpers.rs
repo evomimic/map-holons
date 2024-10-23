@@ -1,8 +1,9 @@
 use hdk::prelude::*;
-use shared_types_holon::holon_node::HolonNode;
-use shared_types_holon::{MapString, PropertyMap, PropertyName};
-use crate::holon::Holon;
 
+use shared_types_holon::{MapString, PropertyMap, PropertyName};
+use shared_types_holon::holon_node::HolonNode;
+
+use crate::holon::Holon;
 use crate::holon_error::HolonError;
 
 pub fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
