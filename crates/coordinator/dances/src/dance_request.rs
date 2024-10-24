@@ -1,4 +1,3 @@
-use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::cache_manager::HolonCacheManager;
 use holons::commit_manager::StagedIndex;
@@ -31,6 +30,8 @@ pub enum DanceType {
     Standalone,                  // i.e., a dance not associated with a specific holon
     QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
     CommandMethod(StagedIndex), // a mutating method operating on a specific staged_holon identified by its index into the staged_holons vector
+    CloneMethod(HolonReference), // a specific method for cloning a Holon
+    NewVersionMethod(HolonId), // a SmartReference only method for cloning a Holon as new version by linking to the original Holon it was cloned from via PREDECESSOR relationship
     DeleteMethod(LocalId),
 }
 
@@ -73,6 +74,18 @@ impl RequestBody {
     pub fn new_query_expression(query_expression: QueryExpression) -> Self {
         Self::QueryExpression(query_expression)
     }
+    pub fn summarize(&self) -> String {
+        match &self {
+            RequestBody::Holon(holon) => format!("  Holon summary: {}",holon.summarize()),
+            RequestBody::TargetHolons(relationship_name,holons)
+               => format!("  relationship: {:?}, {{\n    holon_references: {:?} }} ",relationship_name, holons),
+            RequestBody::HolonId(holon_id) => format!("  HolonId: {:?}",holon_id),
+
+            _ => format!("{:#?}", self), // Use full debug for other response bodies
+        }
+
+    }
+
 }
 
 impl DanceRequest {
@@ -102,11 +115,21 @@ impl DanceRequest {
         // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
 
         let local_holon_space = self.get_state().get_local_holon_space();
-        info!("initializing context from session state in dance request");
+        debug!("initializing context from session state in dance request");
         HolonsContext::init_context(
             commit_manager,
             HolonCacheManager::new(),
             local_holon_space,
+        )
+    }
+    // Method to summarize the DanceResponse for logging purposes
+    pub fn summarize(&self) -> String {
+        format!(
+            "DanceRequest {{ \n  dance_name: {:?}, dance_type: {:?}, \n  body: {}, \n  state: {} }}\n",
+            self.dance_name.to_string(),
+            self.dance_type,
+            self.body.summarize(),
+            self.state.summarize(),
         )
     }
 

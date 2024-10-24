@@ -14,21 +14,16 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-
-
-
-
+use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-use core_schema::loader::load_core_schema;
-use shared_types_holon::{MapString, MapInteger, PropertyMap};
-use shared_types_holon::HolonId;
-use crate::dance_request::{DanceRequest, DanceType,RequestBody};
+use shared_types_holon::{MapString};
+
+use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::session_state::SessionState;
-use crate::staging_area::StagingArea;
 
 /// *DanceRequest:*
 /// - dance_name: "load_core_schema"
@@ -38,31 +33,30 @@ use crate::staging_area::StagingArea;
 /// *ResponseBody:*
 /// - Holon -- the created Schema Holon
 ///
-pub fn load_core_schema_dance(context: &HolonsContext, request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn load_core_schema_dance(
+    context: &HolonsContext,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     debug!("Entered load_core_schema_dance");
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::Standalone=> {
+        DanceType::Standalone => {
             // Call the native load_core_schema function
             let result = load_core_schema(context);
             match result {
-                Ok(commit_response)=> {
-                    match commit_response.status {
-                        Complete => Ok(ResponseBody::None),
-                        Incomplete => {
-                            Err(HolonError::CommitFailure("Incomplete commit".to_string()))
-                        }
-                    }
-
-                }
+                Ok(commit_response) => match commit_response.status {
+                    Complete => Ok(ResponseBody::None),
+                    Incomplete => Err(HolonError::CommitFailure("Incomplete commit".to_string())),
+                },
                 Err(e) => Err(e),
             }
         }
-        _ => Err(HolonError::InvalidParameter("Expected Standalone DanceType, didn't get one".to_string())),
+        _ => Err(HolonError::InvalidParameter(
+            "Expected Standalone DanceType, didn't get one".to_string(),
+        )),
     }
 }
-
 
 pub fn build_load_core_schema_dance_request(
     session_state:&SessionState,
@@ -70,4 +64,3 @@ pub fn build_load_core_schema_dance_request(
     let body = RequestBody::new();
     Ok(DanceRequest::new(MapString("load_core_schema".to_string()), DanceType::Standalone,body, session_state.clone()))
 }
-

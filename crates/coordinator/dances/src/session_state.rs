@@ -1,4 +1,3 @@
-
 use hdk::prelude::*;
 // use serde::Serialize;
 
@@ -6,6 +5,7 @@ use hdk::prelude::*;
 use hdi::hdk_entry_helper;
 use holons::cache_manager::HolonCacheManager;
 use holons::context::HolonsContext;
+// use holons::helpers::summarize_holons;
 use holons::holon_reference::HolonReference;
 use crate::staging_area::StagingArea;
 
@@ -84,6 +84,15 @@ impl SessionState {
     }
     pub fn set_staging_area(&mut self, staging_area: StagingArea) {
         self.staging_area = staging_area;
+    }
+    // Method to summarize the SessionState
+    pub fn summarize(&self) -> String {
+        format!(
+            "\n   local_holon_space: {:?}, \n  staging_area: {} }}",
+            self.local_holon_space,
+            self.staging_area.summarize(),
+
+        )
     }
 
 }

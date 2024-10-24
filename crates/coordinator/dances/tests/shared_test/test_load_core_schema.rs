@@ -1,8 +1,3 @@
-//! Holon Descriptor Test Cases
-
-#![allow(unused_imports)]
-
-
 
 use std::collections::BTreeMap;
 
@@ -20,13 +15,13 @@ use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
-use crate::shared_test::dance_fixtures::*;
+
 use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
 use crate::shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
-use crate::shared_test::test_data_types::DanceTestStep;
+
 
 /// This function builds and dances a `load_core_schema` DanceRequest
 /// and confirms a Success response

@@ -1,4 +1,3 @@
-// #![allow(unused_imports)]
 
 use std::collections::BTreeMap;
 
@@ -16,9 +15,7 @@ use holons::context::HolonsContext;
 use rstest::*;
 use dances::dance_response::ResponseBody::Holons;
 
-use crate::shared_test::dance_fixtures::*;
-use crate::shared_test::test_data_types::DanceTestStep;
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -60,6 +57,7 @@ pub async fn execute_database_print(
                     match key_result {
                         Ok(key) => {info!("key = {:?}",
                             key.unwrap_or_else(|| MapString("<None>".to_string())).0);
+                            info!("{:?}",holon.summarize());
                             debug!("\nHolon {:?}", as_json(&holon));}
                         Err(holon_error) => {
                             panic!(

@@ -37,6 +37,7 @@ pub fn validate_agent_joining(
 }
 #[hdk_extern]
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
+    #[allow(unreachable_patterns)]
     match op.flattened::<EntryTypes, LinkTypes>()? {
         FlatOp::StoreEntry(store_entry) => {
             match store_entry {
@@ -204,7 +205,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 } => {
                     let original_record = must_get_valid_record(original_action_hash)?;
                     let original_action = original_record.action().clone();
-                    let original_action = match original_action {
+                    // TODO Figure out proper use and method for setting original_action
+                    let _original_action = match original_action {
                         Action::Create(create) => EntryCreationAction::Create(create),
                         Action::Update(update) => EntryCreationAction::Update(update),
                         _ => {
@@ -227,7 +229,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                     .entry()
                                     .to_app_option()
                                     .map_err(|e| wasm_error!(e))?;
-                                let original_holon_node = match original_holon_node {
+                                let _original_holon_node = match original_holon_node {
                                     Some(holon_node) => holon_node,
                                     None => {
                                         return Ok(
@@ -302,7 +304,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         }
                     };
                     match original_app_entry {
-                        EntryTypes::HolonNode(original_holon_node) => {
+                        EntryTypes::HolonNode(_original_holon_node) => {
                             validate_delete_holon_node(
                                 action,
                                // original_action,
