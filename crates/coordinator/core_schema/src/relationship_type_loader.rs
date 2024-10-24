@@ -126,7 +126,7 @@ impl CoreRelationshipTypeName {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonSpaceType,
                 },
-                has_inverse: Some(CoreSchema), 
+                has_inverse: Some(CoreSchema),
             },
             CoreSchema => RelationshipTypeLoader {
                 descriptor_name,
