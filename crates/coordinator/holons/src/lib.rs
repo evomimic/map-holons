@@ -72,9 +72,7 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
         }
         Action::DeleteLink(delete_link) => {
             let record = get(delete_link.link_add_address.clone(), GetOptions::default())?.ok_or(
-                wasm_error!(WasmErrorInner::Guest(
-                    "Failed to fetch CreateLink action".to_string()
-                )),
+                wasm_error!(WasmErrorInner::Guest("Failed to fetch CreateLink action".to_string())),
             )?;
             match record.action() {
                 Action::CreateLink(create_link) => {
@@ -103,21 +101,14 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
                 if let Ok(Some(original_app_entry)) =
                     get_entry_for_action(&update.original_action_address)
                 {
-                    emit_signal(Signal::EntryUpdated {
-                        action,
-                        app_entry,
-                        original_app_entry,
-                    })?;
+                    emit_signal(Signal::EntryUpdated { action, app_entry, original_app_entry })?;
                 }
             }
             Ok(())
         }
         Action::Delete(delete) => {
             if let Ok(Some(original_app_entry)) = get_entry_for_action(&delete.deletes_address) {
-                emit_signal(Signal::EntryDeleted {
-                    action,
-                    original_app_entry,
-                })?;
+                emit_signal(Signal::EntryDeleted { action, original_app_entry })?;
             }
             Ok(())
         }
@@ -138,18 +129,12 @@ fn get_entry_for_action(action_hash: &ActionHash) -> ExternResult<Option<EntryTy
         }
     };
     let (zome_index, entry_index) = match record.action().entry_type() {
-        Some(EntryType::App(AppEntryDef {
-            zome_index,
-            entry_index,
-            ..
-        })) => (zome_index, entry_index),
+        Some(EntryType::App(AppEntryDef { zome_index, entry_index, .. })) => {
+            (zome_index, entry_index)
+        }
         _ => {
             return Ok(None);
         }
     };
-    Ok(EntryTypes::deserialize_from_type(
-        zome_index.clone(),
-        entry_index.clone(),
-        entry,
-    )?)
+    Ok(EntryTypes::deserialize_from_type(zome_index.clone(), entry_index.clone(), entry)?)
 }

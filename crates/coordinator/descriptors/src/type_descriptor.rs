@@ -73,10 +73,7 @@ pub fn define_type_descriptor(
             Description.as_property_name(),
             BaseValue::StringValue(definition.description),
         )?
-        .with_property_value(
-            Label.as_property_name(),
-            BaseValue::StringValue(definition.label),
-        )?
+        .with_property_value(Label.as_property_name(), BaseValue::StringValue(definition.label))?
         .with_property_value(
             CoreSchemaPropertyTypeName::BaseType.as_property_name(),
             BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string()))),
@@ -98,10 +95,8 @@ pub fn define_type_descriptor(
 
     debug!("{:#?}", descriptor.clone());
 
-    let staged_reference = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(descriptor.clone())?;
+    let staged_reference =
+        context.commit_manager.borrow_mut().stage_new_holon(descriptor.clone())?;
 
     // Add related holons
 

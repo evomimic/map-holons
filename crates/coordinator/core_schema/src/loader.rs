@@ -55,9 +55,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     // the COMPONENT_OF relationship for all schema components
     let space_reference = context
         .get_local_holon_space()
-        .ok_or(HolonError::HolonNotFound(
-            "Local holon space not found".to_string(),
-        ));
+        .ok_or(HolonError::HolonNotFound("Local holon space not found".to_string()));
 
     let schema = Schema::new(
         CoreSchemaName::SchemaName.as_map_string(),
@@ -68,10 +66,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("Staging Schema...");
     let staged_schema_ref = HolonReference::Staged(
-        context
-            .commit_manager
-            .borrow_mut()
-            .stage_new_holon(schema.0.clone())?,
+        context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone())?,
     );
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
@@ -105,10 +100,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     let r = response.clone();
 
     info!("Commit Response: {:#?}", r.status);
-    info!(
-        "Commits Attempted: {:#?}",
-        r.commits_attempted.0.to_string()
-    );
+    info!("Commits Attempted: {:#?}", r.commits_attempted.0.to_string());
     info!("Holons Saved: {:#?}", r.saved_holons.len());
     info!("Abandoned: {:#?}", r.abandoned_holons.len());
 
@@ -175,30 +167,22 @@ fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
     // Let's add all the CoreSchemaValueTypes to the initial load set
 
     for variant in CoreStringValueTypeName::iter() {
-        result.push(CoreSchemaTypeName::ValueType(
-            CoreValueTypeName::StringType(variant),
-        ));
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::StringType(variant)));
     }
 
     // Add all CoreIntegerValueTypeName variants
     for variant in CoreIntegerValueTypeName::iter() {
-        result.push(CoreSchemaTypeName::ValueType(
-            CoreValueTypeName::IntegerType(variant),
-        ));
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::IntegerType(variant)));
     }
 
     // Add all CoreBooleanValueTypeName variants
     for variant in CoreBooleanValueTypeName::iter() {
-        result.push(CoreSchemaTypeName::ValueType(
-            CoreValueTypeName::BooleanType(variant),
-        ));
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::BooleanType(variant)));
     }
 
     // Add all CoreEnumTypeName variants
     for variant in CoreEnumTypeName::iter() {
-        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::EnumType(
-            variant,
-        )));
+        result.push(CoreSchemaTypeName::ValueType(CoreValueTypeName::EnumType(variant)));
     }
 
     // Add all CoreMetaTypeName variants

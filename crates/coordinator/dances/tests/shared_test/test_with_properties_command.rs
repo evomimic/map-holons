@@ -45,15 +45,9 @@ pub async fn execute_with_properties(
 ) {
     info!("\n\n--- TEST STEP: with_properties Command:");
     // Get the state of the holon prior to dancing the request
-    debug!(
-        "trying to get staged_holon at staged_holon_index: {:#?}",
-        staged_holon_index
-    );
-    let staged_holon = test_state
-        .session_state
-        .get_staging_area()
-        .staged_holons
-        .get(staged_holon_index);
+    debug!("trying to get staged_holon at staged_holon_index: {:#?}", staged_holon_index);
+    let staged_holon =
+        test_state.session_state.get_staging_area().staged_holons.get(staged_holon_index);
     match staged_holon {
         None => {
             panic!("Unable to get staged_holon from the staging_area");
@@ -65,10 +59,7 @@ pub async fn execute_with_properties(
                 let result =
                     expected_holon.with_property_value(property_name.clone(), base_value.clone());
                 if let Err(e) = result {
-                    panic!(
-                        "Unable to add property value to expected holon, due to: {:#?}",
-                        e
-                    );
+                    panic!("Unable to add property value to expected holon, due to: {:#?}", e);
                 }
             }
             // Build a with_properties DanceRequest
@@ -81,9 +72,8 @@ pub async fn execute_with_properties(
 
             match request {
                 Ok(valid_request) => {
-                    let response: DanceResponse = conductor
-                        .call(&cell.zome("dances"), "dance", valid_request)
-                        .await;
+                    let response: DanceResponse =
+                        conductor.call(&cell.zome("dances"), "dance", valid_request).await;
                     debug!("Dance Response: {:#?}", response.clone());
                     let code = response.status_code;
                     let description = response.description.clone();

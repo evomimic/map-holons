@@ -18,11 +18,7 @@ pub struct SemanticVersion {
 
 impl Default for SemanticVersion {
     fn default() -> Self {
-        SemanticVersion {
-            major: 0,
-            minor: 0,
-            patch: 1,
-        }
+        SemanticVersion { major: 0, minor: 0, patch: 1 }
     }
 }
 impl SemanticVersion {

@@ -53,12 +53,8 @@ pub fn define_collection_type(
 ) -> Result<StagedReference, HolonError> {
     // Stage the new TypeDescriptor
 
-    let type_descriptor_ref = define_type_descriptor(
-        context,
-        schema,
-        BaseType::Collection,
-        definition.header.clone(),
-    )?;
+    let type_descriptor_ref =
+        define_type_descriptor(context, schema, BaseType::Collection, definition.header.clone())?;
 
     // Build the new type
 
@@ -76,41 +72,31 @@ pub fn define_collection_type(
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::MaxCardinality
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::MaxCardinality.as_snake_case().to_string(),
             )),
             BaseValue::IntegerValue(definition.max_cardinality),
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::MinCardinality
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::MinCardinality.as_snake_case().to_string(),
             )),
             BaseValue::IntegerValue(definition.min_cardinality),
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::AllowsDuplicates
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::AllowsDuplicates.as_snake_case().to_string(),
             )),
             BaseValue::BooleanValue(definition.allows_duplicates),
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::IsOrdered
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::IsOrdered.as_snake_case().to_string(),
             )),
             BaseValue::BooleanValue(definition.is_ordered),
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::TypeName
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string(),
             )),
             BaseValue::StringValue(collection_type_name),
         )?;
@@ -119,10 +105,8 @@ pub fn define_collection_type(
 
     debug!("{:#?}", collection_type.clone());
 
-    let collection_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(collection_type.clone())?;
+    let collection_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(collection_type.clone())?;
 
     // Add its relationships
 
@@ -151,9 +135,8 @@ fn generate_collection_type_name(
         Some(name) => Ok(MapString(name.0.clone())),
         None => {
             let holon_type_name = PropertyName(MapString("type_name".to_string()));
-            let base_name = &definition
-                .target_holon_type
-                .get_property_value(context, &holon_type_name)?;
+            let base_name =
+                &definition.target_holon_type.get_property_value(context, &holon_type_name)?;
             if definition.max_cardinality.0 == 1 {
                 Ok(MapString(format!("{:?}Collection", base_name)))
             } else {

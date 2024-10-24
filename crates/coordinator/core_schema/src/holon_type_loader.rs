@@ -290,9 +290,7 @@ pub fn load_holon_type_definition(
     };
     // Add HolonReferences to the PropertyDescriptors for this holon type
     for property in loader.properties {
-        definition
-            .properties
-            .push(property.lazy_get_core_type_definition(context, schema)?);
+        definition.properties.push(property.lazy_get_core_type_definition(context, schema)?);
     }
 
     // Add HolonReferences to the Key PropertyDescriptors for this holon type
@@ -311,10 +309,7 @@ pub fn load_holon_type_definition(
     // TODO:  Lazy get source_for references to RelationshipDescriptors
     // TODO: Lazy get dance_request references to DanceDescriptors (Request & Response)
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_holon_type(context, schema, definition)?;
 
     context

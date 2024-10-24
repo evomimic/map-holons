@@ -46,9 +46,8 @@ pub async fn execute_ensure_database_count(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             test_state.session_state = response.state;
 
             if let Holons(holons) = response.body.clone() {

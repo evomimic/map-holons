@@ -68,10 +68,8 @@ pub fn define_enum_variant_type(
 
     debug!("Staging... {:#?}", enum_variant_type.clone());
 
-    let enum_variant_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(enum_variant_type.clone())?;
+    let enum_variant_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(enum_variant_type.clone())?;
 
     // Add some relationships
 

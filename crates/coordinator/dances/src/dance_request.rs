@@ -79,12 +79,7 @@ impl DanceRequest {
         body: RequestBody,
         state: SessionState,
     ) -> Self {
-        Self {
-            dance_name,
-            dance_type,
-            body,
-            state,
-        }
+        Self { dance_name, dance_type, body, state }
     }
     pub fn get_state(&self) -> &SessionState {
         &self.state

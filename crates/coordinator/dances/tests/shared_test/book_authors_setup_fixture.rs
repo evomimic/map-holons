@@ -106,9 +106,8 @@ pub fn setup_book_author_steps(
     test_case.add_stage_holon_step(person_1.clone())?;
 
     let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
-    let person_1_reference = HolonReference::Staged(StagedReference {
-        holon_index: person_1_index,
-    });
+    let person_1_reference =
+        HolonReference::Staged(StagedReference { holon_index: person_1_index });
 
     //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
     let mut person_holon_2 = Holon::new();
@@ -128,9 +127,8 @@ pub fn setup_book_author_steps(
         )?;
     test_case.add_stage_holon_step(person_holon_2.clone())?;
     let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
-    let person_2_reference = HolonReference::Staged(StagedReference {
-        holon_index: person_2_index,
-    });
+    let person_2_reference =
+        HolonReference::Staged(StagedReference { holon_index: person_2_index });
 
     // ADD STEP:  RELATIONSHIP:  (H1)-relationship_name>[(H2),(H3)]//
 
@@ -140,10 +138,7 @@ pub fn setup_book_author_steps(
 
     target_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
-    book_holon
-        .relationship_map
-        .0
-        .insert(relationship_name.clone(), target_collection);
+    book_holon.relationship_map.0.insert(relationship_name.clone(), target_collection);
 
     // let mut holons_to_add: Vec<HolonReference> = Vec::new();
     holons_to_add.push(person_1_reference);

@@ -59,9 +59,7 @@ pub fn define_holon_type(
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::TypeName
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string(),
             )),
             BaseValue::StringValue(definition.type_name.clone()),
         )?;
@@ -69,10 +67,7 @@ pub fn define_holon_type(
     debug!("Staging new holon_type {:#?}", holon_type.clone());
 
     // Stage new holon type
-    let holon_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(holon_type.clone())?;
+    let holon_type_ref = context.commit_manager.borrow_mut().stage_new_holon(holon_type.clone())?;
 
     // Add some relationships
 

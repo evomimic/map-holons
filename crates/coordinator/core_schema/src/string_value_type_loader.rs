@@ -144,10 +144,7 @@ pub(crate) fn load_string_type_definition(
         max_length: loader.max_length,
     };
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_string_type(context, schema, definition)?;
 
     context

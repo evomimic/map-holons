@@ -45,9 +45,7 @@ pub fn define_integer_type(
         )?
         .with_property_value(
             PropertyName(MapString(
-                CoreSchemaPropertyTypeName::TypeName
-                    .as_snake_case()
-                    .to_string(),
+                CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string(),
             )),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
@@ -61,10 +59,8 @@ pub fn define_integer_type(
         )?;
 
     // Stage new holon type
-    let integer_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(integer_type.clone())?;
+    let integer_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(integer_type.clone())?;
 
     // Add some relationships
 

@@ -101,15 +101,10 @@ fn load_boolean_type_definition(
         owned_by: loader.owned_by,
     };
 
-    let definition = BooleanTypeDefinition {
-        header: type_header,
-        type_name: loader.type_name.clone(),
-    };
+    let definition =
+        BooleanTypeDefinition { header: type_header, type_name: loader.type_name.clone() };
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_boolean_type(context, schema, definition)?;
 
     context

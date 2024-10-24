@@ -8,9 +8,7 @@ pub fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonErro
     match record.entry() {
         RecordEntry::Present(entry) => HolonNode::try_from(entry.clone())
             .or(Err(HolonError::RecordConversion("HolonNode".to_string()))),
-        _ => Err(HolonError::RecordConversion(
-            "Record does not have an entry".to_string(),
-        )),
+        _ => Err(HolonError::RecordConversion("Record does not have an entry".to_string())),
     }
 }
 

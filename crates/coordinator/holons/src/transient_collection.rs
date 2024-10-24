@@ -26,10 +26,7 @@ pub struct TransientCollection {
 
 impl TransientCollection {
     pub fn new() -> Self {
-        TransientCollection {
-            members: Vec::new(),
-            keyed_index: BTreeMap::new(),
-        }
+        TransientCollection { members: Vec::new(), keyed_index: BTreeMap::new() }
     }
 
     pub fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {

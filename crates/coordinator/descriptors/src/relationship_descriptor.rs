@@ -103,16 +103,11 @@ pub fn define_relationship_type(
             BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant()),
         )?;
 
-    debug!(
-        "Staging new relationship_type {:#?}",
-        relationship_type.clone()
-    );
+    debug!("Staging new relationship_type {:#?}", relationship_type.clone());
 
     // Stage new holon type
-    let relationship_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(relationship_type.clone())?;
+    let relationship_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(relationship_type.clone())?;
 
     // Add its relationships
 

@@ -652,10 +652,7 @@ pub fn load_relationship_type_definition(
     // TODO:  Lazy get source_for references to RelationshipDescriptors
     // TODO: Lazy get dance_request references to DanceDescriptors (Request & Response)
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.relationship_type_name.0.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.relationship_type_name.0.clone());
     let staged_ref = define_holon_type(context, schema, definition)?;
 
     context

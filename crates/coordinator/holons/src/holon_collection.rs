@@ -47,11 +47,7 @@ impl HolonCollection {
         //         keyed_index.insert(key, index);
         //     }
         // }
-        HolonCollection {
-            state,
-            members,
-            keyed_index,
-        }
+        HolonCollection { state, members, keyed_index }
     }
     /// Checks if requested `access_type` is acceptable given the collection's current `state`.
     /// If not, returns `NotAccessible` error
@@ -102,10 +98,7 @@ impl HolonCollection {
         if index < self.members.len() {
             Ok(self.members[index].clone())
         } else {
-            Err(HolonError::IndexOutOfRange(format!(
-                "Index {} is out of bounds",
-                index
-            )))
+            Err(HolonError::IndexOutOfRange(format!("Index {} is out of bounds", index)))
         }
     }
 

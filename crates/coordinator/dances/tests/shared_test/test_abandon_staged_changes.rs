@@ -50,9 +50,8 @@ pub async fn execute_abandon_staged_changes(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             test_state.session_state = response.state.clone();
 
             assert_eq!(response.status_code, expected_response);
@@ -115,10 +114,7 @@ pub async fn execute_abandon_staged_changes(
             }
         }
         Err(error) => {
-            panic!(
-                "{:?} Unable to build a abandon_staged_changes request ",
-                error
-            );
+            panic!("{:?} Unable to build a abandon_staged_changes request ", error);
         }
     }
 }

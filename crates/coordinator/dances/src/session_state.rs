@@ -20,16 +20,10 @@ pub struct SessionState {
 
 impl SessionState {
     pub fn empty() -> Self {
-        Self {
-            staging_area: StagingArea::empty(),
-            local_holon_space: None,
-        }
+        Self { staging_area: StagingArea::empty(), local_holon_space: None }
     }
     pub fn new(staging_area: StagingArea, local_holon_space: Option<HolonReference>) -> Self {
-        Self {
-            staging_area,
-            local_holon_space,
-        }
+        Self { staging_area, local_holon_space }
     }
     pub fn get_local_holon_space(&self) -> Option<HolonReference> {
         self.local_holon_space.clone()

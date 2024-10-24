@@ -44,9 +44,8 @@ pub async fn execute_commit(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
 
             debug!("Dance Response: {:#?}", response.clone());
             test_state.session_state = response.state.clone();

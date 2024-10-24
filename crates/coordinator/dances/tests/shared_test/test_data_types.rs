@@ -20,13 +20,7 @@ pub struct DancesTestCase {
 
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
-    AddRelatedHolons(
-        StagedIndex,
-        RelationshipName,
-        Vec<HolonReference>,
-        ResponseStatusCode,
-        Holon,
-    ), // Adds relationship between two Holons
+    AddRelatedHolons(StagedIndex, RelationshipName, Vec<HolonReference>, ResponseStatusCode, Holon), // Adds relationship between two Holons
     RemoveRelatedHolons(
         StagedIndex,
         RelationshipName,
@@ -121,20 +115,13 @@ pub struct DanceTestState {
 
 impl DanceTestState {
     pub fn new() -> DanceTestState {
-        DanceTestState {
-            session_state: SessionState::empty(),
-            created_holons: Vec::new(),
-        }
+        DanceTestState { session_state: SessionState::empty(), created_holons: Vec::new() }
     }
 }
 
 impl DancesTestCase {
     pub fn new(name: String, description: String) -> Self {
-        Self {
-            name,
-            description,
-            steps: VecDeque::new(),
-        }
+        Self { name, description, steps: VecDeque::new() }
     }
 
     pub fn add_related_holons_step(
@@ -180,13 +167,11 @@ impl DancesTestCase {
         &mut self,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::DeleteHolon(expected_response));
+        self.steps.push_back(DanceTestStep::DeleteHolon(expected_response));
         Ok(())
     }
     pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::EnsureDatabaseCount(count));
+        self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
@@ -208,11 +193,7 @@ impl DancesTestCase {
         properties: PropertyMap,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::WithProperties(
-            index,
-            properties,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::WithProperties(index, properties, expected_response));
         Ok(())
     }
     pub fn add_abandon_staged_changes_step(
@@ -220,10 +201,7 @@ impl DancesTestCase {
         index: StagedIndex,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::AbandonStagedChanges(
-            index,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::AbandonStagedChanges(index, expected_response));
         Ok(())
     }
     pub fn add_load_core_schema(&mut self) -> Result<(), HolonError> {

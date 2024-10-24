@@ -33,9 +33,7 @@ const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
 /// MOCK CONDUCTOR
 
 pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
-    let dna = SweetDnaFile::from_bundle(std::path::Path::new(&DNA_FILEPATH))
-        .await
-        .unwrap();
+    let dna = SweetDnaFile::from_bundle(std::path::Path::new(&DNA_FILEPATH)).await.unwrap();
 
     // let dna_path = std::env::current_dir().unwrap().join(DNA_FILEPATH);
     // println!("{}", dna_path.to_string_lossy());
@@ -72,9 +70,7 @@ pub fn get_holon_by_key_from_test_state(
                 return Ok(Some(id));
             }
         } else {
-            return Err(HolonError::Misc(
-                "Returned multiple Holons for key".to_string(),
-            ));
+            return Err(HolonError::Misc("Returned multiple Holons for key".to_string()));
         }
     }
 

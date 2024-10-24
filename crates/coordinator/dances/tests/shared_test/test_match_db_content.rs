@@ -49,9 +49,8 @@ pub async fn execute_match_db_content(
 
         match request {
             Ok(valid_request) => {
-                let response: DanceResponse = conductor
-                    .call(&cell.zome("dances"), "dance", valid_request)
-                    .await;
+                let response: DanceResponse =
+                    conductor.call(&cell.zome("dances"), "dance", valid_request).await;
                 test_state.session_state = response.state.clone();
 
                 if let ResponseBody::Holon(actual_holon) = response.body.clone() {

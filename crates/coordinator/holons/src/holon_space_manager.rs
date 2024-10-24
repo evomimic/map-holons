@@ -31,16 +31,11 @@ impl<'a> HolonSpaceManager<'a> {
                 .to_string(),
         );
 
-        holon_space
-            .with_name(&name)?
-            .with_description(&description)?;
+        holon_space.with_name(&name)?.with_description(&description)?;
 
         // Stage the new holon space and set it in the context
-        let _staged_holon_space_ref = self
-            .context
-            .commit_manager
-            .borrow_mut()
-            .stage_new_holon(holon_space.into_holon())?;
+        let _staged_holon_space_ref =
+            self.context.commit_manager.borrow_mut().stage_new_holon(holon_space.into_holon())?;
 
         // Commit the staged holon space
         let commit_response = CommitManager::commit(self.context);
@@ -51,17 +46,14 @@ impl<'a> HolonSpaceManager<'a> {
 
             HolonSpace::create_local_path(local_id.clone()).map_err(|e| {
                 return HolonError::CommitFailure(
-                    "Unable to create LocalHolonSpace path, inner error: ".to_string() + &e.to_string(),
-                )
+                    "Unable to create LocalHolonSpace path, inner error: ".to_string()
+                        + &e.to_string(),
+                );
             })?;
-            
-            return Ok(HolonReference::Smart(SmartReference::new_from_id(
-                local_id.into(),
-            )));
+
+            return Ok(HolonReference::Smart(SmartReference::new_from_id(local_id.into())));
         }
-        return Err(HolonError::CommitFailure(
-            "Unable to commit LocalHolonSpace".to_string(),
-        ));
+        return Err(HolonError::CommitFailure("Unable to commit LocalHolonSpace".to_string()));
     }
     /// Ensure that a LocalHolonSpace reference is included in the context. The simplest case is
     /// that context is already populated with the reference. If not, try to fetch the reference
@@ -76,8 +68,7 @@ impl<'a> HolonSpaceManager<'a> {
                 let holon_space_fetch_result = self.fetch_and_set_local_holon_space();
                 match holon_space_fetch_result {
                     Ok(space_reference) => {
-                        self.context
-                            .set_local_holon_space(space_reference.clone())?;
+                        self.context.set_local_holon_space(space_reference.clone())?;
                         Ok(space_reference)
                     }
                     Err(_fetch_error) => {
@@ -87,8 +78,7 @@ impl<'a> HolonSpaceManager<'a> {
                         // return an error indicating initialization is not complete.
                         // But for now, use this to trigger creation of the local holon space
                         let space_reference = self.create_local_holon_space()?;
-                        self.context
-                            .set_local_holon_space(space_reference.clone())?;
+                        self.context.set_local_holon_space(space_reference.clone())?;
                         Ok(space_reference)
                     }
                 }
@@ -99,14 +89,10 @@ impl<'a> HolonSpaceManager<'a> {
     /// Search the DHT for its (singleton) LocalHolonSpace and update the context to include
     /// a HolonReference to it. Returns a HolonNotFound error if LocalHolonSpace cannot be found.
     fn fetch_and_set_local_holon_space(&self) -> Result<HolonReference, HolonError> {
-
-        let holon = HolonSpace::get_local_space_holon().or_else(|e|
-            return Err(e))?;
+        let holon = HolonSpace::get_local_space_holon().or_else(|e| return Err(e))?;
         let holon_id = HolonId::Local(holon.get_local_id()?);
-        let holon_space_reference =
-            HolonReference::Smart(SmartReference::new_from_id(holon_id));
-        self.context
-            .set_local_holon_space(holon_space_reference.clone())?;
+        let holon_space_reference = HolonReference::Smart(SmartReference::new_from_id(holon_id));
+        self.context.set_local_holon_space(holon_space_reference.clone())?;
         return Ok(holon_space_reference);
     }
 }

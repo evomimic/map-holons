@@ -190,9 +190,7 @@ impl Holon {
     pub fn commit(&mut self) -> Result<Holon, HolonError> {
         debug!(
             "Entered Holon::commit for holon with key {:#?} in {:#?} state",
-            self.get_key()?
-                .unwrap_or_else(|| MapString("<None>".to_string()))
-                .0,
+            self.get_key()?.unwrap_or_else(|| MapString("<None>".to_string())).0,
             self.state
         );
         match self.state {
@@ -352,9 +350,7 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let key = self
-            .property_map
-            .get(&PropertyName(MapString("key".to_string())));
+        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
         if let Some(key) = key {
             let string_value: String = key.try_into().map_err(|_| {
                 HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
@@ -401,14 +397,12 @@ impl Holon {
         let _count = self.load_relationship(relationship_name)?;
 
         // Retrieve the collection for the given relationship name
-        let collection =
-            self.relationship_map
-                .0
-                .get(relationship_name)
-                .ok_or(HolonError::HolonNotFound(format!(
-                    "Even after load_relationships, no collection found for relationship: {:?}",
-                    relationship_name
-                )))?;
+        let collection = self.relationship_map.0.get(relationship_name).ok_or(
+            HolonError::HolonNotFound(format!(
+                "Even after load_relationships, no collection found for relationship: {:?}",
+                relationship_name
+            )),
+        )?;
 
         // Return the collection wrapped in a Rc
         Ok(Rc::new(collection.clone()))
@@ -428,9 +422,7 @@ impl Holon {
     ///
 
     pub fn get_all_related_holons(&mut self) -> Result<RelationshipMap, HolonError> {
-        Err(HolonError::NotImplemented(
-            "get_all_related_holons is not yet implemented".to_string(),
-        ))
+        Err(HolonError::NotImplemented("get_all_related_holons is not yet implemented".to_string()))
 
         // self.is_accessible(AccessType::Read)?;
         // // let relationship_map = self.relationship_map.clone();
@@ -477,9 +469,7 @@ impl Holon {
     }
 
     pub fn into_node(self) -> HolonNode {
-        HolonNode {
-            property_map: self.property_map.clone(),
-        }
+        HolonNode { property_map: self.property_map.clone() }
     }
 
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -599,9 +589,7 @@ impl Holon {
                         }
                         // Add an entry for this relationship to relationship_map
                         let count = collection.get_count();
-                        self.relationship_map
-                            .0
-                            .insert(relationship_name.clone(), collection);
+                        self.relationship_map.0.insert(relationship_name.clone(), collection);
                         Ok(count)
                     }
 
@@ -669,9 +657,8 @@ impl Holon {
         match descriptor_count.0 {
             0 => Ok(None),
             1 => {
-                if let Some(collection) = self
-                    .relationship_map
-                    .get_collection_for_relationship(&relationship_name)
+                if let Some(collection) =
+                    self.relationship_map.get_collection_for_relationship(&relationship_name)
                 {
                     let descriptor = collection.get_by_index(0)?;
                     self.descriptor = Some(descriptor.clone());
@@ -684,9 +671,7 @@ impl Holon {
                     )))
                 }
             }
-            _ => Err(HolonError::IndexOutOfRange(
-                "Expected only a single descriptor".to_string(),
-            )),
+            _ => Err(HolonError::IndexOutOfRange("Expected only a single descriptor".to_string())),
         }
     }
 

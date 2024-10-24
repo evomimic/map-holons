@@ -45,9 +45,8 @@ pub async fn execute_load_new_schema(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             debug!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
             let description = response.description.clone();

@@ -108,13 +108,7 @@ impl DanceResponse {
         descriptor: Option<HolonReference>,
         state: SessionState,
     ) -> DanceResponse {
-        DanceResponse {
-            status_code,
-            description,
-            body,
-            descriptor,
-            state,
-        }
+        DanceResponse { status_code, description, body, descriptor, state }
     }
     /// Restores the session state within the DanceResponse from context. This should always
     /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
@@ -122,10 +116,7 @@ impl DanceResponse {
     /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
     pub fn restore_state(&mut self, context: &HolonsContext) {
         self.state
-            .set_staging_area(StagingArea::from_commit_manager(
-                &context.commit_manager.borrow(),
-            ));
-        self.state
-            .set_local_holon_space(context.get_local_holon_space());
+            .set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
+        self.state.set_local_holon_space(context.get_local_holon_space());
     }
 }

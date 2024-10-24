@@ -22,10 +22,7 @@ pub struct NodeCollection {
 
 impl NodeCollection {
     pub fn new_empty() -> Self {
-        Self {
-            members: Vec::new(),
-            query_spec: None,
-        }
+        Self { members: Vec::new(), query_spec: None }
     }
 }
 
@@ -45,9 +42,8 @@ pub fn evaluate_query(
     let mut result_collection = NodeCollection::new_empty();
 
     for node in node_collection.members {
-        let related_holons_rc = node
-            .source_holon
-            .get_related_holons(context, &relationship_name)?;
+        let related_holons_rc =
+            node.source_holon.get_related_holons(context, &relationship_name)?;
 
         let related_holons = Rc::clone(&related_holons_rc);
 
@@ -55,12 +51,8 @@ pub fn evaluate_query(
 
         for reference in related_holons.get_members() {
             let mut related_collection = NodeCollection::new_empty();
-            related_collection
-                .members
-                .push(Node::new(reference.clone(), None));
-            query_path_map
-                .0
-                .insert(relationship_name.clone(), related_collection);
+            related_collection.members.push(Node::new(reference.clone(), None));
+            query_path_map.0.insert(relationship_name.clone(), related_collection);
         }
 
         let new_node = Node::new(node.source_holon.clone(), Some(query_path_map));

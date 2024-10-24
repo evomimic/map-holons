@@ -67,10 +67,7 @@ pub fn define_enum_type(
 
     debug!("Staging... {:#?}", enum_type.clone());
 
-    let enum_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(enum_type.clone())?;
+    let enum_type_ref = context.commit_manager.borrow_mut().stage_new_holon(enum_type.clone())?;
 
     // Add its relationships
 

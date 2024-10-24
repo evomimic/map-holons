@@ -85,9 +85,7 @@ impl CommitManager {
                     "Abandoned".to_string(),
                 ));
             }
-            Ok(StagedReference {
-                holon_index: staged_index,
-            })
+            Ok(StagedReference { holon_index: staged_index })
         } else {
             Err(HolonError::IndexOutOfRange(staged_index.to_string()))
         }
@@ -162,10 +160,7 @@ impl CommitManager {
                     },
                     Err(error) => {
                         response.status = CommitRequestStatus::Incomplete;
-                        warn!(
-                            "Attempt to commit holon returned error: {:?}",
-                            error.to_string()
-                        );
+                        warn!("Attempt to commit holon returned error: {:?}", error.to_string());
                     }
                 }
             }
@@ -184,10 +179,7 @@ impl CommitManager {
                 if let Err(error) = outcome {
                     rc_holon.borrow_mut().errors.push(error.clone());
                     response.status = CommitRequestStatus::Incomplete;
-                    warn!(
-                        "Attempt to commit relationship returned error: {:?}",
-                        error.to_string()
-                    );
+                    warn!("Attempt to commit relationship returned error: {:?}", error.to_string());
                 }
             }
         }
@@ -212,10 +204,7 @@ impl CommitManager {
     }
 
     pub fn new() -> CommitManager {
-        CommitManager {
-            staged_holons: Vec::new(),
-            keyed_index: Default::default(),
-        }
+        CommitManager { staged_holons: Vec::new(), keyed_index: Default::default() }
     }
 
     /// Stages the provided holon and returns a reference-counted reference to it
@@ -248,8 +237,7 @@ impl CommitManager {
 
         // Add the new holon into the CommitManager's staged_holons list, remembering its index
         let index = self.staged_holons.len();
-        self.staged_holons
-            .push(Rc::new(RefCell::new(holon.clone())));
+        self.staged_holons.push(Rc::new(RefCell::new(holon.clone())));
 
         // Return a staged reference to the staged holon
         let staged_reference = StagedReference { holon_index: index };
@@ -264,10 +252,7 @@ impl CommitManager {
         for (relationship_name, holon_collection) in existing_relationship_map.0 {
             holon_collection.to_staged()?;
 
-            holon
-                .relationship_map
-                .0
-                .insert(relationship_name, holon_collection);
+            holon.relationship_map.0.insert(relationship_name, holon_collection);
         }
 
         Ok(staged_reference)
@@ -316,15 +301,11 @@ impl CommitManager {
                 return if let Ok(holon_ref) = holon.try_borrow_mut() {
                     Ok(holon_ref)
                 } else {
-                    Err(HolonError::FailedToBorrow(
-                        "for StagedReference".to_string(),
-                    ))
+                    Err(HolonError::FailedToBorrow("for StagedReference".to_string()))
                 };
             }
         }
-        Err(HolonError::InvalidHolonReference(
-            "Invalid holon index".to_string(),
-        ))
+        Err(HolonError::InvalidHolonReference("Invalid holon index".to_string()))
     }
 
     pub fn get_mut_holon_by_index(
@@ -397,8 +378,7 @@ impl CommitManager {
 
         // Add the new holon into the CommitManager's staged_holons list, remembering its index
         let index = self.staged_holons.len();
-        self.staged_holons
-            .push(Rc::new(RefCell::new(holon.clone())));
+        self.staged_holons.push(Rc::new(RefCell::new(holon.clone())));
 
         // Return a staged reference to the staged holon
         let staged_reference = StagedReference { holon_index: index };
@@ -414,10 +394,7 @@ impl CommitManager {
             // *Note: temp implementation, populate 0th cursor. TODO: set strategy for how to determine which SmartCollection (cursor) to choose
             holon_collection.to_staged()?;
 
-            holon
-                .relationship_map
-                .0
-                .insert(relationship_name, holon_collection);
+            holon.relationship_map.0.insert(relationship_name, holon_collection);
         }
 
         Ok(staged_reference)

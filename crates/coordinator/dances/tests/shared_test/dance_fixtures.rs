@@ -171,9 +171,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         )?;
     test_case.add_stage_holon_step(person_1.clone())?;
     let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
-    let person_1_reference = Staged(StagedReference {
-        holon_index: person_1_index,
-    });
+    let person_1_reference = Staged(StagedReference { holon_index: person_1_index });
     expected_count += 1;
 
     //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
@@ -194,9 +192,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         )?;
     test_case.add_stage_holon_step(person_holon_2.clone())?;
     let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
-    let person_2_reference = Staged(StagedReference {
-        holon_index: person_2_index,
-    });
+    let person_2_reference = Staged(StagedReference { holon_index: person_2_index });
     expected_count += 1;
 
     // ADD STEP:  RELATIONSHIP:  Book H1-> Author H2 & H3  //
@@ -210,10 +206,10 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     authored_by_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
-    book_holon.relationship_map.0.insert(
-        authored_by_relationship_name.clone(),
-        authored_by_collection.clone(),
-    );
+    book_holon
+        .relationship_map
+        .0
+        .insert(authored_by_relationship_name.clone(), authored_by_collection.clone());
 
     let mut related_holons: Vec<HolonReference> = Vec::new();
     related_holons.push(person_1_reference.clone());
@@ -328,11 +324,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Use helper function to set up a book holon, 2 persons, and an AUTHORED_BY relationship from
     // the book to both persons.
     let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
-    let test_data = setup_book_author_steps(
-        &mut test_case,
-        &mut holons_to_add,
-        &desired_test_relationship,
-    )?;
+    let test_data =
+        setup_book_author_steps(&mut test_case, &mut holons_to_add, &desired_test_relationship)?;
     expected_count += test_data.len() as i64;
 
     let person_1_index = test_data[1].staged_index;

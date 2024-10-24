@@ -46,13 +46,9 @@ pub async fn execute_delete_holon(
 
     match delete_holon_request {
         Ok(valid_request) => {
-            let delete_holon_response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
-            debug!(
-                "delete_holon Dance Response: {:#?}",
-                delete_holon_response.clone()
-            );
+            let delete_holon_response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
+            debug!("delete_holon Dance Response: {:#?}", delete_holon_response.clone());
             let code = delete_holon_response.status_code;
             assert_eq!(
                 code, expected_response,
@@ -73,9 +69,8 @@ pub async fn execute_delete_holon(
                     );
                     match get_holon_by_id_request {
                         Ok(valid_request) => {
-                            let get_holon_by_id_response: DanceResponse = conductor
-                                .call(&cell.zome("dances"), "dance", valid_request)
-                                .await;
+                            let get_holon_by_id_response: DanceResponse =
+                                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
 
                             let code = get_holon_by_id_response.status_code;
                             assert_eq!(code, ResponseStatusCode::NotFound);

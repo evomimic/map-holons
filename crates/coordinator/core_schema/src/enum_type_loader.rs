@@ -106,11 +106,7 @@ impl CoreEnumTypeName {
             }
 
             DeletionSemanticType => {
-                vec![
-                    DeletionSemanticAllow,
-                    DeletionSemanticBlock,
-                    DeletionSemanticCascade,
-                ]
+                vec![DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade]
             }
         }
     }
@@ -142,15 +138,10 @@ fn load_enum_type_definition(
 
     // Add HolonReferences to the variants for this enum type
     for variant in loader.variants {
-        definition
-            .variants
-            .push(variant.lazy_get_core_type_definition(context, schema)?);
+        definition.variants.push(variant.lazy_get_core_type_definition(context, schema)?);
     }
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_enum_type(context, schema, definition)?;
 
     context

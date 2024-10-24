@@ -110,10 +110,7 @@ fn load_integer_type_definition(
         max_value: loader.max_length,
     };
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_integer_type(context, schema, definition)?;
 
     context

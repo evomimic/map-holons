@@ -85,10 +85,7 @@ pub struct ExternalId {
 }
 impl From<(HolonSpaceId, LocalId)> for ExternalId {
     fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
-        ExternalId {
-            space_id: tuple.0,
-            local_id: tuple.1,
-        }
+        ExternalId { space_id: tuple.0, local_id: tuple.1 }
     }
 }
 

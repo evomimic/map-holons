@@ -61,9 +61,7 @@ impl StagedReference {
     }
 
     pub fn clone_reference(&self) -> StagedReference {
-        StagedReference {
-            holon_index: self.holon_index.clone(),
-        }
+        StagedReference { holon_index: self.holon_index.clone() }
     }
 
     /// Use this method to get a copy of the staged holon referenced by this StagedReference.
@@ -79,9 +77,8 @@ impl StagedReference {
             .get(self.holon_index)
             .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
 
-        let holon_ref = holon_rc
-            .try_borrow()
-            .map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
+        let holon_ref =
+            holon_rc.try_borrow().map_err(|_| HolonError::FailedToBorrow("holon".to_string()))?;
 
         Ok(holon_ref.clone())
     }
@@ -136,10 +133,7 @@ impl StagedReference {
             let mut collection = HolonCollection::new_staged();
             collection.is_accessible(AccessType::Write)?;
             collection.add_references(context, holons)?;
-            holon
-                .relationship_map
-                .0
-                .insert(relationship_name, collection);
+            holon.relationship_map.0.insert(relationship_name, collection);
         }
 
         Ok(())
@@ -221,10 +215,7 @@ impl StagedReference {
     }
 
     pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
-        debug!(
-            "Entered: abandon_staged_changes for staged_index: {:#?}",
-            self.holon_index
-        );
+        debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.holon_index);
         // Get mutable access to the source holon
         let holon_ref = self.get_mut_holon(context)?;
 

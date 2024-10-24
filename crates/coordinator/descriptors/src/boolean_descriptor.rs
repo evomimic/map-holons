@@ -52,10 +52,8 @@ pub fn define_boolean_type(
 
     debug!("Staging... {:#?}", boolean_type.clone());
 
-    let boolean_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(boolean_type.clone())?;
+    let boolean_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(boolean_type.clone())?;
 
     // Add its relationships
 

@@ -277,10 +277,7 @@ fn load_enum_variant_definition(
         variant_order: loader.variant_order,
     };
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_enum_variant_type(context, schema, definition)?;
 
     context

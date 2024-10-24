@@ -56,10 +56,8 @@ pub fn define_property_type(
 
     debug!("Staging... {:#?}", property_type.clone());
 
-    let property_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(property_type.clone())?;
+    let property_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(property_type.clone())?;
 
     // Populate the relationships
 

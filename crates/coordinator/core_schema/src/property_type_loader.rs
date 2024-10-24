@@ -218,10 +218,7 @@ fn load_property_type_definition(
         value_type,
     };
 
-    info!(
-        "Preparing to stage descriptor for {:#?}",
-        loader.property_name.clone()
-    );
+    info!("Preparing to stage descriptor for {:#?}", loader.property_name.clone());
     let staged_ref = define_property_type(context, schema, definition)?;
 
     context

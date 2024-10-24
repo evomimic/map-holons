@@ -66,10 +66,8 @@ pub fn define_string_type(
         )?;
 
     // Stage new string type
-    let string_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(string_type.clone())?;
+    let string_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(string_type.clone())?;
 
     // Add some relationships
     string_type_ref.add_related_holons(

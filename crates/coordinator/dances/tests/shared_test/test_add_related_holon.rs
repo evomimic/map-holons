@@ -46,17 +46,11 @@ pub async fn execute_add_related_holons(
     expected_response: ResponseStatusCode,
     expected_holon: Holon,
 ) -> () {
-    info!(
-        "\n\n--- TEST STEP: Adding Related Holons. Expecting  {:#?}",
-        expected_response.clone()
-    );
+    info!("\n\n--- TEST STEP: Adding Related Holons. Expecting  {:#?}", expected_response.clone());
 
     // Get the state of the holon prior to dancing the request
-    let source_holon = test_state
-        .session_state
-        .get_staging_area()
-        .staged_holons
-        .get(source_holon_index);
+    let source_holon =
+        test_state.session_state.get_staging_area().staged_holons.get(source_holon_index);
     if source_holon.is_none() {
         panic!(
             "Unable to get source holon from the staging_area at index  {:#?}",
@@ -77,19 +71,15 @@ pub async fn execute_add_related_holons(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             info!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
 
             test_state.session_state = response.state.clone();
 
             assert_eq!(code, expected_response);
-            info!(
-                "as expected, add_related_holons dance request returned {:#?}",
-                code.clone()
-            );
+            info!("as expected, add_related_holons dance request returned {:#?}", code.clone());
 
             if let ResponseStatusCode::OK = code {
                 if let Index(index) = response.body {

@@ -43,9 +43,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     validate_create_holon_node(EntryCreationAction::Create(action), holon_node)
                 }
             },
-            OpEntry::UpdateEntry {
-                app_entry, action, ..
-            } => match app_entry {
+            OpEntry::UpdateEntry { app_entry, action, .. } => match app_entry {
                 EntryTypes::HolonNode(holon_node) => {
                     validate_create_holon_node(EntryCreationAction::Update(action), holon_node)
                 }
@@ -64,26 +62,28 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         FlatOp::RegisterDelete(delete_entry) => match delete_entry {
             OpDelete { action } => validate_delete_holon_node(action),
         },
-        FlatOp::RegisterCreateLink {
-            link_type,
-            base_address,
-            target_address,
-            tag,
-            action,
-        } => match link_type {
-            LinkTypes::HolonNodeUpdates => {
-                validate_create_link_holon_node_updates(action, base_address, target_address, tag)
+        FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, action } => {
+            match link_type {
+                LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(
+                    action,
+                    base_address,
+                    target_address,
+                    tag,
+                ),
+                LinkTypes::SmartLink => {
+                    validate_create_smartlink(action, base_address, target_address, tag)
+                }
+                LinkTypes::AllHolonNodes => {
+                    validate_create_link_all_holon_nodes(action, base_address, target_address, tag)
+                }
+                LinkTypes::LocalHolonSpace => validate_create_link_local_holon_space(
+                    action,
+                    base_address,
+                    target_address,
+                    tag,
+                ),
             }
-            LinkTypes::SmartLink => {
-                validate_create_smartlink(action, base_address, target_address, tag)
-            }
-            LinkTypes::AllHolonNodes => {
-                validate_create_link_all_holon_nodes(action, base_address, target_address, tag)
-            }
-            LinkTypes::LocalHolonSpace => {
-                validate_create_link_local_holon_space(action, base_address, target_address, tag)
-            }
-        },
+        }
         FlatOp::RegisterDeleteLink {
             link_type,
             base_address,
@@ -127,12 +127,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     validate_create_holon_node(EntryCreationAction::Create(action), holon_node)
                 }
             },
-            OpRecord::UpdateEntry {
-                original_action_hash,
-                app_entry,
-                action,
-                ..
-            } => {
+            OpRecord::UpdateEntry { original_action_hash, app_entry, action, .. } => {
                 let original_record = must_get_valid_record(original_action_hash)?;
                 let original_action = original_record.action().clone();
                 let original_action = match original_action {
@@ -174,11 +169,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     }
                 }
             }
-            OpRecord::DeleteEntry {
-                original_action_hash,
-                action,
-                ..
-            } => {
+            OpRecord::DeleteEntry { original_action_hash, action, .. } => {
                 let original_record = must_get_valid_record(original_action_hash)?;
                 let original_action = original_record.action().clone();
                 let original_action = match original_action {
@@ -233,37 +224,32 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     }
                 }
             }
-            OpRecord::CreateLink {
-                base_address,
-                target_address,
-                tag,
-                link_type,
-                action,
-            } => match link_type {
-                LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(
-                    action,
-                    base_address,
-                    target_address,
-                    tag,
-                ),
-                LinkTypes::SmartLink => {
-                    validate_create_smartlink(action, base_address, target_address, tag)
+            OpRecord::CreateLink { base_address, target_address, tag, link_type, action } => {
+                match link_type {
+                    LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(
+                        action,
+                        base_address,
+                        target_address,
+                        tag,
+                    ),
+                    LinkTypes::SmartLink => {
+                        validate_create_smartlink(action, base_address, target_address, tag)
+                    }
+                    LinkTypes::AllHolonNodes => validate_create_link_all_holon_nodes(
+                        action,
+                        base_address,
+                        target_address,
+                        tag,
+                    ),
+                    LinkTypes::LocalHolonSpace => validate_create_link_local_holon_space(
+                        action,
+                        base_address,
+                        target_address,
+                        tag,
+                    ),
                 }
-                LinkTypes::AllHolonNodes => {
-                    validate_create_link_all_holon_nodes(action, base_address, target_address, tag)
-                }
-                LinkTypes::LocalHolonSpace => validate_create_link_local_holon_space(
-                    action,
-                    base_address,
-                    target_address,
-                    tag,
-                ),
-            },
-            OpRecord::DeleteLink {
-                original_action_hash,
-                base_address,
-                action,
-            } => {
+            }
+            OpRecord::DeleteLink { original_action_hash, base_address, action } => {
                 let record = must_get_valid_record(original_action_hash)?;
                 let create_link = match record.action() {
                     Action::CreateLink(create_link) => create_link.clone(),

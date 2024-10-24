@@ -49,9 +49,9 @@ impl HolonsContext {
                 *local_holon_space = Some(new_holon_space); // Successfully borrowed and mutated
                 Ok(())
             }
-            Err(_) => Err(HolonError::FailedToBorrow(
-                "Failed to borrow local_holon_space mutably".into(),
-            )),
+            Err(_) => {
+                Err(HolonError::FailedToBorrow("Failed to borrow local_holon_space mutably".into()))
+            }
         }
     }
     pub fn add_references_to_dance_state(

@@ -25,10 +25,7 @@ pub struct SmartReference {
 impl SmartReference {
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
     pub fn new_from_id(holon_id: HolonId) -> Self {
-        SmartReference {
-            holon_id,
-            smart_property_values: None,
-        }
+        SmartReference { holon_id, smart_property_values: None }
     }
     pub fn clone_reference(&self) -> SmartReference {
         SmartReference {
@@ -73,10 +70,7 @@ impl SmartReference {
 
     // Private function for getting a mutable reference from the context
     fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        Ok(context
-            .cache_manager
-            .borrow_mut()
-            .get_rc_holon(&self.holon_id)?)
+        Ok(context.cache_manager.borrow_mut().get_rc_holon(&self.holon_id)?)
     }
 }
 impl HolonGettable for SmartReference {

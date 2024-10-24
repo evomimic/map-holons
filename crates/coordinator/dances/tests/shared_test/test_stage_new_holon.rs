@@ -46,9 +46,8 @@ pub async fn execute_stage_new_holon(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             debug!("Dance Response: {:#?}", response.clone());
             test_state.session_state = response.state.clone();
             let code = response.status_code;

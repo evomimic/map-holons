@@ -362,16 +362,10 @@ pub fn stage_new_holon_dance(
         }
         _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
     }
-    debug!(
-        "Response body matched successfully for holon:{:#?}",
-        new_holon
-    );
+    debug!("Response body matched successfully for holon:{:#?}", new_holon);
 
     // Stage the new holon
-    let staged_reference = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(new_holon)?;
+    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(new_holon)?;
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
