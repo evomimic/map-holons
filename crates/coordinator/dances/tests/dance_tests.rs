@@ -36,7 +36,6 @@ use test_query_relationships::execute_query_relationships;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
-
 use self::test_abandon_staged_changes::execute_abandon_staged_changes;
 use self::test_add_related_holon::execute_add_related_holons;
 use self::test_commit::execute_commit;
@@ -56,7 +55,9 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TEST_CLIENT_PREFIX};
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
+};
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -152,7 +153,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 execute_commit(&conductor, &cell, &mut test_state).await
             }
             DanceTestStep::DeleteHolon(holon_to_delete, expected_response) => {
-                execute_delete_holon(&conductor, &cell, &mut test_state, holon_to_delete, expected_response).await
+                execute_delete_holon(
+                    &conductor,
+                    &cell,
+                    &mut test_state,
+                    holon_to_delete,
+                    expected_response,
+                )
+                .await
             }
             DanceTestStep::EnsureDatabaseCount(expected_count) => {
                 execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
@@ -220,7 +228,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     original_holon_key,
                     expected_response,
                 )
-                    .await
+                .await
             }
             DanceTestStep::WithProperties(staged_index, properties, expected_response) => {
                 execute_with_properties(

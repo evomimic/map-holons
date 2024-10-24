@@ -18,11 +18,7 @@ pub struct SemanticVersion {
 
 impl Default for SemanticVersion {
     fn default() -> Self {
-        SemanticVersion {
-            major: 0,
-            minor: 0,
-            patch: 1,
-        }
+        SemanticVersion { major: 0, minor: 0, patch: 1 }
     }
 }
 impl SemanticVersion {
@@ -30,7 +26,6 @@ impl SemanticVersion {
         format!("{}.{}.{}", self.major, self.minor, self.patch)
     }
 }
-
 
 #[allow(dead_code)]
 pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon, HolonError> {

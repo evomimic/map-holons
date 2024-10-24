@@ -18,12 +18,12 @@ use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
-use holons::holon::{Holon};
+use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::query::*;
 use holons::relationship::RelationshipName;
-use holons::smart_reference::{SmartReference};
+use holons::smart_reference::SmartReference;
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
 
@@ -142,7 +142,9 @@ pub fn commit_dance(
 ///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
 /// in the body of the request.
-pub fn build_commit_dance_request(session_state: &SessionState) -> Result<DanceRequest, HolonError> {
+pub fn build_commit_dance_request(
+    session_state: &SessionState,
+) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::None;
     Ok(DanceRequest::new(
         MapString("commit".to_string()),
@@ -219,9 +221,7 @@ pub fn get_all_holons_dance(
     info!("----- Entered get_all_holons dance");
     let query_result = Holon::get_all_holons();
     match query_result {
-        Ok(holons) => {
-            Ok(ResponseBody::Holons(holons))
-        },
+        Ok(holons) => Ok(ResponseBody::Holons(holons)),
         Err(holon_error) => Err(holon_error.into()),
     }
 }
@@ -315,7 +315,7 @@ pub fn query_relationships_dance(
                     )),
                 };
 
-            let result_collection = evaluate_query(node_collection,context,relationship_name)?;
+            let result_collection = evaluate_query(node_collection, context, relationship_name)?;
             Ok(ResponseBody::Collection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
@@ -323,7 +323,6 @@ pub fn query_relationships_dance(
         )),
     }
 }
-
 
 ///
 /// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
@@ -498,16 +497,10 @@ pub fn stage_new_holon_dance(
         }
         _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
     }
-    debug!(
-        "Response body matched successfully for holon:{:#?}",
-        new_holon
-    );
+    debug!("Response body matched successfully for holon:{:#?}", new_holon);
 
     // Stage the new holon
-    let staged_reference = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(new_holon)?;
+    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(new_holon)?;
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
@@ -667,12 +660,6 @@ pub fn build_with_properties_dance_request(
         session_state.clone(),
     ))
 }
-
-
-
-
-
-
 
 /// Abandon staged changes
 ///

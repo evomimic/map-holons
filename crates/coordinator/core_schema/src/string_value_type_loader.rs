@@ -1,13 +1,13 @@
-use hdi::prelude::info;
-use strum_macros::EnumIter;
+use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::string_descriptor::{define_string_type, StringTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
+use hdi::prelude::info;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-use crate::core_schema_types::SchemaNamesTrait;
+use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreStringValueTypeName {
@@ -30,12 +30,14 @@ pub struct StringTypeLoader {
 }
 
 impl SchemaNamesTrait for CoreStringValueTypeName {
-
-    fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+    fn load_core_type(
+        &self,
+        context: &HolonsContext,
+        schema: &HolonReference,
+    ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
         let loader = self.get_variant_loader();
         load_string_type_definition(context, schema, loader)
-
     }
     /// This method returns the unique type_name for this property type in "snake_case"
     fn derive_type_name(&self) -> MapString {
@@ -50,15 +52,18 @@ impl SchemaNamesTrait for CoreStringValueTypeName {
     }
     /// This method returns the human-readable name for this property type
     fn derive_label(&self) -> MapString {
-        panic!("This trait function is not intended to be used for this type. \
-        The 'label' for this type is explicitly defined in get_variant_loader()")
+        panic!(
+            "This trait function is not intended to be used for this type. \
+        The 'label' for this type is explicitly defined in get_variant_loader()"
+        )
     }
-
 
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
-        panic!("This trait function is not intended to be used for this type. \
-        The 'description' for this type is explicitly defined in get_variant_loader()")
+        panic!(
+            "This trait function is not intended to be used for this type. \
+        The 'description' for this type is explicitly defined in get_variant_loader()"
+        )
     }
 }
 
@@ -110,10 +115,8 @@ impl CoreStringValueTypeName {
                 max_length: MapInteger(14),
             },
         }
-
     }
 }
-
 
 /// This function handles the aspects of staging a new enum variant type definition that are common
 /// to all enum variant types. It assumes the type-specific parameters have been set by the caller.
@@ -141,21 +144,12 @@ pub(crate) fn load_string_type_definition(
         max_length: loader.max_length,
     };
 
-    info!("Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone());
-    let staged_ref = define_string_type(
-        context,
-        schema,
-        definition,
-    )?;
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
+    let staged_ref = define_string_type(context, schema, definition)?;
 
-    context.add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
+    context
+        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
         .expect("Unable to add reference to dance_state");
 
     Ok(staged_ref)
 }
-
-
-
-
-

@@ -18,7 +18,8 @@ impl HolonSpace {
         match self.0.get_property_value(&property_name)? {
             PropertyValue::StringValue(name) => Ok(name),
             _ => Err(HolonError::InvalidType(format!(
-                "Expected StringValue for '{}'", property_name.0
+                "Expected StringValue for '{}'",
+                property_name.0
             ))),
         }
     }
@@ -31,7 +32,8 @@ impl HolonSpace {
         match self.0.get_property_value(&property_name)? {
             PropertyValue::StringValue(name) => Ok(name),
             _ => Err(HolonError::InvalidType(format!(
-                "Expected StringValue for '{}'", property_name.0
+                "Expected StringValue for '{}'",
+                property_name.0
             ))),
         }
     }
@@ -46,19 +48,16 @@ impl HolonSpace {
     /// This currently does a brute force linear search through all saved holons
     /// TODO: Replace this logic with a fetch based on HolonSpace LinkType
     pub fn with_description(&mut self, description: &MapString) -> Result<&mut Self, HolonError> {
-        self
-            .holon_mut()
-            .with_property_value(
-                PropertyName(MapString("description".to_string())),
-                description.clone().into_base_value(),
-            )?;
+        self.holon_mut().with_property_value(
+            PropertyName(MapString("description".to_string())),
+            description.clone().into_base_value(),
+        )?;
         Ok(self)
     }
     /// Sets the name property for the HolonSpace (and currently the "key" property)
     ///
     pub fn with_name(&mut self, name: &MapString) -> Result<&mut Self, HolonError> {
-        self
-            .holon_mut()
+        self.holon_mut()
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
                 name.clone().into_base_value(),
@@ -71,4 +70,3 @@ impl HolonSpace {
         Ok(self)
     }
 }
-

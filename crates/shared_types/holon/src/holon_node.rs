@@ -24,7 +24,6 @@ impl From<LocalId> for HolonId {
     }
 }
 
-
 impl From<(HolonSpaceId, LocalId)> for HolonId {
     fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
         let (space_id, local_id) = tuple;
@@ -48,8 +47,6 @@ impl HolonId {
         }
     }
 
-
-
     /// Returns Some(ExternalId) from External variants of HolonId and None otherwise
     pub fn external_id(&self) -> Option<&ExternalId> {
         if let HolonId::External(ref external_id) = self {
@@ -59,10 +56,6 @@ impl HolonId {
         }
     }
 }
-
-
-
-
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -84,20 +77,16 @@ impl From<ActionHash> for LocalId {
     }
 }
 
-
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ExternalId {
-    pub space_id : HolonSpaceId,
-    pub local_id : LocalId,
+    pub space_id: HolonSpaceId,
+    pub local_id: LocalId,
 }
 impl From<(HolonSpaceId, LocalId)> for ExternalId {
-fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
-    ExternalId {
-        space_id: tuple.0,
-        local_id: tuple.1,
+    fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
+        ExternalId { space_id: tuple.0, local_id: tuple.1 }
     }
-}
 }
 
 #[hdk_entry_helper]

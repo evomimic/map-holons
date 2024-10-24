@@ -1,7 +1,8 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
+use crate::descriptor_types::CoreSchemaPropertyTypeName;
+use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
 use hdk::prelude::{debug, info};
-use CoreSchemaPropertyTypeName::*;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
@@ -10,8 +11,7 @@ use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
-use crate::descriptor_types::CoreSchemaPropertyTypeName;
-use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
+use CoreSchemaPropertyTypeName::*;
 
 use crate::semantic_version::SemanticVersion;
 
@@ -24,10 +24,10 @@ pub struct TypeDescriptorDefinition {
     pub is_value_type: MapBoolean,
     pub described_by: Option<HolonReference>, // Type-DESCRIBED_BY->Type
     pub is_subtype_of: Option<HolonReference>, // Type-IS_SUBTYPE_OF->Type
-    pub owned_by: Option<HolonReference>, // Holon-OwnedBy->HolonSpace
-    // pub key_properties: Option<Vec<HolonReference>>,
-    //pub descriptor_properties: Vec<HolonReference>, // Type-DESCRIPTOR_PROPERTIES->PropertyType
-    //pub descriptor_relationships: Vec<HolonReference>, // Type-DESCRIPTOR_RELATIONSHIPS->RelationshipType
+    pub owned_by: Option<HolonReference>,     // Holon-OwnedBy->HolonSpace
+                                              // pub key_properties: Option<Vec<HolonReference>>,
+                                              //pub descriptor_properties: Vec<HolonReference>, // Type-DESCRIPTOR_PROPERTIES->PropertyType
+                                              //pub descriptor_relationships: Vec<HolonReference>, // Type-DESCRIPTOR_RELATIONSHIPS->RelationshipType
 }
 
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
@@ -51,8 +51,6 @@ pub fn define_type_descriptor(
     base_type: BaseType,
     definition: TypeDescriptorDefinition,
 ) -> Result<StagedReference, HolonError> {
-
-
     info!("Staging... {:#?}", definition.descriptor_name.clone());
 
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
@@ -60,7 +58,6 @@ pub fn define_type_descriptor(
 
     // Define a default semantic_version as a String Property
     let initial_version = MapString(SemanticVersion::default().to_string());
-
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     descriptor
@@ -76,10 +73,7 @@ pub fn define_type_descriptor(
             Description.as_property_name(),
             BaseValue::StringValue(definition.description),
         )?
-        .with_property_value(
-            Label.as_property_name(),
-            BaseValue::StringValue(definition.label),
-        )?
+        .with_property_value(Label.as_property_name(), BaseValue::StringValue(definition.label))?
         .with_property_value(
             CoreSchemaPropertyTypeName::BaseType.as_property_name(),
             BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string()))),
@@ -91,7 +85,6 @@ pub fn define_type_descriptor(
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
             BaseValue::BooleanValue(definition.is_value_type),
-
         )?
         .with_property_value(
             PropertyName(MapString("version".to_string())),
@@ -102,39 +95,33 @@ pub fn define_type_descriptor(
 
     debug!("{:#?}", descriptor.clone());
 
-    let staged_reference = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(descriptor.clone())?;
+    let staged_reference =
+        context.commit_manager.borrow_mut().stage_new_holon(descriptor.clone())?;
 
     // Add related holons
 
-    staged_reference
-        .add_related_holons(
-            context,
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
-            vec![schema.clone()])?;
+    staged_reference.add_related_holons(
+        context,
+        RelationshipName(MapString("COMPONENT_OF".to_string())),
+        vec![schema.clone()],
+    )?;
 
     if let Some(descriptor_ref) = definition.described_by {
-        staged_reference
-            .add_related_holons(
-                context,
-                DescribedBy.as_rel_name(),
-                vec![descriptor_ref])?
+        staged_reference.add_related_holons(
+            context,
+            DescribedBy.as_rel_name(),
+            vec![descriptor_ref],
+        )?
     };
     if let Some(is_subtype_of_ref) = definition.is_subtype_of {
-        staged_reference
-            .add_related_holons(
-                context,
-                RelationshipName(MapString("IS_SUBTYPE_OF".to_string())),
-                vec![is_subtype_of_ref])?
+        staged_reference.add_related_holons(
+            context,
+            RelationshipName(MapString("IS_SUBTYPE_OF".to_string())),
+            vec![is_subtype_of_ref],
+        )?
     };
     if let Some(owned_by_ref) = definition.owned_by {
-        staged_reference
-            .add_related_holons(
-                context,
-                OwnedBy.as_rel_name(),
-                vec![owned_by_ref])?
+        staged_reference.add_related_holons(context, OwnedBy.as_rel_name(), vec![owned_by_ref])?
     };
 
     // if header.descriptor_properties.len()>0 {
@@ -153,7 +140,5 @@ pub fn define_type_descriptor(
     //             header.descriptor_relationships)?
     // };
 
-
     Ok(staged_reference)
-
 }

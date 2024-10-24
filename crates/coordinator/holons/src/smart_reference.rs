@@ -26,10 +26,7 @@ pub struct SmartReference {
 impl SmartReference {
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
     pub fn new_from_id(holon_id: HolonId) -> Self {
-        SmartReference {
-            holon_id,
-            smart_property_values: None,
-        }
+        SmartReference { holon_id, smart_property_values: None }
     }
     pub fn clone_reference(&self) -> SmartReference {
         SmartReference {
@@ -95,10 +92,7 @@ impl SmartReference {
         debug!("Cache manager borrowed successfully");
 
         let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
-        trace!(
-            "Got a reference to rc_holon from the cache manager: {:#?}",
-            rc_holon
-        );
+        trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
     }
@@ -155,7 +149,11 @@ impl SmartReference {
     //     Ok(relationship_map)
     // }
 
-    pub fn is_accessible(&self, context: &HolonsContext, access_type: AccessType) -> Result<(), HolonError> {
+    pub fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.borrow();
         holon.is_accessible(access_type)?;
@@ -183,10 +181,7 @@ impl SmartReference {
             let mut commit_manager = match context.commit_manager.try_borrow_mut() {
                 Ok(commit_manager) => commit_manager,
                 Err(borrow_error) => {
-                    error!(
-                        "Failed to borrow commit_manager mutably: {:?}",
-                        borrow_error
-                    );
+                    error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
                 }
             };

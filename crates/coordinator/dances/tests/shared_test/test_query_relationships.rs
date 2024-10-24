@@ -14,7 +14,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::smart_reference::SmartReference;
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -41,36 +41,28 @@ pub async fn execute_query_relationships(
         .get(&source_key)
         .expect("Holon with key: {source_key} not found in created_holons");
 
-    let source_holon_id = source_holon.get_local_id().expect(&format!(
-        "Get local_id for Holon: {:#?} \n returned error:",
-        source_holon
-    ));
+    let source_holon_id = source_holon
+        .get_local_id()
+        .expect(&format!("Get local_id for Holon: {:#?} \n returned error:", source_holon));
 
     let holon_reference: HolonReference =
         HolonReference::Smart(SmartReference::new(HolonId::Local(source_holon_id), None));
 
-    let node_collection = NodeCollection {
-        members: vec![Node::new(holon_reference, None)],
-        query_spec: None,
-    };
+    let node_collection =
+        NodeCollection { members: vec![Node::new(holon_reference, None)], query_spec: None };
 
-                let request = build_query_relationships_dance_request(
-                    &test_state.session_state,
-                    node_collection,
-                    query_expression,
-                ).expect("Unable to build a query_relationships request, got:");
-                debug!("Dance Request: {:#?}", request);
+    let request = build_query_relationships_dance_request(
+        &test_state.session_state,
+        node_collection,
+        query_expression,
+    )
+    .expect("Unable to build a query_relationships request, got:");
+    debug!("Dance Request: {:#?}", request);
 
-    let response: DanceResponse = conductor
-        .call(&cell.zome("dances"), "dance", request)
-        .await;
+    let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", request).await;
     debug!("Dance Response: {:#?}", response.clone());
     let code = response.status_code;
     let description = response.description.clone();
     test_state.session_state = response.state.clone();
-    assert_eq!(
-        expected_response, code,
-        "DanceRequest returned {:?} for {:?}",
-        code, description
-    );
+    assert_eq!(expected_response, code, "DanceRequest returned {:?} for {:?}", code, description);
 }

@@ -1,9 +1,9 @@
-
 use async_std::task;
 use dances::dance_response::ResponseBody::{Holons, Index};
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
-    build_add_related_holons_dance_request, build_get_all_holons_dance_request, build_remove_related_holons_dance_request, build_with_properties_dance_request
+    build_add_related_holons_dance_request, build_get_all_holons_dance_request,
+    build_remove_related_holons_dance_request, build_with_properties_dance_request,
 };
 use hdk::prelude::*;
 use holochain::sweettest::*;
@@ -14,7 +14,7 @@ use pretty_assertions::assert_eq;
 use rstest::*;
 use std::collections::BTreeMap;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -55,7 +55,6 @@ pub async fn execute_remove_related_holons(
 
     // Create the expected_holon from the source_holon + the supplied related holons
 
-
     // Build the DanceRequest
     let request = build_remove_related_holons_dance_request(
         &test_state.session_state,
@@ -67,19 +66,15 @@ pub async fn execute_remove_related_holons(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             info!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
 
             test_state.session_state = response.state.clone();
 
             assert_eq!(code, expected_response);
-            info!(
-                "as expected, remove_related_holons dance request returned {:#?}",
-                code.clone()
-            );
+            info!("as expected, remove_related_holons dance request returned {:#?}", code.clone());
 
             if let ResponseStatusCode::OK = code {
                 if let Index(index) = response.body {

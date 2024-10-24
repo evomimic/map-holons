@@ -3,7 +3,6 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #[allow(unused_variables)]
-
 mod shared_test;
 
 use std::collections::BTreeMap;
@@ -59,9 +58,8 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
 
     println!("Performing get_all_holons here to ensure initial DB state is empty...");
     // let dummy = String::from("dummy");
-    let fetched_holons: Vec<Holon> = conductor
-        .call(&cell.zome("holons"), "get_all_holons", ())
-        .await;
+    let fetched_holons: Vec<Holon> =
+        conductor.call(&cell.zome("holons"), "get_all_holons", ()).await;
     assert_eq!(0, fetched_holons.len());
 
     println!("Success! Initial DB state has no Holons");
@@ -87,12 +85,11 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
                 value: property_value,
             };
 
-            builder_holon = conductor
-                .call(&cell.zome("holons"), "with_property_value", input)
-                .await;
+            builder_holon =
+                conductor.call(&cell.zome("holons"), "with_property_value", input).await;
         }
     }
-        println!("SKIPPING REMAINDER OF TESTS... move them to Dance API tests");
+    println!("SKIPPING REMAINDER OF TESTS... move them to Dance API tests");
     //     let created_holon: Holon = conductor
     //         .call(&cell.zome("holons"), "commit", builder_holon.clone())
     //         .await;

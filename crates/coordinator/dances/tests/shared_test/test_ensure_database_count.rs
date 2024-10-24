@@ -12,7 +12,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
+use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -38,30 +38,27 @@ pub async fn execute_ensure_database_count(
     // Build a get_all_holons DanceRequest
     let request = build_get_all_holons_dance_request(&test_state.session_state);
 
-
     match request {
         Ok(valid_request) => {
-
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             test_state.session_state = response.state;
 
             if let Holons(holons) = response.body.clone() {
-
                 let actual_count = MapInteger(holons.len() as i64);
-                info!("\n--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons", expected_count, actual_count.0);
+                info!(
+                    "\n--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons",
+                    expected_count, actual_count.0
+                );
                 for holon in holons {
-                    info!("\n {:?}",holon.summarize());
+                    info!("\n {:?}", holon.summarize());
                 }
 
                 assert_eq!(expected_count, actual_count);
-
-
             } else {
                 panic!(
                     "Expected get_all_holons to return {:?} holons, but it returned {:?}",
-                    expected_count_string,actual_count_string
+                    expected_count_string, actual_count_string
                 );
             }
         }

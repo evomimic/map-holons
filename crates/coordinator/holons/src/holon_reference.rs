@@ -116,10 +116,7 @@ impl HolonReference {
             let mut commit_manager = match context.commit_manager.try_borrow_mut() {
                 Ok(commit_manager) => commit_manager,
                 Err(borrow_error) => {
-                    error!(
-                        "Failed to borrow commit_manager mutably: {:?}",
-                        borrow_error
-                    );
+                    error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
                 }
             };

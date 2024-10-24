@@ -20,9 +20,6 @@ pub enum CoreSchemaTypeName {
     // HolonCollectionType(HolonCollectionTypeName),
 }
 
-
-
-
 pub trait SchemaNamesTrait {
     /// This function is used to get a HolonReference to the TypeDefinition for a CoreSchemaTypeName
     /// It first checks if that definition has been stashed in dance_state.
@@ -40,10 +37,11 @@ pub trait SchemaNamesTrait {
 
         match definition_reference {
             Some(result) => Ok(result),
-            None => { // Couldn't get a reference to existing type definition, so load it ourselves
+            None => {
+                // Couldn't get a reference to existing type definition, so load it ourselves
                 let staged_ref = self.load_core_type(context, schema)?;
                 Ok(HolonReference::Staged(staged_ref))
-            },
+            }
         }
     }
 
@@ -94,7 +92,6 @@ impl SchemaNamesTrait for CoreSchemaTypeName {
             EnumVariantType(inner) => inner.load_core_type(context, schema),
             HolonType(inner) => inner.load_core_type(context, schema),
             MetaType(inner) => inner.load_core_type(context, schema),
-
         }
     }
 
@@ -142,20 +139,3 @@ impl SchemaNamesTrait for CoreSchemaTypeName {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

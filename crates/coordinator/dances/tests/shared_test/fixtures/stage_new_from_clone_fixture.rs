@@ -1,4 +1,4 @@
-use dances::{dance_response::ResponseStatusCode};
+use dances::dance_response::ResponseStatusCode;
 use holons::{
     holon::Holon, holon_collection::HolonCollection, holon_error::HolonError,
     holon_reference::HolonReference, relationship::RelationshipName,
@@ -7,7 +7,9 @@ use holons::{
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase, DanceTestStep, TestReference};
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestReference,
+};
 
 use super::book_authors_setup_fixture::setup_book_author_steps;
 
@@ -19,11 +21,10 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some properties, adds a relationship, commits it and then compares essential content of existing holon and cloned holon".to_string(),
     );
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count:i64  = 1;
+    let mut expected_count: i64 = 1;
 
     //  ENSURE DATABASE COUNT -- Empty except for HolonSpace  //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
-
 
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
@@ -31,11 +32,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // the book to both persons.
     let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
-    let test_data = setup_book_author_steps(
-        &mut test_case,
-        &mut holons_to_add,
-        &desired_test_relationship,
-    )?;
+    let test_data =
+        setup_book_author_steps(&mut test_case, &mut holons_to_add, &desired_test_relationship)?;
     expected_count += test_data.len() as i64;
 
     // Get and set the various Holons data.
@@ -48,9 +46,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     let publisher_index = test_data[3].staged_index;
     let publisher_key = test_data[3].key.clone();
-    let publisher_holon_reference = HolonReference::Staged(StagedReference {
-        holon_index: publisher_index.clone(),
-    });
+    let publisher_holon_reference =
+        HolonReference::Staged(StagedReference { holon_index: publisher_index.clone() });
 
     // CLONE A STAGED HOLON
     //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
@@ -66,14 +63,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     //  CHANGE PROPERTIES  //
     let mut properties = PropertyMap::new();
-    properties.insert(
-        PropertyName(MapString("title".to_string())),
-        cloned_book_key.clone(),
-    );
-    properties.insert(
-        PropertyName(MapString("key".to_string())),
-        cloned_book_key.clone(),
-    );
+    properties.insert(PropertyName(MapString("title".to_string())), cloned_book_key.clone());
+    properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key.clone());
     properties.insert(
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString(
@@ -96,15 +87,15 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let mut expected_publisher_holon_collection = HolonCollection::new_staged();
     expected_publisher_holon_collection
         .add_reference_with_key(Some(&publisher_key), &publisher_holon_reference)?;
-    expected_book_holon.relationship_map.0.insert(
-        published_by_relationship_name.clone(),
-        expected_publisher_holon_collection,
-    );
+    expected_book_holon
+        .relationship_map
+        .0
+        .insert(published_by_relationship_name.clone(), expected_publisher_holon_collection);
     let expected_predecessor_holon_collection = HolonCollection::new_staged();
-    expected_book_holon.relationship_map.0.insert(
-        predecessor_relationship_name.clone(),
-        expected_predecessor_holon_collection,
-    );
+    expected_book_holon
+        .relationship_map
+        .0
+        .insert(predecessor_relationship_name.clone(), expected_predecessor_holon_collection);
 
     test_case.add_related_holons_step(
         cloned_book_index, // source holon

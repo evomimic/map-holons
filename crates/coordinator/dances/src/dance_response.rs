@@ -1,7 +1,7 @@
 use derive_new::new;
 use std::fmt;
 
-use holons::query::NodeCollection;
+use crate::session_state::SessionState;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
@@ -10,8 +10,8 @@ use holons::helpers::summarize_holons;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::query::NodeCollection;
 use shared_types_holon::MapString;
-use crate::session_state::SessionState;
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -73,7 +73,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidRelationship(_,_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidRelationship(_, _) => ResponseStatusCode::BadRequest,
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
             HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
@@ -109,20 +109,15 @@ impl DanceResponse {
         descriptor: Option<HolonReference>,
         state: SessionState,
     ) -> DanceResponse {
-        DanceResponse {
-            status_code,
-            description,
-            body,
-            descriptor,
-            state,
-        }
+        DanceResponse { status_code, description, body, descriptor, state }
     }
     /// Restores the session state within the DanceResponse from context. This should always
     /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
     /// between client and guest.
     /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
     pub fn restore_state(&mut self, context: &HolonsContext) {
-        self.state.set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
+        self.state
+            .set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
         self.state.set_local_holon_space(context.get_local_holon_space());
     }
     // Method to summarize the DanceResponse for logging purposes

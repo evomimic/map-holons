@@ -1,10 +1,10 @@
 use crate::cache_manager::HolonCacheManager;
 use crate::commit_manager::CommitManager;
-use std::cell::{RefCell};
-use shared_types_holon::MapString;
 use crate::holon_error::HolonError;
 use crate::holon_reference::HolonReference;
 use crate::transient_collection::TransientCollection;
+use shared_types_holon::MapString;
+use std::cell::RefCell;
 /// HolonsContext provides a single place to information useful within a dance request
 pub struct HolonsContext {
     pub commit_manager: RefCell<CommitManager>,
@@ -25,9 +25,8 @@ impl HolonsContext {
     pub fn init_context(
         commit_manager: CommitManager,
         cache_manager: HolonCacheManager,
-        local_holon_space: Option<HolonReference>
+        local_holon_space: Option<HolonReference>,
     ) -> HolonsContext {
-
         // Return the initialized context
         HolonsContext {
             commit_manager: RefCell::from(commit_manager),
@@ -49,20 +48,30 @@ impl HolonsContext {
             Ok(mut local_holon_space) => {
                 *local_holon_space = Some(new_holon_space); // Successfully borrowed and mutated
                 Ok(())
-            },
-            Err(_) => Err(HolonError::FailedToBorrow("Failed to borrow local_holon_space mutably".into())),
+            }
+            Err(_) => {
+                Err(HolonError::FailedToBorrow("Failed to borrow local_holon_space mutably".into()))
+            }
         }
     }
-    pub fn add_references_to_dance_state(&self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
+    pub fn add_references_to_dance_state(
+        &self,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
         self.dance_state.borrow_mut().add_references(self, holons)
     }
 
-    pub fn add_reference_to_dance_state(&self, holon_ref: HolonReference) -> Result<(), HolonError> {
+    pub fn add_reference_to_dance_state(
+        &self,
+        holon_ref: HolonReference,
+    ) -> Result<(), HolonError> {
         self.dance_state.borrow_mut().add_reference(self, holon_ref)
     }
 
-    pub fn get_by_key_from_dance_state(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError>  {
+    pub fn get_by_key_from_dance_state(
+        &self,
+        key: &MapString,
+    ) -> Result<Option<HolonReference>, HolonError> {
         self.dance_state.borrow().get_by_key(key)
     }
-
 }

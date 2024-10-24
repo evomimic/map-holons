@@ -6,9 +6,7 @@ use crate::relationship::RelationshipName;
 use crate::smartlink::{save_smartlink, SmartLink};
 use core::fmt;
 use hdk::prelude::*;
-use shared_types_holon::{
-    BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName,
-};
+use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -74,11 +72,7 @@ impl HolonCollection {
         //         keyed_index.insert(key, index);
         //     }
         // }
-        HolonCollection {
-            state,
-            members,
-            keyed_index,
-        }
+        HolonCollection { state, members, keyed_index }
     }
     /// Checks if requested `access_type` is acceptable given the collection's current `state`.
     /// If not, returns `NotAccessible` error
@@ -124,10 +118,7 @@ impl HolonCollection {
         if index < self.members.len() {
             Ok(self.members[index].clone())
         } else {
-            Err(HolonError::IndexOutOfRange(format!(
-                "Index {} is out of bounds",
-                index
-            )))
+            Err(HolonError::IndexOutOfRange(format!("Index {} is out of bounds", index)))
         }
     }
 
@@ -280,8 +271,7 @@ impl HolonCollection {
                 };
                 debug!("saving smartlink: {:#?}", smartlink);
                 save_smartlink(smartlink)?;
-            }
-            else {
+            } else {
                 warn!("Tried to commit target : {:#?} without HolonId", holon_reference);
             }
         }

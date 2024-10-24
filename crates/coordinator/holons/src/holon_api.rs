@@ -5,7 +5,6 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::BaseValue;
 
-
 use crate::holon::Holon;
 use crate::holon_node::delete_holon_node;
 
@@ -28,8 +27,6 @@ pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
         Err(holon_error) => Err(holon_error.into()),
     }
 }
-
-
 
 #[hdk_extern]
 pub fn get_all_holons(_: ()) -> ExternResult<Vec<Holon>> {

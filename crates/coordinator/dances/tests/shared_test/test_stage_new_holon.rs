@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -12,7 +11,9 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TestHolonData, TestReference};
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -34,17 +35,14 @@ pub async fn execute_stage_new_holon(
     info!("\n\n--- TEST STEP: Staging a new Holon:");
     // println!("{:#?}", expected_holon.clone());
     // Build a stage_holon DanceRequest
-    let request = build_stage_new_holon_dance_request(
-        &test_state.session_state,
-        expected_holon.clone(),
-    );
+    let request =
+        build_stage_new_holon_dance_request(&test_state.session_state, expected_holon.clone());
     debug!("Dance Request: {:#?}", request);
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             debug!("Dance Response: {:#?}", response.clone());
             test_state.session_state = response.state.clone();
             let code = response.status_code;

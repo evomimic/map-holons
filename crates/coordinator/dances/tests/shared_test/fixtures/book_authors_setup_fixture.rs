@@ -1,21 +1,19 @@
-
-
 #![allow(dead_code)]
 
 use core::panic;
-use holons::query::{QueryExpression};
+use holochain::core::author_key_is_valid;
 use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_collection::{CollectionState, HolonCollection};
 use holons::holon_reference::HolonReference;
+use holons::query::QueryExpression;
 use holons::smart_reference::SmartReference;
 use holons::staged_reference::StagedReference;
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-use holochain::core::author_key_is_valid;
 
 use dances::dance_response::ResponseStatusCode;
 use holons::commit_manager::{CommitManager, StagedIndex};
@@ -37,8 +35,6 @@ use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
 
-
-
 pub struct TestHolon {
     pub staged_index: StagedIndex,
     pub key: MapString,
@@ -53,12 +49,11 @@ pub struct TestHolon {
 /// An *AUTHORED_BY* relationship from the Book Holon to both Person Holon's
 /// The HolonReference and key are returned for each holon via the Vec<TestHolon> result
 pub fn setup_book_author_steps(
-    test_case:&mut DancesTestCase,
+    test_case: &mut DancesTestCase,
     holons_to_add: &mut Vec<HolonReference>,
-    relationship_name: &RelationshipName)
-    -> Result<Vec<TestHolon>, HolonError> {
-
-    let mut result : Vec<TestHolon>= Vec::new();
+    relationship_name: &RelationshipName,
+) -> Result<Vec<TestHolon>, HolonError> {
+    let mut result: Vec<TestHolon> = Vec::new();
 
     //
     // H1, H2, H3, etc. refer to order of Holons added to staging area.
@@ -67,7 +62,6 @@ pub fn setup_book_author_steps(
     // Each Holon's index can be figured by subtracting 1. Ex H1 is index 0, H2 index 1
     //
     //
-
 
     //  STAGE:  Book Holon (H1)  //
     let mut book_holon = Holon::new();
@@ -110,8 +104,8 @@ pub fn setup_book_author_steps(
     test_case.add_stage_holon_step(person_1_holon.clone())?;
 
     let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
-    let person_1_reference = HolonReference::Staged(StagedReference {holon_index: person_1_index,});
-
+    let person_1_reference =
+        HolonReference::Staged(StagedReference { holon_index: person_1_index });
 
     //  STAGE:  Person 2 Holon (H3)  //
     let mut person_2_holon = Holon::new();
@@ -131,8 +125,8 @@ pub fn setup_book_author_steps(
         )?;
     test_case.add_stage_holon_step(person_2_holon.clone())?;
     let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
-    let person_2_reference = HolonReference::Staged(StagedReference {holon_index: person_2_index,});
-
+    let person_2_reference =
+        HolonReference::Staged(StagedReference { holon_index: person_2_index });
 
     //  STAGE:  Publisher Holon (H4)  //
     let mut publisher_holon = Holon::new();
@@ -149,9 +143,7 @@ pub fn setup_book_author_steps(
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(MapString(
-                "We publish Holons for testing purposes".to_string(),
-            )),
+            BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
         )?;
     test_case.add_stage_holon_step(publisher_holon.clone())?;
 
@@ -159,24 +151,15 @@ pub fn setup_book_author_steps(
 
     // Create the expected_holon
     let mut target_collection = HolonCollection::new_staged();
-    target_collection.add_reference_with_key(
-        Some(&person_1_key),
-        &person_1_reference)?;
+    target_collection.add_reference_with_key(Some(&person_1_key), &person_1_reference)?;
 
-    target_collection.add_reference_with_key(
-        Some(&person_2_key),
-        &person_2_reference)?;
+    target_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
-
-    book_holon.relationship_map.0.insert(
-        relationship_name.clone(),
-        target_collection,
-    );
+    book_holon.relationship_map.0.insert(relationship_name.clone(), target_collection);
 
     // let mut holons_to_add: Vec<HolonReference> = Vec::new();
     holons_to_add.push(person_1_reference);
     holons_to_add.push(person_2_reference);
-
 
     test_case.add_related_holons_step(
         book_index, // source holon
@@ -187,29 +170,27 @@ pub fn setup_book_author_steps(
     )?;
 
     result.push(TestHolon {
-        staged_index:book_index,
+        staged_index: book_index,
         key: book_holon_key,
-        expected_holon: Some(book_holon)
+        expected_holon: Some(book_holon),
     });
     result.push(TestHolon {
         staged_index: person_1_index,
         key: person_1_key,
-        expected_holon: Some(person_1_holon)
+        expected_holon: Some(person_1_holon),
     });
 
     result.push(TestHolon {
         staged_index: person_2_index,
         key: person_2_key,
-        expected_holon: Some(person_2_holon) }
-    );
+        expected_holon: Some(person_2_holon),
+    });
 
     result.push(TestHolon {
         staged_index: publisher_index,
         key: publisher_key,
-        expected_holon: Some(publisher_holon) }
-    );
+        expected_holon: Some(publisher_holon),
+    });
 
     Ok(result)
 }
-
-
