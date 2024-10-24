@@ -1,13 +1,13 @@
 // #![allow(warnings)]
 
-pub mod dance_fixtures;
-pub mod test_data_types;
+pub mod fixtures;
+pub use fixtures::*;
 
-pub mod book_authors_setup_fixture;
-pub mod descriptor_dance_fixtures;
+// pub mod data_types;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
 pub mod test_commit;
+pub mod test_data_types;
 pub mod test_delete_holon;
 pub mod test_ensure_database_count;
 pub mod test_load_core_schema;
@@ -15,7 +15,9 @@ pub mod test_match_db_content;
 pub mod test_print_database;
 pub mod test_query_relationships;
 pub mod test_remove_related_holon;
+pub mod test_stage_new_from_clone;
 pub mod test_stage_new_holon;
+pub mod test_stage_new_version;
 pub mod test_with_properties_command;
 
 use hdk::prelude::*;
@@ -54,25 +56,24 @@ pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
 
     (conductor, agent, cell)
 }
-
-// TEST HELPERS //
-
-pub fn get_holon_by_key_from_test_state(
-    context: &HolonsContext,
-    source_key: MapString,
-    test_state: &mut DanceTestState,
-) -> Result<Option<HolonId>, HolonError> {
-    for holon in test_state.created_holons.clone() {
-        let option_key = holon.get_key()?;
-        if let Some(key) = option_key {
-            if key == source_key {
-                let id = holon.get_local_id()?.into();
-                return Ok(Some(id));
-            }
-        } else {
-            return Err(HolonError::Misc("Returned multiple Holons for key".to_string()));
-        }
-    }
-
-    Ok(None)
-}
+// pub fn get_holon_by_key_from_test_state(
+//     _context: &HolonsContext,
+//     source_key: MapString,
+//     test_state: &mut DanceTestState,
+// ) -> Result<Option<HolonId>, HolonError> {
+//     for holon in test_state.created_holons.clone() {
+//         let option_key = holon.get_key()?;
+//         if let Some(key) = option_key {
+//             if key == source_key {
+//                 let id = holon.get_local_id()?.into();
+//                 return Ok(Some(id));
+//             }
+//         } else {
+//             return Err(HolonError::Misc(
+//                 "Returned multiple Holons for key".to_string(),
+//             ));
+//         }
+//     }
+//
+//     Ok(None)
+// }

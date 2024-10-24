@@ -1,7 +1,3 @@
-//! Holon Descriptor Test Cases
-
-#![allow(unused_imports)]
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -15,9 +11,9 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::dance_fixtures::*;
-use crate::shared_test::test_data_types::DanceTestStep;
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -30,7 +26,6 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 /// This function builds and dances a `stage_new_holon` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
-
 pub async fn execute_stage_new_holon(
     conductor: &SweetConductor,
     cell: &SweetCell,
@@ -58,9 +53,13 @@ pub async fn execute_stage_new_holon(
                     debug!("{index_value} returned in body");
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
+                    let actual_holon = test_state
+                        .session_state
+                        .get_staging_area()
+                        .get_holon(index as usize)
+                        .expect("Failed to get holon in response.");
 
-                    let holons = &response.state.get_staging_area().staged_holons;
-                    assert_eq!(expected_holon, holons[index as usize]);
+                    assert_eq!(expected_holon, actual_holon);
 
                     info!("Success! Holon has been staged, as expected");
                 } else {

@@ -32,6 +32,7 @@ pub struct Schema(pub Holon);
 //     pub description: MapString,
 // }
 
+#[allow(dead_code)]
 pub struct TypeDescriptor {
     descriptor_name: MapString,
     label: MapString,
@@ -45,6 +46,7 @@ pub struct TypeDescriptor {
     component_of: HolonReference,         // to Schema
     described_by: Option<HolonReference>, // to HolonType
 }
+#[allow(dead_code)]
 pub struct HolonCollectionType {
     header: TypeDescriptor,
     collection_type_name: MapString,
@@ -55,6 +57,7 @@ pub struct HolonCollectionType {
     target_holon_type: HolonCollection, // HolonTypeInstance
     described_by: HolonReference,       // MetaHolonCollection Type
 }
+#[allow(dead_code)]
 pub struct HolonType {
     header: TypeDescriptor,
     type_name: MapString,
@@ -63,7 +66,7 @@ pub struct HolonType {
     source_for: HolonCollection,
     dances: HolonCollection,
 }
-
+#[allow(dead_code)]
 pub struct RelationshipType {
     header: TypeDescriptor,
     relationship_name: RelationshipName,
@@ -76,41 +79,46 @@ pub struct RelationshipType {
     has_inverse: Option<HolonReference>, // RelationshipType -- None unless source_owns_relationship
     described_by: HolonReference,        // MetaRelationshipType
 }
-
+#[allow(dead_code)]
 pub struct PropertyType {
     header: TypeDescriptor,
     property_type_name: PropertyName,
     value_type: HolonReference,   // ValueType
     described_by: HolonReference, // MetaValueType,
 }
+#[allow(dead_code)]
 pub struct ValueType {
     header: TypeDescriptor,
     type_name: MapString,
     value_type: HolonReference,   // ValueType
     described_by: HolonReference, // MetaPropertyType
 }
+#[allow(dead_code)]
 pub struct StringType {
     header: TypeDescriptor,
     type_name: PropertyName,
     min_length: MapInteger,
     max_length: MapInteger,
 }
+#[allow(dead_code)]
 pub struct IntegerType {
     header: TypeDescriptor,
     type_name: MapString,
     min_value: MapInteger,
     max_value: MapInteger,
 }
+#[allow(dead_code)]
 pub struct BooleanType {
     header: TypeDescriptor,
     type_name: MapString,
 }
+#[allow(dead_code)]
 pub struct EnumType {
     header: TypeDescriptor,
     type_name: MapString,
     variants: HolonCollection,
 }
-
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DeletionSemantic {
     Allow,   // deleting source_holon has no impact on the target_holon(s)

@@ -65,6 +65,7 @@ pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartL
         GetLinksInputBuilder::try_new(local_source_id.0.clone(), LinkTypes::SmartLink)?.build(),
     )
     .map_err(|e| HolonError::from(e))?;
+    debug!("Got {:?} links", links.len());
 
     for link in links {
         let smartlink = get_smartlink_from_link(local_source_id.0.clone(), link)?;
@@ -96,10 +97,11 @@ pub fn get_relationship_links(
     )
     .map_err(|e| HolonError::from(e))?;
 
-    debug!("got {:?} links", links.len());
+    debug!("Got {:?} # links", links.len());
     // Process each link to convert it into a SmartLink
     for link in links {
         let smartlink = get_smartlink_from_link(source_action_hash.clone(), link)?;
+        debug!("Got SmartLink {:?}", smartlink);
         smartlinks.push(smartlink);
     }
 
@@ -149,42 +151,6 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
     )?;
 
     Ok(())
-    // }
-    //
-    //     match input.to_address.clone() {
-    //         HolonId::External(external_id) => {
-    //             let link_tag = encode_link_tag(
-    //                 input.relationship_name.clone(),
-    //                 Some(external_id.space_id),
-    //                 input.smart_property_values,
-    //             )?;
-    //
-    //             create_link(
-    //                 input.from_address.0.clone(),
-    //                 input.to_address.local_id().0.clone(),
-    //                 LinkTypes::SmartLink,
-    //                 link_tag,
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //         HolonId::Local(_local_id) => {
-    //             let link_tag = encode_link_tag(
-    //                 input.relationship_name.clone(),
-    //                 None,
-    //                 input.smart_property_values,
-    //             )?;
-    //
-    //             create_link(
-    //                 input.from_address.0.clone(),
-    //                 input.to_address.local_id().0.clone(),
-    //                 LinkTypes::SmartLink,
-    //                 link_tag,
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //     }
 }
 
 // HELPER FUNCTIONS //

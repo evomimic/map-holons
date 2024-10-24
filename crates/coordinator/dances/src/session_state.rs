@@ -1,10 +1,11 @@
 use hdk::prelude::*;
 // use serde::Serialize;
 
-use crate::staging_area::StagingArea;
 use hdi::hdk_entry_helper;
 use holons::cache_manager::HolonCacheManager;
 use holons::context::HolonsContext;
+// use holons::helpers::summarize_holons;
+use crate::staging_area::StagingArea;
 use holons::holon_reference::HolonReference;
 
 /// SessionState provides a way to distinguish information associated with a specific request from
@@ -69,4 +70,5 @@ impl SessionState {
     pub fn set_staging_area(&mut self, staging_area: StagingArea) {
         self.staging_area = staging_area;
     }
+
 }

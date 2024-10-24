@@ -4,6 +4,7 @@ use std::rc::Rc;
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 use crate::context::HolonsContext;
+use crate::holon::{AccessType, EssentialHolonContent};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
@@ -93,7 +94,126 @@ impl HolonGettable for HolonReference {
     }
 }
 
+/// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
 impl HolonReference {
+    pub fn stage_new_from_clone(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<StagedReference, HolonError> {
+        let cloned_holon = match self {
+            HolonReference::Staged(staged_reference) => {
+                // Get a clone from the rc_holon in the commit_manager
+                staged_reference.stage_new_from_clone(context)?
+            }
+            HolonReference::Smart(smart_reference) => {
+                // Get a clone from the rc_holon in the cache_manager
+                smart_reference.stage_new_from_clone(context)?
+            }
+        };
+
+        let cloned_staged_reference = {
+            // Mutably borrow the commit_manager
+            let mut commit_manager = match context.commit_manager.try_borrow_mut() {
+                Ok(commit_manager) => commit_manager,
+                Err(borrow_error) => {
+                    error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
+                    return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
+                }
+            };
+
+            // Stage the clone
+            commit_manager.stage_new_holon(cloned_holon)?
+        };
+
+        // Reset the PREDECESSOR to None
+        cloned_staged_reference.with_predecessor(context, None)?;
+
+        Ok(cloned_staged_reference)
+    }
+
+    pub fn clone_reference(&self) -> HolonReference {
+        match self {
+            HolonReference::Smart(smart_reference) => {
+                HolonReference::Smart(smart_reference.clone_reference())
+            }
+            HolonReference::Staged(staged_reference) => {
+                HolonReference::Staged(staged_reference.clone_reference())
+            }
+        }
+    }
+
+    pub fn essential_content(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
+            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
+        }
+    }
+
+    pub fn get_descriptor(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => {
+                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
+                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+                let collection = smart_reference.get_related_holons(context, &relationship_name)?;
+                collection.is_accessible(AccessType::Read)?;
+                let members = collection.get_members();
+                if members.len() > 1 {
+                    return Err(HolonError::Misc(format!(
+                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        members
+                    )));
+                }
+                if members.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(members[0].clone()))
+                }
+            }
+            HolonReference::Staged(staged_reference) => {
+                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
+                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
+                let collection =
+                    staged_reference.get_related_holons(context, &relationship_name)?;
+                collection.is_accessible(AccessType::Read)?;
+                let members = collection.get_members();
+                if members.len() > 1 {
+                    return Err(HolonError::Misc(format!(
+                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        members
+                    )));
+                }
+                if members.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(members[0].clone()))
+                }
+            }
+        }
+    }
+
+    pub fn get_holon_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
+            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
+        }
+    }
+
+    pub fn get_predecessor(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_predecessor(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_predecessor(context),
+        }
+    }
+
     pub fn get_relationship_map(
         &mut self,
         context: &HolonsContext,
@@ -105,21 +225,20 @@ impl HolonReference {
             }
         }
     }
-    pub fn clone_reference(&self) -> HolonReference {
-        match self {
-            HolonReference::Smart(smart_ref) => HolonReference::Smart(smart_ref.clone_reference()),
-            HolonReference::Staged(staged_ref) => {
-                HolonReference::Staged(staged_ref.clone_reference())
-            }
-        }
-    }
 
-    pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
+    #[allow(dead_code)]
+    fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
         match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(_staged_reference) => Err(HolonError::HolonNotFound(
-                "HolonId not yet assigned for Staged Holons".to_string(),
-            )),
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.is_accessible(context, access_type)
+            }
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.is_accessible(context, access_type)
+            }
         }
     }
 

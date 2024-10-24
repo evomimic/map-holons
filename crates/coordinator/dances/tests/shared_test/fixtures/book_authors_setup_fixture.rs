@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use crate::get_holon_by_key_from_test_state;
-use crate::tracing::{error, info, warn};
 use core::panic;
 use holochain::core::author_key_is_valid;
 use holons::helpers::*;
@@ -65,7 +63,7 @@ pub fn setup_book_author_steps(
     //
     //
 
-    //  ADD STEP:  STAGE:  Book Holon (H1)  //
+    //  STAGE:  Book Holon (H1)  //
     let mut book_holon = Holon::new();
     let book_holon_key = MapString(
         "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
@@ -87,10 +85,10 @@ pub fn setup_book_author_steps(
 
     let book_index: usize = 0; // assume book is at this position in staged_holons vector
 
-    //  ADD STEP:  STAGE:  Person 1 Holon (H2)  //
-    let mut person_1 = Holon::new();
+    //  STAGE:  Person 1 Holon (H2)  //
+    let mut person_1_holon = Holon::new();
     let person_1_key = MapString("RogerBriggs".to_string());
-    person_1
+    person_1_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
             BaseValue::StringValue(MapString("Roger".to_string())),
@@ -103,16 +101,16 @@ pub fn setup_book_author_steps(
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(person_1_key.clone()),
         )?;
-    test_case.add_stage_holon_step(person_1.clone())?;
+    test_case.add_stage_holon_step(person_1_holon.clone())?;
 
     let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
     let person_1_reference =
         HolonReference::Staged(StagedReference { holon_index: person_1_index });
 
-    //  ADD STEP:  STAGE:  Person 2 Holon (H3)  //
-    let mut person_holon_2 = Holon::new();
+    //  STAGE:  Person 2 Holon (H3)  //
+    let mut person_2_holon = Holon::new();
     let person_2_key = MapString("GeorgeSmith".to_string());
-    person_holon_2
+    person_2_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
             BaseValue::StringValue(MapString("George".to_string())),
@@ -125,12 +123,31 @@ pub fn setup_book_author_steps(
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(person_2_key.clone()),
         )?;
-    test_case.add_stage_holon_step(person_holon_2.clone())?;
+    test_case.add_stage_holon_step(person_2_holon.clone())?;
     let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
     let person_2_reference =
         HolonReference::Staged(StagedReference { holon_index: person_2_index });
 
-    // ADD STEP:  RELATIONSHIP:  (H1)-relationship_name>[(H2),(H3)]//
+    //  STAGE:  Publisher Holon (H4)  //
+    let mut publisher_holon = Holon::new();
+    let publisher_index: usize = 3; // assume publisher is at this position in new staged_holons vector
+    let publisher_key = MapString("PublishingCompany".to_string());
+    publisher_holon
+        .with_property_value(
+            PropertyName(MapString("name".to_string())),
+            BaseValue::StringValue(MapString("Publishing Company".to_string())),
+        )?
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(publisher_key.clone()),
+        )?
+        .with_property_value(
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
+        )?;
+    test_case.add_stage_holon_step(publisher_holon.clone())?;
+
+    //  RELATIONSHIP:  (H1)-relationship_name>[(H2),(H3)]  //
 
     // Create the expected_holon
     let mut target_collection = HolonCollection::new_staged();
@@ -154,19 +171,25 @@ pub fn setup_book_author_steps(
 
     result.push(TestHolon {
         staged_index: book_index,
-        key: book_holon_key.clone(),
-        expected_holon: Some(book_holon.clone()),
+        key: book_holon_key,
+        expected_holon: Some(book_holon),
     });
     result.push(TestHolon {
         staged_index: person_1_index,
-        key: person_1_key.clone(),
-        expected_holon: None,
+        key: person_1_key,
+        expected_holon: Some(person_1_holon),
     });
 
     result.push(TestHolon {
         staged_index: person_2_index,
-        key: person_2_key.clone(),
-        expected_holon: None,
+        key: person_2_key,
+        expected_holon: Some(person_2_holon),
+    });
+
+    result.push(TestHolon {
+        staged_index: publisher_index,
+        key: publisher_key,
+        expected_holon: Some(publisher_holon),
     });
 
     Ok(result)

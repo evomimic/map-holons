@@ -6,6 +6,7 @@ use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::commit_manager::StagedIndex;
 use holons::context::HolonsContext;
+use holons::helpers::summarize_holons;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
@@ -118,5 +119,22 @@ impl DanceResponse {
         self.state
             .set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
         self.state.set_local_holon_space(context.get_local_holon_space());
+    }
+    // Method to summarize the DanceResponse for logging purposes
+    pub fn summarize(&self) -> String {
+        let body_summary = match &self.body {
+            ResponseBody::Holon(holon) => holon.summarize(),
+            ResponseBody::Holons(holons) => summarize_holons(holons),
+            _ => format!("{:#?}", self.body), // Use full debug for other response bodies
+        };
+
+        format!(
+            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
+            self.status_code,
+            self.description,
+            self.descriptor,
+            body_summary,
+            self.state.summarize(),
+        )
     }
 }

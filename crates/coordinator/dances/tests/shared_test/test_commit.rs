@@ -1,7 +1,3 @@
-//! Holon Descriptor Test Cases
-
-#![allow(unused_imports)]
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -16,8 +12,6 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::dance_fixtures::*;
-use crate::shared_test::test_data_types::DanceTestStep;
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
@@ -28,7 +22,7 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 
-/// This function builds and dances a `stage_new_holon` DanceRequest for the supplied Holon
+/// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
 pub async fn execute_commit(
@@ -53,18 +47,20 @@ pub async fn execute_commit(
             let description = response.description.clone();
             if code == ResponseStatusCode::OK {
                 // Check that staging area is empty
-                assert!(response.state.get_staging_area().staged_holons.is_empty());
+                assert!(response.state.get_staging_area().get_staged_holons().is_empty());
 
                 info!("Success! Commit succeeded");
 
                 // get saved holons out of response body and add them to the test_state created holons
                 match response.body {
                     ResponseBody::Holon(holon) => {
-                        test_state.created_holons.push(holon);
+                        let key = holon.get_key().unwrap().unwrap(); // test Holons should always have a key
+                        test_state.created_holons.insert(key, holon);
                     }
                     ResponseBody::Holons(holons) => {
                         for holon in holons {
-                            test_state.created_holons.push(holon);
+                            let key = holon.get_key().unwrap().unwrap();
+                            test_state.created_holons.insert(key, holon);
                         }
                     }
                     _ => panic!("Invalid ResponseBody: {:?}", response.body),

@@ -4,19 +4,21 @@ use hdk::prelude::*;
 
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_space;
-use holons::holon_space::HolonSpace;
-use holons::holon_space_manager::HolonSpaceManager;
-use shared_types_holon::MapString;
-
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
 use crate::session_state::SessionState;
+use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
+use holons::holon_space_manager::HolonSpaceManager;
+use shared_types_holon::MapString;
+
+use crate::holon_dance_adapter::{
+    abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
+    get_holon_by_id_dance, query_relationships_dance, remove_related_holons_dance,
+    stage_new_from_clone_dance, stage_new_holon_dance, stage_new_version_dance,
+    with_properties_dance,
+};
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -27,7 +29,7 @@ use crate::session_state::SessionState;
 /// errors are encoded in the DanceResponse's status_code.
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
-    info!("Entered Dancer::dance() with {:#?}", request);
+    info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
 
     // -------------------------- ENSURE VALID REQUEST---------------------------------
     let valid = true; // TODO: Validate the dance request
@@ -40,6 +42,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
             None,
             request.get_state().clone(),
         );
+
         return Ok(response);
     }
 
@@ -75,14 +78,14 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     //     )
     //     .into());
     // }
-    info!("dispatching dance");
-    let dispatch_result = dancer.dispatch(&context, request);
+    debug!("dispatching dance");
+    let dispatch_result = dancer.dispatch(&context, request.clone());
 
-    let mut result = process_dispatch_result(&context, dispatch_result);
+    let result = process_dispatch_result(&context, dispatch_result);
 
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
-    info!("======== RETURNING FROM  Dancer::dance() with {:#?}", result.clone());
+    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
     Ok(result)
 }
@@ -107,28 +110,47 @@ struct Dancer {
 impl Dancer {
     fn new() -> Self {
         let mut dispatch_table = HashMap::new();
-
         // Register functions into the dispatch table
-        dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
-        dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
-        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert("commit", commit_dance as DanceFunction);
-        dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
-        dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
-
         dispatch_table
             .insert("abandon_staged_changes", abandon_staged_changes_dance as DanceFunction);
-
         dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
-        dispatch_table
-            .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
+        dispatch_table.insert("commit", commit_dance as DanceFunction);
+        dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
+        dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
+        dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
+        dispatch_table
+            .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
+        dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
+        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
+        dispatch_table.insert("stage_new_version", stage_new_version_dance as DanceFunction);
+        dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
+
+        dispatch_table.insert(
+            "abandon_staged_changes",
+            abandon_staged_changes_dance as DanceFunction,
+        );
+
+        dispatch_table.insert(
+            "add_related_holons",
+            add_related_holons_dance as DanceFunction,
+        );
+        dispatch_table.insert(
+            "remove_related_holons",
+            remove_related_holons_dance as DanceFunction,
+        );
+        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
+        dispatch_table.insert(
+            "query_relationships",
+            query_relationships_dance as DanceFunction,
+        );
 
         // Add more functions as needed
 
         Dancer { dispatch_table }
     }
+
     // Function to register a new function with the dispatch manager
     // If we want to allow dynamic registration, we will need to change the definition of the key
     // in the dispatch_table to String instead of &'static str
@@ -136,6 +158,7 @@ impl Dancer {
     //     self.dispatch_table.insert(name.clone().as_str(), func);
     // }
 
+    #[allow(dead_code)]
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
         info!("checking that dance_name: {:#?} is dispatchable", request.dance_name.0.as_str());
         self.dispatch_table.contains_key(request.dance_name.0.as_str())
@@ -154,6 +177,7 @@ impl Dancer {
         }
     }
 }
+
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///
 /// If `dispatch_result` is `Ok`,

@@ -13,8 +13,8 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
 use crate::shared_test::dance_fixtures::*;
-use crate::shared_test::test_data_types::DanceTestStep;
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -32,13 +32,20 @@ pub async fn execute_delete_holon(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
+    holon_to_delete_key: MapString, // key of the holon to delete
     expected_response: ResponseStatusCode,
 ) -> () {
-    info!("\n\n--- TEST STEP: Staging a new Holon:");
-    // for now, there is always only 1 Holon in created_holons when testing a Delete,
-    // until support for retrieval by key is implemented in Issue 118
-    let holon_to_delete = &test_state.created_holons[0];
-    let local_id = holon_to_delete.get_local_id().unwrap();
+    info!(
+        "\n\n--- TEST STEP: Deleting an Existing (Saved) Holon with key: {:#?}",
+        holon_to_delete_key.clone()
+    );
+
+    let holon_to_delete = test_state
+        .get_created_holon_by_key(&holon_to_delete_key)
+        .expect("Failed to retrieve holon from test_state's created_holons.");
+
+    let local_id =
+        holon_to_delete.get_local_id().expect("Unable to get LocalId from holon_to_delete");
     // Build a stage_holon DanceRequest
     let delete_holon_request =
         build_delete_holon_dance_request(&test_state.session_state, local_id.clone());

@@ -1,5 +1,3 @@
-// #![allow(unused_imports)]
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -16,9 +14,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::context::HolonsContext;
 use rstest::*;
 
-use crate::shared_test::dance_fixtures::*;
-use crate::shared_test::test_data_types::DanceTestStep;
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -62,6 +58,7 @@ pub async fn execute_database_print(
                                 "key = {:?}",
                                 key.unwrap_or_else(|| MapString("<None>".to_string())).0
                             );
+                            info!("{:?}", holon.summarize());
                             debug!("\nHolon {:?}", as_json(&holon));
                         }
                         Err(holon_error) => {

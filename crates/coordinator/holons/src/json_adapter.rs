@@ -225,7 +225,6 @@ struct SerializableHolon<'a> {
     state: HolonStateWrapper<'a>,
     validation_state: ValidationStateWrapper<'a>,
     saved_node: SavedNodeWrapper<'a>,
-    predecessor: SmartReferenceOptionWrapper<'a>,
     property_map: PropertyMapWrapper<'a>,
     relationship_map: RelationshipMapWrapper<'a>,
     errors: Vec<HolonErrorWrapper<'a>>,
@@ -240,7 +239,6 @@ impl<'a> Serialize for SerializableHolon<'a> {
         state.serialize_field("state", &self.state)?;
         state.serialize_field("validation_state", &self.validation_state)?;
         state.serialize_field("saved_node", &self.saved_node)?;
-        state.serialize_field("predecessor", &self.predecessor)?;
         state.serialize_field("property_map", &self.property_map)?;
         state.serialize_field("relationship_map", &self.relationship_map)?;
         state.serialize_field("errors", &self.errors)?;
@@ -252,7 +250,6 @@ pub fn as_json(holon: &Holon) -> String {
     let state_wrapper = HolonStateWrapper(&holon.state);
     let validation_state_wrapper = ValidationStateWrapper(&holon.validation_state);
     let saved_node_wrapper = SavedNodeWrapper(&holon.saved_node);
-    let predecessor_wrapper = SmartReferenceOptionWrapper(&holon.predecessor);
     let property_map_wrapper = PropertyMapWrapper(&holon.property_map);
     let relationship_map_wrapper = RelationshipMapWrapper(&holon.relationship_map);
     let errors_wrappers: Vec<HolonErrorWrapper> =
@@ -262,7 +259,6 @@ pub fn as_json(holon: &Holon) -> String {
         state: state_wrapper,
         validation_state: validation_state_wrapper,
         saved_node: saved_node_wrapper,
-        predecessor: predecessor_wrapper,
         property_map: property_map_wrapper,
         relationship_map: relationship_map_wrapper,
         errors: errors_wrappers,

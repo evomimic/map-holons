@@ -14,6 +14,7 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
+use core_schema::loader::load_core_schema;
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
 use crate::session_state::SessionState;
