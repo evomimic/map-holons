@@ -1,8 +1,8 @@
-
 use std::collections::BTreeMap;
 
 use async_std::task;
 use dances::dance_response::ResponseBody;
+use dances::dance_response::ResponseBody::Holons;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_get_all_holons_dance_request, build_get_holon_by_id_dance_request,
@@ -13,9 +13,8 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::context::HolonsContext;
 use rstest::*;
-use dances::dance_response::ResponseBody::Holons;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -44,9 +43,8 @@ pub async fn execute_database_print(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             test_state.session_state = response.state.clone();
 
             if let Holons(holons) = response.body.clone() {
@@ -55,20 +53,19 @@ pub async fn execute_database_print(
                 for holon in holons {
                     let key_result = holon.get_key();
                     match key_result {
-                        Ok(key) => {info!("key = {:?}",
-                            key.unwrap_or_else(|| MapString("<None>".to_string())).0);
-                            info!("{:?}",holon.summarize());
-                            debug!("\nHolon {:?}", as_json(&holon));}
-                        Err(holon_error) => {
-                            panic!(
-                                "Attempt to get_key() resulted in error {:?}",
-                                holon_error,
+                        Ok(key) => {
+                            info!(
+                                "key = {:?}",
+                                key.unwrap_or_else(|| MapString("<None>".to_string())).0
                             );
+                            info!("{:?}", holon.summarize());
+                            debug!("\nHolon {:?}", as_json(&holon));
+                        }
+                        Err(holon_error) => {
+                            panic!("Attempt to get_key() resulted in error {:?}", holon_error,);
                         }
                     }
-
                 }
-
             } else {
                 panic!(
                     "Expected get_all_holons to return Holons response, but it returned {:?}",
@@ -80,5 +77,4 @@ pub async fn execute_database_print(
             panic!("{:?} Unable to build a get_all_holons request ", error);
         }
     }
-
 }

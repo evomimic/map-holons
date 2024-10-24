@@ -1,21 +1,21 @@
-use hdi::prelude::info;
-use inflector::cases::snakecase::to_snake_case;
-use inflector::cases::titlecase::to_title_case;
-use strum_macros::EnumIter;
+use crate::boolean_value_type_loader::CoreBooleanValueTypeName::*;
+use crate::core_schema_types::SchemaNamesTrait;
+use crate::enum_type_loader::CoreEnumTypeName::*;
+use crate::integer_value_type_loader::CoreIntegerValueTypeName::*;
+use crate::string_value_type_loader::CoreStringValueTypeName::*;
+use crate::value_type_loader::CoreValueTypeName::*;
 use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
+use hdi::prelude::info;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
+use inflector::cases::snakecase::to_snake_case;
+use inflector::cases::titlecase::to_title_case;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
-use crate::core_schema_types::SchemaNamesTrait;
+use strum_macros::EnumIter;
 use CorePropertyTypeName::*;
-use crate::value_type_loader::CoreValueTypeName::*;
-use crate::enum_type_loader::CoreEnumTypeName::*;
-use crate::string_value_type_loader::CoreStringValueTypeName::*;
-use crate::boolean_value_type_loader::CoreBooleanValueTypeName::*;
-use crate::integer_value_type_loader::CoreIntegerValueTypeName::*;
 // use crate::enum_type_loader::*;
 // use crate::integer_value_type_loader::*;
 // use crate::property_type_loader::CorePropertyTypeName::{TypeName, VariantName};
@@ -23,34 +23,33 @@ use crate::integer_value_type_loader::CoreIntegerValueTypeName::*;
 use crate::value_type_loader::CoreValueTypeName;
 //use crate::value_type_loader::load_core_value_type;
 
-
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CorePropertyTypeName {
-    AllowDuplicates, // MapBooleanType
-    BaseType, // Enum -- BaseTypeEnumType
+    AllowDuplicates,  // MapBooleanType
+    BaseType,         // Enum -- BaseTypeEnumType
     DeletionSemantic, // Enum -- DeletionSemanticEnumType
-    DescriptorName, // MapStringType
-    Description, // MapStringType
-    IsBuiltinType, // MapBooleanType
-    IsDependent, // MapBooleanType
-    IsOrdered, // MapBooleanType
-    IsValueType, // MapBooleanType
-    Label, // MapStringType
-    MaxCardinality,// MapIntegerType
-    MaxLength,// MapIntegerType
-    MaxValue,// MapIntegerType
-    MinCardinality, // MapIntegerType
-    MinLength, // MapIntegerType
-    MinValue, // MapIntegerType
-    Name, // MapDescriptorType
+    DescriptorName,   // MapStringType
+    Description,      // MapStringType
+    IsBuiltinType,    // MapBooleanType
+    IsDependent,      // MapBooleanType
+    IsOrdered,        // MapBooleanType
+    IsValueType,      // MapBooleanType
+    Label,            // MapStringType
+    MaxCardinality,   // MapIntegerType
+    MaxLength,        // MapIntegerType
+    MaxValue,         // MapIntegerType
+    MinCardinality,   // MapIntegerType
+    MinLength,        // MapIntegerType
+    MinValue,         // MapIntegerType
+    Name,             // MapDescriptorType
     PropertyTypeName, // MapString --PropertyNameType
     RelationshipName, // MapString --RelationshipNameType
     #[default]
     SchemaName, // MapStringType
-    TypeName, // MapStringType
-    VariantName, // MapStringType
-    VariantOrder, // MapIntegerType
-    Version, // MapString --SemanticVersionType
+    TypeName,         // MapStringType
+    VariantName,      // MapStringType
+    VariantOrder,     // MapIntegerType
+    Version,          // MapString --SemanticVersionType
 }
 #[derive(Debug)]
 pub struct PropertyTypeLoader {
@@ -64,7 +63,11 @@ pub struct PropertyTypeLoader {
 }
 
 impl SchemaNamesTrait for CorePropertyTypeName {
-     fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+    fn load_core_type(
+        &self,
+        context: &HolonsContext,
+        schema: &HolonReference,
+    ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
         let loader = PropertyTypeLoader {
             descriptor_name: self.derive_descriptor_name(),
@@ -76,7 +79,6 @@ impl SchemaNamesTrait for CorePropertyTypeName {
             value_type_name: self.specify_value_type(),
         };
         load_property_type_definition(context, schema, loader)
-
     }
     /// This method returns the unique type_name for this property type in "snake_case"
     fn derive_type_name(&self) -> MapString {
@@ -95,7 +97,6 @@ impl SchemaNamesTrait for CorePropertyTypeName {
         // "Title Case" -- i.e., separating the type_name into (mostly) capitalized words.
         MapString(to_title_case(&format!("{:?}", self)))
     }
-
 
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
@@ -156,8 +157,6 @@ impl CorePropertyTypeName {
     /// This function returns the ValueType for this property type
 
     fn specify_value_type(&self) -> CoreValueTypeName {
-
-
         match self {
             AllowDuplicates => BooleanType(MapBooleanType),
             BaseType => EnumType(MapBaseType),
@@ -210,32 +209,21 @@ fn load_property_type_definition(
     //     schema,
     //     loader.value_type_name
     // )?);
-    let value_type = HolonReference::Staged(loader.value_type_name.load_core_type(
-        context,
-        schema,
-    )?);
+    let value_type =
+        HolonReference::Staged(loader.value_type_name.load_core_type(context, schema)?);
 
     let definition = PropertyTypeDefinition {
         header: type_header,
         property_name: loader.property_name.clone(),
-        value_type
+        value_type,
     };
 
-    info!("Preparing to stage descriptor for {:#?}",
-        loader.property_name.clone());
-    let staged_ref = define_property_type(
-        context,
-        schema,
-        definition,
-    )?;
+    info!("Preparing to stage descriptor for {:#?}", loader.property_name.clone());
+    let staged_ref = define_property_type(context, schema, definition)?;
 
-    context.add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
+    context
+        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
         .expect("Unable to add reference to dance_state");
 
     Ok(staged_ref)
 }
-
-
-
-
-

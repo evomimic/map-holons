@@ -17,7 +17,7 @@ use shared_types_holon::value_types::BaseValue;
 use crate::all_holon_nodes::*;
 use crate::context::HolonsContext;
 use crate::helpers::get_holon_node_from_record;
-use crate::holon_collection::{HolonCollection};
+use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_node::UpdateHolonNodeInput;
 use crate::holon_node::*;
@@ -110,14 +110,10 @@ impl fmt::Display for HolonSummary {
         write!(
             f,
             "HolonSummary {{ key: {:?}, local_id: {:?}, state: {}, validation_state: {:?} }}",
-            self.key,
-            self.local_id,
-            self.state,
-            self.validation_state,
+            self.key, self.local_id, self.state, self.validation_state,
         )
     }
 }
-
 
 // impl HolonGettable for Holon {
 //     fn get_property_value(
@@ -187,10 +183,7 @@ impl Holon {
     /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
     /// which retains lineage to its predecessor.
     pub fn new_version(&self) -> Result<Holon, HolonError> {
-        trace!(
-            "Entering Holon::new_version, here is the Holon before cloning: {:#?}",
-            self
-        );
+        trace!("Entering Holon::new_version, here is the Holon before cloning: {:#?}", self);
         let mut holon = self.clone_holon()?;
         holon.state = HolonState::Changed;
 
@@ -241,9 +234,7 @@ impl Holon {
     pub fn commit(&mut self) -> Result<Holon, HolonError> {
         debug!(
             "Entered Holon::commit for holon with key {:#?} in {:#?} state",
-            self.get_key()?
-                .unwrap_or_else(|| MapString("<None>".to_string()))
-                .0,
+            self.get_key()?.unwrap_or_else(|| MapString("<None>".to_string())).0,
             self.state
         );
         match self.state {
@@ -397,9 +388,7 @@ impl Holon {
     ///
 
     pub fn get_all_related_holons(&mut self) -> Result<RelationshipMap, HolonError> {
-        Err(HolonError::NotImplemented(
-            "get_all_related_holons is not yet implemented".to_string(),
-        ))
+        Err(HolonError::NotImplemented("get_all_related_holons is not yet implemented".to_string()))
 
         // self.is_accessible(AccessType::Read)?;
         // // let relationship_map = self.relationship_map.clone();
@@ -440,9 +429,7 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let key = self
-            .property_map
-            .get(&PropertyName(MapString("key".to_string())));
+        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
         if let Some(key) = key {
             let string_value: String = key.try_into().map_err(|_| {
                 HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
@@ -498,14 +485,12 @@ impl Holon {
         let _count = self.load_relationship(relationship_name)?;
 
         // Retrieve the collection for the given relationship name
-        let collection =
-            self.relationship_map
-                .0
-                .get(relationship_name)
-                .ok_or(HolonError::HolonNotFound(format!(
-                    "Even after load_relationships, no collection found for relationship: {:?}",
-                    relationship_name
-                )))?;
+        let collection = self.relationship_map.0.get(relationship_name).ok_or(
+            HolonError::HolonNotFound(format!(
+                "Even after load_relationships, no collection found for relationship: {:?}",
+                relationship_name
+            )),
+        )?;
 
         // Return the collection wrapped in a Rc
         Ok(Rc::new(collection.clone()))
@@ -526,9 +511,7 @@ impl Holon {
     }
 
     pub fn into_node(self) -> HolonNode {
-        HolonNode {
-            property_map: self.property_map.clone(),
-        }
+        HolonNode { property_map: self.property_map.clone() }
     }
 
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -688,9 +671,7 @@ impl Holon {
                         // Add an entry for this relationship to relationship_map
                         let count = collection.get_count();
                         debug!("Created Collection: {:#?}", collection);
-                        self.relationship_map
-                            .0
-                            .insert(relationship_name.clone(), collection);
+                        self.relationship_map.0.insert(relationship_name.clone(), collection);
                         Ok(count)
                     }
 
@@ -707,7 +688,7 @@ impl Holon {
     pub fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.get_key() {
-            Ok(Some(key)) => key.0,  // Extract the key from MapString
+            Ok(Some(key)) => key.0,           // Extract the key from MapString
             Ok(None) => "<None>".to_string(), // Key is None
             Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
         };
@@ -721,10 +702,7 @@ impl Holon {
         // Format the summary string
         format!(
             "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
-            key,
-            local_id,
-            self.state,
-            self.validation_state
+            key, local_id, self.state, self.validation_state
         )
     }
 

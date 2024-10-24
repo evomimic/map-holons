@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // use crate::cache_manager::HolonCacheManager;
-use crate::context::{HolonsContext};
+use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
 use crate::holon_collection::CollectionState;
 use crate::holon_error::HolonError;
@@ -31,7 +31,7 @@ pub struct CommitResponse {
 impl CommitResponse {
     /// This helper method returns true if the supplied CommitResponse indicates that the commit
     /// was complete and false otherwise
-    pub fn is_complete(&self)->bool {
+    pub fn is_complete(&self) -> bool {
         match self.status {
             CommitRequestStatus::Complete => true,
             CommitRequestStatus::Incomplete => false,
@@ -48,17 +48,12 @@ impl CommitResponse {
             }
         }
         // Return an error if no matching Holon is found
-        Err(HolonError::HolonNotFound(
-            format!(
-                "No saved Holon with key {:?} was found in commit response",
-                k.to_string(),
-            ),
-
-        ))
+        Err(HolonError::HolonNotFound(format!(
+            "No saved Holon with key {:?} was found in commit response",
+            k.to_string(),
+        )))
     }
-
 }
-
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 /// *Complete* means all staged holons have been committed and staged_holons cleared
@@ -74,10 +69,7 @@ pub enum CommitRequestStatus {
 
 impl CommitManager {
     pub fn new() -> CommitManager {
-        CommitManager {
-            staged_holons: Vec::new(),
-            keyed_index: Default::default(),
-        }
+        CommitManager { staged_holons: Vec::new(), keyed_index: Default::default() }
     }
 
     pub fn clear_staged_objects(&mut self) {
@@ -154,10 +146,7 @@ impl CommitManager {
                     },
                     Err(error) => {
                         response.status = CommitRequestStatus::Incomplete;
-                        warn!(
-                            "Attempt to commit holon returned error: {:?}",
-                            error.to_string()
-                        );
+                        warn!("Attempt to commit holon returned error: {:?}", error.to_string());
                     }
                 }
             }
@@ -176,10 +165,7 @@ impl CommitManager {
                 if let Err(error) = outcome {
                     rc_holon.borrow_mut().errors.push(error.clone());
                     response.status = CommitRequestStatus::Incomplete;
-                    warn!(
-                        "Attempt to commit relationship returned error: {:?}",
-                        error.to_string()
-                    );
+                    warn!("Attempt to commit relationship returned error: {:?}", error.to_string());
                 }
             }
         }
@@ -202,7 +188,6 @@ impl CommitManager {
             }
         }
     }
-
 
     /// This function finds and returns a shared reference (Rc<RefCell<Holon>>) to the staged holon matching the
     /// specified key.
@@ -249,15 +234,11 @@ impl CommitManager {
                 return if let Ok(holon_refcell) = holon.try_borrow_mut() {
                     Ok(holon_refcell)
                 } else {
-                    Err(HolonError::FailedToBorrow(
-                        "for StagedReference".to_string(),
-                    ))
+                    Err(HolonError::FailedToBorrow("for StagedReference".to_string()))
                 };
             }
         }
-        Err(HolonError::InvalidHolonReference(
-            "Invalid holon index".to_string(),
-        ))
+        Err(HolonError::InvalidHolonReference("Invalid holon index".to_string()))
     }
 
     pub fn get_mut_holon(
@@ -344,11 +325,7 @@ impl CommitManager {
         if let Some(key) = holon_key.clone() {
             self.keyed_index.insert(key.clone(), holon_index);
         }
-        trace!(
-            "Success! Holon staged, with key: {:?}, at index: {:?}",
-            holon_key,
-            holon_index
-        );
+        trace!("Success! Holon staged, with key: {:?}, at index: {:?}", holon_key, holon_index);
 
         Ok(StagedReference { holon_index })
     }
@@ -369,9 +346,7 @@ impl CommitManager {
                     "Abandoned".to_string(),
                 ));
             }
-            Ok(StagedReference {
-                holon_index: staged_index,
-            })
+            Ok(StagedReference { holon_index: staged_index })
         } else {
             Err(HolonError::IndexOutOfRange(staged_index.to_string()))
         }

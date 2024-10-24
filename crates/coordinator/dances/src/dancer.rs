@@ -4,14 +4,14 @@ use hdk::prelude::*;
 
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_space_manager::HolonSpaceManager;
-use shared_types_holon::MapString;
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
 use crate::session_state::SessionState;
+use holons::context::HolonsContext;
+use holons::holon_error::HolonError;
+use holons::holon_space_manager::HolonSpaceManager;
+use shared_types_holon::MapString;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, add_related_holons_dance, commit_dance, get_all_holons_dance,
@@ -19,7 +19,6 @@ use crate::holon_dance_adapter::{
     stage_new_from_clone_dance, stage_new_holon_dance, stage_new_version_dance,
     with_properties_dance,
 };
-
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -32,7 +31,7 @@ use crate::holon_dance_adapter::{
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
 
-// -------------------------- ENSURE VALID REQUEST---------------------------------
+    // -------------------------- ENSURE VALID REQUEST---------------------------------
     let valid = true; // TODO: Validate the dance request
 
     if !valid {
@@ -46,8 +45,6 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
         return Ok(response);
     }
-
-
 
     let context = request.init_context_from_state();
     let holon_space_manager = HolonSpaceManager::new(&context);
@@ -65,7 +62,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
             descriptor: None,         // Provide appropriate value if needed
             state: SessionState::restore_session_state_from_context(&context),
         };
-        return Ok(response)
+        return Ok(response);
     }
 
     // Get the Dancer
@@ -88,11 +85,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
 
-    info!(
-        "\n======== RETURNING FROM {:?} Dance with {}",
-        request.dance_name.0,
-        result.summarize()
-    );
+    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
     Ok(result)
 }
@@ -118,36 +111,20 @@ impl Dancer {
     fn new() -> Self {
         let mut dispatch_table = HashMap::new();
         // Register functions into the dispatch table
-        dispatch_table.insert(
-            "abandon_staged_changes",
-            abandon_staged_changes_dance as DanceFunction,
-        );
-        dispatch_table.insert(
-            "add_related_holons",
-            add_related_holons_dance as DanceFunction,
-        );
+        dispatch_table
+            .insert("abandon_staged_changes", abandon_staged_changes_dance as DanceFunction);
+        dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
-        dispatch_table.insert(
-            "query_relationships",
-            query_relationships_dance as DanceFunction,
-        );
-        dispatch_table.insert(
-            "remove_related_holons",
-            remove_related_holons_dance as DanceFunction,
-        );
-        dispatch_table.insert(
-            "stage_new_from_clone",
-            stage_new_from_clone_dance as DanceFunction,
-        );
+        dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
+        dispatch_table
+            .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
+        dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert(
-            "stage_new_version",
-            stage_new_version_dance as DanceFunction,
-        );
+        dispatch_table.insert("stage_new_version", stage_new_version_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
         // Add more functions as needed
 
@@ -163,12 +140,8 @@ impl Dancer {
 
     #[allow(dead_code)]
     fn dance_name_is_dispatchable(&self, request: DanceRequest) -> bool {
-        info!(
-            "checking that dance_name: {:#?} is dispatchable",
-            request.dance_name.0.as_str()
-        );
-        self.dispatch_table
-            .contains_key(request.dance_name.0.as_str())
+        info!("checking that dance_name: {:#?} is dispatchable", request.dance_name.0.as_str());
+        self.dispatch_table.contains_key(request.dance_name.0.as_str())
     }
     // Function to dispatch a request based on the function name
     fn dispatch(
@@ -201,7 +174,10 @@ impl Dancer {
 /// * `state` is restored from context
 ///
 
-fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
+fn process_dispatch_result(
+    context: &HolonsContext,
+    dispatch_result: Result<ResponseBody, HolonError>,
+) -> DanceResponse {
     match dispatch_result {
         Ok(body) => {
             // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
@@ -214,7 +190,6 @@ fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<Resp
             }
         }
         Err(error) => {
-
             let error_message = extract_error_message(&error);
             // Construct DanceResponse with error details
             DanceResponse {
@@ -229,7 +204,7 @@ fn process_dispatch_result(context: &HolonsContext, dispatch_result: Result<Resp
 }
 /// This helper function extracts the error message from a HolonError so that the message
 /// can be included in the DanceResponse
-fn extract_error_message(error:&HolonError)->String {
+fn extract_error_message(error: &HolonError) -> String {
     match error.clone() {
         HolonError::EmptyField(_)
         | HolonError::InvalidParameter(_)
@@ -253,8 +228,5 @@ fn extract_error_message(error:&HolonError)->String {
         | HolonError::HashConversion(_, _)
         | HolonError::CacheError(_) => error.to_string(),
         HolonError::ValidationError(validation_error) => validation_error.to_string(),
-
-
     }
 }
-

@@ -4,19 +4,19 @@ use inflector::cases::screamingsnakecase::to_screaming_snake_case;
 use strum_macros::EnumIter;
 // use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::CollectionFor;
 // use inflector::cases::snakecase::to_snake_case;
+use crate::collection_type_loader::CollectionTypeSpec;
+use crate::core_schema_types::SchemaNamesTrait;
+use crate::holon_type_loader::CoreHolonTypeName;
+use descriptors::collection_descriptor::CollectionSemantic;
 use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use holons::context::HolonsContext;
-use descriptors::collection_descriptor::CollectionSemantic;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapString};
-use crate::collection_type_loader::CollectionTypeSpec;
-use crate::core_schema_types::SchemaNamesTrait;
-use crate::holon_type_loader::CoreHolonTypeName;
 // use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
 // use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
@@ -50,7 +50,6 @@ pub enum CoreRelationshipTypeName {
     TargetOfCollectionType,
     ValueType,
     ValueTypeFor,
-
 }
 #[derive(Debug)]
 pub struct RelationshipTypeLoader {
@@ -68,11 +67,14 @@ pub struct RelationshipTypeLoader {
 }
 
 impl SchemaNamesTrait for CoreRelationshipTypeName {
-    fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+    fn load_core_type(
+        &self,
+        context: &HolonsContext,
+        schema: &HolonReference,
+    ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
         let loader = self.get_relationship_type_loader();
         load_relationship_type_definition(context, schema, loader)
-
     }
     /// This method returns the unique type_name for this property type in "snake_case"
     fn derive_type_name(&self) -> MapString {
@@ -90,11 +92,12 @@ impl SchemaNamesTrait for CoreRelationshipTypeName {
         self.derive_type_name()
     }
 
-
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
-        panic!("This trait function is not intended to be used for this type. \
-        The 'description' for this type is explicitly defined in get_variant_loader()")
+        panic!(
+            "This trait function is not intended to be used for this type. \
+        The 'description' for this type is explicitly defined in get_variant_loader()"
+        )
     }
 }
 impl CoreRelationshipTypeName {
@@ -123,7 +126,7 @@ impl CoreRelationshipTypeName {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonSpaceType,
                 },
-                has_inverse: Some(CoreSchema), 
+                has_inverse: Some(CoreSchema),
             },
             CoreSchema => RelationshipTypeLoader {
                 descriptor_name,
@@ -621,7 +624,6 @@ pub fn load_relationship_type_definition(
         type_name: loader.relationship_type_name.0.clone(),
         properties: vec![],
         key_properties: None,
-
     };
     // Add HolonReferences to the PropertyDescriptors for this holon type
     // for property in loader.properties {
@@ -650,21 +652,12 @@ pub fn load_relationship_type_definition(
     // TODO:  Lazy get source_for references to RelationshipDescriptors
     // TODO: Lazy get dance_request references to DanceDescriptors (Request & Response)
 
-    info!("Preparing to stage descriptor for {:#?}",
-        loader.relationship_type_name.0.clone());
-    let staged_ref = define_holon_type(
-        context,
-        schema,
-        definition,
-    )?;
+    info!("Preparing to stage descriptor for {:#?}", loader.relationship_type_name.0.clone());
+    let staged_ref = define_holon_type(context, schema, definition)?;
 
-    context.add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
+    context
+        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
         .expect("Unable to add reference to dance_state");
 
     Ok(staged_ref)
 }
-
-
-
-
-

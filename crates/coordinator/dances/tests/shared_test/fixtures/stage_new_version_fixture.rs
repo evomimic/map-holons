@@ -1,19 +1,15 @@
 use std::collections::BTreeMap;
 
-use dances::{dance_response::ResponseStatusCode};
+use dances::dance_response::ResponseStatusCode;
 use holons::{
-    holon::Holon,
-    holon_collection::HolonCollection,
-    holon_error::HolonError,
-    holon_reference::HolonReference,
-    relationship::RelationshipName,
-    smart_reference::SmartReference,
-    staged_reference::StagedReference,
+    holon::Holon, holon_collection::HolonCollection, holon_error::HolonError,
+    holon_reference::HolonReference, relationship::RelationshipName,
+    smart_reference::SmartReference, staged_reference::StagedReference,
 };
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase, DanceTestStep};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 
 use super::book_authors_setup_fixture::setup_book_author_steps;
 
@@ -26,7 +22,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     );
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count:i64  = 1;
+    let mut expected_count: i64 = 1;
 
     //  ENSURE DATABASE COUNT -- Empty  //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
@@ -37,11 +33,8 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     // the book to both persons.
     let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
-    let test_data = setup_book_author_steps(
-        &mut test_case,
-        &mut holons_to_add,
-        &desired_test_relationship,
-    )?;
+    let test_data =
+        setup_book_author_steps(&mut test_case, &mut holons_to_add, &desired_test_relationship)?;
 
     expected_count += test_data.len() as i64;
 
@@ -68,17 +61,11 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_stage_new_version_step(book_key, ResponseStatusCode::OK)?;
     expected_count += 1;
 
-
     //  CHANGE PROPERTIES  //
     let mut changed_properties = BTreeMap::new();
-    changed_properties.insert(
-        PropertyName(MapString("title".to_string())),
-        cloned_book_key.clone(),
-    );
-    changed_properties.insert(
-        PropertyName(MapString("key".to_string())),
-        cloned_book_key.clone(),
-    );
+    changed_properties
+        .insert(PropertyName(MapString("title".to_string())), cloned_book_key.clone());
+    changed_properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key.clone());
     changed_properties.insert(
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString(
@@ -146,7 +133,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     // The get_all_holons dance is not returning the cloned() holon,
     // but the match_saved_content step is confirming the both the original and cloned holons
     // have been committed to the DHT
-    test_case.add_ensure_database_count_step(MapInteger(expected_count-1))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count - 1))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

@@ -5,8 +5,8 @@ use hdk::prelude::*;
 use shared_types_holon::MapString;
 
 use crate::context::HolonsContext;
-use crate::holon_reference::HolonGettable;
 use crate::holon_error::HolonError;
+use crate::holon_reference::HolonGettable;
 use crate::holon_reference::HolonReference;
 
 /// These keyed collections can be used when there is a need for a collection of Holons, which we
@@ -26,10 +26,7 @@ pub struct TransientCollection {
 
 impl TransientCollection {
     pub fn new() -> Self {
-        TransientCollection {
-            members: Vec::new(),
-            keyed_index: BTreeMap::new(),
-        }
+        TransientCollection { members: Vec::new(), keyed_index: BTreeMap::new() }
     }
 
     pub fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {

@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -13,7 +12,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
+use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -26,10 +25,12 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
-pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_state: &mut DanceTestState) ->() {
-
+pub async fn execute_commit(
+    conductor: &SweetConductor,
+    cell: &SweetCell,
+    test_state: &mut DanceTestState,
+) -> () {
     info!("\n\n--- TEST STEP: Committing Staged Holons ---- :");
-
 
     // Build a commit DanceRequest
     let request = build_commit_dance_request(&test_state.session_state);
@@ -37,9 +38,8 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
 
             debug!("Dance Response: {:#?}", response.clone());
             test_state.session_state = response.state.clone();
@@ -65,7 +65,6 @@ pub async fn execute_commit(conductor: &SweetConductor, cell: &SweetCell, test_s
                     }
                     _ => panic!("Invalid ResponseBody: {:?}", response.body),
                 }
-
             } else {
                 panic!("DanceRequest returned {code} for {description}");
             }

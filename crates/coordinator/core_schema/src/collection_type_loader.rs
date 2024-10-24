@@ -1,13 +1,13 @@
-use hdi::prelude::info;
-use descriptors::collection_descriptor::{CollectionTypeDefinition, define_collection_type};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
-use holons::context::HolonsContext;
+use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::collection_descriptor::CollectionSemantic;
+use descriptors::collection_descriptor::{define_collection_type, CollectionTypeDefinition};
+use descriptors::type_descriptor::TypeDescriptorDefinition;
+use hdi::prelude::info;
+use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-use crate::core_schema_types::SchemaNamesTrait;
 // use crate::core_schema_types::CoreSchemaTypeName::HolonType;
 use crate::holon_type_loader::CoreHolonTypeName;
 // use crate::property_type_loader::CorePropertyTypeName::{Description, Name};
@@ -31,15 +31,17 @@ struct CollectionTypeLoader {
     pub min_cardinality: MapInteger,
     pub max_cardinality: MapInteger,
     pub target_holon_type: CoreHolonTypeName,
-
 }
 
 impl SchemaNamesTrait for CollectionTypeSpec {
-    fn load_core_type(&self, context: &HolonsContext, schema: &HolonReference) -> Result<StagedReference, HolonError> {
+    fn load_core_type(
+        &self,
+        context: &HolonsContext,
+        schema: &HolonReference,
+    ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
         let loader = self.build_collection_type_loader()?;
         load_collection_type_definition(context, schema, loader)
-
     }
     /// This method returns the unique type_name for this collection type in "CamelCase"
     fn derive_type_name(&self) -> MapString {
@@ -50,16 +52,12 @@ impl SchemaNamesTrait for CollectionTypeSpec {
             }
             CollectionSemantic::OptionalInstance => {
                 MapString(format!("Optional{}Instance", holon_type_name.clone()))
-            },
+            }
             CollectionSemantic::UniqueList => {
                 MapString(format!("Unique{}List", holon_type_name.clone()))
-            },
-            CollectionSemantic::List => {
-                MapString(format!("{}List", holon_type_name.clone()))
-            },
-            CollectionSemantic::Set => {
-                MapString(format!("{}Set", holon_type_name.clone()))
-            },
+            }
+            CollectionSemantic::List => MapString(format!("{}List", holon_type_name.clone())),
+            CollectionSemantic::Set => MapString(format!("{}Set", holon_type_name.clone())),
         }
     }
 
@@ -73,37 +71,34 @@ impl SchemaNamesTrait for CollectionTypeSpec {
         self.derive_type_name().clone()
     }
 
-
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
         let holon_type_name = self.holon_type.derive_type_name();
         match self.semantic {
-           CollectionSemantic::SingleInstance => {
-               MapString(format!("Exactly one instance of {}", holon_type_name.clone()))
-           },
-           CollectionSemantic::OptionalInstance => {
-               MapString(format!("An optional instance of {}", holon_type_name.clone()))
-           },
-           CollectionSemantic::UniqueList => {
-               MapString(format!("An ordered list of {} that CANNOT contain duplicates.",
-                                 holon_type_name.clone()))
-           },
-           CollectionSemantic::List => {
-               MapString(format!("An ordered list of {} that CAN contain duplicates.)",
-                                 holon_type_name.clone()))
-           },
-           CollectionSemantic::Set => {
-               MapString(format!("An unordered set of {} that CANNOT contain duplicates.)",
-                                 holon_type_name.clone()))
-           },
-       }
+            CollectionSemantic::SingleInstance => {
+                MapString(format!("Exactly one instance of {}", holon_type_name.clone()))
+            }
+            CollectionSemantic::OptionalInstance => {
+                MapString(format!("An optional instance of {}", holon_type_name.clone()))
+            }
+            CollectionSemantic::UniqueList => MapString(format!(
+                "An ordered list of {} that CANNOT contain duplicates.",
+                holon_type_name.clone()
+            )),
+            CollectionSemantic::List => MapString(format!(
+                "An ordered list of {} that CAN contain duplicates.)",
+                holon_type_name.clone()
+            )),
+            CollectionSemantic::Set => MapString(format!(
+                "An unordered set of {} that CANNOT contain duplicates.)",
+                holon_type_name.clone()
+            )),
+        }
     }
 }
 
 impl CollectionTypeSpec {
-    fn build_collection_type_loader(&self)
-                                    -> Result<CollectionTypeLoader, HolonError> {
-
+    fn build_collection_type_loader(&self) -> Result<CollectionTypeLoader, HolonError> {
         let type_name = self.derive_type_name();
         let descriptor_name = self.derive_descriptor_name();
         let description = self.derive_description();
@@ -178,14 +173,10 @@ impl CollectionTypeSpec {
                 min_cardinality: MapInteger(0),
                 max_cardinality: MapInteger(i32::MAX.into()),
                 target_holon_type,
-
             },
         })
-
     }
 }
-
-
 
 /// This function stages a new collection type definition and adds a reference to it to the dance_state
 fn load_collection_type_definition(
@@ -193,10 +184,8 @@ fn load_collection_type_definition(
     schema: &HolonReference,
     loader: CollectionTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-
-    let target_holon_type = loader
-        .target_holon_type
-        .lazy_get_core_type_definition(context, schema)?;
+    let target_holon_type =
+        loader.target_holon_type.lazy_get_core_type_definition(context, schema)?;
 
     let type_header = TypeDescriptorDefinition {
         descriptor_name: loader.descriptor_name,
@@ -221,21 +210,12 @@ fn load_collection_type_definition(
         target_holon_type,
     };
 
-    info!("Preparing to stage descriptor for {:#?}",
-        loader.type_name.clone());
-    let staged_ref = define_collection_type(
-        context,
-        schema,
-        definition,
-    )?;
+    info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
+    let staged_ref = define_collection_type(context, schema, definition)?;
 
-    context.add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
+    context
+        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
         .expect("Unable to add reference to dance_state");
 
     Ok(staged_ref)
 }
-
-
-
-
-

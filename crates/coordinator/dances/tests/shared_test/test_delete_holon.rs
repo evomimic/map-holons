@@ -14,7 +14,7 @@ use rstest::*;
 
 use crate::shared_test::dance_fixtures::*;
 
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase, DanceTestStep};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -35,13 +35,17 @@ pub async fn execute_delete_holon(
     holon_to_delete_key: MapString, // key of the holon to delete
     expected_response: ResponseStatusCode,
 ) -> () {
-    info!("\n\n--- TEST STEP: Deleting an Existing (Saved) Holon with key: {:#?}", holon_to_delete_key.clone());
+    info!(
+        "\n\n--- TEST STEP: Deleting an Existing (Saved) Holon with key: {:#?}",
+        holon_to_delete_key.clone()
+    );
 
-    let holon_to_delete = test_state.get_created_holon_by_key(&holon_to_delete_key)
+    let holon_to_delete = test_state
+        .get_created_holon_by_key(&holon_to_delete_key)
         .expect("Failed to retrieve holon from test_state's created_holons.");
 
-    let local_id = holon_to_delete.get_local_id()
-        .expect("Unable to get LocalId from holon_to_delete");
+    let local_id =
+        holon_to_delete.get_local_id().expect("Unable to get LocalId from holon_to_delete");
     // Build a stage_holon DanceRequest
     let delete_holon_request =
         build_delete_holon_dance_request(&test_state.session_state, local_id.clone());
@@ -49,13 +53,9 @@ pub async fn execute_delete_holon(
 
     match delete_holon_request {
         Ok(valid_request) => {
-            let delete_holon_response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
-            debug!(
-                "delete_holon Dance Response: {:#?}",
-                delete_holon_response.clone()
-            );
+            let delete_holon_response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
+            debug!("delete_holon Dance Response: {:#?}", delete_holon_response.clone());
             let code = delete_holon_response.status_code;
             assert_eq!(
                 code, expected_response,
@@ -76,9 +76,8 @@ pub async fn execute_delete_holon(
                     );
                     match get_holon_by_id_request {
                         Ok(valid_request) => {
-                            let get_holon_by_id_response: DanceResponse = conductor
-                                .call(&cell.zome("dances"), "dance", valid_request)
-                                .await;
+                            let get_holon_by_id_response: DanceResponse =
+                                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
 
                             let code = get_holon_by_id_response.status_code;
                             assert_eq!(code, ResponseStatusCode::NotFound);

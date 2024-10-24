@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -14,7 +13,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::context::HolonsContext;
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
+use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -40,7 +39,7 @@ pub async fn execute_match_db_content(
 
     for (_key, expected_holon) in test_state.created_holons.clone() {
         // get HolonId
-        let holon_id : HolonId= expected_holon.get_local_id().unwrap().into();
+        let holon_id: HolonId = expected_holon.get_local_id().unwrap().into();
         // Build a get_holon_by_id DanceRequest
         let request =
             build_get_holon_by_id_dance_request(&test_state.session_state, holon_id.clone());
@@ -48,9 +47,8 @@ pub async fn execute_match_db_content(
 
         match request {
             Ok(valid_request) => {
-                let response: DanceResponse = conductor
-                    .call(&cell.zome("dances"), "dance", valid_request)
-                    .await;
+                let response: DanceResponse =
+                    conductor.call(&cell.zome("dances"), "dance", valid_request).await;
                 test_state.session_state = response.state.clone();
 
                 if let ResponseBody::Holon(actual_holon) = response.body.clone() {
@@ -58,7 +56,10 @@ pub async fn execute_match_db_content(
                         expected_holon.essential_content(),
                         actual_holon.essential_content(),
                     );
-                    info!("\nSUCCESS! DB fetched holon matched expected for: \n {:?}", actual_holon.summarize());
+                    info!(
+                        "\nSUCCESS! DB fetched holon matched expected for: \n {:?}",
+                        actual_holon.summarize()
+                    );
                 } else {
                     panic!(
                         "Expected get_holon_by_id to return a Holon response for id: {:?}, but it returned {:?}",

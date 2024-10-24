@@ -7,10 +7,8 @@ use holons::holon_reference::HolonReference;
 use holons::query::{NodeCollection, QueryExpression};
 use holons::relationship::RelationshipName;
 
-
-use shared_types_holon::{HolonId, LocalId, MapString, PropertyMap};
 use crate::session_state::SessionState;
-
+use shared_types_holon::{HolonId, LocalId, MapString, PropertyMap};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -22,7 +20,6 @@ pub struct DanceRequest {
     state: SessionState,
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
-
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -76,16 +73,16 @@ impl RequestBody {
     }
     pub fn summarize(&self) -> String {
         match &self {
-            RequestBody::Holon(holon) => format!("  Holon summary: {}",holon.summarize()),
-            RequestBody::TargetHolons(relationship_name,holons)
-               => format!("  relationship: {:?}, {{\n    holon_references: {:?} }} ",relationship_name, holons),
-            RequestBody::HolonId(holon_id) => format!("  HolonId: {:?}",holon_id),
+            RequestBody::Holon(holon) => format!("  Holon summary: {}", holon.summarize()),
+            RequestBody::TargetHolons(relationship_name, holons) => format!(
+                "  relationship: {:?}, {{\n    holon_references: {:?} }} ",
+                relationship_name, holons
+            ),
+            RequestBody::HolonId(holon_id) => format!("  HolonId: {:?}", holon_id),
 
             _ => format!("{:#?}", self), // Use full debug for other response bodies
         }
-
     }
-
 }
 
 impl DanceRequest {
@@ -95,13 +92,7 @@ impl DanceRequest {
         body: RequestBody,
         state: SessionState,
     ) -> Self {
-
-        Self {
-            dance_name,
-            dance_type,
-            body,
-            state,
-        }
+        Self { dance_name, dance_type, body, state }
     }
     pub fn get_state(&self) -> &SessionState {
         &self.state
@@ -116,11 +107,7 @@ impl DanceRequest {
 
         let local_holon_space = self.get_state().get_local_holon_space();
         debug!("initializing context from session state in dance request");
-        HolonsContext::init_context(
-            commit_manager,
-            HolonCacheManager::new(),
-            local_holon_space,
-        )
+        HolonsContext::init_context(commit_manager, HolonCacheManager::new(), local_holon_space)
     }
     // Method to summarize the DanceResponse for logging purposes
     pub fn summarize(&self) -> String {
@@ -132,7 +119,4 @@ impl DanceRequest {
             self.state.summarize(),
         )
     }
-
 }
-
-

@@ -14,7 +14,7 @@ use holons::commit_manager::StagedIndex;
 use holons::context::HolonsContext;
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState};
+use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use holons::helpers::*;
 use holons::holon::Holon;
@@ -41,18 +41,15 @@ pub async fn execute_abandon_staged_changes(
     expected_response: ResponseStatusCode,
 ) {
     info!("\n\n--- TEST STEP: Abandon Staged Changes ---");
-    let request = build_abandon_staged_changes_dance_request(
-        &test_state.session_state,
-        staged_index.clone(),
-    );
+    let request =
+        build_abandon_staged_changes_dance_request(&test_state.session_state, staged_index.clone());
 
     info!("Dance Request: {:#?}", request);
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             test_state.session_state = response.state.clone();
 
             assert_eq!(response.status_code, expected_response);
@@ -64,7 +61,11 @@ pub async fn execute_abandon_staged_changes(
                     // Dance response was OK, confirm that operations disallowed for Holons in an
                     // Abandoned state return NotAccessible error.
                     if let ResponseBody::Index(staged_index) = response.body.clone() {
-                        match test_state.session_state.get_staging_area_mut().get_holon_mut(staged_index) {
+                        match test_state
+                            .session_state
+                            .get_staging_area_mut()
+                            .get_holon_mut(staged_index)
+                        {
                             Ok(abandoned_holon) => {
                                 // NOTE: We changed the access policies to ALLOW read access to
                                 // Abandoned holons, so disabling the following two checks
@@ -111,10 +112,7 @@ pub async fn execute_abandon_staged_changes(
             }
         }
         Err(error) => {
-            panic!(
-                "{:?} Unable to build a abandon_staged_changes request ",
-                error
-            );
+            panic!("{:?} Unable to build a abandon_staged_changes request ", error);
         }
     }
 }

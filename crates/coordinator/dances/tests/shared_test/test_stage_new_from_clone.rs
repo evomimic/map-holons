@@ -16,7 +16,9 @@ use holons::staged_reference::StagedReference;
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TestHolonData, TestReference};
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -40,7 +42,7 @@ pub async fn execute_stage_new_from_clone(
             let staged_holon = staged_holons.get(index).unwrap();
             // let staged_holon = test_state.staging_area.get_holon(index).unwrap();
             TestHolonData::new(staged_holon.clone(), holon_reference)
-        },
+        }
         TestReference::SavedHolon(key) => {
             let saved_holon = test_state
                 .created_holons
@@ -64,9 +66,8 @@ pub async fn execute_stage_new_from_clone(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             debug!("Dance Response: {:#?}", response.clone());
             test_state.session_state = response.state;
             let code = response.status_code;
@@ -115,10 +116,7 @@ pub async fn execute_stage_new_from_clone(
             }
         }
         Err(error) => {
-            panic!(
-                "{:?} Unable to build a stage_new_from_clone request ",
-                error
-            );
+            panic!("{:?} Unable to build a stage_new_from_clone request ", error);
         }
     }
 }

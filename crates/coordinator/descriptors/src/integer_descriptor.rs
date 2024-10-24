@@ -1,11 +1,11 @@
+use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use shared_types_holon::PropertyName;
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
@@ -26,7 +26,6 @@ pub fn define_integer_type(
     schema: &HolonReference,
     definition: IntegerTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
-
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_descriptor_ref = define_type_descriptor(
         context,
@@ -45,7 +44,9 @@ pub fn define_integer_type(
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
-            PropertyName(MapString(CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string())),
+            PropertyName(MapString(
+                CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string(),
+            )),
             BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
@@ -58,22 +59,16 @@ pub fn define_integer_type(
         )?;
 
     // Stage new holon type
-    let integer_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(integer_type.clone())?;
-
+    let integer_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(integer_type.clone())?;
 
     // Add some relationships
 
-
-    integer_type_ref
-        .add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-            vec![HolonReference::Staged(type_descriptor_ref)]
-        )?;
+    integer_type_ref.add_related_holons(
+        context,
+        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        vec![HolonReference::Staged(type_descriptor_ref)],
+    )?;
 
     Ok(integer_type_ref)
-
 }

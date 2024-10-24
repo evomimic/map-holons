@@ -3,12 +3,6 @@ use inflector::cases::titlecase::to_title_case;
 
 use inflector::Inflector;
 
-use holons::holon::Holon;
-use holons::holon_collection::HolonCollection;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-use shared_types_holon::{BaseType, MapBoolean, MapInteger, PropertyName};
-use shared_types_holon::value_types::{MapEnumValue, MapString};
 use crate::boolean_descriptor::BooleanTypeDefinition;
 use crate::collection_descriptor::CollectionTypeDefinition;
 use crate::enum_descriptor::EnumTypeDefinition;
@@ -19,6 +13,12 @@ use crate::property_descriptor::PropertyTypeDefinition;
 use crate::relationship_descriptor::RelationshipTypeDefinition;
 use crate::semantic_version::SemanticVersion;
 use crate::string_descriptor::StringTypeDefinition;
+use holons::holon::Holon;
+use holons::holon_collection::HolonCollection;
+use holons::holon_reference::HolonReference;
+use holons::relationship::RelationshipName;
+use shared_types_holon::value_types::{MapEnumValue, MapString};
+use shared_types_holon::{BaseType, MapBoolean, MapInteger, PropertyName};
 
 /// All MAP Descriptors are stored as Holons. This file defines structs for each kind of Core Type
 /// in order to allow type-safe references and to provide a higher-level representation. Conversion
@@ -42,8 +42,8 @@ pub struct TypeDescriptor {
     is_builtin_type: MapBoolean,
     is_value_type: MapBoolean,
     version: SemanticVersion,
-    owned_by: Option<HolonReference>, // to HolonSpace
-    component_of: HolonReference, // to Schema
+    owned_by: Option<HolonReference>,     // to HolonSpace
+    component_of: HolonReference,         // to Schema
     described_by: Option<HolonReference>, // to HolonType
 }
 #[allow(dead_code)]
@@ -55,14 +55,13 @@ pub struct HolonCollectionType {
     min_cardinality: MapInteger,
     max_cardinality: MapInteger,
     target_holon_type: HolonCollection, // HolonTypeInstance
-    described_by: HolonReference, // MetaHolonCollection Type
-
+    described_by: HolonReference,       // MetaHolonCollection Type
 }
 #[allow(dead_code)]
 pub struct HolonType {
     header: TypeDescriptor,
     type_name: MapString,
-    properties: HolonCollection, // PropertyTypeList
+    properties: HolonCollection,     // PropertyTypeList
     key_properties: HolonCollection, // PropertyTypeList
     source_for: HolonCollection,
     dances: HolonCollection,
@@ -78,21 +77,20 @@ pub struct RelationshipType {
     is_definitional: MapBoolean,
     target_collection_type: HolonReference, // HolonCollectionType
     has_inverse: Option<HolonReference>, // RelationshipType -- None unless source_owns_relationship
-    described_by: HolonReference, // MetaRelationshipType
-
+    described_by: HolonReference,        // MetaRelationshipType
 }
 #[allow(dead_code)]
 pub struct PropertyType {
     header: TypeDescriptor,
     property_type_name: PropertyName,
-    value_type: HolonReference, // ValueType
+    value_type: HolonReference,   // ValueType
     described_by: HolonReference, // MetaValueType,
 }
 #[allow(dead_code)]
 pub struct ValueType {
     header: TypeDescriptor,
     type_name: MapString,
-    value_type: HolonReference, // ValueType
+    value_type: HolonReference,   // ValueType
     described_by: HolonReference, // MetaPropertyType
 }
 #[allow(dead_code)]
@@ -123,13 +121,12 @@ pub struct EnumType {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum DeletionSemantic {
-    Allow, // deleting source_holon has no impact on the target_holon(s)
-    Block, // prevent deletion of source_holon if any target_holons are related
+    Allow,   // deleting source_holon has no impact on the target_holon(s)
+    Block,   // prevent deletion of source_holon if any target_holons are related
     Cascade, // if source_holon is deleted, then also delete any related target_holons
 }
 
 impl DeletionSemantic {
-
     pub(crate) fn to_enum_variant(&self) -> MapEnumValue {
         match self {
             DeletionSemantic::Allow => MapEnumValue(MapString("Allow".to_string())),
@@ -161,7 +158,6 @@ trait SchemaNamesTrait {
     /// clarify the purpose of the type and any caveats or to be aware of.
     fn derive_description(&self) -> MapString;
 }
-
 
 pub enum CoreMetaSchemaName {
     MetaBooleanType,
@@ -237,27 +233,27 @@ impl CoreValueTypeName {
 #[derive(Debug)]
 pub enum CoreSchemaPropertyTypeName {
     AllowsDuplicates, // MapBooleanType
-    BaseType, // Enum -- BaseTypeEnumType
+    BaseType,         // Enum -- BaseTypeEnumType
     DeletionSemantic, // Enum -- DeletionSemanticEnumType
-    DescriptorName, // MapStringType
-    Description, // MapStringType
-    IsBuiltinType, // MapBooleanType
-    IsDependent, // MapBooleanType
-    IsOrdered, // MapBooleanType
-    IsValueType, // MapBooleanType
-    Label, // MapStringType
-    MaxCardinality,// MapIntegerType
-    MaxLength,// MapIntegerType
-    MaxValue,// MapIntegerType
-    MinCardinality, // MapIntegerType
-    MinLength, // MapIntegerType
-    MinValue, // MapIntegerType
+    DescriptorName,   // MapStringType
+    Description,      // MapStringType
+    IsBuiltinType,    // MapBooleanType
+    IsDependent,      // MapBooleanType
+    IsOrdered,        // MapBooleanType
+    IsValueType,      // MapBooleanType
+    Label,            // MapStringType
+    MaxCardinality,   // MapIntegerType
+    MaxLength,        // MapIntegerType
+    MaxValue,         // MapIntegerType
+    MinCardinality,   // MapIntegerType
+    MinLength,        // MapIntegerType
+    MinValue,         // MapIntegerType
     PropertyTypeName, // MapString --PropertyNameType
     RelationshipName, // MapString --RelationshipNameType
-    SchemaName, // MapStringType
-    TypeName, // MapStringType
-    VariantOrder, // MapIntegerType
-    Version, // MapString --SemanticVersionType
+    SchemaName,       // MapStringType
+    TypeName,         // MapStringType
+    VariantOrder,     // MapIntegerType
+    Version,          // MapString --SemanticVersionType
 }
 impl SchemaNamesTrait for CoreSchemaPropertyTypeName {
     /// This method returns the unique type_name for this property type in "snake_case"
@@ -365,7 +361,6 @@ impl CoreSchemaPropertyTypeName {
     pub fn as_property_descriptor_name(&self) -> MapString {
         MapString(format!("{}_descriptor", self.as_snake_case().to_string()))
     }
-
 }
 
 pub enum CoreSchemaName {
@@ -494,18 +489,4 @@ impl CoreSchemaRelationshipTypeName {
     pub fn as_rel_name(&self) -> RelationshipName {
         RelationshipName(MapString(self.as_str().to_string()))
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

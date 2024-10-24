@@ -43,7 +43,7 @@ pub enum CoreValueTypeName {
 }
 
 impl SchemaNamesTrait for CoreValueTypeName {
-      fn load_core_type(
+    fn load_core_type(
         &self,
         context: &HolonsContext,
         schema: &HolonReference,
@@ -92,4 +92,3 @@ impl SchemaNamesTrait for CoreValueTypeName {
         }
     }
 }
-

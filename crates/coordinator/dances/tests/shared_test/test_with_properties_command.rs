@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 use async_std::task;
@@ -19,7 +18,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase, DanceTestStep};
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -43,14 +42,13 @@ pub async fn execute_with_properties(
     // Get the state of the holon prior to dancing the request
     info!("trying to get staged_holon at staged_holon_index: {:#?}", staged_holon_index);
 
-    info!("test state is: {:#?}", test_state );
+    info!("test state is: {:#?}", test_state);
 
     let original_holon = test_state
         .session_state
         .get_staging_area()
         .get_holon(staged_holon_index)
         .expect("Failed to get staged holon from test state");
-
 
     // Create the expected_holon from the original_holon + the supplied property values
     let mut expected_holon = original_holon.clone();
@@ -61,14 +59,17 @@ pub async fn execute_with_properties(
         }
     }
     // Build a with_properties DanceRequest
-    let request = build_with_properties_dance_request(&test_state.session_state, staged_holon_index, properties.clone());
+    let request = build_with_properties_dance_request(
+        &test_state.session_state,
+        staged_holon_index,
+        properties.clone(),
+    );
     debug!("Dance Request: {:#?}", request);
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             debug!("Dance Response: {:#?}", response.clone());
             let code = response.status_code;
             let description = response.description.clone();
@@ -90,7 +91,7 @@ pub async fn execute_with_properties(
                     assert_eq!(expected_holon, actual_holon.clone());
 
                     info!("Success! Holon has updated with supplied properties");
-                    info!("test state is: {:#?}", test_state );
+                    info!("test state is: {:#?}", test_state);
                 }
             } else {
                 panic!("DanceRequest returned {code} for {description}");

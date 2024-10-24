@@ -55,10 +55,7 @@ impl HolonGettable for StagedReference {
 
 impl StagedReference {
     pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
-        debug!(
-            "Entered: abandon_staged_changes for staged_index: {:#?}",
-            self.holon_index
-        );
+        debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.holon_index);
         // Get mutable access to the source holon
         let holon_refcell = self.get_rc_holon(context)?;
 
@@ -102,10 +99,7 @@ impl StagedReference {
         } else {
             let mut collection = HolonCollection::new_staged();
             collection.add_references(context, holons)?;
-            holon
-                .relationship_map
-                .0
-                .insert(relationship_name, collection);
+            holon.relationship_map.0.insert(relationship_name, collection);
         }
         debug!(
             "Here is the RelationshipMap after adding related Holons: {:#?}",
@@ -122,9 +116,7 @@ impl StagedReference {
     }
 
     pub fn clone_reference(&self) -> StagedReference {
-        StagedReference {
-            holon_index: self.holon_index.clone(),
-        }
+        StagedReference { holon_index: self.holon_index.clone() }
     }
 
     pub fn essential_content(
@@ -142,10 +134,7 @@ impl StagedReference {
         if borrowed_holon.state == HolonState::Saved {
             Ok(HolonId::from(borrowed_holon.get_local_id()?))
         } else {
-            Err(HolonError::NotAccessible(
-                "Id".to_string(),
-                format!("{:?}", borrowed_holon.state),
-            ))
+            Err(HolonError::NotAccessible("Id".to_string(), format!("{:?}", borrowed_holon.state)))
         }
     }
 

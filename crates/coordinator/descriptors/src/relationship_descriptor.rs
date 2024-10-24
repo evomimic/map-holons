@@ -5,11 +5,12 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
 use holons::staged_reference::StagedReference;
-use shared_types_holon::{BaseType, PropertyName};
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
+use shared_types_holon::{BaseType, PropertyName};
 
-
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic};
+use crate::descriptor_types::{
+    CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
+};
 //
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
@@ -24,7 +25,7 @@ pub struct RelationshipTypeDefinition {
     pub load_holons_immediate: MapBoolean,
     //pub affinity: MapInteger,
     pub target_collection_type: HolonReference, // CollectionType
-    pub has_inverse: Option<HolonReference>, // Inverse RelationshipType
+    pub has_inverse: Option<HolonReference>,    // Inverse RelationshipType
 }
 
 /// This function defines and stages (but does not persist) a new RelationshipDescriptor.
@@ -58,19 +59,18 @@ pub fn define_relationship_type(
     // TODO: Move this logic to the shared validation rules layer
     // Rule: Only the side of the relationship that "owns" the relationship should specify an inverse
     if !definition.source_owns_relationship.0 && definition.has_inverse.is_some() {
-        return Err(HolonError::InvalidParameter("Validation Error: since source does not own the \
-        relationship, it should not specify an inverse.".into()));
+        return Err(HolonError::InvalidParameter(
+            "Validation Error: since source does not own the \
+        relationship, it should not specify an inverse."
+                .into(),
+        ));
     }
 
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     // Stage the TypeDescriptor
-    let type_descriptor_ref = define_type_descriptor(
-        context,
-        schema,
-        BaseType::Relationship,
-        definition.header,
-    )?;
+    let type_descriptor_ref =
+        define_type_descriptor(context, schema, BaseType::Relationship, definition.header)?;
 
     // Build new Relationship Type
 
@@ -106,33 +106,29 @@ pub fn define_relationship_type(
     debug!("Staging new relationship_type {:#?}", relationship_type.clone());
 
     // Stage new holon type
-    let relationship_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(relationship_type.clone())?;
+    let relationship_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(relationship_type.clone())?;
 
     // Add its relationships
 
     relationship_type_ref.add_related_holons(
         context,
         CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-        vec![HolonReference::Staged(type_descriptor_ref)]
+        vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
     relationship_type_ref.add_related_holons(
         context,
         CoreSchemaRelationshipTypeName::TargetCollectionType.as_rel_name(),
-        vec![definition.target_collection_type]
+        vec![definition.target_collection_type],
     )?;
 
-
     if let Some(inverse) = definition.has_inverse {
-        relationship_type_ref
-            .add_related_holons(
-                context,
-                CoreSchemaRelationshipTypeName::HasInverse.as_rel_name(),
-                vec![inverse])?
+        relationship_type_ref.add_related_holons(
+            context,
+            CoreSchemaRelationshipTypeName::HasInverse.as_rel_name(),
+            vec![inverse],
+        )?
     };
 
     Ok(relationship_type_ref)
-
 }

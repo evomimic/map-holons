@@ -19,7 +19,7 @@ use hdk::prelude::*;
 use holons::commit_manager::CommitRequestStatus::*;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-use shared_types_holon::{MapString};
+use shared_types_holon::MapString;
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
@@ -59,8 +59,13 @@ pub fn load_core_schema_dance(
 }
 
 pub fn build_load_core_schema_dance_request(
-    session_state:&SessionState,
-)->Result<DanceRequest, HolonError> {
+    session_state: &SessionState,
+) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
-    Ok(DanceRequest::new(MapString("load_core_schema".to_string()), DanceType::Standalone,body, session_state.clone()))
+    Ok(DanceRequest::new(
+        MapString("load_core_schema".to_string()),
+        DanceType::Standalone,
+        body,
+        session_state.clone(),
+    ))
 }

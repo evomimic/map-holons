@@ -16,7 +16,9 @@ use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyName};
 use std::collections::BTreeMap;
 
-use crate::shared_test::test_data_types::{DancesTestCase, DanceTestState, DanceTestStep, TestHolonData, TestReference};
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -45,9 +47,8 @@ pub async fn execute_stage_new_version(
 
     match request {
         Ok(valid_request) => {
-            let response: DanceResponse = conductor
-                .call(&cell.zome("dances"), "dance", valid_request)
-                .await;
+            let response: DanceResponse =
+                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
             info!("Dance Response: {:#?}", response.clone());
             test_state.session_state = response.state.clone();
             let code = response.status_code;
@@ -113,10 +114,7 @@ pub async fn execute_stage_new_version(
             }
         }
         Err(error) => {
-            panic!(
-                "{:?} Unable to build a stage_new_from_clone request ",
-                error
-            );
+            panic!("{:?} Unable to build a stage_new_from_clone request ", error);
         }
     }
 }

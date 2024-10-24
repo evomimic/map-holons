@@ -1,3 +1,4 @@
+use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
@@ -5,10 +6,8 @@ use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
-
 
 pub struct PropertyTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -35,13 +34,8 @@ pub fn define_property_type(
     schema: &HolonReference,
     definition: PropertyTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
-
-    let type_descriptor_ref = define_type_descriptor(
-        context,
-        schema,
-        BaseType::Property,
-        definition.header,
-    )?;
+    let type_descriptor_ref =
+        define_type_descriptor(context, schema, BaseType::Property, definition.header)?;
 
     // Build the PropertyType
     let mut property_type = Holon::new();
@@ -60,28 +54,23 @@ pub fn define_property_type(
 
     // Stage the PropertyType
 
-
     debug!("Staging... {:#?}", property_type.clone());
 
-    let property_type_ref = context
-        .commit_manager
-        .borrow_mut()
-        .stage_new_holon(property_type.clone())?;
+    let property_type_ref =
+        context.commit_manager.borrow_mut().stage_new_holon(property_type.clone())?;
 
     // Populate the relationships
 
     property_type_ref.add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-            vec![HolonReference::Staged(type_descriptor_ref)]
+        context,
+        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
     property_type_ref.add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::ValueType.as_rel_name(),
-            vec![definition.value_type.clone()]
+        context,
+        CoreSchemaRelationshipTypeName::ValueType.as_rel_name(),
+        vec![definition.value_type.clone()],
     )?;
 
     Ok(property_type_ref)
-
 }
-

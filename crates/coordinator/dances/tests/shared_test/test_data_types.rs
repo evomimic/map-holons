@@ -1,19 +1,19 @@
 use dances::dance_response::ResponseStatusCode;
+use dances::session_state::SessionState;
 use dances::staging_area::StagingArea;
 use derive_new::new;
 use holons::commit_manager::StagedIndex;
 use holons::holon::{Holon, HolonState};
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::query::QueryExpression;
 use holons::relationship::RelationshipName;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 use std::fmt::Display;
-use dances::session_state::SessionState;
-use holons::query::QueryExpression;
 
-pub const TEST_CLIENT_PREFIX : &str = "TEST CLIENT: ";
+pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 
 #[derive(new, Clone, Debug)]
 pub struct TestHolonData {
@@ -37,16 +37,10 @@ pub struct DancesTestCase {
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
     AbandonStagedChanges(StagedIndex, ResponseStatusCode), // Marks a staged Holon as 'abandoned'
-    AddRelatedHolons(
-        StagedIndex,
-        RelationshipName,
-        Vec<HolonReference>,
-        ResponseStatusCode,
-        Holon,
-    ), // Adds relationship between two Holons
-    Commit,                                                // Attempts to commit
+    AddRelatedHolons(StagedIndex, RelationshipName, Vec<HolonReference>, ResponseStatusCode, Holon), // Adds relationship between two Holons
+    Commit,                                     // Attempts to commit
     DatabasePrint, // Writes log messages for each holon in the persistent store
-    DeleteHolon(MapString,ResponseStatusCode), // Deletes the holon whose key is the MapString value
+    DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     LoadCoreSchema,
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
@@ -91,7 +85,7 @@ impl fmt::Display for DanceTestStep {
             DanceTestStep::DatabasePrint => {
                 write!(f, "DatabasePrint")
             }
-            DanceTestStep::DeleteHolon(local_id,expected_response) => {
+            DanceTestStep::DeleteHolon(local_id, expected_response) => {
                 write!(f, "DeleteHolon({:?}, expecting: {:?},)", local_id, expected_response)
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
@@ -153,26 +147,18 @@ pub struct DanceTestState {
     pub created_holons: BTreeMap<MapString, Holon>,
 }
 
-
 impl DanceTestState {
     pub fn new() -> DanceTestState {
-        DanceTestState {
-            session_state: SessionState::empty(),
-            created_holons: BTreeMap::new(),
-        }
+        DanceTestState { session_state: SessionState::empty(), created_holons: BTreeMap::new() }
     }
-    pub fn get_created_holon_by_key(&self,key: &MapString) -> Option<Holon>{
+    pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
         self.created_holons.get(key).cloned()
     }
 }
 
 impl DancesTestCase {
     pub fn new(name: String, description: String) -> Self {
-        Self {
-            name,
-            description,
-            steps: VecDeque::new(),
-        }
+        Self { name, description, steps: VecDeque::new() }
     }
 
     pub fn add_abandon_staged_changes_step(
@@ -180,10 +166,7 @@ impl DancesTestCase {
         index: StagedIndex,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::AbandonStagedChanges(
-            index,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::AbandonStagedChanges(index, expected_response));
         Ok(())
     }
 
@@ -201,14 +184,16 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::DatabasePrint);
         Ok(())
     }
-    pub fn add_delete_holon_step(&mut self, holon_to_delete: MapString, expected_response: ResponseStatusCode) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::DeleteHolon(holon_to_delete, expected_response));
+    pub fn add_delete_holon_step(
+        &mut self,
+        holon_to_delete: MapString,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::DeleteHolon(holon_to_delete, expected_response));
         Ok(())
     }
     pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {
-        self.steps
-            .push_back(DanceTestStep::EnsureDatabaseCount(count));
+        self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
@@ -226,10 +211,7 @@ impl DancesTestCase {
         original_holon: TestReference,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::StageNewFromClone(
-            original_holon,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::StageNewFromClone(original_holon, expected_response));
         Ok(())
     }
 
@@ -238,10 +220,7 @@ impl DancesTestCase {
         original_holon_key: MapString,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::StageNewVersion(
-            original_holon_key,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::StageNewVersion(original_holon_key, expected_response));
         Ok(())
     }
 
@@ -301,11 +280,7 @@ impl DancesTestCase {
         properties: PropertyMap,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::WithProperties(
-            index,
-            properties,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::WithProperties(index, properties, expected_response));
         Ok(())
     }
 }
