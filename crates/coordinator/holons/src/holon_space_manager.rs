@@ -43,8 +43,15 @@ impl<'a> HolonSpaceManager<'a> {
         if commit_response.is_complete() {
             let local_id = commit_response.find_local_id_by_key(&name)?;
             info!("Created LocalHolonSpace with id {:#?}", local_id.clone());
+
+            HolonSpace::create_local_path(local_id.clone()).map_err(|e| {
+                return HolonError::CommitFailure(
+                    "Unable to create LocalHolonSpace path, inner error: ".to_string()
+                        + &e.to_string(),
+                );
+            })?;
+
             return Ok(HolonReference::Smart(SmartReference::new_from_id(local_id.into())));
-            // TODO: Tie the newly saved holon to the holon space LinkType anchor
         }
         return Err(HolonError::CommitFailure("Unable to commit LocalHolonSpace".to_string()));
     }
@@ -82,26 +89,10 @@ impl<'a> HolonSpaceManager<'a> {
     /// Search the DHT for its (singleton) LocalHolonSpace and update the context to include
     /// a HolonReference to it. Returns a HolonNotFound error if LocalHolonSpace cannot be found.
     fn fetch_and_set_local_holon_space(&self) -> Result<HolonReference, HolonError> {
-        // For now, it just uses a brute force linear search through all saved holons, searching
-        // for a holon with key "LocalHolonSpace". If found, it extracts its HolonId and
-        // a HolonReference for that HolonId is returned
-        // TODO: Scaffold a new `LocalHolonSpace` LinkType and search by path instead of linear search
-        let all_holons = Holon::get_all_holons()?;
-        let search_key = MapString("LocalHolonSpace".to_string());
-
-        for holon in &all_holons {
-            match holon.get_key()? {
-                Some(key) if key == search_key => {
-                    let holon_id = HolonId::Local(holon.get_local_id()?);
-                    let holon_space_reference =
-                        HolonReference::Smart(SmartReference::new_from_id(holon_id));
-                    self.context.set_local_holon_space(holon_space_reference.clone())?;
-                    return Ok(holon_space_reference);
-                }
-                _ => continue,
-            }
-        }
-        // Return HolonError::NotFound if no matching holon is found
-        Err(HolonError::HolonNotFound(search_key.to_string()))
+        let holon = HolonSpace::get_local_space_holon().or_else(|e| return Err(e))?;
+        let holon_id = HolonId::Local(holon.get_local_id()?);
+        let holon_space_reference = HolonReference::Smart(SmartReference::new_from_id(holon_id));
+        self.context.set_local_holon_space(holon_space_reference.clone())?;
+        return Ok(holon_space_reference);
     }
 }

@@ -126,6 +126,26 @@ impl Dancer {
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("stage_new_version", stage_new_version_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
+
+        dispatch_table.insert(
+            "abandon_staged_changes",
+            abandon_staged_changes_dance as DanceFunction,
+        );
+
+        dispatch_table.insert(
+            "add_related_holons",
+            add_related_holons_dance as DanceFunction,
+        );
+        dispatch_table.insert(
+            "remove_related_holons",
+            remove_related_holons_dance as DanceFunction,
+        );
+        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
+        dispatch_table.insert(
+            "query_relationships",
+            query_relationships_dance as DanceFunction,
+        );
+
         // Add more functions as needed
 
         Dancer { dispatch_table }

@@ -60,6 +60,10 @@ impl StagingArea {
 
     //Method to summarize the StagingArea into a String for logging purposes
     pub fn summarize(&self) -> String {
-        format!("\n    StagingArea: {{ Staged Holons {} }}", summarize_holons(&self.staged_holons))
+        format!(
+            "\n   {:?} holon(s) in staging area: {{ Staged Holons {} }}",
+            &self.get_staged_holons().len(),
+            summarize_holons(&self.staged_holons)
+        )
     }
 }
