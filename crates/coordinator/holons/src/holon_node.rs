@@ -35,11 +35,52 @@ pub fn get_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Opti
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct CreatePathInput {
+    pub path: Path,
+    pub link_type: LinkTypes,
+    pub target_holon_node_hash: ActionHash,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetPathInput {
+    pub path: Path,
+    pub link_type: LinkTypes,
+}
+
+#[hdk_extern]
+pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionHash> {
+    let result = create_link(
+        input.path.path_entry_hash()?,
+        input.target_holon_node_hash.clone(),
+        input.link_type,
+        (),
+    )?;
+    Ok(result)
+}
+
+#[hdk_extern]
+pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record>> {
+    let links = get_links(
+        GetLinksInputBuilder::try_new(input.path.path_entry_hash()?, input.link_type)?.build(),
+    )?;
+    let latest_link =
+        links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
+    let latest_holon_node_hash = match latest_link {
+        Some(link) => link.target.clone().into_action_hash().ok_or(wasm_error!(
+            WasmErrorInner::Guest(String::from("No action hash associated with link"))
+        ))?,
+        None => return Ok(None),
+    };
+    get(latest_holon_node_hash, GetOptions::default())
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateHolonNodeInput {
     pub original_holon_node_hash: ActionHash,
     pub previous_holon_node_hash: ActionHash,
     pub updated_holon_node: HolonNode,
 }
+
 #[hdk_extern]
 pub fn update_holon_node(input: UpdateHolonNodeInput) -> ExternResult<Record> {
     let updated_holon_node_hash =
@@ -56,7 +97,19 @@ pub fn update_holon_node(input: UpdateHolonNodeInput) -> ExternResult<Record> {
         ))?;
     Ok(record)
 }
+
 #[hdk_extern]
 pub fn delete_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<ActionHash> {
+    let path = Path::from("local_holon_space");
+    let links = get_links(
+        GetLinksInputBuilder::try_new(path.path_entry_hash()?, LinkTypes::LocalHolonSpace)?.build(),
+    )?;
+    for link in links {
+        if let Some(hash) = link.target.into_action_hash() {
+            if hash == original_holon_node_hash {
+                delete_link(link.create_link_hash)?;
+            }
+        }
+    }
     delete_entry(original_holon_node_hash)
 }

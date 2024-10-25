@@ -126,7 +126,8 @@ impl Dancer {
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
         dispatch_table.insert("stage_new_version", stage_new_version_dance as DanceFunction);
         dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
-        // Add more functions as needed
+
+        // Add more functions (in alphabetical order) as needed
 
         Dancer { dispatch_table }
     }

@@ -58,6 +58,7 @@ use holons::holon_error::HolonError;
 use crate::shared_test::test_data_types::{
     DanceTestState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
 };
+use crate::shared_test::test_print_database::execute_database_print;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -80,13 +81,13 @@ use shared_types_holon::HolonId;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-// #[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
-// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-// #[case::load_core_schema(load_core_schema_test_fixture())]
-// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+#[case::load_core_schema(load_core_schema_test_fixture())]
+#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
-// #[case::delete_holon(delete_holon_fixture())]
+#[case::delete_holon(delete_holon_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
@@ -150,7 +151,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
             DanceTestStep::Commit => execute_commit(&conductor, &cell, &mut test_state).await,
             DanceTestStep::DatabasePrint => {
-                execute_commit(&conductor, &cell, &mut test_state).await
+                execute_database_print(&conductor, &cell, &mut test_state).await
             }
             DanceTestStep::DeleteHolon(holon_to_delete, expected_response) => {
                 execute_delete_holon(

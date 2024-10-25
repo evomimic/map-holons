@@ -5,7 +5,7 @@ use dances::dance_response::ResponseBody::Collection;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_get_all_holons_dance_request, build_query_relationships_dance_request,
-    build_stage_new_holon_dance_request, build_with_properties_dance_request
+    build_stage_new_holon_dance_request, build_with_properties_dance_request,
 };
 use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;

@@ -64,7 +64,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
 
     println!("Success! Initial DB state has no Holons");
 
-    let created_action_hashes: Vec<LocalId> = Vec::new();
+    let _created_action_hashes: Vec<LocalId> = Vec::new();
 
     // Iterate through the vector of test holons, building & creating each holon,
     // then get the created holon and compare it to the generated descriptor.
