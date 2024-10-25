@@ -1,4 +1,3 @@
-use hdi::link;
 use hdi::prelude::{Deserialize, Path, Serialize};
 
 use holochain_integrity_types::ActionHash;

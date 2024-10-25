@@ -70,5 +70,12 @@ impl SessionState {
     pub fn set_staging_area(&mut self, staging_area: StagingArea) {
         self.staging_area = staging_area;
     }
-
+    // Method to summarize the SessionState
+    pub fn summarize(&self) -> String {
+        format!(
+            "\n   local_holon_space: {:?}, \n  staging_area: {} }}",
+            self.local_holon_space,
+            self.staging_area.summarize(),
+        )
+    }
 }

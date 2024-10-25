@@ -118,7 +118,5 @@ impl DanceRequest {
             self.body.summarize(),
             self.state.summarize(),
         )
-        info!("initializing context from session state in dance request");
-        HolonsContext::init_context(commit_manager, HolonCacheManager::new(), local_holon_space)
     }
 }

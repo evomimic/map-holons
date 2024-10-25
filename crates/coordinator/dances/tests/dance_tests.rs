@@ -58,6 +58,7 @@ use holons::holon_error::HolonError;
 use crate::shared_test::test_data_types::{
     DanceTestState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
 };
+use crate::shared_test::test_print_database::execute_database_print;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -150,7 +151,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
             DanceTestStep::Commit => execute_commit(&conductor, &cell, &mut test_state).await,
             DanceTestStep::DatabasePrint => {
-                execute_commit(&conductor, &cell, &mut test_state).await
+                execute_database_print(&conductor, &cell, &mut test_state).await
             }
             DanceTestStep::DeleteHolon(holon_to_delete, expected_response) => {
                 execute_delete_holon(

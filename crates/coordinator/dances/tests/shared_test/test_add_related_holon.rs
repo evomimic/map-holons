@@ -79,7 +79,11 @@ pub async fn execute_add_related_holons(
                     // An index was returned in the body, retrieve the Holon at that index within
                     // the StagingArea and confirm it matches the expected Holon.
 
-                    let source_holon = response.state.get_staging_area().staged_holons[index].clone();
+                    let source_holon_in_response = response
+                        .state
+                        .get_staging_area()
+                        .get_holon(index)
+                        .expect("Failed to get source holon in response");
 
                     assert_eq!(source_holon_in_response, expected_holon);
 
