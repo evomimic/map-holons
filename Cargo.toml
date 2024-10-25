@@ -1,14 +1,6 @@
-
-[profile.dev]
-opt-level = "z"
-
-[profile.release]
-opt-level = "z"
-
 [workspace]
-resolver = "2"
-
-members = ["crates/coordinator/holons",
+members = [
+    "crates/coordinator/holons",
     "crates/coordinator/descriptors",
     "crates/coordinator/core_schema",
     "crates/coordinator/dances",
@@ -16,22 +8,9 @@ members = ["crates/coordinator/holons",
     "crates/shared_types/holon",
     "crates/shared_validation",
 ]
+resolver = "2"
 
-[workspace.dependencies]
-ahash ="=0.8.11"
-derive-new = "0.6"
-hdi = "0.4"
-hdk = "0.3"
-holochain_integrity_types = "0.3"
-Inflector = "0.11"
-quick_cache = "0.6"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.109"
-strum = "0.26"
-strum_macros = "0.26"
-thiserror = "1"
-
-
+# Local workspace dependencies
 [workspace.dependencies.holons]
 path = "crates/coordinator/holons"
 
@@ -52,3 +31,29 @@ path = "crates/shared_types/holon"
 
 [workspace.dependencies.shared_validation]
 path = "crates/shared_validation"
+
+# External dependencies
+[workspace.dependencies]
+ahash = "=0.8.11"
+derive-new = "0.6"
+hdi = "0.4"
+hdk = "0.3"
+holochain_integrity_types = "0.3"
+Inflector = "0.11"
+quick_cache = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.109"
+strum = "0.26"
+strum_macros = "0.26"
+thiserror = "1"
+async-std = "1.1.12"
+futures = { version = "0.3.1", default-features = false }
+pretty_assertions = "1.4.0"
+rstest = "0.21"
+
+
+[profile.dev]
+opt-level = "z"
+
+[profile.release]
+opt-level = "z"

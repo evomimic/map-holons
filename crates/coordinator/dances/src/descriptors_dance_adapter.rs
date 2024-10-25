@@ -1,5 +1,5 @@
 //! This file defines the DancesAdaptors offered by the descriptors zome.
-//! TODO: Move these adaptors to their own zome
+//! TODO: Move these adaptors to their own zome (at some point)
 //!
 //! For each Dance, this file defines:
 //! - a `build_` function as a helper function for creating DanceRequests for that Dance from

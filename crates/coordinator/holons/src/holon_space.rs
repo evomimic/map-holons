@@ -42,6 +42,15 @@ impl HolonSpace {
             ))),
         }
     }
+    // pub fn get_local_space_holon() -> Result<Holon, HolonError> {
+    //     let path = Path::from("local_holon_space");
+    //     let link_type = LinkTypes::LocalHolonSpace;
+    //     let input = GetPathInput { path: path.clone(), link_type: link_type };
+    //     let record = get_holon_node_by_path(input)
+    //         .map_err(|e| HolonError::from(e))?
+    //         .ok_or_else(|| HolonError::HolonNotFound(format!("at path: {:?}", path)))?;
+    //     Holon::try_from_node(record)
+    // }
     fn holon_mut(&mut self) -> &mut Holon {
         &mut self.0 // Return a mutable reference to the inner `Holon`
     }
@@ -73,26 +82,5 @@ impl HolonSpace {
                 name.clone().into_base_value(),
             )?;
         Ok(self)
-    }
-
-    pub fn create_local_path(target_holon_hash: LocalId) -> Result<ActionHash, HolonError> {
-        let path = Path::from("local_holon_space");
-        let link_type = LinkTypes::LocalHolonSpace;
-        let input = CreatePathInput {
-            path: path,
-            link_type: link_type,
-            target_holon_node_hash: target_holon_hash.0,
-        };
-        create_path_to_holon_node(input).map_err(|e| HolonError::from(e))
-    }
-
-    pub fn get_local_space_holon() -> Result<Holon, HolonError> {
-        let path = Path::from("local_holon_space");
-        let link_type = LinkTypes::LocalHolonSpace;
-        let input = GetPathInput { path: path.clone(), link_type: link_type };
-        let record = get_holon_node_by_path(input)
-            .map_err(|e| HolonError::from(e))?
-            .ok_or_else(|| HolonError::HolonNotFound(format!("at path: {:?}", path)))?;
-        Holon::try_from_node(record)
     }
 }

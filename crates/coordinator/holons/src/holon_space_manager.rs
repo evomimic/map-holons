@@ -1,10 +1,14 @@
 use crate::commit_manager::CommitManager;
-use hdi::prelude::info;
-use shared_types_holon::{HolonId, MapString};
+use hdi::prelude::{info, ActionHash, Path};
+use holons_integrity::LinkTypes;
+use shared_types_holon::{HolonId, LocalId, MapString};
 
 use crate::context::HolonsContext;
 use crate::holon::Holon;
 use crate::holon_error::HolonError;
+use crate::holon_node::{
+    create_path_to_holon_node, get_holon_node_by_path, CreatePathInput, GetPathInput,
+};
 use crate::holon_reference::HolonReference;
 use crate::holon_space::HolonSpace;
 use crate::smart_reference::SmartReference;
@@ -44,7 +48,7 @@ impl<'a> HolonSpaceManager<'a> {
             let local_id = commit_response.find_local_id_by_key(&name)?;
             info!("Created LocalHolonSpace with id {:#?}", local_id.clone());
 
-            HolonSpace::create_local_path(local_id.clone()).map_err(|e| {
+            HolonSpaceManager::create_local_path(local_id.clone()).map_err(|e| {
                 return HolonError::CommitFailure(
                     "Unable to create LocalHolonSpace path, inner error: ".to_string()
                         + &e.to_string(),
@@ -54,6 +58,28 @@ impl<'a> HolonSpaceManager<'a> {
             return Ok(HolonReference::Smart(SmartReference::new_from_id(local_id.into())));
         }
         return Err(HolonError::CommitFailure("Unable to commit LocalHolonSpace".to_string()));
+    }
+    fn create_local_path(target_holon_hash: LocalId) -> Result<ActionHash, HolonError> {
+        let path = Path::from("local_holon_space");
+        let link_type = LinkTypes::LocalHolonSpace;
+        let input = CreatePathInput {
+            path: path,
+            link_type: link_type,
+            target_holon_node_hash: target_holon_hash.0,
+        };
+        create_path_to_holon_node(input).map_err(|e| HolonError::from(e))
+    }
+
+    fn fetch_local_holon_space() -> Result<HolonSpace, HolonError> {
+        let path = Path::from("local_holon_space");
+        let link_type = LinkTypes::LocalHolonSpace;
+        let input = GetPathInput { path: path.clone(), link_type: link_type };
+        let record = get_holon_node_by_path(input)
+            .map_err(|e| HolonError::from(e))?
+            .ok_or_else(|| HolonError::HolonNotFound(format!("at path: {:?}", path)))?;
+        let holon = Holon::try_from_node(record)?;
+
+        Ok(HolonSpace(holon))
     }
     /// Ensure that a LocalHolonSpace reference is included in the context. The simplest case is
     /// that context is already populated with the reference. If not, try to fetch the reference
@@ -89,8 +115,9 @@ impl<'a> HolonSpaceManager<'a> {
     /// Search the DHT for its (singleton) LocalHolonSpace and update the context to include
     /// a HolonReference to it. Returns a HolonNotFound error if LocalHolonSpace cannot be found.
     fn fetch_and_set_local_holon_space(&self) -> Result<HolonReference, HolonError> {
-        let holon = HolonSpace::get_local_space_holon().or_else(|e| return Err(e))?;
-        let holon_id = HolonId::Local(holon.get_local_id()?);
+        let holon_space =
+            HolonSpaceManager::fetch_local_holon_space().or_else(|e| return Err(e))?;
+        let holon_id = HolonId::Local(holon_space.0.get_local_id()?);
         let holon_space_reference = HolonReference::Smart(SmartReference::new_from_id(holon_id));
         self.context.set_local_holon_space(holon_space_reference.clone())?;
         return Ok(holon_space_reference);
