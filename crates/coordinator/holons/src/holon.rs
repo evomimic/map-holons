@@ -7,6 +7,8 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
+use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
+use holochain_integrity_types::action;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
@@ -49,6 +51,7 @@ impl fmt::Display for AccessType {
 pub struct Holon {
     pub state: HolonState,
     pub validation_state: ValidationState,
+    original_id: Option<LocalId>,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub property_map: PropertyMap,
     pub relationship_map: RelationshipMap,
@@ -173,6 +176,7 @@ impl Holon {
         Holon {
             state: HolonState::New,
             validation_state: ValidationState::NoDescriptor,
+            original_id: None,
             saved_node: None,
             property_map: PropertyMap::new(),
             relationship_map: RelationshipMap::new(),
@@ -260,9 +264,13 @@ impl Holon {
 
             HolonState::Changed => {
                 if let Some(ref node) = self.saved_node {
+                    let original_holon_node_hash = match node.original_id {
+                        Some(id) => id,
+                        None => Err(HolonError::InvalidUpdate("original_id".to_string())),
+                    }?;
                     let input = UpdateHolonNodeInput {
                         // TEMP solution for original hash is to keep it the same //
-                        original_holon_node_hash: node.action_address().clone(), // TODO: find way to populate this correctly
+                        original_holon_node_hash, // TODO: find way to populate this correctly
                         previous_holon_node_hash: node.action_address().clone(),
                         updated_holon_node: self.clone().into_node(),
                     };
@@ -451,6 +459,11 @@ impl Holon {
         }
     }
 
+    pub fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        Ok(self.get_original_id())
+    }
+
     pub fn get_property_value(
         &self,
         property_name: &PropertyName,
@@ -511,7 +524,7 @@ impl Holon {
     }
 
     pub fn into_node(self) -> HolonNode {
-        HolonNode { property_map: self.property_map.clone() }
+        HolonNode { original_id: self.original_id.clone(), property_map: self.property_map.clone() }
     }
 
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -684,6 +697,12 @@ impl Holon {
         }
     }
 
+    pub fn set_original_id(&mut self, original_id: Option<LocalId>) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.original_id = original_id;
+        Ok(())
+    }
+
     // Returns a String summary of the Holon
     pub fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
@@ -711,9 +730,15 @@ impl Holon {
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
         let holon_node = get_holon_node_from_record(holon_node_record.clone())?;
 
+        let original_id = Some(match holon_node.original_id {
+            Some(id) => id,
+            None => holon_node_record.action_address(),
+        });
+
         let holon = Holon {
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
+            original_id,
             saved_node: Some(holon_node_record),
             property_map: holon_node.property_map,
             relationship_map: RelationshipMap::new(),
