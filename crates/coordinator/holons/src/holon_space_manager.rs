@@ -13,6 +13,7 @@ use crate::holon_reference::HolonReference;
 use crate::holon_space::HolonSpace;
 use crate::smart_reference::SmartReference;
 
+//TODO The holonSpaceManager manages the of lifetime of HolonSpaces and should keep a vector of references to HolonSpaces?, 
 pub struct HolonSpaceManager<'a> {
     context: &'a HolonsContext, // Reference to the context where the HolonSpace will be persisted
 }
@@ -37,12 +38,14 @@ impl<'a> HolonSpaceManager<'a> {
 
         holon_space.with_name(&name)?.with_description(&description)?;
 
+        let commit_response = holon_space.commit_space();//&self.context.commit_manager.borrow())?;
+
         // Stage the new holon space and set it in the context
-        let _staged_holon_space_ref =
-            self.context.commit_manager.borrow_mut().stage_new_holon(holon_space.into_holon())?;
+        //let _staged_holon_space_ref =
+           // self.context.commit_manager.borrow_mut().stage_new_holon(holon_space.into_holon())?;
 
         // Commit the staged holon space
-        let commit_response = CommitManager::commit(self.context);
+       // let commit_response = CommitManager::commit(self.context);
 
         if commit_response.is_complete() {
             let local_id = commit_response.find_local_id_by_key(&name)?;
@@ -59,6 +62,7 @@ impl<'a> HolonSpaceManager<'a> {
         }
         return Err(HolonError::CommitFailure("Unable to commit LocalHolonSpace".to_string()));
     }
+
     fn create_local_path(target_holon_hash: LocalId) -> Result<ActionHash, HolonError> {
         let path = Path::from("local_holon_space");
         let link_type = LinkTypes::LocalHolonSpace;
@@ -79,7 +83,7 @@ impl<'a> HolonSpaceManager<'a> {
             .ok_or_else(|| HolonError::HolonNotFound(format!("at path: {:?}", path)))?;
         let holon = Holon::try_from_node(record)?;
 
-        Ok(HolonSpace(holon))
+        Ok(HolonSpace::new(holon))
     }
     /// Ensure that a LocalHolonSpace reference is included in the context. The simplest case is
     /// that context is already populated with the reference. If not, try to fetch the reference
@@ -117,7 +121,7 @@ impl<'a> HolonSpaceManager<'a> {
     fn fetch_and_set_local_holon_space(&self) -> Result<HolonReference, HolonError> {
         let holon_space =
             HolonSpaceManager::fetch_local_holon_space().or_else(|e| return Err(e))?;
-        let holon_id = HolonId::Local(holon_space.0.get_local_id()?);
+        let holon_id = HolonId::Local(holon_space.get_local_id()?);
         let holon_space_reference = HolonReference::Smart(SmartReference::new_from_id(holon_id));
         self.context.set_local_holon_space(holon_space_reference.clone())?;
         return Ok(holon_space_reference);

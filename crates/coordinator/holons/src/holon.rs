@@ -359,6 +359,19 @@ impl Holon {
         })
     }
 
+    /// gets a specific HolonNode from the local persistent store based on its ActionHash, it then
+    /// "inflates" the HolonNode into a Holon and returns it
+    pub fn get_holon_by_local_id(local_id: &LocalId) -> Result<Holon, HolonError> {
+        let holon_node_record = get(local_id.0.clone(), GetOptions::default())?;
+        if let Some(node) = holon_node_record {
+            let holon = Holon::try_from_node(node)?;
+            return Ok(holon);
+        } else {
+            // no holon_node fetched for specified holon_id
+            Err(HolonError::HolonNotFound(local_id.0.to_string()))
+        }
+    }
+
     pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
         let records = get_all_holon_nodes(());
         match records {

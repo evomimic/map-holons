@@ -1,6 +1,7 @@
 pub mod all_holon_nodes;
 pub mod cache_manager;
 pub mod commit_manager;
+pub mod commit_service;
 pub mod context;
 pub mod helpers;
 pub mod holon;
