@@ -7,7 +7,6 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
 use holochain_integrity_types::action;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::{LocalId, MapInteger, MapString};
@@ -190,6 +189,12 @@ impl Holon {
         trace!("Entering Holon::new_version, here is the Holon before cloning: {:#?}", self);
         let mut holon = self.clone_holon()?;
         holon.state = HolonState::Changed;
+        let original_id = self.get_original_id()?;
+        if original_id.is_some() {
+            holon.set_original_id(original_id)?;
+        } else {
+            holon.set_original_id(Some(self.get_local_id()?))?;
+        }
 
         Ok(holon)
     }
@@ -264,8 +269,8 @@ impl Holon {
 
             HolonState::Changed => {
                 if let Some(ref node) = self.saved_node {
-                    let original_holon_node_hash = match node.original_id {
-                        Some(id) => id,
+                    let original_holon_node_hash = match self.get_original_id()? {
+                        Some(id) => Ok(id.0),
                         None => Err(HolonError::InvalidUpdate("original_id".to_string())),
                     }?;
                     let input = UpdateHolonNodeInput {
@@ -461,7 +466,7 @@ impl Holon {
 
     pub fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        Ok(self.get_original_id())
+        Ok(self.original_id.clone())
     }
 
     pub fn get_property_value(
@@ -732,7 +737,7 @@ impl Holon {
 
         let original_id = Some(match holon_node.original_id {
             Some(id) => id,
-            None => holon_node_record.action_address(),
+            None => LocalId(holon_node_record.action_address().clone()),
         });
 
         let holon = Holon {
