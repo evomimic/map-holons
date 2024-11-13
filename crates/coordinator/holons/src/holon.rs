@@ -183,8 +183,9 @@ impl Holon {
         }
     }
 
-    /// Creates a new version of a Holon cloned from self, that can be staged for building and eventual commit,
-    /// which retains lineage to its predecessor.
+    /// Clones a new version of the self Holon, that can be staged for building and eventual commit.
+    /// The clone retains lineage to its predecessor. If self has an original id, it is copied into
+    /// the cloned version. Otherwise, the cloned holon's original_id is set to self's action_hash
     pub fn new_version(&self) -> Result<Holon, HolonError> {
         trace!("Entering Holon::new_version, here is the Holon before cloning: {:#?}", self);
         let mut holon = self.clone_holon()?;
@@ -268,14 +269,14 @@ impl Holon {
             }
 
             HolonState::Changed => {
+                // Changed holons MUST have an original_id
                 if let Some(ref node) = self.saved_node {
                     let original_holon_node_hash = match self.get_original_id()? {
                         Some(id) => Ok(id.0),
                         None => Err(HolonError::InvalidUpdate("original_id".to_string())),
                     }?;
                     let input = UpdateHolonNodeInput {
-                        // TEMP solution for original hash is to keep it the same //
-                        original_holon_node_hash, // TODO: find way to populate this correctly
+                        original_holon_node_hash,
                         previous_holon_node_hash: node.action_address().clone(),
                         updated_holon_node: self.clone().into_node(),
                     };
