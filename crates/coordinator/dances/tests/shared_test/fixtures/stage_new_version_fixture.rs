@@ -59,7 +59,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
         BaseValue::StringValue(MapString("A new version of: Emerging World".to_string()));
 
     test_case.add_stage_new_version_step(book_key, ResponseStatusCode::OK)?;
-    expected_count += 1;
+    // Don't increment expected count because new version replaces previous version.
 
     //  CHANGE PROPERTIES  //
     let mut changed_properties = BTreeMap::new();
@@ -129,11 +129,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT //
-    // TODO: Remove the "-1" from expected count, only using it now to get test to pass
-    // The get_all_holons dance is not returning the cloned() holon,
-    // but the match_saved_content step is confirming the both the original and cloned holons
-    // have been committed to the DHT
-    test_case.add_ensure_database_count_step(MapInteger(expected_count - 1))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

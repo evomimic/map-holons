@@ -7,6 +7,7 @@ use std::fmt;
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct HolonNode {
+    pub original_id: Option<LocalId>,
     pub property_map: PropertyMap,
 }
 pub type PropertyValue = BaseValue;
