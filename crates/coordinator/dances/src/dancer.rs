@@ -207,27 +207,28 @@ fn process_dispatch_result(
 /// can be included in the DanceResponse
 fn extract_error_message(error: &HolonError) -> String {
     match error.clone() {
-        HolonError::EmptyField(_)
-        | HolonError::InvalidParameter(_)
-        | HolonError::HolonNotFound(_)
+        HolonError::CacheError(_)
         | HolonError::CommitFailure(_)
         | HolonError::DeletionNotAllowed(_)
-        | HolonError::WasmError(_)
-        | HolonError::RecordConversion(_)
-        | HolonError::InvalidHolonReference(_)
-        | HolonError::InvalidType(_)
+        | HolonError::EmptyField(_)
+        | HolonError::FailedToBorrow(_)
+        | HolonError::HashConversion(_, _)
+        | HolonError::HolonNotFound(_)
         | HolonError::IndexOutOfRange(_)
-        | HolonError::NotImplemented(_)
+        | HolonError::InvalidHolonReference(_)
+        | HolonError::InvalidParameter(_)
+        | HolonError::InvalidRelationship(_, _)
+        | HolonError::InvalidType(_)
+        | HolonError::InvalidUpdate(_)
         | HolonError::Misc(_)
         | HolonError::MissingStagedCollection(_)
-        | HolonError::FailedToBorrow(_)
-        | HolonError::UnableToAddHolons(_)
-        | HolonError::InvalidRelationship(_, _)
         | HolonError::NotAccessible(_, _)
+        | HolonError::NotImplemented(_)
+        | HolonError::RecordConversion(_)
+        | HolonError::UnableToAddHolons(_)
         | HolonError::UnexpectedValueType(_, _)
         | HolonError::Utf8Conversion(_, _)
-        | HolonError::HashConversion(_, _)
-        | HolonError::CacheError(_) => error.to_string(),
+        | HolonError::WasmError(_) => error.to_string(),
         HolonError::ValidationError(validation_error) => validation_error.to_string(),
     }
 }
