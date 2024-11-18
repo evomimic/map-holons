@@ -10,7 +10,7 @@ use crate::holon_dance_adapter::*;
 use crate::session_state::SessionState;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-use holons::holon_space_manager::HolonSpaceManager;
+use holons::local_context_service::LocalContextService;
 use shared_types_holon::MapString;
 
 use crate::holon_dance_adapter::{
@@ -47,10 +47,10 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     }
 
     let context = request.init_context_from_state();
-    let holon_space_manager = HolonSpaceManager::new(&context);
+    let local_context_service = LocalContextService::new(&context);
 
-    // ------------------ ENSURE LOCAL HOLON SPACE IS IN CONTEXT ---------------------------------
-    let space_reference = holon_space_manager.ensure_local_holon_space_in_context();
+    // ------------------ ENSURE LOCAL SPACE HOLON IS IN CONTEXT ---------------------------------
+    let space_reference = local_context_service.ensure_local_space_holon_in_context();
     if let Err(space_error) = space_reference {
         let error_message = extract_error_message(&space_error);
 

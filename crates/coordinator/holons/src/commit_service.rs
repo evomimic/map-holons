@@ -1,11 +1,17 @@
 use hdk::prelude::*;
 use std::cell::{Ref, RefCell, RefMut};
+use std::ops::DerefMut;
 use std::rc::Rc;
 
+use crate::context::HolonsContext;
 //use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
 use crate::holon_error::HolonError;
+use crate::nursery::Nursery;
+use crate::space_manager::SpaceManager;
 use shared_types_holon::{LocalId, MapInteger, MapString};
+
+pub struct CommitService {}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {
@@ -54,6 +60,11 @@ pub enum CommitRequestStatus {
     Incomplete,
 }
 
+impl CommitService {
+    // Constructor for the service
+    pub fn new() -> Self {
+        CommitService {}
+    } 
 
     /// This function attempts to persist the state of all staged_holons AND their relationships.
     ///
@@ -87,85 +98,30 @@ pub enum CommitRequestStatus {
     /// NOTE: The CommitResponse returns clones of any successfully
     /// committed holons, even if the response status is `Incomplete`.
     ///
-    
-
-    pub fn commit_holon(holon:&mut Holon) -> CommitResponse{
-        // Initialize the request_status to Complete, assuming all commits will succeed
-        // If any commit errors are encountered, reset request_status to `Incomplete`
-        let mut response = CommitResponse {
-            status: CommitRequestStatus::Complete,
-            commits_attempted: MapInteger(1 as i64),
-            saved_holons: Vec::new(),
-            abandoned_holons: Vec::new(),
-        };
-
-        // FIRST PASS: Commit Staged Holons
-        {
-            info!("\n\nStarting FIRST PASS... commit staged_holons...");
-            //let commit_manager = context.commit_manager.borrow();
-            //for rc_holon in rc_holons.clone() {
-              //  trace!(" In commit_manager... getting ready to call commit()");
-                let outcome = holon.commit(); //rc_holon.borrow_mut().commit();
-                match outcome {
-                    Ok(holon) => match holon.state {
-                        HolonState::Abandoned => {
-                            // should these be index?
-                            //if !response.abandoned_holons.contains(&holon) {
-                            response.abandoned_holons.push(holon);
-                            //}
-                        }
-                        HolonState::Saved => {
-                            response.saved_holons.push(holon);
-                        }
-                        _ => {}
-                    },
-                    Err(error) => {
-                        response.status = CommitRequestStatus::Incomplete;
-                        warn!("Attempt to commit holon returned error: {:?}", error.to_string());
-                    }
-                }
-            //}
-        }
-        response
-//        if response.status == CommitRequestStatus::Incomplete {//
-  //          return response;
-   //     }
-        
-        /* // SECOND PASS: Commit relationships
-        {
-            info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
-            let commit_manager = context.commit_manager.borrow();
-            for rc_holon in commit_manager.staged_holons.clone() {
-                let outcome = rc_holon.borrow_mut().commit_relationships(context);
-                if let Err(error) = outcome {
-                    rc_holon.borrow_mut().errors.push(error.clone());
-                    response.status = CommitRequestStatus::Incomplete;
-                    warn!("Attempt to commit relationship returned error: {:?}", error.to_string());
-                }
-            }
-        }*/
-
-    }
-
-    pub fn commit_rc_holons(rc_holons: &Vec<Rc<RefCell<Holon>>>) -> CommitResponse {
+    pub fn commit(sm:&SpaceManager,context:&HolonsContext) -> Result<CommitResponse,HolonError> {
         debug!("Entering commit...");
 
         // Initialize the request_status to Complete, assuming all commits will succeed
         // If any commit errors are encountered, reset request_status to `Incomplete`
         let mut response = CommitResponse {
             status: CommitRequestStatus::Complete,
-            commits_attempted: MapInteger(rc_holons.len() as i64),
+            commits_attempted: MapInteger(0),// staged_holons.len() as i64),
             saved_holons: Vec::new(),
             abandoned_holons: Vec::new(),
         };
+        
+        let lsm = context.local_space_manager.borrow();
+        let staged_holons = lsm.get_stage();//sm.get_stage();
+        
+        response.commits_attempted = MapInteger(staged_holons.len() as i64);
 
         // FIRST PASS: Commit Staged Holons
         {
             info!("\n\nStarting FIRST PASS... commit staged_holons...");
             //let commit_manager = context.commit_manager.borrow();
-            for rc_holon in rc_holons{//.clone() {
+            for rc_holon in staged_holons.clone() {
                 trace!(" In commit_manager... getting ready to call commit()");
-                let outcome = rc_holon.borrow_mut().commit(); //rc_holon.borrow_mut().commit();
+                let outcome = rc_holon.borrow_mut().commit();
                 match outcome {
                     Ok(holon) => match holon.state {
                         HolonState::Abandoned => {
@@ -188,16 +144,15 @@ pub enum CommitRequestStatus {
         }
 
         if response.status == CommitRequestStatus::Incomplete {
-            return response;
+            return Ok(response);
         }
         
-         //  SECOND PASS: Commit relationships
-         //TODO: do we need to pass through the context?
-         /* 
+        //  SECOND PASS: Commit relationships         
         {
             info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
             //let commit_manager = context.commit_manager.borrow();
-            for rc_holon in rc_holons.clone(){//commit_manager.staged_holons.clone() {
+            for rc_holon in staged_holons {
+                //commit_manager.staged_holons.clone
                 let outcome = rc_holon.borrow_mut().commit_relationships(context);
                 if let Err(error) = outcome {
                     rc_holon.borrow_mut().errors.push(error.clone());
@@ -205,9 +160,11 @@ pub enum CommitRequestStatus {
                     warn!("Attempt to commit relationship returned error: {:?}", error.to_string());
                 }
             }
-        }*/
+        }
 
         info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
-        response
+        Ok(response)
 
     }
+    
+}

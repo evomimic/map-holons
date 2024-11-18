@@ -3,6 +3,7 @@ use holons::commit_manager::CommitManager;
 use holons::helpers::summarize_holons;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
+use holons::space_manager::SpaceManager;
 use shared_types_holon::MapString;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -56,6 +57,16 @@ impl StagingArea {
         let staged_holons: Vec<Rc<RefCell<Holon>>> =
             self.staged_holons.iter().map(|holon| Rc::new(RefCell::new(holon.clone()))).collect();
         CommitManager { staged_holons, keyed_index: self.index.clone() }
+    }
+
+    // Function to create a Local SpaceManager from StagingArea
+    //TODO: There maybe no local space holons in the staging area, because the session holons are all external
+    //in which case create a local space manager with no session holons 
+    // SpaceManager::new()
+    pub fn to_local_space_manager(&self) -> SpaceManager {
+        let staged_holons: Vec<Rc<RefCell<Holon>>> =
+            self.staged_holons.iter().map(|holon| Rc::new(RefCell::new(holon.clone()))).collect();
+            SpaceManager::new_from_stage(staged_holons, keyed_index)
     }
 
     //Method to summarize the StagingArea into a String for logging purposes

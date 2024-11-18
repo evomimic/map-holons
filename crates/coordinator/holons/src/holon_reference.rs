@@ -113,8 +113,8 @@ impl HolonReference {
 
         let cloned_staged_reference = {
             // Mutably borrow the commit_manager
-            let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-                Ok(commit_manager) => commit_manager,
+            let mut space_manager = match context.local_space_manager.try_borrow_mut() {
+                Ok(space_manager) => space_manager,
                 Err(borrow_error) => {
                     error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
@@ -122,7 +122,7 @@ impl HolonReference {
             };
 
             // Stage the clone
-            commit_manager.stage_new_holon(cloned_holon)?
+            space_manager.stage_new_holon(cloned_holon)?
         };
 
         // Reset the PREDECESSOR to None

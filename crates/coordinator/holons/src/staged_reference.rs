@@ -3,7 +3,7 @@ use hdk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::commit_manager::StagedIndex;
+//use crate::commit_manager::StagedIndex;
 use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent, Holon, HolonState};
 use crate::holon_collection::HolonCollection;
@@ -13,6 +13,8 @@ use crate::relationship::{RelationshipMap, RelationshipName};
 use shared_types_holon::holon_node::PropertyName;
 
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
+/// a StagedIndex identifies a StagedHolon by its position within the staged_holons vector
+pub type StagedIndex = usize;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
@@ -26,13 +28,13 @@ impl HolonGettable for StagedReference {
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
-        let binding = context.commit_manager.borrow();
+        let binding = context.local_space_manager.borrow();
         let holon = binding.get_holon(&self)?;
         holon.get_property_value(property_name)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        let binding = context.commit_manager.borrow();
+        let binding = context.local_space_manager.borrow();
         let holon = binding.get_holon(&self)?;
         holon.get_key().clone()
     }
@@ -163,7 +165,7 @@ impl StagedReference {
     pub fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
         debug!("Entered: get_rc_holon, trying to get the commit_manager");
         // Attempt to borrow commit_manager
-        let commit_manager = match context.commit_manager.try_borrow() {
+        let commit_manager = match context.local_space_manager.try_borrow() {
             Ok(commit_manager) => commit_manager,
             Err(borrow_error) => {
                 error!(
@@ -177,7 +179,7 @@ impl StagedReference {
         debug!("Commit manager borrowed successfully");
 
         // Obtain the staged_holons vector from the CommitManager
-        let staged_holons = &commit_manager.staged_holons;
+        let staged_holons = &commit_manager.get_stage(); //staged_holons;
         debug!("Got a reference to staged_holons from the commit manager");
 
         // Attempt to get the holon at the specified index
@@ -197,7 +199,7 @@ impl StagedReference {
         &self,
         context: &HolonsContext,
     ) -> Result<RelationshipMap, HolonError> {
-        let binding = context.commit_manager.borrow();
+        let binding = context.local_space_manager.borrow();
         let holon = binding.get_holon(&self)?;
         Ok(holon.relationship_map.clone())
     }
@@ -319,11 +321,12 @@ impl StagedReference {
         value: BaseValue,
     ) -> Result<&Self, HolonError> {
         // Borrow the CommitManager immutably from the context
-        let commit_manager = context.commit_manager.borrow();
+        let commit_manager = context.local_space_manager.borrow();
 
         // Get the holon from the CommitManager
-        let rc_holon = commit_manager
-            .staged_holons
+        let binding = commit_manager
+            .get_stage();
+        let rc_holon = binding
             .get(self.holon_index)
             .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
 

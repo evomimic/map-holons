@@ -119,7 +119,7 @@ impl DanceResponse {
     pub fn restore_state(&mut self, context: &HolonsContext) {
         self.state
             .set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
-        self.state.set_local_holon_space(context.get_local_holon_space());
+        self.state.set_local_holon_space(context.get_local_space_holon());
     }
     // Method to summarize the DanceResponse for logging purposes
     pub fn summarize(&self) -> String {

@@ -1,6 +1,6 @@
 pub mod all_holon_nodes;
-pub mod cache_manager;
-pub mod commit_manager;
+//pub mod cache_manager;
+//pub mod commit_manager;
 pub mod commit_service;
 pub mod context;
 pub mod helpers;
@@ -10,8 +10,8 @@ pub mod holon_collection;
 pub mod holon_error;
 pub mod holon_node;
 pub mod holon_reference;
-pub mod holon_space;
-pub mod holon_space_manager;
+pub mod space_manager;
+pub mod local_context_service;
 pub mod json_adapter;
 pub mod property_map;
 pub mod query;
@@ -20,6 +20,7 @@ pub mod smart_reference;
 pub mod smartlink;
 pub mod staged_reference;
 pub mod transient_collection;
+pub mod nursery;
 
 use hdk::prelude::*;
 use holons_integrity::*;

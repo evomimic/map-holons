@@ -54,7 +54,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
     let space_reference = context
-        .get_local_holon_space()
+        .get_local_space_holon()
         .ok_or(HolonError::HolonNotFound("Local holon space not found".to_string()));
 
     let schema = Schema::new(

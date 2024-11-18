@@ -102,12 +102,15 @@ impl DanceRequest {
         &mut self.state
     }
     pub fn init_context_from_state(&self) -> HolonsContext {
-        let commit_manager = self.get_state().get_staging_area().to_commit_manager();
+        let local_space_manager = self.get_state().get_staging_area().to_local_space_manager();
+        //let commit_manager = self.get_state().get_staging_area().to_commit_manager();
         // assert_eq!(request.staging_area.staged_holons.len(),commit_manager.staged_holons.len());
 
         let local_holon_space = self.get_state().get_local_holon_space();
         debug!("initializing context from session state in dance request");
-        HolonsContext::init_context(commit_manager, HolonCacheManager::new(), local_holon_space)
+        HolonsContext::init_context(local_space_manager,local_holon_space)
+        //local_space_manager.create_space_holon(&context, holon);
+        //context
     }
     // Method to summarize the DanceResponse for logging purposes
     pub fn summarize(&self) -> String {

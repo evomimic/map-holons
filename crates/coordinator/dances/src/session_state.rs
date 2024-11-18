@@ -35,17 +35,20 @@ impl SessionState {
     pub fn get_staging_area_mut(&mut self) -> &mut StagingArea {
         &mut self.staging_area
     }
-    pub fn init_context_from_state(&self) -> HolonsContext {
+
+    //TODO: function is already in dance_request.rs and here unsed
+    /* pub fn init_context_from_state(&self) -> HolonsContext {
         let commit_manager = self.staging_area.to_commit_manager();
 
         let local_holon_space = self.get_local_holon_space();
         //info!("initializing context");
         HolonsContext::init_context(commit_manager, HolonCacheManager::new(), local_holon_space)
-    }
+    } */
+   
     pub fn restore_session_state_from_context(context: &HolonsContext) -> SessionState {
         SessionState::new(
             StagingArea::from_commit_manager(&context.commit_manager.borrow()),
-            context.get_local_holon_space(),
+            context.get_local_space_holon(),
         )
     }
     // /// This function constructs a (Smart variant) of a HolonReference to the HolonSpace from the

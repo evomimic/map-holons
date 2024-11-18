@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -7,6 +8,7 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
+//use crate::cache_manager;
 use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent, Holon};
 use crate::holon_collection::HolonCollection;
@@ -79,8 +81,8 @@ impl SmartReference {
     // Private function for getting a mutable reference from the context
     fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
         debug!("Entered: get_rc_holon, trying to get the cache_manager");
-        let cache_manager = match context.cache_manager.try_borrow() {
-            Ok(cache_manager) => cache_manager,
+        let mut space_manager = match context.local_space_manager.try_borrow() {
+            Ok(space_manager) => space_manager,
             Err(borrow_error) => {
                 error!(
                     "Failed to borrow cache_manager, it is already borrowed mutably: {:?}",
@@ -91,7 +93,7 @@ impl SmartReference {
         };
         debug!("Cache manager borrowed successfully");
 
-        let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
+        let rc_holon = space_manager.get_rc_holon(&self.holon_id)?;
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
@@ -178,8 +180,8 @@ impl SmartReference {
 
         let new_version_staged_reference = {
             // Mutably borrow the commit_manager
-            let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-                Ok(commit_manager) => commit_manager,
+            let mut space_manager = match context.local_space_manager.try_borrow_mut() {
+                Ok(space_manager) => space_manager,
                 Err(borrow_error) => {
                     error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
@@ -187,7 +189,7 @@ impl SmartReference {
             };
 
             // Stage the clone
-            commit_manager.stage_new_holon(cloned_holon)?
+            space_manager.stage_new_holon(cloned_holon)?
         };
 
         // Set PREDECESSOR
