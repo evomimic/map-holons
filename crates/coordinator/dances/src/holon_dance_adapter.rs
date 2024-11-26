@@ -15,8 +15,7 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 use hdk::prelude::*;
-use holons::commit_manager::CommitRequestStatus::*;
-use holons::commit_manager::{CommitManager, StagedIndex};
+use holons::commit_service::CommitRequestStatus::*;
 use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
@@ -24,6 +23,8 @@ use holons::holon_reference::HolonReference;
 use holons::query::*;
 use holons::relationship::RelationshipName;
 use holons::smart_reference::SmartReference;
+use holons::space_manager::{HolonCacheBehavior, HolonStagingBehavior};
+use holons::staged_reference::StagedIndex;
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
 
@@ -51,10 +52,10 @@ pub fn add_related_holons_dance(
         DanceType::CommandMethod(staged_index) => {
             // Borrow a read-only reference to the CommitManager
             let staged_reference_result = {
-                let commit_manager = context.commit_manager.borrow();
+                let space_manager = context.space_manager.borrow();
                 debug!("Matched CommandMethod as dance_type.");
                 // Convert the staged_index into a StagedReference
-                commit_manager.to_staged_reference(staged_index)
+                space_manager.to_staged_reference(staged_index)
             };
 
             // Handle the result of to_staged_reference
@@ -123,7 +124,7 @@ pub fn commit_dance(
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered commit_dance");
-    let commit_response = CommitManager::commit(context);
+    let commit_response = context.space_manager.borrow().commit(context)?;
 
     match commit_response.status {
         Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
@@ -224,6 +225,7 @@ pub fn get_all_holons_dance(
         Ok(holons) => Ok(ResponseBody::Holons(holons)),
         Err(holon_error) => Err(holon_error.into()),
     }
+
 }
 
 /// Builds a DanceRequest for retrieving all holons from the persistent store
@@ -263,11 +265,11 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    debug!("getting cache_manager from context");
-    let cache_manager = context.cache_manager.borrow();
+    debug!("getting space_manager from context");
+    let space_manager = context.space_manager.borrow();
 
-    debug!("asking cache_manager to get rc_holon");
-    let rc_holon = cache_manager.get_rc_holon(&holon_id)?;
+    debug!("asking space_manager to get rc_holon");
+    let rc_holon = space_manager.get_rc_holon(&holon_id)?;
 
     let holon = rc_holon.borrow().clone();
     Ok(ResponseBody::Holon(holon))
@@ -362,10 +364,10 @@ pub fn remove_related_holons_dance(
         DanceType::CommandMethod(staged_index) => {
             // Borrow a read-only reference to the CommitManager
             let staged_reference_result = {
-                let commit_manager = context.commit_manager.borrow();
+                let space_manager = context.space_manager.borrow();
                 debug!("Matched CommandMethod as dance_type.");
                 // Convert the staged_index into a StagedReference
-                commit_manager.to_staged_reference(staged_index)
+                space_manager.to_staged_reference(staged_index)
             };
 
             // Handle the result of to_staged_reference
@@ -500,7 +502,7 @@ pub fn stage_new_holon_dance(
     debug!("Response body matched successfully for holon:{:#?}", new_holon);
 
     // Stage the new holon
-    let staged_reference = context.commit_manager.borrow_mut().stage_new_holon(new_holon)?;
+    let staged_reference = context.space_manager.borrow().stage_new_holon(new_holon)?;
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
@@ -600,8 +602,8 @@ pub fn with_properties_dance(
         DanceType::CommandMethod(staged_index) => {
             debug!("looking for StagedHolon at index: {:#?}", staged_index);
             // Try to get a mutable reference to the staged holon referenced by its index
-            let commit_manager = match context.commit_manager.try_borrow() {
-                Ok(commit_manager) => commit_manager,
+            let space_manager = match context.space_manager.try_borrow() {
+                Ok(space_manager) => space_manager,
                 Err(borrow_error) => {
                     error!(
                         "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
@@ -610,7 +612,12 @@ pub fn with_properties_dance(
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
                 }
             };
-            let staged_holon = commit_manager.get_mut_holon_by_index(staged_index.clone());
+            //let staged_holon = space_manager.get_mut_holon_by_index(staged_index.clone());
+            let holon = space_manager.get_holon_by_index(staged_index.clone())?;
+            let staged_holon = holon.try_borrow_mut()
+            .map_err(|e| {
+                HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
+            });
 
             match staged_holon {
                 Ok(mut holon_mut) => {
@@ -682,9 +689,14 @@ pub fn abandon_staged_changes_dance(
         DanceType::CommandMethod(staged_index) => {
             debug!("trying to borrow_mut commit_manager");
             // Try to get a mutable reference to the staged holon referenced by its index
-            let commit_manager_mut = context.commit_manager.borrow_mut();
+            let space_manager = context.space_manager.borrow();
             debug!("commit_manager borrowed_mut");
-            let staged_holon = commit_manager_mut.get_mut_holon_by_index(staged_index.clone());
+           // let staged_holon = space_manager_mut.get_mut_holon_by_index(staged_index.clone());
+           let holon = space_manager.get_holon_by_index(staged_index.clone())?;
+           let staged_holon = holon.try_borrow_mut()
+           .map_err(|e| {
+               HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
+           });
             //debug!("Result of borrow_mut on the staged holon  {:#?}", staged_holon.clone());
 
             match staged_holon {

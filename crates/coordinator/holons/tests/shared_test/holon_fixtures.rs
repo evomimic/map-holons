@@ -14,7 +14,6 @@
 #![allow(dead_code)]
 
 use core::panic;
-use holons::commit_manager::CommitManager;
 use holons::context::HolonsContext;
 use holons::helpers::*;
 use holons::holon::Holon;

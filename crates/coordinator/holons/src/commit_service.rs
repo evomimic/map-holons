@@ -1,14 +1,10 @@
 use hdk::prelude::*;
-use std::cell::{Ref, RefCell, RefMut};
-use std::ops::DerefMut;
-use std::rc::Rc;
 
 use crate::context::HolonsContext;
-//use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
 use crate::holon_error::HolonError;
-use crate::nursery::Nursery;
-use crate::space_manager::SpaceManager;
+use crate::json_adapter::as_json;
+use crate::space_manager::{HolonStagingBehavior, HolonSpaceManager};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
 pub struct CommitService {}
@@ -21,6 +17,7 @@ pub struct CommitResponse {
     pub saved_holons: Vec<Holon>, // should this be index? where else used?
     pub abandoned_holons: Vec<Holon>, // should this be index?
 }
+
 impl CommitResponse {
     /// This helper method returns true if the supplied CommitResponse indicates that the commit
     /// was complete and false otherwise
@@ -60,11 +57,7 @@ pub enum CommitRequestStatus {
     Incomplete,
 }
 
-impl CommitService {
-    // Constructor for the service
-    pub fn new() -> Self {
-        CommitService {}
-    } 
+impl CommitService { 
 
     /// This function attempts to persist the state of all staged_holons AND their relationships.
     ///
@@ -92,13 +85,13 @@ impl CommitService {
     ///
     ///
     /// If relationship commits succeed for ALL staged_holons,
-    ///     * The commit_manager's staged_holons are cleared
+    ///     * The space_manager's staged_holons are cleared
     ///     * The Commit Response returns a `Complete` status
     ///
     /// NOTE: The CommitResponse returns clones of any successfully
     /// committed holons, even if the response status is `Incomplete`.
     ///
-    pub fn commit(sm:&SpaceManager,context:&HolonsContext) -> Result<CommitResponse,HolonError> {
+    pub fn commit(space_manager: &HolonSpaceManager, context:&HolonsContext) -> Result<CommitResponse,HolonError> {
         debug!("Entering commit...");
 
         // Initialize the request_status to Complete, assuming all commits will succeed
@@ -110,17 +103,19 @@ impl CommitService {
             abandoned_holons: Vec::new(),
         };
         
-        let lsm = context.local_space_manager.borrow();
-        let staged_holons = lsm.get_stage();//sm.get_stage();
-        
-        response.commits_attempted = MapInteger(staged_holons.len() as i64);
+        let staged_holons = space_manager.get_holon_stage();
+        let stage_count = MapInteger(staged_holons.len() as i64);
+        if stage_count.0 < 1 {
+            info!("Stage empty, nothing to commit!");
+           return Ok(response)
+        }
+        response.commits_attempted = stage_count;
 
         // FIRST PASS: Commit Staged Holons
         {
             info!("\n\nStarting FIRST PASS... commit staged_holons...");
-            //let commit_manager = context.commit_manager.borrow();
             for rc_holon in staged_holons.clone() {
-                trace!(" In commit_manager... getting ready to call commit()");
+                trace!(" In commit_service... getting ready to call commit()");
                 let outcome = rc_holon.borrow_mut().commit();
                 match outcome {
                     Ok(holon) => match holon.state {
@@ -163,6 +158,9 @@ impl CommitService {
         }
 
         info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
+        for saved_holon in &response.saved_holons {
+            debug!("{}", as_json(saved_holon));
+        }
         Ok(response)
 
     }

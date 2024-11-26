@@ -8,7 +8,6 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::commit_manager::StagedIndex;
 use holons::holon_reference::HolonReference;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -21,7 +20,7 @@ use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
 use holons::relationship::RelationshipName;
-use holons::staged_reference::StagedReference;
+use holons::staged_reference::{StagedIndex, StagedReference};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};

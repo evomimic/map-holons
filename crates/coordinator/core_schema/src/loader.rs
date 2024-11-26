@@ -1,9 +1,10 @@
 use hdi::prelude::debug;
 
 use hdk::prelude::info;
-use holons::commit_manager::{CommitManager, CommitResponse};
+use holons::commit_service::CommitResponse;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
+use holons::space_manager::HolonStagingBehavior;
 use strum::IntoEnumIterator;
 // use holons::holon::Holon;
 use holons::holon_reference::HolonReference;
@@ -53,7 +54,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
-    let space_reference = context
+    let _ = context
         .get_local_space_holon()
         .ok_or(HolonError::HolonNotFound("Local holon space not found".to_string()));
 
@@ -66,12 +67,10 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("Staging Schema...");
     let staged_schema_ref = HolonReference::Staged(
-        context.commit_manager.borrow_mut().stage_new_holon(schema.0.clone())?,
+        context.space_manager.borrow().stage_new_holon(schema.0.clone())?,
     );
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
-
-    //context.local_holon_space.clone_from(source).borrow_mut().get_holon(commit_holon(staged_schema_ref.clone())?;
 
     let initial_load_set = get_initial_load_set();
 
@@ -95,7 +94,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("^^^^^^^ STAGING COMPLETE: Committing schema...");
 
-    let response = CommitManager::commit(context);
+    let response = context.space_manager.borrow().commit(context)?;
 
     let r = response.clone();
 

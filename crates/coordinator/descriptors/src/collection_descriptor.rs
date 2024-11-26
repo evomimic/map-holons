@@ -3,6 +3,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::{HolonGettable, HolonReference};
+use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use shared_types_holon::{BaseType, PropertyName};
@@ -106,7 +107,7 @@ pub fn define_collection_type(
     debug!("{:#?}", collection_type.clone());
 
     let collection_type_ref =
-        context.commit_manager.borrow_mut().stage_new_holon(collection_type.clone())?;
+        context.space_manager.borrow().stage_new_holon(collection_type.clone())?;
 
     // Add its relationships
 

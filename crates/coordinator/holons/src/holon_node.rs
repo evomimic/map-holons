@@ -80,7 +80,7 @@ pub fn get_all_deletes_for_holon_node(
 pub fn get_all_revisions_for_holon_node(
     original_holon_node_hash: ActionHash,
 ) -> ExternResult<Vec<Record>> {
-    let Some(original_record) = get_original_holon_node(original_holon_node_hash.clone())? else {
+    let Some(original_record) = get_original_holon_node_with_details(original_holon_node_hash.clone())? else {
         return Ok(vec![]);
     };
     let links = get_links(
@@ -111,26 +111,6 @@ pub fn get_all_revisions_for_holon_node(
 }
 
 #[hdk_extern]
-pub fn get_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
-    let links = get_links(
-        GetLinksInputBuilder::try_new(
-            original_holon_node_hash.clone(),
-            LinkTypes::HolonNodeUpdates,
-        )?
-        .build(),
-    )?;
-    let latest_link =
-        links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
-    let latest_holon_node_hash = match latest_link {
-        Some(link) => link.target.clone().into_action_hash().ok_or(wasm_error!(
-            WasmErrorInner::Guest(String::from("No action hash associated with link"))
-        ))?,
-        None => original_holon_node_hash.clone(),
-    };
-    get(latest_holon_node_hash, GetOptions::default())
-}
-
-#[hdk_extern]
 pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record>> {
     let links = get_links(
         GetLinksInputBuilder::try_new(input.path.path_entry_hash()?, input.link_type)?.build(),
@@ -144,6 +124,11 @@ pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record
         None => return Ok(None),
     };
     get(latest_holon_node_hash, GetOptions::default())
+}
+
+#[hdk_extern]
+pub fn get_original_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
+    get(original_holon_node_hash, GetOptions::default())
 }
 
 #[hdk_extern]
@@ -189,7 +174,7 @@ pub fn get_oldest_delete_for_holon_node(
 }
 
 #[hdk_extern]
-pub fn get_original_holon_node(
+pub fn get_original_holon_node_with_details(
     original_holon_node_hash: ActionHash,
 ) -> ExternResult<Option<Record>> {
     let Some(details) = get_details(original_holon_node_hash, GetOptions::default())? else {

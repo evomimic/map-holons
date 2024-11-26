@@ -1,6 +1,6 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
-use holons::context::HolonsContext;
+use holons::{context::HolonsContext, space_manager::HolonStagingBehavior};
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
@@ -57,7 +57,7 @@ pub fn define_property_type(
     debug!("Staging... {:#?}", property_type.clone());
 
     let property_type_ref =
-        context.commit_manager.borrow_mut().stage_new_holon(property_type.clone())?;
+        context.space_manager.borrow().stage_new_holon(property_type.clone())?;
 
     // Populate the relationships
 

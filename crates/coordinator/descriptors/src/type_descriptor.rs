@@ -8,6 +8,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
+use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
@@ -96,7 +97,7 @@ pub fn define_type_descriptor(
     debug!("{:#?}", descriptor.clone());
 
     let staged_reference =
-        context.commit_manager.borrow_mut().stage_new_holon(descriptor.clone())?;
+        context.space_manager.borrow().stage_new_holon(descriptor.clone())?;
 
     // Add related holons
 

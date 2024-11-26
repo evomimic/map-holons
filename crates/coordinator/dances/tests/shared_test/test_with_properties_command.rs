@@ -10,7 +10,7 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::commit_manager::StagedIndex;
+use holons::staged_reference::StagedIndex;
 use rstest::*;
 
 use holons::helpers::*;

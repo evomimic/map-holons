@@ -5,6 +5,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::MapString;
 use shared_types_holon::{BaseType, BaseValue, PropertyName};
@@ -67,7 +68,7 @@ pub fn define_holon_type(
     debug!("Staging new holon_type {:#?}", holon_type.clone());
 
     // Stage new holon type
-    let holon_type_ref = context.commit_manager.borrow_mut().stage_new_holon(holon_type.clone())?;
+    let holon_type_ref = context.space_manager.borrow().stage_new_holon(holon_type.clone())?;
 
     // Add some relationships
 

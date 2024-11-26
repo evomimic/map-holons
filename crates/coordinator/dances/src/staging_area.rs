@@ -1,9 +1,7 @@
 use hdk::prelude::*;
-use holons::commit_manager::CommitManager;
 use holons::helpers::summarize_holons;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
-use holons::space_manager::SpaceManager;
 use shared_types_holon::MapString;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -16,9 +14,16 @@ pub struct StagingArea {
     index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
 
+
 impl StagingArea {
     pub fn empty() -> Self {
         StagingArea { staged_holons: Vec::new(), index: BTreeMap::new() }
+    }
+
+    // Function to create StagingArea from the holon references and index
+    pub fn new_from_references(rc_holons:Vec<Rc<RefCell<Holon>>>, index:BTreeMap<MapString, usize>) -> Self {
+        let staged_holons: Vec<Holon> = rc_holons.iter().map(|holon_rc| holon_rc.borrow().clone()).collect();
+        StagingArea { staged_holons, index }
     }
 
     pub fn get_holon(&self, staged_index: usize) -> Result<Holon, HolonError> {
@@ -41,32 +46,16 @@ impl StagingArea {
         self.staged_holons.clone()
     }
 
+    pub fn get_staged_rc_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+        self.staged_holons.iter().map(|holon| Rc::new(RefCell::new(holon.clone()))).collect()
+    }
+
+    pub fn get_staged_index(&self) -> BTreeMap<MapString, usize> {
+        self.index.clone()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.staged_holons.is_empty()
-    }
-
-    // Function to create StagingArea from CommitManager
-    pub fn from_commit_manager(commit_manager: &CommitManager) -> Self {
-        let staged_holons: Vec<Holon> =
-            commit_manager.staged_holons.iter().map(|holon_rc| holon_rc.borrow().clone()).collect();
-        StagingArea { staged_holons, index: commit_manager.keyed_index.clone() }
-    }
-
-    // Function to create CommitManager from StagingArea
-    pub fn to_commit_manager(&self) -> CommitManager {
-        let staged_holons: Vec<Rc<RefCell<Holon>>> =
-            self.staged_holons.iter().map(|holon| Rc::new(RefCell::new(holon.clone()))).collect();
-        CommitManager { staged_holons, keyed_index: self.index.clone() }
-    }
-
-    // Function to create a Local SpaceManager from StagingArea
-    //TODO: There maybe no local space holons in the staging area, because the session holons are all external
-    //in which case create a local space manager with no session holons 
-    // SpaceManager::new()
-    pub fn to_local_space_manager(&self) -> SpaceManager {
-        let staged_holons: Vec<Rc<RefCell<Holon>>> =
-            self.staged_holons.iter().map(|holon| Rc::new(RefCell::new(holon.clone()))).collect();
-            SpaceManager::new_from_stage(staged_holons, keyed_index)
     }
 
     //Method to summarize the StagingArea into a String for logging purposes

@@ -1,11 +1,9 @@
 use derive_new::new;
+use holons::staged_reference::StagedIndex;
 use std::fmt;
 
 use crate::session_state::SessionState;
-use crate::staging_area::StagingArea;
 use hdk::prelude::*;
-use holons::commit_manager::StagedIndex;
-use holons::context::HolonsContext;
 use holons::helpers::summarize_holons;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
@@ -112,15 +110,17 @@ impl DanceResponse {
     ) -> DanceResponse {
         DanceResponse { status_code, description, body, descriptor, state }
     }
-    /// Restores the session state within the DanceResponse from context. This should always
-    /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
-    /// between client and guest.
-    /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
-    pub fn restore_state(&mut self, context: &HolonsContext) {
-        self.state
-            .set_staging_area(StagingArea::from_commit_manager(&context.commit_manager.borrow()));
-        self.state.set_local_holon_space(context.get_local_space_holon());
-    }
+
+    //moved to the dancer
+    /*pub fn restore_state(&mut self, context: &HolonsContext) {
+        let space_manager = &context.space_manager.borrow();
+        let staged_holons = space_manager.get_holon_stage();
+        let staged_index = space_manager.get_stage_key_index();
+        let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
+        let local_space_holon = space_manager.get_space_holon();
+        self.state.set_staging_area(staging_area);
+        self.state.set_local_holon_space(local_space_holon);
+    }*/
     // Method to summarize the DanceResponse for logging purposes
     pub fn summarize(&self) -> String {
         let body_summary = match &self.body {

@@ -8,6 +8,7 @@ use hdi::prelude::ActionHash;
 use hdk::prelude::*;
 
 use holochain_integrity_types::action;
+use holons_integrity::LinkTypes;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
@@ -354,6 +355,8 @@ impl Holon {
         }
     }
 
+    //TODO: move this static/stateless function to the Holon_service, the "get()" logic 
+    //including the GetOptions logic should only be in the holon_node module 
     pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
         let record = get(id.0.clone(), GetOptions::default())
             .map_err(|e| HolonError::from(e))?
@@ -373,19 +376,7 @@ impl Holon {
         })
     }
 
-    /// gets a specific HolonNode from the local persistent store based on its ActionHash, it then
-    /// "inflates" the HolonNode into a Holon and returns it
-    pub fn get_holon_by_local_id(local_id: &LocalId) -> Result<Holon, HolonError> {
-        let holon_node_record = get(local_id.0.clone(), GetOptions::default())?;
-        if let Some(node) = holon_node_record {
-            let holon = Holon::try_from_node(node)?;
-            return Ok(holon);
-        } else {
-            // no holon_node fetched for specified holon_id
-            Err(HolonError::HolonNotFound(local_id.0.to_string()))
-        }
-    }
-
+    //TODO move this associated (non-self /instance) function to the Holon_service
     pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
         let records = get_all_holon_nodes(());
         match records {
@@ -743,7 +734,7 @@ impl Holon {
             key, local_id, self.state, self.validation_state
         )
     }
-
+    
     /// try_from_node inflates a Holon from a HolonNode.
     /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
@@ -794,4 +785,48 @@ impl Holon {
         }
         Ok(self)
     }
+
+    pub fn get_name(&self) -> Result<MapString, HolonError> {
+        let property_name = PropertyName(MapString("name".to_string()));
+        match self.get_property_value(&property_name)? {
+            PropertyValue::StringValue(name) => Ok(name),
+            _ => Err(HolonError::InvalidType(format!(
+                "Expected StringValue for '{}'",
+                property_name.0
+            ))),
+        }
+    } 
+
+    pub fn get_description(&self) -> Result<MapString, HolonError> {
+        let property_name = PropertyName(MapString("description".to_string()));
+        match self.get_property_value(&property_name)? {
+            PropertyValue::StringValue(name) => Ok(name),
+            _ => Err(HolonError::InvalidType(format!(
+                "Expected StringValue for '{}'",
+                property_name.0
+            ))),
+        }
+    }
+
+    pub fn with_description(&mut self, description: &MapString) -> Result<&mut Self, HolonError> {
+        self.with_property_value(
+            PropertyName(MapString("description".to_string())),
+            description.clone().into_base_value(),
+        )?;
+        Ok(self)
+    }
+
+    /// Sets the name property for the Holon
+    pub fn with_name(&mut self, name: &MapString) -> Result<&mut Self, HolonError> {
+        self.with_property_value(
+            PropertyName(MapString("name".to_string())),
+            name.clone().into_base_value(),
+        )?
+        // TODO: drop this once descriptor-based key support is implemented
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            name.clone().into_base_value(),
+        )?;
+        Ok(self)
+    } 
 }

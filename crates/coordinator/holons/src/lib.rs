@@ -11,7 +11,7 @@ pub mod holon_error;
 pub mod holon_node;
 pub mod holon_reference;
 pub mod space_manager;
-pub mod local_context_service;
+pub mod holon_service;
 pub mod json_adapter;
 pub mod property_map;
 pub mod query;

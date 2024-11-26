@@ -10,6 +10,7 @@ use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::space_manager::HolonStagingBehavior;
 use shared_types_holon::holon_node::PropertyName;
 
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
@@ -28,15 +29,23 @@ impl HolonGettable for StagedReference {
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
-        let binding = context.local_space_manager.borrow();
+        let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_property_value(property_name)
+        let borrowedholon = holon.try_borrow()
+        .map_err(|e| {
+            HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
+        })?;
+        borrowedholon.get_property_value(property_name)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        let binding = context.local_space_manager.borrow();
+        let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        holon.get_key().clone()
+        let borrowedholon = holon.try_borrow()
+        .map_err(|e| {
+            HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
+        })?;
+        borrowedholon.get_key().clone()
     }
 
     // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
@@ -163,24 +172,23 @@ impl StagedReference {
     }
 
     pub fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        debug!("Entered: get_rc_holon, trying to get the commit_manager");
-        // Attempt to borrow commit_manager
-        let commit_manager = match context.local_space_manager.try_borrow() {
-            Ok(commit_manager) => commit_manager,
+        debug!("Entered: get_rc_holon, trying to get the space_manager");
+        let space_manager = match context.space_manager.try_borrow() {
+            Ok(space_manager) => space_manager,
             Err(borrow_error) => {
                 error!(
-                    "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
+                    "Failed to borrow space_manager, it is already borrowed mutably: {:?}",
                     borrow_error
                 );
                 return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
             }
         };
 
-        debug!("Commit manager borrowed successfully");
+        debug!("Space manager borrowed successfully");
 
-        // Obtain the staged_holons vector from the CommitManager
-        let staged_holons = &commit_manager.get_stage(); //staged_holons;
-        debug!("Got a reference to staged_holons from the commit manager");
+        // Obtain the staged_holons vector from the SpaceManager
+        let staged_holons = &space_manager.get_holon_stage(); //staged_holons;
+        debug!("Got a reference to staged_holons from the space manager");
 
         // Attempt to get the holon at the specified index
         if let Some(rc_holon) = staged_holons.get(self.holon_index) {
@@ -199,9 +207,13 @@ impl StagedReference {
         &self,
         context: &HolonsContext,
     ) -> Result<RelationshipMap, HolonError> {
-        let binding = context.local_space_manager.borrow();
+        let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        Ok(holon.relationship_map.clone())
+        let borrowedholon = holon.try_borrow()
+        .map_err(|e| {
+            HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
+        })?;
+        Ok(borrowedholon.relationship_map.clone())
     }
 
     pub fn is_accessible(
@@ -321,11 +333,11 @@ impl StagedReference {
         value: BaseValue,
     ) -> Result<&Self, HolonError> {
         // Borrow the CommitManager immutably from the context
-        let commit_manager = context.local_space_manager.borrow();
+        let space_manager = context.space_manager.borrow();
 
         // Get the holon from the CommitManager
-        let binding = commit_manager
-            .get_stage();
+        let binding = space_manager
+            .get_holon_stage();
         let rc_holon = binding
             .get(self.holon_index)
             .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;

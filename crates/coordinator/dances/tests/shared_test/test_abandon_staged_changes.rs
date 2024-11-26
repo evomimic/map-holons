@@ -10,8 +10,8 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::commit_manager::StagedIndex;
 use holons::context::HolonsContext;
+use holons::staged_reference::StagedIndex;
 use rstest::*;
 
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
