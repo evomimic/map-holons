@@ -4,6 +4,7 @@ use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
 use holons::relationship::RelationshipName;
+use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
 use shared_types_holon::{BaseType, PropertyName};
@@ -107,7 +108,7 @@ pub fn define_relationship_type(
 
     // Stage new holon type
     let relationship_type_ref =
-        context.commit_manager.borrow_mut().stage_new_holon(relationship_type.clone())?;
+        context.space_manager.borrow().stage_new_holon(relationship_type.clone())?;
 
     // Add its relationships
 

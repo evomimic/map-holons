@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use hdk::prelude::*;
-
+use holons::space_manager::HolonStagingBehavior;
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
 use crate::session_state::SessionState;
+use crate::staging_area::StagingArea;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
-use holons::holon_space_manager::HolonSpaceManager;
 use shared_types_holon::MapString;
 
 use crate::holon_dance_adapter::{
@@ -47,12 +47,19 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     }
 
     let context = request.init_context_from_state();
-    let holon_space_manager = HolonSpaceManager::new(&context);
+    debug!("context initialized");
+    let mut mutable_space_manager = context.space_manager.borrow_mut();
+    
 
-    // ------------------ ENSURE LOCAL HOLON SPACE IS IN CONTEXT ---------------------------------
-    let space_reference = holon_space_manager.ensure_local_holon_space_in_context();
+    // ------------------ ENSURE LOCAL SPACE HOLON IS COMMITTED ---------------------------------
+    
+    //note at this point the space_manager cannot be borrowed until mutable release 
+    let space_reference = mutable_space_manager.ensure_local_holon_space(&context);
     if let Err(space_error) = space_reference {
         let error_message = extract_error_message(&space_error);
+        
+        //release the mutable borrow of the space manager
+        drop(mutable_space_manager);
 
         // Construct DanceResponse with error details
         let response = DanceResponse {
@@ -60,11 +67,14 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
             description: MapString(error_message),
             body: ResponseBody::None, // No body since it's an error
             descriptor: None,         // Provide appropriate value if needed
-            state: SessionState::restore_session_state_from_context(&context),
+            state: restore_session_state_from_space_manager(&context),
         };
         return Ok(response);
     }
-
+    //release the mutable borrow of the space manager
+    drop(mutable_space_manager);
+    debug!("space manager ready to dance");
+    
     // Get the Dancer
     let dancer = Dancer::new();
 
@@ -83,7 +93,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     let result = process_dispatch_result(&context, dispatch_result);
 
-    // assert_eq!(result.staging_area.staged_holons.len(), context.commit_manager.borrow().staged_holons.len());
+    // assert_eq!(result.staging_area.staged_holons.len(), context.space_manager.borrow().staged_holons.len());
 
     info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
@@ -159,6 +169,21 @@ impl Dancer {
     }
 }
 
+
+/// Restores the session state for the DanceResponse from context. This should always
+/// be called before returning DanceResponse since the state is intended to be "ping-ponged"
+/// between client and guest.
+/// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
+pub fn restore_session_state_from_space_manager(context: &HolonsContext)-> SessionState {
+    let space_manager = &context.space_manager.borrow();
+    let staged_holons = space_manager.get_holon_stage();
+    let staged_index = space_manager.get_stage_key_index();
+    let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
+    let local_space_holon = space_manager.get_space_holon();
+    SessionState::new(staging_area, local_space_holon)
+}
+
+
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///
 /// If `dispatch_result` is `Ok`,
@@ -187,7 +212,7 @@ fn process_dispatch_result(
                 description: MapString("Success".to_string()),
                 body,
                 descriptor: None,
-                state: SessionState::restore_session_state_from_context(context),
+                state: restore_session_state_from_space_manager(context),
             }
         }
         Err(error) => {
@@ -198,7 +223,7 @@ fn process_dispatch_result(
                 description: MapString(error_message),
                 body: ResponseBody::None, // No body since it's an error
                 descriptor: None,         // Provide appropriate value if needed
-                state: SessionState::restore_session_state_from_context(context),
+                state: restore_session_state_from_space_manager(context),
             }
         }
     }

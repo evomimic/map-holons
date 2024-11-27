@@ -3,6 +3,9 @@ use holons_integrity::*;
 
 use crate::holon_node::get_latest_holon_node;
 
+
+//TODO: move this function to holon_node.rs and delete the file
+
 /// Get all the HolonNodes from the HolonSpace. In a case where a Holon has more than one version, only return the latest version.
 #[hdk_extern]
 pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {

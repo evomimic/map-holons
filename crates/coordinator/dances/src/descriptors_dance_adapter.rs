@@ -19,7 +19,7 @@ use crate::dance_response::ResponseBody;
 use crate::session_state::SessionState;
 use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
-use holons::commit_manager::CommitRequestStatus::*;
+use holons::commit_service::CommitRequestStatus;
 use holons::context::HolonsContext;
 use holons::holon_error::HolonError;
 use shared_types_holon::MapString;
@@ -45,8 +45,8 @@ pub fn load_core_schema_dance(
             let result = load_core_schema(context);
             match result {
                 Ok(commit_response) => match commit_response.status {
-                    Complete => Ok(ResponseBody::None),
-                    Incomplete => Err(HolonError::CommitFailure("Incomplete commit".to_string())),
+                    CommitRequestStatus::Complete => Ok(ResponseBody::None),
+                    CommitRequestStatus::Incomplete => Err(HolonError::CommitFailure("Incomplete commit".to_string())),
                 },
                 Err(e) => Err(e),
             }

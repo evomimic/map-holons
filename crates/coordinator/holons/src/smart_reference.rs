@@ -7,12 +7,14 @@ use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
+//use crate::cache_manager;
 use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::space_manager::{HolonCacheBehavior, HolonStagingBehavior};
 use crate::staged_reference::StagedReference;
 
 #[hdk_entry_helper]
@@ -79,8 +81,8 @@ impl SmartReference {
     // Private function for getting a mutable reference from the context
     fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
         debug!("Entered: get_rc_holon, trying to get the cache_manager");
-        let cache_manager = match context.cache_manager.try_borrow() {
-            Ok(cache_manager) => cache_manager,
+        let space_manager = match context.space_manager.try_borrow() {
+            Ok(space_manager) => space_manager,
             Err(borrow_error) => {
                 error!(
                     "Failed to borrow cache_manager, it is already borrowed mutably: {:?}",
@@ -91,7 +93,7 @@ impl SmartReference {
         };
         debug!("Cache manager borrowed successfully");
 
-        let rc_holon = cache_manager.get_rc_holon(&self.holon_id)?;
+        let rc_holon = space_manager.get_rc_holon(&self.holon_id)?;
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
@@ -178,16 +180,16 @@ impl SmartReference {
 
         let new_version_staged_reference = {
             // Mutably borrow the commit_manager
-            let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-                Ok(commit_manager) => commit_manager,
+            let space_manager = match context.space_manager.try_borrow() {
+                Ok(space_manager) => space_manager,
                 Err(borrow_error) => {
-                    error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
+                    error!("Failed to borrow commit_manager: {:?}", borrow_error);
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
                 }
             };
 
             // Stage the clone
-            commit_manager.stage_new_holon(cloned_holon)?
+            space_manager.stage_new_holon(cloned_holon)?
         };
 
         // Set PREDECESSOR
@@ -281,23 +283,15 @@ impl HolonGettable for SmartReference {
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let map = {
-            let mut holon_refcell = holon.borrow_mut();
+            let mut holon_refcell = holon.try_borrow_mut()
+            .map_err(|e| {
+                HolonError::FailedToBorrow(format!("Unable to borrow holon mutably: {}", e))
+            })?;
             holon_refcell.get_related_holons(relationship_name)?.clone()
         };
         Ok(map)
     }
 
-    // fn get_related_holons(
-    //     &self,
-    //     context: &HolonsContext,
-    //     relationship_name: &RelationshipName,
-    // ) -> Result<&HolonCollection, HolonError> {
-    //     let holon = self.get_rc_holon(context)?;
-    //     let map = holon
-    //         .borrow()
-    //         .get_related_holons(relationship_name)?;
-    //     Ok(map)
-    // }
 
     // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
     // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.

@@ -18,7 +18,6 @@ use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
 use dances::dance_response::ResponseStatusCode;
-use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 
 use crate::shared_test::test_data_types::DancesTestCase;

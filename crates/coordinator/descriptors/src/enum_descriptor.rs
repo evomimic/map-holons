@@ -3,6 +3,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapString, ValueType};
 use shared_types_holon::PropertyName;
@@ -67,7 +68,7 @@ pub fn define_enum_type(
 
     debug!("Staging... {:#?}", enum_type.clone());
 
-    let enum_type_ref = context.commit_manager.borrow_mut().stage_new_holon(enum_type.clone())?;
+    let enum_type_ref = context.space_manager.borrow().stage_new_holon(enum_type.clone())?;
 
     // Add its relationships
 

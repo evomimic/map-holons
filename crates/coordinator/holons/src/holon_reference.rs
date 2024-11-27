@@ -9,6 +9,7 @@ use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::smart_reference::SmartReference;
+use crate::space_manager::HolonStagingBehavior;
 use crate::staged_reference::StagedReference;
 
 // If I can operate directly on HolonReferences as if they were Holons, I don't need this Trait
@@ -113,8 +114,8 @@ impl HolonReference {
 
         let cloned_staged_reference = {
             // Mutably borrow the commit_manager
-            let mut commit_manager = match context.commit_manager.try_borrow_mut() {
-                Ok(commit_manager) => commit_manager,
+            let space_manager = match context.space_manager.try_borrow() {
+                Ok(space_manager) => space_manager,
                 Err(borrow_error) => {
                     error!("Failed to borrow commit_manager mutably: {:?}", borrow_error);
                     return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
@@ -122,13 +123,17 @@ impl HolonReference {
             };
 
             // Stage the clone
-            commit_manager.stage_new_holon(cloned_holon)?
+            space_manager.stage_new_holon(cloned_holon)?
         };
 
         // Reset the PREDECESSOR to None
         cloned_staged_reference.with_predecessor(context, None)?;
 
         Ok(cloned_staged_reference)
+    }
+
+    pub fn smartreference_from_holon_id(holon_id: HolonId) -> HolonReference {
+            HolonReference::Smart(SmartReference::new_from_id(holon_id))
     }
 
     pub fn clone_reference(&self) -> HolonReference {

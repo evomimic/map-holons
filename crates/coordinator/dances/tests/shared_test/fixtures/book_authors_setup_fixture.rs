@@ -9,14 +9,13 @@ use holons::holon_collection::{CollectionState, HolonCollection};
 use holons::holon_reference::HolonReference;
 use holons::query::QueryExpression;
 use holons::smart_reference::SmartReference;
-use holons::staged_reference::StagedReference;
+use holons::staged_reference::{StagedIndex, StagedReference};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
 use dances::dance_response::ResponseStatusCode;
-use holons::commit_manager::{CommitManager, StagedIndex};
 use holons::context::HolonsContext;
 
 use crate::shared_test::test_data_types::DancesTestCase;

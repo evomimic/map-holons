@@ -6,6 +6,8 @@ use shared_types_holon::{MapString, PropertyMap, PropertyName};
 use crate::holon::Holon;
 use crate::holon_error::HolonError;
 
+//TODO: move static/stateless HDI/HDK functions to the Holon_service
+
 pub fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
     match record.entry() {
         RecordEntry::Present(entry) => HolonNode::try_from(entry.clone())
