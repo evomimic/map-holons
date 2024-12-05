@@ -34,9 +34,9 @@
   },
 
   "devDependencies": {
-    "@holochain-playground/cli": "^0.2.0",
-    "concurrently": "^8.2.2",
-    "rimraf": "^5.0.5",
+    "@holochain-playground/cli": "^0.300.1",
+    "concurrently": "^9.1.0",
+    "rimraf": "^6.0.1",
     "get-port-cli":"^3.0.0"
   },
   "engines": {
