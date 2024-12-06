@@ -58,8 +58,8 @@ pub trait HolonStagingBehavior {
     /// holon from a StageReference
     fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError>;
     fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>;
-    fn get_holon_by_key(&self, key: MapString) -> Option<Rc<RefCell<Holon>>>;
-    fn get_holon_stage(&self) -> Vec<Rc<RefCell<Holon>>>;
+    fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError>;
+    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>>;
     fn get_stage_key_index(&self) -> BTreeMap<MapString, usize>;
     //fn get_mut_holon_by_index(&self, holon_index: StagedIndex) -> Result<RefMut<Holon>, HolonError>
 }
@@ -243,8 +243,9 @@ impl HolonStagingBehavior for HolonSpaceManager {
         self.nursery.borrow().get_holon_by_index(reference.holon_index)
      }
         
-    fn get_holon_by_key(&self, key: MapString) -> Option<Rc<RefCell<Holon>>> {
-        self.nursery.borrow().get_holon_by_key(key)
+    fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError> {
+        let index = self.nursery.borrow().get_holon_index_by_key(key)?;
+        Ok(StagedReference::new(index))
     }
 
     fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>{
@@ -256,8 +257,8 @@ impl HolonStagingBehavior for HolonSpaceManager {
     //       borrowed_nursery.get_mut_holon_by_index(index)
     //    }
 
-    fn get_holon_stage(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.nursery.borrow().get_holon_stage()
+    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+        self.nursery.borrow().get_all_holons()
     }
     fn get_stage_key_index(&self) -> BTreeMap<MapString, usize> {
         self.nursery.borrow().get_stage_key_index()

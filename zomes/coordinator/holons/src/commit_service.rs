@@ -103,7 +103,7 @@ impl CommitService {
             abandoned_holons: Vec::new(),
         };
         
-        let staged_holons = space_manager.get_holon_stage();
+        let staged_holons = space_manager.get_all_holons();
         let stage_count = MapInteger(staged_holons.len() as i64);
         if stage_count.0 < 1 {
             info!("Stage empty, nothing to commit!");

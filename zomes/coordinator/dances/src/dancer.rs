@@ -176,7 +176,7 @@ impl Dancer {
 /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
 pub fn restore_session_state_from_space_manager(context: &HolonsContext)-> SessionState {
     let space_manager = &context.space_manager.borrow();
-    let staged_holons = space_manager.get_holon_stage();
+    let staged_holons = space_manager.get_all_holons();
     let staged_index = space_manager.get_stage_key_index();
     let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
     let local_space_holon = space_manager.get_space_holon();
