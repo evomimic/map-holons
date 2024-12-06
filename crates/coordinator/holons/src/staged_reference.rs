@@ -186,21 +186,11 @@ impl StagedReference {
 
         debug!("Space manager borrowed successfully");
 
-        // Obtain the staged_holons vector from the SpaceManager
-        let staged_holons = &space_manager.get_holon_stage(); //staged_holons;
-        debug!("Got a reference to staged_holons from the space manager");
-
         // Attempt to get the holon at the specified index
-        if let Some(rc_holon) = staged_holons.get(self.holon_index) {
-            // Return a clone of the holon reference
-            Ok(rc_holon.clone())
-        } else {
-            // If index is out of range, return an error
-            Err(HolonError::InvalidHolonReference(format!(
-                "Invalid holon index: {}",
-                self.holon_index
-            )))
-        }
+        let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?; 
+        // Return a clone of the holon reference
+        Ok(rc_holon.clone())
+    
     }
 
     pub fn get_relationship_map(
@@ -332,16 +322,8 @@ impl StagedReference {
         property: PropertyName,
         value: BaseValue,
     ) -> Result<&Self, HolonError> {
-        // Borrow the CommitManager immutably from the context
-        let space_manager = context.space_manager.borrow();
-
-        // Get the holon from the CommitManager
-        let binding = space_manager
-            .get_holon_stage();
-        let rc_holon = binding
-            .get(self.holon_index)
-            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
-
+        
+        let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.borrow_mut();
 
         // Call the Holon's with_property_value method
