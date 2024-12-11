@@ -1,30 +1,35 @@
 [workspace]
 members = [
-    "crates/coordinator/holons",
-    "crates/coordinator/descriptors",
-    "crates/coordinator/core_schema",
-    "crates/coordinator/dances",
-    "crates/integrity/holons_integrity",
+    "zomes/coordinator/holons",
+    "zomes/coordinator/descriptors",
+    "zomes/coordinator/core_schema",
+    "zomes/coordinator/dances",
+    "zomes/integrity/holons_integrity",
     "crates/shared_types/holon",
-    "crates/shared_validation",
+    "crates/shared_validation", 
+    "crates/type_system/base_types", 
+    "crates/type_system/core_types", 
+    "crates/type_system/descriptor_types", 
+    "crates/type_system/core_descriptor_types", 
+    "crates/type_system/type_names",
 ]
 resolver = "2"
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
-path = "crates/coordinator/holons"
+path = "zomes/coordinator/holons"
 
 [workspace.dependencies.dances]
-path = "crates/coordinator/dances"
+path = "zomes/coordinator/dances"
 
 [workspace.dependencies.descriptors]
-path = "crates/coordinator/descriptors"
+path = "zomes/coordinator/descriptors"
 
 [workspace.dependencies.core_schema]
-path = "crates/coordinator/core_schema"
+path = "zomes/coordinator/core_schema"
 
 [workspace.dependencies.holons_integrity]
-path = "crates/integrity/holons_integrity"
+path = "zomes/integrity/holons_integrity"
 
 [workspace.dependencies.shared_types_holon]
 path = "crates/shared_types/holon"
