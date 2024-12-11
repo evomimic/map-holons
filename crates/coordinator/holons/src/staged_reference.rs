@@ -10,7 +10,7 @@ use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::space_manager::HolonStagingBehavior;
+use crate::space_manager::HolonStageQuery;
 use shared_types_holon::holon_node::PropertyName;
 
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};

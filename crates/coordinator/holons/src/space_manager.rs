@@ -44,6 +44,22 @@ pub trait HolonCacheBehavior {
      fn add_to_cache(&self, holons: Vec<Holon>) -> Result<(), HolonError>;
 }
 
+///trait for querying holon references
+pub trait HolonStageQueryReference {
+    ///holon reference from a key name
+    fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError>;
+}
+
+///direct access to holons
+pub trait HolonStageQuery {
+    /// holon from a StageReference
+    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError>;
+    /// holon from a Stage index
+    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>;
+    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>>;
+}
+
+///comon stage operations
 pub trait HolonStagingBehavior {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
@@ -54,12 +70,7 @@ pub trait HolonStagingBehavior {
     /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
     fn to_staged_reference(&self,staged_index: StagedIndex) -> Result<StagedReference, HolonError>;
-    
-    /// holon from a StageReference
-    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError>;
-    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>;
-    fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError>;
-    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>>;
+    /// Returns a dictionary indexed by key of all staged holons
     fn get_stage_key_index(&self) -> BTreeMap<MapString, usize>;
     //fn get_mut_holon_by_index(&self, holon_index: StagedIndex) -> Result<RefMut<Holon>, HolonError>
 }
@@ -201,6 +212,29 @@ impl HolonSpaceManager {
     
 }
 
+impl HolonStageQueryReference for HolonSpaceManager {
+    fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError> {
+        let index = self.nursery.borrow().get_holon_index_by_key(key)?;
+        Ok(StagedReference::new(index))
+    }
+}
+
+impl HolonStageQuery for HolonSpaceManager {
+    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        self.nursery.borrow().get_holon_by_index(reference.holon_index)
+    }
+     fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>{
+        self.nursery.borrow().get_holon_by_index(index)
+    }
+    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+        self.nursery.borrow().get_all_holons()
+    }
+    //fn get_mut_holon_by_index(&self, index: usize) -> Result<RefMut<Holon>, HolonError> {
+    //       let borrowed_nursery = self.nursery.borrow();
+    //       borrowed_nursery.get_mut_holon_by_index(index)
+    //    }
+}
+
 impl HolonStagingBehavior for HolonSpaceManager {
     
     fn stage_new_holon(&self, mut holon: Holon) -> Result<StagedReference, HolonError> {
@@ -239,27 +273,6 @@ impl HolonStagingBehavior for HolonSpaceManager {
         }
     }
 
-    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        self.nursery.borrow().get_holon_by_index(reference.holon_index)
-     }
-        
-    fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError> {
-        let index = self.nursery.borrow().get_holon_index_by_key(key)?;
-        Ok(StagedReference::new(index))
-    }
-
-    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>{
-        self.nursery.borrow().get_holon_by_index(index)
-    }
-
-    //fn get_mut_holon_by_index(&self, index: usize) -> Result<RefMut<Holon>, HolonError> {
-    //       let borrowed_nursery = self.nursery.borrow();
-    //       borrowed_nursery.get_mut_holon_by_index(index)
-    //    }
-
-    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.nursery.borrow().get_all_holons()
-    }
     fn get_stage_key_index(&self) -> BTreeMap<MapString, usize> {
         self.nursery.borrow().get_stage_key_index()
     }

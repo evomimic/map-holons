@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use hdk::prelude::*;
-use holons::space_manager::HolonStagingBehavior;
+use holons::space_manager::{HolonStageQuery, HolonStagingBehavior};
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};

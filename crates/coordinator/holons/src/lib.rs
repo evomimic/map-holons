@@ -21,6 +21,7 @@ pub mod smartlink;
 pub mod staged_reference;
 pub mod transient_collection;
 pub mod nursery;
+pub mod query_manager;
 
 use hdk::prelude::*;
 use holons_integrity::*;
