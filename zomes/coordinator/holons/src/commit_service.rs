@@ -4,7 +4,7 @@ use crate::context::HolonsContext;
 use crate::holon::{Holon, HolonState};
 use crate::holon_error::HolonError;
 use crate::json_adapter::as_json;
-use crate::space_manager::{HolonStagingBehavior, HolonSpaceManager};
+use crate::space_manager::{HolonSpaceManager, HolonStageQuery};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
 pub struct CommitService {}
