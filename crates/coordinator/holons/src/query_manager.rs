@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use shared_types_holon::MapString;
 
-use crate::{holon::Holon, holon_error::HolonError, space_manager::{HolonSpaceManager, HolonStageQueryReference, HolonStagingBehavior}, staged_reference::StagedReference};
+use crate::{holon::Holon, holon_error::HolonError, space_manager::{HolonSpaceManager, HolonStagingBehavior}, staged_reference::StagedReference};
 
 pub struct QueryManager {
     space_manager: Rc<RefCell<HolonSpaceManager>>, // Shared ownership
