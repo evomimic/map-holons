@@ -57,8 +57,7 @@ pub enum CommitRequestStatus {
     Incomplete,
 }
 
-impl CommitService { 
-
+impl CommitService {
     /// This function attempts to persist the state of all staged_holons AND their relationships.
     ///
     /// The commit is performed in two passes: (1) staged_holons, (2) their relationships.
@@ -91,23 +90,26 @@ impl CommitService {
     /// NOTE: The CommitResponse returns clones of any successfully
     /// committed holons, even if the response status is `Incomplete`.
     ///
-    pub fn commit(space_manager: &HolonSpaceManager, context:&HolonsContext) -> Result<CommitResponse,HolonError> {
+    pub fn commit(
+        space_manager: &HolonSpaceManager,
+        context: &HolonsContext,
+    ) -> Result<CommitResponse, HolonError> {
         debug!("Entering commit...");
 
         // Initialize the request_status to Complete, assuming all commits will succeed
         // If any commit errors are encountered, reset request_status to `Incomplete`
         let mut response = CommitResponse {
             status: CommitRequestStatus::Complete,
-            commits_attempted: MapInteger(0),// staged_holons.len() as i64),
+            commits_attempted: MapInteger(0), // staged_holons.len() as i64),
             saved_holons: Vec::new(),
             abandoned_holons: Vec::new(),
         };
-        
-        let staged_holons = space_manager.get_all_holons();
+
+        let staged_holons = space_manager.get_staged_holons();
         let stage_count = MapInteger(staged_holons.len() as i64);
         if stage_count.0 < 1 {
             info!("Stage empty, nothing to commit!");
-           return Ok(response)
+            return Ok(response);
         }
         response.commits_attempted = stage_count;
 
@@ -141,8 +143,8 @@ impl CommitService {
         if response.status == CommitRequestStatus::Incomplete {
             return Ok(response);
         }
-        
-        //  SECOND PASS: Commit relationships         
+
+        //  SECOND PASS: Commit relationships
         {
             info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
             //let commit_manager = context.commit_manager.borrow();
@@ -162,7 +164,5 @@ impl CommitService {
             debug!("{}", as_json(saved_holon));
         }
         Ok(response)
-
     }
-    
 }

@@ -31,8 +31,7 @@ impl HolonGettable for StagedReference {
     ) -> Result<PropertyValue, HolonError> {
         let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow()
-        .map_err(|e| {
+        let borrowedholon = holon.try_borrow().map_err(|e| {
             HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
         })?;
         borrowedholon.get_property_value(property_name)
@@ -41,8 +40,7 @@ impl HolonGettable for StagedReference {
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow()
-        .map_err(|e| {
+        let borrowedholon = holon.try_borrow().map_err(|e| {
             HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
         })?;
         borrowedholon.get_key().clone()
@@ -171,7 +169,7 @@ impl StagedReference {
         }
     }
 
-    pub fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
         debug!("Entered: get_rc_holon, trying to get the space_manager");
         let space_manager = match context.space_manager.try_borrow() {
             Ok(space_manager) => space_manager,
@@ -187,10 +185,9 @@ impl StagedReference {
         debug!("Space manager borrowed successfully");
 
         // Attempt to get the holon at the specified index
-        let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?; 
+        let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?;
         // Return a clone of the holon reference
         Ok(rc_holon.clone())
-    
     }
 
     pub fn get_relationship_map(
@@ -199,8 +196,7 @@ impl StagedReference {
     ) -> Result<RelationshipMap, HolonError> {
         let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow()
-        .map_err(|e| {
+        let borrowedholon = holon.try_borrow().map_err(|e| {
             HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
         })?;
         Ok(borrowedholon.relationship_map.clone())
@@ -322,7 +318,6 @@ impl StagedReference {
         property: PropertyName,
         value: BaseValue,
     ) -> Result<&Self, HolonError> {
-        
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.borrow_mut();
 
