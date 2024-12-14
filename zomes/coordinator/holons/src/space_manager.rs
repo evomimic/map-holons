@@ -44,6 +44,17 @@ pub trait HolonCacheBehavior {
     fn add_to_cache(&self, holons: Vec<Holon>) -> Result<(), HolonError>;
 }
 
+
+///direct access to holons
+pub trait HolonStageQuery {
+    /// holon from a StageReference
+    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError>;
+    /// holon from a Stage index
+    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>;
+    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>>;
+}
+
+///comon stage operations
 ///direct access to holons
 pub trait HolonStageQuery {
     /// holon from a StageReference
@@ -63,6 +74,8 @@ pub trait HolonStagingBehavior {
     /// This function converts a StagedIndex into a StagedReference
     /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
+    fn to_staged_reference(&self,staged_index: StagedIndex) -> Result<StagedReference, HolonError>;
+    /// Returns a dictionary indexed by key of all staged holons
     fn to_staged_reference(&self, staged_index: StagedIndex)
         -> Result<StagedReference, HolonError>;
     /// Returns a dictionary indexed by key of all staged holons
@@ -243,6 +256,19 @@ impl HolonStageQuery for HolonSpaceManager {
         self.nursery.borrow().get_holon_by_index(index)
     }
     fn get_staged_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+        self.nursery.borrow().get_all_holons()
+    }
+}
+
+
+impl HolonStageQuery for HolonSpaceManager {
+    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        self.nursery.borrow().get_holon_by_index(reference.holon_index)
+    }
+     fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>{
+        self.nursery.borrow().get_holon_by_index(index)
+    }
+    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
         self.nursery.borrow().get_all_holons()
     }
 }
