@@ -235,7 +235,7 @@ impl HolonCollection {
 
     /// This method creates smartlinks from the specified source_id for the specified relationship name
     /// to each holon its collection that has a holon_id.
-    pub fn save_smartlinks_for_collection(
+    fn save_smartlinks_for_collection(
         &self,
         context: &HolonsContext,
         source_id: LocalId,

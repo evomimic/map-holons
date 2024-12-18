@@ -6,11 +6,11 @@ members = [
     "zomes/coordinator/dances",
     "zomes/integrity/holons_integrity",
     "crates/shared_types/holon",
-    "crates/shared_validation", 
-    "crates/type_system/base_types", 
-    "crates/type_system/core_types", 
-    "crates/type_system/descriptor_types", 
-    "crates/type_system/core_descriptor_types", 
+    "crates/shared_validation",
+    "crates/type_system/base_types",
+    "crates/type_system/core_types",
+    "crates/type_system/descriptor_types",
+    "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
 ]
 resolver = "2"
@@ -55,6 +55,7 @@ async-std = "1.1.12"
 futures = { version = "0.3.1", default-features = false }
 pretty_assertions = "1.4.0"
 rstest = "0.21"
+home = "0.5.9" # unpin this when we move to rust 1.81.0 or later
 
 
 [profile.dev]

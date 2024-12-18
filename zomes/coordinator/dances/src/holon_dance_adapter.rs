@@ -23,7 +23,7 @@ use holons::holon_reference::HolonReference;
 use holons::query::*;
 use holons::relationship::RelationshipName;
 use holons::smart_reference::SmartReference;
-use holons::space_manager::{HolonCacheBehavior, HolonStagingBehavior};
+use holons::space_manager::{HolonCacheBehavior, HolonStageQuery, HolonStagingBehavior};
 use holons::staged_reference::StagedIndex;
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};

@@ -19,7 +19,7 @@ pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
         .map(|link| GetInput::new(link.target.try_into().unwrap(), GetOptions::default()))
         .collect();
     let records = HDK.with(|hdk| hdk.borrow().get(get_input))?;
-    let mut records: Vec<Record> = records.into_iter().filter_map(|r| r).collect();
+    let records: Vec<Record> = records.into_iter().filter_map(|r| r).collect();
     let mut latest_records = Vec::new();
     for record in &records {
         if let Some(latest_record) = get_latest_holon_node(record.action_address().clone())? {

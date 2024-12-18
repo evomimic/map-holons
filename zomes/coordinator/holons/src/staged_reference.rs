@@ -10,7 +10,7 @@ use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
 use crate::holon_reference::{HolonGettable, HolonReference};
 use crate::relationship::{RelationshipMap, RelationshipName};
-use crate::space_manager::HolonStagingBehavior;
+use crate::space_manager::HolonStageQuery;
 use shared_types_holon::holon_node::PropertyName;
 
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
@@ -31,8 +31,7 @@ impl HolonGettable for StagedReference {
     ) -> Result<PropertyValue, HolonError> {
         let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow()
-        .map_err(|e| {
+        let borrowedholon = holon.try_borrow().map_err(|e| {
             HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
         })?;
         borrowedholon.get_property_value(property_name)
@@ -41,8 +40,7 @@ impl HolonGettable for StagedReference {
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
         let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow()
-        .map_err(|e| {
+        let borrowedholon = holon.try_borrow().map_err(|e| {
             HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
         })?;
         borrowedholon.get_key().clone()
@@ -171,7 +169,7 @@ impl StagedReference {
         }
     }
 
-    pub fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
         debug!("Entered: get_rc_holon, trying to get the space_manager");
         let space_manager = match context.space_manager.try_borrow() {
             Ok(space_manager) => space_manager,
@@ -186,21 +184,10 @@ impl StagedReference {
 
         debug!("Space manager borrowed successfully");
 
-        // Obtain the staged_holons vector from the SpaceManager
-        let staged_holons = &space_manager.get_holon_stage(); //staged_holons;
-        debug!("Got a reference to staged_holons from the space manager");
-
         // Attempt to get the holon at the specified index
-        if let Some(rc_holon) = staged_holons.get(self.holon_index) {
-            // Return a clone of the holon reference
-            Ok(rc_holon.clone())
-        } else {
-            // If index is out of range, return an error
-            Err(HolonError::InvalidHolonReference(format!(
-                "Invalid holon index: {}",
-                self.holon_index
-            )))
-        }
+        let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?;
+        // Return a clone of the holon reference
+        Ok(rc_holon.clone())
     }
 
     pub fn get_relationship_map(
@@ -209,8 +196,7 @@ impl StagedReference {
     ) -> Result<RelationshipMap, HolonError> {
         let binding = context.space_manager.borrow();
         let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow()
-        .map_err(|e| {
+        let borrowedholon = holon.try_borrow().map_err(|e| {
             HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
         })?;
         Ok(borrowedholon.relationship_map.clone())
@@ -332,16 +318,7 @@ impl StagedReference {
         property: PropertyName,
         value: BaseValue,
     ) -> Result<&Self, HolonError> {
-        // Borrow the CommitManager immutably from the context
-        let space_manager = context.space_manager.borrow();
-
-        // Get the holon from the CommitManager
-        let binding = space_manager
-            .get_holon_stage();
-        let rc_holon = binding
-            .get(self.holon_index)
-            .ok_or(HolonError::IndexOutOfRange(self.holon_index.to_string()))?;
-
+        let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.borrow_mut();
 
         // Call the Holon's with_property_value method

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use hdk::prelude::*;
-use holons::space_manager::HolonStagingBehavior;
+use holons::space_manager::{HolonStageQuery, HolonStagingBehavior};
 //use hdi::map_extern::ExternResult;
 use crate::dance_request::DanceRequest;
 use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
@@ -49,15 +49,14 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     let context = request.init_context_from_state();
     debug!("context initialized");
     let mut mutable_space_manager = context.space_manager.borrow_mut();
-    
 
     // ------------------ ENSURE LOCAL SPACE HOLON IS COMMITTED ---------------------------------
-    
-    //note at this point the space_manager cannot be borrowed until mutable release 
+
+    //note at this point the space_manager cannot be borrowed until mutable release
     let space_reference = mutable_space_manager.ensure_local_holon_space(&context);
     if let Err(space_error) = space_reference {
         let error_message = extract_error_message(&space_error);
-        
+
         //release the mutable borrow of the space manager
         drop(mutable_space_manager);
 
@@ -74,7 +73,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     //release the mutable borrow of the space manager
     drop(mutable_space_manager);
     debug!("space manager ready to dance");
-    
+
     // Get the Dancer
     let dancer = Dancer::new();
 
@@ -169,20 +168,18 @@ impl Dancer {
     }
 }
 
-
 /// Restores the session state for the DanceResponse from context. This should always
 /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
 /// between client and guest.
 /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
-pub fn restore_session_state_from_space_manager(context: &HolonsContext)-> SessionState {
+pub fn restore_session_state_from_space_manager(context: &HolonsContext) -> SessionState {
     let space_manager = &context.space_manager.borrow();
-    let staged_holons = space_manager.get_holon_stage();
+    let staged_holons = space_manager.get_staged_holons();
     let staged_index = space_manager.get_stage_key_index();
     let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
     let local_space_holon = space_manager.get_space_holon();
     SessionState::new(staging_area, local_space_holon)
 }
-
 
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///

@@ -7,8 +7,6 @@ use hdi::prelude::ActionHash;
 
 use hdk::prelude::*;
 
-use holochain_integrity_types::action;
-use holons_integrity::LinkTypes;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
