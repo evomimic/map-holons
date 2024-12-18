@@ -44,17 +44,7 @@ pub trait HolonCacheBehavior {
     fn add_to_cache(&self, holons: Vec<Holon>) -> Result<(), HolonError>;
 }
 
-
-///direct access to holons
-pub trait HolonStageQuery {
-    /// holon from a StageReference
-    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError>;
-    /// holon from a Stage index
-    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>;
-    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>>;
-}
-
-///comon stage operations
+///common stage operations
 ///direct access to holons
 pub trait HolonStageQuery {
     /// holon from a StageReference
@@ -64,7 +54,7 @@ pub trait HolonStageQuery {
     fn get_staged_holons(&self) -> Vec<Rc<RefCell<Holon>>>;
 }
 
-///comon stage operations
+///common stage operations
 pub trait HolonStagingBehavior {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
@@ -74,15 +64,15 @@ pub trait HolonStagingBehavior {
     /// This function converts a StagedIndex into a StagedReference
     /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
-    fn to_staged_reference(&self,staged_index: StagedIndex) -> Result<StagedReference, HolonError>;
-    /// Returns a dictionary indexed by key of all staged holons
     fn to_staged_reference(&self, staged_index: StagedIndex)
         -> Result<StagedReference, HolonError>;
-    /// Returns a dictionary indexed by key of all staged holons
-    fn get_stage_key_index(&self) -> BTreeMap<MapString, usize>;
+
     ///holon reference from a key name
     fn get_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError>;
     //fn get_mut_holon_by_index(&self, holon_index: StagedIndex) -> Result<RefMut<Holon>, HolonError>
+
+    /// Returns a dictionary indexed by key of all staged holons
+    fn get_stage_key_index(&self) -> BTreeMap<MapString, usize>;
 }
 
 impl HolonSpaceManager {
@@ -135,11 +125,11 @@ impl HolonSpaceManager {
             Some(space_reference) => Ok(space_reference),
             None => {
                 debug!("No Local Space Holon found in session, fetching it.");
-                let spaceholon = holon_service::get_holon_by_path(
+                let space_holon = holon_service::get_holon_by_path(
                     "local_holon_space".to_string(),
                     LinkTypes::LocalHolonSpace,
                 );
-                match spaceholon {
+                return match space_holon {
                     Ok(spaceholon) => {
                         match spaceholon {
                             Some(spaceholon) => {
@@ -149,7 +139,7 @@ impl HolonSpaceManager {
                                     HolonReference::smartreference_from_holon_id(holon_id);
                                 self.set_space_holon(spaceholon);
                                 self.set_space_holon_ref(ref_spaceholon.clone());
-                                return Ok(ref_spaceholon);
+                                Ok(ref_spaceholon)
                             }
                             None => {
                                 info!(
@@ -186,25 +176,23 @@ impl HolonSpaceManager {
                                                     holon_id,
                                                 );
                                             self.set_space_holon_ref(space_reference.clone());
-                                            return Ok(space_reference);
+                                            Ok(space_reference)
                                         }
-                                        Err(_) => {
-                                            return Err(HolonError::CommitFailure(
-                                                "Unable to crate path to the LocalHolonSpace"
-                                                    .to_string(),
-                                            ));
-                                        }
+                                        Err(_) => Err(HolonError::CommitFailure(
+                                            "Unable to crate path to the LocalHolonSpace"
+                                                .to_string(),
+                                        )),
                                     }
                                 } else {
-                                    return Err(HolonError::CommitFailure(
+                                    Err(HolonError::CommitFailure(
                                         "Unable to commit LocalHolonSpace".to_string(),
-                                    ));
+                                    ))
                                 }
                             }
                         }
                     }
-                    Err(fetch_error) => return Err(fetch_error),
-                }
+                    Err(fetch_error) => Err(fetch_error),
+                };
             }
         };
     }
@@ -256,19 +244,6 @@ impl HolonStageQuery for HolonSpaceManager {
         self.nursery.borrow().get_holon_by_index(index)
     }
     fn get_staged_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.nursery.borrow().get_all_holons()
-    }
-}
-
-
-impl HolonStageQuery for HolonSpaceManager {
-    fn get_holon(&self, reference: &StagedReference) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        self.nursery.borrow().get_holon_by_index(reference.holon_index)
-    }
-     fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>{
-        self.nursery.borrow().get_holon_by_index(index)
-    }
-    fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
         self.nursery.borrow().get_all_holons()
     }
 }
