@@ -7,6 +7,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::holon_writable::HolonWritable;
 use holons::relationship::RelationshipName;
 use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
@@ -96,8 +97,7 @@ pub fn define_type_descriptor(
 
     debug!("{:#?}", descriptor.clone());
 
-    let staged_reference =
-        context.space_manager.borrow().stage_new_holon(descriptor.clone())?;
+    let staged_reference = context.space_manager.borrow().stage_new_holon(descriptor.clone())?;
 
     // Add related holons
 

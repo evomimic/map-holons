@@ -3,7 +3,8 @@ use std::rc::Rc;
 
 use crate::context::HolonsContext;
 use crate::holon_error::HolonError;
-use crate::holon_reference::{HolonGettable, HolonReference};
+use crate::holon_readable::HolonReadable;
+use crate::holon_reference::HolonReference;
 use crate::relationship::RelationshipName;
 use derive_new::new;
 use hdk::prelude::*;

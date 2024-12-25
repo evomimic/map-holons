@@ -152,7 +152,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                 .entry()
                                 .to_app_option()
                                 .map_err(|e| wasm_error!(e))?;
-                            let original_holon_node = match original_holon_node {
+                            let _original_holon_node = match original_holon_node {
                                 Some(holon_node) => holon_node,
                                 None => {
                                     return Ok(
@@ -220,7 +220,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     }
                 };
                 match original_app_entry {
-                    EntryTypes::HolonNode(original_holon_node) => {
+                    EntryTypes::HolonNode(_original_holon_node) => {
                         validate_delete_holon_node(action)
                     }
                 }

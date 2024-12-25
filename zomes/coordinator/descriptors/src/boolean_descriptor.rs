@@ -4,6 +4,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::holon_writable::HolonWritable;
 use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::{BaseType, ValueType};
@@ -53,8 +54,7 @@ pub fn define_boolean_type(
 
     debug!("Staging... {:#?}", boolean_type.clone());
 
-    let boolean_type_ref =
-        context.space_manager.borrow().stage_new_holon(boolean_type.clone())?;
+    let boolean_type_ref = context.space_manager.borrow().stage_new_holon(boolean_type.clone())?;
 
     // Add its relationships
 

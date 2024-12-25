@@ -20,7 +20,6 @@ use holons::helpers::*;
 use holons::holon::Holon;
 use holons::holon_api::*;
 use holons::holon_error::HolonError;
-use holons::holon_reference::HolonGettable;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapBoolean, MapInteger, MapString};

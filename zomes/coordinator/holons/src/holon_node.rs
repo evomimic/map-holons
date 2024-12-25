@@ -69,9 +69,7 @@ pub fn get_all_deletes_for_holon_node(
         return Ok(None);
     };
     match details {
-        Details::Entry(_) => Err(wasm_error!(WasmErrorInner::Guest(
-            "Malformed details".into()
-        ))),
+        Details::Entry(_) => Err(wasm_error!(WasmErrorInner::Guest("Malformed details".into()))),
         Details::Record(record_details) => Ok(Some(record_details.deletes)),
     }
 }
@@ -80,7 +78,9 @@ pub fn get_all_deletes_for_holon_node(
 pub fn get_all_revisions_for_holon_node(
     original_holon_node_hash: ActionHash,
 ) -> ExternResult<Vec<Record>> {
-    let Some(original_record) = get_original_holon_node_with_details(original_holon_node_hash.clone())? else {
+    let Some(original_record) =
+        get_original_holon_node_with_details(original_holon_node_hash.clone())?
+    else {
         return Ok(vec![]);
     };
     let links = get_links(
@@ -127,7 +127,9 @@ pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record
 }
 
 #[hdk_extern]
-pub fn get_original_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
+pub fn get_original_holon_node(
+    original_holon_node_hash: ActionHash,
+) -> ExternResult<Option<Record>> {
     get(original_holon_node_hash, GetOptions::default())
 }
 
@@ -140,18 +142,12 @@ pub fn get_latest_holon_node(original_holon_node_hash: ActionHash) -> ExternResu
         )?
         .build(),
     )?;
-    let latest_link = links
-        .into_iter()
-        .max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
+    let latest_link =
+        links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
     let latest_holon_node_hash = match latest_link {
-        Some(link) => {
-            link.target
-                .clone()
-                .into_action_hash()
-                .ok_or(wasm_error!(WasmErrorInner::Guest(
-                    "No action hash associated with link".to_string()
-                )))?
-        }
+        Some(link) => link.target.clone().into_action_hash().ok_or(wasm_error!(
+            WasmErrorInner::Guest("No action hash associated with link".to_string())
+        ))?,
         None => original_holon_node_hash.clone(),
     };
     get(latest_holon_node_hash, GetOptions::default())
@@ -165,10 +161,7 @@ pub fn get_oldest_delete_for_holon_node(
         return Ok(None);
     };
     deletes.sort_by(|delete_a, delete_b| {
-        delete_a
-            .action()
-            .timestamp()
-            .cmp(&delete_b.action().timestamp())
+        delete_a.action().timestamp().cmp(&delete_b.action().timestamp())
     });
     Ok(deletes.first().cloned())
 }
@@ -182,9 +175,7 @@ pub fn get_original_holon_node_with_details(
     };
     match details {
         Details::Record(details) => Ok(Some(details.record)),
-        _ => Err(wasm_error!(WasmErrorInner::Guest(
-            "Malformed get details response".to_string()
-        ))),
+        _ => Err(wasm_error!(WasmErrorInner::Guest("Malformed get details response".to_string()))),
     }
 }
 
@@ -204,5 +195,3 @@ pub fn update_holon_node(input: UpdateHolonNodeInput) -> ExternResult<Record> {
         ))?;
     Ok(record)
 }
-
-

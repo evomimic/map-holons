@@ -14,15 +14,18 @@ pub struct StagingArea {
     index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
 }
 
-
 impl StagingArea {
     pub fn empty() -> Self {
         StagingArea { staged_holons: Vec::new(), index: BTreeMap::new() }
     }
 
     // Function to create StagingArea from the holon references and index
-    pub fn new_from_references(rc_holons:Vec<Rc<RefCell<Holon>>>, index:BTreeMap<MapString, usize>) -> Self {
-        let staged_holons: Vec<Holon> = rc_holons.iter().map(|holon_rc| holon_rc.borrow().clone()).collect();
+    pub fn new_from_references(
+        rc_holons: Vec<Rc<RefCell<Holon>>>,
+        index: BTreeMap<MapString, usize>,
+    ) -> Self {
+        let staged_holons: Vec<Holon> =
+            rc_holons.iter().map(|holon_rc| holon_rc.borrow().clone()).collect();
         StagingArea { staged_holons, index }
     }
 

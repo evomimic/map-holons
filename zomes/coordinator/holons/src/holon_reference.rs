@@ -7,7 +7,9 @@ use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::holon_readable::HolonReadable;
+use crate::holon_writable::HolonWritable;
+use crate::relationship::RelationshipName;
 use crate::smart_reference::SmartReference;
 use crate::space_manager::HolonStagingBehavior;
 use crate::staged_reference::StagedReference;
@@ -28,35 +30,7 @@ pub enum HolonReference {
     Smart(SmartReference),
 }
 
-pub trait HolonGettable {
-    fn get_property_value(
-        &self,
-        context: &HolonsContext,
-        property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError>;
-
-    /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon (NOTE: Not all holon types have defined keys.)
-    /// If the holon has a key, but it cannot be returned as a MapString, this function
-    /// returns a HolonError::UnexpectedValueType.
-    fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError>;
-
-    // fn query_relationship(&self, context: HolonsContext, relationship_name: RelationshipName, query_spec: Option<QuerySpec>-> SmartCollection;
-
-    /// In this method, &self is either a HolonReference, StagedReference, SmartReference or Holon that represents the source holon,
-    /// whose related holons are being requested. relationship_name, if provided, indicates the name of the relationship being navigated.
-    /// In the future, this parameter will be replaced with an optional reference to the RelationshipDescriptor for this relationship.
-    /// If None, then all holons related to the source holon across all of its relationships are retrieved.
-    /// This method populates the cached source holon's HolonCollection for the specified relationship if one is provided.
-    /// If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
-    fn get_related_holons(
-        &self,
-        context: &HolonsContext,
-        relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError>;
-}
-
-impl HolonGettable for HolonReference {
+impl HolonReadable for HolonReference {
     fn get_property_value(
         &self,
         context: &HolonsContext,
@@ -90,6 +64,31 @@ impl HolonGettable for HolonReference {
             }
             HolonReference::Staged(reference) => {
                 reference.get_related_holons(context, relationship_name)
+            }
+        }
+    }
+
+    fn essential_content(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
+            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
+        }
+    }
+
+    fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.is_accessible(context, access_type)
+            }
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.is_accessible(context, access_type)
             }
         }
     }
@@ -133,7 +132,7 @@ impl HolonReference {
     }
 
     pub fn smartreference_from_holon_id(holon_id: HolonId) -> HolonReference {
-            HolonReference::Smart(SmartReference::new_from_id(holon_id))
+        HolonReference::Smart(SmartReference::new_from_id(holon_id))
     }
 
     pub fn clone_reference(&self) -> HolonReference {
@@ -144,16 +143,6 @@ impl HolonReference {
             HolonReference::Staged(staged_reference) => {
                 HolonReference::Staged(staged_reference.clone_reference())
             }
-        }
-    }
-
-    pub fn essential_content(
-        &self,
-        context: &HolonsContext,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
-            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
         }
     }
 
@@ -216,34 +205,6 @@ impl HolonReference {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_predecessor(context),
             HolonReference::Staged(staged_reference) => staged_reference.get_predecessor(context),
-        }
-    }
-
-    pub fn get_relationship_map(
-        &mut self,
-        context: &HolonsContext,
-    ) -> Result<RelationshipMap, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_relationship_map(context),
-            HolonReference::Staged(staged_reference) => {
-                staged_reference.get_relationship_map(context)
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    fn is_accessible(
-        &self,
-        context: &HolonsContext,
-        access_type: AccessType,
-    ) -> Result<(), HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => {
-                smart_reference.is_accessible(context, access_type)
-            }
-            HolonReference::Staged(staged_reference) => {
-                staged_reference.is_accessible(context, access_type)
-            }
         }
     }
 

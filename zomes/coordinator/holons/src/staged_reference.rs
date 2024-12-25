@@ -8,8 +8,10 @@ use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent, Holon, HolonState};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::holon_reference::{HolonGettable, HolonReference};
-use crate::relationship::{RelationshipMap, RelationshipName};
+use crate::holon_readable::HolonReadable;
+use crate::holon_reference::HolonReference;
+use crate::holon_writable::HolonWritable;
+use crate::relationship::RelationshipName;
 use crate::space_manager::HolonStageQuery;
 use shared_types_holon::holon_node::PropertyName;
 
@@ -23,47 +25,82 @@ pub struct StagedReference {
     // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
-impl HolonGettable for StagedReference {
+
+impl StagedReference {
+    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        debug!("Entered: get_rc_holon, trying to get the space_manager");
+        let space_manager = match context.space_manager.try_borrow() {
+            Ok(space_manager) => space_manager,
+            Err(borrow_error) => {
+                error!(
+                    "Failed to borrow space_manager, it is already borrowed mutably: {:?}",
+                    borrow_error
+                );
+                return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
+            }
+        };
+
+        debug!("Space manager borrowed successfully");
+
+        // Attempt to get the holon at the specified index
+        let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?;
+        // Return a clone of the holon reference
+        Ok(rc_holon.clone())
+    }
+}
+
+impl HolonReadable for StagedReference {
     fn get_property_value(
         &self,
         context: &HolonsContext,
         property_name: &PropertyName,
     ) -> Result<PropertyValue, HolonError> {
-        let binding = context.space_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow().map_err(|e| {
-            HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
-        })?;
-        borrowedholon.get_property_value(property_name)
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.get_property_value(property_name)
     }
 
     fn get_key(&self, context: &HolonsContext) -> Result<Option<MapString>, HolonError> {
-        let binding = context.space_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow().map_err(|e| {
-            HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
-        })?;
-        borrowedholon.get_key().clone()
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.get_key().clone()
     }
 
-    // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
-    // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
     fn get_related_holons(
         &self,
         context: &HolonsContext,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let map = {
-            let mut holon_refcell = holon.borrow_mut();
-            Rc::clone(&holon_refcell.get_related_holons(relationship_name)?)
-        };
+        let rc_holon = self.get_rc_holon(context)?;
+        let mut holon = rc_holon.borrow_mut();
+        let map = Rc::clone(&holon.get_related_holons(relationship_name)?);
         Ok(map)
+    }
+
+    fn essential_content(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.essential_content()
+    }
+
+    fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow();
+        holon.is_accessible(access_type)?;
+
+        Ok(())
     }
 }
 
-impl StagedReference {
-    pub fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
+impl HolonWritable for StagedReference {
+    fn abandon_staged_changes(&mut self, context: &HolonsContext) -> Result<(), HolonError> {
         debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.holon_index);
         // Get mutable access to the source holon
         let holon_refcell = self.get_rc_holon(context)?;
@@ -78,7 +115,7 @@ impl StagedReference {
         Ok(())
     }
 
-    pub fn add_related_holons(
+    fn add_related_holons(
         &self,
         context: &HolonsContext,
         relationship_name: RelationshipName,
@@ -118,26 +155,17 @@ impl StagedReference {
         Ok(())
     }
 
-    pub fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+    fn commit(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let mut borrowed_holon = rc_holon.borrow_mut();
         borrowed_holon.commit()
     }
 
-    pub fn clone_reference(&self) -> StagedReference {
+    fn clone_reference(&self) -> StagedReference {
         StagedReference { holon_index: self.holon_index.clone() }
     }
 
-    pub fn essential_content(
-        &self,
-        context: &HolonsContext,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        borrowed_holon.essential_content()
-    }
-
-    pub fn get_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
+    fn get_id(&self, context: &HolonsContext) -> Result<HolonId, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         if borrowed_holon.state == HolonState::Saved {
@@ -147,7 +175,7 @@ impl StagedReference {
         }
     }
 
-    pub fn get_predecessor(
+    fn get_predecessor(
         &self,
         context: &HolonsContext,
     ) -> Result<Option<HolonReference>, HolonError> {
@@ -169,52 +197,7 @@ impl StagedReference {
         }
     }
 
-    fn get_rc_holon(&self, context: &HolonsContext) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        debug!("Entered: get_rc_holon, trying to get the space_manager");
-        let space_manager = match context.space_manager.try_borrow() {
-            Ok(space_manager) => space_manager,
-            Err(borrow_error) => {
-                error!(
-                    "Failed to borrow space_manager, it is already borrowed mutably: {:?}",
-                    borrow_error
-                );
-                return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
-            }
-        };
-
-        debug!("Space manager borrowed successfully");
-
-        // Attempt to get the holon at the specified index
-        let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?;
-        // Return a clone of the holon reference
-        Ok(rc_holon.clone())
-    }
-
-    pub fn get_relationship_map(
-        &self,
-        context: &HolonsContext,
-    ) -> Result<RelationshipMap, HolonError> {
-        let binding = context.space_manager.borrow();
-        let holon = binding.get_holon(&self)?;
-        let borrowedholon = holon.try_borrow().map_err(|e| {
-            HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
-        })?;
-        Ok(borrowedholon.relationship_map.clone())
-    }
-
-    pub fn is_accessible(
-        &self,
-        context: &HolonsContext,
-        access_type: AccessType,
-    ) -> Result<(), HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow();
-        holon.is_accessible(access_type)?;
-
-        Ok(())
-    }
-
-    pub fn remove_related_holons(
+    fn remove_related_holons(
         &self,
         context: &HolonsContext,
         relationship_name: &RelationshipName,
@@ -249,7 +232,7 @@ impl StagedReference {
     }
 
     /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
-    pub fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
+    fn stage_new_from_clone(&self, context: &HolonsContext) -> Result<Holon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let cloned_holon = holon.borrow().clone_holon()?;
         // cloned_holon.load_all_relationships(context)?;
@@ -257,7 +240,7 @@ impl StagedReference {
         Ok(cloned_holon)
     }
 
-    pub fn with_descriptor(
+    fn with_descriptor(
         &self,
         context: &HolonsContext,
         descriptor_reference: HolonReference,
@@ -286,7 +269,7 @@ impl StagedReference {
         }
     }
 
-    pub fn with_predecessor(
+    fn with_predecessor(
         &self,
         context: &HolonsContext,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
@@ -312,7 +295,7 @@ impl StagedReference {
         Ok(())
     }
 
-    pub fn with_property_value(
+    fn with_property_value(
         &self,
         context: &HolonsContext,
         property: PropertyName,

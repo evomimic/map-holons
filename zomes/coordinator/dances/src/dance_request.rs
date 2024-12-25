@@ -107,16 +107,17 @@ impl DanceRequest {
     // If the session is available it will creata a space manager from session otherwise a new one
     //lastly, it will initialize the HolonsContext with the space manager and return it
     pub fn init_context_from_state(&self) -> HolonsContext {
-        let staged_holons = self.get_state().get_staging_area().get_staged_rc_holons();//from_stage_to_nursery();
-        let stage_index =self.get_state().get_staging_area().get_staged_index();
+        let staged_holons = self.get_state().get_staging_area().get_staged_rc_holons(); //from_stage_to_nursery();
+        let stage_index = self.get_state().get_staging_area().get_staged_index();
         let local_space_holon = self.get_state().get_local_holon_space();
-        let space_manager = HolonSpaceManager::new_from_session(staged_holons, stage_index, local_space_holon);
+        let space_manager =
+            HolonSpaceManager::new_from_session(staged_holons, stage_index, local_space_holon);
         //let space_manager = match local_space_holon {
-         //   None  => HolonSpaceManager::new(),
-         //   Some(local_space_holon) => {
-         //       debug!("Space manager created from session state in dance request");
-          //      HolonSpaceManager::new_from_session(nursery, local_space_holon)
-          //  }
+        //   None  => HolonSpaceManager::new(),
+        //   Some(local_space_holon) => {
+        //       debug!("Space manager created from session state in dance request");
+        //      HolonSpaceManager::new_from_session(nursery, local_space_holon)
+        //  }
         //};
         HolonsContext::init_context(space_manager)
     }
