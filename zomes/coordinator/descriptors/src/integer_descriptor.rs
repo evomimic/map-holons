@@ -3,6 +3,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::holon_writable::HolonWritable;
 use holons::space_manager::HolonStagingBehavior;
 use holons::staged_reference::StagedReference;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
@@ -60,8 +61,7 @@ pub fn define_integer_type(
         )?;
 
     // Stage new holon type
-    let integer_type_ref =
-        context.space_manager.borrow().stage_new_holon(integer_type.clone())?;
+    let integer_type_ref = context.space_manager.borrow().stage_new_holon(integer_type.clone())?;
 
     // Add some relationships
 

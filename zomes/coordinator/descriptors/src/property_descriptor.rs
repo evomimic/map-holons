@@ -1,10 +1,11 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
-use holons::{context::HolonsContext, space_manager::HolonStagingBehavior};
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::holon_writable::HolonWritable;
 use holons::staged_reference::StagedReference;
+use holons::{context::HolonsContext, space_manager::HolonStagingBehavior};
 use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};

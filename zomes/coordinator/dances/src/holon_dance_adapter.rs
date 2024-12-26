@@ -20,6 +20,7 @@ use holons::context::HolonsContext;
 use holons::holon::Holon;
 use holons::holon_error::HolonError;
 use holons::holon_reference::HolonReference;
+use holons::holon_writable::HolonWritable;
 use holons::query::*;
 use holons::relationship::RelationshipName;
 use holons::smart_reference::SmartReference;
@@ -225,7 +226,6 @@ pub fn get_all_holons_dance(
         Ok(holons) => Ok(ResponseBody::Holons(holons)),
         Err(holon_error) => Err(holon_error.into()),
     }
-
 }
 
 /// Builds a DanceRequest for retrieving all holons from the persistent store
@@ -614,8 +614,7 @@ pub fn with_properties_dance(
             };
             //let staged_holon = space_manager.get_mut_holon_by_index(staged_index.clone());
             let holon = space_manager.get_holon_by_index(staged_index.clone())?;
-            let staged_holon = holon.try_borrow_mut()
-            .map_err(|e| {
+            let staged_holon = holon.try_borrow_mut().map_err(|e| {
                 HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
             });
 
@@ -691,12 +690,11 @@ pub fn abandon_staged_changes_dance(
             // Try to get a mutable reference to the staged holon referenced by its index
             let space_manager = context.space_manager.borrow();
             debug!("commit_manager borrowed_mut");
-           // let staged_holon = space_manager_mut.get_mut_holon_by_index(staged_index.clone());
-           let holon = space_manager.get_holon_by_index(staged_index.clone())?;
-           let staged_holon = holon.try_borrow_mut()
-           .map_err(|e| {
-               HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
-           });
+            // let staged_holon = space_manager_mut.get_mut_holon_by_index(staged_index.clone());
+            let holon = space_manager.get_holon_by_index(staged_index.clone())?;
+            let staged_holon = holon.try_borrow_mut().map_err(|e| {
+                HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
+            });
             //debug!("Result of borrow_mut on the staged holon  {:#?}", staged_holon.clone());
 
             match staged_holon {

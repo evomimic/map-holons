@@ -6,7 +6,7 @@ use shared_types_holon::MapString;
 
 use crate::context::HolonsContext;
 use crate::holon_error::HolonError;
-use crate::holon_reference::HolonGettable;
+use crate::holon_readable::HolonReadable;
 use crate::holon_reference::HolonReference;
 
 /// These keyed collections can be used when there is a need for a collection of Holons, which we

@@ -148,6 +148,7 @@ pub enum SchemaTypeDefinition {
     StringType(StringTypeDefinition),
 }
 
+#[allow(dead_code)]
 trait SchemaNamesTrait {
     /// This method returns unique type_name for this type
     fn derive_type_name(&self) -> MapString;

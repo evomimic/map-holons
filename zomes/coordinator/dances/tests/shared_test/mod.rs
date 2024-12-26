@@ -22,7 +22,6 @@ pub mod test_with_properties_command;
 
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
-use holons::holon_reference::HolonGettable;
 use holons::{
     context::HolonsContext, holon::Holon, holon_error::HolonError, holon_reference::HolonReference,
     relationship::RelationshipName,

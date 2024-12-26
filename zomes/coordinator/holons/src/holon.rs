@@ -353,8 +353,8 @@ impl Holon {
         }
     }
 
-    //TODO: move this static/stateless function to the Holon_service, the "get()" logic 
-    //including the GetOptions logic should only be in the holon_node module 
+    //TODO: move this static/stateless function to the Holon_service, the "get()" logic
+    //including the GetOptions logic should only be in the holon_node module
     pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
         let record = get(id.0.clone(), GetOptions::default())
             .map_err(|e| HolonError::from(e))?
@@ -732,7 +732,7 @@ impl Holon {
             key, local_id, self.state, self.validation_state
         )
     }
-    
+
     /// try_from_node inflates a Holon from a HolonNode.
     /// Since Implemented here to avoid conflicts with hdk::core's implementation of TryFrom Trait
     pub fn try_from_node(holon_node_record: Record) -> Result<Holon, HolonError> {
@@ -793,7 +793,7 @@ impl Holon {
                 property_name.0
             ))),
         }
-    } 
+    }
 
     pub fn get_description(&self) -> Result<MapString, HolonError> {
         let property_name = PropertyName(MapString("description".to_string()));
@@ -826,5 +826,5 @@ impl Holon {
             name.clone().into_base_value(),
         )?;
         Ok(self)
-    } 
+    }
 }

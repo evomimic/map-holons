@@ -66,9 +66,8 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     )?;
 
     info!("Staging Schema...");
-    let staged_schema_ref = HolonReference::Staged(
-        context.space_manager.borrow().stage_new_holon(schema.0.clone())?,
-    );
+    let staged_schema_ref =
+        HolonReference::Staged(context.space_manager.borrow().stage_new_holon(schema.0.clone())?);
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
 

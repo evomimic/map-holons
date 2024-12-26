@@ -46,7 +46,9 @@ pub fn load_core_schema_dance(
             match result {
                 Ok(commit_response) => match commit_response.status {
                     CommitRequestStatus::Complete => Ok(ResponseBody::None),
-                    CommitRequestStatus::Incomplete => Err(HolonError::CommitFailure("Incomplete commit".to_string())),
+                    CommitRequestStatus::Incomplete => {
+                        Err(HolonError::CommitFailure("Incomplete commit".to_string()))
+                    }
                 },
                 Err(e) => Err(e),
             }

@@ -12,7 +12,9 @@ use crate::context::HolonsContext;
 use crate::holon::{AccessType, EssentialHolonContent, Holon};
 use crate::holon_collection::HolonCollection;
 use crate::holon_error::HolonError;
-use crate::holon_reference::{HolonGettable, HolonReference};
+use crate::holon_readable::HolonReadable;
+use crate::holon_reference::HolonReference;
+use crate::holon_writable::HolonWritable;
 use crate::relationship::{RelationshipMap, RelationshipName};
 use crate::space_manager::{HolonCacheBehavior, HolonStagingBehavior};
 use crate::staged_reference::StagedReference;
@@ -35,15 +37,6 @@ impl SmartReference {
             holon_id: self.holon_id.clone(),
             smart_property_values: self.smart_property_values.clone(),
         }
-    }
-
-    pub fn essential_content(
-        &self,
-        context: &HolonsContext,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        borrowed_holon.essential_content()
     }
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
@@ -151,18 +144,6 @@ impl SmartReference {
     //     Ok(relationship_map)
     // }
 
-    pub fn is_accessible(
-        &self,
-        context: &HolonsContext,
-        access_type: AccessType,
-    ) -> Result<(), HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow();
-        holon.is_accessible(access_type)?;
-
-        Ok(())
-    }
-
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon version it is derived from by creating a PREDECESSOR relationship.
     pub fn stage_new_version(
         &self,
@@ -209,7 +190,7 @@ impl SmartReference {
     }
 }
 
-impl HolonGettable for SmartReference {
+impl HolonReadable for SmartReference {
     /// This function gets the value for the specified property name
     /// It will attempt to get it from the smart_property_values map first to avoid having to
     /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache manager in the context.
@@ -253,29 +234,7 @@ impl HolonGettable for SmartReference {
             Ok(key)
         };
     }
-    // pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
-    //     Ok(self
-    //         .smart_property_values
-    //         .as_ref()
-    //         .and_then(|prop_map| prop_map.get(&PropertyName(MapString("key".to_string()))))
-    //         .and_then(|prop_value| match prop_value {
-    //             BaseValue::StringValue(s) => Some(s.clone()),
-    //             _ => None,
-    //         }))
-    // }
-    // fn get_key(&self) -> Result<Option<MapString>, HolonError> {
-    //     return if let Some(smart_prop_vals) = self.smart_property_values.clone() {
-    //         let key_option = smart_prop_vals.get(&PropertyName(MapString("key".to_string())));
-    //         if let Some(key) = key_option {
-    //             Ok(Some(MapString(key.into())))
-    //         } else {
-    //             Ok(None)
-    //         }
-    //     }
-    //     Ok(None)
-    //
-    //
-    // }
+
     fn get_related_holons(
         &self,
         context: &HolonsContext,
@@ -283,8 +242,7 @@ impl HolonGettable for SmartReference {
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let map = {
-            let mut holon_refcell = holon.try_borrow_mut()
-            .map_err(|e| {
+            let mut holon_refcell = holon.try_borrow_mut().map_err(|e| {
                 HolonError::FailedToBorrow(format!("Unable to borrow holon mutably: {}", e))
             })?;
             holon_refcell.get_related_holons(relationship_name)?.clone()
@@ -292,18 +250,24 @@ impl HolonGettable for SmartReference {
         Ok(map)
     }
 
+    fn essential_content(
+        &self,
+        context: &HolonsContext,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.essential_content()
+    }
 
-    // Populates the cached source holon's HolonCollection for the specified relationship if one is provided.
-    // If relationship_name is None, the source holon's HolonCollections are populated for all relationships that have related holons.
-    // fn get_related_holons(
-    //     &self,
-    //     context: &HolonsContext,
-    //     relationship_name: Option<RelationshipName>,
-    // ) -> Result<RelationshipMap, HolonError> {
-    //     let holon = self.get_rc_holon(context)?;
-    //     let map = holon
-    //         .borrow()
-    //         .get_related_holons(context, relationship_name)?;
-    //     Ok(map)
-    // }
+    fn is_accessible(
+        &self,
+        context: &HolonsContext,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow();
+        holon.is_accessible(access_type)?;
+
+        Ok(())
+    }
 }
