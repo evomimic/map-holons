@@ -103,9 +103,6 @@ impl DanceRequest {
     }
 
     // Method to initialize the HolonsContext + HolonSpaceManger from the session state
-    // This method creates a nursery and a local space holon from the session state if available
-    // If the session is available it will creata a space manager from session otherwise a new one
-    //lastly, it will initialize the HolonsContext with the space manager and return it
     pub fn init_context_from_state(&self) -> HolonsContext {
         let staged_holons = self.get_state().get_staging_area().get_staged_rc_holons(); //from_stage_to_nursery();
         let stage_index = self.get_state().get_staging_area().get_staged_index();
