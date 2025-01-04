@@ -8,22 +8,25 @@ crate-type = ["cdylib", "rlib"]
 name = "dances"
 
 [dependencies]
-hdk = { workspace = true }
-hdi = { workspace = true }
-holochain_integrity_types = { workspace = true }
-thiserror = { workspace = true }
+
+# General Dependencies
 serde = { workspace = true }
 derive-new = { workspace = true }
 
+# Holochain Dependencies
+hdk = { workspace = true }
+hdi = { workspace = true }
+
+
+# MAP Dependencies
 shared_types_holon = { workspace = true }
 holons = { workspace = true }
-descriptors = { workspace = true }
 core_schema = { workspace = true }
+
 
 # General dev-dependencies (platform-agnostic)
 [dev-dependencies]
 async-std = { workspace = true }
-futures = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 

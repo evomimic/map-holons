@@ -1,7 +1,5 @@
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use shared_types_holon::MapString;
 
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
@@ -28,7 +26,7 @@ pub trait SchemaNamesTrait {
     /// the desired type and return a HolonReference to the staged holon.
     fn lazy_get_core_type_definition(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
         // See if definition for this type has already been loaded
@@ -48,7 +46,7 @@ pub trait SchemaNamesTrait {
     /// This method stages a type definition for this type
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError>;
 
@@ -69,7 +67,7 @@ pub trait SchemaNamesTrait {
 impl SchemaNamesTrait for CoreSchemaTypeName {
     // fn lazy_get_core_type_definition(
     //     &self,
-    //     context: &HolonsContext,
+    //     context: &dyn HolonsContextBehavior,
     //     schema: &HolonReference,
     // ) -> Result<HolonReference, HolonError> {
     //     match self {
@@ -82,7 +80,7 @@ impl SchemaNamesTrait for CoreSchemaTypeName {
 
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         use CoreSchemaTypeName::*;

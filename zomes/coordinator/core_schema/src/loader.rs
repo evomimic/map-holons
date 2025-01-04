@@ -1,44 +1,24 @@
 use hdi::prelude::debug;
 
 use hdk::prelude::info;
-use holons::commit_service::CommitResponse;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::space_manager::HolonStagingBehavior;
-use strum::IntoEnumIterator;
-// use holons::holon::Holon;
-use holons::holon_reference::HolonReference;
 
-// use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior};
+use holons::shared_objects_layer::{CommitResponse, Holon, HolonError};
 use shared_types_holon::{MapString, PropertyName};
+use strum::IntoEnumIterator;
 
-use descriptors::descriptor_types::{CoreSchemaName, Schema};
-use holons::holon::Holon;
-// use holons::holon_api::get_all_holons;
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
-use holons::json_adapter::as_json;
-// use descriptors::holon_descriptor::{define_holon_type};
-//use descriptors::meta_type_loader::load_core_meta_types;
-// use descriptors::type_descriptor::TypeDescriptorDefinition;
-// use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
 use crate::enum_type_loader::CoreEnumTypeName;
-// use crate::integer_value_type_loader::CoreIntegerValueTypeName;
-// use crate::string_value_type_loader::CoreStringValueTypeName;
-// use crate::enum_type_loader::CoreEnumTypeName;
-// use crate::holon_type_loader::CoreHolonTypeName;
-// use crate::holon_type_loader::CoreHolonTypeName::HolonType;
+use descriptors::descriptor_types::{CoreSchemaName, Schema};
+use holons::utils::json_adapter::as_json;
+
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::meta_type_loader::CoreMetaTypeName;
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
 use crate::value_type_loader::CoreValueTypeName;
-// use crate::meta_type_loader::CoreMetaTypeName;
-// use crate::meta_type_loader::CoreMetaTypeName::{MetaBooleanType, MetaEnumType, MetaEnumVariantType, MetaHolonCollectionType, MetaHolonType, MetaIntegerType, MetaPropertyType, MetaRelationshipType, MetaStringType, MetaType, MetaValueArrayType};
-// use crate::value_type_loader::CoreValueTypeName;
-
-//use descriptors::value_type_loader::load_core_value_types;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
 /// MAP L0 Schema Descriptors defined in `CoreSchemaNames`
@@ -50,7 +30,7 @@ use crate::value_type_loader::CoreValueTypeName;
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, HolonError> {
+pub fn load_core_schema(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
     info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
@@ -67,7 +47,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("Staging Schema...");
     let staged_schema_ref =
-        HolonReference::Staged(context.space_manager.borrow().stage_new_holon(schema.0.clone())?);
+        HolonReference::Staged(context.get_space_manager().stage_new_holon(schema.0.clone())?);
 
     context.add_reference_to_dance_state(staged_schema_ref.clone())?;
 
@@ -93,7 +73,7 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("^^^^^^^ STAGING COMPLETE: Committing schema...");
 
-    let response = context.space_manager.borrow().commit(context)?;
+    let response = context.get_space_manager().commit(context)?;
 
     let r = response.clone();
 

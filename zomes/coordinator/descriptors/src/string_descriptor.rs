@@ -1,17 +1,13 @@
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
-use shared_types_holon::PropertyName;
-use CoreSchemaPropertyTypeName::TypeName;
-
 use crate::descriptor_types::CoreSchemaPropertyTypeName::{MaxLength, MinLength};
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use holons::reference_layer::{
+    HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
+use holons::shared_objects_layer::{Holon, HolonError};
+use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
+use shared_types_holon::PropertyName;
+use CoreSchemaPropertyTypeName::TypeName;
 
 pub struct StringTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -33,7 +29,7 @@ pub struct StringTypeDefinition {
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
 ///
 pub fn define_string_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: StringTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -68,7 +64,7 @@ pub fn define_string_type(
         )?;
 
     // Stage new string type
-    let string_type_ref = context.space_manager.borrow().stage_new_holon(string_type.clone())?;
+    let string_type_ref = context.get_space_manager().stage_new_holon(string_type.clone())?;
 
     // Add some relationships
     string_type_ref.add_related_holons(

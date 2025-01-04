@@ -1,12 +1,3 @@
-// use holons::context::HolonsContext;
-// use holons::holon::Holon;
-// use holons::holon_error::HolonError;
-// use holons::holon_reference::HolonReference;
-// use holons::relationship::RelationshipName;
-// use holons::staged_reference::StagedReference;
-// use shared_types_holon::{BaseType, MapBoolean, MapInteger, MapString, ValueType};
-// use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-// use crate::descriptor_types::{CoreSchemaName, DeletionSemantic};
 use crate::property_descriptor::PropertyTypeDefinition;
 use crate::relationship_descriptor::RelationshipTypeDefinition;
 use crate::type_descriptor::TypeDescriptorDefinition;
@@ -20,7 +11,7 @@ pub struct MetaTypeDefinition {
 // /// This function defines the MetaTypeDescriptor that specifies the properties and relationships
 // /// shared by all TypeDescriptors
 // pub fn define_meta_type(
-//     context: &HolonsContext,
+//     context: &dyn HolonsContextBehavior,
 //     schema: &HolonReference,
 //     definition: MetaTypeDefinition,
 // ) -> Result<StagedReference, HolonError> {

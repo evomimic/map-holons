@@ -4,36 +4,20 @@
 use crate::tracing::{error, info, warn};
 use core::panic;
 //use holochain::core::author_key_is_valid;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_collection::{CollectionState, HolonCollection};
-use holons::holon_reference::HolonReference;
-use holons::query::QueryExpression;
-use holons::smart_reference::SmartReference;
-use holons::staged_reference::StagedReference;
+
+use holons::query_layer::query::QueryExpression;
+
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
-use dances::dance_response::ResponseStatusCode;
-use holons::context::HolonsContext;
-
 use crate::shared_test::test_data_types::DancesTestCase;
+use dances::dance_response::ResponseStatusCode;
+use holons::reference_layer::HolonReference::Staged;
+use holons::reference_layer::{HolonReference, StagedReference};
+use holons::shared_objects_layer::{Holon, HolonCollection, HolonError, RelationshipName};
 
-// use hdk::prelude::*;
-
-// use crate::shared_test::fixture_helpers::{derive_label, derive_type_description, derive_type_name};
-// use crate::shared_test::property_descriptor_data_creators::{
-//     create_example_property_descriptors, create_example_updates_for_property_descriptors,
-// };
-
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference::Staged;
-use holons::relationship::RelationshipName;
-
-// use crate::shared_test::book_authors_setup_fixture::setup_book_author_steps;
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };

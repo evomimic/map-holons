@@ -1,10 +1,14 @@
 use hdk::prelude::*;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
 // use serde::Serialize;
 
-use hdi::hdk_entry_helper;
-// use holons::helpers::summarize_holons;
 use crate::staging_area::StagingArea;
-use holons::holon_reference::HolonReference;
+use hdi::hdk_entry_helper;
+use holons::reference_layer::HolonReference;
+use holons::shared_objects_layer::Holon;
+use shared_types_holon::MapString;
 
 /// SessionState provides a way to distinguish information associated with a specific request from
 /// state info that is just being maintained via the ping pong process. This also should make it
@@ -24,15 +28,29 @@ impl SessionState {
     pub fn new(staging_area: StagingArea, local_holon_space: Option<HolonReference>) -> Self {
         Self { staging_area, local_holon_space }
     }
-    pub fn get_local_holon_space(&self) -> Option<HolonReference> {
+    /// Extracts staged holons from the staging area as `Rc<RefCell<Holon>>`.
+    pub fn extract_staged_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+        self.staging_area.get_staged_rc_holons()
+    }
+
+    /// Extracts the keyed index from the staging area.
+    pub fn extract_keyed_index(&self) -> BTreeMap<MapString, usize> {
+        self.staging_area.get_staged_index()
+    }
+
+    /// Retrieves the local holon space.
+    pub fn extract_local_holon_space(&self) -> Option<HolonReference> {
         self.local_holon_space.clone()
     }
-    pub fn get_staging_area(&self) -> &StagingArea {
-        &self.staging_area
-    }
-    pub fn get_staging_area_mut(&mut self) -> &mut StagingArea {
-        &mut self.staging_area
-    }
+    // pub fn get_local_holon_space(&self) -> Option<HolonReference> {
+    //     self.local_holon_space.clone()
+    // }
+    // pub fn get_staging_area(&self) -> &StagingArea {
+    //     &self.staging_area
+    // }
+    // pub fn get_staging_area_mut(&mut self) -> &mut StagingArea {
+    //     &mut self.staging_area
+    // }
 
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {
         self.local_holon_space = local_holon_space;

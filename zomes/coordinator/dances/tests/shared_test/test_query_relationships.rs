@@ -11,16 +11,14 @@ use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::smart_reference::SmartReference;
+
 use rstest::*;
 
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
-use holons::query::{Node, NodeCollection, QueryExpression};
+
+use holons::query_layer::query::{Node, NodeCollection, QueryExpression};
+use holons::reference_layer::{HolonReference, SmartReference};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};

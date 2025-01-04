@@ -10,16 +10,13 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::context::HolonsContext;
-use holons::staged_reference::StagedIndex;
-use rstest::*;
 
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
+use holons::reference_layer::staged_reference::StagedIndex;
+use holons::reference_layer::StagedReference;
+use holons::shared_objects_layer::HolonError;
+use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapBoolean, MapInteger, MapString};
@@ -36,12 +33,14 @@ pub async fn execute_abandon_staged_changes(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
-    staged_index: StagedIndex,
+    staged_reference: StagedReference,
     expected_response: ResponseStatusCode,
 ) {
     info!("\n\n--- TEST STEP: Abandon Staged Changes ---");
-    let request =
-        build_abandon_staged_changes_dance_request(&test_state.session_state, staged_index.clone());
+    let request = build_abandon_staged_changes_dance_request(
+        &test_state.session_state,
+        staged_reference.clone(),
+    );
 
     info!("Dance Request: {:#?}", request);
 
@@ -59,7 +58,7 @@ pub async fn execute_abandon_staged_changes(
                 ResponseStatusCode::OK => {
                     // Dance response was OK, confirm that operations disallowed for Holons in an
                     // Abandoned state return NotAccessible error.
-                    if let ResponseBody::Index(staged_index) = response.body.clone() {
+                    if let ResponseBody::StagedReference(staged_index) = response.body.clone() {
                         match test_state
                             .session_state
                             .get_staging_area_mut()

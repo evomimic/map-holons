@@ -4,10 +4,8 @@ use strum_macros::EnumIter;
 use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use shared_types_holon::{MapBoolean, MapString};
 // use crate::holon_type_loader::CoreHolonTypeName::{DanceRequestType, DanceResponseType, HolonSpaceType, HolonType, PropertyType, RelationshipType, SchemaType};
 use crate::property_type_loader::CorePropertyTypeName;
@@ -47,7 +45,7 @@ pub struct HolonTypeLoader {
 impl SchemaNamesTrait for CoreHolonTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -266,7 +264,7 @@ impl CoreHolonTypeName {
 /// This function handles the aspects of staging a new holon type definition that are common
 /// to all holon types. It assumes the type-specific parameters have been set by the caller.
 pub fn load_holon_type_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: HolonTypeLoader,
 ) -> Result<StagedReference, HolonError> {

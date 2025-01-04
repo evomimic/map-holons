@@ -1,7 +1,5 @@
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use shared_types_holon::MapString;
 use strum_macros::EnumIter;
 
@@ -37,7 +35,7 @@ pub enum CoreMetaTypeName {
 impl SchemaNamesTrait for CoreMetaTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -279,7 +277,7 @@ impl CoreMetaTypeName {
 // /// This function handles the aspects of staging a new holon type definition that are common
 // /// to all holon types. It assumes the type-specific parameters have been set by the caller.
 // fn load_meta_type_definition(
-//     context: &HolonsContext,
+//     context: &dyn HolonsContextBehavior,
 //     schema: &HolonReference,
 //     loader: HolonTypeLoader,
 // ) -> Result<StagedReference, HolonError> {

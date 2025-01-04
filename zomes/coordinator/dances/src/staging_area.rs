@@ -1,7 +1,7 @@
 use hdk::prelude::*;
-use holons::helpers::summarize_holons;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
+
+use holons::shared_objects_layer::summarize_holons;
+use holons::shared_objects_layer::{Holon, HolonError};
 use shared_types_holon::MapString;
 use std::cell::RefCell;
 use std::collections::BTreeMap;

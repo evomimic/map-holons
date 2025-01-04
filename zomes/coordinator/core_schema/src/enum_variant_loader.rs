@@ -2,10 +2,8 @@ use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::enum_variant_descriptor::{define_enum_variant_type, EnumVariantTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
 use strum_macros::EnumIter;
 // use crate::enum_variant_loader;
@@ -49,7 +47,7 @@ pub struct EnumVariantLoader {
 impl SchemaNamesTrait for CoreEnumVariantTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -255,7 +253,7 @@ impl CoreEnumVariantTypeName {
 /// This function handles the aspects of staging a new enum variant type definition that are common
 /// to all enum variant types. It assumes the type-specific parameters have been set by the caller.
 fn load_enum_variant_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: EnumVariantLoader,
 ) -> Result<StagedReference, HolonError> {

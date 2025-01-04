@@ -1,21 +1,16 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
-use crate::descriptor_types::CoreSchemaPropertyTypeName;
 use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
+use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use crate::semantic_version::SemanticVersion;
 use hdk::prelude::{debug, info};
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::relationship::RelationshipName;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{
+    HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
+use holons::shared_objects_layer::{Holon, HolonError};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
 use CoreSchemaPropertyTypeName::*;
-
-use crate::semantic_version::SemanticVersion;
 
 #[derive(Debug, Clone)]
 pub struct TypeDescriptorDefinition {
@@ -48,7 +43,7 @@ pub struct TypeDescriptorDefinition {
 ///
 ///
 pub fn define_type_descriptor(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference, // Type-COMPONENT_OF->Schema
     base_type: BaseType,
     definition: TypeDescriptorDefinition,
@@ -97,13 +92,13 @@ pub fn define_type_descriptor(
 
     debug!("{:#?}", descriptor.clone());
 
-    let staged_reference = context.space_manager.borrow().stage_new_holon(descriptor.clone())?;
+    let staged_reference = context.get_space_manager().stage_new_holon(descriptor.clone())?;
 
     // Add related holons
 
     staged_reference.add_related_holons(
         context,
-        RelationshipName(MapString("COMPONENT_OF".to_string())),
+        CoreSchemaRelationshipTypeName::ComponentOf.as_rel_name(),
         vec![schema.clone()],
     )?;
 
@@ -117,7 +112,7 @@ pub fn define_type_descriptor(
     if let Some(is_subtype_of_ref) = definition.is_subtype_of {
         staged_reference.add_related_holons(
             context,
-            RelationshipName(MapString("IS_SUBTYPE_OF".to_string())),
+            CoreSchemaRelationshipTypeName::IsA.as_rel_name(),
             vec![is_subtype_of_ref],
         )?
     };

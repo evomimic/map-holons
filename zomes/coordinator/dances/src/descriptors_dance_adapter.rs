@@ -19,9 +19,8 @@ use crate::dance_response::ResponseBody;
 use crate::session_state::SessionState;
 use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
-use holons::commit_service::CommitRequestStatus;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
+use holons::reference_layer::HolonsContextBehavior;
+use holons::shared_objects_layer::{CommitRequestStatus, HolonError};
 use shared_types_holon::MapString;
 
 /// *DanceRequest:*
@@ -33,7 +32,7 @@ use shared_types_holon::MapString;
 /// - Holon -- the created Schema Holon
 ///
 pub fn load_core_schema_dance(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     debug!("Entered load_core_schema_dance");

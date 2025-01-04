@@ -1,11 +1,9 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::staged_reference::StagedReference;
-use holons::{context::HolonsContext, space_manager::HolonStagingBehavior};
+use holons::reference_layer::{
+    HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
+use holons::shared_objects_layer::{Holon, HolonError};
 use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
@@ -31,7 +29,7 @@ pub struct PropertyTypeDefinition {
 ///
 ///
 pub fn define_property_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: PropertyTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -57,8 +55,7 @@ pub fn define_property_type(
 
     debug!("Staging... {:#?}", property_type.clone());
 
-    let property_type_ref =
-        context.space_manager.borrow().stage_new_holon(property_type.clone())?;
+    let property_type_ref = context.get_space_manager().stage_new_holon(property_type.clone())?;
 
     // Populate the relationships
 

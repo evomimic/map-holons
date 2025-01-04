@@ -7,10 +7,8 @@ use crate::value_type_loader::CoreValueTypeName::*;
 use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
@@ -65,7 +63,7 @@ pub struct PropertyTypeLoader {
 impl SchemaNamesTrait for CorePropertyTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -189,7 +187,7 @@ impl CorePropertyTypeName {
 /// This function handles the aspects of staging a new property type definition that are common
 /// to all property types. It assumes the type-specific parameters have been set by the caller.
 fn load_property_type_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: PropertyTypeLoader,
 ) -> Result<StagedReference, HolonError> {

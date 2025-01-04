@@ -1,11 +1,9 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
+
+use holons::reference_layer::{
+    HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
+use holons::shared_objects_layer::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
 
@@ -24,7 +22,7 @@ pub struct IntegerTypeDefinition {
 /// be used to narrow the range of legal values for this type. Agent-defined types can be the
 /// `ValueType` for a MapProperty.
 pub fn define_integer_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: IntegerTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -61,7 +59,7 @@ pub fn define_integer_type(
         )?;
 
     // Stage new holon type
-    let integer_type_ref = context.space_manager.borrow().stage_new_holon(integer_type.clone())?;
+    let integer_type_ref = context.get_space_manager().stage_new_holon(integer_type.clone())?;
 
     // Add some relationships
 

@@ -1,12 +1,9 @@
 //use std::env::var;
 use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{
+    HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
+use holons::shared_objects_layer::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
 
@@ -34,7 +31,7 @@ pub struct EnumVariantTypeDefinition {
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
 
 pub fn define_enum_variant_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: EnumVariantTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -71,7 +68,7 @@ pub fn define_enum_variant_type(
     debug!("Staging... {:#?}", enum_variant_type.clone());
 
     let enum_variant_type_ref =
-        context.space_manager.borrow().stage_new_holon(enum_variant_type.clone())?;
+        context.get_space_manager().stage_new_holon(enum_variant_type.clone())?;
 
     // Add some relationships
 

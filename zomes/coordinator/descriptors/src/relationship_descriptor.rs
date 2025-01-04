@@ -1,12 +1,11 @@
 use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::relationship::RelationshipName;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
+
+use holons::reference_layer::{
+    HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
+
+use holons::shared_objects_layer::{Holon, HolonError, RelationshipName};
+
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
 use shared_types_holon::{BaseType, PropertyName};
 
@@ -53,7 +52,7 @@ pub struct RelationshipTypeDefinition {
 ///
 ///
 pub fn define_relationship_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: RelationshipTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -109,7 +108,7 @@ pub fn define_relationship_type(
 
     // Stage new holon type
     let relationship_type_ref =
-        context.space_manager.borrow().stage_new_holon(relationship_type.clone())?;
+        context.get_space_manager().stage_new_holon(relationship_type.clone())?;
 
     // Add its relationships
 

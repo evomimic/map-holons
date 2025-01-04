@@ -1,24 +1,19 @@
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
 use dances::dance_response::ResponseBody;
-use dances::dance_response::{DanceResponse, ResponseBody::Index, ResponseStatusCode};
+use dances::dance_response::{DanceResponse, ResponseBody::StagedReference, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_commit_dance_request, build_stage_new_version_dance_request,
 };
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::holon::{self, Holon};
-use holons::holon_collection::HolonCollection;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-use holons::smart_reference::SmartReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, SmartReference};
+use holons::shared_objects_layer::{HolonCollection, RelationshipName};
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyName};
 use std::collections::BTreeMap;
-
-use crate::shared_test::test_data_types::{
-    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-};
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -56,7 +51,7 @@ pub async fn execute_stage_new_version(
             let description = response.description.clone();
 
             if let ResponseStatusCode::OK = code {
-                if let Index(index) = response.body {
+                if let StagedReference(index) = response.body {
                     let index_value = index.to_string();
                     debug!("{index_value} returned in body");
                     // An index was returned in the body, retrieve the Holon at that index within

@@ -1,8 +1,6 @@
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 
-use inflector::Inflector;
-
 use crate::boolean_descriptor::BooleanTypeDefinition;
 use crate::collection_descriptor::CollectionTypeDefinition;
 use crate::enum_descriptor::EnumTypeDefinition;
@@ -13,10 +11,9 @@ use crate::property_descriptor::PropertyTypeDefinition;
 use crate::relationship_descriptor::RelationshipTypeDefinition;
 use crate::semantic_version::SemanticVersion;
 use crate::string_descriptor::StringTypeDefinition;
-use holons::holon::Holon;
-use holons::holon_collection::HolonCollection;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
+use holons::reference_layer::HolonReference;
+use holons::shared_objects_layer::{Holon, HolonCollection, RelationshipName};
+use inflector::Inflector;
 use shared_types_holon::value_types::{MapEnumValue, MapString};
 use shared_types_holon::{BaseType, MapBoolean, MapInteger, PropertyName};
 
@@ -424,8 +421,10 @@ pub enum CoreSchemaRelationshipTypeName {
     DescriptorRelationships,
     ForCollectionType,
     HasInverse,
+    HasSubtype,
     InverseOf,
     Instances,
+    IsA,
     KeyProperties,
     KeyPropertyOf,
     OwnedBy,
@@ -458,8 +457,10 @@ impl CoreSchemaRelationshipTypeName {
             DescriptorRelationships => "DESCRIPTOR_RELATIONSHIPS",
             ForCollectionType => "FOR_COLLECTION_TYPE",
             HasInverse => "HAS_INVERSE",
+            HasSubtype => "HAS_SUBTYPE",
             InverseOf => "INVERSE_OF",
             Instances => "INSTANCES",
+            IsA => "IS_A",
             KeyProperties => "KEY_PROPERTIES",
             KeyPropertyOf => "KEY_PROPERTY_OF",
             OwnedBy => "OwnedBy",

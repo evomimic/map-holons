@@ -22,10 +22,6 @@ pub mod test_with_properties_command;
 
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
-use holons::{
-    context::HolonsContext, holon::Holon, holon_error::HolonError, holon_reference::HolonReference,
-    relationship::RelationshipName,
-};
 use shared_types_holon::{HolonId, MapString};
 use test_data_types::DanceTestState;
 
@@ -56,7 +52,7 @@ pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
     (conductor, agent, cell)
 }
 // pub fn get_holon_by_key_from_test_state(
-//     _context: &HolonsContext,
+//     _context: &dyn HolonsContextBehavior,
 //     source_key: MapString,
 //     test_state: &mut DanceTestState,
 // ) -> Result<Option<HolonId>, HolonError> {

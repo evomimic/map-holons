@@ -3,10 +3,8 @@ use descriptors::collection_descriptor::CollectionSemantic;
 use descriptors::collection_descriptor::{define_collection_type, CollectionTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
 // use crate::core_schema_types::CoreSchemaTypeName::HolonType;
 use crate::holon_type_loader::CoreHolonTypeName;
@@ -36,7 +34,7 @@ struct CollectionTypeLoader {
 impl SchemaNamesTrait for CollectionTypeSpec {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -180,7 +178,7 @@ impl CollectionTypeSpec {
 
 /// This function stages a new collection type definition and adds a reference to it to the dance_state
 fn load_collection_type_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: CollectionTypeLoader,
 ) -> Result<StagedReference, HolonError> {

@@ -11,14 +11,9 @@ use descriptors::collection_descriptor::CollectionSemantic;
 use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::{HolonError, RelationshipName};
 use shared_types_holon::{MapBoolean, MapString};
-// use crate::relationship_type_loader::CoreRelationshipTypeName::{Components, DescribedBy, HasSubtype, IsA, OwnedBy, Owns, Predecessor};
-// use crate::string_value_type_loader::CoreStringValueTypeName::RelationshipNameType;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreRelationshipTypeName {
@@ -69,7 +64,7 @@ pub struct RelationshipTypeLoader {
 impl SchemaNamesTrait for CoreRelationshipTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -603,7 +598,7 @@ impl CoreRelationshipTypeName {
 /// This function handles the aspects of staging a new relationship type definition that are common
 /// to all relationship types. It assumes the type-specific parameters have been set in the loader.
 pub fn load_relationship_type_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: RelationshipTypeLoader,
 ) -> Result<StagedReference, HolonError> {

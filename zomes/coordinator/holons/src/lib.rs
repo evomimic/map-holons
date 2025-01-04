@@ -1,29 +1,11 @@
-pub mod all_holon_nodes;
-//pub mod cache_manager;
-//pub mod commit_manager;
-pub mod commit_service;
-pub mod context;
-pub mod helpers;
-pub mod holon;
-pub mod holon_api;
-pub mod holon_collection;
-pub mod holon_error;
-pub mod holon_node;
-pub mod holon_readable;
-pub mod holon_reference;
-pub mod holon_service;
-pub mod holon_writable;
-pub mod json_adapter;
-pub mod nursery;
-pub mod property_map;
-pub mod query;
-pub mod query_manager;
-pub mod relationship;
-pub mod smart_reference;
-pub mod smartlink;
-pub mod space_manager;
-pub mod staged_reference;
-pub mod transient_collection;
+// Top-level modules exposed to external consumers
+pub mod persistence_layer;
+pub mod query_layer;
+pub mod reference_layer;
+pub mod shared_objects_layer;
+
+// Utility modules (if needed outside the crate)
+pub mod utils;
 
 use hdk::prelude::*;
 use holons_integrity::*;

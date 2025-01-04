@@ -1,7 +1,5 @@
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons::shared_objects_layer::HolonError;
 use shared_types_holon::MapString;
 
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
@@ -13,7 +11,7 @@ use crate::string_value_type_loader::CoreStringValueTypeName;
 // This file defines and stages (but does not commit) type definitions for all the MAP Core
 // ValueTypes.
 // pub fn load_core_value_type(
-//     context: &HolonsContext,
+//     context: &dyn HolonsContextBehavior,
 //     schema: &HolonReference,
 //     value_type: CoreValueTypeName,
 // ) -> Result<StagedReference, HolonError> {
@@ -45,7 +43,7 @@ pub enum CoreValueTypeName {
 impl SchemaNamesTrait for CoreValueTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         match self {

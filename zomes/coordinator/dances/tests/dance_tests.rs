@@ -47,23 +47,18 @@ use self::test_stage_new_holon::execute_stage_new_holon;
 use self::test_with_properties_command::execute_with_properties;
 use crate::dance_fixtures::*;
 use crate::descriptor_dance_fixtures::*;
-use crate::stage_new_from_clone_fixture::*;
-use crate::stage_new_version_fixture::*;
-use dances::staging_area::StagingArea;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
-
 use crate::shared_test::test_data_types::{
     DanceTestState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
 };
 use crate::shared_test::test_print_database::execute_database_print;
+use crate::stage_new_from_clone_fixture::*;
+use crate::stage_new_version_fixture::*;
+use dances::staging_area::StagingArea;
+use holons::shared_objects_layer::HolonError;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::HolonId;
-//use crate::shared_test::ensure_database_count::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
 /// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.

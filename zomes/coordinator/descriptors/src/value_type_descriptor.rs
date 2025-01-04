@@ -1,12 +1,12 @@
 use crate::descriptor_types::CoreValueTypeName;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
+use holons::reference_layer::{HolonReference, HolonsContextBehavior};
+use holons::shared_objects_layer::HolonError;
+
 use shared_types_holon::MapString;
 
 // TODO: Enhance to do a get from cache if not in dance_state
 pub fn get_core_value_type_descriptor_reference(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     value_type: CoreValueTypeName,
 ) -> Result<HolonReference, HolonError> {
     let key = MapString(value_type.as_str().to_string());
@@ -20,7 +20,7 @@ pub fn get_core_value_type_descriptor_reference(
 
 /*
 pub fn define_value_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     descriptor_name: MapString,
     type_name: MapString,

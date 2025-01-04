@@ -1,14 +1,13 @@
 use derive_new::new;
-use holons::staged_reference::StagedIndex;
+
 use std::fmt;
 
 use crate::session_state::SessionState;
 use hdk::prelude::*;
-use holons::helpers::summarize_holons;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::query::NodeCollection;
+
+use holons::query_layer::query::NodeCollection;
+use holons::reference_layer::{HolonReference, StagedReference};
+use holons::shared_objects_layer::{summarize_holons, Holon, HolonError};
 use shared_types_holon::MapString;
 
 #[hdk_entry_helper]
@@ -49,7 +48,7 @@ pub enum ResponseBody {
     Holon(Holon),
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
     // SmartCollection(SmartCollection),
-    Index(StagedIndex),
+    StagedReference(StagedReference),
     HolonReference(HolonReference),
     Collection(NodeCollection),
 }
@@ -60,6 +59,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
+            HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
@@ -112,8 +112,8 @@ impl DanceResponse {
     }
 
     //moved to the dancer
-    /*pub fn restore_state(&mut self, context: &HolonsContext) {
-        let space_manager = &context.space_manager.borrow();
+    /*pub fn restore_state(&mut self, context: &dyn HolonsContextBehavior) {
+        let space_manager = &context.get_space_manager();
         let staged_holons = space_manager.get_holon_stage();
         let staged_index = space_manager.get_stage_key_index();
         let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
