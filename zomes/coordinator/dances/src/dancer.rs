@@ -109,14 +109,18 @@ type DanceFunction = fn(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError>;
 
-// Define a struct to manage the dispatch table and offer the Dancer behaviors including the external
-// API operations of dance and (eventually) undo / redo (see [Command Pattern Wiki]
-// (https://en.wikipedia.org/wiki/Command_pattern) or [Implementing Undo/Redo with the Command Pattern video]
-// (https://m.youtube.com/watch?v=FM71_a3txTo)). This means that each offered agent action will be implemented with its own **Command object**. These Command objects will implement the `UndoableCommand` Trait. This trait defines: `execute`, `undo` and `redo` functions. Additionally, an `ActionsController` is responsible for executing commands, maintaining the undo and redo stacks, and orchestrating undo and redo operations.
-// * **Asynch vs Synch Commands** -- Commands will support either or both _Asynchronous execution_ (non-blocking), _Synchronous execution_ (blocking).
-// * Command Response and Results objects --
-//
-// ## Commands
+/// The dipatch table offers the Dancer behaviors including the external API operations of dance and
+/// (eventually) undo / redo (see [Command Pattern Wiki](https://en.wikipedia.org/wiki/Command_pattern)
+/// or [Implementing Undo/Redo with the Command Pattern video](https://m.youtube.com/watch?v=FM71_a3txTo)).
+/// This means that each offered agent action will be
+/// implemented with its own **Command object**. These Command objects will implement the
+/// `UndoableCommand` Trait. This trait defines: `execute`, `undo` and `redo` functions.
+/// Additionally, an `ActionsController` is responsible for executing commands, maintaining the undo
+/// and redo stacks, and orchestrating undo and redo operations.
+/// * **Asynch vs Synch Commands** -- Commands will support either or both _Asynchronous execution_
+/// (non-blocking), _Synchronous execution_ (blocking).
+///
+
 #[derive(Debug)]
 struct Dancer {
     pub dispatch_table: HashMap<&'static str, DanceFunction>,
@@ -197,9 +201,7 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
 /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
 /// between client and guest.
 /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
-pub fn restore_session_state_from_space_manager(
-    context: &dyn HolonsContextBehavior,
-) -> SessionState {
+fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
     let space_manager = &context.get_space_manager();
     let staged_holons = space_manager.export_staged_holons();
     let staged_index = space_manager.export_keyed_index();

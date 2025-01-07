@@ -2,4 +2,4 @@ mod api;
 mod implementation;
 
 pub use api::*;
-pub use implementation::ConcreteHolonsContextFactory;
+pub use implementation::HolonsContextFactory;

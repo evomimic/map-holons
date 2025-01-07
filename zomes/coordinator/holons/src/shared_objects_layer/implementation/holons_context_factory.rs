@@ -1,5 +1,5 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
-use crate::shared_objects_layer::api::HolonsContextFactory;
+// use crate::shared_objects_layer::api::HolonsContextFactory;
 use crate::shared_objects_layer::implementation::context::HolonsContext;
 use crate::shared_objects_layer::{Holon, HolonError};
 use shared_types_holon::MapString;
@@ -8,17 +8,23 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 /// A concrete implementation of the `HolonsContextFactory` trait.
-pub struct ConcreteHolonsContextFactory;
+pub struct HolonsContextFactory;
 
-impl ConcreteHolonsContextFactory {
+impl HolonsContextFactory {
     /// Creates a new `ConcreteHolonsContextFactory` instance.
     pub fn new() -> Self {
         Self
     }
 }
 
-impl HolonsContextFactory for ConcreteHolonsContextFactory {
-    /// Initializes a `HolonsContext` from session state information.
+impl HolonsContextFactory {
+    /// Initializes a new HolonsContext based on the provided session data and ensures the
+    /// space manager includes:
+    /// - an initialized Nursery containing the staged holons and index provided,
+    /// - an initialized local cache,
+    /// - a local_holon_reference to the HolonSpace holon for this space. This may require
+    /// retrieving the holon from the persistent store or creating it if it hasn't already been
+    /// created.
     ///
     /// # Arguments
     /// * `staged_holons` - A vector of staged holons wrapped in `Rc<RefCell>`.
@@ -27,7 +33,7 @@ impl HolonsContextFactory for ConcreteHolonsContextFactory {
     ///
     /// # Returns
     /// A `Result` containing the initialized `HolonsContext` as a `Box<dyn HolonsContextBehavior>` or an error.
-    fn init_context_from_session(
+    pub fn init_context_from_session(
         &self,
         staged_holons: Vec<Rc<RefCell<Holon>>>,
         keyed_index: BTreeMap<MapString, usize>,

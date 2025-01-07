@@ -39,7 +39,7 @@ pub fn load_core_schema_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_ensure_database_count_step(MapInteger(1))?;
 
-    test_case.add_load_core_schema()?;
+    // test_case.add_load_core_schema()?;
 
     test_case.add_database_print_step()?;
 

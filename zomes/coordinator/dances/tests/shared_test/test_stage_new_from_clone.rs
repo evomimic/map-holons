@@ -8,7 +8,7 @@ use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keys
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use holons::reference_layer::HolonReference;
+use holons::reference_layer::{HolonReference, SmartReference};
 use holons::shared_objects_layer::RelationshipName;
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
@@ -32,12 +32,8 @@ pub async fn execute_stage_new_from_clone(
     let _predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
 
     let original_holon_data: TestHolonData = match original_holon {
-        TestReference::StagedHolon(index) => {
-            let holon_reference = HolonReference::Staged(StagedReference::new(index));
-            let staging_area = test_state.session_state.get_staging_area();
-            let staged_holons = staging_area.get_staged_holons();
-            let staged_holon = staged_holons.get(index).unwrap();
-            // let staged_holon = test_state.staging_area.get_holon(index).unwrap();
+        TestReference::StagedHolon(staged_reference) => {
+            let holon_reference = HolonReference::Staged(staged_reference);
             TestHolonData::new(staged_holon.clone(), holon_reference)
         }
         TestReference::SavedHolon(key) => {

@@ -36,7 +36,7 @@ pub enum RequestBody {
     TargetHolons(RelationshipName, Vec<HolonReference>),
     HolonId(HolonId),
     ParameterValues(PropertyMap),
-    StagedReference(StagedReference),
+    StagedRef(StagedReference),
     QueryExpression(QueryExpression),
 }
 
@@ -61,7 +61,7 @@ impl RequestBody {
     }
 
     pub fn new_staged_reference(staged_reference: StagedReference) -> Self {
-        Self::StagedReference(staged_reference)
+        Self::StagedRef(staged_reference)
     }
 
     pub fn new_query_expression(query_expression: QueryExpression) -> Self {

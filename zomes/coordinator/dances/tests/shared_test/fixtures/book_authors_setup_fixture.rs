@@ -147,7 +147,7 @@ pub fn setup_book_author_steps(
     holons_to_add.push(person_2_reference);
 
     test_case.add_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         relationship_name.clone(),
         holons_to_add.to_vec(),
         ResponseStatusCode::OK,

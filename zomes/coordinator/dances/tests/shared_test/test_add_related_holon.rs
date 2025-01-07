@@ -28,7 +28,7 @@ pub async fn execute_add_related_holons(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
-    source_holon_index: StagedIndex,
+    source_holon_index: StagedReference,
     relationship_name: RelationshipName,
     holons_to_add: Vec<HolonReference>,
     expected_response: ResponseStatusCode,

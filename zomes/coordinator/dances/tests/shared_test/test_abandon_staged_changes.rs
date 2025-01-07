@@ -58,7 +58,7 @@ pub async fn execute_abandon_staged_changes(
                 ResponseStatusCode::OK => {
                     // Dance response was OK, confirm that operations disallowed for Holons in an
                     // Abandoned state return NotAccessible error.
-                    if let ResponseBody::StagedReference(staged_index) = response.body.clone() {
+                    if let ResponseBody::StagedReference(abandoned_holon) = response.body.clone() {
                         match test_state
                             .session_state
                             .get_staging_area_mut()

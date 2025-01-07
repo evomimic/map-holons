@@ -7,8 +7,7 @@
 //! of the `shared_objects_layer`.
 
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
-pub use crate::shared_objects_layer::HolonsContextFactory;
-use crate::shared_objects_layer::{ConcreteHolonsContextFactory, Holon, HolonError};
+use crate::shared_objects_layer::{Holon, HolonError, HolonsContextFactory};
 use shared_types_holon::MapString;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -19,6 +18,6 @@ pub fn init_context_from_session(
     keyed_index: BTreeMap<MapString, usize>,
     local_space_holon: Option<HolonReference>,
 ) -> Result<Box<dyn HolonsContextBehavior>, HolonError> {
-    let factory = ConcreteHolonsContextFactory::new();
+    let factory = HolonsContextFactory::new();
     factory.init_context_from_session(staged_holons, keyed_index, local_space_holon)
 }

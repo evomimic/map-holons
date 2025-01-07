@@ -119,14 +119,14 @@ impl SmartReference {
     //     Ok(rc_holon)
     // }
 
-    pub fn get_relationship_map(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<RelationshipMap, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let holon_refcell = holon.borrow();
-        Ok(holon_refcell.relationship_map.clone())
-    }
+    // pub fn get_relationship_map(
+    //     &self,
+    //     context: &dyn HolonsContextBehavior,
+    // ) -> Result<RelationshipMap, HolonError> {
+    //     let holon = self.get_rc_holon(context)?;
+    //     let holon_refcell = holon.borrow();
+    //     Ok(holon_refcell.relationship_map.clone())
+    // }
 
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
         self.smart_property_values.clone()
