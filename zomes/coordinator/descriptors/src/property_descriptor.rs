@@ -3,7 +3,7 @@ use hdi::prelude::debug;
 use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::shared_objects_layer::{Holon, HolonError};
+use holons::{Holon, HolonError};
 use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};

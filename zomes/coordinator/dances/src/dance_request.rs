@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 
 use crate::session_state::SessionState;
-use holons::query_layer::query::{NodeCollection, QueryExpression};
+use holons_guest::::query::{NodeCollection, QueryExpression};
 use holons::reference_layer::{HolonReference, StagedReference};
 use holons::shared_objects_layer::{Holon, RelationshipName};
 use shared_types_holon::{HolonId, LocalId, MapString, PropertyMap};

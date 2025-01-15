@@ -2,7 +2,7 @@ use hdi::prelude::debug;
 use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::shared_objects_layer::{Holon, HolonError};
+use holons::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, BaseValue, MapString, ValueType};
 use shared_types_holon::PropertyName;
 

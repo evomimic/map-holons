@@ -15,12 +15,11 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 use hdk::prelude::*;
-
-use holons::query_layer::query::*;
-use holons::reference_layer::{
-    HolonReference, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
+use holons::{
+    evaluate_query, CommitRequestStatus, Holon, HolonError, HolonReference, HolonWritable,
+    HolonsContextBehavior, NodeCollection, QueryExpression, RelationshipName, SmartReference,
+    StagedReference,
 };
-use holons::shared_objects_layer::{CommitRequestStatus, Holon, HolonError, RelationshipName};
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
 

@@ -1,11 +1,5 @@
-// Top-level modules exposed to external consumers
-pub mod persistence_layer;
-pub mod query_layer;
-pub mod reference_layer;
-pub mod shared_objects_layer;
-
-// Utility modules (if needed outside the crate)
-pub mod utils;
+pub use holons_core::*;
+pub use holons_guest::*;
 
 use hdk::prelude::*;
 use holons_integrity::*;

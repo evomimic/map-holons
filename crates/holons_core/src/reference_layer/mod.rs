@@ -1,0 +1,22 @@
+pub mod context_behavior;
+mod holon_readable;
+pub mod holon_reference;
+mod holon_staging_behavior;
+mod holon_writable;
+pub mod smart_reference;
+mod space_manager_behavior;
+pub mod staged_reference;
+mod state_mobility;
+pub mod transient_collection_behavior;
+
+pub use context_behavior::HolonsContextBehavior;
+// pub use factory::init_context_from_session;
+pub use holon_readable::HolonReadable;
+pub use holon_reference::HolonReference;
+pub use holon_staging_behavior::HolonStagingBehavior;
+pub use holon_writable::HolonWritable;
+pub use smart_reference::SmartReference;
+pub use space_manager_behavior::HolonSpaceBehavior;
+pub use staged_reference::StagedReference;
+pub use state_mobility::StateMobility;
+pub use transient_collection_behavior::TransientCollectionBehavior;

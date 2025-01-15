@@ -22,6 +22,7 @@ hdi = { workspace = true }
 shared_types_holon = { workspace = true }
 holons = { workspace = true }
 core_schema = { workspace = true }
+map_client = { workspace = true }
 
 
 # General dev-dependencies (platform-agnostic)

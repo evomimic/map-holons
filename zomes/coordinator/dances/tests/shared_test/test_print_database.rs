@@ -14,7 +14,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holons::utils::json_adapter::as_json;
+use holons_core::utils::json_adapter::as_json;
 use rstest::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};

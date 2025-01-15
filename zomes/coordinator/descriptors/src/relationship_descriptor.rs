@@ -4,7 +4,7 @@ use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
 
-use holons::shared_objects_layer::{Holon, HolonError, RelationshipName};
+use holons::{Holon, HolonError, RelationshipName};
 
 use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
 use shared_types_holon::{BaseType, PropertyName};

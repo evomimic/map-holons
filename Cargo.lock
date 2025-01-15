@@ -1200,6 +1200,7 @@ dependencies = [
  "hdk",
  "holochain",
  "holons",
+ "map_client",
  "pretty_assertions",
  "rstest",
  "serde",
@@ -3016,13 +3017,28 @@ name = "holons"
 version = "0.0.1"
 dependencies = [
  "async-std",
- "derive-new",
  "futures",
- "hdi",
  "hdk",
  "holochain",
- "holochain_integrity_types",
+ "holons_core",
+ "holons_guest",
  "holons_integrity",
+ "pretty_assertions",
+ "rstest",
+ "serde",
+ "serde_json",
+ "shared_types_holon",
+ "tokio",
+]
+
+[[package]]
+name = "holons_core"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "derive-new",
+ "futures",
+ "hdk",
  "pretty_assertions",
  "quick_cache",
  "rstest",
@@ -3031,6 +3047,23 @@ dependencies = [
  "shared_types_holon",
  "shared_validation",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "holons_guest"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "derive-new",
+ "hdi",
+ "hdk",
+ "holochain",
+ "holons_core",
+ "holons_integrity",
+ "quick_cache",
+ "serde",
+ "serde_json",
+ "shared_types_holon",
  "tokio",
 ]
 
@@ -4134,6 +4167,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "map_client"
+version = "0.1.0"
+dependencies = [
+ "derive-new",
+ "holochain",
+ "holons_core",
+ "serde",
+ "serde_json",
+ "shared_types_holon",
+ "tokio",
 ]
 
 [[package]]

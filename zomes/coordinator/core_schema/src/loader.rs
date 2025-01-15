@@ -11,7 +11,7 @@ use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
 use crate::enum_type_loader::CoreEnumTypeName;
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
-use holons::utils::json_adapter::as_json;
+use holons_core::utils::json_adapter::as_json;
 
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::meta_type_loader::CoreMetaTypeName;

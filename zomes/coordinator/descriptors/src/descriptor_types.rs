@@ -12,7 +12,7 @@ use crate::relationship_descriptor::RelationshipTypeDefinition;
 use crate::semantic_version::SemanticVersion;
 use crate::string_descriptor::StringTypeDefinition;
 use holons::reference_layer::HolonReference;
-use holons::shared_objects_layer::{Holon, HolonCollection, RelationshipName};
+use holons::{Holon, HolonCollection, RelationshipName};
 use inflector::Inflector;
 use shared_types_holon::value_types::{MapEnumValue, MapString};
 use shared_types_holon::{BaseType, MapBoolean, MapInteger, PropertyName};

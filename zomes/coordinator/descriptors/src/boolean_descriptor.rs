@@ -5,7 +5,7 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::shared_objects_layer::{Holon, HolonError};
+use holons::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, ValueType};
 use shared_types_holon::{BaseValue, MapString, PropertyName};
 use CoreSchemaPropertyTypeName::TypeName;

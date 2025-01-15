@@ -3,7 +3,7 @@ use dances::session_state::SessionState;
 use dances::staging_area::StagingArea;
 use derive_new::new;
 
-use holons::query_layer::query::QueryExpression;
+use holons_guest::::query::QueryExpression;
 
 use holons::reference_layer::{HolonReference, StagedReference};
 use holons::shared_objects_layer::{Holon, HolonError, RelationshipName};

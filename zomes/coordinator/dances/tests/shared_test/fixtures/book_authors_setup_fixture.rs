@@ -3,7 +3,7 @@
 use core::panic;
 use holochain::core::author_key_is_valid;
 
-use holons::query_layer::query::QueryExpression;
+use holons_guest::::query::QueryExpression;
 
 use pretty_assertions::assert_eq;
 use rstest::*;

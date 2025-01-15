@@ -17,7 +17,7 @@ use rstest::*;
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 
-use holons::query_layer::query::{Node, NodeCollection, QueryExpression};
+use holons_guest::::query::{Node, NodeCollection, QueryExpression};
 use holons::reference_layer::{HolonReference, SmartReference};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;

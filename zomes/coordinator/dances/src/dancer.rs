@@ -8,11 +8,11 @@ use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;
 // use holons::reference_layer::HolonsContextFactory;
 
-use holons::reference_layer::init_context_from_session;
+// use holons::reference_layer::init_context_from_session;
+use holons::initialization::init_context_from_session;
 use holons::shared_objects_layer::HolonError;
-use std::collections::HashMap;
-
 use shared_types_holon::MapString;
+use std::collections::HashMap;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance,
