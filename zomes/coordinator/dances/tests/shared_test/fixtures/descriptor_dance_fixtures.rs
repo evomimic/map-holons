@@ -18,7 +18,7 @@ use dances::dance_response::ResponseStatusCode;
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
-use holons::HolonError;
+use holons_core::core_shared_objects::HolonError;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{

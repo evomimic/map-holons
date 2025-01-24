@@ -13,7 +13,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::reference_layer::staged_reference::StagedIndex;
 use holons::reference_layer::HolonReference;
 
-use holons::{Holon, RelationshipName};
+use holons_core::core_shared_objects::{Holon, RelationshipName};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};

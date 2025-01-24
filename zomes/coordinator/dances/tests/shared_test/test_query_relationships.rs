@@ -14,10 +14,10 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holons::{Node, NodeCollection, QueryExpression};
 use rstest::*;
 
 use holons::reference_layer::{HolonReference, SmartReference};
+use holons_guest::query_layer::{Node, NodeCollection, QueryExpression};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};

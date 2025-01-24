@@ -10,7 +10,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use holons::reference_layer::{HolonReference, SmartReference};
 
-use holons_core::RelationshipName;
+use holons_core::core_shared_objects::RelationshipName;
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
 

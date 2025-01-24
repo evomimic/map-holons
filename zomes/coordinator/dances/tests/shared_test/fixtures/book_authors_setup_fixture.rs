@@ -12,8 +12,7 @@ use crate::shared_test::test_data_types::DancesTestCase;
 use dances::dance_response::ResponseStatusCode;
 use holons::reference_layer::staged_reference::StagedIndex;
 use holons::reference_layer::{HolonReference, StagedReference};
-use holons::{Holon, HolonCollection, HolonError, RelationshipName};
-
+use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };

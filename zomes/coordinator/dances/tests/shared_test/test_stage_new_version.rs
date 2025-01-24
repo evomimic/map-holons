@@ -11,7 +11,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::reference_layer::{HolonReference, SmartReference};
 
-use holons_core::{HolonCollection, RelationshipName};
+use holons_core::core_shared_objects::{HolonCollection, RelationshipName};
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyName};
 use std::collections::BTreeMap;

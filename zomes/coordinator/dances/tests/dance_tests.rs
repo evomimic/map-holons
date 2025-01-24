@@ -53,8 +53,9 @@ use crate::shared_test::test_data_types::{
 use crate::shared_test::test_print_database::execute_database_print;
 // use crate::stage_new_from_clone_fixture::*;
 // use crate::stage_new_version_fixture::*;
+use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use dances::staging_area::StagingArea;
-use holons::shared_objects_layer::HolonError;
+use holons_core::core_shared_objects::HolonError;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;

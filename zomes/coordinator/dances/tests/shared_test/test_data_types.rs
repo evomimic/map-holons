@@ -5,7 +5,8 @@ use derive_new::new;
 
 use holons::reference_layer::{HolonReference, StagedReference};
 
-use holons::{Holon, HolonError, QueryExpression, RelationshipName};
+use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
+use holons_guest::query_layer::QueryExpression;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
