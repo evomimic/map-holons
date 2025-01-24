@@ -21,9 +21,11 @@
     "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && cargo test",
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
+    "build:rust-client": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --features client --target wasm32-unknown-unknown",
     "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown",
     "clean": "npx rimraf target && npx rimraf .cargo && npx rimraf Cargo.lock && npx rimraf flake.lock && cargo clean",
     "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/node_modules",
+    "cb-client": "clear && npm run build:rust-client",
     "cb": "clear && npm run build:happ",
     "ct": "clear && npm run sweetest"
   },

@@ -3,8 +3,6 @@
 use core::panic;
 use holochain::core::author_key_is_valid;
 
-use holons_guest::::query::QueryExpression;
-
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
@@ -14,7 +12,7 @@ use crate::shared_test::test_data_types::DancesTestCase;
 use dances::dance_response::ResponseStatusCode;
 use holons::reference_layer::staged_reference::StagedIndex;
 use holons::reference_layer::{HolonReference, StagedReference};
-use holons::shared_objects_layer::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons::{Holon, HolonCollection, HolonError, RelationshipName};
 
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
@@ -140,7 +138,7 @@ pub fn setup_book_author_steps(
 
     target_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
-    book_holon.relationship_map.0.insert(relationship_name.clone(), target_collection);
+    book_holon.staged_relationship_map.0.insert(relationship_name.clone(), target_collection);
 
     // let mut holons_to_add: Vec<HolonReference> = Vec::new();
     holons_to_add.push(person_1_reference);

@@ -2,7 +2,7 @@
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
 use crate::descriptor_types::Schema;
-use holons::{Holon, HolonError};
+use holons::core_shared_objects::{Holon, HolonError};
 
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseValue, MapString};

@@ -1,5 +1,9 @@
 use std::collections::BTreeMap;
 
+use crate::shared_test::test_data_types::{
+    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
+use crate::shared_test::*;
 use async_std::task;
 use dances::dance_response::ResponseBody::{Holons, StagedReference};
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
@@ -9,13 +13,9 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
+use holons_core::Holon;
 use rstest::*;
 
-use crate::shared_test::test_data_types::{
-    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-};
-use crate::shared_test::*;
-use holons::shared_objects_layer::Holon;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};

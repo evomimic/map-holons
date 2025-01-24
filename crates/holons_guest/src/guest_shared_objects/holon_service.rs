@@ -1,18 +1,14 @@
+//
+use crate::persistence_layer::{
+    create_path_to_holon_node, delete_holon_node, get_all_holon_nodes, get_holon_node_by_path,
+    CreatePathInput, GetPathInput,
+};
 use hdi::prelude::{ActionHash, Path};
 use hdk::entry::get;
 use hdk::prelude::GetOptions;
-// use holons::persistence_layer::{
-//     create_path_to_holon_node, get_holon_node_by_path, get_original_holon_node, CreatePathInput,
-//     GetPathInput,
-// };
-// use holons::shared_objects_layer::{Holon, HolonError};
-use crate::{
-    create_path_to_holon_node, delete_holon_node, get_all_holon_nodes, get_holon_node_by_path,
-    get_original_holon_node, CreatePathInput, GetPathInput,
-};
-use holons_core::{Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_integrity::LinkTypes;
-use shared_types_holon::{HolonId, LocalId};
+use shared_types_holon::LocalId;
 //Stateless HDI service to bridge Holon and HolonNode
 //Holochain API logic and calls should all done from the HolonNode module (separation of concerns)
 //Holon should be mostly self-referential methods and data

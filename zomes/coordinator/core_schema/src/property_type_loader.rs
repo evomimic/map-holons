@@ -8,18 +8,14 @@ use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinit
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
 use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
-use holons::shared_objects_layer::HolonError;
+
+use crate::value_type_loader::CoreValueTypeName;
+use holons::core_shared_objects::HolonError;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
 use strum_macros::EnumIter;
 use CorePropertyTypeName::*;
-// use crate::enum_type_loader::*;
-// use crate::integer_value_type_loader::*;
-// use crate::property_type_loader::CorePropertyTypeName::{TypeName, VariantName};
-// use crate::string_value_type_loader::*;
-use crate::value_type_loader::CoreValueTypeName;
-//use crate::value_type_loader::load_core_value_type;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CorePropertyTypeName {

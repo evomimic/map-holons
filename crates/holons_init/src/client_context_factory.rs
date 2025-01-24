@@ -1,21 +1,18 @@
-use crate::guest_context::guest_context::GuestHolonsContext;
-use holons_core::{Holon, HolonError, HolonReference, HolonsContextBehavior};
+use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::reference_layer::{HolonReference, HolonsContextBehavior};
 use shared_types_holon::MapString;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+use crate::holons_context_factory::HolonsContextFactory;
+use holons_client::client_context::ClientHolonsContext;
+
 /// A concrete implementation of the `HolonsContextFactory` trait.
-pub struct GuestHolonsContextFactory;
 
-impl GuestHolonsContextFactory {
-    /// Creates a new `ConcreteHolonsContextFactory` instance.
-    pub fn new() -> Self {
-        Self
-    }
-}
+pub struct ClientHolonsContextFactory;
 
-impl GuestHolonsContextFactory {
+impl HolonsContextFactory for ClientHolonsContextFactory {
     /// Initializes a new HolonsContext based on the provided session data and ensures the
     /// space manager includes:
     /// - an initialized Nursery containing the staged holons and index provided,
@@ -31,14 +28,14 @@ impl GuestHolonsContextFactory {
     ///
     /// # Returns
     /// A `Result` containing the initialized `HolonsContext` as a `Box<dyn HolonsContextBehavior>` or an error.
-    pub fn init_context_from_session(
+    fn init_context_with_staged_holons(
         &self,
         staged_holons: Vec<Rc<RefCell<Holon>>>,
         keyed_index: BTreeMap<MapString, usize>,
         local_space_holon: Option<HolonReference>,
     ) -> Result<Box<dyn HolonsContextBehavior>, HolonError> {
         // Step 1: Initialize the HolonsContext
-        let context = GuestHolonsContext::init_context_from_session(
+        let context = ClientHolonsContext::init_context_from_session(
             staged_holons,
             keyed_index,
             local_space_holon,

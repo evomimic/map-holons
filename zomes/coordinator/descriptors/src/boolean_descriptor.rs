@@ -5,7 +5,9 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::{Holon, HolonError};
+
+use holons::core_shared_objects::stage_new_holon_api;
+use holons::core_shared_objects::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, ValueType};
 use shared_types_holon::{BaseValue, MapString, PropertyName};
 use CoreSchemaPropertyTypeName::TypeName;
@@ -51,7 +53,15 @@ pub fn define_boolean_type(
 
     debug!("Staging... {:#?}", boolean_type.clone());
 
-    let boolean_type_ref = context.get_space_manager().stage_new_holon(boolean_type.clone())?;
+    let boolean_type_ref = stage_new_holon_api(context, boolean_type.clone())?;
+
+    // let boolean_type_ref = {
+    //     let staging_behavior = context.get_space_manager().get_staging_behavior_access();
+    //     let mut borrowed_staging_behavior = staging_behavior.borrow_mut(); // Borrow mutably
+    //     let staged_reference =
+    //         borrowed_staging_behavior.stage_new_holon(context, boolean_type.clone())?; // Use it
+    //     staged_reference // Return the result to ensure borrow ends here
+    // };
 
     // Add its relationships
 

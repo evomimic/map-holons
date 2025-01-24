@@ -1,6 +1,6 @@
 use crate::descriptor_types::CoreValueTypeName;
+use holons::core_shared_objects::HolonError;
 use holons::reference_layer::{HolonReference, HolonsContextBehavior};
-use holons::HolonError;
 
 use shared_types_holon::MapString;
 

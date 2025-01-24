@@ -1,0 +1,30 @@
+[package]
+name = "holons_init"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "holons_init"
+
+[features]
+default = []                 # Default is guest (no features enabled)
+client = ["holons_client"]   # Enables the client feature and includes the dependency
+
+[dependencies]
+# General dev-dependencies (platform-agnostic)
+
+
+# Holochain Dependencies
+
+
+# MAP Dependencies
+shared_types_holon = { workspace = true }
+holons_core = { workspace = true }
+holons_guest = { workspace = true }
+holons_client = { workspace = true, optional = true }
+
+[dev-dependencies]
+# General dev-dependencies (platform-agnostic)
+
+

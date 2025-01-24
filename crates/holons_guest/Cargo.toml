@@ -7,6 +7,9 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 name = "holons_guest"
 
+[features]
+guest = []  # This crate supports the `guest` feature
+
 [dependencies]
 # General dev-dependencies (platform-agnostic)
 derive-new = { workspace = true }

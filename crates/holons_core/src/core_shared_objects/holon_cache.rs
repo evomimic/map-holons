@@ -1,4 +1,4 @@
-use crate::Holon;
+use crate::core_shared_objects::Holon;
 use quick_cache::unsync::Cache;
 use shared_types_holon::HolonId;
 use std::cell::RefCell;

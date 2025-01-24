@@ -1,5 +1,6 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
-use crate::HolonError;
+
+use crate::core_shared_objects::HolonError;
 use shared_types_holon::MapString;
 
 pub trait TransientCollectionBehavior {

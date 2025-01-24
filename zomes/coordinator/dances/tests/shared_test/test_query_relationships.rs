@@ -12,12 +12,11 @@ use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keys
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use rstest::*;
-
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
+use holons::{Node, NodeCollection, QueryExpression};
+use rstest::*;
 
-use holons_guest::::query::{Node, NodeCollection, QueryExpression};
 use holons::reference_layer::{HolonReference, SmartReference};
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;

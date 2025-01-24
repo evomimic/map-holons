@@ -16,9 +16,10 @@ members = [
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
     # Shared Core & Guest Libraries
+    "crates/holons_client",
     "crates/holons_core",
     "crates/holons_guest",
-    "crates/map_client",
+    "crates/holons_init",
 ]
 resolver = "2"
 
@@ -50,8 +51,11 @@ path = "crates/holons_core"
 [workspace.dependencies.holons_guest]
 path = "crates/holons_guest"
 
-[workspace.dependencies.map_client]
-path = "crates/map_client"
+[workspace.dependencies.holons_client]
+path = "crates/holons_client"
+
+[workspace.dependencies.holons_init]
+path = "crates/holons_init"
 
 # External dependencies
 [workspace.dependencies]

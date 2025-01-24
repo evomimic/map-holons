@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 
 use hdk::prelude::*;
 
-use crate::reference_layer::{HolonReadable, HolonReference};
-use crate::reference_layer::{HolonsContextBehavior, TransientCollectionBehavior};
-use crate::HolonError;
+use crate::reference_layer::{
+    HolonReadable, HolonReference, HolonsContextBehavior, TransientCollectionBehavior,
+};
+
+use crate::core_shared_objects::HolonError;
 use shared_types_holon::MapString;
 
 /// These keyed collections can be used when there is a need for a collection of Holons, which we

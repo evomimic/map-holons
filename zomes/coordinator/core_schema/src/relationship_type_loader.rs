@@ -1,9 +1,5 @@
 use hdi::prelude::info;
 // use holons::smart_reference::SmartReference;
-use inflector::cases::screamingsnakecase::to_screaming_snake_case;
-use strum_macros::EnumIter;
-// use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::CollectionFor;
-// use inflector::cases::snakecase::to_snake_case;
 use crate::collection_type_loader::CollectionTypeSpec;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
@@ -11,9 +7,11 @@ use descriptors::collection_descriptor::CollectionSemantic;
 use descriptors::descriptor_types::DeletionSemantic;
 use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
+use holons::core_shared_objects::{HolonError, RelationshipName};
 use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
-use holons::shared_objects_layer::{HolonError, RelationshipName};
+use inflector::cases::screamingsnakecase::to_screaming_snake_case;
 use shared_types_holon::{MapBoolean, MapString};
+use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreRelationshipTypeName {

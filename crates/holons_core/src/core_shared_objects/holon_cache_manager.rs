@@ -1,17 +1,16 @@
-// use hdi::prelude::debug;
-use crate::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::holon_cache::HolonCache;
-use crate::{
-    Holon, HolonCollection, HolonError, HolonResolver, HolonServiceApi, RelationshipCache,
-    RelationshipName,
+
+use crate::core_shared_objects::{
+    Holon, HolonCacheAccess, HolonCollection, HolonError, RelationshipCache, RelationshipName,
 };
+use crate::reference_layer::HolonServiceApi;
 use hdk::prelude::debug;
 use shared_types_holon::HolonId;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct HolonCacheManager {
     cache: RefCell<HolonCache>, // Use RefCell for interior mutability
     relationship_cache: RefCell<RelationshipCache>,
@@ -20,10 +19,10 @@ pub struct HolonCacheManager {
 
 impl HolonCacheManager {
     /// Creates a new `HolonCacheManager` with the provided `HolonResolver`.
-    pub fn new(holon_service: Arc<dyn HolonResolver>) -> Self {
+    pub fn new(holon_service: Arc<dyn HolonServiceApi>) -> Self {
         Self {
             cache: RefCell::new(HolonCache::new()), // Wrap the cache in a RefCell
-            holon_service: holon_service,
+            holon_service,
             relationship_cache: RefCell::new(RelationshipCache::new()),
         }
     }
@@ -57,8 +56,8 @@ impl HolonCacheAccess for HolonCacheManager {
     }
 
     fn get_related_holons(
-        &mut self,
-        source_holon_id: HolonId,
+        &self,
+        source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         self.relationship_cache.borrow().get_related_holons(

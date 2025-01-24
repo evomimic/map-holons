@@ -5,8 +5,6 @@ use crate::tracing::{error, info, warn};
 use core::panic;
 //use holochain::core::author_key_is_valid;
 
-use holons_guest::::query::QueryExpression;
-
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
@@ -16,7 +14,7 @@ use crate::shared_test::test_data_types::DancesTestCase;
 use dances::dance_response::ResponseStatusCode;
 use holons::reference_layer::HolonReference::Staged;
 use holons::reference_layer::{HolonReference, StagedReference};
-use holons::shared_objects_layer::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons::{Holon, HolonCollection, HolonError, QueryExpression, RelationshipName};
 
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
@@ -207,7 +205,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     authored_by_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
     book_holon
-        .relationship_map
+        .staged_relationship_map
         .0
         .insert(authored_by_relationship_name.clone(), authored_by_collection.clone());
 
@@ -226,9 +224,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let empty_collection = HolonCollection::new_staged();
 
     let mut book_holon_with_no_related = book_holon.clone();
-    book_holon_with_no_related.relationship_map.0.clear();
+    book_holon_with_no_related.staged_relationship_map.0.clear();
     book_holon_with_no_related
-        .relationship_map
+        .staged_relationship_map
         .0
         .insert(authored_by_relationship_name.clone(), empty_collection);
 
@@ -236,9 +234,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     one_in_collection.add_reference_with_key(Some(&person_1_key), &person_1_reference)?;
 
     let mut book_holon_with_one_related = book_holon.clone();
-    book_holon_with_one_related.relationship_map.0.clear();
+    book_holon_with_one_related.staged_relationship_map.0.clear();
     book_holon_with_one_related
-        .relationship_map
+        .staged_relationship_map
         .0
         .insert(authored_by_relationship_name.clone(), one_in_collection);
 

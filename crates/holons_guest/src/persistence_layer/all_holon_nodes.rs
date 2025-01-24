@@ -1,4 +1,4 @@
-use crate::get_latest_holon_node;
+use crate::persistence_layer::holon_node::get_latest_holon_node;
 use hdk::prelude::*;
 use holons_integrity::*;
 //TODO: move this function to holon_node.rs and delete the file

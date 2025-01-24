@@ -20,7 +20,7 @@ use crate::session_state::SessionState;
 use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;
-use holons::shared_objects_layer::{CommitRequestStatus, HolonError};
+use holons_core::core_shared_objects::{CommitRequestStatus, HolonError};
 use shared_types_holon::MapString;
 
 /// *DanceRequest:*

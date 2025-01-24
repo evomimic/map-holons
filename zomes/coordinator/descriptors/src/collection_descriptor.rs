@@ -1,13 +1,14 @@
 use hdi::prelude::debug;
+use holons::core_shared_objects::{Holon, HolonError};
 use holons::reference_layer::{
     HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::{Holon, HolonError};
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use shared_types_holon::{BaseType, PropertyName};
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use holons::core_shared_objects::stage_new_holon_api;
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use shared_types_holon::{BaseType, PropertyName};
 
 pub struct CollectionTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -104,8 +105,7 @@ pub fn define_collection_type(
 
     debug!("{:#?}", collection_type.clone());
 
-    let collection_type_ref =
-        context.get_space_manager().stage_new_holon(collection_type.clone())?;
+    let collection_type_ref = stage_new_holon_api(context, collection_type.clone())?;
 
     // Add its relationships
 

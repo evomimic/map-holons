@@ -4,6 +4,10 @@ use hdi::prelude::*;
 use std::collections::btree_map::BTreeMap;
 use std::fmt;
 
+pub const LOCAL_HOLON_SPACE_PATH: &str = "local_holon_space";
+pub const LOCAL_HOLON_SPACE_NAME: &str = "LocalHolonSpace";
+pub const LOCAL_HOLON_SPACE_DESCRIPTION: &str = "Default Local Holon Space";
+
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct HolonNode {

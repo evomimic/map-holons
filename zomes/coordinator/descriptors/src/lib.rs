@@ -13,7 +13,6 @@ mod semantic_version;
 pub mod string_descriptor;
 pub mod type_descriptor;
 pub mod value_type_descriptor;
-
 // pub fn add(left: usize, right: usize) -> usize {
 //     left + right
 // }

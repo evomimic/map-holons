@@ -4,14 +4,14 @@ use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
 
-use holons::{Holon, HolonError, RelationshipName};
-
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
-use shared_types_holon::{BaseType, PropertyName};
+use holons::core_shared_objects::{Holon, HolonError, RelationshipName};
 
 use crate::descriptor_types::{
     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
 };
+use holons::core_shared_objects::stage_new_holon_api;
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
+use shared_types_holon::{BaseType, PropertyName};
 //
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
@@ -107,8 +107,7 @@ pub fn define_relationship_type(
     debug!("Staging new relationship_type {:#?}", relationship_type.clone());
 
     // Stage new holon type
-    let relationship_type_ref =
-        context.get_space_manager().stage_new_holon(relationship_type.clone())?;
+    let relationship_type_ref = stage_new_holon_api(context, relationship_type.clone())?;
 
     // Add its relationships
 

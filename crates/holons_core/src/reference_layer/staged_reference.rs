@@ -1,16 +1,15 @@
 use derive_new::new;
 use hdk::prelude::*;
+use shared_types_holon::holon_node::PropertyName;
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use shared_types_holon::holon_node::PropertyName;
+use std::sync::Arc;
 
 use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 
-use crate::nursery_access::NurseryAccess;
-use crate::{
+use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, HolonState,
-    RelationshipName,
+    NurseryAccess, RelationshipName,
 };
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
@@ -20,7 +19,6 @@ pub type StagedIndex = usize;
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct StagedReference {
-    // pub rc_holon: Rc<RefCell<Holon>>, // Ownership moved to CommitManager
     pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
 }
 
@@ -41,35 +39,44 @@ impl StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        debug!("Entered: get_rc_holon, trying to get the space_manager");
-        // Borrow the space manager immutably
-        let space_manager = context.get_space_manager();
+        // Get NurseryAccess
+        let nursery_access = Self::get_nursery_access(context);
 
-        debug!("Space manager borrowed successfully");
-
-        // // Attempt to get the holon at the specified index
-        // let rc_holon = &space_manager.get_holon_by_index(self.holon_index)?;
-        // // Return a clone of the holon reference
-        // Ok(rc_holon.clone())
-
-        // Downcast to NurseryAccess
-        let nursery_access = space_manager
-            .as_any()
-            .downcast_ref::<&dyn NurseryAccess>() // Downcast to NurseryAccess
-            .ok_or_else(|| {
-                error!("Failed to downcast space_manager to NurseryAccess");
-                HolonError::DowncastFailure("NurseryAccess".to_string())
-            })?;
+        let nursery_read = nursery_access.borrow();
 
         // Retrieve the holon by its index
-        let rc_holon = nursery_access.get_holon_by_index(self.holon_index)?;
+        let rc_holon = nursery_read.get_holon_by_index(self.holon_index)?;
 
         // Return a clone of the Rc<RefCell<Holon>>
         Ok(rc_holon.clone())
     }
+
+    /// Retrieves access to the nursery via the provided context.
+    ///
+    /// # Arguments
+    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
+    ///
+    /// # Returns
+    /// A reference to an object implementing the `NurseryAccess` trait.
+    ///
+    /// # Panics
+    /// This function assumes that the context and space manager will always return valid references.
+    fn get_nursery_access(context: &dyn HolonsContextBehavior) -> Arc<RefCell<dyn NurseryAccess>> {
+        // Retrieve the space manager from the context
+        let space_manager = context.get_space_manager();
+
+        // Get the nursery access
+        space_manager.get_nursery_access()
+    }
 }
 
 impl HolonReadable for StagedReference {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+        let holon = self.get_rc_holon(context)?;
+        let holon_read = holon.borrow();
+        holon_read.clone_holon()
+    }
+
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -95,8 +102,8 @@ impl HolonReadable for StagedReference {
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon = rc_holon.borrow_mut();
-        let map = Rc::clone(&holon.get_related_holons_DEPRECATED(relationship_name)?);
+        let holon = rc_holon.borrow();
+        let map = Rc::clone(&holon.get_staged_relationship(relationship_name)?);
         Ok(map)
     }
 
@@ -153,29 +160,42 @@ impl HolonWritable for StagedReference {
 
         // Get mutable access to the source holon
         let rc_holon = self.get_rc_holon(context)?;
-
-        // Borrow the holon from the RefCell
         let mut holon = rc_holon.borrow_mut();
         trace!(
             "Here is the RelationshipMap before adding related Holons: {:#?} \n\n",
-            holon.relationship_map
+            holon.staged_relationship_map
         );
         debug!("In StagedReference::add_related_holons, getting collection for relationship name");
 
         debug!("In StagedReference::add_related_holons, about to add the holons to the editable collections:");
 
-        // Retrieve the editable collection for the specified relationship name
-        if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
-            debug!("Collection after to_staged: {:?}", collection);
-            collection.add_references(context, holons)?;
-        } else {
-            let mut collection = HolonCollection::new_staged();
-            collection.add_references(context, holons)?;
-            holon.relationship_map.0.insert(relationship_name, collection);
-        }
+        // Retrieve or create a new HolonCollection for the specified relationship
+        let collection = holon
+            .staged_relationship_map
+            .0
+            .entry(relationship_name.clone())
+            .or_insert_with(|| Rc::new(HolonCollection::new_staged()));
+
+        // Borrow the Rc to modify the underlying HolonCollection
+        let collection_ref = Rc::get_mut(collection).ok_or_else(|| {
+            HolonError::FailedToBorrow("Failed to get mutable reference to collection".to_string())
+        })?;
+
+        // Add references to the collection
+        collection_ref.add_references(context, holons)?;
+
+        // // Retrieve the editable collection for the specified relationship name
+        // if let Some(collection) = holon.staged_relationship_map.0.get_mut(&relationship_name) {
+        //     debug!("Collection after to_staged: {:?}", collection);
+        //     collection.add_references(context, holons)?;
+        // } else {
+        //     let mut collection = HolonCollection::new_staged();
+        //     collection.add_references(context, holons)?;
+        //     holon.staged_relationship_map.0.insert(relationship_name, collection);
+        // }
         debug!(
             "Here is the RelationshipMap after adding related Holons: {:#?}",
-            holon.relationship_map
+            holon.staged_relationship_map
         );
 
         Ok(())
@@ -224,27 +244,28 @@ impl HolonWritable for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::remove_related_holons");
-        // Ensure is accessible for Write
+        // Ensure the holon is accessible for write operations
         self.is_accessible(context, AccessType::Write)?;
 
-        // Get mutable access to the source holon
+        // Retrieve the holon
         let rc_holon = self.get_rc_holon(context)?;
-
-        // Borrow the holon from the RefCell
         let mut holon = rc_holon.borrow_mut();
-        debug!(
-            "In StagedReference::remove_related_holons, getting collection for relationship name"
-        );
 
-        debug!("In StagedReference::remove_related_holons, about to remove the holons from the editable collections:");
+        // Attempt to retrieve the existing collection for the relationship
+        if let Some(collection) = holon.staged_relationship_map.0.get_mut(relationship_name) {
+            // Borrow the Rc to modify the underlying HolonCollection
+            let collection_ref = Rc::get_mut(collection).ok_or_else(|| {
+                HolonError::FailedToBorrow(
+                    "Failed to get mutable reference to collection".to_string(),
+                )
+            })?;
 
-        // Retrieve the editable collection for the specified relationship name
-        if let Some(collection) = holon.relationship_map.0.get_mut(&relationship_name) {
-            collection.is_accessible(AccessType::Write)?;
-            collection.remove_references(context, holons)?;
+            // Ensure the collection is accessible and remove references
+            collection_ref.is_accessible(AccessType::Write)?;
+            collection_ref.remove_references(context, holons)?;
         } else {
             return Err(HolonError::InvalidRelationship(
-                format!("Invalid relationship: {}", &relationship_name),
+                format!("Invalid relationship: {}", relationship_name),
                 format!("For holon {:?}", holon),
             ));
         }
@@ -252,7 +273,7 @@ impl HolonWritable for StagedReference {
     }
 
     /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
-    fn stage_new_from_clone(
+    fn stage_new_from_clone_deprecated(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Holon, HolonError> {

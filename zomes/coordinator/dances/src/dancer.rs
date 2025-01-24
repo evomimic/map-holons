@@ -6,19 +6,17 @@ use crate::session_state::SessionState;
 use crate::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;
-// use holons::reference_layer::HolonsContextFactory;
-
-// use holons::reference_layer::init_context_from_session;
-use holons::initialization::init_context_from_session;
-use holons::shared_objects_layer::HolonError;
-use shared_types_holon::MapString;
-use std::collections::HashMap;
+use holons_init::init_context_from_session;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance,
     query_relationships_dance, remove_related_holons_dance, stage_new_from_clone_dance,
     stage_new_holon_dance, stage_new_version_dance, with_properties_dance,
 };
+
+use holons_core::core_shared_objects::HolonError;
+use shared_types_holon::MapString;
+use std::collections::HashMap;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -203,9 +201,10 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
 /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
 fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
     let space_manager = &context.get_space_manager();
-    let staged_holons = space_manager.export_staged_holons();
-    let staged_index = space_manager.export_keyed_index();
-    let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
+    let staging_area = StagingArea::empty();
+    // let staged_holons = space_manager.export_staged_holons();
+    // let staged_index = space_manager.export_keyed_index();
+    // let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
     let local_space_holon = space_manager.get_space_holon();
     SessionState::new(staging_area, local_space_holon)
 }

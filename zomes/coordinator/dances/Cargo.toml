@@ -21,8 +21,10 @@ hdi = { workspace = true }
 # MAP Dependencies
 shared_types_holon = { workspace = true }
 holons = { workspace = true }
+holons_core = { workspace = true }
 core_schema = { workspace = true }
-map_client = { workspace = true }
+holons_init = { workspace = true }
+holons_guest = { workspace = true }
 
 
 # General dev-dependencies (platform-agnostic)

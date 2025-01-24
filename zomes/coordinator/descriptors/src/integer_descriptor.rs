@@ -1,13 +1,13 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
+use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use holons::core_shared_objects::stage_new_holon_api;
+use holons::core_shared_objects::{Holon, HolonError};
 use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
-
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 #[derive(Clone)]
 pub struct IntegerTypeDefinition {
@@ -59,7 +59,7 @@ pub fn define_integer_type(
         )?;
 
     // Stage new holon type
-    let integer_type_ref = context.get_space_manager().stage_new_holon(integer_type.clone())?;
+    let integer_type_ref = stage_new_holon_api(context, integer_type.clone())?;
 
     // Add some relationships
 

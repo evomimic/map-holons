@@ -1,16 +1,26 @@
-use crate::reference_layer::StateMobility;
-use crate::reference_layer::{HolonReference, HolonStagingBehavior};
+use crate::reference_layer::{HolonReference, HolonServiceApi, HolonStagingBehavior};
 
-use crate::HolonError;
-use shared_types_holon::LocalId;
-use std::any::Any;
+use crate::core_shared_objects::cache_access::HolonCacheAccess;
+use crate::core_shared_objects::nursery_access::NurseryAccess;
+use std::cell::RefCell;
+use std::sync::Arc;
 
-pub trait HolonSpaceBehavior: HolonStagingBehavior + StateMobility {
-    /// Included in this trait definition to allow downcasts so that some additional traits can be
-    /// selectively exposed without making them visible to upper layers
-    /// The Any trait allows checking and converting a reference to a concrete type at runtime.
-    fn as_any(&self) -> &dyn Any; // Adds ability to convert to dyn Any
-    /// Deletes a holon, ensuring all constraints (e.g., relationships) are respected.
-    fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError>;
+pub trait HolonSpaceBehavior {
+    /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
+    ///
+    /// The `HolonSpaceManager` mediates access to holons by coordinating between
+    /// the `local_cache_manager` for local requests and routing external requests.
+    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess>;
+
+    /// Provides access to the Holon service API.
+    fn get_holon_service(&self) -> Arc<dyn HolonServiceApi>;
+
+    /// Provides access to a component that supports the HolonStagingBehavior API
+    fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>>;
+
+    /// Provides access to the nursery, creating it lazily if necessary.
+    fn get_nursery_access(&self) -> Arc<RefCell<dyn NurseryAccess>>;
+
+    /// Retrieves a reference to the space holon if it exists.
     fn get_space_holon(&self) -> Option<HolonReference>;
 }

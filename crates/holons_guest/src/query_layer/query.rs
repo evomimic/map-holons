@@ -3,9 +3,8 @@ use std::rc::Rc;
 
 use derive_new::new;
 use hdk::prelude::*;
-use holons_core::{
-    HolonError, HolonReadable, HolonReference, HolonsContextBehavior, RelationshipName,
-};
+use holons_core::core_shared_objects::{HolonError, RelationshipName};
+use holons_core::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Node {

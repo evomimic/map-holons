@@ -1,15 +1,15 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use derive_new::new;
 use hdk::prelude::*;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::reference_layer::{
-    HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+    HolonReadable, HolonReference, HolonsContextBehavior, StagedReference,
 };
 
-use crate::cache_access::HolonCacheAccess;
-use crate::{
+use crate::core_shared_objects::cache_access::HolonCacheAccess;
+use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use shared_types_holon::holon_node::PropertyName;
@@ -18,12 +18,13 @@ use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct SmartReference {
-    //holon_space_id: Option<SpaceId>
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
 }
 
 impl SmartReference {
+    // *************** CONSTRUCTORS ***************
+
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
     pub fn new_from_id(holon_id: HolonId) -> Self {
         SmartReference { holon_id, smart_property_values: None }
@@ -34,6 +35,8 @@ impl SmartReference {
             smart_property_values: self.smart_property_values.clone(),
         }
     }
+
+    // *************** ACCESSORS ***************
 
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
@@ -69,63 +72,6 @@ impl SmartReference {
         let holon_refcell = holon.borrow();
         Ok(holon_refcell.property_map.clone())
     }
-    fn get_rc_holon(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        debug!("Entered: get_rc_holon, trying to get the space_manager");
-
-        // Retrieve the space manager from the context
-        let space_manager = context.get_space_manager();
-
-        // Attempt to downcast the space manager to HolonCacheAccess
-        let cache_access =
-            space_manager.as_any().downcast_ref::<&dyn HolonCacheAccess>().ok_or_else(|| {
-                error!("Failed to downcast space_manager to HolonCacheAccess");
-                HolonError::DowncastFailure("HolonCacheAccess".to_string())
-            })?;
-
-        debug!("Successfully downcasted to HolonCacheAccess");
-
-        // Retrieve the holon from the cache
-        let rc_holon = cache_access.get_rc_holon(&self.holon_id)?;
-        trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
-
-        Ok(rc_holon)
-    }
-
-    // Private function for getting a mutable reference from the context
-    // fn get_rc_holon(
-    //     &self,
-    //     context: &dyn HolonsContextBehavior,
-    // ) -> Result<Rc<RefCell<Holon>>, HolonError> {
-    //     debug!("Entered: get_rc_holon, trying to get the cache_manager");
-    //     let space_manager = match context.get_space_manager_mut() {
-    //         Ok(space_manager) => space_manager,
-    //         Err(borrow_error) => {
-    //             error!(
-    //                 "Failed to borrow cache_manager, it is already borrowed mutably: {:?}",
-    //                 borrow_error
-    //             );
-    //             return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
-    //         }
-    //     };
-    //     debug!("Cache manager borrowed successfully");
-    //
-    //     let rc_holon = space_manager.get_rc_holon(&self.holon_id)?;
-    //     trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
-    //
-    //     Ok(rc_holon)
-    // }
-
-    // pub fn get_relationship_map(
-    //     &self,
-    //     context: &dyn HolonsContextBehavior,
-    // ) -> Result<RelationshipMap, HolonError> {
-    //     let holon = self.get_rc_holon(context)?;
-    //     let holon_refcell = holon.borrow();
-    //     Ok(holon_refcell.relationship_map.clone())
-    // }
 
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
         self.smart_property_values.clone()
@@ -172,45 +118,78 @@ impl SmartReference {
 
     /// Stages a new version of an existing holon for update, retaining the linkage to the holon
     /// version it is derived from by creating a PREDECESSOR relationship.
-    pub fn stage_new_version(
+    #[deprecated]
+    pub fn stage_new_version_deprecated(
         &self,
-        context: &dyn HolonsContextBehavior,
+        _context: &dyn HolonsContextBehavior,
     ) -> Result<StagedReference, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-
-        let mut cloned_holon = rc_holon.borrow().new_version()?;
-        cloned_holon.fetch_all_related_holons(context)?;
-
-        trace!(
-            "Entering SmartReference::stage_new_version, here is the Cloned Holon: {:#?}",
-            cloned_holon
-        );
-
-        let new_version_staged_reference =
-            { context.get_space_manager().stage_new_holon(cloned_holon)? };
-
-        // Set PREDECESSOR
-        new_version_staged_reference
-            .with_predecessor(context, Some(HolonReference::Smart(self.clone())))?;
-
-        Ok(new_version_staged_reference)
+        // let rc_holon = self.get_rc_holon(context)?;
+        //
+        // let mut cloned_holon = rc_holon.borrow().new_version()?;
+        // cloned_holon.fetch_all_populated(context)?;
+        //
+        // trace!(
+        //     "Entering SmartReference::stage_new_version, here is the Cloned Holon: {:#?}",
+        //     cloned_holon
+        // );
+        //
+        // let new_version_staged_reference =
+        //     { context.get_space_manager().stage_new_holon(cloned_holon)? };
+        //
+        // // Set PREDECESSOR
+        // new_version_staged_reference
+        //     .with_predecessor(context, Some(HolonReference::Smart(self.clone())))?;
+        //
+        // Ok(new_version_staged_reference)
+        todo!()
     }
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
-    pub fn stage_new_from_clone(
+    #[deprecated]
+    pub fn stage_new_from_clone_deprecated(
+        &self,
+        _context: &dyn HolonsContextBehavior,
+    ) -> Result<Holon, HolonError> {
+        // let rc_holon = self.get_rc_holon(context)?;
+        // let cloned_holon = rc_holon.borrow().clone_holon()?;
+        // cloned_holon.load_all_relationships(context)?;
+        //
+        // Ok(cloned_holon)
+        todo!()
+    }
+
+    // *************** UTILITY METHODS ***************
+
+    fn get_cache_access(&self, context: &dyn HolonsContextBehavior) -> Arc<dyn HolonCacheAccess> {
+        // Retrieve the space manager from the context
+        let space_manager = context.get_space_manager();
+
+        // Get CacheAccess
+        space_manager.get_cache_access()
+    }
+    fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<Holon, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let cloned_holon = rc_holon.borrow().clone_holon()?;
-        // cloned_holon.load_all_relationships(context)?;
+    ) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        // Get CacheAccess
+        let cache_access = self.get_cache_access(context);
 
-        Ok(cloned_holon)
+        // Retrieve the holon from the cache
+        let rc_holon = cache_access.get_rc_holon(&self.holon_id)?;
+        trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
+
+        Ok(rc_holon)
     }
 }
 
 impl HolonReadable for SmartReference {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+        let holon = self.get_rc_holon(context)?;
+        let holon_borrow = holon.borrow();
+        holon_borrow.clone_holon()
+    }
+
     /// `get_property_value` returns the value for the specified property name
     /// It will attempt to get it from the smart_property_values map first to avoid having to
     /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache
@@ -265,14 +244,9 @@ impl HolonReadable for SmartReference {
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let map = {
-            let mut holon_refcell = holon.try_borrow_mut().map_err(|e| {
-                HolonError::FailedToBorrow(format!("Unable to borrow holon mutably: {}", e))
-            })?;
-            holon_refcell.get_related_holons_DEPRECATED(relationship_name)?.clone()
-        };
-        Ok(map)
+        // Get CacheAccess
+        let cache_access = self.get_cache_access(context);
+        cache_access.get_related_holons(&self.holon_id, relationship_name)
     }
 
     fn essential_content(

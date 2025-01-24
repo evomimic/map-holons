@@ -1,4 +1,4 @@
-use crate::{Holon, HolonError};
+use crate::core_shared_objects::{Holon, HolonError};
 use shared_types_holon::{LocalId, MapInteger, MapString};
 
 #[derive(Debug, Eq, PartialEq, Clone)]

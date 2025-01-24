@@ -10,7 +10,8 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::reference_layer::{HolonReference, SmartReference};
-use holons::shared_objects_layer::{HolonCollection, RelationshipName};
+
+use holons_core::{HolonCollection, RelationshipName};
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyName};
 use std::collections::BTreeMap;
@@ -66,7 +67,7 @@ pub async fn execute_stage_new_version(
                     );
 
                     let original_relationship_map = original_holon
-                        .relationship_map
+                        .staged_relationship_map
                         .0
                         .clone()
                         .into_iter()

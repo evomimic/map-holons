@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::staging_area::StagingArea;
 use hdi::hdk_entry_helper;
 use holons::reference_layer::HolonReference;
-use holons::shared_objects_layer::Holon;
+use holons_core::core_shared_objects::Holon;
 use shared_types_holon::MapString;
 
 /// SessionState provides a way to distinguish information associated with a specific request from

@@ -1,6 +1,6 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
 
-use crate::{Holon, HolonError, RelationshipName};
+use crate::core_shared_objects::{Holon, HolonError, RelationshipName};
 use shared_types_holon::{BaseValue, HolonId, PropertyName};
 
 pub trait HolonWritable {
@@ -32,7 +32,8 @@ pub trait HolonWritable {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
 
-    fn stage_new_from_clone(
+    #[deprecated]
+    fn stage_new_from_clone_deprecated(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Holon, HolonError>;

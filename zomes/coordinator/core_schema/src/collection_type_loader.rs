@@ -1,14 +1,12 @@
 use crate::core_schema_types::SchemaNamesTrait;
+use crate::holon_type_loader::CoreHolonTypeName;
 use descriptors::collection_descriptor::CollectionSemantic;
 use descriptors::collection_descriptor::{define_collection_type, CollectionTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
+use holons::core_shared_objects::HolonError;
 use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
-use holons::shared_objects_layer::HolonError;
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-// use crate::core_schema_types::CoreSchemaTypeName::HolonType;
-use crate::holon_type_loader::CoreHolonTypeName;
-// use crate::property_type_loader::CorePropertyTypeName::{Description, Name};
 
 #[derive(Debug)]
 pub struct CollectionTypeSpec {

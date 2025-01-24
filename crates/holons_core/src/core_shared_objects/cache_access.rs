@@ -1,9 +1,10 @@
-use crate::{Holon, HolonCollection, HolonError, RelationshipName};
+use crate::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
 use shared_types_holon::HolonId;
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::rc::Rc;
 
-pub trait HolonCacheAccess {
+pub trait HolonCacheAccess: Debug {
     /// This method returns a mutable reference (Rc<RefCell>) to the Holon identified by holon_id.
     /// If holon_id is `Local`, it retrieves the holon from the local cache. If the holon is not
     /// already resident in the cache, this function first fetches the holon from the persistent
@@ -13,8 +14,8 @@ pub trait HolonCacheAccess {
     fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Rc<RefCell<Holon>>, HolonError>;
 
     fn get_related_holons(
-        &mut self,
-        source_holon_id: HolonId,
+        &self,
+        source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError>;
 }

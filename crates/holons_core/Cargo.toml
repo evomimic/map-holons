@@ -16,6 +16,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 # Holochain Dependencies
+hdi = { workspace = true }
+
 hdk = { workspace = true }
 
 # MAP Dependencies

@@ -15,13 +15,17 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 use hdk::prelude::*;
-use holons::{
-    evaluate_query, CommitRequestStatus, Holon, HolonError, HolonReference, HolonWritable,
-    HolonsContextBehavior, NodeCollection, QueryExpression, RelationshipName, SmartReference,
-    StagedReference,
+use holons_core::core_shared_objects::{
+    commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
+    stage_new_version_api, CommitRequestStatus, Holon, HolonError, RelationshipName,
 };
+use holons_core::{
+    HolonReference, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
+};
+use holons_guest::query_layer::{evaluate_query, NodeCollection, QueryExpression};
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
+use std::sync::Arc;
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;
@@ -117,7 +121,7 @@ pub fn commit_dance(
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered commit_dance");
-    let commit_response = context.get_space_manager().commit(context)?;
+    let commit_response = commit_api(context)?;
 
     match commit_response.status {
         CommitRequestStatus::Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
@@ -167,13 +171,14 @@ pub fn build_commit_dance_request(
 // This would allow the cascaded effects of deletion to be determined and shared with the agent, leaving them free to cancel the deletion if desired.
 // A staged deletion process would be more consistent with the staged creation process.
 pub fn delete_holon_dance(
-    _context: &dyn HolonsContextBehavior,
+    context: &dyn HolonsContextBehavior,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered delete_holon dance");
     match request.dance_type {
         DanceType::DeleteMethod(holon_id) => {
-            Holon::delete_holon(holon_id).map(|_| ResponseBody::None)
+            // Call the new `delete_holon_api` function
+            delete_holon_api(context, holon_id).map(|_| ResponseBody::None)
         }
         _ => Err(HolonError::InvalidParameter(
             "Invalid DanceType: expected DeleteMethod(HolonId), didn't get one".to_string(),
@@ -259,9 +264,10 @@ pub fn get_holon_by_id_dance(
     };
     debug!("getting space_manager from context");
     let space_manager = context.get_space_manager();
+    let holon_service = space_manager.get_holon_service();
 
     debug!("asking space_manager to get rc_holon");
-    let holon = space_manager.fetch_holon(holon_id)?;
+    let holon = holon_service.fetch_holon(&holon_id)?;
 
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))
@@ -434,7 +440,7 @@ pub fn stage_new_from_clone_dance(
         }
     };
 
-    let staged_reference = holon_reference.stage_new_from_clone(context)?;
+    let staged_reference = stage_new_from_clone_api(context, holon_reference)?;
 
     Ok(ResponseBody::StagedReference(staged_reference))
 }
@@ -493,7 +499,7 @@ pub fn stage_new_holon_dance(
     debug!("Response body matched successfully for holon:{:#?}", new_holon);
 
     // Stage the new holon
-    let staged_reference = context.get_space_manager().stage_new_holon(new_holon)?;
+    let staged_reference = stage_new_holon_api(context, new_holon)?;
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
@@ -554,7 +560,7 @@ pub fn stage_new_version_dance(
         }
     };
 
-    let staged_reference = smart_reference.stage_new_version(context)?;
+    let staged_reference = stage_new_version_api(context, smart_reference)?;
 
     Ok(ResponseBody::StagedReference(staged_reference))
 }
@@ -701,92 +707,3 @@ pub fn build_abandon_staged_changes_dance_request(
         session_state.clone(),
     ))
 }
-
-//
-// #[hdk_extern]
-// pub fn with_property_value(input: WithPropertyInput) -> ExternResult<Holon> {
-//     let mut holon = input.holon.clone();
-//     holon.with_property_value(
-//         input.property_name.clone(),
-//         input.value.clone());
-//     Ok(holon)
-// }
-// #[hdk_extern]
-// pub fn get_holon(
-//     id: HolonId,
-// ) -> ExternResult<Option<Holon>> {
-//        match Holon::get_holon(id) {
-//         Ok(result) => Ok(result),
-//         Err(holon_error) => {
-//             Err(holon_error.into())
-//         }
-//     }
-// }
-//
-// #[hdk_extern]
-// pub fn commit(input: Holon) -> ExternResult<Holon> {
-//     let holon = input.clone();
-//     // // quick exit to test error return
-//     // return Err(HolonError::NotImplemented("load_core_schema_aoi".to_string()).into());
-//     match holon.commit() {
-//         Ok(result)=> Ok(result.clone()),
-//         Err(holon_error) => {
-//             Err(holon_error.into())
-//         }
-//     }
-//
-// }
-//
-// #[hdk_extern]
-// pub fn get_all_holons(
-//    _: (),
-// ) -> ExternResult<Vec<Holon>> {
-//     match Holon::get_all_holons() {
-//         Ok(result) => Ok(result),
-//         Err(holon_error) => {
-//             Err(holon_error.into())
-//         }
-//     }
-//
-// }
-// #[hdk_extern]
-// pub fn delete_holon(
-//     target_holon_id: ActionHash,
-// ) -> ExternResult<ActionHash> {
-//     match delete_holon_node(target_holon_id) {
-//         Ok(result) => Ok(result),
-//         Err(holon_error) => {
-//             Err(holon_error.into())
-//         }
-//     }
-// }
-
-/*
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateHolonNodeInput {
-    pub original_holon_hash: ActionHash,
-    pub previous_holon_hash: ActionHash,
-    pub updated_holon: HolonNode,
-}
-#[hdk_extern]
-pub fn update_holon(input: UpdateHolonNodeInput) -> ExternResult<Record> {
-    let updated_holon_hash = update_entry(
-        input.previous_holon_hash.clone(),
-        &input.updated_holon,
-    )?;
-    create_link(
-        input.original_holon_hash.clone(),
-        updated_holon_hash.clone(),
-        LinkTypes::HolonNodeUpdates,
-        (),
-    )?;
-    let record = get(updated_holon_hash.clone(), GetOptions::default())?
-        .ok_or(
-            wasm_error!(
-                WasmErrorInner::Guest(String::from("Could not find the newly updated HolonNode"))
-            ),
-        )?;
-    Ok(record)
-}
-
- */

@@ -6,9 +6,8 @@ use shared_types_holon::{
     BaseValue, ExternalId, HolonId, LocalId, MapString, OutboundProxyId, PropertyMap, PropertyName,
 };
 
-use holons_core::{
-    get_key_from_property_map, HolonError, HolonReference, RelationshipName, SmartReference,
-};
+use holons_core::core_shared_objects::{get_key_from_property_map, HolonError, RelationshipName};
+use holons_core::reference_layer::{HolonReference, SmartReference};
 use std::{collections::BTreeMap, str};
 // const fn smartlink_tag_header_length() -> usize {
 //     // leaving this nomenclature for now

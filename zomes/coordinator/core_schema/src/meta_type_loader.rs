@@ -1,5 +1,5 @@
+use holons::core_shared_objects::HolonError;
 use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
-use holons::shared_objects_layer::HolonError;
 use shared_types_holon::MapString;
 use strum_macros::EnumIter;
 

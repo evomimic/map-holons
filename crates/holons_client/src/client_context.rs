@@ -1,21 +1,27 @@
-use crate::reference_layer::{
-    HolonReference, HolonSpaceBehavior, HolonsContextBehavior, TransientCollectionBehavior,
+// use holochain::prelude::*;
+
+use crate::client_shared_objects::ClientHolonService;
+use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
+use holons_core::core_shared_objects::{
+    Holon, HolonError, ServiceRoutingPolicy, TransientCollection,
 };
-use crate::shared_objects_layer::implementation::transient_collection::TransientCollection;
-use holons::shared_objects_layer::{Holon, HolonError};
-use holons_guest::guest_persistence::space_manager::HolonSpaceManager;
+use holons_core::reference_layer::{
+    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior,
+    TransientCollectionBehavior,
+};
 use shared_types_holon::MapString;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// HolonsContext provides a single place to store information useful within a dance request.
-pub struct GuestHolonsContext {
+pub struct ClientHolonsContext {
     dance_state: RefCell<TransientCollection>,
-    space_manager: Rc<HolonSpaceManager>,
+    space_manager: Box<HolonSpaceManager>,
 }
 
-impl GuestHolonsContext {
+impl ClientHolonsContext {
     /// Creates a new instance of `HolonsContext`.
     ///
     /// # Arguments
@@ -23,11 +29,11 @@ impl GuestHolonsContext {
     pub fn new(space_manager: HolonSpaceManager) -> Self {
         Self {
             dance_state: RefCell::new(TransientCollection::new()),
-            space_manager: Rc::new(space_manager),
+            space_manager: Box::new(space_manager),
         }
     }
 
-    /// Initializes a `HolonsContext` from session data.
+    /// Initializes a `HolonsContext`
     ///
     /// # Arguments
     /// * `staged_holons` - A vector of staged holons wrapped in `Rc<RefCell>`.
@@ -41,25 +47,26 @@ impl GuestHolonsContext {
         keyed_index: BTreeMap<MapString, usize>,
         local_space_holon: Option<HolonReference>,
     ) -> Result<Self, HolonError> {
+        // Use Arc instead of Box to wrap GuestHolonService
+        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
         // Step 1: Initialize the HolonSpaceManager
-        let mut space_manager =
-            HolonSpaceManager::new_from_session(staged_holons, keyed_index, local_space_holon);
+        let space_manager = HolonSpaceManager::new_from_session(
+            holon_service,
+            staged_holons,
+            keyed_index,
+            local_space_holon,
+            ServiceRoutingPolicy::Combined,
+        );
 
         // Step 2: Ensure the local holon space is available
-        let context = GuestHolonsContext::new(space_manager.clone());
-        let _local_space_holon = space_manager.ensure_local_holon_space(&context)?;
+        let context = ClientHolonsContext::new(space_manager);
 
         // Step 3: Return the initialized HolonsContext
         Ok(context)
     }
 }
 
-impl HolonsContextBehavior for GuestHolonsContext {
-    /// Attempts to retrieve a clone of the Local Space Holon reference from the space manager.
-    fn get_local_space_holon(&self) -> Option<HolonReference> {
-        self.get_space_manager().get_space_holon()
-    }
-
+impl HolonsContextBehavior for ClientHolonsContext {
     /// Provides access to the space manager as a trait object.
     fn get_space_manager(&self) -> Rc<&dyn HolonSpaceBehavior> {
         // Create a reference to the HolonSpaceManager as a trait object

@@ -1,10 +1,11 @@
 use crate::descriptor_types::CoreSchemaPropertyTypeName::{MaxLength, MinLength};
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use holons::core_shared_objects::stage_new_holon_api;
+use holons::core_shared_objects::{Holon, HolonError};
 use holons::reference_layer::{
     HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use holons::{Holon, HolonError};
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
 use CoreSchemaPropertyTypeName::TypeName;
@@ -64,7 +65,7 @@ pub fn define_string_type(
         )?;
 
     // Stage new string type
-    let string_type_ref = context.get_space_manager().stage_new_holon(string_type.clone())?;
+    let string_type_ref = stage_new_holon_api(context, string_type.clone())?;
 
     // Add some relationships
     string_type_ref.add_related_holons(

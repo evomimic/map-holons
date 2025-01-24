@@ -5,12 +5,10 @@ use crate::reference_layer::{
     HolonReadable, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
 };
 
-use crate::{AccessType, EssentialHolonContent, HolonCollection, HolonError, RelationshipName};
+use crate::core_shared_objects::{
+    AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
+};
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
-// If I can operate directly on HolonReferences as if they were Holons, I don't need this Trait
-// pub trait HolonReferenceFns {
-//     fn get_rc_holon(&self) -> Result<Rc<RefCell<Holon>>, HolonError>;
-// }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
@@ -24,6 +22,13 @@ pub enum HolonReference {
 }
 
 impl HolonReadable for HolonReference {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.clone_holon(context),
+            HolonReference::Staged(staged_reference) => staged_reference.clone_holon(context),
+        }
+    }
+
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -92,37 +97,37 @@ impl HolonReadable for HolonReference {
 
 /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
 impl HolonReference {
-    pub fn stage_new_from_clone(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<StagedReference, HolonError> {
-        let cloned_holon = match self {
-            HolonReference::Staged(staged_reference) => {
-                // Get a clone from the rc_holon in the commit_manager
-                staged_reference.stage_new_from_clone(context)?
-            }
-            HolonReference::Smart(smart_reference) => {
-                // Get a clone from the rc_holon in the cache_manager
-                smart_reference.stage_new_from_clone(context)?
-            }
-        };
-
-        let cloned_staged_reference = {
-            // Mutably borrow the commit_manager
-            let space_manager = context.get_space_manager();
-            // Stage the clone
-            space_manager.stage_new_holon(cloned_holon)?
-        };
-
-        // Reset the PREDECESSOR to None
-        cloned_staged_reference.with_predecessor(context, None)?;
-
-        Ok(cloned_staged_reference)
-    }
+    // pub fn stage_new_from_clone(
+    //     &self,
+    //     context: &dyn HolonsContextBehavior,
+    // ) -> Result<StagedReference, HolonError> {
+    //     let cloned_holon = match self {
+    //         HolonReference::Staged(staged_reference) => {
+    //             // Get a clone from the rc_holon in the commit_manager
+    //             staged_reference.stage_new_from_clone_deprecated(context)?
+    //         }
+    //         HolonReference::Smart(smart_reference) => {
+    //             // Get a clone from the rc_holon in the cache_manager
+    //             smart_reference.stage_new_from_clone_deprecated(context)?
+    //         }
+    //     };
+    //
+    //     let cloned_staged_reference = {
+    //         // Mutably borrow the commit_manager
+    //         let space_manager = context.get_space_manager();
+    //         // Stage the clone
+    //         space_manager.stage_new_holon(cloned_holon)?
+    //     };
+    //
+    //     // Reset the PREDECESSOR to None
+    //     cloned_staged_reference.with_predecessor(context, None)?;
+    //
+    //     Ok(cloned_staged_reference)
+    // }
 
     //
     /// Creates a `HolonReference` wrapping a `SmartReference` for the given `HolonId`.
-    pub fn holon_reference_from_id(holon_id: HolonId) -> HolonReference {
+    pub fn from_id(holon_id: HolonId) -> HolonReference {
         HolonReference::Smart(SmartReference::new_from_id(holon_id))
     }
 

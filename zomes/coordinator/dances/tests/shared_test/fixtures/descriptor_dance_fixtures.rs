@@ -17,14 +17,14 @@ use core::panic;
 use dances::dance_response::ResponseStatusCode;
 
 use crate::shared_test::test_data_types::DancesTestCase;
-use holons::shared_objects_layer::HolonError;
+
+use holons::HolonError;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
-use std::collections::btree_map::BTreeMap;
-
 use shared_types_holon::{
     MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
+use std::collections::btree_map::BTreeMap;
 
 /// This function creates a set of simple (undescribed) holons
 ///
