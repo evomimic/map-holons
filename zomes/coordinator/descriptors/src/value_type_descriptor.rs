@@ -10,7 +10,7 @@ pub fn get_core_value_type_descriptor_reference(
     value_type: CoreValueTypeName,
 ) -> Result<HolonReference, HolonError> {
     let key = MapString(value_type.as_str().to_string());
-    context.get_by_key_from_dance_state(&key)?.ok_or_else(|| {
+    context.get_by_key_from_transient_state(&key)?.ok_or_else(|| {
         HolonError::HolonNotFound(format!(
             "Couldn't find StagedReference for {:?} in dance_state",
             value_type.as_str()

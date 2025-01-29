@@ -23,7 +23,6 @@ holons_core = { workspace = true }
 holons_guest = { workspace = true }
 shared_types_holon = { workspace = true }
 
-
 [dev-dependencies]
 # General dev-dependencies (platform-agnostic)
 async-std = { workspace = true }

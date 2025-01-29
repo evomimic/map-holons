@@ -1,10 +1,13 @@
 use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
 
 use crate::core_shared_objects::{AccessType, HolonError};
+use crate::{HolonCollectionApi, HolonSpaceBehavior};
 use core::fmt;
 use hdk::prelude::*;
 use shared_types_holon::{MapInteger, MapString};
 use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {
@@ -166,6 +169,26 @@ impl HolonCollection {
         &self.members
     }
 
+    fn add_reference(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        holon_ref: HolonReference,
+    ) -> Result<(), HolonError> {
+        let key = holon_ref.get_key(context)?;
+
+        if let Some(key) = key {
+            if let Some(&_index) = self.keyed_index.get(&key) {
+                // let existing_holon_ref = &self.members[index];
+                warn!("Duplicate holons with key {:#?}", key.0.clone());
+            } else {
+                let index = self.members.len();
+                self.members.push(holon_ref.clone());
+                self.keyed_index.insert(key, index);
+            }
+        }
+        Ok(())
+    }
+
     /// Adds the supplied HolonReferences to this holon collection and updates the keyed_index
     /// accordingly. Currently, this method requires a `context`. Use `add_reference_with_key()` to
     /// add individual references without requiring `context` when the key is known.
@@ -176,13 +199,8 @@ impl HolonCollection {
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
 
-        for holon in holons {
-            let index = self.members.len();
-            self.members.push(holon.clone());
-            let key = holon.get_key(context)?;
-            if let Some(key) = key {
-                self.keyed_index.insert(key, index);
-            }
+        for holon_ref in holons {
+            self.add_reference(context, holon_ref)?;
         }
 
         Ok(())
@@ -228,5 +246,43 @@ impl HolonCollection {
             self.keyed_index.insert(key.clone(), index);
         }
         Ok(())
+    }
+}
+
+impl HolonCollectionApi for HolonCollection {
+    fn add_references(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        Ok(self.add_references(context, holons)?)
+    }
+
+    fn add_reference_with_key(
+        &mut self,
+        key: Option<&MapString>,
+        reference: &HolonReference,
+    ) -> Result<(), HolonError> {
+        Ok(self.add_reference_with_key(key, reference)?)
+    }
+
+    fn get_by_index(&self, index: usize) -> Result<HolonReference, HolonError> {
+        Ok(self.get_by_index(index)?)
+    }
+
+    fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
+        Ok(self.get_by_key(key)?)
+    }
+
+    fn get_count(&self) -> MapInteger {
+        self.get_count()
+    }
+
+    fn remove_references(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        Ok(self.remove_references(context, holons)?)
     }
 }
