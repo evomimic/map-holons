@@ -1,5 +1,5 @@
 use crate::descriptor_types::CoreValueTypeName;
-use holons::core_shared_objects::HolonError;
+use holons::core_shared_objects::{space_manager, HolonError};
 use holons::reference_layer::{HolonReference, HolonsContextBehavior};
 
 use shared_types_holon::MapString;
@@ -10,7 +10,7 @@ pub fn get_core_value_type_descriptor_reference(
     value_type: CoreValueTypeName,
 ) -> Result<HolonReference, HolonError> {
     let key = MapString(value_type.as_str().to_string());
-    context.get_by_key_from_transient_state(&key)?.ok_or_else(|| {
+    context.get_space_manager().get_transient_state().borrow().get_by_key(&key)?.ok_or_else(|| {
         HolonError::HolonNotFound(format!(
             "Couldn't find StagedReference for {:?} in dance_state",
             value_type.as_str()

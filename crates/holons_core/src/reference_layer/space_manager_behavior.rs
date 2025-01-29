@@ -5,6 +5,7 @@ use crate::core_shared_objects::nursery_access::NurseryAccess;
 use crate::core_shared_objects::TransientCollection;
 use crate::HolonCollectionApi;
 use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 pub trait HolonSpaceBehavior {
@@ -49,5 +50,5 @@ pub trait HolonSpaceBehavior {
     /// # Errors
     /// - This method is not expected to fail under normal circumstances, as it guarantees the initialization
     ///   of the `transient_state` on-demand.
-    fn get_transient_state(&self) -> Arc<Mutex<Option<TransientCollection>>>;
+    fn get_transient_state(&self) -> Rc<RefCell<dyn HolonCollectionApi>>;
 }

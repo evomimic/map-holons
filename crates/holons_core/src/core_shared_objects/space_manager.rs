@@ -5,6 +5,7 @@ use crate::core_shared_objects::{
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
 };
+use hdi::prelude::ShardStrategy;
 use shared_types_holon::MapString;
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
@@ -16,14 +17,14 @@ use crate::HolonCollectionApi;
 
 #[derive(Debug)]
 pub struct HolonSpaceManager {
+    pub holon_service: Arc<dyn HolonServiceApi>, // Shared Holon service
+    pub local_holon_space: Option<HolonReference>, // Optional reference to the space holon
+    pub nursery: RefCell<Option<Nursery>>,       // Lazily initialized nursery
     pub cache_request_router: Arc<dyn HolonCacheAccess>, // Shared CacheRequestRouter
-    pub holon_service: Arc<dyn HolonServiceApi>,         // Shared Holon service
-    pub local_holon_space: Option<HolonReference>,       // Optional reference to the space holon
-    pub nursery: RefCell<Option<Nursery>>,               // Lazily initialized nursery
     // Arc: Allows safe sharing of transient_state across threads.
     // Mutex: Provides interior mutability and ensures thread-safe access.
     // Option: Allows lazy initialization of transient_state.
-    transient_state: Arc<Mutex<Option<TransientCollection>>>,
+    transient_state: RefCell<Option<Rc<RefCell<TransientCollection>>>>,
 }
 
 impl HolonSpaceManager {
@@ -59,12 +60,11 @@ impl HolonSpaceManager {
     /// # Returns
     /// A new instance of `HolonSpaceManager`.
     pub fn new_from_session(
-        cache_routing_policy: ServiceRoutingPolicy,
         holon_service: Arc<dyn HolonServiceApi>,
+        staged_holons: Vec<Rc<RefCell<Holon>>>,
         keyed_index: BTreeMap<MapString, usize>,
         space_holon_ref: Option<HolonReference>,
-        staged_holons: Vec<Rc<RefCell<Holon>>>,
-        transient_state: Arc<Mutex<Option<TransientCollection>>>,
+        cache_routing_policy: ServiceRoutingPolicy,
     ) -> Self {
         // Initialize the nursery
         let nursery = RefCell::new(if staged_holons.is_empty() {
@@ -89,12 +89,8 @@ impl HolonSpaceManager {
             holon_service,
             local_holon_space: space_holon_ref,
             nursery,
-            transient_state,
+            transient_state: RefCell::new(None),
         }
-    }
-
-    pub fn get_transient_state(&self) -> Arc<Mutex<Option<TransientCollection>>> {
-        self.transient_state.clone()
     }
 
     pub fn set_space_holon(&mut self, space: HolonReference) {
@@ -153,7 +149,16 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Retrieves a shared, thread-save reference to the transient_state.
-    fn get_transient_state(&self) -> Arc<Mutex<Option<TransientCollection>>> {
-        self.get_transient_state()
+    fn get_transient_state(&self) -> Rc<RefCell<dyn HolonCollectionApi>> {
+        // First, try to borrow immutably to avoid unnecessary `borrow_mut()`
+        if let Some(existing) = self.transient_state.borrow().as_ref() {
+            return Rc::clone(existing) as Rc<RefCell<dyn HolonCollectionApi>>;
+        }
+
+        // If None, then do a mutable borrow to initialize
+        let new_state = Rc::new(RefCell::new(TransientCollection::new()));
+        *self.transient_state.borrow_mut() = Some(Rc::clone(&new_state));
+
+        new_state as Rc<RefCell<dyn HolonCollectionApi>>
     }
 }
