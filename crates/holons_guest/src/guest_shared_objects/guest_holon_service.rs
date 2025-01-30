@@ -11,6 +11,7 @@ use holons_core::core_shared_objects::{
     RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
+use holons_core::HolonCollectionApi;
 use holons_integrity::LinkTypes;
 use shared_types_holon::{
     HolonId, LocalId, MapString, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION,

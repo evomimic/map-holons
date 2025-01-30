@@ -1,4 +1,5 @@
 pub mod context_behavior;
+pub mod holon_collection_api;
 mod holon_readable;
 pub mod holon_reference;
 pub mod holon_service_api;
@@ -11,6 +12,7 @@ pub mod transient_collection_behavior;
 
 pub use context_behavior::HolonsContextBehavior;
 // pub use factory::init_context_from_session;
+pub use holon_collection_api::HolonCollectionApi;
 pub use holon_readable::HolonReadable;
 pub use holon_reference::HolonReference;
 pub use holon_service_api::HolonServiceApi;

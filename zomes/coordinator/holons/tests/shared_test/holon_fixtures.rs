@@ -15,7 +15,7 @@
 
 use core::panic;
 
-use holons::shared_objects_layer::{Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, HolonError};
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;

@@ -3,6 +3,7 @@
 use core::panic;
 use holochain::core::author_key_is_valid;
 
+use holons::HolonCollectionApi;
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;

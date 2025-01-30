@@ -46,7 +46,11 @@ pub fn load_core_schema(context: &dyn HolonsContextBehavior) -> Result<CommitRes
     info!("Staging Schema...");
     let staged_schema_ref = HolonReference::Staged(stage_new_holon_api(context, schema.0.clone())?);
 
-    context.add_reference_to_dance_state(staged_schema_ref.clone())?;
+    context
+        .get_space_manager()
+        .get_transient_state()
+        .borrow_mut()
+        .add_references(context, vec![staged_schema_ref.clone()])?;
 
     let initial_load_set = get_initial_load_set();
 
