@@ -1,19 +1,20 @@
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
 use async_std::task;
-use dances::dance_response::ResponseBody::{Holons, StagedReference};
+use dances::dance_response::ResponseBody;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_add_related_holons_dance_request, build_get_all_holons_dance_request,
     build_with_properties_dance_request,
 };
 use hdk::prelude::*;
-use holochain::sweettest::*;
+use holochain::sweettest::*;f
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::reference_layer::staged_reference::StagedIndex;
 use holons::reference_layer::HolonReference;
 
 use holons_core::core_shared_objects::{Holon, RelationshipName};
+use holons_core::reference_layer::StagedReference;
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
