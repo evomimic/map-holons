@@ -232,14 +232,17 @@ fn commit_relationships(
 ) -> Result<Holon, HolonError> {
     let holon = rc_holon.borrow();
     debug!("Entered Holon::commit_relationships");
+
     match holon.state {
         HolonState::Saved => {
             match holon.saved_node.clone() {
                 Some(record) => {
                     let source_local_id = LocalId(record.action_address().clone());
-                    // Iterate through the holon's relationship map, invoking commit on each
-                    for (name, holon_collection) in holon.staged_relationship_map.0.clone() {
-                        debug!("COMMITTING {:#?} relationship", name.0 .0.clone());
+                    // Use the public `iter()` method to access the map
+                    for (name, holon_collection_rc) in holon.staged_relationship_map.iter() {
+                        debug!("COMMITTING {:#?} relationship", name.0.clone());
+                        // Borrow the `RefCell` to access the `HolonCollection`
+                        let holon_collection = holon_collection_rc.borrow();
                         commit_relationship(
                             context,
                             source_local_id.clone(),
@@ -262,7 +265,6 @@ fn commit_relationships(
         }
     }
 }
-
 /// The method
 fn commit_relationship(
     context: &dyn HolonsContextBehavior,

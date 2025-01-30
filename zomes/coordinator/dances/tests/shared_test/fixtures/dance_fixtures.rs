@@ -3,22 +3,25 @@
 // use crate::get_holon_by_key_from_test_state;
 use crate::tracing::{error, info, warn};
 use core::panic;
+use std::cell::RefCell;
 //use holochain::core::author_key_is_valid;
-
-use pretty_assertions::assert_eq;
-use rstest::*;
-use shared_types_holon::value_types::BaseValue;
-use std::collections::btree_map::BTreeMap;
 
 use crate::shared_test::test_data_types::DancesTestCase;
 use dances::dance_response::ResponseStatusCode;
 use holons::reference_layer::HolonReference::Staged;
 use holons::reference_layer::{HolonReference, StagedReference};
 use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons_core::HolonsContextBehavior;
 use holons_guest::query_layer::QueryExpression;
+use holons_init::init_context_from_session;
+use pretty_assertions::assert_eq;
+use rstest::*;
+use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
+use std::collections::btree_map::BTreeMap;
+use std::rc::Rc;
 
 use super::book_authors_setup_fixture::setup_book_author_steps;
 
@@ -109,6 +112,8 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
+    let context = initialize_empty_context();
+
     let mut test_case = DancesTestCase::new(
         "Simple Add Related Holon Testcase".to_string(),
         "Ensure DB starts empty, stage Book and Person Holons, add properties, commit, ensure db count".to_string(),
@@ -206,7 +211,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     book_holon
         .staged_relationship_map
-        .0
+        .add_related_holons()
         .insert(authored_by_relationship_name.clone(), authored_by_collection.clone());
 
     let mut related_holons: Vec<HolonReference> = Vec::new();
@@ -454,4 +459,12 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_delete_holon_step(book_holon_key.clone(), ResponseStatusCode::NotFound)?;
 
     Ok(test_case.clone())
+}
+
+pub fn initialize_empty_context() -> Result<Box<dyn HolonsContextBehavior>, HolonError> {
+    let staged_holons: Vec<Rc<RefCell<Holon>>> = Vec::new();
+    let keyed_index: BTreeMap<MapString, usize> = BTreeMap::new();
+    let local_space_holon: Option<HolonReference> = None;
+
+    init_context_from_session(staged_holons, keyed_index, local_space_holon)
 }

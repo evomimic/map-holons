@@ -1336,6 +1336,7 @@ dependencies = [
  "hdk",
  "holochain",
  "holons",
+ "holons_client",
  "holons_core",
  "holons_guest",
  "holons_init",
