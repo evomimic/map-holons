@@ -103,8 +103,9 @@ impl HolonReadable for StagedReference {
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.borrow();
-        let map = Rc::clone(&holon.get_staged_relationship(relationship_name)?);
-        Ok(map)
+
+        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
+        Ok(holon.staged_relationship_map.get_related_holons(relationship_name))
     }
 
     fn essential_content(
@@ -155,44 +156,21 @@ impl HolonWritable for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::add_related_holons");
-        // Ensure is accessible for Write
+        // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
         // Get mutable access to the source holon
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon = rc_holon.borrow_mut();
-        trace!(
-            "Here is the RelationshipMap before adding related Holons: {:#?} \n\n",
+
+        debug!(
+            "Here is the RelationshipMap before adding related Holons: {:#?}",
             holon.staged_relationship_map
         );
-        debug!("In StagedReference::add_related_holons, getting collection for relationship name");
 
-        debug!("In StagedReference::add_related_holons, about to add the holons to the editable collections:");
+        // Delegate adding holons to the `StagedRelationshipMap`
+        holon.staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
 
-        // Retrieve or create a new HolonCollection for the specified relationship
-        let collection = holon
-            .staged_relationship_map
-            .0
-            .entry(relationship_name.clone())
-            .or_insert_with(|| Rc::new(HolonCollection::new_staged()));
-
-        // Borrow the Rc to modify the underlying HolonCollection
-        let collection_ref = Rc::get_mut(collection).ok_or_else(|| {
-            HolonError::FailedToBorrow("Failed to get mutable reference to collection".to_string())
-        })?;
-
-        // Add references to the collection
-        collection_ref.add_references(context, holons)?;
-
-        // // Retrieve the editable collection for the specified relationship name
-        // if let Some(collection) = holon.staged_relationship_map.0.get_mut(&relationship_name) {
-        //     debug!("Collection after to_staged: {:?}", collection);
-        //     collection.add_references(context, holons)?;
-        // } else {
-        //     let mut collection = HolonCollection::new_staged();
-        //     collection.add_references(context, holons)?;
-        //     holon.staged_relationship_map.0.insert(relationship_name, collection);
-        // }
         debug!(
             "Here is the RelationshipMap after adding related Holons: {:#?}",
             holon.staged_relationship_map
@@ -244,31 +222,27 @@ impl HolonWritable for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered StagedReference::remove_related_holons");
-        // Ensure the holon is accessible for write operations
+
+        // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
-        // Retrieve the holon
+        // Get mutable access to the source holon
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon = rc_holon.borrow_mut();
 
-        // Attempt to retrieve the existing collection for the relationship
-        if let Some(collection) = holon.staged_relationship_map.0.get_mut(relationship_name) {
-            // Borrow the Rc to modify the underlying HolonCollection
-            let collection_ref = Rc::get_mut(collection).ok_or_else(|| {
-                HolonError::FailedToBorrow(
-                    "Failed to get mutable reference to collection".to_string(),
-                )
-            })?;
+        debug!(
+            "Here is the RelationshipMap before removing related Holons: {:#?}",
+            holon.staged_relationship_map
+        );
 
-            // Ensure the collection is accessible and remove references
-            collection_ref.is_accessible(AccessType::Write)?;
-            collection_ref.remove_references(context, holons)?;
-        } else {
-            return Err(HolonError::InvalidRelationship(
-                format!("Invalid relationship: {}", relationship_name),
-                format!("For holon {:?}", holon),
-            ));
-        }
+        // Delegate the removal of holons to the `StagedRelationshipMap`
+        holon.staged_relationship_map.remove_related_holons(context, relationship_name, holons)?;
+
+        debug!(
+            "Here is the RelationshipMap after removing related Holons: {:#?}",
+            holon.staged_relationship_map
+        );
+
         Ok(())
     }
 

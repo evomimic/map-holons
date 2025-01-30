@@ -25,7 +25,6 @@ use holons_core::{
 use holons_guest::query_layer::{evaluate_query, NodeCollection, QueryExpression};
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
-use std::sync::Arc;
 
 use crate::dance_request::{DanceRequest, DanceType, RequestBody};
 use crate::dance_response::ResponseBody;

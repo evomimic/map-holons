@@ -32,6 +32,7 @@ holons_guest = { workspace = true }
 async-std = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+holons_client = { workspace = true }
 
 # Target-specific dev dependencies for non-WASM builds
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
