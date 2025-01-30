@@ -21,7 +21,7 @@ pub struct HolonSpaceManager {
     pub local_holon_space: Option<HolonReference>, // Optional reference to the space holon
     pub nursery: RefCell<Option<Nursery>>,       // Lazily initialized nursery
     pub cache_request_router: Arc<dyn HolonCacheAccess>, // Shared CacheRequestRouter
-    // Arc: Allows safe sharing of transient_state across threads.
+    // Rc: Allows shared ownership of transient_state.
     // Mutex: Provides interior mutability and ensures thread-safe access.
     // Option: Allows lazy initialization of transient_state.
     transient_state: RefCell<Option<Rc<RefCell<TransientCollection>>>>,
@@ -148,7 +148,7 @@ impl HolonSpaceBehavior for HolonSpaceManager {
         self.local_holon_space.clone()
     }
 
-    /// Retrieves a shared, thread-save reference to the transient_state.
+    /// Retrieves a shared reference to the transient_state.
     fn get_transient_state(&self) -> Rc<RefCell<dyn HolonCollectionApi>> {
         // First, try to borrow immutably to avoid unnecessary `borrow_mut()`
         if let Some(existing) = self.transient_state.borrow().as_ref() {

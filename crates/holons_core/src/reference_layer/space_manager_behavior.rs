@@ -27,7 +27,7 @@ pub trait HolonSpaceBehavior {
     /// Provides access to a component that supports the HolonStagingBehavior API
     fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>>;
 
-    /// Provides shared, thread-safe access to the transient state, initializing it lazily if necessary.
+    /// Provides shared access to the transient state, initializing it lazily if necessary.
     ///
     /// The transient state is represented by a `TransientCollection`, which implements the `HolonCollectionApi` trait.
     /// This method ensures that the transient state is lazily initialized the first time it is accessed,
@@ -38,13 +38,9 @@ pub trait HolonSpaceBehavior {
     ///   `TransientCollection` and store it in the `transient_state` field.
     /// - If the `transient_state` is already initialized, it will simply return a reference to the existing instance.
     ///
-    /// # Thread Safety
-    /// - The `transient_state` field is protected by a `Mutex` to ensure safe concurrent access in a
-    ///   multi-threaded environment.
-    /// - The `Arc` ensures that the transient state can be shared across threads without duplicating the underlying data.
     ///
     /// # Returns
-    /// - An `Arc<dyn HolonCollectionApi>` that provides shared access to the transient state.
+    /// - An `Rc<RefCell<dyn HolonCollectionApi>>` that provides shared access to the transient state.
     ///
     ///
     /// # Errors

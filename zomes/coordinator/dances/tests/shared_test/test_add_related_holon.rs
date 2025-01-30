@@ -8,7 +8,7 @@ use dances::holon_dance_adapter::{
     build_with_properties_dance_request,
 };
 use hdk::prelude::*;
-use holochain::sweettest::*;f
+use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons::reference_layer::staged_reference::StagedIndex;
 use holons::reference_layer::HolonReference;

@@ -114,28 +114,6 @@ impl HolonCollection {
         Ok(())
     }
 
-    pub fn get_by_index(&self, index: usize) -> Result<HolonReference, HolonError> {
-        if index < self.members.len() {
-            Ok(self.members[index].clone())
-        } else {
-            Err(HolonError::IndexOutOfRange(format!("Index {} is out of bounds", index)))
-        }
-    }
-
-    pub fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        let index = self.keyed_index.get(key);
-        if let Some(index) = index {
-            Ok(Some(self.members[*index].clone()))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn get_count(&self) -> MapInteger {
-        MapInteger(self.members.len() as i64)
-    }
-
     pub fn get_keyed_index(&self) -> BTreeMap<MapString, usize> {
         self.keyed_index.clone()
     }
@@ -168,31 +146,13 @@ impl HolonCollection {
     pub fn get_members(&self) -> &Vec<HolonReference> {
         &self.members
     }
+}
 
-    fn add_reference(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holon_ref: HolonReference,
-    ) -> Result<(), HolonError> {
-        let key = holon_ref.get_key(context)?;
-
-        if let Some(key) = key {
-            if let Some(&_index) = self.keyed_index.get(&key) {
-                // let existing_holon_ref = &self.members[index];
-                warn!("Duplicate holons with key {:#?}", key.0.clone());
-            } else {
-                let index = self.members.len();
-                self.members.push(holon_ref.clone());
-                self.keyed_index.insert(key, index);
-            }
-        }
-        Ok(())
-    }
-
+impl HolonCollectionApi for HolonCollection {
     /// Adds the supplied HolonReferences to this holon collection and updates the keyed_index
     /// accordingly. Currently, this method requires a `context`. Use `add_reference_with_key()` to
     /// add individual references without requiring `context` when the key is known.
-    pub fn add_references(
+    fn add_references(
         &mut self,
         context: &dyn HolonsContextBehavior,
         holons: Vec<HolonReference>,
@@ -200,13 +160,63 @@ impl HolonCollection {
         self.is_accessible(AccessType::Write)?;
 
         for holon_ref in holons {
-            self.add_reference(context, holon_ref)?;
+            let key = holon_ref.get_key(context)?;
+
+            if let Some(key) = key {
+                if let Some(&_index) = self.keyed_index.get(&key) {
+                    // let existing_holon_ref = &self.members[index];
+                    warn!("Duplicate holons with key {:#?}", key.0.clone());
+                } else {
+                    let index = self.members.len();
+                    self.members.push(holon_ref.clone());
+                    self.keyed_index.insert(key, index);
+                }
+            }
         }
 
         Ok(())
     }
 
-    pub fn remove_references(
+    /// Adds the supplied HolonReference to this holon collection and updates the keyed_index
+    /// according to the supplied key. This allows the collection to be populated when key is
+    /// known and context may not be available.
+    fn add_reference_with_key(
+        &mut self,
+        key: Option<&MapString>,
+        reference: &HolonReference,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let index = self.members.len();
+        self.members.push(reference.clone());
+        if let Some(key) = key {
+            self.keyed_index.insert(key.clone(), index);
+        }
+        Ok(())
+    }
+
+    fn get_count(&self) -> MapInteger {
+        MapInteger(self.members.len() as i64)
+    }
+
+    fn get_by_index(&self, index: usize) -> Result<HolonReference, HolonError> {
+        if index < self.members.len() {
+            Ok(self.members[index].clone())
+        } else {
+            Err(HolonError::IndexOutOfRange(format!("Index {} is out of bounds", index)))
+        }
+    }
+
+    fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let index = self.keyed_index.get(key);
+        if let Some(index) = index {
+            Ok(Some(self.members[*index].clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn remove_references(
         &mut self,
         context: &dyn HolonsContextBehavior,
         holons: Vec<HolonReference>,
@@ -229,60 +239,5 @@ impl HolonCollection {
         }
 
         Ok(())
-    }
-
-    /// Adds the supplied HolonReference to this holon collection and updates the keyed_index
-    /// according to the supplied key. This allows the collection to be populated when key is
-    /// known and context may not be available.
-    pub fn add_reference_with_key(
-        &mut self,
-        key: Option<&MapString>,
-        reference: &HolonReference,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        let index = self.members.len();
-        self.members.push(reference.clone());
-        if let Some(key) = key {
-            self.keyed_index.insert(key.clone(), index);
-        }
-        Ok(())
-    }
-}
-
-impl HolonCollectionApi for HolonCollection {
-    fn add_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        Ok(self.add_references(context, holons)?)
-    }
-
-    fn add_reference_with_key(
-        &mut self,
-        key: Option<&MapString>,
-        reference: &HolonReference,
-    ) -> Result<(), HolonError> {
-        Ok(self.add_reference_with_key(key, reference)?)
-    }
-
-    fn get_by_index(&self, index: usize) -> Result<HolonReference, HolonError> {
-        Ok(self.get_by_index(index)?)
-    }
-
-    fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
-        Ok(self.get_by_key(key)?)
-    }
-
-    fn get_count(&self) -> MapInteger {
-        self.get_count()
-    }
-
-    fn remove_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        Ok(self.remove_references(context, holons)?)
     }
 }
