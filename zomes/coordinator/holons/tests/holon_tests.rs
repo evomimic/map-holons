@@ -11,7 +11,6 @@ use async_std::task;
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-
 use holons_core::core_shared_objects::{Holon, HolonError};
 use rstest::*;
 use shared_test::holon_fixtures::*;

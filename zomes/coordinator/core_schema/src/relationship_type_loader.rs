@@ -649,8 +649,10 @@ pub fn load_relationship_type_definition(
     let staged_ref = define_holon_type(context, schema, definition)?;
 
     context
-        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
-        .expect("Unable to add reference to dance_state");
+        .get_space_manager()
+        .get_transient_state()
+        .borrow_mut()
+        .add_references(context, vec![HolonReference::Staged(staged_ref.clone())])?;
 
     Ok(staged_ref)
 }

@@ -17,7 +17,6 @@ use std::sync::Arc;
 
 /// HolonsContext provides a single place to store information useful within a dance request.
 pub struct ClientHolonsContext {
-    dance_state: RefCell<TransientCollection>,
     space_manager: Box<HolonSpaceManager>,
 }
 
@@ -27,10 +26,7 @@ impl ClientHolonsContext {
     /// # Arguments
     /// * `space_manager` - The space manager to be associated with this context.
     pub fn new(space_manager: HolonSpaceManager) -> Self {
-        Self {
-            dance_state: RefCell::new(TransientCollection::new()),
-            space_manager: Box::new(space_manager),
-        }
+        Self { space_manager: Box::new(space_manager) }
     }
 
     /// Initializes a `HolonsContext`
@@ -73,20 +69,5 @@ impl HolonsContextBehavior for ClientHolonsContext {
         let reference: &dyn HolonSpaceBehavior = &*self.space_manager;
         // Wrap the reference in Rc
         Rc::new(reference)
-    }
-
-    fn add_references_to_dance_state(&self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
-        self.dance_state.borrow_mut().add_references(self, holons)
-    }
-
-    fn add_reference_to_dance_state(&self, holon_ref: HolonReference) -> Result<(), HolonError> {
-        self.dance_state.borrow_mut().add_reference(self, holon_ref)
-    }
-
-    fn get_by_key_from_dance_state(
-        &self,
-        key: &MapString,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        self.dance_state.borrow().get_by_key(key)
     }
 }

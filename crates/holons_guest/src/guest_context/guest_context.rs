@@ -16,10 +16,9 @@ use std::sync::Arc;
 
 /// The `GuestHolonsContext` provides a guest-specific implementation of the `HolonsContextBehavior`
 /// trait, offering functionality necessary for Holochain guest-side operations.
-/// It includes both a `HolonSpaceManager` and a `TransientCollection` to manage the state
+/// It includes a `HolonSpaceManager` which contains a `TransientCollection` to manage the state
 /// and lifecycle of holons during a request.
 pub struct GuestHolonsContext {
-    dance_state: RefCell<TransientCollection>,
     space_manager: Rc<HolonSpaceManager>,
 }
 
@@ -29,7 +28,7 @@ impl GuestHolonsContext {
     /// # Arguments
     /// * `space_manager` - The `HolonSpaceManager` responsible for managing holons.
     pub fn new(space_manager: Rc<HolonSpaceManager>) -> Self {
-        Self { dance_state: RefCell::new(TransientCollection::new()), space_manager }
+        Self { space_manager }
     }
 
     /// Initializes a `HolonsContext` from session data, injecting a `GuestHolonService` object.
@@ -89,20 +88,5 @@ impl HolonsContextBehavior for GuestHolonsContext {
         let reference: &dyn HolonSpaceBehavior = &*self.space_manager;
         // Wrap the reference in Rc
         Rc::new(reference)
-    }
-
-    fn add_references_to_dance_state(&self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
-        self.dance_state.borrow_mut().add_references(self, holons)
-    }
-
-    fn add_reference_to_dance_state(&self, holon_ref: HolonReference) -> Result<(), HolonError> {
-        self.dance_state.borrow_mut().add_reference(self, holon_ref)
-    }
-
-    fn get_by_key_from_dance_state(
-        &self,
-        key: &MapString,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        self.dance_state.borrow().get_by_key(key)
     }
 }
