@@ -32,7 +32,8 @@ pub trait SchemaNamesTrait {
     ) -> Result<HolonReference, HolonError> {
         // See if definition for this type has already been loaded
         let key = self.derive_type_name();
-        let definition_reference = context.get_by_key_from_dance_state(&key)?;
+        let definition_reference =
+            context.get_space_manager().get_transient_state().borrow().get_by_key(&key)?;
 
         match definition_reference {
             Some(result) => Ok(result),

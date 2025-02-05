@@ -11,6 +11,7 @@ use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, HolonState,
     NurseryAccess, RelationshipName,
 };
+use crate::HolonCollectionApi;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
 /// a StagedIndex identifies a StagedHolon by its position within the staged_holons vector

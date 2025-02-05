@@ -5,11 +5,15 @@ use crate::core_shared_objects::{
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
 };
+use hdi::prelude::ShardStrategy;
 use shared_types_holon::MapString;
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+use super::TransientCollection;
+use crate::HolonCollectionApi;
 
 #[derive(Debug)]
 pub struct HolonSpaceManager {
@@ -17,6 +21,10 @@ pub struct HolonSpaceManager {
     pub local_holon_space: Option<HolonReference>, // Optional reference to the space holon
     pub nursery: RefCell<Option<Nursery>>,       // Lazily initialized nursery
     pub cache_request_router: Arc<dyn HolonCacheAccess>, // Shared CacheRequestRouter
+    // Rc: Allows shared ownership of transient_state.
+    // Mutex: Provides interior mutability and ensures thread-safe access.
+    // Option: Allows lazy initialization of transient_state.
+    transient_state: RefCell<Option<Rc<RefCell<TransientCollection>>>>,
 }
 
 impl HolonSpaceManager {
@@ -77,12 +85,14 @@ impl HolonSpaceManager {
 
         // Step 4: Construct and return the HolonSpaceManager
         HolonSpaceManager {
+            cache_request_router,
             holon_service,
             local_holon_space: space_holon_ref,
             nursery,
-            cache_request_router,
+            transient_state: RefCell::new(None),
         }
     }
+
     pub fn set_space_holon(&mut self, space: HolonReference) {
         self.local_holon_space = Some(space);
     }
@@ -136,5 +146,19 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Retrieves a reference to the space holon if it exists.
     fn get_space_holon(&self) -> Option<HolonReference> {
         self.local_holon_space.clone()
+    }
+
+    /// Retrieves a shared reference to the transient_state.
+    fn get_transient_state(&self) -> Rc<RefCell<dyn HolonCollectionApi>> {
+        // First, try to borrow immutably to avoid unnecessary `borrow_mut()`
+        if let Some(existing) = self.transient_state.borrow().as_ref() {
+            return Rc::clone(existing) as Rc<RefCell<dyn HolonCollectionApi>>;
+        }
+
+        // If None, then do a mutable borrow to initialize
+        let new_state = Rc::new(RefCell::new(TransientCollection::new()));
+        *self.transient_state.borrow_mut() = Some(Rc::clone(&new_state));
+
+        new_state as Rc<RefCell<dyn HolonCollectionApi>>
     }
 }
