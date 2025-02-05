@@ -14,9 +14,9 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-use crate::dance_request::{DanceRequest, DanceType, RequestBody};
-use crate::dance_response::ResponseBody;
-use crate::session_state::SessionState;
+use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
+use dances_core::dance_response::ResponseBody;
+use dances_core::session_state::SessionState;
 use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;

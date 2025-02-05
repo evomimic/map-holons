@@ -1,11 +1,11 @@
 [package]
-name = "holons_client"
+name = "dances_guest"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name = "holons_client"
+name = "dances_guest"
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
@@ -14,14 +14,17 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Holochain Dependencies
+hdk = { workspace = true }
+hdi = { workspace = true }
 
 # MAP Dependencies
 shared_types_holon = { workspace = true }
+holons = { workspace = true }
 holons_core = { workspace = true }
-holon_dance_builders = { workspace = true}
+holons_guest = { workspace = true }
+holons_init = { workspace = true }
 dances_core = { workspace = true }
-
-
+core_schema = { workspace = true }
 
 [dev-dependencies]
 
