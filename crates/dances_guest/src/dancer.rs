@@ -1,9 +1,9 @@
-use crate::dance_request::DanceRequest;
-use crate::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
+use dances_core::dance_request::DanceRequest;
+use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
-use crate::session_state::SessionState;
-use crate::staging_area::StagingArea;
+use dances_core::session_state::SessionState;
+use dances_core::staging_area::StagingArea;
 use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;
 use holons_init::init_context_from_session;

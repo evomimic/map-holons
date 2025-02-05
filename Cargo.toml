@@ -57,6 +57,15 @@ path = "crates/holons_client"
 [workspace.dependencies.holons_init]
 path = "crates/holons_init"
 
+[workspace.dependencies.dances_core]
+path = "crates/dances_core"
+
+[workspace.dependencies.dances_guest]
+path = "crates/dances_guest"
+
+[workspace.dependencies.holon_dance_builders]
+path = "crates/holon_dance_builders"
+
 # External dependencies
 [workspace.dependencies]
 ahash = "=0.8.11"

@@ -1,0 +1,12 @@
+pub mod add_related_holons_dance;
+pub mod commit_dance;
+pub mod delete_holon_dance;
+pub mod get_all_holons_dance;
+pub mod get_holon_by_id_dance;
+pub mod query_relationships_dance;
+pub mod remove_related_holons_dance;
+pub mod stage_new_from_clone_dance;
+pub mod stage_new_holon_dance;
+pub mod stage_new_version_dance;
+pub mod with_properties_dance;
+pub mod abandon_staged_changes_dance;

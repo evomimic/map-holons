@@ -25,11 +25,10 @@ use holons_core::{
 use holons_guest::query_layer::{evaluate_query, NodeCollection, QueryExpression};
 use shared_types_holon::{HolonId, LocalId};
 use shared_types_holon::{MapString, PropertyMap};
-use std::sync::Arc;
 
-use crate::dance_request::{DanceRequest, DanceType, RequestBody};
-use crate::dance_response::ResponseBody;
-use crate::session_state::SessionState;
+use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
+use dances_core::dance_response::ResponseBody;
+use dances_core::session_state::SessionState;
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
@@ -89,22 +88,7 @@ pub fn add_related_holons_dance(
         )),
     }
 }
-///
-/// Builds a DanceRequest for adding related holons to a source_holon.
-pub fn build_add_related_holons_dance_request(
-    session_state: &SessionState,
-    staged_reference: StagedReference,
-    relationship_name: RelationshipName,
-    holons_to_add: Vec<HolonReference>,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_target_holons(relationship_name, holons_to_add);
-    Ok(DanceRequest::new(
-        MapString("add_related_holons".to_string()),
-        DanceType::CommandMethod(staged_reference),
-        body,
-        session_state.clone(),
-    ))
-}
+
 
 /// Commit all staged holons to the persistent store
 ///
@@ -137,20 +121,7 @@ pub fn commit_dance(
     }
 }
 
-///
-/// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
-/// in the body of the request.
-pub fn build_commit_dance_request(
-    session_state: &SessionState,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::None;
-    Ok(DanceRequest::new(
-        MapString("commit".to_string()),
-        DanceType::Standalone,
-        body,
-        session_state.clone(),
-    ))
-}
+
 
 /// This dance deletes an existing holon from the persistent store.
 ///
@@ -186,19 +157,6 @@ pub fn delete_holon_dance(
     }
 }
 
-/// Builds a DanceRequest for deleting a local Holon from the persistent store
-pub fn build_delete_holon_dance_request(
-    session_state: &SessionState,
-    holon_to_delete: LocalId,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new();
-    Ok(DanceRequest::new(
-        MapString("delete_holon".to_string()),
-        DanceType::DeleteMethod(holon_to_delete),
-        body,
-        session_state.clone(),
-    ))
-}
 
 /// Get all holons from the persistent store
 ///
@@ -225,18 +183,6 @@ pub fn get_all_holons_dance(
     }
 }
 
-/// Builds a DanceRequest for retrieving all holons from the persistent store
-pub fn build_get_all_holons_dance_request(
-    session_state: &SessionState,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new();
-    Ok(DanceRequest::new(
-        MapString("get_all_holons".to_string()),
-        DanceType::Standalone,
-        body,
-        session_state.clone(),
-    ))
-}
 
 /// Gets Holon from persistent store, located by HolonId
 ///
@@ -273,19 +219,7 @@ pub fn get_holon_by_id_dance(
     Ok(ResponseBody::Holon(holon))
 }
 
-/// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
-pub fn build_get_holon_by_id_dance_request(
-    session_state: &SessionState,
-    holon_id: HolonId,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::HolonId(holon_id);
-    Ok(DanceRequest::new(
-        MapString("get_holon_by_id".to_string()),
-        DanceType::Standalone,
-        body,
-        session_state.clone(),
-    ))
-}
+
 /// Query relationships
 ///
 /// *DanceRequest:*
@@ -324,21 +258,7 @@ pub fn query_relationships_dance(
     }
 }
 
-///
-/// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
-pub fn build_query_relationships_dance_request(
-    session_state: &SessionState,
-    node_collection: NodeCollection,
-    query_expression: QueryExpression,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_query_expression(query_expression);
-    Ok(DanceRequest::new(
-        MapString("query_relationships".to_string()),
-        DanceType::QueryMethod(node_collection),
-        body,
-        session_state.clone(),
-    ))
-}
+
 /// Remove related Holons
 ///
 /// *DanceRequest:*
@@ -399,21 +319,7 @@ pub fn remove_related_holons_dance(
     }
 }
 
-/// Builds a DanceRequest for removing related holons to a source_holon.
-pub fn build_remove_related_holons_dance_request(
-    session_state: &SessionState,
-    staged_reference: StagedReference,
-    relationship_name: RelationshipName,
-    holons_to_remove: Vec<HolonReference>,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_target_holons(relationship_name, holons_to_remove);
-    Ok(DanceRequest::new(
-        MapString("remove_related_holons".to_string()),
-        DanceType::CommandMethod(staged_reference),
-        body,
-        session_state.clone(),
-    ))
-}
+
 /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
 ///
 /// *DanceRequest:*
@@ -444,19 +350,7 @@ pub fn stage_new_from_clone_dance(
 
     Ok(ResponseBody::StagedReference(staged_reference))
 }
-///
-/// Builds a dance request for staging a new cloned Holon
-pub fn build_stage_new_from_clone_dance_request(
-    session_state: &SessionState,
-    holon_reference: HolonReference,
-) -> Result<DanceRequest, HolonError> {
-    Ok(DanceRequest::new(
-        MapString("stage_new_from_clone".to_string()),
-        DanceType::CloneMethod(holon_reference),
-        RequestBody::None,
-        session_state.clone(),
-    ))
-}
+
 
 /// This dance creates a new version of an existing holon by cloning the existing holon, adding
 /// the clone to the StagingArea and resetting its PREDECESSOR relationship to reference the
@@ -505,33 +399,7 @@ pub fn stage_new_holon_dance(
 
     Ok(ResponseBody::StagedReference(staged_reference))
 }
-///
-/// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included
-/// in the body of the request.
-// pub fn build_stage_new_holon_dance_request(
-//     session_state: &SessionState,
-//     properties: PropertyMap,
-// ) -> Result<DanceRequest, HolonError> {
-//     let body = RequestBody::new_parameter_values(properties);
-//     Ok(DanceRequest::new(
-//         MapString("stage_new_holon".to_string()),
-//         DanceType::Standalone,
-//         body,
-//         session_state.clone(),
-//     ))
-// }
-pub fn build_stage_new_holon_dance_request(
-    session_state: &SessionState,
-    holon: Holon,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_holon(holon);
-    Ok(DanceRequest::new(
-        MapString("stage_new_holon".to_string()),
-        DanceType::Standalone,
-        body,
-        session_state.clone(),
-    ))
-}
+
 
 /// Stages a new version of a Holon by cloning an existing Holon, retaining lineage to the Holon its cloned from.
 /// This operation is only allowed for smart references.
@@ -564,19 +432,7 @@ pub fn stage_new_version_dance(
 
     Ok(ResponseBody::StagedReference(staged_reference))
 }
-///
-/// Builds a dance request for staging a new cloned Holon
-pub fn build_stage_new_version_dance_request(
-    session_state: &SessionState,
-    holon_id: HolonId,
-) -> Result<DanceRequest, HolonError> {
-    Ok(DanceRequest::new(
-        MapString("stage_new_version".to_string()),
-        DanceType::NewVersionMethod(holon_id),
-        RequestBody::None,
-        session_state.clone(),
-    ))
-}
+
 
 /// Add property values to an already staged holon
 ///
@@ -648,22 +504,7 @@ pub fn with_properties_dance(
         )),
     }
 }
-///
-/// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
-pub fn build_with_properties_dance_request(
-    session_state: &SessionState,
-    staged_reference: StagedReference,
-    properties: PropertyMap,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::new_parameter_values(properties);
 
-    Ok(DanceRequest::new(
-        MapString("with_properties".to_string()),
-        DanceType::CommandMethod(staged_reference),
-        body,
-        session_state.clone(),
-    ))
-}
 
 /// Abandon staged changes
 ///
@@ -693,17 +534,3 @@ pub fn abandon_staged_changes_dance(
     }
 }
 
-///
-/// Builds a DanceRequest for abandoning changes to a staged Holon.
-pub fn build_abandon_staged_changes_dance_request(
-    session_state: &SessionState,
-    staged_reference: StagedReference,
-) -> Result<DanceRequest, HolonError> {
-    let body = RequestBody::None;
-    Ok(DanceRequest::new(
-        MapString("abandon_staged_changes".to_string()),
-        DanceType::CommandMethod(staged_reference),
-        body,
-        session_state.clone(),
-    ))
-}
