@@ -1,11 +1,8 @@
 use std::collections::BTreeMap;
 
 use dances::dance_response::ResponseStatusCode;
-use holons::{
-    holon::Holon, holon_collection::HolonCollection, holon_error::HolonError,
-    holon_reference::HolonReference, relationship::RelationshipName,
-    smart_reference::SmartReference, staged_reference::StagedReference,
-};
+use holons::reference_layer::HolonReference;
+use holons::shared_objects_layer::{HolonError, RelationshipName};
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 

@@ -13,6 +13,7 @@ node_modules/
 .running
 Cargo.lock
 .idea
+.vscode
 /package-lock.json
 settings.json
 /tests/node_modules/

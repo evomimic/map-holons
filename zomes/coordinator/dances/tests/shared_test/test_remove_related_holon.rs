@@ -1,5 +1,5 @@
 use async_std::task;
-use dances::dance_response::ResponseBody::{Holons, Index};
+use dances::dance_response::ResponseBody::Holons;
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_add_related_holons_dance_request, build_get_all_holons_dance_request,
@@ -8,22 +8,20 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::holon_reference::HolonReference;
-use pretty_assertions::assert_eq;
-use rstest::*;
-use std::collections::BTreeMap;
 
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
-use holons::relationship::RelationshipName;
-use holons::staged_reference::{StagedIndex, StagedReference};
+use dances::dance_request::RequestBody::StagedRef;
+use holons::reference_layer::staged_reference::StagedIndex;
+use holons::reference_layer::{HolonReference, StagedReference};
+
+use holons_core::core_shared_objects::{Holon, RelationshipName};
+use pretty_assertions::assert_eq;
+use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
+use std::collections::BTreeMap;
 
 /// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
 /// and holons
@@ -33,7 +31,7 @@ pub async fn execute_remove_related_holons(
     conductor: &SweetConductor,
     cell: &SweetCell,
     test_state: &mut DanceTestState,
-    source_holon_index: StagedIndex,
+    source_holon: StagedRef(),
     relationship_name: RelationshipName,
     holons_to_remove: Vec<HolonReference>,
     expected_response: ResponseStatusCode,
@@ -57,7 +55,7 @@ pub async fn execute_remove_related_holons(
     // Build the DanceRequest
     let request = build_remove_related_holons_dance_request(
         &test_state.session_state,
-        source_holon_index,
+        source_holon,
         relationship_name,
         holons_to_remove,
     );
@@ -76,7 +74,7 @@ pub async fn execute_remove_related_holons(
             info!("as expected, remove_related_holons dance request returned {:#?}", code.clone());
 
             if let ResponseStatusCode::OK = code {
-                if let Index(index) = response.body {
+                if let StagedRef(index) = response.body {
                     let index_value = index.to_string();
                     info!("{index_value} returned in body");
                     // An index was returned in the body, retrieve the Holon at that index within

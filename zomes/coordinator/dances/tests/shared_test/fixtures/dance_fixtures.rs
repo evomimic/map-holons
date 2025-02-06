@@ -4,36 +4,18 @@
 use crate::tracing::{error, info, warn};
 use core::panic;
 //use holochain::core::author_key_is_valid;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_collection::{CollectionState, HolonCollection};
-use holons::holon_reference::HolonReference;
-use holons::query::QueryExpression;
-use holons::smart_reference::SmartReference;
-use holons::staged_reference::StagedReference;
+
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
-use dances::dance_response::ResponseStatusCode;
-use holons::context::HolonsContext;
-
 use crate::shared_test::test_data_types::DancesTestCase;
-
-// use hdk::prelude::*;
-
-// use crate::shared_test::fixture_helpers::{derive_label, derive_type_description, derive_type_name};
-// use crate::shared_test::property_descriptor_data_creators::{
-//     create_example_property_descriptors, create_example_updates_for_property_descriptors,
-// };
-
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference::Staged;
-use holons::relationship::RelationshipName;
-
-// use crate::shared_test::book_authors_setup_fixture::setup_book_author_steps;
+use dances::dance_response::ResponseStatusCode;
+use holons::reference_layer::HolonReference::Staged;
+use holons::reference_layer::{HolonReference, StagedReference};
+use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons_guest::query_layer::QueryExpression;
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
@@ -83,7 +65,11 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     );
-    test_case.add_with_properties_step(0, properties, ResponseStatusCode::OK)?;
+    test_case.add_with_properties_step(
+        StagedReference::from_index(0),
+        properties,
+        ResponseStatusCode::OK,
+    )?;
 
     //  STAGE:  Person Holon  //
     let person_holon = Holon::new();
@@ -105,7 +91,11 @@ pub fn simple_create_test_fixture() -> Result<DancesTestCase, HolonError> {
         PropertyName(MapString("last name".to_string())),
         BaseValue::StringValue(MapString("Briggs".to_string())),
     );
-    test_case.add_with_properties_step(1, properties, ResponseStatusCode::OK)?;
+    test_case.add_with_properties_step(
+        StagedReference::from_index(1),
+        properties,
+        ResponseStatusCode::OK,
+    )?;
 
     //  COMMIT  //
     test_case.add_commit_step()?;
@@ -215,7 +205,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     authored_by_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
     book_holon
-        .relationship_map
+        .staged_relationship_map
         .0
         .insert(authored_by_relationship_name.clone(), authored_by_collection.clone());
 
@@ -224,7 +214,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     related_holons.push(person_2_reference);
 
     test_case.add_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
         ResponseStatusCode::OK,
@@ -234,9 +224,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let empty_collection = HolonCollection::new_staged();
 
     let mut book_holon_with_no_related = book_holon.clone();
-    book_holon_with_no_related.relationship_map.0.clear();
+    book_holon_with_no_related.staged_relationship_map.0.clear();
     book_holon_with_no_related
-        .relationship_map
+        .staged_relationship_map
         .0
         .insert(authored_by_relationship_name.clone(), empty_collection);
 
@@ -244,9 +234,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     one_in_collection.add_reference_with_key(Some(&person_1_key), &person_1_reference)?;
 
     let mut book_holon_with_one_related = book_holon.clone();
-    book_holon_with_one_related.relationship_map.0.clear();
+    book_holon_with_one_related.staged_relationship_map.0.clear();
     book_holon_with_one_related
-        .relationship_map
+        .staged_relationship_map
         .0
         .insert(authored_by_relationship_name.clone(), one_in_collection);
 
@@ -254,7 +244,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let wrong_book_index: usize = 8;
     // the cache manager returns a IndexOutOfRange ServerError, not a Notfound 404
     test_case.remove_related_holons_step(
-        wrong_book_index, // source holon
+        StagedReference::from_index(wrong_book_index), // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
         ResponseStatusCode::ServerError,
@@ -264,7 +254,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // test invalid relationship name
     let wrong_relationship_name: RelationshipName = RelationshipName(MapString("WRONG".into()));
     test_case.remove_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         wrong_relationship_name,
         related_holons.to_vec(),
         ResponseStatusCode::BadRequest,
@@ -273,7 +263,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // test remove one related holon
     test_case.remove_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         authored_by_relationship_name.clone(),
         related_holons.clone().split_off(1), //takes the second person holon
         ResponseStatusCode::OK,
@@ -282,7 +272,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // test remove all related holons including ignoring a previous one that was already removed
     test_case.remove_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
         ResponseStatusCode::OK,
@@ -290,7 +280,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     )?;
 
     test_case.add_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         authored_by_relationship_name.clone(),
         related_holons.to_vec(),
         ResponseStatusCode::OK,
@@ -345,13 +335,16 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
-    test_case.add_abandon_staged_changes_step(person_1_index, ResponseStatusCode::OK)?;
+    test_case.add_abandon_staged_changes_step(
+        StagedReference::from_index(person_1_index),
+        ResponseStatusCode::OK,
+    )?;
     expected_count -= 1;
 
     //  RELATIONSHIP:  Author H2 -> H3  //
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     test_case.add_related_holons_step(
-        person_1_index, // source holons
+        StagedReference::from_index(person_1_index), // source holons
         RelationshipName(MapString("FRIENDS".to_string())),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
@@ -394,11 +387,13 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     expected_count += 1;
 
     // ABANDON:  H4
-    test_case.add_abandon_staged_changes_step(0, ResponseStatusCode::OK)?;
+    test_case
+        .add_abandon_staged_changes_step(StagedReference::from_index(0), ResponseStatusCode::OK)?;
     expected_count -= 1;
 
     // ABANDON:  H5
-    test_case.add_abandon_staged_changes_step(1, ResponseStatusCode::OK)?;
+    test_case
+        .add_abandon_staged_changes_step(StagedReference::from_index(1), ResponseStatusCode::OK)?;
     expected_count -= 1;
 
     // COMMIT  // all Holons in staging_area

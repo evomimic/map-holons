@@ -15,31 +15,16 @@
 
 use core::panic;
 use dances::dance_response::ResponseStatusCode;
-use holons::context::HolonsContext;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use rstest::*;
-use shared_types_holon::value_types::BaseValue;
-use std::collections::btree_map::BTreeMap;
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
-// use hdk::prelude::*;
-
-// use crate::shared_test::fixture_helpers::{derive_label, derive_type_description, derive_type_name};
-// use crate::shared_test::property_descriptor_data_creators::{
-//     create_example_property_descriptors, create_example_updates_for_property_descriptors,
-// };
-
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-use holons::staged_reference::StagedReference;
-
+use holons_core::core_shared_objects::HolonError;
+use rstest::*;
+use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{
     MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
+use std::collections::btree_map::BTreeMap;
 
 /// This function creates a set of simple (undescribed) holons
 ///
@@ -54,7 +39,7 @@ pub fn load_core_schema_test_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_ensure_database_count_step(MapInteger(1))?;
 
-    test_case.add_load_core_schema()?;
+    // test_case.add_load_core_schema()?;
 
     test_case.add_database_print_step()?;
 

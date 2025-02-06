@@ -1,18 +1,16 @@
 use std::collections::BTreeMap;
 
 use dances::dance_response::ResponseBody;
-use dances::dance_response::{DanceResponse, ResponseBody::Index, ResponseStatusCode};
+use dances::dance_response::{DanceResponse, ResponseBody::StagedReference, ResponseStatusCode};
 use dances::holon_dance_adapter::build_stage_new_from_clone_dance_request;
 use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::sodoken::crypto_box::curve25519xchacha20poly1305::SEALBYTES;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::holon::{self, Holon};
-use holons::holon_collection::HolonCollection;
-use holons::holon_reference::HolonReference;
-use holons::relationship::RelationshipName;
-use holons::smart_reference::SmartReference;
-use holons::staged_reference::StagedReference;
+
+use holons::reference_layer::{HolonReference, SmartReference};
+
+use holons_core::core_shared_objects::RelationshipName;
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
 
@@ -35,12 +33,8 @@ pub async fn execute_stage_new_from_clone(
     let _predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
 
     let original_holon_data: TestHolonData = match original_holon {
-        TestReference::StagedHolon(index) => {
-            let holon_reference = HolonReference::Staged(StagedReference::new(index));
-            let staging_area = test_state.session_state.get_staging_area();
-            let staged_holons = staging_area.get_staged_holons();
-            let staged_holon = staged_holons.get(index).unwrap();
-            // let staged_holon = test_state.staging_area.get_holon(index).unwrap();
+        TestReference::StagedHolon(staged_reference) => {
+            let holon_reference = HolonReference::Staged(staged_reference);
             TestHolonData::new(staged_holon.clone(), holon_reference)
         }
         TestReference::SavedHolon(key) => {
@@ -75,7 +69,7 @@ pub async fn execute_stage_new_from_clone(
             let description = response.description.clone();
 
             if let ResponseStatusCode::OK = code {
-                if let Index(index) = response.body {
+                if let StagedReference(index) = response.body {
                     let index_value = index.to_string();
                     debug!("{index_value} returned in body");
                     // An index was returned in the body, retrieve the Holon at that index within

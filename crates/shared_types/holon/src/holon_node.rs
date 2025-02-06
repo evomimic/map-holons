@@ -4,6 +4,10 @@ use hdi::prelude::*;
 use std::collections::btree_map::BTreeMap;
 use std::fmt;
 
+pub const LOCAL_HOLON_SPACE_PATH: &str = "local_holon_space";
+pub const LOCAL_HOLON_SPACE_NAME: &str = "LocalHolonSpace";
+pub const LOCAL_HOLON_SPACE_DESCRIPTION: &str = "Default Local Holon Space";
+
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct HolonNode {
@@ -25,8 +29,8 @@ impl From<LocalId> for HolonId {
     }
 }
 
-impl From<(HolonSpaceId, LocalId)> for HolonId {
-    fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
+impl From<(OutboundProxyId, LocalId)> for HolonId {
+    fn from(tuple: (OutboundProxyId, LocalId)) -> Self {
         let (space_id, local_id) = tuple;
         HolonId::External(ExternalId { space_id, local_id })
     }
@@ -60,11 +64,11 @@ impl HolonId {
 
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct HolonSpaceId(pub ActionHash);
+pub struct OutboundProxyId(pub ActionHash);
 
-impl From<ActionHash> for HolonSpaceId {
+impl From<ActionHash> for OutboundProxyId {
     fn from(action_hash: ActionHash) -> Self {
-        HolonSpaceId(action_hash)
+        OutboundProxyId(action_hash)
     }
 }
 
@@ -81,11 +85,11 @@ impl From<ActionHash> for LocalId {
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ExternalId {
-    pub space_id: HolonSpaceId,
+    pub space_id: OutboundProxyId,
     pub local_id: LocalId,
 }
-impl From<(HolonSpaceId, LocalId)> for ExternalId {
-    fn from(tuple: (HolonSpaceId, LocalId)) -> Self {
+impl From<(OutboundProxyId, LocalId)> for ExternalId {
+    fn from(tuple: (OutboundProxyId, LocalId)) -> Self {
         ExternalId { space_id: tuple.0, local_id: tuple.1 }
     }
 }

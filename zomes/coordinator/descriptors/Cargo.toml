@@ -9,27 +9,23 @@ name = "descriptors"
 
 [dependencies]
 # General Dependencies
-serde = { workspace = true }
 derive-new = { workspace = true }
-thiserror = { workspace = true }
+Inflector = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Holochain Dependencies
 hdk = { workspace = true }
 hdi = { workspace = true }
-holochain_integrity_types = { workspace = true }
 
 # MAP Dependencies
-holons_integrity = { workspace = true }
 holons = { workspace = true }
 shared_types_holon = { workspace = true }
-Inflector = { workspace = true }
+
 
 # General dev-dependencies (platform-agnostic)
 [dev-dependencies]
-async-std = { workspace = true }
-futures = { workspace = true }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
+
 
 # Target-specific dev dependencies for non-WASM builds
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

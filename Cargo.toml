@@ -1,10 +1,13 @@
 [workspace]
 members = [
+    # Coordinator Zomes
     "zomes/coordinator/holons",
     "zomes/coordinator/descriptors",
     "zomes/coordinator/core_schema",
     "zomes/coordinator/dances",
+    # Integrity Zome
     "zomes/integrity/holons_integrity",
+    # Shared Types and Validation
     "crates/shared_types/holon",
     "crates/shared_validation",
     "crates/type_system/base_types",
@@ -12,6 +15,11 @@ members = [
     "crates/type_system/descriptor_types",
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
+    # Shared Core & Guest Libraries
+    "crates/holons_client",
+    "crates/holons_core",
+    "crates/holons_guest",
+    "crates/holons_init",
 ]
 resolver = "2"
 
@@ -36,6 +44,27 @@ path = "crates/shared_types/holon"
 
 [workspace.dependencies.shared_validation]
 path = "crates/shared_validation"
+
+[workspace.dependencies.holons_core]
+path = "crates/holons_core"
+
+[workspace.dependencies.holons_guest]
+path = "crates/holons_guest"
+
+[workspace.dependencies.holons_client]
+path = "crates/holons_client"
+
+[workspace.dependencies.holons_init]
+path = "crates/holons_init"
+
+[workspace.dependencies.dances_core]
+path = "crates/dances_core"
+
+[workspace.dependencies.dances_guest]
+path = "crates/dances_guest"
+
+[workspace.dependencies.holon_dance_builders]
+path = "crates/holon_dance_builders"
 
 # External dependencies
 [workspace.dependencies]
