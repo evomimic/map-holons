@@ -10,20 +10,14 @@ use std::rc::Rc;
 
 /// A concrete implementation of the `HolonResolver` trait for resolving local Holons.
 #[derive(Debug,Clone)]
-pub struct ClientHolonService;// {
-    //app_installation: AppInstallation
-//}
+pub struct ClientHolonService;
 
 impl HolonServiceApi for ClientHolonService {
 
-    //fn install_app(&self) -> Result<AppInstallation, HolonError> {
-     ///   ZomeClient::install_app()
-    //}
-
     fn commit(&self, _context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
         //let request = build_commit_dance_request(&SessionState::empty())?;
-       // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
-       // _context.get_space_manager()
+       // let response: CommitResponse = _context.conductor.call(&cell.zome("dances"), "dance", request).await;
+       // Ok(response)
        todo!()
     }
 

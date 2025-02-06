@@ -36,16 +36,16 @@ pub struct AppInstallation {
     pub signer: ClientAgentSigner,
 }
 
-//#[tokio::test(flavor = "multi_thread")]
-/*async fn mytest() {
-    let app: AppInstallation = AppInstallation::install("test-app","./fixture/test.happ").await.unwrap();
+#[tokio::test(flavor = "multi_thread")]
+async fn mytest() {
+    let app: AppInstallation = AppInstallation::install("map_holons","../../workdir/map_holons.happ").await.unwrap();
     let cell_id = match app.cells[0].clone() {
             CellInfo::Provisioned(c) => c.cell_id,
             _ => panic!("Invalid cell type"),
         };
     app.zomecall(cell_id,"foo","bar").await.unwrap();
     //app.wait_on_signal(cell_id).await.unwrap();
-}*/
+}
 
 impl ZomeClient for AppInstallation {
     async fn install(app_name:&str, happ_url:&str) -> Result<Self, ConductorApiError> {
