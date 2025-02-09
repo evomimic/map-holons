@@ -2,11 +2,10 @@ use crate::reference_layer::{HolonReference, HolonServiceApi, HolonStagingBehavi
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::nursery_access::NurseryAccess;
-use crate::core_shared_objects::TransientCollection;
 use crate::HolonCollectionApi;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub trait HolonSpaceBehavior {
     /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
