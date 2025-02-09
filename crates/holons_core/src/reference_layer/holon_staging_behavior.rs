@@ -23,7 +23,6 @@ pub trait HolonStagingBehavior {
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
-
     fn stage_new_from_clone(
         &self,
         context: &dyn HolonsContextBehavior,
