@@ -1,18 +1,23 @@
 
-use holochain::{prelude::{AppBundleSource, CellId, Signal}, sweettest::SweetConductor
-};
-use holochain_client::{
-    AdminWebsocket, AppAuthenticationTokenIssued, AppWebsocket, AuthorizeSigningCredentialsPayload, ClientAgentSigner, InstallAppPayload, InstalledAppId, ConductorApiError
-};
-use holochain_conductor_api::{AppInfoStatus, CellInfo, NetworkInfo};
-use holochain_types::{
-    app::{AppBundle, AppManifestV1, DisabledAppReason},
-    websocket::AllowedOrigins,
-};
-use holochain_zome_types::dependencies::holochain_integrity_types::ExternIO;
-use kitsune_p2p_types::{dependencies::proptest::arbitrary, fetch_pool::FetchPoolInfo};
+use hdi::prelude::AgentPubKey;
+use holochain::conductor::api::error::ConductorApiError;
+use holochain::conductor::api::CellInfo;
+use holochain::prelude::{AppBundleSource, CellId, InstalledAppId, Signal}; 
+use holochain::sweettest::*;
+
+//use holochain_client::{
+ //   AdminWebsocket, AppAuthenticationTokenIssued, AppWebsocket, AuthorizeSigningCredentialsPayload, 
+ //   ClientAgentSigner, InstallAppPayload, ConductorApiError
+//};
+//use holochain_conductor_api::{AppInfoStatus, CellInfo, NetworkInfo};
+//use holochain_types::{
+  ///  app::{AppBundle, AppManifestV1, DisabledAppReason},
+   // websocket::AllowedOrigins,
+//};
+//use holochain_zome_types::dependencies::holochain_integrity_types::ExternIO;
+//use kitsune_p2p_types::{dependencies::proptest::arbitrary, fetch_pool::FetchPoolInfo};
 use serde::{Deserialize, Serialize};
-use std::{io::ErrorKind, net::Ipv4Addr};
+use std::{io::Error, io::ErrorKind, net::Ipv4Addr};
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -33,8 +38,11 @@ pub struct AppInstallation {
     pub conductor: SweetConductor,
     pub app_id: InstalledAppId,
     pub cells: Vec<CellInfo>,
-    pub signer: ClientAgentSigner,
+    //pub signer: ClientAgentSigner,
 }
+
+const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
+
 
 #[tokio::test(flavor = "multi_thread")]
 async fn mytest() {
@@ -49,13 +57,13 @@ async fn mytest() {
 
 impl ZomeClient for AppInstallation {
     async fn install(app_name:&str, happ_url:&str) -> Result<Self, ConductorApiError> {
-        let conductor = SweetConductor::from_standard_config().await;
+        let conductor = Conductor::from_standard_config().await;
 
         // Connect admin client
         let admin_port = conductor.get_arbitrary_admin_websocket_port().unwrap();
         let admin_ws = AdminWebsocket::connect((Ipv4Addr::LOCALHOST, admin_port))
             .await
-            .map_err(|arg0: anyhow::Error| ConductorApiError::WebsocketError(holochain_websocket::Error::new(ErrorKind::ConnectionRefused, (arg0.to_string()))))?;
+            .map_err(|arg0: anyhow::Error| ConductorApiError::Io(Error::new(ErrorKind::ConnectionRefused, (arg0.to_string()))))?;
 
         // Set up the test app
         let app_id: InstalledAppId = app_name.into();  //"test-app"
@@ -81,11 +89,11 @@ impl ZomeClient for AppInstallation {
         let token_issued = admin_ws
             .issue_app_auth_token(app_id.clone().into())
             .await?;
-        let signer = ClientAgentSigner::default();
+        //let signer = ClientAgentSigner::default();
         let app_ws = AppWebsocket::connect(
             (Ipv4Addr::LOCALHOST, app_ws_port),
             token_issued.token,
-            signer.clone().into(),
+            //signer.clone().into(),
         )
         .await
         .map_err(|arg0: anyhow::Error| ConductorApiError::WebsocketError(holochain_websocket::Error::new(ErrorKind::ConnectionRefused, (arg0.to_string()))))?;
