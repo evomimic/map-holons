@@ -1,5 +1,6 @@
 pub mod context_behavior;
 pub mod holon_collection_api;
+pub mod holon_operations_api;
 mod holon_readable;
 pub mod holon_reference;
 pub mod holon_service_api;
