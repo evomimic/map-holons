@@ -1,6 +1,5 @@
 pub mod cache_access;
 mod commit_response;
-pub mod holon_operations_api;
 
 mod holon;
 mod holon_collection;
@@ -20,6 +19,7 @@ pub mod nursery_access_internal;
 pub mod staged_relationship;
 pub mod transient_collection;
 
+pub use crate::reference_layer::holon_operations_api::*;
 pub use cache_access::HolonCacheAccess;
 pub use cache_request_router::ServiceRoutingPolicy;
 pub use commit_response::{CommitRequestStatus, CommitResponse};
@@ -30,7 +30,6 @@ pub use holon_cache::HolonCache;
 pub use holon_cache_manager::HolonCacheManager;
 pub use holon_collection::{CollectionState, HolonCollection};
 pub use holon_error::HolonError;
-pub use holon_operations_api::*;
 pub use holon_pool::HolonPool;
 pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;
