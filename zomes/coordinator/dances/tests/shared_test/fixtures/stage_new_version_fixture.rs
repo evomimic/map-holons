@@ -2,13 +2,14 @@ use std::collections::BTreeMap;
 
 use dances::dance_response::ResponseStatusCode;
 use holons::reference_layer::HolonReference;
-use holons::shared_objects_layer::{HolonError, RelationshipName};
+
+use crate::shared_test::setup_book_author_steps_with_context;
+use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
+use holons_core::core_shared_objects::{HolonError, RelationshipName};
+
+use holons_client::init_client_context;
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
-
-use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
-
-use super::book_authors_setup_fixture::setup_book_author_steps;
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
@@ -17,6 +18,11 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
         "Simple StageNewFromClone Testcase".to_string(),
         "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some properties, adds and removes some relationships, commits it and then compares essential content of existing holon and cloned holon".to_string(),
     );
+
+    // Initialize a client context the fixture can use
+    // NOTE: This context will NOT be shared by test executors. The fixture's client context
+    // will go away once
+    let fixture_context = init_client_context();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -31,7 +37,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let test_data =
-        setup_book_author_steps(&mut test_case, &mut holons_to_add, &desired_test_relationship)?;
+        setup_book_author_steps_with_context(&fixture_context, &mut test_case, &mut holons_to_add)?;
 
     expected_count += test_data.len() as i64;
 

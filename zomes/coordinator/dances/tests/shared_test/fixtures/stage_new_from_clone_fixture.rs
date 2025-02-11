@@ -1,15 +1,13 @@
 use dances::dance_response::ResponseStatusCode;
 
 use holons::reference_layer::{HolonReference, StagedReference};
-use holons::shared_objects_layer::{HolonCollection, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
 use crate::shared_test::test_data_types::{
     DanceTestState, DanceTestStep, DancesTestCase, TestReference,
 };
-
-use super::book_authors_setup_fixture::setup_book_author_steps;
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]

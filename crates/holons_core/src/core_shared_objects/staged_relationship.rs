@@ -62,7 +62,7 @@
 //! a consistent and extensible foundation for managing holon relationships, balancing the
 //! need for flexibility (via interior mutability) with clear, immutable APIs where appropriate.
 use crate::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
-use crate::{HolonReference, HolonsContextBehavior};
+use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 use hdk::prelude::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;

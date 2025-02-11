@@ -4,7 +4,6 @@ pub mod dancer;
 pub mod descriptors_dance_adapter;
 pub mod holon_dance_adapter;
 pub mod session_state;
-pub mod staging_area;
 
 // use hdk::prelude::*;
 // use holons_integrity::*;
