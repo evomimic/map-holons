@@ -2,6 +2,7 @@ use derive_new::new;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::PropertyName;
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -11,7 +12,6 @@ use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, HolonState,
     NurseryAccess, RelationshipName,
 };
-use crate::HolonCollectionApi;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
 /// a StagedIndex identifies a StagedHolon by its position within the staged_holons vector
@@ -68,6 +68,12 @@ impl StagedReference {
 
         // Get the nursery access
         space_manager.get_nursery_access()
+    }
+}
+
+impl fmt::Display for StagedReference {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "StagedReference(index: {})", self.holon_index)
     }
 }
 

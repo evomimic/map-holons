@@ -39,6 +39,15 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {
         None
     }
 }
+
+pub fn get_staged_holon_by_key(
+    context: &dyn HolonsContextBehavior,
+    key: MapString,
+) -> Result<StagedReference, HolonError> {
+    let staging_service = get_staging_service(context);
+    let staging_service_borrow = staging_service.borrow();
+    staging_service_borrow.get_staged_holon_by_key(key)
+}
 // Standalone function to summarize a vector of Holons
 pub fn summarize_holons(holons: &Vec<Holon>) -> String {
     let summaries: Vec<String> = holons.iter().map(|holon| holon.summarize()).collect();

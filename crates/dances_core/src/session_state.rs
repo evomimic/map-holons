@@ -1,14 +1,8 @@
 use hdk::prelude::*;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
-// use serde::Serialize;
 
-use crate::staging_area::StagingArea;
 use hdi::hdk_entry_helper;
 use holons::reference_layer::HolonReference;
-use holons_core::core_shared_objects::Holon;
-use shared_types_holon::MapString;
+use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 
 /// SessionState provides a way to distinguish information associated with a specific request from
 /// state info that is just being maintained via the ping pong process. This also should make it
@@ -17,54 +11,53 @@ use shared_types_holon::MapString;
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
 pub struct SessionState {
-    staging_area: StagingArea,
+    staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReference>,
 }
 
 impl SessionState {
+    /// Creates an empty session state.
     pub fn empty() -> Self {
-        Self { staging_area: StagingArea::empty(), local_holon_space: None }
-    }
-    pub fn new(staging_area: StagingArea, local_holon_space: Option<HolonReference>) -> Self {
-        Self { staging_area, local_holon_space }
-    }
-    /// Extracts staged holons from the staging area as `Rc<RefCell<Holon>>`.
-    pub fn extract_staged_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.staging_area.get_staged_rc_holons()
+        Self { staged_holons: SerializableHolonPool::default(), local_holon_space: None }
     }
 
-    /// Extracts the keyed index from the staging area.
-    pub fn extract_keyed_index(&self) -> BTreeMap<MapString, usize> {
-        self.staging_area.get_staged_index()
+    /// Creates a new session state with the provided staged holons and local holon space.
+    pub fn new(
+        staged_holons: SerializableHolonPool,
+        local_holon_space: Option<HolonReference>,
+    ) -> Self {
+        Self { staged_holons, local_holon_space }
     }
 
-    /// Retrieves the local holon space.
-    pub fn extract_local_holon_space(&self) -> Option<HolonReference> {
+    pub fn get_local_holon_space(&self) -> Option<HolonReference> {
         self.local_holon_space.clone()
     }
-    // pub fn get_local_holon_space(&self) -> Option<HolonReference> {
-    //     self.local_holon_space.clone()
-    // }
-    // pub fn get_staging_area(&self) -> &StagingArea {
-    //     &self.staging_area
-    // }
-    // pub fn get_staging_area_mut(&mut self) -> &mut StagingArea {
-    //     &mut self.staging_area
-    // }
-
+    /// Sets a new local holon space reference.
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {
         self.local_holon_space = local_holon_space;
     }
-    pub fn set_staging_area(&mut self, staging_area: StagingArea) {
-        self.staging_area = staging_area;
+
+    /// Retrieves the staged holon pool.
+    pub fn get_staged_holons(&self) -> &SerializableHolonPool {
+        &self.staged_holons
     }
 
-    // Method to summarize the SessionState
+    /// Retrieves a mutable reference to the staged holon pool.
+    pub fn get_staged_holons_mut(&mut self) -> &mut SerializableHolonPool {
+        &mut self.staged_holons
+    }
+
+    /// Sets a new staged holon pool.
+    pub fn set_staged_holons(&mut self, staged_holons: SerializableHolonPool) {
+        self.staged_holons = staged_holons;
+    }
+
+    /// Summarizes the session state.
     pub fn summarize(&self) -> String {
         format!(
-            "\n   local_holon_space: {:?}, \n  staging_area: {} }}",
+            "\n   local_holon_space: {:?}, \n  staged holons: {} }}",
             self.local_holon_space,
-            self.staging_area.summarize(),
+            self.staged_holons.holons.len(),
         )
     }
 }

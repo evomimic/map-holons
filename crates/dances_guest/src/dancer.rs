@@ -2,11 +2,9 @@ use dances_core::dance_request::DanceRequest;
 use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
-use dances_core::session_state::SessionState;
-use dances_core::staging_area::StagingArea;
+use crate::session_state::SessionState;
 use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;
-use holons_init::init_context_from_session;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance,
@@ -15,6 +13,8 @@ use crate::holon_dance_adapter::{
 };
 
 use holons_core::core_shared_objects::HolonError;
+use holons_guest::init_guest_context;
+
 use shared_types_holon::MapString;
 use std::collections::HashMap;
 
@@ -43,21 +43,11 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
         return Ok(response);
     }
-    // Extract session state information from the request
+    // Initialize the context for this request
     //
-    let session_state = request.get_state();
-    let staged_holons = session_state.extract_staged_holons();
-    let keyed_index = session_state.extract_keyed_index();
-    let local_space_holon = session_state.extract_local_holon_space();
-
-    // Use the reference layer to initialize the context
-    let context_result = init_context_from_session(staged_holons, keyed_index, local_space_holon);
-
-    let context = match context_result {
+    let context = match initialize_context_from_request(&request) {
         Ok(ctx) => ctx,
-        Err(error) => {
-            return Ok(create_error_response(error, &request));
-        }
+        Err(error_response) => return Ok(error_response),
     };
 
     debug!("context and space manager ready to dance");
@@ -107,7 +97,7 @@ type DanceFunction = fn(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError>;
 
-/// The dipatch table offers the Dancer behaviors including the external API operations of dance and
+/// The dispatch table offers the Dancer behaviors including the external API operations of dance and
 /// (eventually) undo / redo (see [Command Pattern Wiki](https://en.wikipedia.org/wiki/Command_pattern)
 /// or [Implementing Undo/Redo with the Command Pattern video](https://m.youtube.com/watch?v=FM71_a3txTo)).
 /// This means that each offered agent action will be
@@ -195,19 +185,44 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
         state: request.get_state().clone(), // Use the session state from the request
     }
 }
+
+fn initialize_context_from_request(
+    request: &DanceRequest,
+) -> Result<Box<dyn HolonsContextBehavior>, DanceResponse> {
+    // Extract session state from request
+    let session_state = request.get_state();
+    let staged_holons = session_state.get_staged_holons().clone();
+    let local_space_holon = session_state.get_local_holon_space();
+
+    // Initialize context from session state
+    init_guest_context(staged_holons, local_space_holon)
+        .map_err(|error| create_error_response(error, request))
+}
 /// Restores the session state for the DanceResponse from context. This should always
 /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
 /// between client and guest.
 /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
-fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
-    let space_manager = &context.get_space_manager();
-    let staging_area = StagingArea::empty();
-    // let staged_holons = space_manager.export_staged_holons();
-    // let staged_index = space_manager.export_keyed_index();
-    // let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
+fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> SessionState {
+    let space_manager = context.get_space_manager();
+
+    // Export staged holons as a single SerializableHolonPool
+    let serializable_pool = space_manager.export_staged_holons();
+
+    // Get the local space holon
     let local_space_holon = space_manager.get_space_holon();
-    SessionState::new(staging_area, local_space_holon)
+
+    // Construct SessionState with SerializableHolonPool replacing StagingArea
+    SessionState::new(serializable_pool, local_space_holon)
 }
+// fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
+//     let space_manager = &context.get_space_manager();
+//     let staging_area = StagingArea::empty();
+//     let staged_holons = space_manager.export_staged_holons();
+//     let staged_index = space_manager.export_keyed_index();
+//     let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
+//     let local_space_holon = space_manager.get_space_holon();
+//     SessionState::new(staging_area, local_space_holon)
+// }
 
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///
@@ -237,7 +252,7 @@ fn process_dispatch_result(
                 description: MapString("Success".to_string()),
                 body,
                 descriptor: None,
-                state: restore_session_state_from_space_manager(context),
+                state: restore_session_state_from_context(context),
             }
         }
         Err(error) => {
@@ -248,7 +263,7 @@ fn process_dispatch_result(
                 description: MapString(error_message),
                 body: ResponseBody::None, // No body since it's an error
                 descriptor: None,         // Provide appropriate value if needed
-                state: restore_session_state_from_space_manager(context),
+                state: restore_session_state_from_context(context),
             }
         }
     }

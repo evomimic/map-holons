@@ -130,6 +130,15 @@ impl HolonReference {
     pub fn from_id(holon_id: HolonId) -> HolonReference {
         HolonReference::Smart(SmartReference::new_from_id(holon_id))
     }
+    /// Creates a `HolonReference::Staged` variant from a `StagedReference`.
+    pub fn from_staged(staged: StagedReference) -> Self {
+        HolonReference::Staged(staged)
+    }
+
+    /// Creates a `HolonReference::Smart` variant from a `SmartReference`.
+    pub fn from_smart(smart: SmartReference) -> Self {
+        HolonReference::Smart(smart)
+    }
 
     pub fn clone_reference(&self) -> HolonReference {
         match self {

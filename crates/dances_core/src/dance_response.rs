@@ -48,7 +48,7 @@ pub enum ResponseBody {
     Holon(Holon),
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
     // SmartCollection(SmartCollection),
-    StagedReference(StagedReference),
+    StagedRef(StagedReference),
     HolonReference(HolonReference),
     Collection(NodeCollection),
 }

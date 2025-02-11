@@ -1,146 +1,104 @@
+use super::TransientCollection;
 use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
+use crate::core_shared_objects::holon_pool::SerializableHolonPool;
+use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::{
-    Holon, HolonCacheAccess, HolonCacheManager, Nursery, NurseryAccess, ServiceRoutingPolicy,
+    HolonCacheAccess, HolonCacheManager, Nursery, NurseryAccess, ServiceRoutingPolicy,
 };
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
 };
-use hdi::prelude::ShardStrategy;
-use shared_types_holon::MapString;
-use std::cell::{Ref, RefCell};
-use std::collections::BTreeMap;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex};
-
-use super::TransientCollection;
 use crate::HolonCollectionApi;
+use std::cell::RefCell;
+use std::fmt::{Debug, Formatter, Result};
+use std::sync::Arc;
 
-#[derive(Debug)]
 pub struct HolonSpaceManager {
-    pub holon_service: Arc<dyn HolonServiceApi>, // Shared Holon service
-    pub local_holon_space: Option<HolonReference>, // Optional reference to the space holon
-    pub nursery: RefCell<Option<Nursery>>,       // Lazily initialized nursery
-    pub cache_request_router: Arc<dyn HolonCacheAccess>, // Shared CacheRequestRouter
-    // Rc: Allows shared ownership of transient_state.
-    // Mutex: Provides interior mutability and ensures thread-safe access.
-    // Option: Allows lazy initialization of transient_state.
-    transient_state: RefCell<Option<Rc<RefCell<TransientCollection>>>>,
+    /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
+    pub holon_service: Arc<dyn HolonServiceApi>,
+
+    /// Optional reference to the space holon (authoritative context for other holons).
+    pub local_holon_space: Option<HolonReference>,
+
+    /// The Nursery manages **staged holons** for commit operations.
+    pub nursery: Arc<RefCell<Nursery>>,
+
+    /// Manages cache access for retrieving both local and external holons efficiently.
+    pub cache_request_router: Arc<dyn HolonCacheAccess>,
+
+    /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
+    pub transient_state: Arc<RefCell<TransientCollection>>,
 }
 
 impl HolonSpaceManager {
-    /// Private helper function that ensures the nursery is initialized. If it is uninitialized,
-    /// this function will create a new Nursery instance with empty staged holons and keyed index.
+    /// Creates a new `HolonSpaceManager` from the given session data.
     ///
-    /// Returns a reference to the initialized nursery.
-    fn ensure_nursery_initialized(&self) -> Ref<Option<Nursery>> {
-        if self.nursery.borrow().is_none() {
-            // Replace with actual logic for staged holons and keyed index
-            let staged_holons = vec![];
-            let keyed_index = BTreeMap::new();
-
-            // Initialize the nursery
-            *self.nursery.borrow_mut() =
-                Some(Nursery::new_from_staged_holons(staged_holons, keyed_index));
-        }
-
-        // Return a reference to the initialized nursery
-        self.nursery.borrow()
-    }
-
-    /// Creates a new `HolonSpaceManager` from the given session data, initializing its fields,
-    /// and optionally populating the `nursery` based on the provided `staged_holons`.
+    /// This function initializes the `HolonSpaceManager` with:
+    /// - A **pre-initialized Nursery** (empty if no staged holons exist).
+    /// - A configured cache request router.
+    /// - A transient state container (initialized as an empty collection).
+    /// - (Optional) Internal access to the Nursery for privileged services.
     ///
     /// # Parameters
-    /// - `holon_service`: The holon service to be owned by the `HolonSpaceManager`.
-    /// - `staged_holons`: A collection of holons to populate the nursery. If empty, the nursery starts uninitialized.
-    /// - `keyed_index`: A keyed index used to construct the nursery if `staged_holons` is not empty.
-    /// - `space_holon_ref`: An optional reference to the local holon space.
-    /// - `cache_routing_policy`: The routing policy for cache interactions.
+    /// - `holon_service`: The holon service used for accessing and managing holons.
+    /// - `staged_holons`: A `SerializableHolonPool` containing staged holons for the nursery.
+    /// - `local_holon_space`: An optional reference to the local holon space.
+    /// - `cache_routing_policy`: Specifies how cache requests should be routed.
+    /// - `internal_nursery_access`: (Optional) Grants privileged access to `NurseryAccessInternal`
+    ///   for services that require it (e.g., `GuestHolonService`).
     ///
     /// # Returns
-    /// A new instance of `HolonSpaceManager`.
-    pub fn new_from_session(
-        holon_service: Arc<dyn HolonServiceApi>,
-        staged_holons: Vec<Rc<RefCell<Holon>>>,
-        keyed_index: BTreeMap<MapString, usize>,
-        space_holon_ref: Option<HolonReference>,
+    /// A new instance of `HolonSpaceManager`, with or without internal nursery access
+    /// depending on the provided parameters.
+    pub fn new_with_nursery(
+        holon_service: Arc<dyn HolonServiceApi>, // ✅ Injected Holon Service
+        local_holon_space: Option<HolonReference>,
         cache_routing_policy: ServiceRoutingPolicy,
+        nursery: Nursery, // ✅ Injected, already initialized
     ) -> Self {
-        // Initialize the nursery
-        let nursery = RefCell::new(if staged_holons.is_empty() {
-            None
-        } else {
-            Some(Nursery::new_from_staged_holons(staged_holons, keyed_index))
-        });
-
-        // Initialize the local cache manager
+        // Step 1: Initialize the Local Cache Manager
         let local_cache_manager = HolonCacheManager::new(Arc::clone(&holon_service));
 
-        // Step 3: Create the CacheRequestRouter and wrap it in an Arc
-        let cache_request_router: Arc<dyn HolonCacheAccess> = Arc::new(CacheRequestRouter::new(
-            local_cache_manager,
-            cache_routing_policy,
-            //outbound_proxies,
-        ));
+        // Step 2: Create the CacheRequestRouter
+        let cache_request_router: Arc<dyn HolonCacheAccess> =
+            Arc::new(CacheRequestRouter::new(local_cache_manager, cache_routing_policy));
 
-        // Step 4: Construct and return the HolonSpaceManager
-        HolonSpaceManager {
-            cache_request_router,
+        // Step 3: Wrap the provided `Nursery` in an `Arc<RefCell<Nursery>>`
+        let nursery_arc = Arc::new(RefCell::new(nursery));
+
+        // Step 4: Initialize and return the HolonSpaceManager
+        Self {
             holon_service,
-            local_holon_space: space_holon_ref,
-            nursery,
-            transient_state: RefCell::new(None),
+            local_holon_space,
+            nursery: nursery_arc,
+            cache_request_router,
+            transient_state: Arc::new(RefCell::new(TransientCollection::new())),
         }
     }
 
+    /// Updates the local space holon reference.
+    ///
+    /// # Arguments
+    /// - `space` - The new `HolonReference` for the space.
     pub fn set_space_holon(&mut self, space: HolonReference) {
         self.local_holon_space = Some(space);
     }
 }
 
 impl HolonSpaceBehavior for HolonSpaceManager {
-    /// Returns an `Arc<dyn HolonCacheAccess>` wrapping the `HolonSpaceManager`.
-    ///
-    /// This allows the `HolonSpaceManager` to expose itself as a cache access service while
-    /// mediating access between local and external holon requests.
-    /// Returns a reference to the `CacheRequestRouter`.
-    ///
-    /// This method exposes the `HolonCacheAccess` functionality via the router.
+    /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess> {
         Arc::clone(&self.cache_request_router)
     }
-    // fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess> {
-    //     // Wrap `self` in an Arc for shared ownership
-    //     Arc::new(self.clone()) as Arc<dyn HolonCacheAccess>
-    // }
 
     /// Provides access to the Holon service API.
     fn get_holon_service(&self) -> Arc<dyn HolonServiceApi> {
         Arc::clone(&self.holon_service)
     }
 
-    fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>> {
-        // Ensure the nursery is initialized and get a reference to it
-        let nursery_borrow = self.ensure_nursery_initialized();
-
-        // Unwrap the initialized Nursery (it must exist at this point) and wrap it as a trait object
-        Arc::new(RefCell::new(
-            nursery_borrow.as_ref().expect("Nursery should have been initialized").clone(),
-        ))
-    }
-
-    /// Provides access to the nursery, creating it lazily if necessary.
-    ///
-    /// Lazily initializes the `nursery` if it has not been initialized yet. The `nursery`
-    /// is returned as a shared `Arc<RefCell<dyn NurseryAccess>>`.
+    /// Provides access to the nursery.
     fn get_nursery_access(&self) -> Arc<RefCell<dyn NurseryAccess>> {
-        // Ensure the nursery is initialized and get a reference to it
-        let nursery_borrow = self.ensure_nursery_initialized();
-
-        // Unwrap the initialized Nursery (it must exist at this point) and wrap it as a trait object
-        Arc::new(RefCell::new(
-            nursery_borrow.as_ref().expect("Nursery should have been initialized").clone(),
-        ))
+        Arc::clone(&self.nursery) as Arc<RefCell<dyn NurseryAccess>>
     }
 
     /// Retrieves a reference to the space holon if it exists.
@@ -148,17 +106,39 @@ impl HolonSpaceBehavior for HolonSpaceManager {
         self.local_holon_space.clone()
     }
 
-    /// Retrieves a shared reference to the transient_state.
-    fn get_transient_state(&self) -> Rc<RefCell<dyn HolonCollectionApi>> {
-        // First, try to borrow immutably to avoid unnecessary `borrow_mut()`
-        if let Some(existing) = self.transient_state.borrow().as_ref() {
-            return Rc::clone(existing) as Rc<RefCell<dyn HolonCollectionApi>>;
-        }
+    /// Provides access to a component that supports the `HolonStagingBehavior` API.
+    fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>> {
+        Arc::clone(&self.nursery) as Arc<RefCell<dyn HolonStagingBehavior>>
+    }
 
-        // If None, then do a mutable borrow to initialize
-        let new_state = Rc::new(RefCell::new(TransientCollection::new()));
-        *self.transient_state.borrow_mut() = Some(Rc::clone(&new_state));
+    /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
+    fn export_staged_holons(&self) -> SerializableHolonPool {
+        self.nursery.borrow().export_staged_holons()
+    }
 
-        new_state as Rc<RefCell<dyn HolonCollectionApi>>
+    /// Imports staged holons into the nursery from a `SerializableHolonPool`.
+    fn import_staged_holons(&self, staged_holons: SerializableHolonPool) {
+        self.nursery.borrow_mut().import_staged_holons(staged_holons);
+    }
+
+    /// Retrieves a shared reference to the transient state.
+    fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>> {
+        Arc::clone(&self.transient_state) as Arc<RefCell<dyn HolonCollectionApi>>
+    }
+}
+impl Debug for HolonSpaceManager {
+    /// Implements custom `Debug` formatting for `HolonSpaceManager`.
+    ///
+    /// This method ensures that the `internal_nursery_access` field is **not printed** to avoid
+    /// redundant logging, as it holds a **second reference** to the same `Nursery` instance.
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("HolonSpaceManager")
+            .field("holon_service", &"<HolonServiceApi>")
+            .field("local_holon_space", &self.local_holon_space)
+            .field("nursery", &self.nursery) // ✅ Print only once
+            .field("cache_request_router", &"<CacheRequestRouter>")
+            .field("transient_state", &"<TransientCollection>")
+            .field("internal_nursery_access", &"Hidden") // ✅ Avoid duplicate printing
+            .finish()
     }
 }

@@ -1,6 +1,5 @@
 use dances::dance_response::ResponseStatusCode;
 use dances::session_state::SessionState;
-use dances::staging_area::StagingArea;
 use derive_new::new;
 
 use holons::reference_layer::{HolonReference, StagedReference};
@@ -50,20 +49,23 @@ pub enum DanceTestStep {
     // LoadCoreSchema,
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
-    RemoveRelatedHolons(
-        StagedReference,
-        RelationshipName,
-        Vec<HolonReference>,
-        ResponseStatusCode,
-        Holon,
-    ),
-    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
-    // StageNewFromClone(TestReference, ResponseStatusCode),
-    // StageNewVersion(MapString, ResponseStatusCode),
+    RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
+    StageHolon(Holon, bool), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+    StageNewFromClone(TestReference, ResponseStatusCode),
+    StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedReference, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedReference with PropertyMap
 }
 
-impl DanceTestStep {}
+impl DanceTestStep {
+    // Helper function to determine the prefix
+    fn format_prefix(local_only: bool) -> &'static str {
+        if local_only {
+            "local_only -- "
+        } else {
+            "danced -- "
+        }
+    }
+}
 
 impl Display for DanceTestStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -114,27 +116,26 @@ impl Display for DanceTestStep {
                 relationship_name,
                 holons_to_remove,
                 expected_response,
-                expected_holon,
             ) => {
-                write!(f, "RemoveRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", staged_reference, relationship_name, holons_to_remove.len(), expected_response, expected_holon)
+                write!(f, "RemoveRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", staged_reference, relationship_name, holons_to_remove.len(), expected_response)
             }
-            DanceTestStep::StageHolon(holon) => {
-                write!(f, "StageHolon({:#?})", holon)
+            DanceTestStep::StageHolon(holon, local_only) => {
+                write!(f, "{}StageHolon({:#?})", Self::format_prefix(*local_only), holon)
             }
-            // DanceTestStep::StageNewVersion(original_holon_id, expected_response) => {
-            //     write!(
-            //         f,
-            //         "NewVersion for original_holon_id: {:#?}, expecting response: {:#?}",
-            //         original_holon_id, expected_response
-            //     )
-            // }
-            // DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
-            //     write!(
-            //         f,
-            //         "StageNewFromClone for original_holon: {:#?}, expecting response: {:#?}",
-            //         original_holon, expected_response
-            //     )
-            // }
+            DanceTestStep::StageNewVersion(original_holon_id, expected_response) => {
+                write!(
+                    f,
+                    "NewVersion for original_holon_id: {:#?}, expecting response: {:#?}",
+                    original_holon_id, expected_response
+                )
+            }
+            DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
+                write!(
+                    f,
+                    "StageNewFromClone for original_holon: {:#?}, expecting response: {:#?}",
+                    original_holon, expected_response
+                )
+            }
             DanceTestStep::WithProperties(staged_reference, properties, expected_response) => {
                 write!(
                     f,
@@ -207,8 +208,12 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::StageHolon(holon));
+    pub fn add_stage_holon_step(
+        &mut self,
+        holon: Holon,
+        local_only: bool,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::StageHolon(holon, local_only));
         Ok(())
     }
 
@@ -250,7 +255,7 @@ impl DancesTestCase {
         relationship_name: RelationshipName,
         related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
-        expected_holon: Holon,
+        expected_holon: StagedReference,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::AddRelatedHolons(
             staged_holon,
@@ -268,14 +273,12 @@ impl DancesTestCase {
         relationship_name: RelationshipName,
         related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
-        expected_holon: Holon,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::RemoveRelatedHolons(
             staged_holon,
             relationship_name,
             related_holons,
             expected_response,
-            expected_holon,
         ));
         Ok(())
     }

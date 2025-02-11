@@ -1339,7 +1339,8 @@ dependencies = [
  "holons_client",
  "holons_core",
  "holons_guest",
- "holons_init",
+ "pretty_assertions",
+ "rstest",
  "serde",
  "serde_json",
  "shared_types_holon",
@@ -3352,16 +3353,6 @@ dependencies = [
  "serde_json",
  "shared_types_holon",
  "tokio",
-]
-
-[[package]]
-name = "holons_init"
-version = "0.1.0"
-dependencies = [
- "holons_client",
- "holons_core",
- "holons_guest",
- "shared_types_holon",
 ]
 
 [[package]]
@@ -6907,6 +6898,7 @@ dependencies = [
  "derive-new",
  "hdi",
  "hdk",
+ "hex",
  "serde",
  "thiserror 1.0.69",
 ]
