@@ -14,9 +14,9 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
+use holons_client::init_client_context;
 use holons_core::core_shared_objects::Holon;
 use holons_core::{HolonsContextBehavior, StagedReference};
-use holons_client::init_client_context;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
