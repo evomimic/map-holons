@@ -13,7 +13,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
-use holons_init::context_initialization::init_client_context;
+use holons_client::init_client_context;
 use rstest::*;
 
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
