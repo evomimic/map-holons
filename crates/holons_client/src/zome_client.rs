@@ -1,41 +1,19 @@
 
-use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
+use dances_core::dance_request::DanceRequest;
 use dances_core::dance_response::{DanceResponse, ResponseStatusCode};
-use dances_core::session_state::SessionState;
-use hdi::prelude::{AgentPubKey, ExternIO};
+use hdi::prelude::AgentPubKey;
+
+use hdk::prelude::CellId;
 use holochain::conductor::api::error::ConductorApiError;
-use holochain::conductor::api::CellInfo;
-use holochain::prelude::{AppBundleSource, CellId, InstalledAppId, Signal}; 
-use holochain::sweettest::*;
+use holochain::sweettest::{SweetAgents, SweetApp, SweetCell, SweetConductor, SweetDnaFile};
+use holons_core::core_shared_objects::HolonError;
 
-use holons_core::core_shared_objects::{CommitRequestStatus, CommitResponse};
-//use holochain_client::{
- //   AdminWebsocket, AppAuthenticationTokenIssued, AppWebsocket, AuthorizeSigningCredentialsPayload, 
- //   ClientAgentSigner, InstallAppPayload, ConductorApiError
-//};
-//use holochain_conductor_api::{AppInfoStatus, CellInfo, NetworkInfo};
-//use holochain_types::{
-  ///  app::{AppBundle, AppManifestV1, DisabledAppReason},
-   // websocket::AllowedOrigins,
-//};
-//use holochain_zome_types::dependencies::holochain_integrity_types::ExternIO;
-//use kitsune_p2p_types::{dependencies::proptest::arbitrary, fetch_pool::FetchPoolInfo};
-use serde::{Deserialize, Serialize};
-use shared_types_holon::{MapInteger, MapString};
-use std::{io::Error, io::ErrorKind, net::Ipv4Addr};
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Barrier},
-};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TestString(pub String);
 
 pub trait ZomeClient: Sized {
- fn install(app_name:&str, happ_url:Option<&str>) -> impl std::future::Future<Output = Result<Self, ConductorApiError>> + Send;
- async fn zomecall(self, cell_id:CellId, zome_name:&str, fn_name:&str, request:DanceRequest) -> Result<CommitResponse, ConductorApiError>;
- //async fn wait_on_signal(&self, cell_id:CellId)-> Result<(), ConductorApiError>;
+    fn install() -> impl std::future::Future<Output = Result<Self, ConductorApiError>> + Send;
+    fn install_app(app_name:&str, happ_url:Option<&str>) -> impl std::future::Future<Output = Result<Self, ConductorApiError>> + Send;
+    async fn zomecall(self, cell_id:CellId, zome_name:&str, fn_name:&str, request:DanceRequest) -> Result<DanceResponse, HolonError>;
+    //async fn wait_on_signal(&self, cell_id:CellId)-> Result<(), ConductorApiError>;
 }
 
 #[derive(Debug)]
@@ -51,22 +29,12 @@ const APP_ID: &str = "map_holons";
 const HAPP_FILEPATH: &str = "../../workdir/map_holons.happ";
 
 
-#[tokio::test(flavor = "multi_thread")]
-async fn mytest() {
-    let app: AppInstallation = AppInstallation::install(APP_ID,None).await.unwrap();
-    //let cell_id = match app.cells[0].clone() {
-            //CellInfo::Provisioned(c) => c.cell_id,
-      //      _ => panic!("Invalid cell type"),
-      //  };
-      let cell_id = app.cells[0].cell_id().clone();
-    app.zomecall(cell_id,"dances","dance", 
-    DanceRequest::new(MapString("commit".to_string()), DanceType::Standalone, RequestBody::None, SessionState::empty()))
-    .await.unwrap();
-    //app.wait_on_signal(cell_id).await.unwrap();
-}
 
 impl ZomeClient for AppInstallation {
-    async fn install(app_id:&str, happ_url:Option<&str>) -> Result<AppInstallation, ConductorApiError> {
+    async fn install() -> Result<AppInstallation, ConductorApiError> {
+        Self::install_app(APP_ID, Some(HAPP_FILEPATH)).await
+    }
+    async fn install_app(app_id:&str, happ_url:Option<&str>) -> Result<AppInstallation, ConductorApiError> {
 
         let dna = SweetDnaFile::from_bundle(std::path::Path::new(&DNA_FILEPATH)).await.unwrap();
         let mut conductor = SweetConductor::from_standard_config().await;
@@ -84,17 +52,16 @@ impl ZomeClient for AppInstallation {
         Ok(Self{conductor, app, cells:cells.to_vec()})    
     }
 
-    async fn zomecall(self, cell_id:CellId, zome_name:&str, fn_name:&str, request:DanceRequest) -> Result<DanceResponse, ConductorApiError> {
+    async fn zomecall(self, cell_id:CellId, zome_name:&str, fn_name:&str, request:DanceRequest) -> Result<DanceResponse, HolonError> {
 
-        let zome = self.conductor.get_sweet_cell(cell_id)?.zome(zome_name);//.get_cell_info(cell_id.clone()).await;
+        let zome = self.conductor.get_sweet_cell(cell_id).map_err(|err: ConductorApiError|HolonError::WasmError(err.to_string()))?.zome(zome_name);
         println!("{:?}", zome);
-        let response: DanceResponse  = self.conductor.call::<DanceRequest,DanceResponse>(&zome, fn_name, request).await;
-        let _status = match response.status_code {
-            ResponseStatusCode::OK => Ok(response),
-            ResponseStatusCode::Accepted => Ok(response),
-            _ => Err(ConductorApiError::ConductorError),
+        let response: DanceResponse = self.conductor.call::<DanceRequest,DanceResponse>(&zome, fn_name, request).await;
+        match response.status_code {
+            ResponseStatusCode::OK => return Ok(response),
+            ResponseStatusCode::Accepted => return Ok(response),
+            _ => return Err(HolonError::WasmError(response.status_code.to_string())),
         };
-        _status
     }
 
    /* async fn wait_on_signal(&self, cell_id:CellId) -> Result<(), ConductorApiError> {

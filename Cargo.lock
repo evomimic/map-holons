@@ -3106,6 +3106,7 @@ dependencies = [
  "holochain",
  "holon_dance_builders",
  "holons_core",
+ "holons_guest",
  "serde",
  "serde_json",
  "shared_types_holon",

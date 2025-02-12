@@ -17,20 +17,18 @@ anyhow = "1.0"
 # Holochain Dependencies
 hdi = { workspace = true }
 hdk = { workspace = true }
-#holochain_client = "0.5"
-#holochain_conductor_api = "0.3"
 
-#holochain = "0.3"
-#holochain_websocket = "0.3"
-#holochain_types = "0.3"
-#holochain_zome_types = "0.3"
-#kitsune_p2p_types = "0.3"
+# dependencies for the holochain client library (currently SweetConductor 
+holochain = { version = "0.3", default-features = false, features = ["test_utils", "sqlite-encrypted"] }
+tokio = { version = "1.35.1", features = ["full"] }
+
 
 # MAP Dependencies
 shared_types_holon = { workspace = true }
 holons_core = { workspace = true }
 holon_dance_builders = { workspace = true}
 dances_core = { workspace = true }
+holons_guest = { workspace = true }
 
 
 
