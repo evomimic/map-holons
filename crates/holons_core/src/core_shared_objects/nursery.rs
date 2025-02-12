@@ -1,12 +1,16 @@
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess, RelationshipMap};
+use crate::core_shared_objects::{
+    Holon, HolonError, HolonState, NurseryAccess, StagedRelationshipMap,
+};
 use crate::reference_layer::staged_reference::StagedIndex;
 use crate::reference_layer::{
     HolonReference, HolonStagingBehavior, HolonsContextBehavior, SmartReference, StagedReference,
 };
+use crate::{HolonReadable, HolonWritable};
 use hdi::prelude::*;
 use shared_types_holon::{HolonId, MapString};
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+
 // #[hdk_entry_helper]
 // #[derive(Clone, PartialEq, Eq)]
 // pub struct Nursery {
@@ -46,12 +50,16 @@ impl Nursery {
         Self { staged_holons: RefCell::new(StagedHolons { staged_holons, keyed_index }) }
     }
 
+    /// A private helper method for populating a StagedRelationshipMap for a newly staged Holon by cloning all existing relationships from a persisted Holon.
     fn clone_existing_relationships_into_staged_map(
         &self,
-        _original_holon: HolonId,
-        _staged_holon: &Holon,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
-        todo!()
+        context: &dyn HolonsContextBehavior,
+        original_holon: HolonId,
+    ) -> Result<StagedRelationshipMap, HolonError> {
+        let space_manager = context.get_space_manager();
+        let holon_service = space_manager.get_holon_service();
+
+        holon_service.fetch_all_populated_relationships(original_holon)
     }
 
     /// This function converts a StagedIndex into a StagedReference
@@ -116,34 +124,28 @@ impl HolonStagingBehavior for Nursery {
 
     fn stage_new_from_clone(
         &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: HolonReference,
+        context: &dyn HolonsContextBehavior,
+        original_holon: HolonReference,
     ) -> Result<StagedReference, HolonError> {
-        Err(HolonError::NotImplemented(
-            "the Nursery doesn't implement stage_new_from_clone yet".to_string(),
-        ))
-        // let cloned_holon = original_holon.clone_holon(context) {
-        //     HolonReference::Staged(staged_reference) => {
-        //         // Get a clone from the rc_holon in the commit_manager
-        //         staged_reference.stage_new_from_clone(context)?
-        //     }
-        //     HolonReference::Smart(smart_reference) => {
-        //         // Get a clone from the rc_holon in the cache_manager
-        //         smart_reference.stage_new_from_clone(context)?
-        //     }
-        // };
-        //
-        // let cloned_staged_reference = {
-        //     // Mutably borrow the commit_manager
-        //     let space_manager = context.get_space_manager();
-        //     // Stage the clone
-        //     space_manager.stage_new_holon(cloned_holon)?
-        // };
-        //
-        // // Reset the PREDECESSOR to None
-        // cloned_staged_reference.with_predecessor(context, None)?;
-        //
-        // Ok(cloned_staged_reference)
+        let mut cloned_holon = original_holon.clone_holon(context)?;
+
+        match original_holon {
+            HolonReference::Staged(_) => {}
+            HolonReference::Smart(_) => {
+                cloned_holon.staged_relationship_map = self
+                    .clone_existing_relationships_into_staged_map(
+                        context,
+                        original_holon.get_holon_id(context)?,
+                    )?
+            }
+        }
+
+        let cloned_staged_reference = self.stage_new_holon(context, cloned_holon)?;
+
+        // Reset the PREDECESSOR to None
+        cloned_staged_reference.with_predecessor(context, None)?;
+
+        Ok(cloned_staged_reference)
     }
 
     fn stage_new_holon(
@@ -157,12 +159,21 @@ impl HolonStagingBehavior for Nursery {
 
     fn stage_new_version(
         &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: SmartReference,
+        context: &dyn HolonsContextBehavior,
+        original_holon: SmartReference,
     ) -> Result<StagedReference, HolonError> {
-        Err(HolonError::NotImplemented(
-            "the Nursery doesn't implement stage_new_version yet".to_string(),
-        ))
+        let mut cloned_holon = original_holon.clone_holon(context)?;
+
+        cloned_holon.staged_relationship_map =
+            self.clone_existing_relationships_into_staged_map(context, original_holon.get_id()?)?;
+
+        let cloned_staged_reference = self.stage_new_holon(context, cloned_holon)?;
+
+        // Set the PREDECESSOR to Original
+        cloned_staged_reference
+            .with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
+
+        Ok(cloned_staged_reference)
     }
 }
 
