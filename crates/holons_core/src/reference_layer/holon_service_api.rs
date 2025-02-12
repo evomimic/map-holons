@@ -1,10 +1,9 @@
 use crate::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, RelationshipMap, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, StagedRelationshipMap, RelationshipName,
 };
 use crate::reference_layer::HolonsContextBehavior;
 use shared_types_holon::{HolonId, LocalId};
 use std::fmt::Debug;
-use std::rc::Rc;
 
 pub trait HolonServiceApi: Debug {
     ///
@@ -26,5 +25,5 @@ pub trait HolonServiceApi: Debug {
     fn fetch_all_populated_relationships(
         &self,
         source_id: HolonId,
-    ) -> Result<Rc<RelationshipMap>, HolonError>;
+    ) -> Result<StagedRelationshipMap, HolonError>;
 }
