@@ -13,8 +13,10 @@ use holons::reference_layer::{HolonReference, StagedReference};
 use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
 
 use crate::shared_test::setup_book_author_steps_with_context;
+use crate::shared_test::test_add_related_holon::execute_add_related_holons;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::config::get_server_pub_key_from_connection_url;
 use holons_client::init_client_context;
+use holons_core::*;
 use holons_core::{stage_new_holon_api, HolonReadable, HolonWritable, HolonsContextBehavior};
 use holons_guest::query_layer::QueryExpression;
 use pretty_assertions::assert_eq;
@@ -30,7 +32,7 @@ use std::rc::Rc;
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_client_context().unwrap();
+    let fixture_context = init_client_context().as_ref().clone();
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     let mut test_case = DancesTestCase::new(
@@ -54,7 +56,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons
-    let relationship_name = setup_book_author_steps_with_context(&fixture_context, &mut test_case)?;
+    let relationship_name = setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
 
     // 4) (disabled) Try to remove related holons using invalid source holon
     // 5) (disabled) Try to remove related holons using invalid relationship name
@@ -63,24 +65,23 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let book_key = MapString("Emerging World".to_string());
 
     // Retrieve the book from the context
-    let staged_book_holon_ref =
-        holons_core::get_staged_holon_by_key(&fixture_context, book_key.clone())?;
+    let staged_book_holon_ref = get_staged_holon_by_key(fixture_context, book_key.clone())?;
 
     // Get its current authors
 
     let authors_ref =
-        staged_book_holon_ref.get_related_holons(&fixture_context, &relationship_name)?;
+        staged_book_holon_ref.get_related_holons(fixture_context, &relationship_name)?;
 
     let author_name_to_remove = MapString("George Smith".to_string());
 
-    let authors = authors_ref.as_ref();
-    let maybe_author_to_remove = authors.get_related_holons(author_name_to_remove)?;
+    let maybe_author_to_remove =
+        staged_book_holon_ref.get_related_holons(fixture_context, &relationship_name)?;
 
     if let Some(author_to_remove) = maybe_author_to_remove {
         let mut remove_vector = Vec::new();
         remove_vector.push(author_to_remove);
         staged_book_holon_ref.remove_related_holons(
-            &fixture_context,
+            fixture_context,
             &relationship_name,
             remove_vector,
         )?;

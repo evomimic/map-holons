@@ -55,7 +55,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  STAGE:  Book Holon  //
-    test_case.add_stage_holon_step(book_holon.clone())?;
+    test_case.add_stage_holon_step(book_holon.clone(), true)?;
     expected_holons.push(book_holon.clone());
     expected_count += 1;
 
@@ -73,7 +73,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  STAGE:  Person Holon  //
     let person_holon = Holon::new();
-    test_case.add_stage_holon_step(person_holon.clone())?;
+    test_case.add_stage_holon_step(person_holon.clone(), true)?;
     expected_holons.push(person_holon.clone());
     expected_count += 1;
 

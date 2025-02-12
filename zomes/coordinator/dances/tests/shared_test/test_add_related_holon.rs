@@ -34,7 +34,7 @@ pub async fn execute_add_related_holons(
     _relationship_name: RelationshipName,
     _holons_to_add: Vec<HolonReference>,
     _expected_response: ResponseStatusCode,
-    _expected_holon: Holon,
+    _expected_holon: StagedReference,
 ) -> () {
     warn!("\n\n--- TEST STEP: Adding Related Holons IS NOT IMPLEMENTED");
 

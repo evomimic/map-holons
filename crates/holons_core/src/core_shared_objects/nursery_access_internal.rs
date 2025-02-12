@@ -83,12 +83,12 @@ pub trait NurseryAccessInternal: NurseryAccess {
     /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all staged Holons.
     fn get_holons_to_commit(&self) -> Ref<Vec<Rc<RefCell<Holon>>>>;
 
-    /// Stages a new holon and optionally updates the keyed index.
-    ///
-    /// # Arguments
-    /// * `holon` - A reference to the holon to be staged.
-    ///
-    /// # Returns
-    /// The index of the staged holon in the nursery.
-    fn stage_holon(&self, holon: Holon) -> usize;
+    // /// Stages a new holon and optionally updates the keyed index.
+    // ///
+    // /// # Arguments
+    // /// * `holon` - A reference to the holon to be staged.
+    // ///
+    // /// # Returns
+    // /// The index of the staged holon in the nursery.
+    // fn stage_holon(&self, holon: Holon) -> usize;
 }
