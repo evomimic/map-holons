@@ -6,7 +6,7 @@ use hdk::prelude::*;
 
 use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use holons_core::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, HolonState, NurseryAccess, RelationshipMap,
+    CommitResponse, Holon, HolonCollection, HolonError, HolonState, NurseryAccess, StagedRelationshipMap,
     RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
@@ -241,7 +241,7 @@ impl HolonServiceApi for GuestHolonService {
     fn fetch_all_populated_relationships(
         &self,
         _source_id: HolonId,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
+    ) -> Result<StagedRelationshipMap, HolonError> {
         todo!()
     }
 }
