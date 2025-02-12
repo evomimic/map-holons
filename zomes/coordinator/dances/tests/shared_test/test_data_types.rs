@@ -40,7 +40,7 @@ pub enum DanceTestStep {
         RelationshipName,
         Vec<HolonReference>,
         ResponseStatusCode,
-        Holon,
+        StagedReference,
     ), // Adds relationship between two Holons
     Commit,                                                    // Attempts to commit
     DatabasePrint, // Writes log messages for each holon in the persistent store

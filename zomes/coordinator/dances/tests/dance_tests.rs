@@ -99,7 +99,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         setup_conductor().await;
 
     // Initialize an empty context for the Test Client
-    let test_context = init_client_context().unwrap();
+    let test_context = init_client_context();
 
     // The heavy lifting for this test is in the test data set creation.
 

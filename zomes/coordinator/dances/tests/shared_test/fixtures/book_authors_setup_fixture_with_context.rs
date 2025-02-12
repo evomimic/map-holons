@@ -160,7 +160,7 @@ pub fn setup_book_author_steps_with_context(
         relationship_name.clone(),
         target_references,
         ResponseStatusCode::OK,
-        book_holon.clone(),
+        book_ref,
     )?;
 
     Ok(relationship_name)

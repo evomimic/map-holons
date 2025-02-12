@@ -56,6 +56,17 @@ impl Nursery {
         todo!()
     }
 
+    /// Stages a new holon and optionally updates the keyed index.
+    ///
+    /// # Arguments
+    /// * `holon` - A reference to the holon to be staged.
+    ///
+    /// # Returns
+    /// The index of the staged holon in the nursery.
+    fn stage_holon(&self, holon: Holon) -> usize {
+        self.staged_holons.borrow_mut().insert_holon(holon)
+    }
+
     /// This function converts a StagedIndex into a StagedReference, first validating accessibility
     /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
@@ -166,7 +177,7 @@ impl NurseryAccessInternal for Nursery {
         Ref::map(self.staged_holons.borrow(), |pool| pool.get_all_holons())
     }
 
-    fn stage_holon(&self, holon: Holon) -> usize {
-        self.staged_holons.borrow_mut().insert_holon(holon)
-    }
+    // fn stage_holon(&self, holon: Holon) -> usize {
+    //     self.staged_holons.borrow_mut().insert_holon(holon)
+    // }
 }

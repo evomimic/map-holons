@@ -34,7 +34,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_client_context().unwrap();
+    let fixture_context = init_client_context().as_ref();
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
@@ -48,15 +48,14 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
 
-    let relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+    let relationship_name = setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
     expected_count += staging_service.borrow().staged_count();
 
     let person_1_key = MapString("Roger Briggs".to_string());
-    let person_1_ref = staging_service.borrow().get_staged_holon_by_key(person_1_key).unwrap();
+    let person_1_ref = staging_service.borrow().get_staged_holon_by_key(person_1_key)?;
 
     let book_key = MapString("Emerging World".to_string());
-    let book_ref = staging_service.borrow().get_staged_holon_by_key(book_key.clone()).unwrap();
+    let book_ref = staging_service.borrow().get_staged_holon_by_key(book_key.clone())?;
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the

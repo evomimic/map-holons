@@ -51,6 +51,8 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - A space manager configured with **guest-specific routing policies**.
 /// - Internal nursery access, required for commit operations.
 ///
+/// This function also ensures that a HolonSpace Holon exists in the local DHT
+///
 /// # Arguments
 /// * `staged_holons` - The `SerializableHolonPool` containing staged holons from the session state.
 /// * `local_space_holon` - An optional reference to the local holon space.
@@ -81,7 +83,9 @@ pub fn init_guest_context(
     })?;
     service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
 
-    // Step 4: Create the HolonSpaceManager with injected Nursery & HolonService
+    // Step 4: TODO: Ensure HolonSpace Holon exists in the local DHT (Committed?)
+
+    // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
     let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
         guest_holon_service, // ✅ No need to clone, safe ownership transfer
         local_space_holon,
@@ -89,6 +93,6 @@ pub fn init_guest_context(
         nursery, // ✅ Injected
     ));
 
-    // Step 5: Wrap in `GuestHolonsContext` and return as a trait object
+    // Step 6: Wrap in `GuestHolonsContext` and return as a trait object
     Ok(Box::new(GuestHolonsContext::new(space_manager)))
 }
