@@ -1,7 +1,6 @@
-use dances_core::session_state::SessionState;
-use holon_dance_builders::commit_dance::*;
+
 use holons_core::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, RelationshipMap, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, StagedRelationshipMap, RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use shared_types_holon::{HolonId, LocalId};
@@ -46,7 +45,7 @@ impl HolonServiceApi for ClientHolonService {
     fn fetch_all_populated_relationships(
         &self,
         _source_id: HolonId,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
+    ) -> Result<StagedRelationshipMap, HolonError> {
         todo!()
     }
 }
