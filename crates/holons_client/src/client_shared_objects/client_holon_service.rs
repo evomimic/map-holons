@@ -22,6 +22,8 @@ use crate::AppInstallation;
 
 
 /// A concrete implementation of the `HolonResolver` trait for resolving local Holons.
+/// note i am using tokio block_on here for sync to async .. this is a temporary.. 
+/// if these function are not to be changed to async. then i would sugget we implement a async thread inside the sync code, so as not to block the main thread 
 #[derive(Debug,Clone)]
 pub struct ClientHolonService;
 

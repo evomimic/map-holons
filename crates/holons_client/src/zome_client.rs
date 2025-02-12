@@ -1,7 +1,7 @@
 
 use dances_core::dance_request::DanceRequest;
 use dances_core::dance_response::{DanceResponse, ResponseStatusCode};
-use hdi::prelude::AgentPubKey;
+//use hdi::prelude::AgentPubKey;
 
 use hdk::prelude::CellId;
 use holochain::conductor::api::error::ConductorApiError;
@@ -10,12 +10,17 @@ use holons_core::core_shared_objects::HolonError;
 
 
 pub trait ZomeClient: Sized {
+    /// install calls the install_app method with the APP_ID and HAPP_FILEPATH
     fn install() -> impl std::future::Future<Output = Result<Self, ConductorApiError>> + Send;
+    /// install_app installs the app with the given app_name and happ_url
     fn install_app(app_name:&str, happ_url:Option<&str>) -> impl std::future::Future<Output = Result<Self, ConductorApiError>> + Send;
+    /// zomecall makes a zome call to the given cell_id, zome_name, and fn_name with the given request
     async fn zomecall(self, cell_id:CellId, zome_name:&str, fn_name:&str, request:DanceRequest) -> Result<DanceResponse, HolonError>;
-    //async fn wait_on_signal(&self, cell_id:CellId)-> Result<(), ConductorApiError>;
+    
+    //TODO:  async fn wait_on_signal(&self, cell_id:CellId)-> Result<(), ConductorApiError>;
 }
 
+///The AppInstallation is created on Install and then available for use to make zome_calls / other commands
 #[derive(Debug)]
 pub struct AppInstallation {
     pub conductor: SweetConductor,
@@ -34,7 +39,7 @@ impl ZomeClient for AppInstallation {
     async fn install() -> Result<AppInstallation, ConductorApiError> {
         Self::install_app(APP_ID, Some(HAPP_FILEPATH)).await
     }
-    async fn install_app(app_id:&str, happ_url:Option<&str>) -> Result<AppInstallation, ConductorApiError> {
+    async fn install_app(app_id:&str, _happ_url:Option<&str>) -> Result<AppInstallation, ConductorApiError> {
 
         let dna = SweetDnaFile::from_bundle(std::path::Path::new(&DNA_FILEPATH)).await.unwrap();
         let mut conductor = SweetConductor::from_standard_config().await;
@@ -44,11 +49,7 @@ impl ZomeClient for AppInstallation {
             .await
             .unwrap();
 
-        let cells = &app.cells().clone();//[0].clone();
-
-        //let agent_hash = holo_core_agent.into_inner();
-        //let agent = AgentPubKey::from_raw_39(agent_hash).unwrap();
-
+        let cells = &app.cells().clone();
         Ok(Self{conductor, app, cells:cells.to_vec()})    
     }
 
@@ -119,9 +120,9 @@ impl ZomeClient for AppInstallation {
     }*/
 }
 
-/// MOCK CONDUCTOR
+// MOCK CONDUCTOR - here for reference - TODO remove
 
-pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
+/*pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(&DNA_FILEPATH)).await.unwrap();
 
     // let dna_path = std::env::current_dir().unwrap().join(DNA_FILEPATH);
@@ -142,5 +143,5 @@ pub async fn setup_conductor() -> (SweetConductor, AgentPubKey, SweetCell) {
     let agent = AgentPubKey::from_raw_39(agent_hash).unwrap();
 
     (conductor, agent, cell)
-}
+}*/
 

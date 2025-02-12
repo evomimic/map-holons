@@ -1,5 +1,5 @@
 
-use hdi::prelude::AgentPubKey;
+/*use hdi::prelude::AgentPubKey;
 use holochain::conductor::api::error::ConductorApiError;
 use holochain::conductor::api::CellInfo;
 use holochain::prelude::{AppBundleSource, CellId, InstalledAppId, Signal}; 
@@ -220,4 +220,4 @@ impl ZomeClient for AppInstallation {
         barrier.wait();
             Ok(())
     }
-}
+}*/
