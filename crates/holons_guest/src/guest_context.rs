@@ -29,7 +29,7 @@ impl GuestHolonsContext {
     ///
     /// # Returns
     /// * A new `GuestHolonsContext` instance wrapping the provided space manager.
-    pub fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
+    fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
         Self { space_manager }
     }
 }
