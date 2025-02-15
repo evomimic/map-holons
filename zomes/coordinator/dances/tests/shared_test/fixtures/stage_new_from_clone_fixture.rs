@@ -31,19 +31,15 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let mut holons_to_add: Vec<HolonReference> = Vec::new();
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
-    // the book to both persons.
+    // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
     let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let author_relationship_name =
         setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
 
     // Get and set the various Holons data.
-    let book_holon = test_data[0]
-        .expected_holon
-        .clone()
-        .expect("Expected setup method to return Some book holon at index 0, got none.");
-    let book_index = test_data[0].staged_index;
-    let _book_key = test_data[0].key.clone();
+    let book_key = MapString("Emerging World".to_string());
+    let book_holon_ref = staging_service.get_staged_holon_by_key(fixture_context, &book_key)?;
 
     let publisher_index = test_data[3].staged_index;
     let publisher_key = test_data[3].key.clone();
