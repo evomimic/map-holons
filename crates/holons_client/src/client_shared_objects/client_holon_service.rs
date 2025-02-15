@@ -1,7 +1,9 @@
+use dances_core::dance_request::DanceRequest;
 use dances_core::dance_response::{DanceResponse, ResponseBody};
 use dances_core::session_state::SessionState;
+use hdi::prelude::ExternIO;
 use hdk::prelude::fake_action_hash;
-use holochain::conductor::api::error::ConductorApiError;
+use holochain_client::ConductorApiError;
 use holon_dance_builders::commit_dance::build_commit_dance_request;
 use holon_dance_builders::delete_holon_dance::build_delete_holon_dance_request;
 use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
@@ -18,7 +20,7 @@ use tokio::runtime::Runtime;
 
 
 use crate::zome_client::{self, ZomeClient};
-use crate::AppInstallation;
+use crate::AppSessionData;
 
 
 /// A concrete implementation of the `HolonResolver` trait for resolving local Holons.
@@ -31,38 +33,20 @@ impl HolonServiceApi for ClientHolonService {
 
     fn commit(&self, _context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
         let request = build_commit_dance_request(&SessionState::empty())?;
-        //TODO  - temporary install - should be in the context
-        let rt = Runtime::new().unwrap();
-        let installed_app:AppInstallation = rt.block_on(<zome_client::AppInstallation as ZomeClient>::install())
-        .map_err(|err: ConductorApiError| HolonError::CommitFailure(err.to_string()))?;
-
-        let cell_id = installed_app.cells[0].cell_id().clone();
-        let response = rt.block_on(installed_app.zomecall(cell_id,"dances","dance", request))?;
+        let response = dance_zome_call(request)?;
         let commit_response:CommitResponse = response.into();
         Ok(commit_response)
     }
 
     fn delete_holon(&self, _local_id: &LocalId) -> Result<(), HolonError> {
         let request = build_delete_holon_dance_request(&SessionState::empty(), LocalId(fake_action_hash(234)))?;
-        let rt = Runtime::new().unwrap();
-        //TODO  - temporary install - should be in the context
-        let installed_app:AppInstallation = rt.block_on(<zome_client::AppInstallation as ZomeClient>::install())
-        .map_err(|err: ConductorApiError| HolonError::CommitFailure(err.to_string()))?;
-
-        let cell_id = installed_app.cells[0].cell_id().clone();
-        let _response = rt.block_on(installed_app.zomecall(cell_id,"dances","dance", request))?;
+        let _response = dance_zome_call(request)?;
         Ok(())
     }
 
     fn fetch_holon(&self, _id: &HolonId) -> Result<Holon, HolonError> {
         let request = build_get_holon_by_id_dance_request(&SessionState::empty(), _id.clone())?;
-        let rt = Runtime::new().unwrap();
-        //TODO  - temporary install - should be in the context
-        let installed_app:AppInstallation = rt.block_on(<zome_client::AppInstallation as ZomeClient>::install())
-        .map_err(|err: ConductorApiError| HolonError::CommitFailure(err.to_string()))?;
-    
-        let cell_id = installed_app.cells[0].cell_id().clone();
-        let response = rt.block_on(installed_app.zomecall(cell_id,"dances","dance", request))?;
+        let response = dance_zome_call(request)?;
         match response.body {
             ResponseBody::Holon(holon) => return Ok(holon),
             _ => return Err(HolonError::HolonNotFound("Invalid response body".to_string())),    
@@ -81,13 +65,7 @@ impl HolonServiceApi for ClientHolonService {
         let request = build_query_relationships_dance_request(
             &SessionState::empty(), 
             node_collection, QueryExpression{ relationship_name:_relationship_name.clone()})?;
-        let rt = Runtime::new().unwrap();
-        //TODO  - temporary install - should be in the context
-        let installed_app:AppInstallation = rt.block_on(<zome_client::AppInstallation as ZomeClient>::install())
-        .map_err(|err: ConductorApiError| HolonError::CommitFailure(err.to_string()))?;
-    
-        let cell_id = installed_app.cells[0].cell_id().clone();
-        let response = rt.block_on(installed_app.zomecall(cell_id,"dances","dance", request))?;
+        let response = dance_zome_call(request)?;
         let node_collection = match response.body {
             ResponseBody::Collection(nodes) => nodes,
             _ => return Err(HolonError::HolonNotFound("Invalid response body".to_string())),    
@@ -101,4 +79,23 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<Rc<RelationshipMap>, HolonError> {
         unimplemented!()
     }
+
+
+}
+//todo: map the errors to the appropriate HolonError
+fn dance_zome_call(request:DanceRequest) -> Result<DanceResponse, HolonError> {
+    let rt = Runtime::new().unwrap();
+    let app_data:AppSessionData = rt.block_on(<zome_client::AppSessionData as ZomeClient>::init("map_holons".to_string(),9999))
+    .map_err(|_err: ConductorApiError| HolonError::CommitFailure("sdf".to_string()))?;
+
+    let cell_id = app_data.get_cell_id_by_role(None)
+    .map_err(|_err| HolonError::CommitFailure("sdf".to_string()))?;
+    let encoded_request = ExternIO::encode(request)
+    .map_err(|_err| HolonError::CommitFailure("sdf".to_string()))?;
+    let response = rt.block_on(app_data.zomecall(cell_id,"dances","dance", encoded_request))
+    .map_err(|_err| HolonError::CommitFailure("sdf".to_string()))?;
+    let decoded_response: DanceResponse = ExternIO::decode(&response)
+    .map_err(|_err| HolonError::CommitFailure("sdf".to_string()))?;
+    Ok(decoded_response)
+
 }
