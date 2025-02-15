@@ -22,6 +22,9 @@ impl NodeCollection {
     pub fn new_empty() -> Self {
         Self { members: Vec::new(), query_spec: None }
     }
+    pub fn to_holon_references(&self) -> Vec<HolonReference> {
+        self.members.iter().map(|node| node.source_holon.clone()).collect()
+    }
 }
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

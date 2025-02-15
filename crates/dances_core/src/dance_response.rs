@@ -6,9 +6,10 @@ use crate::session_state::SessionState;
 use hdk::prelude::*;
 
 use holons::reference_layer::{HolonReference, StagedReference};
+use holons::core_shared_objects::{CommitResponse, CommitRequestStatus};
 use holons_core::core_shared_objects::{summarize_holons, Holon, HolonError};
 use holons_guest::query_layer::NodeCollection;
-use shared_types_holon::MapString;
+use shared_types_holon::{MapInteger, MapString};
 
 #[hdk_entry_helper]
 #[derive(Clone, Eq, PartialEq)]
@@ -137,5 +138,27 @@ impl DanceResponse {
             body_summary,
             self.state.summarize(),
         )
+    }
+}
+
+
+/// get a CommitResponse from a DanceResponse 
+/// note: this is a short-term solution as information about the CommitResponse
+/// is lost and ideally should be part of the DanceResponse
+impl From<DanceResponse> for CommitResponse {
+    fn from(res: DanceResponse) -> Self {
+        CommitResponse {
+            status: match res.status_code {
+                ResponseStatusCode::OK => CommitRequestStatus::Complete,
+                ResponseStatusCode::Accepted => CommitRequestStatus::Complete,
+                _ => CommitRequestStatus::Incomplete,
+            },
+            commits_attempted: MapInteger(1),
+            saved_holons: match res.body {
+                ResponseBody::Holons(holons) => holons,
+                _ => vec![],
+            },
+            abandoned_holons:vec![]
+        }
     }
 }

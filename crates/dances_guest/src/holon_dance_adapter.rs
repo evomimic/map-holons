@@ -17,18 +17,14 @@
 use hdk::prelude::*;
 use holons_core::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, Holon, HolonError, RelationshipName,
+    stage_new_version_api, CommitRequestStatus, Holon, HolonError
 };
-use holons_core::{
-    HolonReference, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
-};
-use holons_guest::query_layer::{evaluate_query, NodeCollection, QueryExpression};
-use shared_types_holon::{HolonId, LocalId};
-use shared_types_holon::{MapString, PropertyMap};
+use holons_core::{HolonWritable, HolonsContextBehavior, SmartReference};
+use holons_guest::query_layer::evaluate_query;
+
 
 use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
 use dances_core::dance_response::ResponseBody;
-use dances_core::session_state::SessionState;
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
