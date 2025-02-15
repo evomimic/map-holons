@@ -92,7 +92,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         );
     }
 
-    // // test remove all related holons including ignoring a previous one that was already removed
+    // test remove all related holons including ignoring a previous one that was already removed
     // test_case.remove_related_holons_step(
     //     staged_book_holon_ref, // source holon
     //     relationship_name.clone(),
