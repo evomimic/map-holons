@@ -24,7 +24,7 @@ pub mod test_with_properties_command;
 use hdk::prelude::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use shared_types_holon::{HolonId, MapString};
-use test_data_types::DanceTestState;
+use test_data_types::DanceTestExecutionState;
 
 const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
 

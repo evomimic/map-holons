@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use dances::dance_response::ResponseStatusCode;
 use holons::reference_layer::HolonReference;
 
-use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
+use crate::shared_test::{setup_book_author_steps_with_context, BOOK_KEY};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use holons_core::core_shared_objects::{HolonError, RelationshipName};
 
 use holons_client::init_client_context;
@@ -15,14 +15,17 @@ use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap,
 #[fixture]
 pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
-        "Simple StageNewFromClone Testcase".to_string(),
-        "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some properties, adds and removes some relationships, commits it and then compares essential content of existing holon and cloned holon".to_string(),
+        "Simple StageNewVersion Testcase".to_string(),
+        "Tests stage_new_version dance, creates and commits a holon, clones it, changes some properties, adds and removes some relationships, commits it and then compares essential content of existing holon and cloned holon".to_string(),
     );
 
     // Initialize a client context the fixture can use
     // NOTE: This context will NOT be shared by test executors. The fixture's client context
     // will go away once
-    let fixture_context = init_client_context();
+    // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    let fixture_context = init_client_context().as_ref();
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -34,18 +37,14 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
-    let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
+    let _relationship_name =
+        setup_book_author_steps_with_context(&fixture_context, &mut test_case)?;
 
-    let test_data =
-        setup_book_author_steps_with_context(&fixture_context, &mut test_case, &mut holons_to_add)?;
+    expected_count += staging_service.borrow().staged_count();
 
-    expected_count += test_data.len() as i64;
-
-    let _book_holon = test_data[0]
-        .expected_holon
-        .clone()
-        .expect("Expected setup method to return Some book holon at index 0, got none.");
-    let book_key = test_data[0].key.clone();
+    // Get and set the various Holons data.
+    let book_key = BOOK_KEY.to_string();
+    let book_holon_ref = staging_service.get_staged_holon_by_key(fixture_context, &book_key)?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;

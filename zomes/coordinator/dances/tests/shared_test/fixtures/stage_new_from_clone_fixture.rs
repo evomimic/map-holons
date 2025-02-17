@@ -1,12 +1,14 @@
 use dances::dance_response::ResponseStatusCode;
+use holochain::test_utils::itertools::cloned;
 
-use crate::shared_test::setup_book_author_steps_with_context;
 use crate::shared_test::test_data_types::{
-    DanceTestState, DanceTestStep, DancesTestCase, TestReference,
+    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference,
 };
+use crate::shared_test::{setup_book_author_steps_with_context, BOOK_KEY, PUBLISHER_KEY};
 use holons::reference_layer::{HolonReference, StagedReference};
 use holons_client::init_client_context;
 use holons_core::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
+use holons_core::HolonCollectionApi;
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
@@ -20,7 +22,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     let mut test_case = DancesTestCase::new(
         "Simple StageNewFromClone Testcase".to_string(),
-        "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some properties, adds a relationship, commits it and then compares essential content of existing holon and cloned holon".to_string(),
+        "Tests stage_new_from_clone dance, creates and commits a holon, clones it, changes some \n\
+        properties, adds a relationship, commits it and then compares essential content of existing holon and cloned holon".to_string(),
     );
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -28,49 +31,46 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     //  ENSURE DATABASE COUNT -- Empty except for HolonSpace  //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    let mut holons_to_add: Vec<HolonReference> = Vec::new();
-
-    // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
+    // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
     // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
-    let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
+    // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
-    let author_relationship_name =
+    let _author_relationship_name =
         setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
 
     // Get and set the various Holons data.
-    let book_key = MapString("Emerging World".to_string());
+    let book_key = BOOK_KEY.to_string();
     let book_holon_ref = staging_service.get_staged_holon_by_key(fixture_context, &book_key)?;
 
-    let publisher_index = test_data[3].staged_index;
-    let publisher_key = test_data[3].key.clone();
+    let publisher_key = PUBLISHER_KEY.to_string();
     let publisher_holon_reference =
-        HolonReference::Staged(StagedReference { holon_index: publisher_index.clone() });
+        staging_service.get_staged_holon_by_key(fixture_context, &publisher_key)?;
 
     // CLONE A STAGED HOLON
     //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
-    let cloned_book_index = 4;
-    let cloned_book_key =
-        BaseValue::StringValue(MapString("A clone from: Emerging World".to_string()));
+
+    let cloned_book = book_holon_ref.clone_holon();
+    let cloned_book_key = "A clone from: " + book_key;
+    cloned_book
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(cloned_book_key.clone()),
+        )?
+        .with_property_value(
+            PropertyName(MapString("title".to_string())),
+            BaseValue::StringValue(cloned_book_key.clone()),
+        )?
+        .with_property_value(
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString(
+                "example property change for a clone from staged Holon".to_string(),
+            )),
+        )?;
+
+    let cloned_book_ref = staging_service.stage_new_holon(fixture_context, cloned_book)?;
 
     test_case.add_stage_new_from_clone_step(
-        TestReference::StagedHolon(book_index),
-        ResponseStatusCode::OK,
-    )?;
-
-    //  CHANGE PROPERTIES  //
-    let mut properties = PropertyMap::new();
-    properties.insert(PropertyName(MapString("title".to_string())), cloned_book_key.clone());
-    properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key.clone());
-    properties.insert(
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString(
-            "example property change for a clone from staged Holon".to_string(),
-        )),
-    );
-
-    test_case.add_with_properties_step(
-        cloned_book_index,
-        properties.clone(),
+        TestReference::StagedHolon(cloned_book_ref),
         ResponseStatusCode::OK,
     )?;
 
@@ -78,8 +78,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let published_by_relationship_name = RelationshipName(MapString("PUBLISHED_BY".to_string()));
     let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
     // set expected
-    let mut expected_book_holon = book_holon.clone();
-    expected_book_holon.property_map = properties;
+    let mut expected_book_holon = book_holon_ref.clone_holon();
+
     let mut expected_publisher_holon_collection = HolonCollection::new_staged();
     expected_publisher_holon_collection
         .add_reference_with_key(Some(&publisher_key), &publisher_holon_reference)?;
@@ -94,7 +94,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         .insert(predecessor_relationship_name.clone(), expected_predecessor_holon_collection);
 
     test_case.add_related_holons_step(
-        cloned_book_index, // source holon
+        cloned_book_ref, // source holon
         published_by_relationship_name.clone(),
         vec![publisher_holon_reference],
         ResponseStatusCode::OK,

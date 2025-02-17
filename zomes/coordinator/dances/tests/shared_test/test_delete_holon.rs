@@ -12,7 +12,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -25,7 +25,7 @@ use shared_types_holon::{HolonId, LocalId, MapInteger, MapString};
 pub async fn execute_delete_holon(
     conductor: &SweetConductor,
     cell: &SweetCell,
-    test_state: &mut DanceTestState,
+    test_state: &mut DanceTestExecutionState,
     holon_to_delete_key: MapString, // key of the holon to delete
     expected_response: ResponseStatusCode,
 ) -> () {

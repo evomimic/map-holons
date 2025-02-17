@@ -12,7 +12,7 @@ use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keys
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use rstest::*;
 
@@ -26,7 +26,7 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 pub async fn execute_query_relationships(
     conductor: &SweetConductor,
     cell: &SweetCell,
-    test_state: &mut DanceTestState,
+    test_state: &mut DanceTestExecutionState,
     source_key: MapString,
     query_expression: QueryExpression,
     expected_response: ResponseStatusCode,

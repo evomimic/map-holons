@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::shared_test::test_data_types::{
-    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
 };
 use crate::shared_test::*;
 use async_std::task;
@@ -22,10 +22,8 @@ use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 
-/// This function stages a new holon. If `local_only` is true, the holon is only staged in the local
-/// nursery. Otherwise, this function builds and dances a `stage_new_holon` DanceRequest for the
-/// supplied Holon
-/// and confirms a Success response
+/// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
+/// supplied Holon and confirms a Success response
 ///
 pub async fn execute_stage_new_holon(
     _conductor: &SweetConductor,
