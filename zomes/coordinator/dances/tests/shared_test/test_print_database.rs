@@ -12,7 +12,7 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 
 use holons_core::utils::as_json;
@@ -29,7 +29,7 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 pub async fn execute_database_print(
     conductor: &SweetConductor,
     cell: &SweetCell,
-    test_state: &mut DanceTestState,
+    test_state: &mut DanceTestExecutionState,
 ) {
     info!("\n\n--- TEST STEP: print database contents ---");
 

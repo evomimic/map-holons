@@ -44,17 +44,16 @@ use self::test_ensure_database_count::execute_ensure_database_count;
 // use self::test_load_core_schema::execute_load_new_schema;
 use self::test_match_db_content::execute_match_db_content;
 use self::test_remove_related_holon::execute_remove_related_holons;
-// use self::test_stage_new_holon::execute_stage_new_holon;
 use self::test_with_properties_command::execute_with_properties;
 
 use crate::descriptor_dance_fixtures::*;
 use crate::shared_test::test_data_types::{
-    DanceTestState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
+    DanceTestExecutionState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
 };
 use crate::shared_test::test_print_database::execute_database_print;
-// use crate::stage_new_from_clone_fixture::*;
-// use crate::stage_new_version_fixture::*;
 use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
+use crate::stage_new_from_clone_fixture::*;
+use crate::stage_new_version_fixture::*;
 use holons_core::core_shared_objects::HolonError;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
@@ -66,10 +65,16 @@ use shared_types_holon::HolonId;
 /// For each step, this function invokes the test execution functions created for that kind of
 /// DanceTestStep.
 ///
+/// Prior to initiating the test case, the following initialization is performed:
+/// 1. Set up a mock Conductor
+/// 2. Initialize a ClientHolonsContext, injecting the ConductorConfig for the created Conductor
+///
 /// This function maintains the following TestState that allows the test steps to be linked together.
-/// * staging_area -- initially set to empty and then reset from the results of each test step
-/// * created_holons -- a vector of Holon that is incrementally extended by test steps. It can be used to drive update/delete of those holons.
-/// * TBD
+/// * the Context's Nursery will hold the Holons staged during the course of the test case
+/// * session_state : SessionState
+/// * created_holons -- a BTree of Holons indexed by their key that is incrementally extended as
+/// staged holons are committed.
+/// It can be used to drive update/delete of those holons.
 ///
 /// To selectively run JUST THE TESTS in this file, use:
 ///      cargo test -p dances --test dance_tests
@@ -77,12 +82,12 @@ use shared_types_holon::HolonId;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 // #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
-// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-// #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::delete_holon(delete_holon_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
@@ -111,7 +116,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     let steps_count = steps.len();
 
     // Initialize the DanceTestState
-    let mut test_state = DanceTestState::new();
+    let mut test_state = DanceTestExecutionState::new();
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");
@@ -206,7 +211,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
 
             DanceTestStep::StageHolon(holon, local_only) => {
-                execute_stage_new_holon(&conductor, &cell, &*test_context, holon, local_only).await
+                execute_stage_new_holon(&conductor, &cell, &*test_context, holon).await
             }
             DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
                 execute_stage_new_from_clone(

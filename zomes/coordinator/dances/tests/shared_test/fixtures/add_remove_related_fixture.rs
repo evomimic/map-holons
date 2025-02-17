@@ -48,6 +48,11 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
          9) QueryRelationships.\n".to_string(),
     );
 
+    // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    let fixture_context = init_client_context().as_ref();
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
+
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
 

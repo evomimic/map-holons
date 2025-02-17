@@ -1,4 +1,4 @@
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 use crate::shared_test::*;
 use async_std::task;
 use dances::dance_response::ResponseBody;
@@ -29,7 +29,7 @@ use std::collections::BTreeMap;
 pub async fn execute_add_related_holons(
     _conductor: &SweetConductor,
     _cell: &SweetCell,
-    _test_state: &mut DanceTestState,
+    _test_state: &mut DanceTestExecutionState,
     _source_holon_index: StagedReference,
     _relationship_name: RelationshipName,
     _holons_to_add: Vec<HolonReference>,
