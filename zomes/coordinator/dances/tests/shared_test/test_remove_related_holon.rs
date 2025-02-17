@@ -9,7 +9,7 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
 use dances::dance_request::RequestBody::StagedRef;
 use holons::reference_layer::staged_reference::StagedIndex;
@@ -43,7 +43,7 @@ use std::collections::BTreeMap;
 pub async fn execute_remove_related_holons(
     _conductor: &SweetConductor,
     _cell: &SweetCell,
-    _test_state: &mut DanceTestState,
+    _test_state: &mut DanceTestExecutionState,
     _source_holon: StagedReference,
     _relationship_name: RelationshipName,
     _holons_to_remove: Vec<HolonReference>,

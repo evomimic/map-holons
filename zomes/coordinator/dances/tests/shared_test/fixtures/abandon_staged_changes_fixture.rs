@@ -13,7 +13,7 @@ use holons::reference_layer::HolonReference::Staged;
 use holons::reference_layer::{HolonReference, StagedReference};
 use holons_client::init_client_context;
 use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
-use holons_core::HolonsContextBehavior;
+use holons_core::{HolonReadable, HolonsContextBehavior};
 use holons_guest::query_layer::QueryExpression;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -70,7 +70,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         RelationshipName(MapString("FRIENDS".to_string())),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
-        book_ref.clone(),
+        book_ref.clone_holon(fixture_context)?,
     )?;
 
     //  COMMIT  //  all Holons in staging_area
@@ -92,7 +92,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         PropertyName(MapString("example abandon".to_string())),
         BaseValue::StringValue(MapString("test1".to_string())),
     )?;
-    test_case.add_stage_holon_step(abandoned_holon_1.clone(), true)?;
+    test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
@@ -105,7 +105,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         PropertyName(MapString("example abandon".to_string())),
         BaseValue::StringValue(MapString("test2".to_string())),
     )?;
-    test_case.add_stage_holon_step(abandoned_holon_2.clone(), true)?;
+    test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
     expected_count += 1;
 
     // ABANDON:  H4

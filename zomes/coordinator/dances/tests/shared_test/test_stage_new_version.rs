@@ -1,5 +1,5 @@
 use crate::shared_test::test_data_types::{
-    DanceTestState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
 };
 use dances::dance_response::ResponseBody;
 use dances::dance_response::{DanceResponse, ResponseBody::StagedRef, ResponseStatusCode};
@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 pub async fn execute_stage_new_version(
     _conductor: &SweetConductor,
     _cell: &SweetCell,
-    _test_state: &mut DanceTestState,
+    _test_state: &mut DanceTestExecutionState,
     _original_holon_key: MapString,
     _expected_response: ResponseStatusCode,
 ) -> () {

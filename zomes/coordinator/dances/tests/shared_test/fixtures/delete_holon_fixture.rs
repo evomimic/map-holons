@@ -49,7 +49,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         PropertyName(MapString("description".to_string())),
         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())),
     )?;
-    test_case.add_stage_holon_step(book_holon, true)?;
+    test_case.add_stage_holon_step(book_holon)?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;

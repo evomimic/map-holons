@@ -1,15 +1,12 @@
-use hdk::prelude::*;
-
-use hdi::hdk_entry_helper;
+use holons::reference_layer::HolonReference;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
-use holons_core::HolonReference;
+use serde::{Deserialize, Serialize};
 
 /// SessionState provides a way to distinguish information associated with a specific request from
 /// state info that is just being maintained via the ping pong process. This also should make it
 /// easier to evolve to token-based state management approach where, say, the state token is
 /// actually a reference into the ephemeral store.
-#[hdk_entry_helper]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SessionState {
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReference>,

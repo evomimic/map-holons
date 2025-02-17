@@ -4,7 +4,8 @@ use derive_new::new;
 
 use holons::reference_layer::{HolonReference, StagedReference};
 
-use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
+use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
+use holons_core::core_shared_objects::{Holon, HolonError, HolonPool, RelationshipName};
 use holons_guest::query_layer::QueryExpression;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
@@ -17,6 +18,17 @@ pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 pub struct TestHolonData {
     pub holon: Holon,
     pub holon_reference: HolonReference,
+}
+
+/// During the course of executing the steps in a test case:
+///
+/// - Staged Holons are conveyed from one step to another via the Nursery (accessible from the context)
+///
+/// - Persisted Holons are conveyed from one step to another via the created_holons BTreeMap
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct DanceTestExecutionState {
+    pub session_state: SessionState, // why is this needed here? the Nursery holds the staged holons
+    pub created_holons: BTreeMap<MapString, Holon>,
 }
 
 #[derive(Clone, Debug)]
@@ -40,7 +52,7 @@ pub enum DanceTestStep {
         RelationshipName,
         Vec<HolonReference>,
         ResponseStatusCode,
-        StagedReference,
+        Holon,
     ), // Adds relationship between two Holons
     Commit,                                                    // Attempts to commit
     DatabasePrint, // Writes log messages for each holon in the persistent store
@@ -50,22 +62,13 @@ pub enum DanceTestStep {
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
-    StageHolon(Holon, bool), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     StageNewFromClone(TestReference, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedReference, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedReference with PropertyMap
 }
 
-impl DanceTestStep {
-    // Helper function to determine the prefix
-    fn format_prefix(local_only: bool) -> &'static str {
-        if local_only {
-            "local_only -- "
-        } else {
-            "danced -- "
-        }
-    }
-}
+impl DanceTestStep {}
 
 impl Display for DanceTestStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -119,8 +122,8 @@ impl Display for DanceTestStep {
             ) => {
                 write!(f, "RemoveRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", staged_reference, relationship_name, holons_to_remove.len(), expected_response)
             }
-            DanceTestStep::StageHolon(holon, local_only) => {
-                write!(f, "{}StageHolon({:#?})", Self::format_prefix(*local_only), holon)
+            DanceTestStep::StageHolon(holon) => {
+                write!(f, "StageHolon({:#?})", holon)
             }
             DanceTestStep::StageNewVersion(original_holon_id, expected_response) => {
                 write!(
@@ -147,15 +150,12 @@ impl Display for DanceTestStep {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct DanceTestState {
-    pub session_state: SessionState,
-    pub created_holons: BTreeMap<MapString, Holon>,
-}
-
-impl DanceTestState {
-    pub fn new() -> DanceTestState {
-        DanceTestState { session_state: SessionState::empty(), created_holons: BTreeMap::new() }
+impl DanceTestExecutionState {
+    pub fn new() -> DanceTestExecutionState {
+        DanceTestExecutionState {
+            session_state: SessionState::empty(),
+            created_holons: BTreeMap::new(),
+        }
     }
     pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
         self.created_holons.get(key).cloned()
@@ -208,32 +208,28 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_stage_holon_step(
-        &mut self,
-        holon: Holon,
-        local_only: bool,
-    ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::StageHolon(holon, local_only));
+    pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::StageHolon(holon));
         Ok(())
     }
 
-    // pub fn add_stage_new_from_clone_step(
-    //     &mut self,
-    //     original_holon: TestReference,
-    //     expected_response: ResponseStatusCode,
-    // ) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::StageNewFromClone(original_holon, expected_response));
-    //     Ok(())
-    // }
+    pub fn add_stage_new_from_clone_step(
+        &mut self,
+        original_holon: TestReference,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::StageNewFromClone(original_holon, expected_response));
+        Ok(())
+    }
 
-    // pub fn add_stage_new_version_step(
-    //     &mut self,
-    //     original_holon_key: MapString,
-    //     expected_response: ResponseStatusCode,
-    // ) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::StageNewVersion(original_holon_key, expected_response));
-    //     Ok(())
-    // }
+    pub fn add_stage_new_version_step(
+        &mut self,
+        original_holon_key: MapString,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::StageNewVersion(original_holon_key, expected_response));
+        Ok(())
+    }
 
     pub fn add_query_relationships_step(
         &mut self,
@@ -255,7 +251,7 @@ impl DancesTestCase {
         relationship_name: RelationshipName,
         related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
-        expected_holon: StagedReference,
+        expected_holon: Holon,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::AddRelatedHolons(
             staged_holon,

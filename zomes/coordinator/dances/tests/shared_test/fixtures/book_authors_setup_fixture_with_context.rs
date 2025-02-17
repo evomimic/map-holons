@@ -19,7 +19,7 @@ use holons_core::core_shared_objects::holon_pool::HolonPool;
 use holons_core::core_shared_objects::{
     Holon, HolonCollection, HolonError, RelationshipName, TransientCollection,
 };
-use holons_core::{stage_new_holon_api, HolonWritable, HolonsContextBehavior};
+use holons_core::{stage_new_holon_api, HolonReadable, HolonWritable, HolonsContextBehavior};
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
@@ -30,53 +30,47 @@ pub struct TestHolon {
     pub expected_holon: Option<Holon>,
 }
 
+// These constants allow consistency between the helper function and its callers
 pub const BOOK_KEY: MapString = MapString(
     "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
 );
 pub const PERSON_1_KEY: MapString = MapString("Roger Briggs".to_string());
 pub const PERSON_2_KEY: MapString = MapString("George Smith".to_string());
 pub const PUBLISHER_KEY: MapString = MapString("Publishing Company".to_string());
-pub const AUTHOR_RELATIONSHIP: MapString = MapString("AUTHORED_BY".to_string());
+pub const BOOK_TO_PERSON_RELATIONSHIP: RelationshipName =
+    RelationshipName(MapString("AUTHORED_BY".to_string()));
 
 /// This function updates the supplied test_case with a set of steps that establish some basic
 /// data the different test cases can then extend for different purposes.
 /// Specifically, this function stages (but does NOT commit) the following test data:
-/// *Book Holon* whose title and key are "Emerging World: The Evolution of Consciousness and the Future of Humanity"
-/// *Person 1 Holon* whose key is "Roger Briggs"
-/// *Person 2 Holon* whose key is "George Smith"
-/// *Publisher Holon* whose key is "Publishing Company"
-/// An *AUTHORED_BY* relationship from the Book Holon to both Person Holon's
-/// The HolonReference and key are returned for each holon via the HolonPool result
-///
-/// THe relationship_name used in this method is returned in the result to ensure consistency between
-/// this function and the caller.
+/// *Book Holon* with BOOK_KEY title
+/// *Person Holon with PERSON_1_KEY*
+/// *Person Holon with PERSON_2_KEY*
+/// *BOOK_TO_PERSON_RELATIONSHIP from Book Holon to person 1 and person 2
+/// The Nursery within the supplied context is used as the test data setup area
 pub fn setup_book_author_steps_with_context(
     context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
 ) -> Result<RelationshipName, HolonError> {
-    let relationship_name = RelationshipName(AUTHOR_RELATIONSHIP.clone());
+    let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.clone();
 
     //  STAGE:  Book Holon  //
     let mut book_holon = Holon::new();
     let book_holon_key = BOOK_KEY.clone();
-    book_holon.with_property_value(
-        PropertyName(MapString("key".to_string())),
-        BaseValue::StringValue(book_holon_key.clone()),
+    book_holon
+        .with_property_value(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(book_holon_key.clone()),)?
+        .with_property_value(
+            PropertyName(MapString("title".to_string())),
+            BaseValue::StringValue(book_holon_key.clone()),)?
+        .with_property_value(
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
     )?;
-    book_holon.with_property_value(
-        PropertyName(MapString("title".to_string())),
-        BaseValue::StringValue(book_holon_key.clone()),
-    )?.with_property_value(
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string()))
-    )?;
-    test_case.add_stage_holon_step(book_holon.clone(), true)?;
+    test_case.add_stage_holon_step(book_holon.clone())?;
 
     let book_ref = stage_new_holon_api(context, book_holon)?;
-    // result
-    //     .add_reference_with_key(Some(&book_holon_key), &HolonReference::Staged(book_ref.clone()))?;
-
-    // let book_index: usize = 0; // assume book is at this position in staged_holons vector
 
     //  STAGE:  Person 1)  //
     let mut person_1_holon = Holon::new();
@@ -94,21 +88,13 @@ pub fn setup_book_author_steps_with_context(
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(person_1_key.clone()),
         )?;
-    test_case.add_stage_holon_step(person_1_holon.clone(), true)?;
+    test_case.add_stage_holon_step(person_1_holon.clone())?;
 
     let person_1_reference = stage_new_holon_api(context, person_1_holon.clone())?;
 
-    // let person_1_reference =
-    //     HolonReference::Staged(stage_new_holon_api(context, person_1_holon.clone())?);
-    // result.add_reference_with_key(Some(&person_1_key), &person_1_reference.clone())?;
-
-    // let person_1_index: usize = 1; // assume person_1 is at this position in staged_holons vector
-    // let person_1_reference =
-    //     HolonReference::Staged(StagedReference { holon_index: person_1_index });
-
     //  STAGE:  Person 2 Holon (H3)  //
     let mut person_2_holon = Holon::new();
-    let person_2_key = MapString("George Smith".to_string());
+    let person_2_key = PERSON_2_KEY.clone();
     person_2_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
@@ -122,22 +108,17 @@ pub fn setup_book_author_steps_with_context(
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(person_2_key.clone()),
         )?;
-    test_case.add_stage_holon_step(person_2_holon.clone(), true)?;
+    test_case.add_stage_holon_step(person_2_holon.clone())?;
 
     let person_2_reference = stage_new_holon_api(context, person_2_holon.clone())?;
 
-    // let person_2_index: usize = 2; // assume person_1 is at this position in staged_holons vector
-    // let person_2_reference =
-    //     HolonReference::Staged(StagedReference { holon_index: person_2_index });
-
-    //  STAGE:  Publisher Holon (H4)  //
     let mut publisher_holon = Holon::new();
     // assume publisher is at this position in new staged_holons vector
-    let publisher_key = MapString("Publishing Company".to_string());
+    let publisher_key = PUBLISHER_KEY.clone();
     publisher_holon
         .with_property_value(
             PropertyName(MapString("name".to_string())),
-            BaseValue::StringValue(MapString("Publishing Company".to_string())),
+            BaseValue::StringValue(publisher_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
@@ -147,7 +128,7 @@ pub fn setup_book_author_steps_with_context(
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
         )?;
-    test_case.add_stage_holon_step(publisher_holon.clone(), true)?;
+    test_case.add_stage_holon_step(publisher_holon.clone())?;
 
     stage_new_holon_api(context, publisher_holon.clone())?;
 
@@ -161,11 +142,11 @@ pub fn setup_book_author_steps_with_context(
 
     // Create the expected_holon
     test_case.add_related_holons_step(
-        StagedReference::from_index(book_index), // source holon
+        book_ref.clone(), // source holon
         relationship_name.clone(),
         target_references,
         ResponseStatusCode::OK,
-        book_ref,
+        book_ref.clone_holon(context)?,
     )?;
 
     Ok(relationship_name)

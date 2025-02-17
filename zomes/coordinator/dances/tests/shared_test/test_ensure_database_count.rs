@@ -12,7 +12,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 use crate::shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -25,7 +25,7 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 pub async fn execute_ensure_database_count(
     conductor: &SweetConductor,
     cell: &SweetCell,
-    test_state: &mut DanceTestState,
+    test_state: &mut DanceTestExecutionState,
     expected_count: MapInteger,
 ) {
     let expected_count_string = expected_count.0.to_string();

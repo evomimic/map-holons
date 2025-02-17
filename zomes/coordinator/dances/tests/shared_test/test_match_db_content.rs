@@ -11,7 +11,7 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 use crate::shared_test::*;
 use holons_client::init_client_context;
 use rstest::*;
@@ -27,7 +27,7 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 pub async fn execute_match_db_content(
     conductor: &SweetConductor,
     cell: &SweetCell,
-    test_state: &mut DanceTestState,
+    test_state: &mut DanceTestExecutionState,
 ) {
     info!("\n\n--- TEST STEP: Ensuring database matches expected holons ---");
     info!("test_state {:#?}", test_state.clone());
