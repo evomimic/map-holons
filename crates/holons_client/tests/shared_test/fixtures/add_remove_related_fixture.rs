@@ -45,6 +45,11 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    let fixture_context = init_client_context().as_ref();
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
+
+    // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // This allows them to be assigned StagedReferences and also retrieved by either index or key
     let fixture_context = init_test_context(TestFixture);
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
