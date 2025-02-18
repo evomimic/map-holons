@@ -1,29 +1,26 @@
-
 use holons_core::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, StagedRelationshipMap, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, Nursery, RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
+use holons_core::{HolonReference, SmartReference, StagedReference};
 use shared_types_holon::{HolonId, LocalId};
-use std::rc::Rc;
-
 
 /// A concrete implementation of the `HolonResolver` trait for resolving local Holons.
-#[derive(Debug,Clone)]
-pub struct ClientHolonService;// {
-    //app_installation: AppInstallation
-//}
+#[derive(Debug, Clone)]
+pub struct ClientHolonService; // {
+                               //app_installation: AppInstallation
+                               //}
 
 impl HolonServiceApi for ClientHolonService {
-
     //fn install_app(&self) -> Result<AppInstallation, HolonError> {
-     ///   ZomeClient::install_app()
+    ///   ZomeClient::install_app()
     //}
 
     fn commit(&self, _context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
         //let request = build_commit_dance_request(&SessionState::empty())?;
-       // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
-       // _context.get_space_manager()
-       todo!()
+        // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
+        // _context.get_space_manager()
+        todo!()
     }
 
     fn delete_holon(&self, _local_id: &LocalId) -> Result<(), HolonError> {
@@ -42,10 +39,21 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn fetch_all_populated_relationships(
+    fn stage_new_from_clone(
         &self,
-        _source_id: HolonId,
-    ) -> Result<StagedRelationshipMap, HolonError> {
+        _context: &dyn HolonsContextBehavior,
+        _original_holon: HolonReference,
+        _nursery: Nursery,
+    ) -> Result<StagedReference, HolonError> {
+        todo!()
+    }
+
+    fn stage_new_version(
+        &self,
+        _context: &dyn HolonsContextBehavior,
+        _original_holon: SmartReference,
+        _nuresery: Nursery,
+    ) -> Result<StagedReference, HolonError> {
         todo!()
     }
 }

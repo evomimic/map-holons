@@ -89,7 +89,6 @@ pub fn add_related_holons_dance(
     }
 }
 
-
 /// Commit all staged holons to the persistent store
 ///
 /// *DanceRequest:*
@@ -120,8 +119,6 @@ pub fn commit_dance(
         }
     }
 }
-
-
 
 /// This dance deletes an existing holon from the persistent store.
 ///
@@ -157,7 +154,6 @@ pub fn delete_holon_dance(
     }
 }
 
-
 /// Get all holons from the persistent store
 ///
 /// *DanceRequest:*
@@ -182,7 +178,6 @@ pub fn get_all_holons_dance(
         Err(holon_error) => Err(holon_error.into()),
     }
 }
-
 
 /// Gets Holon from persistent store, located by HolonId
 ///
@@ -218,7 +213,6 @@ pub fn get_holon_by_id_dance(
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))
 }
-
 
 /// Query relationships
 ///
@@ -257,7 +251,6 @@ pub fn query_relationships_dance(
         )),
     }
 }
-
 
 /// Remove related Holons
 ///
@@ -319,7 +312,6 @@ pub fn remove_related_holons_dance(
     }
 }
 
-
 /// Stages a new Holon by cloning an existing Holon, without retaining lineage to the Holon its cloned from.
 ///
 /// *DanceRequest:*
@@ -350,7 +342,6 @@ pub fn stage_new_from_clone_dance(
 
     Ok(ResponseBody::StagedRef(staged_reference))
 }
-
 
 /// This dance creates a new version of an existing holon by cloning the existing holon, adding
 /// the clone to the StagingArea and resetting its PREDECESSOR relationship to reference the
@@ -400,7 +391,6 @@ pub fn stage_new_holon_dance(
     Ok(ResponseBody::StagedRef(staged_reference))
 }
 
-
 /// Stages a new version of a Holon by cloning an existing Holon, retaining lineage to the Holon its cloned from.
 /// This operation is only allowed for smart references.
 ///
@@ -432,7 +422,6 @@ pub fn stage_new_version_dance(
 
     Ok(ResponseBody::StagedRef(staged_reference))
 }
-
 
 /// Add property values to an already staged holon
 ///
@@ -505,7 +494,6 @@ pub fn with_properties_dance(
     }
 }
 
-
 /// Abandon staged changes
 ///
 /// *DanceRequest:*
@@ -533,4 +521,3 @@ pub fn abandon_staged_changes_dance(
         )),
     }
 }
-
