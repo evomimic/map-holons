@@ -1,7 +1,6 @@
 pub mod client_context;
 
 pub mod client_shared_objects;
-pub mod zome_client;
 
 pub use client_context::init_client_context;
 
