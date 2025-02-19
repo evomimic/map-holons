@@ -162,7 +162,6 @@ impl HolonStagingBehavior for Nursery {
 
     fn stage_new_holon(
         &self,
-        _context: &dyn HolonsContextBehavior,
         holon: Holon,
     ) -> Result<StagedReference, HolonError> {
         let new_index = self.stage_holon(holon);

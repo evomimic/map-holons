@@ -26,7 +26,6 @@ pub trait HolonStagingBehavior {
     /// to be retrieved by key
     fn stage_new_holon(
         &self,
-        context: &dyn HolonsContextBehavior,
         holon: Holon,
     ) -> Result<StagedReference, HolonError>;
 }

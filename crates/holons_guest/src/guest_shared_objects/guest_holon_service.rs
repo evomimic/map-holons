@@ -306,7 +306,7 @@ impl HolonServiceApi for GuestHolonService {
 
         let cloned_staged_reference = self
             .get_internal_nursery_access(context)?
-            .borrow().
+            .borrow()
             .stage_new_holon(context, cloned_holon)?;
 
         // Reset the PREDECESSOR to None

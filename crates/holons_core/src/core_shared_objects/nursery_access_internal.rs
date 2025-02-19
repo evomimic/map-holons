@@ -1,5 +1,6 @@
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::{Holon, HolonError, NurseryAccess};
+use crate::HolonStagingBehavior;
 use shared_types_holon::MapString;
 use std::any::Any;
 use std::cell::{Ref, RefCell};
@@ -12,7 +13,7 @@ use std::rc::Rc;
 /// - **Clearing staged holons**
 /// - **Retrieving holons by key**
 /// - **Directly staging new holons**
-pub trait NurseryAccessInternal: NurseryAccess {
+pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their concrete type.
     ///
     /// This method is useful when working with `NurseryAccessInternal` as a trait object (`dyn NurseryAccessInternal`)
