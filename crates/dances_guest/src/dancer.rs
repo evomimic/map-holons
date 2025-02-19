@@ -1,5 +1,6 @@
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
+use crate::session_state::SessionState;
 use dances_core::dance_request::DanceRequest;
 use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 
