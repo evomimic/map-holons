@@ -1,9 +1,10 @@
 use crate::core_shared_objects::{Holon, HolonError, NurseryAccess};
+use crate::HolonStagingBehavior;
 use shared_types_holon::MapString;
 use std::collections::BTreeMap;
 use std::{cell::RefCell, rc::Rc};
 
-pub trait NurseryAccessInternal: NurseryAccess {
+pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// # CAUTION!!!
     ///
     /// **This method is ONLY intended for use by the GuestHolonService**
