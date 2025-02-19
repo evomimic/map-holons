@@ -5,12 +5,11 @@ use crate::core_shared_objects::{
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
 };
-use hdi::prelude::ShardStrategy;
 use shared_types_holon::MapString;
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use super::TransientCollection;
 use crate::HolonCollectionApi;

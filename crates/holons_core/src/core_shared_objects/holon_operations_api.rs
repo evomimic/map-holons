@@ -29,6 +29,8 @@ use crate::{
 use shared_types_holon::{LocalId, MapString, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::sync::Arc;
+
+use super::Nursery;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {
@@ -163,36 +165,41 @@ pub fn stage_new_from_clone_api(
     context: &dyn HolonsContextBehavior,
     original_holon: HolonReference,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = get_staging_service(context);
-    let staged_reference =
-        staging_service.borrow().stage_new_from_clone(context, original_holon)?;
+    let staging_service = context.get_space_manager().get_holon_service();
+    let staged_reference = staging_service.stage_new_from_clone(context, original_holon)?;
+
     Ok(staged_reference)
 }
-/// Stages a new holon in the holon space.
-///
-/// This function creates a new holon in the staging area without any lineage
-/// relationship to an existing holon. Use this function for creating entirely
-/// new holons that are not tied to any predecessor.
-///
-/// # Arguments
-/// - `context`: The context to retrieve holon services.
-/// - `holon`: The new holon to stage.
-///
-/// # Returns
-/// - `Ok(StagedReference)` pointing to the newly staged holon.
-/// - `Err(HolonError)` if staging fails.
-///
-/// # Errors
-/// - Returns a `HolonError` if the staging operation cannot complete.
-///
-pub fn stage_new_holon_api(
-    context: &dyn HolonsContextBehavior,
-    holon: Holon,
-) -> Result<StagedReference, HolonError> {
-    let staging_service = get_staging_service(context);
-    let staged_reference = staging_service.borrow().stage_new_holon(context, holon)?;
-    Ok(staged_reference)
-}
+// Deprecated? //
+
+// /// Stages a new holon in the holon space.
+// ///
+// /// This function creates a new holon in the staging area without any lineage
+// /// relationship to an existing holon. Use this function for creating entirely
+// /// new holons that are not tied to any predecessor.
+// ///
+// /// # Arguments
+// /// - `context`: The context to retrieve holon services.
+// /// - `holon`: The new holon to stage.
+// ///
+// /// # Returns
+// /// - `Ok(StagedReference)` pointing to the newly staged holon.
+// /// - `Err(HolonError)` if staging fails.
+// ///
+// /// # Errors
+// /// - Returns a `HolonError` if the staging operation cannot complete.
+// ///
+// pub fn stage_new_holon_api(
+//     context: &dyn HolonsContextBehavior,
+//     holon: Holon,
+// ) -> Result<StagedReference, HolonError> {
+//     let staging_service = get_staging_service(context);
+//     let staged_reference = staging_service.borrow().stage_new_holon(context, holon)?;
+
+//     Ok(staged_reference)
+// }
+
+//  //
 
 /// Stages a new holon as a version of the current holon.
 ///
@@ -217,8 +224,8 @@ pub fn stage_new_version_api(
     context: &dyn HolonsContextBehavior,
     current_version: SmartReference,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = get_staging_service(context);
-    let staged_reference = staging_service.borrow().stage_new_version(context, current_version)?;
+    let staging_service = context.get_space_manager().get_holon_service();
+    let staged_reference = staging_service.stage_new_version(context, current_version)?;
 
     Ok(staged_reference)
 }
@@ -227,11 +234,13 @@ fn get_staging_service(
     context: &dyn HolonsContextBehavior,
 ) -> Arc<RefCell<dyn HolonStagingBehavior>> {
     let space_manager = context.get_space_manager();
+
     space_manager.get_staging_behavior_access()
 }
 
 fn get_holon_service(context: &dyn HolonsContextBehavior) -> Arc<dyn HolonServiceApi> {
     let space_manager = context.get_space_manager();
     let holon_service = space_manager.get_holon_service();
+
     Arc::clone(&holon_service)
 }

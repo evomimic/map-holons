@@ -1,12 +1,15 @@
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess, RelationshipMap};
+use crate::core_shared_objects::{
+    Holon, HolonError, HolonState, NurseryAccess,
+};
 use crate::reference_layer::staged_reference::StagedIndex;
 use crate::reference_layer::{
-    HolonReference, HolonStagingBehavior, HolonsContextBehavior, SmartReference, StagedReference,
+    HolonStagingBehavior, HolonsContextBehavior, StagedReference,
 };
 use hdi::prelude::*;
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::MapString;
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+
 // #[hdk_entry_helper]
 // #[derive(Clone, PartialEq, Eq)]
 // pub struct Nursery {
@@ -44,14 +47,6 @@ impl Nursery {
         keyed_index: BTreeMap<MapString, usize>,
     ) -> Self {
         Self { staged_holons: RefCell::new(StagedHolons { staged_holons, keyed_index }) }
-    }
-
-    fn clone_existing_relationships_into_staged_map(
-        &self,
-        _original_holon: HolonId,
-        _staged_holon: &Holon,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
-        todo!()
     }
 
     /// This function converts a StagedIndex into a StagedReference
@@ -114,55 +109,12 @@ impl HolonStagingBehavior for Nursery {
         self.to_validated_staged_reference(index)
     }
 
-    fn stage_new_from_clone(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: HolonReference,
-    ) -> Result<StagedReference, HolonError> {
-        Err(HolonError::NotImplemented(
-            "the Nursery doesn't implement stage_new_from_clone yet".to_string(),
-        ))
-        // let cloned_holon = original_holon.clone_holon(context) {
-        //     HolonReference::Staged(staged_reference) => {
-        //         // Get a clone from the rc_holon in the commit_manager
-        //         staged_reference.stage_new_from_clone(context)?
-        //     }
-        //     HolonReference::Smart(smart_reference) => {
-        //         // Get a clone from the rc_holon in the cache_manager
-        //         smart_reference.stage_new_from_clone(context)?
-        //     }
-        // };
-        //
-        // let cloned_staged_reference = {
-        //     // Mutably borrow the commit_manager
-        //     let space_manager = context.get_space_manager();
-        //     // Stage the clone
-        //     space_manager.stage_new_holon(cloned_holon)?
-        // };
-        //
-        // // Reset the PREDECESSOR to None
-        // cloned_staged_reference.with_predecessor(context, None)?;
-        //
-        // Ok(cloned_staged_reference)
-    }
-
     fn stage_new_holon(
         &self,
-        _context: &dyn HolonsContextBehavior,
         holon: Holon,
     ) -> Result<StagedReference, HolonError> {
         let new_index = self.stage_holon(&holon);
         self.to_validated_staged_reference(new_index)
-    }
-
-    fn stage_new_version(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        Err(HolonError::NotImplemented(
-            "the Nursery doesn't implement stage_new_version yet".to_string(),
-        ))
     }
 }
 

@@ -22,6 +22,7 @@ pub enum HolonId {
     Local(LocalId),
     External(ExternalId),
 }
+
 /// Construct a (Local variant) of a HolonId from a LocalId
 impl From<LocalId> for HolonId {
     fn from(local_id: LocalId) -> Self {
