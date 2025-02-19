@@ -1,13 +1,11 @@
 use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
 
 use crate::core_shared_objects::{AccessType, HolonError};
-use crate::{HolonCollectionApi, HolonSpaceBehavior};
+use crate::HolonCollectionApi;
 use core::fmt;
 use hdk::prelude::*;
 use shared_types_holon::{MapInteger, MapString};
 use std::collections::BTreeMap;
-use std::rc::Rc;
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {

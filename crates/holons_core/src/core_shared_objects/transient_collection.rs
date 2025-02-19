@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 
 use hdk::prelude::*;
 
-use crate::reference_layer::{
-    HolonReadable, HolonReference, HolonsContextBehavior, TransientCollectionBehavior,
-};
+use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
 
 use crate::core_shared_objects::HolonError;
 use crate::HolonCollectionApi;

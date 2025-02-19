@@ -1,14 +1,13 @@
-use derive_new::new;
-use hdk::prelude::*;
-use std::fmt;
-use std::rc::Rc;
-
 use crate::core_shared_objects::{
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
+use derive_new::new;
+use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{LocalId, MapString};
+use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum AccessType {
@@ -170,9 +169,7 @@ impl Holon {
 
     #[deprecated]
     pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
-        return Err(HolonError::NotImplemented(
-            "get_all_holons is no longer supported".to_string(),
-        ));
+        Err(HolonError::NotImplemented("get_all_holons is no longer supported".to_string()))
     }
 
     // /// This method gets ALL holons related to this holon via ANY relationship this holon is
@@ -350,6 +347,8 @@ impl Holon {
     // }
 
     pub fn is_deletable(&mut self) -> Result<(), HolonError> {
+        // This method should be moved outside of Holon where cached relationships can be accessed
+
         // let related_holons = self.get_all_related_holons()?;
         // if !related_holons.0.is_empty() {
         //     let relationships = related_holons

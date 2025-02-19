@@ -2,72 +2,70 @@
 
 use crate::client_shared_objects::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
-use holons_core::core_shared_objects::{
-    Holon, HolonError, ServiceRoutingPolicy, TransientCollection,
-};
-use holons_core::reference_layer::{
-    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior,
-    TransientCollectionBehavior,
-};
-use shared_types_holon::MapString;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
+use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy};
+use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
 use std::sync::Arc;
 
-/// HolonsContext provides a single place to store information useful within a dance request.
+/// The client-side implementation of `HolonsContextBehavior`, responsible for managing
+/// holon-related operations in a local (non-guest) environment.
+///
+/// The `ClientHolonsContext` owns an instance of `HolonSpaceManager`, wrapped in `Arc`
+/// for shared ownership, ensuring that it can be referenced safely across different
+/// parts of the application without requiring mutable access.
+///
+/// This context is **only used on the client-side** and does not interact with Holochain directly.
 pub struct ClientHolonsContext {
-    space_manager: Box<HolonSpaceManager>,
+    /// The `HolonSpaceManager` that provides access to all core services.
+    space_manager: Arc<HolonSpaceManager>,
+}
+
+/// Initializes a new client-side context with a fresh `HolonSpaceManager`.
+///
+/// This function sets up a `ClientHolonsContext` with:
+/// - An **empty nursery** (no staged holons).
+/// - A default `HolonServiceApi` implementation (`ClientHolonService`).
+/// - A space manager configured with client-specific routing policies.
+///
+/// # Returns
+/// * A `Box<dyn HolonsContextBehavior>` containing the initialized client context.
+pub fn init_client_context() -> Box<dyn HolonsContextBehavior> {
+    // Step 1: Create the ClientHolonService
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+
+    // Step 2: Create an empty Nursery for the client
+    let nursery = Nursery::new();
+
+    // Create a new `HolonSpaceManager` wrapped in `Arc`
+    let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
+        holon_service, // Service for holons
+        None,          // No local space holon initially
+        ServiceRoutingPolicy::Combined,
+        nursery,
+    ));
+
+    // Wrap in `ClientHolonsContext` and return as trait object
+    Box::new(ClientHolonsContext::new(space_manager))
 }
 
 impl ClientHolonsContext {
-    /// Creates a new instance of `HolonsContext`.
+    /// Creates a new `ClientHolonsContext` from a provided `HolonSpaceManager`.
     ///
     /// # Arguments
-    /// * `space_manager` - The space manager to be associated with this context.
-    pub fn new(space_manager: HolonSpaceManager) -> Self {
-        Self { space_manager: Box::new(space_manager) }
-    }
-
-    /// Initializes a `HolonsContext`
-    ///
-    /// # Arguments
-    /// * `staged_holons` - A vector of staged holons wrapped in `Rc<RefCell>`.
-    /// * `keyed_index` - A map of keys to their corresponding indices in the staged holons.
-    /// * `local_space_holon` - An optional reference to the local space holon.
+    /// * `space_manager` - The `HolonSpaceManager` instance to be associated with this context.
     ///
     /// # Returns
-    /// A `Result` containing the new `HolonsContext` or an error.
-    pub fn init_context_from_session(
-        staged_holons: Vec<Rc<RefCell<Holon>>>,
-        keyed_index: BTreeMap<MapString, usize>,
-        local_space_holon: Option<HolonReference>,
-    ) -> Result<Self, HolonError> {
-        // Use Arc instead of Box to wrap GuestHolonService
-        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
-        // Step 1: Initialize the HolonSpaceManager
-        let space_manager = HolonSpaceManager::new_from_session(
-            holon_service,
-            staged_holons,
-            keyed_index,
-            local_space_holon,
-            ServiceRoutingPolicy::Combined,
-        );
-
-        // Step 2: Ensure the local holon space is available
-        let context = ClientHolonsContext::new(space_manager);
-
-        // Step 3: Return the initialized HolonsContext
-        Ok(context)
+    /// * A new `ClientHolonsContext` instance wrapping the provided space manager.
+    pub fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
+        Self { space_manager }
     }
 }
 
 impl HolonsContextBehavior for ClientHolonsContext {
-    /// Provides access to the space manager as a trait object.
-    fn get_space_manager(&self) -> Rc<&dyn HolonSpaceBehavior> {
-        // Create a reference to the HolonSpaceManager as a trait object
-        let reference: &dyn HolonSpaceBehavior = &*self.space_manager;
-        // Wrap the reference in Rc
-        Rc::new(reference)
+    /// Provides access to the `HolonSpaceManager` as a shared reference.
+    ///
+    /// # Returns
+    /// * `Arc<dyn HolonSpaceBehavior>` - A shared reference to the space manager.
+    fn get_space_manager(&self) -> Arc<dyn HolonSpaceBehavior> {
+        self.space_manager.clone() as Arc<dyn HolonSpaceBehavior>
     }
 }

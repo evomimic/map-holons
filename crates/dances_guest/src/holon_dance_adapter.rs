@@ -72,7 +72,7 @@ pub fn add_related_holons_dance(
                         holons_to_add,
                     )?;
 
-                    Ok(ResponseBody::StagedReference(staged_reference))
+                    Ok(ResponseBody::StagedRef(staged_reference))
                 }
                 _ => Err(HolonError::InvalidParameter(
                     "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
@@ -303,7 +303,7 @@ pub fn remove_related_holons_dance(
                         holons_to_remove,
                     )?;
 
-                    Ok(ResponseBody::StagedReference(staged_reference))
+                    Ok(ResponseBody::StagedRef(staged_reference))
                 }
                 _ => Err(HolonError::InvalidParameter(
                     "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
@@ -348,7 +348,7 @@ pub fn stage_new_from_clone_dance(
 
     let staged_reference = stage_new_from_clone_api(context, holon_reference)?;
 
-    Ok(ResponseBody::StagedReference(staged_reference))
+    Ok(ResponseBody::StagedRef(staged_reference))
 }
 
 
@@ -397,7 +397,7 @@ pub fn stage_new_holon_dance(
     // This operation will have added the staged_holon to the CommitManager's vector and returned a
     // StagedReference to it.
 
-    Ok(ResponseBody::StagedReference(staged_reference))
+    Ok(ResponseBody::StagedRef(staged_reference))
 }
 
 
@@ -430,7 +430,7 @@ pub fn stage_new_version_dance(
 
     let staged_reference = stage_new_version_api(context, smart_reference)?;
 
-    Ok(ResponseBody::StagedReference(staged_reference))
+    Ok(ResponseBody::StagedRef(staged_reference))
 }
 
 
@@ -477,7 +477,7 @@ pub fn with_properties_dance(
             match request.body {
                 RequestBody::None => {
                     // No parameters to populate, continue
-                    Ok(ResponseBody::StagedReference(staged_reference))
+                    Ok(ResponseBody::StagedRef(staged_reference))
                 }
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
@@ -488,7 +488,7 @@ pub fn with_properties_dance(
                             base_value.clone(),
                         )?;
                     }
-                    Ok(ResponseBody::StagedReference(staged_reference))
+                    Ok(ResponseBody::StagedRef(staged_reference))
                 }
                 _ => Err(HolonError::InvalidParameter("request.body".to_string())),
             }
@@ -526,7 +526,7 @@ pub fn abandon_staged_changes_dance(
     match request.dance_type {
         DanceType::CommandMethod(mut staged_reference) => {
             staged_reference.abandon_staged_changes(context)?;
-            Ok(ResponseBody::StagedReference(staged_reference))
+            Ok(ResponseBody::StagedRef(staged_reference))
         }
         _ => Err(HolonError::InvalidParameter(
             "Expected Command(StagedReference) DanceType, didn't get one".to_string(),

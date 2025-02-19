@@ -151,9 +151,13 @@ impl<'a> Serialize for StagedRelationshipMapWrapper<'a> {
     where
         S: Serializer,
     {
-        let mut map = serializer.serialize_map(Some(self.0 .0.len()))?;
-        for (k, v) in &self.0 .0 {
-            map.serialize_entry(&k.0.to_string(), &HolonCollectionWrapper(v))?;
+        let map_len = self.0.iter().count();
+        let mut map = serializer.serialize_map(Some(map_len))?;
+        for (k, v) in self.0.iter() {
+            // Borrow the RefCell to get the inner HolonCollection
+            let holon_collection = v.borrow();
+            // Use your existing HolonCollectionWrapper
+            map.serialize_entry(&k.0.to_string(), &HolonCollectionWrapper(&holon_collection))?;
         }
         map.end()
     }

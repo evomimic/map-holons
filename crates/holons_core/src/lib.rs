@@ -5,5 +5,6 @@ pub mod reference_layer;
 pub mod utils;
 
 // pub use core_shared_objects::*;
+pub use reference_layer::holon_operations_api::*;
 pub use reference_layer::*;
 // pub use utils::*;

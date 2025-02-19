@@ -5,10 +5,21 @@ use crate::reference_layer::{
 use crate::core_shared_objects::{Holon, HolonError};
 use shared_types_holon::MapString;
 
+/// Defines **high-level staging behavior**, abstracting away direct nursery operations.
+///
+/// This trait is intended for use by **test cases, API consumers, and higher-level logic**.
+/// It provides a structured way to:
+/// - **Stage new holons**
+/// - **Retrieve staged holons by key**
+/// - **Commit or abandon staged changes**
+///
+/// This trait does **not** expose low-level details.
 pub trait HolonStagingBehavior {
     /// Does a lookup by key on staged holons. Note HolonTypes are not required to offer a "key"
     fn get_staged_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError>;
-    //fn get_mut_holon_by_index(&self, holon_index: StagedIndex) -> Result<RefMut<Holon>, HolonError>
+
+    /// Returns a count of the number of holons being staged
+    fn staged_count(&self) -> i64;
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use async_std::task;
-use dances::dance_response::ResponseBody::{Holons, StagedReference};
+use dances::dance_response::ResponseBody::{Holons, StagedRef};
 use dances::dance_response::{DanceResponse, ResponseStatusCode};
 use dances::holon_dance_adapter::{
     build_delete_holon_dance_request, build_get_all_holons_dance_request,
@@ -11,8 +11,6 @@ use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
-
-use crate::shared_test::dance_fixtures::*;
 
 use crate::shared_test::test_data_types::{DanceTestState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;

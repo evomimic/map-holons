@@ -2,7 +2,6 @@ use crate::guest_shared_objects::{
     commit_functions, create_local_path, get_holon_by_path, get_relationship_links,
 };
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
-use derive_new::new;
 use hdk::prelude::*;
 
 use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
@@ -18,14 +17,36 @@ use shared_types_holon::{
     LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
 };
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
-pub struct GuestHolonService;
+// #[hdk_entry_helper]
+#[derive(Clone)]
+pub struct GuestHolonService {
+    /// Holds the internal nursery access after registration
+    pub internal_nursery_access: Option<Arc<RefCell<dyn NurseryAccessInternal>>>,
+}
 
 impl GuestHolonService {
+    pub fn new() -> Self {
+        GuestHolonService {
+            internal_nursery_access: None, // Initially, no privileged access
+        }
+    }
+    /// ✅ HolonSpaceManager explicitly grants internal access at registration
+    pub fn register_internal_access(&mut self, access: Arc<RefCell<dyn NurseryAccessInternal>>) {
+        self.internal_nursery_access = Some(access);
+    }
+
+    /// Retrieves the stored internal access (set during registration)
+    pub fn get_internal_nursery_access(
+        &self,
+    ) -> Result<Arc<RefCell<dyn NurseryAccessInternal>>, HolonError> {
+        self.internal_nursery_access.clone().ok_or(HolonError::Misc(
+            "GuestHolonService does not have internal nursery access.".to_string(),
+        ))
+    }
     /// Helper function to create a new Local Space Holon (including its Path) in the DHT
     ///
     /// # Arguments
@@ -100,7 +121,7 @@ impl GuestHolonService {
         }
     }
     /// Ensure that a Local Space Holon exists in the DHT and, if not, creates one. This method
-    /// is intended to be implemented by gues
+    /// is intended to be implemented by guest
     ///
     /// This function attempts to fetch the SpaceHolon from the persistent store. If that fails,
     /// it creates one.
@@ -125,17 +146,19 @@ impl GuestHolonService {
         }
     }
 
-    fn get_internal_nursery_access(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Rc<RefCell<dyn NurseryAccessInternal>>, HolonError> {
-        // Get the nursery access from the space manager
-        let nursery_access = context.get_space_manager().get_nursery_access();
-
-        // Call `as_internal` to get internal access
-        let nursery_access_internal = nursery_access.borrow();
-        Ok(nursery_access_internal.as_internal())
-    }
+    // fn get_internal_nursery_access(
+    //     &self,
+    //     context: &dyn HolonsContextBehavior,
+    // ) -> Result<Arc<RefCell<dyn NurseryAccessInternal>>, HolonError> {
+    //     // Retrieve the registered internal access from the space manager
+    //     let space_manager = context.get_space_manager();
+    //     match space_manager.get_registered_internal_nursery_access() {
+    //         Some(internal_access) => Ok(internal_access),
+    //         None => Err(HolonError::Misc(
+    //             "GuestHolonService does not have internal nursery access.".to_string(),
+    //         )),
+    //     }
+    // }
     pub fn get_nursery_access(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -150,24 +173,22 @@ impl GuestHolonService {
 impl HolonServiceApi for GuestHolonService {
     fn commit(&self, context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
         // Get internal nursery access
-        let internal_nursery = self.get_internal_nursery_access(context)?;
+        let internal_nursery = self.get_internal_nursery_access()?;
 
-        // Step 1: Borrow immutably to get staged holons
+        // ✅ Step 1: Borrow immutably, immediately clone the Vec, then drop the borrow
         let staged_holons = {
-            let nursery_read = internal_nursery.borrow(); // Immutable borrow
-            nursery_read.get_staged_holons()
-        };
+            let nursery_read = internal_nursery.borrow();
+            let cloned_holons = nursery_read.get_holons_to_commit().clone(); // ✅ Clone while borrow is active
+            cloned_holons // ✅ Borrow ends here
+        }; // ✅ `nursery_read` is dropped immediately after this block
 
-        // Step 2: Commit the staged holons
+        // ✅ Step 2: Commit the staged holons
         let commit_response = commit_functions::commit(context, &staged_holons)?;
 
-        // Step 3: Borrow mutably to clear the stage
-        {
-            let mut nursery_write = internal_nursery.borrow_mut(); // Mutable borrow
-            nursery_write.clear_stage();
-        }
+        // ✅ Step 3: Borrow mutably to clear the stage
+        internal_nursery.borrow_mut().clear_stage(); // ✅ Safe, no borrow conflict
 
-        // Step 4: Return the commit response
+        // ✅ Step 4: Return the commit response
         Ok(commit_response)
     }
 
@@ -222,5 +243,14 @@ impl HolonServiceApi for GuestHolonService {
         _source_id: HolonId,
     ) -> Result<Rc<RelationshipMap>, HolonError> {
         todo!()
+    }
+}
+
+// ✅ Manually implement Debug (exclude internal_nursery_access)
+impl fmt::Debug for GuestHolonService {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GuestHolonService")
+            .field("internal_nursery_access", &"<hidden>") // ✅ Hide the trait object
+            .finish()
     }
 }

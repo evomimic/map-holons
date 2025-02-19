@@ -1,6 +1,7 @@
 use derive_new::new;
 use hdk::prelude::*;
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -180,6 +181,44 @@ impl SmartReference {
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
+    }
+}
+
+impl fmt::Display for SmartReference {
+    /// Formats the `SmartReference` for human-readable display.
+    ///
+    /// The output includes the `HolonId` and a summary of smart property values:
+    /// - If `smart_property_values` is `None` or empty, displays `"no props"`.
+    /// - If there are 1–2 properties, displays them as key-value pairs.
+    /// - If there are more than 2 properties, displays the first two followed by `"+N more"`.
+    ///
+    /// # Example Outputs
+    /// - `SmartReference(Local(…ABC123), no props)`
+    /// - `SmartReference(Local(…ABC123), props: [key1:value1, key2:value2])`
+    /// - `SmartReference(Local(…ABC123), props: [key1:value1, key2:value2 +1 more])`
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.smart_property_values {
+            Some(props) if !props.is_empty() => {
+                // Display the first 2 properties as a preview, followed by a count if there are more
+                let preview: Vec<String> =
+                    props.iter().take(2).map(|(key, value)| format!("{}:{}", key, value)).collect();
+
+                let additional_count = props.len().saturating_sub(preview.len());
+
+                if additional_count > 0 {
+                    write!(
+                        f,
+                        "SmartReference({}, props: [{} +{} more])",
+                        self.holon_id,
+                        preview.join(", "),
+                        additional_count
+                    )
+                } else {
+                    write!(f, "SmartReference({}, props: [{}])", self.holon_id, preview.join(", "))
+                }
+            }
+            _ => write!(f, "SmartReference({}, no props)", self.holon_id),
+        }
     }
 }
 

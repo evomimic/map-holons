@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use async_std::task;
-use dances::dance_response::ResponseBody::{Holons, StagedReference};
+use dances::dance_response::ResponseBody::{Holons, StagedRef};
 use dances::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use dances::descriptors_dance_adapter::build_load_core_schema_dance_request;
 use dances::holon_dance_adapter::{

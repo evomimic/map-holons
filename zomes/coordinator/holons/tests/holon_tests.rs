@@ -70,7 +70,7 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
         println!("\n****** Starting create/get test for the following Holon:");
         // print_holon_without_saved_node(&test_holon);
 
-        let mut builder_holon = Holon::new();
+        let _builder_holon = Holon::new();
 
         // for property_name in test_holon.property_map.keys() {
         //     let property_value: BaseValue =
