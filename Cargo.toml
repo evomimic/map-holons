@@ -4,7 +4,7 @@ members = [
     "zomes/coordinator/holons",
     "zomes/coordinator/descriptors",
     "zomes/coordinator/core_schema",
-    "zomes/coordinator/dances",
+    #"zomes/coordinator/dances",
     # Integrity Zome
     "zomes/integrity/holons_integrity",
     # Shared Types and Validation
@@ -26,8 +26,8 @@ resolver = "2"
 [workspace.dependencies.holons]
 path = "zomes/coordinator/holons"
 
-[workspace.dependencies.dances]
-path = "zomes/coordinator/dances"
+#[workspace.dependencies.dances]
+#path = "zomes/coordinator/dances"
 
 [workspace.dependencies.descriptors]
 path = "zomes/coordinator/descriptors"
