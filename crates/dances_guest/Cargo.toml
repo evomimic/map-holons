@@ -22,7 +22,6 @@ shared_types_holon = { workspace = true }
 holons = { workspace = true }
 holons_core = { workspace = true }
 holons_guest = { workspace = true }
-holons_init = { workspace = true }
 dances_core = { workspace = true }
 core_schema = { workspace = true }
 

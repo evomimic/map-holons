@@ -1,8 +1,8 @@
-use dances_core::dance_request::DanceRequest;
-use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 use crate::descriptors_dance_adapter::*;
 use crate::holon_dance_adapter::*;
-use crate::session_state::SessionState;
+use dances_core::dance_request::DanceRequest;
+use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
+
 use hdk::prelude::*;
 use holons::reference_layer::HolonsContextBehavior;
 
@@ -15,6 +15,7 @@ use crate::holon_dance_adapter::{
 use holons_core::core_shared_objects::HolonError;
 use holons_guest::init_guest_context;
 
+use dances_core::session_state::SessionState;
 use shared_types_holon::MapString;
 use std::collections::HashMap;
 
