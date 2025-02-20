@@ -15,9 +15,9 @@
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
 use core_schema::loader::load_core_schema;
-use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
-use dances_core::dance_response::ResponseBody;
-use dances_core::session_state::SessionState;
+use holons_core::dance_request::{DanceRequest, DanceType, RequestBody};
+use holons_core::dance_response::ResponseBody;
+use holons_core::session_state::SessionState;
 use hdk::prelude::*;
 use holons_core::core_shared_objects::{CommitRequestStatus, HolonError};
 use holons_core::reference_layer::HolonsContextBehavior;
