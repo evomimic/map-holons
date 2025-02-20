@@ -14,7 +14,7 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-use crate::core_shared_objects::{CommitRequestStatus, HolonError};
+use crate::core_shared_objects::HolonError;
 use crate::dances::dance_request::{DanceType, RequestBody};
 use crate::dances::dance_response::ResponseBody;
 use crate::dances::session_state::SessionState;

@@ -1,6 +1,7 @@
 use hdk::prelude::*;
 
-use holons::reference_layer::{HolonReference, HolonsContextBehavior};
+use holons_core::core_shared_objects::{CommitResponse, HolonError};
+use holons_core::{stage_new_holon_api, HolonReference, HolonsContextBehavior, StagedReference};
 
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
@@ -12,8 +13,7 @@ use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
 use crate::value_type_loader::CoreValueTypeName;
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
-use holons::core_shared_objects::stage_new_holon_api;
-use holons::core_shared_objects::{CommitResponse, HolonError};
+
 use shared_types_holon::MapString;
 use strum::IntoEnumIterator;
 
