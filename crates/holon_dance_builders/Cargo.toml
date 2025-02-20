@@ -16,9 +16,8 @@ serde_json = { workspace = true }
 
 # MAP Dependencies
 shared_types_holon = { workspace = true }
-dances_core = { workspace = true }
 holons_core = { workspace = true }
-holons_guest = { workspace = true }
+#holons_guest = { workspace = true }
 
 [dev-dependencies]
 

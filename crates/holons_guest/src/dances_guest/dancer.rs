@@ -1,12 +1,3 @@
-<<<<<<< HEAD:crates/dances_guest/src/dancer.rs
-use crate::descriptors_dance_adapter::*;
-use crate::holon_dance_adapter::*;
-use crate::session_state::SessionState;
-use dances_core::dance_request::DanceRequest;
-use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
-
-=======
->>>>>>> 51d2cba (checkpoint commit. compiles but tests don't):crates/holons_guest/src/dances_guest/dancer.rs
 use hdk::prelude::*;
 use holons_core::reference_layer::HolonsContextBehavior;
 
@@ -18,17 +9,14 @@ use crate::holon_dance_adapter::{
 
 use holons_core::core_shared_objects::HolonError;
 
-<<<<<<< HEAD:crates/dances_guest/src/dancer.rs
-use dances_core::session_state::SessionState;
-=======
 use crate::init_guest_context;
-use holons_core::dances::dance_response::{ResponseBody, ResponseStatusCode};
+
 use holons_core::dances::descriptors_dance_adapter::load_core_schema_dance;
 use holons_core::dances::holon_dance_adapter::*;
-use holons_core::dances::session_state::SessionState;
-use holons_core::dances::{DanceRequest, DanceResponse};
+use holons_core::dances::{
+    DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState,
+};
 use holons_core::HolonsContextBehavior;
->>>>>>> 51d2cba (checkpoint commit. compiles but tests don't):crates/holons_guest/src/dances_guest/dancer.rs
 use shared_types_holon::MapString;
 use std::collections::HashMap;
 

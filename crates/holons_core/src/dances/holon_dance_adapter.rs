@@ -16,19 +16,14 @@
 
 use crate::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, Holon, HolonError, RelationshipName,
+    stage_new_version_api, CommitRequestStatus, Holon, HolonError,
 };
 use crate::dances::dance_request::{DanceType, RequestBody};
 use crate::dances::dance_response::ResponseBody;
-use crate::dances::session_state::SessionState;
 use crate::dances::DanceRequest;
-use crate::query_layer::{evaluate_query, NodeCollection, QueryExpression};
-use crate::{
-    HolonReference, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
-};
+use crate::query_layer::evaluate_query;
+use crate::{HolonWritable, HolonsContextBehavior, SmartReference};
 use hdk::prelude::*;
-use shared_types_holon::{HolonId, LocalId};
-use shared_types_holon::{MapString, PropertyMap};
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"

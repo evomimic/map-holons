@@ -1,6 +1,5 @@
-use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
-use dances_core::session_state::SessionState;
-use holons_core::core_shared_objects::{ HolonError, RelationshipName};
+use holons_core::core_shared_objects::{HolonError, RelationshipName};
+use holons_core::dances::{DanceRequest, DanceType, RequestBody, SessionState};
 use holons_core::{HolonReference, StagedReference};
 use shared_types_holon::MapString;
 

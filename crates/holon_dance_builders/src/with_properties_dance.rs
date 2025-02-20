@@ -1,7 +1,7 @@
-use dances_core::{dance_request::{DanceRequest, DanceType, RequestBody}, session_state::SessionState};
 use holons_core::core_shared_objects::HolonError;
-use shared_types_holon::{MapString, PropertyMap};
+use holons_core::dances::{DanceRequest, DanceType, RequestBody, SessionState};
 use holons_core::StagedReference;
+use shared_types_holon::{MapString, PropertyMap};
 ///
 /// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
 pub fn build_with_properties_dance_request(

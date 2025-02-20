@@ -1184,23 +1184,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dances_core"
-version = "0.1.0"
-dependencies = [
- "derive-new",
- "hdi",
- "hdk",
- "holochain",
- "holons",
- "holons_core",
- "holons_guest",
- "serde",
- "serde_json",
- "shared_types_holon",
- "tokio",
-]
-
-[[package]]
 name = "darling"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3019,11 +3002,9 @@ dependencies = [
 name = "holon_dance_builders"
 version = "0.1.0"
 dependencies = [
- "dances_core",
  "derive-new",
  "holochain",
  "holons_core",
- "holons_guest",
  "serde",
  "serde_json",
  "shared_types_holon",
@@ -3053,7 +3034,6 @@ dependencies = [
 name = "holons_client"
 version = "0.1.0"
 dependencies = [
- "dances_core",
  "derive-new",
  "holochain",
  "holon_dance_builders",
