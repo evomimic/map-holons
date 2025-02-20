@@ -1,8 +1,7 @@
 use derive_new::new;
 
 use hdk::prelude::*;
-
-use holons::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, HolonError};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseValue, MapInteger, MapString};
 

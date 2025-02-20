@@ -1,12 +1,12 @@
 use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess, RelationshipMap};
+use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::staged_reference::StagedIndex;
 use crate::reference_layer::{
     HolonReference, HolonStagingBehavior, HolonsContextBehavior, SmartReference, StagedReference,
 };
 
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::MapString;
 use std::any::Any;
 use std::cell::Ref;
 use std::{cell::RefCell, rc::Rc};
@@ -48,13 +48,6 @@ impl Nursery {
     // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
     //     self
     // }
-    fn clone_existing_relationships_into_staged_map(
-        &self,
-        _original_holon: HolonId,
-        _staged_holon: &Holon,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
-        todo!()
-    }
 
     /// Stages a new holon and optionally updates the keyed index.
     ///

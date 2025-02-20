@@ -1,5 +1,5 @@
-use dances_core::{dance_request::{DanceRequest, DanceType, RequestBody}, session_state::SessionState};
 use holons_core::core_shared_objects::HolonError;
+use holons_core::dances::{DanceRequest, DanceType, RequestBody, SessionState};
 use shared_types_holon::MapString;
 
 /// Builds a DanceRequest for retrieving all holons from the persistent store
@@ -13,5 +13,4 @@ pub fn build_get_all_holons_dance_request(
         body,
         session_state.clone(),
     ))
-
 }

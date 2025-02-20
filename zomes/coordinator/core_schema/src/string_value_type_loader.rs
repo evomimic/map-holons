@@ -2,8 +2,8 @@ use crate::core_schema_types::SchemaNamesTrait;
 use descriptors::string_descriptor::{define_string_type, StringTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::core_shared_objects::HolonError;
-use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons_core::core_shared_objects::HolonError;
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
 use strum_macros::EnumIter;
 

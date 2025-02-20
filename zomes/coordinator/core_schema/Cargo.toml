@@ -21,7 +21,7 @@ hdi = { workspace = true }
 hdk = { workspace = true }
 
 # MAP Dependencies
-holons = { workspace = true }
+holons_core = { workspace = true }
 shared_types_holon = { workspace = true }
 descriptors = { workspace = true }
 
