@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
 
-use dances_core::dance_response::ResponseBody;
-use dances_core::dance_response::{DanceResponse, ResponseBody::StagedRef, ResponseStatusCode};
-use holons_core::dances::holon_dance_adapter::build_stage_new_from_clone_dance_request;
 use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::sodoken::crypto_box::curve25519xchacha20poly1305::SEALBYTES;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use holons::reference_layer::{HolonReference, SmartReference};
-
+use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 use holons_core::core_shared_objects::RelationshipName;
+use holons_core::dances::ResponseStatusCode;
+use holons_core::{HolonReadable, HolonReference, SmartReference};
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
 
@@ -43,8 +41,6 @@ use crate::shared_test::test_data_types::{
 ///  To get the `HolonReference` in the `Staged case`, we simply need to wrap the `StagedReference`
 ///  in a `HolonReference`
 pub async fn execute_stage_new_from_clone(
-    conductor: &SweetConductor,
-    cell: &SweetCell,
     test_state: &mut DanceTestExecutionState,
     original_test_ref: TestReference,
     expected_response: ResponseStatusCode,
@@ -67,12 +63,12 @@ pub async fn execute_stage_new_from_clone(
             ))
         }
     };
-    let original_holon = original_holon_ref.clone_holon();
+    let original_holon = original_holon_ref.clone_holon(test_state.context.borrow());
 
     // *** STAGE 2: Build a stage_new_from_clone DanceRequest
     let request = build_stage_new_from_clone_dance_request(
         &test_state.session_state,
-        original_holon_data.holon_reference,
+        original_holon_ref.clone(),
     );
     debug!("Dance Request: {:#?}", request);
 
@@ -81,14 +77,14 @@ pub async fn execute_stage_new_from_clone(
     match request {
         Ok(valid_request) => {
             let response: DanceResponse =
-                _conductor.call(&_cell.zome("dances"), "dance", valid_request).await;
+                conductor.call(&_cell.zome("dances"), "dance", valid_request).await;
             debug!("Dance Response: {:#?}", response.clone());
 
             // *** STAGE 4: Confirm the actual result matches the expect result
 
             test_state.session_state = response.state;
             let code = response.status_code;
-            assert_eq!(code.clone(), _expected_response);
+            assert_eq!(code.clone(), expected_response);
             let description = response.description.clone();
 
             if let ResponseStatusCode::OK = code {
