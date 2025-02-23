@@ -1,7 +1,8 @@
+use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
-use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy};
+use holons_core::core_shared_objects::{HolonError, Nursery, ServiceRoutingPolicy};
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
-use holons_guest::GuestHolonService;
+use std::cell::RefCell;
 use std::sync::Arc;
 
 /// The implementation of `HolonsContextBehavior` , responsible for managing
@@ -35,7 +36,7 @@ pub fn init_test_context(
     _config_option: TestContextConfigOption,
 ) -> Box<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(GuestHolonService::new());
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService::new());
 
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
