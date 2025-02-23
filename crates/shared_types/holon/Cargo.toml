@@ -12,5 +12,6 @@ name = "shared_types_holon"
 hdi = { workspace = true }
 hdk = { workspace = true }
 derive-new = { workspace = true }
+hex = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

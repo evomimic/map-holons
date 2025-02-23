@@ -14,10 +14,6 @@ use rstest::*;
 
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};

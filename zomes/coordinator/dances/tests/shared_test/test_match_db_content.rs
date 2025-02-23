@@ -10,15 +10,12 @@ use dances::holon_dance_adapter::{
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons::context::HolonsContext;
-use rstest::*;
 
 use crate::shared_test::test_data_types::{DanceTestState, DancesTestCase};
 use crate::shared_test::*;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
+use holons_client::init_client_context;
+use rstest::*;
+
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
@@ -35,7 +32,7 @@ pub async fn execute_match_db_content(
     info!("\n\n--- TEST STEP: Ensuring database matches expected holons ---");
     info!("test_state {:#?}", test_state.clone());
 
-    let _context = HolonsContext::new(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
+    let _test_context = init_client_context(); // initialize empty context to satisfy get_key() unused param in HolonGettable trait
 
     for (_key, expected_holon) in test_state.created_holons.clone() {
         // get HolonId
