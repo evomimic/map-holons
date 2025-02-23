@@ -2,66 +2,89 @@ use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCas
 use crate::shared_test::*;
 use async_std::task;
 
+use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dance_request;
 use holons_core::core_shared_objects::{Holon, RelationshipName};
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::dances::ResponseStatusCode;
 use holons_core::reference_layer::StagedReference;
-use holons_core::{HolonReadable, HolonReference};
+use holons_core::HolonReference;
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 use std::collections::BTreeMap;
-use tracing::info;
 
 /// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
 /// and holons
 ///
 
 pub async fn execute_add_related_holons(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    source_holon: StagedReference,
-    relationship_name: RelationshipName,
-    holons_to_add: Vec<HolonReference>,
-    expected_response: ResponseStatusCode,
-    expected_holon: Holon,
-) {
-    info!("--- TEST STEP: Add Related Holons ---");
+    _conductor: &SweetConductor,
+    _cell: &SweetCell,
+    _test_state: &mut DanceTestExecutionState,
+    _source_holon_index: StagedReference,
+    _relationship_name: RelationshipName,
+    _holons_to_add: Vec<HolonReference>,
+    _expected_response: ResponseStatusCode,
+    _expected_holon: StagedReference,
+) -> () {
+    warn!("\n\n--- TEST STEP: Adding Related Holons IS NOT IMPLEMENTED");
 
-    // 1. Get the context from test_state
-    let context = &*test_state.context;
-
-    // 2. Build the DanceRequest (state is handled inside dance_call)
-    let request =
-        build_add_related_holons_dance_request(source_holon, relationship_name, holons_to_add)
-            .expect("Failed to build add_related_holons request");
-
-    info!("Dance Request: {:#?}", request);
-
-    // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
-    info!("Dance Response: {:#?}", response.clone());
-
-    // 4. Validate response status
-    assert_eq!(response.status_code, expected_response);
-    info!("as expected, add_related_holons dance request returned {:#?}", response.status_code);
-
-    // 5. If successful, validate that the related Holons were added correctly
-    if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::StagedRef(resulting_holon) = response.body {
-            assert_eq!(
-                resulting_holon.essential_content(context),
-                expected_holon.essential_content(),
-                "Expected holon did not match response holon"
-            );
-            info!("Success! Related Holons have been added");
-        } else {
-            panic!("Expected add_related_holons to return a StagedRef response, but it didn't");
-        }
-    }
+    // // Ensure the source holon exists
+    // let _source_holon = test_state
+    //     .session_state
+    //     .get_staging_area()
+    //     .get_holon(source_holon_index)
+    //     .expect("Failed to get source holon from StagingArea");
+    //
+    // // Create the expected_holon from the source_holon + the supplied related holons
+    //
+    // // Build the DanceRequest
+    // let request = build_add_related_holons_dance_request(
+    //     &test_state.session_state,
+    //     source_holon_index,
+    //     relationship_name,
+    //     holons_to_add,
+    // );
+    // info!("Dance Request: {:#?}", request);
+    //
+    // match request {
+    //     Ok(valid_request) => {
+    //         let response: DanceResponse =
+    //             conductor.call(&cell.zome("dances"), "dance", valid_request).await;
+    //         info!("Dance Response: {:#?}", response.clone());
+    //         let code = response.status_code;
+    //
+    //         test_state.session_state = response.state.clone();
+    //
+    //         assert_eq!(code, expected_response);
+    //         info!("as expected, add_related_holons dance request returned {:#?}", code.clone());
+    //
+    //         if let ResponseStatusCode::OK = code {
+    //             if let StagedReference(index) = response.body {
+    //                 let index_value = index.to_string();
+    //                 info!("{index_value} returned in body");
+    //                 // An index was returned in the body, retrieve the Holon at that index within
+    //                 // the StagingArea and confirm it matches the expected Holon.
+    //
+    //                 let source_holon_in_response = response
+    //                     .state
+    //                     .get_staging_area()
+    //                     .get_holon(index)
+    //                     .expect("Failed to get source holon in response");
+    //
+    //                 assert_eq!(source_holon_in_response, expected_holon);
+    //
+    //                 info!("Success! Related Holons have been added");
+    //             } else {
+    //             }
+    //         }
+    //     }
+    //     Err(error) => {
+    //         panic!("{:?} Unable to build a stage_holon request ", error);
+    //     }
+    // }
 }

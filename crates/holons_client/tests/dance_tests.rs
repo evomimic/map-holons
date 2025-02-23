@@ -62,6 +62,8 @@ use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::HolonId;
+use crate::shared_test::dance_call_service::DanceCallService;
+use crate::shared_test::test_context::init_test_context;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
 /// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.
@@ -149,7 +151,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expected_response,
                     expected_holon,
                 )
-                .await
+                    .await
             }
             DanceTestStep::Commit => execute_commit(&mut test_state).await,
             DanceTestStep::DatabasePrint => execute_database_print(&mut test_state).await,
@@ -174,7 +176,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     query_expression,
                     expected_response,
                 )
-                .await
+                    .await
             }
             DanceTestStep::RemoveRelatedHolons(
                 staged_reference,
@@ -189,7 +191,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     holons_to_remove,
                     expected_response,
                 )
-                .await
+                    .await
             }
 
             DanceTestStep::StageHolon(holon) => {
@@ -210,7 +212,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     properties,
                     expected_response,
                 )
-                .await
+                    .await
             }
         }
     }
