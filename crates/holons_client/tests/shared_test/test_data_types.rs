@@ -1,16 +1,17 @@
-use dances_core::dance_response::ResponseStatusCode;
-use dances_core::session_state::SessionState;
 use derive_new::new;
 
-use holons::reference_layer::{HolonReference, StagedReference};
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
+use crate::shared_test::dance_call_service::DanceCallService;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 use holons_core::core_shared_objects::{Holon, HolonError, HolonPool, RelationshipName};
+use holons_core::dances::{ResponseStatusCode, SessionState};
 use holons_core::query_layer::QueryExpression;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 use std::fmt::Display;
+use std::rc::Rc;
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 
@@ -22,12 +23,13 @@ pub struct TestHolonData {
 
 /// During the course of executing the steps in a test case:
 ///
-/// - Staged Holons are conveyed from one step to another via the Nursery (accessible from the context)
-///
+/// - Staged Holons are accumulated in the Nursery (accessible from the context)
+/// -
 /// - Persisted Holons are conveyed from one step to another via the created_holons BTreeMap
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Debug)]
 pub struct DanceTestExecutionState {
-    pub session_state: SessionState, // why is this needed here? the Nursery holds the staged holons
+    pub context: Rc<dyn HolonsContextBehavior>,
+    pub dance_call_service: Rc<DanceCallService>,
     pub created_holons: BTreeMap<MapString, Holon>,
 }
 
@@ -151,9 +153,13 @@ impl Display for DanceTestStep {
 }
 
 impl DanceTestExecutionState {
-    pub fn new() -> DanceTestExecutionState {
+    pub fn new(
+        test_context: Rc<dyn HolonsContextBehavior>,
+        dance_call_service: Rc<DanceCallService>,
+    ) -> DanceTestExecutionState {
         DanceTestExecutionState {
-            session_state: SessionState::empty(),
+            context: test_context,
+            dance_call_service,
             created_holons: BTreeMap::new(),
         }
     }

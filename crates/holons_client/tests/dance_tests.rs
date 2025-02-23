@@ -60,6 +60,8 @@ use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::HolonId;
+use crate::shared_test::dance_call_service::DanceCallService;
+use crate::shared_test::test_context::init_test_context;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
 /// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.
@@ -101,11 +103,11 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     use test_delete_holon::execute_delete_holon;
     let _ = holochain_trace::test_run();
 
-    let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
-        setup_conductor().await;
+    // Initialize the DanceCallService (which sets up the mock conductor)
+    let dance_call_service = DanceCallService: init();
 
     // Initialize an empty context for the Test Client
-    let test_context = init_client_context();
+    let test_context = init_test_context();
 
     // The heavy lifting for this test is in the test data set creation.
 
@@ -133,7 +135,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     staged_reference,
                     expected_response,
                 )
-                .await
+                    .await
             }
             DanceTestStep::AddRelatedHolons(
                 staged_reference,
@@ -152,7 +154,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expected_response,
                     expected_holon,
                 )
-                .await
+                    .await
             }
             DanceTestStep::Commit => execute_commit(&conductor, &cell, &mut test_state).await,
             DanceTestStep::DatabasePrint => {
@@ -166,7 +168,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     holon_to_delete,
                     expected_response,
                 )
-                .await
+                    .await
             }
             DanceTestStep::EnsureDatabaseCount(expected_count) => {
                 execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
@@ -191,7 +193,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     query_expression,
                     expected_response,
                 )
-                .await
+                    .await
             }
             DanceTestStep::RemoveRelatedHolons(
                 staged_reference,
@@ -208,7 +210,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     holons_to_remove,
                     expected_response,
                 )
-                .await
+                    .await
             }
 
             DanceTestStep::StageHolon(holon, local_only) => {
@@ -222,7 +224,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     original_holon,
                     expected_response,
                 )
-                .await
+                    .await
             }
             DanceTestStep::StageNewVersion(original_holon_key, expected_response) => {
                 execute_stage_new_version(
@@ -232,7 +234,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     original_holon_key,
                     expected_response,
                 )
-                .await
+                    .await
             }
             DanceTestStep::WithProperties(staged_reference, properties, expected_response) => {
                 execute_with_properties(
@@ -243,7 +245,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     properties,
                     expected_response,
                 )
-                .await
+                    .await
             }
         }
     }
