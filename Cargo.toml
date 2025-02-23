@@ -19,7 +19,6 @@ members = [
     "crates/holons_client",
     "crates/holons_core",
     "crates/holons_guest",
-    "crates/holons_init",
 ]
 resolver = "2"
 
@@ -54,9 +53,6 @@ path = "crates/holons_guest"
 [workspace.dependencies.holons_client]
 path = "crates/holons_client"
 
-[workspace.dependencies.holons_init]
-path = "crates/holons_init"
-
 [workspace.dependencies.dances_core]
 path = "crates/dances_core"
 
@@ -70,6 +66,7 @@ path = "crates/holon_dance_builders"
 [workspace.dependencies]
 ahash = "=0.8.11"
 derive-new = "0.6"
+hex = "0.4"
 hdi = "0.4"
 hdk = "0.3"
 holochain_integrity_types = "0.3"

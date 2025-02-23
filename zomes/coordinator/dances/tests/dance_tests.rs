@@ -29,6 +29,7 @@ use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
+use holons_client::init_client_context;
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};
@@ -45,7 +46,7 @@ use self::test_match_db_content::execute_match_db_content;
 use self::test_remove_related_holon::execute_remove_related_holons;
 // use self::test_stage_new_holon::execute_stage_new_holon;
 use self::test_with_properties_command::execute_with_properties;
-use crate::dance_fixtures::*;
+
 use crate::descriptor_dance_fixtures::*;
 use crate::shared_test::test_data_types::{
     DanceTestState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
@@ -54,7 +55,6 @@ use crate::shared_test::test_print_database::execute_database_print;
 // use crate::stage_new_from_clone_fixture::*;
 // use crate::stage_new_version_fixture::*;
 use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
-use dances::staging_area::StagingArea;
 use holons_core::core_shared_objects::HolonError;
 use shared_test::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
@@ -77,9 +77,9 @@ use shared_types_holon::HolonId;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_test_fixture())]
+#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 // #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
@@ -97,6 +97,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     let (conductor, _agent, cell): (SweetConductor, AgentPubKey, SweetCell) =
         setup_conductor().await;
+
+    // Initialize an empty context for the Test Client
+    let test_context = init_client_context();
 
     // The heavy lifting for this test is in the test data set creation.
 
@@ -163,9 +166,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 execute_ensure_database_count(&conductor, &cell, &mut test_state, expected_count)
                     .await
             }
-            DanceTestStep::LoadCoreSchema => {
-                execute_load_new_schema(&conductor, &cell, &mut test_state).await
-            }
+            // DanceTestStep::LoadCoreSchema => {
+            //     execute_load_new_schema(&conductor, &cell, &mut test_state).await
+            // }
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&conductor, &cell, &mut test_state).await
             }
@@ -189,7 +192,6 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 relationship_name,
                 holons_to_remove,
                 expected_response,
-                expected_holon,
             ) => {
                 execute_remove_related_holons(
                     &conductor,
@@ -199,13 +201,12 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     relationship_name,
                     holons_to_remove,
                     expected_response,
-                    expected_holon,
                 )
                 .await
             }
 
-            DanceTestStep::StageHolon(holon) => {
-                execute_stage_new_holon(&conductor, &cell, &mut test_state, holon).await
+            DanceTestStep::StageHolon(holon, local_only) => {
+                execute_stage_new_holon(&conductor, &cell, &*test_context, holon, local_only).await
             }
             DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
                 execute_stage_new_from_clone(

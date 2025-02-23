@@ -19,20 +19,19 @@ hdi = { workspace = true }
 
 
 # MAP Dependencies
-#shared_types_holon = { workspace = true }
-#holons = { workspace = true }
-#holons_core = { workspace = true }
-#core_schema = { workspace = true }
-#holons_init = { workspace = true }
-#holons_guest = { workspace = true }
-dances_core = { workspace = true }
-dances_guest = { workspace = true }
+shared_types_holon = { workspace = true }
+holons = { workspace = true }
+holons_core = { workspace = true }
+core_schema = { workspace = true }
+holons_guest = { workspace = true }
+
 
 # General dev-dependencies (platform-agnostic)
 [dev-dependencies]
 async-std = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+holons_client = { workspace = true }
 
 # Target-specific dev dependencies for non-WASM builds
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
