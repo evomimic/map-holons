@@ -1,15 +1,10 @@
 use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::{
-    Holon, HolonError, HolonState, NurseryAccess,
-};
+use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::staged_reference::StagedIndex;
-use crate::reference_layer::{
-    HolonStagingBehavior, HolonsContextBehavior, StagedReference,
-};
-use crate::{HolonReadable, HolonWritable};
+use crate::reference_layer::{HolonStagingBehavior, StagedReference};
 
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::MapString;
 use std::any::Any;
 use std::cell::Ref;
 use std::{cell::RefCell, rc::Rc};
@@ -52,34 +47,16 @@ impl Nursery {
     // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
     //     self
     // }
-    /// Initializes a `Nursery` from a set of staged holons and a keyed index
+
+    /// Stages a new holon and optionally updates the keyed index.
     ///
     /// # Arguments
-    ///
-    /// * `staged_holons` - A vector of staged holons.
-    /// * `keyed_index` - A map of keys to indices into the staged_holons vector
+    /// * `holon` - A reference to the holon to be staged.
     ///
     /// # Returns
-    ///
-    /// A `Nursery` instance initialized with the provided holons and keyed index.
-    /// Creates a new Nursery from a given stage
-    pub fn new_from_staged_holons(
-        staged_holons: Vec<Rc<RefCell<Holon>>>,
-        keyed_index: BTreeMap<MapString, usize>,
-    ) -> Self {
-        Self { staged_holons: RefCell::new(StagedHolons { staged_holons, keyed_index }) }
-    }
-
-    /// A private helper method for populating a StagedRelationshipMap for a newly staged Holon by cloning all existing relationships from a persisted Holon.
-    fn clone_existing_relationships_into_staged_map(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: HolonId,
-    ) -> Result<StagedRelationshipMap, HolonError> {
-        let space_manager = context.get_space_manager();
-        let holon_service = space_manager.get_holon_service();
-
-        holon_service.fetch_all_populated_relationships(original_holon)
+    /// The index of the staged holon in the nursery.
+    fn stage_holon(&self, holon: Holon) -> usize {
+        self.staged_holons.borrow_mut().insert_holon(holon)
     }
 
     /// This function converts a StagedIndex into a StagedReference
@@ -134,36 +111,7 @@ impl HolonStagingBehavior for Nursery {
         self.staged_holons.borrow().len() as i64
     }
 
-    fn stage_new_from_clone(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: HolonReference,
-    ) -> Result<StagedReference, HolonError> {
-        let mut cloned_holon = original_holon.clone_holon(context)?;
-
-        match original_holon {
-            HolonReference::Staged(_) => {}
-            HolonReference::Smart(_) => {
-                cloned_holon.staged_relationship_map = self
-                    .clone_existing_relationships_into_staged_map(
-                        context,
-                        original_holon.get_holon_id(context)?,
-                    )?
-            }
-        }
-
-        let cloned_staged_reference = self.stage_new_holon(context, cloned_holon)?;
-
-        // Reset the PREDECESSOR to None
-        cloned_staged_reference.with_predecessor(context, None)?;
-
-        Ok(cloned_staged_reference)
-    }
-
-    fn stage_new_holon(
-        &self,
-        holon: Holon,
-    ) -> Result<StagedReference, HolonError> {
+    fn stage_new_holon(&self, holon: Holon) -> Result<StagedReference, HolonError> {
         let new_index = self.stage_holon(holon);
         self.to_validated_staged_reference(new_index)
     }

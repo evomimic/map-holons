@@ -30,7 +30,6 @@ use shared_types_holon::{LocalId, MapString, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use super::Nursery;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {

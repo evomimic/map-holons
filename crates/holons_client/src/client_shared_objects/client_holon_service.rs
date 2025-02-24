@@ -1,5 +1,5 @@
 use holons_core::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, Nursery, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};
@@ -43,7 +43,6 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         _context: &dyn HolonsContextBehavior,
         _original_holon: HolonReference,
-        _nursery: Nursery,
     ) -> Result<StagedReference, HolonError> {
         todo!()
     }
@@ -52,7 +51,6 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         _context: &dyn HolonsContextBehavior,
         _original_holon: SmartReference,
-        _nuresery: Nursery,
     ) -> Result<StagedReference, HolonError> {
         todo!()
     }
