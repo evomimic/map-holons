@@ -8,10 +8,12 @@ use crate::core_shared_objects::{
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
 };
-use crate::HolonCollectionApi;
 use std::cell::RefCell;
-use std::fmt::{Debug, Formatter, Result};
 use std::sync::Arc;
+
+use crate::HolonCollectionApi;
+use std::fmt::{Debug, Formatter, Result};
+
 
 pub struct HolonSpaceManager {
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).

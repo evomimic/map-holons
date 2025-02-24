@@ -28,15 +28,6 @@ impl TransientCollection {
         TransientCollection { members: Vec::new(), keyed_index: BTreeMap::new() }
     }
 
-    fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
-        let index = self.keyed_index.get(key);
-        if let Some(index) = index {
-            Ok(Some(self.members[*index].clone()))
-        } else {
-            Ok(None)
-        }
-    }
-
     /// Returns a reference to the vector of HolonReference members in the collection.
     ///
     /// # Semantics
@@ -49,29 +40,6 @@ impl TransientCollection {
     /// thus avoiding unnecessary copying.
     pub fn get_members(&self) -> &Vec<HolonReference> {
         &self.members
-    }
-
-    pub fn remove_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        for holon in holons {
-            self.members.retain(|x| x != &holon);
-            if let Some(key) = holon.get_key(context)? {
-                self.keyed_index.remove(&key);
-            }
-        }
-        // adjust new order of members in the keyed_index
-        let mut i = 0;
-        for member in self.members.clone() {
-            if let Some(key) = member.get_key(context)? {
-                self.keyed_index.insert(key, i);
-                i += 1;
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -143,6 +111,21 @@ impl HolonCollectionApi for TransientCollection {
         context: &dyn HolonsContextBehavior,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        Ok(self.remove_references(context, holons)?)
+        for holon in holons {
+            self.members.retain(|x| x != &holon);
+            if let Some(key) = holon.get_key(context)? {
+                self.keyed_index.remove(&key);
+            }
+        }
+        // adjust new order of members in the keyed_index
+        let mut i = 0;
+        for member in self.members.clone() {
+            if let Some(key) = member.get_key(context)? {
+                self.keyed_index.insert(key, i);
+                i += 1;
+            }
+        }
+
+        Ok(())
     }
 }

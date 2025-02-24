@@ -73,7 +73,7 @@ use std::rc::Rc;
 /// that the relationship has no associated holons.
 #[derive(SerializedBytes, Clone, Debug, Eq, PartialEq)]
 pub struct StagedRelationshipMap {
-    map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>>,
+    pub map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>>,
 }
 
 impl StagedRelationshipMap {
