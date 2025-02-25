@@ -16,7 +16,7 @@ pub struct DanceResponse {
     pub description: MapString,
     pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
-    pub state: SessionState,
+    pub state: Option<SessionState>,
 }
 
 /// Define a standard set of statuses that may be returned by DanceRequests.
@@ -103,7 +103,7 @@ impl DanceResponse {
         description: MapString,
         body: ResponseBody,
         descriptor: Option<HolonReference>,
-        state: SessionState,
+        state: Option<SessionState>,
     ) -> DanceResponse {
         DanceResponse { status_code, description, body, descriptor, state }
     }
@@ -132,7 +132,9 @@ impl DanceResponse {
             self.description,
             self.descriptor,
             body_summary,
-            self.state.summarize(),
+            self.state
+                .as_ref()
+                .map_or_else(|| "None".to_string(), |state| state.summarize()),
         )
     }
 }

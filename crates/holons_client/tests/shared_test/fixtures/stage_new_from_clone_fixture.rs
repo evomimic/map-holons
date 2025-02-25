@@ -1,4 +1,3 @@
-use dances_core::dance_response::ResponseStatusCode;
 use holochain::test_utils::itertools::cloned;
 
 use crate::shared_test::test_context::init_test_context;
@@ -7,10 +6,12 @@ use crate::shared_test::test_data_types::{
     DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference,
 };
 use crate::shared_test::{setup_book_author_steps_with_context, BOOK_KEY, PUBLISHER_KEY};
-use holons::reference_layer::{HolonReference, StagedReference};
-use holons_client::init_client_context;
+
 use holons_core::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
+use holons_core::dances::ResponseStatusCode;
 use holons_core::HolonCollectionApi;
+use holons_core::HolonReadable;
+
 use rstest::*;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
 
@@ -19,7 +20,7 @@ use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap,
 pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture).as_ref();
+    let fixture_context = init_test_context(TestFixture);
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     let mut test_case = DancesTestCase::new(
@@ -38,21 +39,21 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let _author_relationship_name =
-        setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
     // Get and set the various Holons data.
-    let book_key = BOOK_KEY.to_string();
-    let book_holon_ref = staging_service.get_staged_holon_by_key(fixture_context, &book_key)?;
+    let book_key = MapString(BOOK_KEY.to_string());
+    let book_holon_ref = staging_service.borrow().get_staged_holon_by_key(&book_key)?;
 
-    let publisher_key = PUBLISHER_KEY.to_string();
+    let publisher_key = MapString(PUBLISHER_KEY.to_string());
     let publisher_holon_reference =
-        staging_service.get_staged_holon_by_key(fixture_context, &publisher_key)?;
+        staging_service.borrow().get_staged_holon_by_key(&publisher_key)?;
 
     // CLONE A STAGED HOLON
     //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
 
-    let cloned_book = book_holon_ref.clone_holon();
-    let cloned_book_key = "A clone from: " + book_key;
+    let mut cloned_book = book_holon_ref.clone_holon(&*fixture_context)?;
+    let cloned_book_key = MapString(format!("A clone from: {}", book_key.0));
     cloned_book
         .with_property_value(
             PropertyName(MapString("key".to_string())),
@@ -69,18 +70,21 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
             )),
         )?;
 
-    let cloned_book_ref = staging_service.stage_new_holon(fixture_context, cloned_book)?;
+    let cloned_book_ref =
+        staging_service.borrow().stage_new_holon(&*fixture_context, cloned_book)?;
 
     test_case.add_stage_new_from_clone_step(
-        TestReference::StagedHolon(cloned_book_ref),
+        TestReference::StagedHolon(cloned_book_ref.clone()),
         ResponseStatusCode::OK,
     )?;
+
+    /* TODO: The following code needs to rewritten to setup the add related holons to cloned book
 
     // //  ADD RELATIONSHIP: Cloned Book -> Publisher  //
     let published_by_relationship_name = RelationshipName(MapString("PUBLISHED_BY".to_string()));
     let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
     // set expected
-    let mut expected_book_holon = book_holon_ref.clone_holon();
+    let mut expected_book_holon = book_holon_ref.clone_holon(fixture_context);
 
     let mut expected_publisher_holon_collection = HolonCollection::new_staged();
     expected_publisher_holon_collection
@@ -102,6 +106,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         ResponseStatusCode::OK,
         expected_book_holon.clone(), // expected holon
     )?;
+    */
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;

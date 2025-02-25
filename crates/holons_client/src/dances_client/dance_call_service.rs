@@ -1,37 +1,63 @@
-use crate::shared_test::{setup_conductor, MockConductorConfig};
-use futures::TryFutureExt;
-use holochain::prelude::event::KitsuneP2pEventSender;
-use holochain::sweettest::{SweetCell, SweetConductor};
+//! Handles making dance calls while managing session state.
+//!
+use crate::dances_client::ConductorDanceCaller;
+
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
 use holons_core::HolonsContextBehavior;
 
+/// A service that executes dance calls while managing session state.
+///
+/// This service is **generic over any conductor backend**, meaning it can be used with:
+/// - A real Holochain conductor (`RealConductor`).
+/// - A WASM-based JavaScript client (`WasmDanceClient`).
+/// - A Sweetest mock conductor (`SweetestDanceClient`).
+///
+/// # Type Parameters
+/// - `C`: A type implementing `DanceCaller`, which determines how the dance request is executed.
 #[derive(Debug)]
-pub struct DanceCallService {
-    conductor_config: MockConductorConfig,
+pub struct DanceCallService<C: ConductorDanceCaller> {
+    conductor: C,
 }
-impl DanceCallService {
-    pub async fn init() -> Self {
-        let conductor_config = setup_conductor().await;
-        DanceCallService { conductor_config }
+
+impl<C: ConductorDanceCaller> DanceCallService<C> {
+    /// Creates a new `DanceCallService` with a given conductor backend.
+    ///
+    /// # Arguments
+    /// - `conductor`: A `DanceCaller` implementation that handles the actual request execution.
+    pub fn new(conductor: C) -> Self {
+        Self { conductor }
     }
 
-    pub async fn dance_call(
+    /// Executes a dance call while automatically managing session state.
+    ///
+    /// - Loads session state into the request.
+    /// - Sends the request via the provided `DanceCaller` implementation.
+    /// - Restores session state from the response.
+    ///
+    /// This function is **synchronous** because all conductor calls are synchronous.
+    pub fn dance_call(
         &self,
         context: &dyn HolonsContextBehavior,
         mut request: DanceRequest,
     ) -> DanceResponse {
-        // 1. Load session state into the request
-        self.load_session_state(context, &mut request.state);
+        // 1. Load session state into the request if it’s missing
+        if request.state.is_none() {
+            let mut session_state = SessionState::default();
+            self.load_session_state(context, &mut session_state);
+            request.state = Some(session_state);
+        }
 
-        // 2. Make the dance call
-        let response: DanceResponse = self
-            .conductor_config
-            .conductor
-            .call(&self.conductor_config.cell.zome("dances"), "dance", request)
-            .await;
+        // 2. Execute the dance call
+        let response = self.conductor.conductor_dance_call(request);
 
-        // 3. Update the nursery with the session state from the response
-        self.load_nursery(context, &response.state);
+        // 3. Ensure the response includes a valid session state
+        assert!(
+            response.state.is_some(),
+            "DanceResponse is missing session state, which should never happen"
+        );
+
+        // 4. Restore session state from the response
+        self.load_nursery(context, response.state.as_ref().unwrap());
 
         response
     }
@@ -53,9 +79,8 @@ impl DanceCallService {
         context: &dyn HolonsContextBehavior,
         session_state: &mut SessionState,
     ) {
-        let space_manager = context.get_space_manager(); // Arc<dyn HolonSpaceBehavior>
-        let staged_holons = space_manager.export_staged_holons(); // No borrowing needed
-
+        let space_manager = context.get_space_manager();
+        let staged_holons = space_manager.export_staged_holons();
         session_state.set_staged_holons(staged_holons);
     }
 
@@ -73,9 +98,8 @@ impl DanceCallService {
     /// This function is automatically invoked within `dance_call` after receiving a response and should not
     /// be used directly.
     fn load_nursery(&self, context: &dyn HolonsContextBehavior, session_state: &SessionState) {
-        let space_manager = context.get_space_manager(); // Arc<dyn HolonSpaceBehavior>
-        let staged_holons = session_state.get_staged_holons().clone(); // Clone for ownership
-
-        space_manager.import_staged_holons(staged_holons); // Delegate to HolonSpaceManager
+        let space_manager = context.get_space_manager();
+        let staged_holons = session_state.get_staged_holons().clone();
+        space_manager.import_staged_holons(staged_holons);
     }
 }

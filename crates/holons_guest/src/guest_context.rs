@@ -16,6 +16,7 @@ use std::sync::Arc;
 /// across different parts of the guest runtime.
 ///
 /// This context is **only used on the guest-side** and interacts directly with Holochain.
+#[derive(Debug)]
 pub struct GuestHolonsContext {
     /// The `HolonSpaceManager` that provides access to all core services.
     space_manager: Arc<HolonSpaceManager>,
@@ -50,24 +51,29 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - A `GuestHolonService` as the persistence and retrieval layer.
 /// - A space manager configured with **guest-specific routing policies**.
 /// - Internal nursery access, required for commit operations.
+/// - Shared ownership support via `Arc<dyn HolonsContextBehavior>`, allowing multiple components
+///   to reference the same context without unnecessary cloning.
 ///
-/// This function also ensures that a HolonSpace Holon exists in the local DHT
+/// This function also ensures that a HolonSpace Holon exists in the local DHT.
 ///
 /// # Arguments
 /// * `staged_holons` - The `SerializableHolonPool` containing staged holons from the session state.
 /// * `local_space_holon` - An optional reference to the local holon space.
 ///
 /// # Returns
-/// * `Ok(Box<dyn HolonsContextBehavior>)` - The initialized guest context if successful.
+/// * `Ok(Arc<dyn HolonsContextBehavior>)` - The initialized guest context if successful.
 /// * `Err(HolonError)` - If internal access registration fails.
 ///
 /// # Errors
-/// This function returns an error if it fails to acquire a mutable reference to `GuestHolonService`,
-/// which indicates that multiple references exist to the same service instance, preventing modification.
+/// This function returns an error if it fails to ensure that a **HolonSpace Holon** exists.
+/// Errors may occur if:
+/// - The DHT lookup for the HolonSpace Holon fails.
+/// - There are issues retrieving holons from persistent storage.
+/// - The creation of a new HolonSpace Holon encounters a failure.
 pub fn init_guest_context(
     staged_holons: SerializableHolonPool,
     local_space_holon: Option<HolonReference>,
-) -> Result<Box<dyn HolonsContextBehavior>, HolonError> {
+) -> Result<Arc<dyn HolonsContextBehavior>, HolonError> {
     // Step 1: Create the GuestHolonService
     let mut guest_holon_service = Arc::new(GuestHolonService::new()); // ✅ Freshly created
 
@@ -83,7 +89,8 @@ pub fn init_guest_context(
     })?;
     service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
 
-    // Step 4: TODO: Ensure HolonSpace Holon exists in the local DHT (Committed?)
+    // Step 4: Ensure HolonSpace Holon exists in the local DHT
+    service.ensure_local_holon_space()?;
 
     // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
     let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
@@ -94,5 +101,5 @@ pub fn init_guest_context(
     ));
 
     // Step 6: Wrap in `GuestHolonsContext` and return as a trait object
-    Ok(Box::new(GuestHolonsContext::new(space_manager)))
+    Ok(Arc::new(GuestHolonsContext::new(space_manager)))
 }

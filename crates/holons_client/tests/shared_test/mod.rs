@@ -2,11 +2,7 @@
 
 pub mod fixtures;
 pub use fixtures::*;
-pub mod setup_conductor;
-pub use setup_conductor::*;
-
-// pub mod data_types;
-pub mod dance_call_service;
+pub mod mock_conductor;
 pub mod test_abandon_staged_changes;
 pub mod test_add_related_holon;
 pub mod test_commit;
@@ -14,7 +10,7 @@ pub mod test_context;
 pub mod test_data_types;
 pub mod test_delete_holon;
 pub mod test_ensure_database_count;
-pub mod test_extensions;
+// pub mod test_extensions;
 pub mod test_load_core_schema;
 pub mod test_match_db_content;
 pub mod test_print_database;
@@ -25,8 +21,7 @@ pub mod test_stage_new_holon;
 pub mod test_stage_new_version;
 pub mod test_with_properties_command;
 
-use hdk::prelude::*;
-use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
+use holochain::sweettest::{SweetCell, SweetConductor};
 use shared_types_holon::{HolonId, MapString};
 use test_data_types::DanceTestExecutionState;
 

@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 
 use holons_core::core_shared_objects::{CommitResponse, HolonError};
-use holons_core::{stage_new_holon_api, HolonReference, HolonsContextBehavior, StagedReference};
+use holons_core::{stage_new_holon_api, HolonReference, HolonsContextBehavior};
 
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};

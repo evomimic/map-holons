@@ -3034,13 +3034,20 @@ dependencies = [
 name = "holons_client"
 version = "0.1.0"
 dependencies = [
+ "async-std",
  "derive-new",
+ "futures",
  "holochain",
  "holon_dance_builders",
  "holons_core",
+ "pretty_assertions",
+ "rstest",
  "serde",
  "serde_json",
  "shared_types_holon",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3074,6 +3081,7 @@ dependencies = [
  "hdi",
  "hdk",
  "holochain",
+ "holon_dance_builders",
  "holons_core",
  "holons_integrity",
  "pretty_assertions",

@@ -19,6 +19,7 @@ use holons_core::dances::{
 use holons_core::HolonsContextBehavior;
 use shared_types_holon::MapString;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -31,20 +32,19 @@ use std::collections::HashMap;
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
 
-    // -------------------------- ENSURE VALID REQUEST---------------------------------
-    let valid = true; // TODO: Validate the dance request
-
-    if !valid {
+    // -------------------------- ENSURE VALID REQUEST ---------------------------------
+    if let Err(status_code) = validate_request(&request) {
         let response = DanceResponse::new(
-            ResponseStatusCode::BadRequest,
+            status_code,
             MapString("Invalid Request".to_string()),
             ResponseBody::None,
             None,
-            request.get_state().clone(),
+            request.state.clone(),
         );
 
         return Ok(response);
     }
+
     // Initialize the context for this request
     //
     let context = match initialize_context_from_request(&request) {
@@ -69,20 +69,6 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // }
     debug!("dispatching dance");
 
-    // The `context` is a `Box<dyn HolonsContextBehavior>`, which is a heap-allocated
-    // object implementing the `HolonsContextBehavior` trait. However, the `dispatch`
-    // and `process_dispatch_result` functions expect a `&dyn HolonsContextBehavior`.
-    //
-    // To convert the `Box` into a reference to the trait object (`&dyn HolonsContextBehavior`),
-    // we use `&*context`. Here's how it works:
-    //
-    // 1. `*context`: Dereferences the `Box`, yielding the underlying `dyn HolonsContextBehavior`.
-    // 2. `&`: Takes a reference to the dereferenced object, resulting in a `&dyn HolonsContextBehavior`.
-    //
-    // This explicit conversion is required because Rust does not automatically dereference
-    // a `Box` to a trait object reference.
-    //
-    // // Convert `Box<dyn HolonsContextBehavior>` to `&dyn HolonsContextBehavior`
     let dispatch_result = dancer.dispatch(&*context, request.clone());
     let result = process_dispatch_result(&*context, dispatch_result);
 
@@ -163,7 +149,6 @@ impl Dancer {
             func(context, request)
         } else {
             Err(HolonError::NotImplemented(request.dance_name.0.clone()))
-            // Err(HolonError::InvalidParameter("couldn't find some dance in the dispatch table".to_string()))
         }
     }
 }
@@ -184,15 +169,15 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
         description: MapString(error_message),
         body: ResponseBody::None,
         descriptor: None,
-        state: request.get_state().clone(), // Use the session state from the request
+        state: request.get_state().cloned(), // Use the session state from the request
     }
 }
-
 fn initialize_context_from_request(
     request: &DanceRequest,
-) -> Result<Box<dyn HolonsContextBehavior>, DanceResponse> {
-    // Extract session state from request
-    let session_state = request.get_state();
+) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
+    // Since `dance()` validates the request, we can safely unwrap the state.
+    let session_state = request.state.as_ref().expect("Valid request should have a state");
+
     let staged_holons = session_state.get_staged_holons().clone();
     let local_space_holon = session_state.get_local_holon_space();
 
@@ -200,11 +185,24 @@ fn initialize_context_from_request(
     init_guest_context(staged_holons, local_space_holon)
         .map_err(|error| create_error_response(error, request))
 }
+
+// fn initialize_context_from_request(
+//     request: &DanceRequest,
+// ) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
+//     // Extract session state from request
+//     let session_state = request.get_state();
+//     let staged_holons = session_state.get_staged_holons().clone();
+//     let local_space_holon = session_state.get_local_holon_space();
+//
+//     // Initialize context from session state
+//     init_guest_context(staged_holons, local_space_holon)
+//         .map_err(|error| create_error_response(error, request))
+// }
 /// Restores the session state for the DanceResponse from context. This should always
 /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
 /// between client and guest.
 /// NOTE: Errors in restoring the state are not handled (i.e., will cause panic)
-fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> SessionState {
+fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Option<SessionState> {
     let space_manager = context.get_space_manager();
 
     // Export staged holons as a single SerializableHolonPool
@@ -214,7 +212,7 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Se
     let local_space_holon = space_manager.get_space_holon();
 
     // Construct SessionState with SerializableHolonPool replacing StagingArea
-    SessionState::new(serializable_pool, local_space_holon)
+    Some(SessionState::new(serializable_pool, local_space_holon))
 }
 // fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
 //     let space_manager = &context.get_space_manager();
@@ -243,33 +241,30 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Se
 ///
 
 fn process_dispatch_result(
-    context: &dyn HolonsContextBehavior,
+    context: &dyn HolonsContextBehavior, // 🔄 Changed back to `&dyn`
     dispatch_result: Result<ResponseBody, HolonError>,
 ) -> DanceResponse {
     match dispatch_result {
-        Ok(body) => {
-            // If the dispatch_result is Ok, construct DanceResponse with appropriate fields
-            DanceResponse {
-                status_code: ResponseStatusCode::OK,
-                description: MapString("Success".to_string()),
-                body,
-                descriptor: None,
-                state: restore_session_state_from_context(context),
-            }
-        }
+        Ok(body) => DanceResponse {
+            status_code: ResponseStatusCode::OK,
+            description: MapString("Success".to_string()),
+            body,
+            descriptor: None,
+            state: restore_session_state_from_context(context),
+        },
         Err(error) => {
             let error_message = extract_error_message(&error);
-            // Construct DanceResponse with error details
             DanceResponse {
-                status_code: ResponseStatusCode::from(error), // Convert HolonError to ResponseStatusCode
+                status_code: ResponseStatusCode::from(error),
                 description: MapString(error_message),
-                body: ResponseBody::None, // No body since it's an error
-                descriptor: None,         // Provide appropriate value if needed
+                body: ResponseBody::None,
+                descriptor: None,
                 state: restore_session_state_from_context(context),
             }
         }
     }
 }
+
 /// This helper function extracts the error message from a HolonError so that the message
 /// can be included in the DanceResponse
 fn extract_error_message(error: &HolonError) -> String {
@@ -299,4 +294,15 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::WasmError(_) => error.to_string(),
         HolonError::ValidationError(validation_error) => validation_error.to_string(),
     }
+}
+fn validate_request(request: &DanceRequest) -> Result<(), ResponseStatusCode> {
+    // Check if session_state is present
+    if request.state.is_none() {
+        warn!("Validation failed: Missing session state");
+        return Err(ResponseStatusCode::BadRequest);
+    }
+
+    // TODO: Add additional validation checks for dance_name, dance_type, etc.
+
+    Ok(())
 }

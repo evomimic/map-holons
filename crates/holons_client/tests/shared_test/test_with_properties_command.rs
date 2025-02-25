@@ -1,20 +1,19 @@
 use std::collections::BTreeMap;
 
 use async_std::task;
-use dances_core::dance_response::ResponseBody::Holons;
-use dances_core::dance_response::{DanceResponse, ResponseStatusCode};
-use hdk::prelude::*;
+
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons_core::dances::holon_dance_adapter::{
-    build_get_all_holons_dance_request, build_stage_new_holon_dance_request,
-    build_with_properties_dance_request,
-};
+use tracing::{debug, info};
 
 use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holons::reference_layer::staged_reference::StagedReference;
+
+use crate::shared_test::mock_conductor::MockConductorConfig;
+use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
+use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::staged_reference::StagedIndex;
+use holons_core::{HolonReadable, StagedReference};
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -27,74 +26,60 @@ use shared_types_holon::{HolonId, MapInteger, MapString};
 ///
 
 pub async fn execute_with_properties(
-    conductor: &SweetConductor,
-    cell: &SweetCell,
-    test_state: &mut DanceTestExecutionState,
-    staged_holon_index: StagedIndex,
+    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    original_holon: StagedReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
 ) {
-    warn!("\n\n--- TEST STEP: with_properties Command NOT CURRENTLY IMPLEMENTED:");
-    // Get the state of the holon prior to dancing the request
-    info!("trying to get staged_holon at staged_holon_index: {:#?}", staged_holon_index);
+    info!("--- TEST STEP: Updating Holon with Properties ---");
 
-    info!("test state is: {:#?}", test_state);
+    // 1. Get context from test_state
+    let context = &*test_state.context;
 
-    let original_holon = test_state
-        .session_state
-        .get_staging_area()
-        .get_holon(staged_holon_index)
-        .expect("Failed to get staged holon from test state");
+    debug!("Original Holon: {:?}", original_holon);
 
-    // Create the expected_holon from the original_holon + the supplied property values
-    let mut expected_holon = original_holon.clone();
+    // 3. Create the expected holon by applying the property updates
+    let mut expected_holon = original_holon
+        .clone_holon(context)
+        .expect("Failed to clone original holon into expected holon");
+
     for (property_name, base_value) in properties.clone() {
-        let result = expected_holon.with_property_value(property_name.clone(), base_value.clone());
-        if let Err(e) = result {
-            panic!("Unable to add property value to expected holon, due to: {:#?}", e);
-        }
+        expected_holon
+            .with_property_value(property_name.clone(), base_value.clone())
+            .expect("Failed to add property value to expected holon");
     }
-    // Build a with_properties DanceRequest
-    let request = build_with_properties_dance_request(
-        &test_state.session_state,
-        staged_holon_index,
-        properties.clone(),
-    );
+
+    // 4. Build the with_properties DanceRequest
+    let request = build_with_properties_dance_request(original_holon, properties.clone())
+        .expect("Failed to build with_properties request");
+
     debug!("Dance Request: {:#?}", request);
 
-    match request {
-        Ok(valid_request) => {
-            let response: DanceResponse =
-                conductor.call(&cell.zome("dances"), "dance", valid_request).await;
-            debug!("Dance Response: {:#?}", response.clone());
-            let code = response.status_code;
-            let description = response.description.clone();
-            test_state.session_state = response.state.clone();
-            assert_eq!(expected_response, code.clone());
-            if let ResponseStatusCode::OK = code {
-                if let StagedReference(index) = response.body {
-                    let index_value = index.to_string();
-                    debug!("{index_value} returned in body");
-                    // An index was returned in the body, retrieve the Holon at that index within
-                    // the StagingArea and confirm it matches the expected Holon.
+    // 5. Call the dance
+    let response = test_state.dance_call_service.dance_call(context, request);
+    debug!("Dance Response: {:#?}", response.clone());
 
-                    let actual_holon = &response
-                        .state
-                        .get_staging_area()
-                        .get_holon(index)
-                        .expect("Failed to get holon in response.");
+    // 6. Validate response status
+    assert_eq!(
+        response.status_code, expected_response,
+        "with_properties request returned unexpected status: {}",
+        response.description
+    );
 
-                    assert_eq!(expected_holon, actual_holon.clone());
+    // 7. If successful, verify the updated holon
+    if response.status_code == ResponseStatusCode::OK {
+        if let ResponseBody::StagedRef(updated_holon) = response.body {
+            debug!("Updated holon reference returned: {:?}", updated_holon);
 
-                    info!("Success! Holon has updated with supplied properties");
-                    info!("test state is: {:#?}", test_state);
-                }
-            } else {
-                panic!("DanceRequest returned {code} for {description}");
-            }
-        }
-        Err(error) => {
-            panic!("{:?} Unable to build a stage_holon request ", error);
+            assert_eq!(
+                expected_holon.essential_content(),
+                updated_holon.essential_content(context),
+                "Updated Holon content did not match expected"
+            );
+
+            info!("Success! Holon has been updated with supplied properties.");
+        } else {
+            panic!("Expected StagedRef in response body, but got {:?}", response.body);
         }
     }
 }

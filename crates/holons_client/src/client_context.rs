@@ -14,6 +14,7 @@ use std::sync::Arc;
 /// parts of the application without requiring mutable access.
 ///
 /// This context is **only used on the client-side** and does not interact with Holochain directly.
+#[derive(Debug)]
 pub struct ClientHolonsContext {
     /// The `HolonSpaceManager` that provides access to all core services.
     space_manager: Arc<HolonSpaceManager>,
@@ -25,17 +26,19 @@ pub struct ClientHolonsContext {
 /// - An **empty nursery** (no staged holons).
 /// - A default `HolonServiceApi` implementation (`ClientHolonService`).
 /// - A space manager configured with client-specific routing policies.
+/// - Shared ownership support via `Arc<dyn HolonsContextBehavior>`, allowing multiple components
+///   to reference the same context without unnecessary cloning.
 ///
 /// # Returns
-/// * A `Box<dyn HolonsContextBehavior>` containing the initialized client context.
-pub fn init_client_context() -> Box<dyn HolonsContextBehavior> {
+/// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
+pub fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
 
-    // Create a new `HolonSpaceManager` wrapped in `Arc`
+    // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
         holon_service, // Service for holons
         None,          // No local space holon initially
@@ -43,10 +46,9 @@ pub fn init_client_context() -> Box<dyn HolonsContextBehavior> {
         nursery,
     ));
 
-    // Wrap in `ClientHolonsContext` and return as trait object
-    Box::new(ClientHolonsContext::new(space_manager))
+    // Wrap in `ClientHolonsContext` and return as an Arc<dyn HolonsContextBehavior>
+    Arc::new(ClientHolonsContext::new(space_manager))
 }
-
 impl ClientHolonsContext {
     /// Creates a new `ClientHolonsContext` from a provided `HolonSpaceManager`.
     ///

@@ -10,8 +10,7 @@ pub struct DanceRequest {
     pub dance_name: MapString, // unique key within the (single) dispatch table
     pub dance_type: DanceType,
     pub body: RequestBody,
-    // pub staging_area: StagingArea,
-    state: SessionState,
+    pub state: Option<SessionState>,
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
 
@@ -82,26 +81,37 @@ impl DanceRequest {
         dance_name: MapString,
         dance_type: DanceType,
         body: RequestBody,
-        state: SessionState,
+        state: Option<SessionState>,
     ) -> Self {
-        Self { dance_name, dance_type, body, state }
+        Self {
+            dance_name,
+            dance_type,
+            body,
+            state: state.or(Some(SessionState::default())), // Default if None
+        }
     }
-    pub fn get_state(&self) -> &SessionState {
-        &self.state
-    }
-    // Optionally, you can provide a mutable getter for state if needed
-    pub fn get_state_mut(&mut self) -> &mut SessionState {
-        &mut self.state
+    /// Gets a reference to the session state, or `None` if not set.
+    pub fn get_state(&self) -> Option<&SessionState> {
+        self.state.as_ref()
     }
 
-    // Method to summarize the DanceResponse for logging purposes
+    /// Gets a mutable reference to the session state, or `None` if not set.
+    pub fn get_state_mut(&mut self) -> Option<&mut SessionState> {
+        self.state.as_mut()
+    }
+
+    /// Summarizes the DanceRequest for logging purposes.
+    ///
+    /// Handles cases where session state is `None` by providing a placeholder message.
     pub fn summarize(&self) -> String {
         format!(
             "DanceRequest {{ \n  dance_name: {:?}, dance_type: {:?}, \n  body: {}, \n  state: {} }}\n",
             self.dance_name.to_string(),
             self.dance_type,
             self.body.summarize(),
-            self.state.summarize(),
+            self.state
+                .as_ref()
+                .map_or_else(|| "None".to_string(), |state| state.summarize()),
         )
     }
 }
