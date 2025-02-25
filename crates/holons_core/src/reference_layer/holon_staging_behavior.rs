@@ -15,7 +15,7 @@ use shared_types_holon::MapString;
 /// This trait does **not** expose low-level details.
 pub trait HolonStagingBehavior {
     /// Does a lookup by key on staged holons. Note HolonTypes are not required to offer a "key"
-    fn get_staged_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError>;
+    fn get_staged_holon_by_key(&self, key: &MapString) -> Result<StagedReference, HolonError>;
 
     /// Returns a count of the number of holons being staged
     fn staged_count(&self) -> i64;

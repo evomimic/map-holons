@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// state info that is just being maintained via the ping pong process. This also should make it
 /// easier to evolve to token-based state management approach where, say, the state token is
 /// actually a reference into the ephemeral store.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SessionState {
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReference>,

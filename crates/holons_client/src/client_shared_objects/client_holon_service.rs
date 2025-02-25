@@ -5,11 +5,8 @@ use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};
 use shared_types_holon::{HolonId, LocalId};
 
-/// A concrete implementation of the `HolonResolver` trait for resolving local Holons.
 #[derive(Debug, Clone)]
-pub struct ClientHolonService; // {
-                               //app_installation: AppInstallation
-                               //}
+pub struct ClientHolonService;
 
 impl HolonServiceApi for ClientHolonService {
     //fn install_app(&self) -> Result<AppInstallation, HolonError> {

@@ -102,7 +102,7 @@ impl NurseryAccess for Nursery {
 }
 
 impl HolonStagingBehavior for Nursery {
-    fn get_staged_holon_by_key(&self, key: MapString) -> Result<StagedReference, HolonError> {
+    fn get_staged_holon_by_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
         let index = self.staged_holons.borrow().get_index_by_key(&key)?;
         self.to_validated_staged_reference(index)
     }

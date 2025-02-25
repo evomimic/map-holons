@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 // use crate::get_holon_by_key_from_test_state;
-use crate::tracing::{error, info, warn};
 use core::panic;
 use std::cell::RefCell;
+use tracing::{error, info, warn};
 //use holochain::core::author_key_is_valid;
 
 use crate::shared_test::setup_book_author_steps_with_context;
@@ -34,7 +34,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture).as_ref();
+    let fixture_context = init_test_context(TestFixture);
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
@@ -48,14 +48,15 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
 
-    let relationship_name = setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
+    let relationship_name =
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
     expected_count += staging_service.borrow().staged_count();
 
     let person_1_key = MapString("Roger Briggs".to_string());
-    let person_1_ref = staging_service.borrow().get_staged_holon_by_key(person_1_key)?;
+    let person_1_ref = staging_service.borrow().get_staged_holon_by_key(&person_1_key)?;
 
     let book_key = MapString("Emerging World".to_string());
-    let book_ref = staging_service.borrow().get_staged_holon_by_key(book_key.clone())?;
+    let book_ref = staging_service.borrow().get_staged_holon_by_key(&book_key)?;
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
@@ -70,7 +71,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         RelationshipName(MapString("FRIENDS".to_string())),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
-        book_ref.clone_holon(fixture_context)?,
+        book_ref.clone_holon(&*fixture_context)?,
     )?;
 
     //  COMMIT  //  all Holons in staging_area

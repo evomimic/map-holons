@@ -1,20 +1,20 @@
 use std::collections::BTreeMap;
 
-use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::sodoken::crypto_box::curve25519xchacha20poly1305::SEALBYTES;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
-use holons_core::core_shared_objects::RelationshipName;
-use holons_core::dances::ResponseStatusCode;
-use holons_core::{HolonReadable, HolonReference, SmartReference};
-use rstest::*;
-use shared_types_holon::{HolonId, MapString};
-
+use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{
     DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
 };
+use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
+use holons_core::core_shared_objects::RelationshipName;
+use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::{HolonReadable, HolonReference, SmartReference};
+use rstest::*;
+use shared_types_holon::{HolonId, MapString};
+use tracing::{debug, info};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.
@@ -41,95 +41,67 @@ use crate::shared_test::test_data_types::{
 ///  To get the `HolonReference` in the `Staged case`, we simply need to wrap the `StagedReference`
 ///  in a `HolonReference`
 pub async fn execute_stage_new_from_clone(
-    test_state: &mut DanceTestExecutionState,
+    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     original_test_ref: TestReference,
     expected_response: ResponseStatusCode,
-) -> () {
-    // TODO: Replace this literal with the CoreType Name for the PREDECESSOR relationship
-    let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
+) {
+    info!("--- TEST STEP: Cloning a Holon ---");
 
-    // *** STAGE 1: Construct the HolonReference to the original holon required by the DanceRequest
+    // 1. Get context from test_state
+    let context = &*test_state.context;
+
+    // 2. Construct the HolonReference to the original holon
     let original_holon_ref: HolonReference = match original_test_ref {
         TestReference::StagedHolon(staged_reference) => HolonReference::Staged(staged_reference),
-
         TestReference::SavedHolon(key) => {
             let saved_holon = test_state
                 .get_created_holon_by_key(&key)
-                .expect("Holon with key: {key} not found in created_holons");
-            let local_id = saved_holon.get_local_id().unwrap();
+                .unwrap_or_else(|| panic!("Holon with key {key} not found in created_holons"));
+
+            let local_id = saved_holon.get_local_id().expect("Failed to get LocalId");
             HolonReference::Smart(SmartReference::new(
                 HolonId::Local(local_id),
                 Some(saved_holon.property_map.clone()),
             ))
         }
     };
-    let original_holon = original_holon_ref.clone_holon(test_state.context.borrow());
 
-    // *** STAGE 2: Build a stage_new_from_clone DanceRequest
-    let request = build_stage_new_from_clone_dance_request(
-        &test_state.session_state,
-        original_holon_ref.clone(),
-    );
+    // Clone the original holon, panic if it fails
+    let original_holon = original_holon_ref
+        .clone_holon(context)
+        .unwrap_or_else(|err| panic!("Failed to clone holon: {:?}", err));
+
+    // 3. Build the DanceRequest
+    let request = build_stage_new_from_clone_dance_request(original_holon_ref.clone())
+        .expect("Failed to build stage_new_from_clone request");
+
     debug!("Dance Request: {:#?}", request);
 
-    // *** STAGE 3: Dance the request
+    // 4. Call the dance
+    let response = test_state.dance_call_service.dance_call(context, request);
+    debug!("Dance Response: {:#?}", response.clone());
 
-    match request {
-        Ok(valid_request) => {
-            let response: DanceResponse =
-                conductor.call(&_cell.zome("dances"), "dance", valid_request).await;
-            debug!("Dance Response: {:#?}", response.clone());
+    // 5. Validate response status
+    assert_eq!(
+        response.status_code, expected_response,
+        "stage_new_from_clone request returned unexpected status: {}",
+        response.description
+    );
 
-            // *** STAGE 4: Confirm the actual result matches the expect result
+    // 6. If successful, verify the cloned Holon
+    if response.status_code == ResponseStatusCode::OK {
+        if let ResponseBody::StagedRef(cloned_holon) = response.body {
+            debug!("Cloned holon reference returned: {:?}", cloned_holon);
 
-            test_state.session_state = response.state;
-            let code = response.status_code;
-            assert_eq!(code.clone(), expected_response);
-            let description = response.description.clone();
+            assert_eq!(
+                original_holon.essential_content(),
+                cloned_holon.essential_content(context),
+                "Cloned Holon content did not match original"
+            );
 
-            if let ResponseStatusCode::OK = code {
-                if let StagedReference(index) = response.body {
-                    let index_value = index.to_string();
-                    debug!("{index_value} returned in body");
-                    // An index was returned in the body, retrieve the Holon at that index within
-                    // the StagingArea and confirm it matches the expected Holon.
-
-                    let holons = test_state.session_state.get_staging_area().get_staged_holons();
-
-                    // debug!("holons:{:#?}", holons);
-                    assert_eq!(
-                        original_holon.essential_content(),
-                        holons[index].essential_content(),
-                    );
-
-                    // let original_relationship_map = original_holon
-                    //     .relationship_map
-                    //     .0
-                    //     .into_iter()
-                    //     .filter(|(name, _)| *name != predecessor_relationship_name)
-                    //     .collect::<BTreeMap<RelationshipName, HolonCollection>>();
-
-                    // for (name, original_collection) in original_relationship_map {
-                    //     let expected_collection = holons[index]
-                    //         .relationship_map
-                    //         .get_collection_for_relationship(&name)
-                    //         .expect(&format!(
-                    //             "{:?} relationship should exist in the returned holon",
-                    //             name
-                    //         ));
-                    //     assert_eq!(original_collection, *expected_collection);
-                    // }
-
-                    info!("Success! DB fetched holon matched expected");
-                } else {
-                    panic!("Expected `index` to staged_holon in the response body, but didn't get one!");
-                }
-            } else {
-                panic!("DanceRequest returned {code} for {description}");
-            }
-        }
-        Err(error) => {
-            panic!("{:?} Unable to build a stage_new_from_clone request ", error);
+            info!("Success! Cloned holon matched expected content");
+        } else {
+            panic!("Expected StagedRef in response body, but got {:?}", response.body);
         }
     }
 }

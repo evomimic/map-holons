@@ -2,7 +2,8 @@ use derive_new::new;
 
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
-use crate::shared_test::dance_call_service::DanceCallService;
+use holons_client::dances_client::dance_call_service::DanceCallService;
+use holons_client::ConductorDanceCaller;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 use holons_core::core_shared_objects::{Holon, HolonError, HolonPool, RelationshipName};
 use holons_core::dances::{ResponseStatusCode, SessionState};
@@ -10,8 +11,8 @@ use holons_core::query_layer::QueryExpression;
 use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
-use std::fmt::Display;
-use std::rc::Rc;
+use std::fmt::{Debug, Display};
+use std::sync::Arc;
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 
@@ -24,12 +25,17 @@ pub struct TestHolonData {
 /// During the course of executing the steps in a test case:
 ///
 /// - Staged Holons are accumulated in the Nursery (accessible from the context)
-/// -
 /// - Persisted Holons are conveyed from one step to another via the created_holons BTreeMap
+///
+/// This struct is **generic over any `DanceCaller` implementation**, allowing it to work
+/// with different conductor backends (e.g., mock conductor, real conductor, or JS interop).
+///
+/// # Type Parameters
+/// - `C`: A type implementing `DanceCaller`, used to execute dance calls.
 #[derive(Debug)]
-pub struct DanceTestExecutionState {
-    pub context: Rc<dyn HolonsContextBehavior>,
-    pub dance_call_service: Rc<DanceCallService>,
+pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
+    pub context: Arc<dyn HolonsContextBehavior>,
+    pub dance_call_service: Arc<DanceCallService<C>>,
     pub created_holons: BTreeMap<MapString, Holon>,
 }
 
@@ -152,11 +158,19 @@ impl Display for DanceTestStep {
     }
 }
 
-impl DanceTestExecutionState {
+impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
+    /// Creates a new `DanceTestExecutionState`.
+    ///
+    /// # Arguments
+    /// - `test_context`: The test execution context.
+    /// - `dance_call_service`: The `DanceCallService` instance for managing dance calls.
+    ///
+    /// # Returns
+    /// A new `DanceTestExecutionState` instance.
     pub fn new(
-        test_context: Rc<dyn HolonsContextBehavior>,
-        dance_call_service: Rc<DanceCallService>,
-    ) -> DanceTestExecutionState {
+        test_context: Arc<dyn HolonsContextBehavior>,
+        dance_call_service: Arc<DanceCallService<C>>,
+    ) -> Self {
         DanceTestExecutionState {
             context: test_context,
             dance_call_service,

@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 
 // use crate::get_holon_by_key_from_test_state;
-use crate::tracing::{error, info, warn};
 use core::panic;
 use std::cell::RefCell;
-//use holochain::core::author_key_is_valid;
+use tracing::{error, info, warn};
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
@@ -46,7 +45,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture).as_ref();
+    let fixture_context = init_test_context(TestFixture);
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
@@ -57,7 +56,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons
-    let relationship_name = setup_book_author_steps_with_context(fixture_context, &mut test_case)?;
+    let relationship_name =
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
     // 4) (disabled) Try to remove related holons using invalid source holon
     // 5) (disabled) Try to remove related holons using invalid relationship name
@@ -66,25 +66,25 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let book_key = MapString("Emerging World".to_string());
 
     // Retrieve the book from the context
-    let staged_book_holon_ref = get_staged_holon_by_key(fixture_context, book_key.clone())?;
+    let staged_book_holon_ref = get_staged_holon_by_key(&*fixture_context, &book_key)?;
 
     // Get its current authors
 
     let authors_ref =
-        staged_book_holon_ref.get_related_holons(fixture_context, &relationship_name)?;
+        staged_book_holon_ref.get_related_holons(&*fixture_context, &relationship_name)?;
 
     let author_name_to_remove = MapString("George Smith".to_string());
 
-    let maybe_author_to_remove =
-        staged_book_holon_ref.get_related_holons(fixture_context, &relationship_name)?;
+    let maybe_author_to_remove = authors_ref.get_by_key(&author_name_to_remove)?;
 
     if let Some(author_to_remove) = maybe_author_to_remove {
         let mut remove_vector = Vec::new();
         remove_vector.push(author_to_remove);
-        staged_book_holon_ref.remove_related_holons(
-            fixture_context,
-            &relationship_name,
+        test_case.remove_related_holons_step(
+            staged_book_holon_ref,
+            relationship_name.clone(),
             remove_vector,
+            ResponseStatusCode::OK,
         )?;
     } else {
         error!(

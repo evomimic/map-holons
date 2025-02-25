@@ -17,7 +17,6 @@
 use crate::core_shared_objects::HolonError;
 use crate::dances::dance_request::{DanceType, RequestBody};
 use crate::dances::dance_response::ResponseBody;
-use crate::dances::session_state::SessionState;
 use crate::dances::DanceRequest;
 use crate::HolonsContextBehavior;
 
@@ -60,14 +59,12 @@ pub fn load_core_schema_dance(
     // }
 }
 
-pub fn build_load_core_schema_dance_request(
-    session_state: &SessionState,
-) -> Result<DanceRequest, HolonError> {
+pub fn build_load_core_schema_dance_request() -> Result<DanceRequest, HolonError> {
     let body = RequestBody::new();
     Ok(DanceRequest::new(
         MapString("load_core_schema".to_string()),
         DanceType::Standalone,
         body,
-        session_state.clone(),
+        None,
     ))
 }

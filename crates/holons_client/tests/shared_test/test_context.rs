@@ -1,3 +1,5 @@
+use holochain::prelude::DbKind::Test;
+use holons_client::client_context::ClientHolonsContext;
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::{HolonError, Nursery, ServiceRoutingPolicy};
@@ -11,6 +13,7 @@ use std::sync::Arc;
 /// The `TestHolonsContext` owns an instance of `HolonSpaceManager`, wrapped in `Arc`
 /// for shared ownership, ensuring that it can be referenced safely across different
 /// parts of the application without requiring mutable access.
+#[derive(Debug)]
 pub struct TestHolonsContext {
     /// The `HolonSpaceManager` that provides access to all core services.
     space_manager: Arc<HolonSpaceManager>,
@@ -27,16 +30,16 @@ pub enum TestContextConfigOption {
 ///
 /// Under the TestFixture configuration option, this function sets up a `TestHolonsContext` with:
 /// - An **empty nursery** (no staged holons).
-/// - A default `HolonServiceApi` implementation (`GuestHolonService`).
+/// - A default `HolonServiceApi` implementation (`ClientHolonService`).
 /// - A space manager configured with guest-specific routing policies.
 ///
 /// # Returns
-/// * A `Box<dyn HolonsContextBehavior>` containing the initialized client context.
+/// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
 pub fn init_test_context(
     _config_option: TestContextConfigOption,
-) -> Box<dyn HolonsContextBehavior> {
+) -> Arc<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService::new());
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
@@ -50,7 +53,7 @@ pub fn init_test_context(
     ));
 
     // Wrap in `TestHolonsContext` and return as trait object
-    Box::new(TestHolonsContext::new(space_manager))
+    Arc::new(TestHolonsContext::new(space_manager))
 }
 
 impl TestHolonsContext {
