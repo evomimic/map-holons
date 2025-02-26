@@ -180,34 +180,32 @@ pub fn stage_new_from_clone_api(
 }
 // Deprecated? //
 
-// /// Stages a new holon in the holon space.
-// ///
-// /// This function creates a new holon in the staging area without any lineage
-// /// relationship to an existing holon. Use this function for creating entirely
-// /// new holons that are not tied to any predecessor.
-// ///
-// /// # Arguments
-// /// - `context`: The context to retrieve holon services.
-// /// - `holon`: The new holon to stage.
-// ///
-// /// # Returns
-// /// - `Ok(StagedReference)` pointing to the newly staged holon.
-// /// - `Err(HolonError)` if staging fails.
-// ///
-// /// # Errors
-// /// - Returns a `HolonError` if the staging operation cannot complete.
-// ///
-// pub fn stage_new_holon_api(
-//     context: &dyn HolonsContextBehavior,
-//     holon: Holon,
-// ) -> Result<StagedReference, HolonError> {
-//     let staging_service = get_staging_service(context);
-//     let staged_reference = staging_service.borrow().stage_new_holon(context, holon)?;
+/// Stages a new holon in the holon space.
+///
+/// This function creates a new holon in the staging area without any lineage
+/// relationship to an existing holon. Use this function for creating entirely
+/// new holons that are not tied to any predecessor.
+///
+/// # Arguments
+/// - `context`: The context to retrieve holon services.
+/// - `holon`: The new holon to stage.
+///
+/// # Returns
+/// - `Ok(StagedReference)` pointing to the newly staged holon.
+/// - `Err(HolonError)` if staging fails.
+///
+/// # Errors
+/// - Returns a `HolonError` if the staging operation cannot complete.
+///
+pub fn stage_new_holon_api(
+    context: &dyn HolonsContextBehavior,
+    holon: Holon,
+) -> Result<StagedReference, HolonError> {
+    let staging_service = get_staging_service(context);
+    let staged_reference = staging_service.borrow().stage_new_holon(holon)?;
 
-//     Ok(staged_reference)
-// }
-
-//  //
+    Ok(staged_reference)
+}
 
 /// Stages a new holon as a version of the current holon.
 ///
