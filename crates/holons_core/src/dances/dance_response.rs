@@ -5,9 +5,8 @@ use std::fmt;
 use crate::core_shared_objects::{summarize_holons, Holon, HolonError};
 use crate::query_layer::NodeCollection;
 
-use holons_core::core_shared_objects::{summarize_holons, Holon, HolonError};
-use holons_core::{HolonReference, StagedReference};
-use holons_guest::query_layer::NodeCollection;
+use crate::dances::SessionState;
+use crate::{HolonReference, StagedReference};
 use shared_types_holon::MapString;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

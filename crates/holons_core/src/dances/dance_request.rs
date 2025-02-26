@@ -1,8 +1,9 @@
 use crate::core_shared_objects::{Holon, RelationshipName};
+use serde::{Deserialize, Serialize};
 
-use holons_core::core_shared_objects::{Holon, RelationshipName};
-use holons_core::{HolonReference, StagedReference};
-use holons_guest::query_layer::{NodeCollection, QueryExpression};
+use crate::dances::SessionState;
+use crate::query_layer::{NodeCollection, QueryExpression};
+use crate::{HolonReference, StagedReference};
 use shared_types_holon::{HolonId, LocalId, MapString, PropertyMap};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

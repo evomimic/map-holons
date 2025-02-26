@@ -1,11 +1,5 @@
 use hdk::prelude::*;
-use holons_core::reference_layer::HolonsContextBehavior;
-
-use crate::holon_dance_adapter::{
-    abandon_staged_changes_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance,
-    query_relationships_dance, remove_related_holons_dance, stage_new_from_clone_dance,
-    stage_new_holon_dance, stage_new_version_dance, with_properties_dance,
-};
+use holons_core::HolonsContextBehavior;
 
 use holons_core::core_shared_objects::HolonError;
 
@@ -16,7 +10,6 @@ use holons_core::dances::holon_dance_adapter::*;
 use holons_core::dances::{
     DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState,
 };
-use holons_core::HolonsContextBehavior;
 use shared_types_holon::MapString;
 use std::collections::HashMap;
 use std::sync::Arc;

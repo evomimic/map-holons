@@ -16,9 +16,9 @@ use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keys
 use crate::shared_test::test_context::init_test_context;
 use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
 use holons_core::dances::dance_response::ResponseStatusCode;
+use holons_core::holon_operations_api::*;
 use holons_core::query_layer::QueryExpression;
-use holons_core::*;
-use holons_core::{stage_new_holon_api, HolonReadable, HolonWritable, HolonsContextBehavior};
+use holons_core::{HolonCollectionApi, HolonReadable, HolonWritable, HolonsContextBehavior};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
@@ -42,11 +42,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
          8) Commit,\n\
          9) QueryRelationships.\n".to_string(),
     );
-
-    // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_client_context().as_ref();
-    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
@@ -80,7 +75,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     let author_name_to_remove = MapString("George Smith".to_string());
 
-    let maybe_author_to_remove = authors_ref.get_by_key(&author_name_to_remove)?;
+    let maybe_author_to_remove = authors_ref.as_ref().get_by_key(&author_name_to_remove)?;
 
     if let Some(author_to_remove) = maybe_author_to_remove {
         let mut remove_vector = Vec::new();

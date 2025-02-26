@@ -43,7 +43,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    let mut holons_to_add: Vec<HolonReference> = Vec::new();
+    let holons_to_add: Vec<HolonReference> = Vec::new();
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.

@@ -16,19 +16,18 @@ use holons_core::core_shared_objects::{
     Holon, HolonCollection, HolonError, RelationshipName, TransientCollection,
 };
 use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::staged_reference::StagedIndex;
-use holons_core::{
-    stage_new_holon_api, HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior,
-};
+use holons_core::holon_operations_api::*;
+
+use holons_core::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
 
-pub struct TestHolon {
-    pub staged_index: StagedIndex,
-    pub key: MapString,
-    pub expected_holon: Option<Holon>,
-}
+// pub struct TestHolon {
+//     pub staged_index: StagedIndex,
+//     pub key: MapString,
+//     pub expected_holon: Option<Holon>,
+// }
 
 // These constants allow consistency between the helper function and its callers
 pub const BOOK_KEY: &str =
