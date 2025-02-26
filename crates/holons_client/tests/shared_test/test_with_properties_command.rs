@@ -46,8 +46,6 @@ pub async fn execute_with_properties(
         .get_holon(staged_holon_index)
         .expect("Failed to get staged holon from test state");
 
-    // Create the expected_holon from the original_holon + the supplied property values
-    let mut expected_holon = original_holon.clone();
     for (property_name, base_value) in properties.clone() {
         let result = expected_holon.with_property_value(property_name.clone(), base_value.clone());
         if let Err(e) = result {
