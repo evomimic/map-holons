@@ -11,18 +11,20 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum AccessType {
+    Abandon,
+    Clone,
+    Commit,
     Read,
     Write,
-    Abandon,
-    Commit,
 }
 impl fmt::Display for AccessType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AccessType::Abandon => write!(f, "Abandon"),
+            AccessType::Clone => write!(f, "Clone"),
+            AccessType::Commit => write!(f, "Commit"),
             AccessType::Read => write!(f, "Read"),
             AccessType::Write => write!(f, "Write"),
-            AccessType::Abandon => write!(f, "Abandon"),
-            AccessType::Commit => write!(f, "Commit"),
         }
     }
 }
@@ -304,37 +306,38 @@ impl Holon {
 
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.state {
-            HolonState::New => match access_type {
-                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
-                    Ok(())
-                }
-            },
-            HolonState::Fetched => match access_type {
-                AccessType::Read | AccessType::Write => Ok(()), // Write access is ok for cached Holons
-                AccessType::Abandon | AccessType::Commit => Err(HolonError::NotAccessible(
+            HolonState::Abandoned => match access_type {
+                AccessType::Abandon | AccessType::Commit | AccessType::Read => Ok(()),
+                AccessType::Clone | AccessType::Write => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
             },
             HolonState::Changed => match access_type {
-                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
+                 AccessType::Abandon | AccessType::Clone | AccessType::Commit | AccessType::Read | AccessType::Write => {
+                    Ok(())
+                }
+            },
+            HolonState::Fetched => match access_type {
+                AccessType::Clone | AccessType::Read | AccessType::Write => Ok(()), // Write access is ok for cached Holons
+                AccessType::Abandon | AccessType::Commit => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+            },
+            HolonState::New => match access_type {
+                AccessType::Abandon | AccessType::Clone | AccessType::Commit | AccessType::Read | AccessType::Write  => {
                     Ok(())
                 }
             },
             HolonState::Saved => match access_type {
                 AccessType::Read | AccessType::Commit => Ok(()),
-                AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
+                AccessType::Abandon | AccessType::Clone | AccessType::Write => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
             },
-            HolonState::Abandoned => match access_type {
-                AccessType::Read | AccessType::Commit | AccessType::Abandon => Ok(()),
-                AccessType::Write => Err(HolonError::NotAccessible(
-                    format!("{:?}", access_type),
-                    format!("{:?}", self.state),
-                )),
-            },
+            
         }
     }
 

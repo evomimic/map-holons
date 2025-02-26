@@ -1,15 +1,14 @@
 use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess, RelationshipMap};
+use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::staged_reference::StagedIndex;
-use crate::reference_layer::{
-    HolonReference, HolonStagingBehavior, HolonsContextBehavior, SmartReference, StagedReference,
-};
+use crate::reference_layer::{HolonStagingBehavior, StagedReference};
 
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::MapString;
 use std::any::Any;
 use std::cell::Ref;
 use std::{cell::RefCell, rc::Rc};
+
 // #[hdk_entry_helper]
 // #[derive(Clone, PartialEq, Eq)]
 // pub struct Nursery {
@@ -48,13 +47,6 @@ impl Nursery {
     // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
     //     self
     // }
-    fn clone_existing_relationships_into_staged_map(
-        &self,
-        _original_holon: HolonId,
-        _staged_holon: &Holon,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
-        todo!()
-    }
 
     /// Stages a new holon and optionally updates the keyed index.
     ///
@@ -67,7 +59,7 @@ impl Nursery {
         self.staged_holons.borrow_mut().insert_holon(holon)
     }
 
-    /// This function converts a StagedIndex into a StagedReference, first validating accessibility
+    /// This function converts a StagedIndex into a StagedReference
     /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
     fn to_validated_staged_reference(
@@ -119,29 +111,9 @@ impl HolonStagingBehavior for Nursery {
         self.staged_holons.borrow().len() as i64
     }
 
-    fn stage_new_from_clone(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: HolonReference,
-    ) -> Result<StagedReference, HolonError> {
-        Err(HolonError::NotImplemented("stage_new_from_clone not implemented".to_string()))
-    }
-
-    fn stage_new_holon(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        holon: Holon,
-    ) -> Result<StagedReference, HolonError> {
+    fn stage_new_holon(&self, holon: Holon) -> Result<StagedReference, HolonError> {
         let new_index = self.stage_holon(holon);
         self.to_validated_staged_reference(new_index)
-    }
-
-    fn stage_new_version(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        Err(HolonError::NotImplemented("stage_new_version not implemented".to_string()))
     }
 }
 

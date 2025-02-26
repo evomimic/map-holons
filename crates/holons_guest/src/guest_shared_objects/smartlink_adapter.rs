@@ -52,7 +52,7 @@ impl SmartLink {
 // UTILITY FUNCTIONS //
 
 /// Gets all SmartLinks across all relationships from the given source
-pub fn get_all_relationship_links(local_source_id: LocalId) -> Result<Vec<SmartLink>, HolonError> {
+pub fn get_all_relationship_links(local_source_id: &LocalId) -> Result<Vec<SmartLink>, HolonError> {
     //let link_tag_filter: Option<LinkTag> = None;
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();

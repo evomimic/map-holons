@@ -78,26 +78,26 @@ impl HolonCollection {
         match self.state {
             CollectionState::Fetched => match access_type {
                 AccessType::Read | AccessType::Write => Ok(()), // Write access to cached Holons are ok
-                AccessType::Abandon | AccessType::Commit => Err(HolonError::NotAccessible(
+                AccessType::Abandon | AccessType::Clone | AccessType::Commit => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
             },
             CollectionState::Staged => match access_type {
-                AccessType::Read | AccessType::Write | AccessType::Abandon | AccessType::Commit => {
+                 AccessType::Abandon | AccessType::Clone | AccessType::Commit | AccessType::Read | AccessType::Write => {
                     Ok(())
                 }
             },
             CollectionState::Saved => match access_type {
-                AccessType::Read | AccessType::Commit => Ok(()),
-                AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
+                AccessType::Commit | AccessType::Read=> Ok(()),
+                AccessType::Clone | AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
             },
             CollectionState::Abandoned => match access_type {
-                AccessType::Commit | AccessType::Abandon => Ok(()),
-                AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
+                AccessType::Abandon | AccessType::Commit => Ok(()),
+                AccessType::Clone | AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
                     format!("{:?}", self.state),
                 )),
