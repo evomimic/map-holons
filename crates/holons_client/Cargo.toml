@@ -15,7 +15,6 @@ serde_json = { workspace = true }
 tracing = "0.1"
 
 # Holochain Dependencies
-#hdi = { workspace = true }
 
 # MAP Dependencies
 shared_types_holon = { workspace = true }

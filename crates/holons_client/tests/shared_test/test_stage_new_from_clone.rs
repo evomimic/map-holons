@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use hdk::prelude::*;
 use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::sodoken::crypto_box::curve25519xchacha20poly1305::SEALBYTES;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -15,6 +16,10 @@ use holons_core::{HolonReadable, HolonReference, SmartReference};
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
 use tracing::{debug, info};
+
+use crate::shared_test::test_data_types::{
+    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.
@@ -53,6 +58,7 @@ pub async fn execute_stage_new_from_clone(
     // 2. Construct the HolonReference to the original holon
     let original_holon_ref: HolonReference = match original_test_ref {
         TestReference::StagedHolon(staged_reference) => HolonReference::Staged(staged_reference),
+
         TestReference::SavedHolon(key) => {
             let saved_holon = test_state
                 .get_created_holon_by_key(&key)
@@ -65,6 +71,7 @@ pub async fn execute_stage_new_from_clone(
             ))
         }
     };
+    let original_holon = original_holon_ref.clone_holon(test_state.context.borrow());
 
     // Clone the original holon, panic if it fails
     let original_holon = original_holon_ref
