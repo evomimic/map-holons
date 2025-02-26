@@ -12,14 +12,13 @@ name = "descriptors"
 derive-new = { workspace = true }
 Inflector = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 
 # Holochain Dependencies
 hdk = { workspace = true }
 hdi = { workspace = true }
 
 # MAP Dependencies
-holons = { workspace = true }
+holons_core = { workspace = true }
 shared_types_holon = { workspace = true }
 
 

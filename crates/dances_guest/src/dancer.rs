@@ -5,7 +5,7 @@ use dances_core::dance_request::DanceRequest;
 use dances_core::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode};
 
 use hdk::prelude::*;
-use holons::reference_layer::HolonsContextBehavior;
+use holons_core::reference_layer::HolonsContextBehavior;
 
 use crate::holon_dance_adapter::{
     abandon_staged_changes_dance, commit_dance, get_all_holons_dance, get_holon_by_id_dance,

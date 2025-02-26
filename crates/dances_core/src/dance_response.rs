@@ -5,8 +5,8 @@ use std::fmt;
 use crate::session_state::SessionState;
 use hdk::prelude::*;
 
-use holons::reference_layer::{HolonReference, StagedReference};
 use holons_core::core_shared_objects::{summarize_holons, Holon, HolonError};
+use holons_core::{HolonReference, StagedReference};
 use holons_guest::query_layer::NodeCollection;
 use shared_types_holon::MapString;
 

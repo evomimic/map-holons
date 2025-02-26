@@ -14,13 +14,13 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
+use core_schema::loader::load_core_schema;
 use dances_core::dance_request::{DanceRequest, DanceType, RequestBody};
 use dances_core::dance_response::ResponseBody;
 use dances_core::session_state::SessionState;
-use core_schema::loader::load_core_schema;
 use hdk::prelude::*;
-use holons::reference_layer::HolonsContextBehavior;
 use holons_core::core_shared_objects::{CommitRequestStatus, HolonError};
+use holons_core::reference_layer::HolonsContextBehavior;
 use shared_types_holon::MapString;
 
 /// *DanceRequest:*

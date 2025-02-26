@@ -984,21 +984,14 @@ name = "core_schema"
 version = "0.1.0"
 dependencies = [
  "Inflector",
- "async-std",
- "derive-new",
  "descriptors",
- "futures",
  "hdi",
  "hdk",
  "holochain",
- "holons",
- "pretty_assertions",
- "rstest",
- "serde",
+ "holons_core",
  "shared_types_holon",
  "strum 0.26.3",
  "strum_macros 0.26.4",
- "thiserror 1.0.69",
  "tokio",
 ]
 
@@ -1478,9 +1471,8 @@ dependencies = [
  "hdi",
  "hdk",
  "holochain",
- "holons",
+ "holons_core",
  "serde",
- "serde_json",
  "shared_types_holon",
  "tokio",
 ]

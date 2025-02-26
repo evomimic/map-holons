@@ -1,8 +1,8 @@
 use hdk::prelude::*;
 
 use hdi::hdk_entry_helper;
-use holons::reference_layer::HolonReference;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
+use holons_core::reference_layer::HolonReference;
 
 /// SessionState provides a way to distinguish information associated with a specific request from
 /// state info that is just being maintained via the ping pong process. This also should make it

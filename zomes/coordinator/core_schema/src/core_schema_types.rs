@@ -1,5 +1,5 @@
-use holons::core_shared_objects::HolonError;
-use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons_core::core_shared_objects::HolonError;
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
 use shared_types_holon::MapString;
 

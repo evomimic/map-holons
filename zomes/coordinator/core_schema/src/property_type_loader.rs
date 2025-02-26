@@ -7,10 +7,10 @@ use crate::value_type_loader::CoreValueTypeName::*;
 use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
 use crate::value_type_loader::CoreValueTypeName;
-use holons::core_shared_objects::HolonError;
+use holons_core::core_shared_objects::HolonError;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
