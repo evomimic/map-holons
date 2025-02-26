@@ -7,21 +7,15 @@ use crate::value_type_loader::CoreValueTypeName::*;
 use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
+
+use crate::value_type_loader::CoreValueTypeName;
+use holons_core::core_shared_objects::HolonError;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
 use strum_macros::EnumIter;
 use CorePropertyTypeName::*;
-// use crate::enum_type_loader::*;
-// use crate::integer_value_type_loader::*;
-// use crate::property_type_loader::CorePropertyTypeName::{TypeName, VariantName};
-// use crate::string_value_type_loader::*;
-use crate::value_type_loader::CoreValueTypeName;
-//use crate::value_type_loader::load_core_value_type;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CorePropertyTypeName {
@@ -65,7 +59,7 @@ pub struct PropertyTypeLoader {
 impl SchemaNamesTrait for CorePropertyTypeName {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -189,7 +183,7 @@ impl CorePropertyTypeName {
 /// This function handles the aspects of staging a new property type definition that are common
 /// to all property types. It assumes the type-specific parameters have been set by the caller.
 fn load_property_type_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: PropertyTypeLoader,
 ) -> Result<StagedReference, HolonError> {
@@ -222,8 +216,10 @@ fn load_property_type_definition(
     let staged_ref = define_property_type(context, schema, definition)?;
 
     context
-        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
-        .expect("Unable to add reference to dance_state");
+        .get_space_manager()
+        .get_transient_state()
+        .borrow_mut()
+        .add_references(context, vec![HolonReference::Staged(staged_ref.clone())])?;
 
     Ok(staged_ref)
 }

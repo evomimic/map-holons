@@ -1,0 +1,42 @@
+[package]
+name = "holons_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "holons_core"
+
+[dependencies]
+# General dev-dependencies (platform-agnostic)
+derive-new = { workspace = true }
+quick_cache = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = "1.0"
+
+# Holochain Dependencies
+hdi = { workspace = true }
+
+hdk = { workspace = true }
+#holochain_conductor_api = "0.3"
+#holochain_client = "0.5"
+#holochain = "0.3"
+#holochain_websocket = "0.3"
+#holochain_types = "0.3"
+#holochain_zome_types = "0.3"
+#kitsune_p2p_types = "0.3"
+
+
+# MAP Dependencies
+shared_types_holon = { workspace = true }
+shared_validation = { workspace = true }
+
+
+[dev-dependencies]
+# General dev-dependencies (platform-agnostic)
+async-std = { workspace = true }
+futures = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }

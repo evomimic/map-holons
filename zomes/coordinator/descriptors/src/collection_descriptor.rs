@@ -1,17 +1,15 @@
 use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_readable::HolonReadable;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use shared_types_holon::{BaseType, PropertyName};
+use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::{
+    HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use holons_core::core_shared_objects::stage_new_holon_api;
+
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use shared_types_holon::{BaseType, PropertyName};
 
 pub struct CollectionTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -50,7 +48,7 @@ pub enum CollectionSemantic {
 ///
 
 pub fn define_collection_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: CollectionTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -108,8 +106,7 @@ pub fn define_collection_type(
 
     debug!("{:#?}", collection_type.clone());
 
-    let collection_type_ref =
-        context.space_manager.borrow().stage_new_holon(collection_type.clone())?;
+    let collection_type_ref = stage_new_holon_api(context, collection_type.clone())?;
 
     // Add its relationships
 
@@ -129,7 +126,7 @@ pub fn define_collection_type(
 /// Helper function that generates the collection_type_name per rules, if None provided
 /// otherwise it just returns the supplied collection_name
 fn generate_collection_type_name(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     definition: &CollectionTypeDefinition,
 ) -> Result<MapString, HolonError> {
     // let mut name = target_type.get_property_value(context, PropertyName(MapString("type_name".to_string())))?;

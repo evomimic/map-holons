@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use holons::holon::Holon;
+use holons_core::core_shared_objects::Holon;
 use shared_types_holon::{HolonId, MapString, PropertyValue};
 
 // A HolonsTestCase contains a sequence of test steps. The type of the HolonTestStep determines the test behavior

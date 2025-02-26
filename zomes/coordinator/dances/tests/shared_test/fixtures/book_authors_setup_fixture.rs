@@ -2,34 +2,18 @@
 
 use core::panic;
 use holochain::core::author_key_is_valid;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_collection::{CollectionState, HolonCollection};
-use holons::holon_reference::HolonReference;
-use holons::query::QueryExpression;
-use holons::smart_reference::SmartReference;
-use holons::staged_reference::{StagedIndex, StagedReference};
+
+use holons::HolonCollectionApi;
 use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 
-use dances::dance_response::ResponseStatusCode;
-use holons::context::HolonsContext;
-
 use crate::shared_test::test_data_types::DancesTestCase;
-
-// use hdk::prelude::*;
-
-// use crate::shared_test::fixture_helpers::{derive_label, derive_type_description, derive_type_name};
-// use crate::shared_test::property_descriptor_data_creators::{
-//     create_example_property_descriptors, create_example_updates_for_property_descriptors,
-// };
-
-use holons::holon_error::HolonError;
-use holons::relationship::RelationshipName;
-
+use dances::dance_response::ResponseStatusCode;
+use holons::reference_layer::staged_reference::StagedIndex;
+use holons::reference_layer::{HolonReference, StagedReference};
+use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };
@@ -154,14 +138,14 @@ pub fn setup_book_author_steps(
 
     target_collection.add_reference_with_key(Some(&person_2_key), &person_2_reference)?;
 
-    book_holon.relationship_map.0.insert(relationship_name.clone(), target_collection);
+    book_holon.staged_relationship_map.0.insert(relationship_name.clone(), target_collection);
 
     // let mut holons_to_add: Vec<HolonReference> = Vec::new();
     holons_to_add.push(person_1_reference);
     holons_to_add.push(person_2_reference);
 
     test_case.add_related_holons_step(
-        book_index, // source holon
+        StagedReference::from_index(book_index), // source holon
         relationship_name.clone(),
         holons_to_add.to_vec(),
         ResponseStatusCode::OK,

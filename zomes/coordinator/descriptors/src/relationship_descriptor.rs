@@ -1,18 +1,15 @@
 use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::relationship::RelationshipName;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
-use shared_types_holon::{BaseType, PropertyName};
+
+use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
+
+use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
 
 use crate::descriptor_types::{
     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
 };
+use holons_core::core_shared_objects::stage_new_holon_api;
+use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
+use shared_types_holon::{BaseType, PropertyName};
 //
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
@@ -53,7 +50,7 @@ pub struct RelationshipTypeDefinition {
 ///
 ///
 pub fn define_relationship_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: RelationshipTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -108,8 +105,7 @@ pub fn define_relationship_type(
     debug!("Staging new relationship_type {:#?}", relationship_type.clone());
 
     // Stage new holon type
-    let relationship_type_ref =
-        context.space_manager.borrow().stage_new_holon(relationship_type.clone())?;
+    let relationship_type_ref = stage_new_holon_api(context, relationship_type.clone())?;
 
     // Add its relationships
 

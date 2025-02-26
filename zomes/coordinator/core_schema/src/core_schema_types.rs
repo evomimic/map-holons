@@ -1,7 +1,6 @@
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons_core::core_shared_objects::HolonError;
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
+
 use shared_types_holon::MapString;
 
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
@@ -28,12 +27,13 @@ pub trait SchemaNamesTrait {
     /// the desired type and return a HolonReference to the staged holon.
     fn lazy_get_core_type_definition(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
         // See if definition for this type has already been loaded
         let key = self.derive_type_name();
-        let definition_reference = context.get_by_key_from_dance_state(&key)?;
+        let definition_reference =
+            context.get_space_manager().get_transient_state().borrow().get_by_key(&key)?;
 
         match definition_reference {
             Some(result) => Ok(result),
@@ -48,7 +48,7 @@ pub trait SchemaNamesTrait {
     /// This method stages a type definition for this type
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError>;
 
@@ -69,7 +69,7 @@ pub trait SchemaNamesTrait {
 impl SchemaNamesTrait for CoreSchemaTypeName {
     // fn lazy_get_core_type_definition(
     //     &self,
-    //     context: &HolonsContext,
+    //     context: &dyn HolonsContextBehavior,
     //     schema: &HolonReference,
     // ) -> Result<HolonReference, HolonError> {
     //     match self {
@@ -82,7 +82,7 @@ impl SchemaNamesTrait for CoreSchemaTypeName {
 
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         use CoreSchemaTypeName::*;

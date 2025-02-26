@@ -1,18 +1,13 @@
 //use std::env::var;
-use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
-use shared_types_holon::PropertyName;
-
 use crate::descriptor_types::CoreSchemaPropertyTypeName::{TypeName, VariantOrder};
 use crate::descriptor_types::CoreSchemaRelationshipTypeName;
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use hdi::prelude::debug;
+use holons_core::core_shared_objects::stage_new_holon_api;
+use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
+use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
+use shared_types_holon::PropertyName;
 pub struct EnumVariantTypeDefinition {
     pub header: TypeDescriptorDefinition,
     pub type_name: MapString, // unique variant name
@@ -34,7 +29,7 @@ pub struct EnumVariantTypeDefinition {
 /// * HAS_SUPERTYPE-> HolonDescriptor (if supplied)
 
 pub fn define_enum_variant_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: EnumVariantTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -70,8 +65,7 @@ pub fn define_enum_variant_type(
 
     debug!("Staging... {:#?}", enum_variant_type.clone());
 
-    let enum_variant_type_ref =
-        context.space_manager.borrow().stage_new_holon(enum_variant_type.clone())?;
+    let enum_variant_type_ref = stage_new_holon_api(context, enum_variant_type.clone())?;
 
     // Add some relationships
 

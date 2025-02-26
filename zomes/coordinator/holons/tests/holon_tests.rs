@@ -11,12 +11,8 @@ use async_std::task;
 use hdk::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
+use holons_core::core_shared_objects::{Holon, HolonError};
 use rstest::*;
-
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
-use holons::holon_error::HolonError;
 use shared_test::holon_fixtures::*;
 use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
 use shared_test::*;
@@ -74,20 +70,20 @@ async fn rstest_holon_capabilities(#[case] input: Result<HolonCreatesTestCase, H
         println!("\n****** Starting create/get test for the following Holon:");
         // print_holon_without_saved_node(&test_holon);
 
-        let mut builder_holon = Holon::new();
+        let _builder_holon = Holon::new();
 
-        for property_name in test_holon.property_map.keys() {
-            let property_value: BaseValue =
-                test_holon.property_map.get(property_name).unwrap().clone();
-            let input = WithPropertyInput {
-                holon: builder_holon.clone(),
-                property_name: property_name.clone(),
-                value: property_value,
-            };
-
-            builder_holon =
-                conductor.call(&cell.zome("holons"), "with_property_value", input).await;
-        }
+        // for property_name in test_holon.property_map.keys() {
+        //     let property_value: BaseValue =
+        //         test_holon.property_map.get(property_name).unwrap().clone();
+        //     let input = WithPropertyInput {
+        //         holon: builder_holon.clone(),
+        //         property_name: property_name.clone(),
+        //         value: property_value,
+        //     };
+        //
+        //     builder_holon =
+        //         conductor.call(&cell.zome("holons"), "with_property_value", input).await;
+        // }
     }
     println!("SKIPPING REMAINDER OF TESTS... move them to Dance API tests");
     //     let created_holon: Holon = conductor

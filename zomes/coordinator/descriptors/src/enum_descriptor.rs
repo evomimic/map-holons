@@ -1,17 +1,12 @@
-use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapString, ValueType};
-use shared_types_holon::PropertyName;
-
 use crate::descriptor_types::CoreSchemaPropertyTypeName::TypeName;
 use crate::descriptor_types::CoreSchemaRelationshipTypeName;
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use hdi::prelude::debug;
+use holons_core::core_shared_objects::stage_new_holon_api;
+use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
+use shared_types_holon::value_types::{BaseType, BaseValue, MapString, ValueType};
+use shared_types_holon::PropertyName;
 
 pub struct EnumTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -37,7 +32,7 @@ pub struct EnumTypeDefinition {
 /// *
 ///
 pub fn define_enum_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: EnumTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -69,7 +64,7 @@ pub fn define_enum_type(
 
     debug!("Staging... {:#?}", enum_type.clone());
 
-    let enum_type_ref = context.space_manager.borrow().stage_new_holon(enum_type.clone())?;
+    let enum_type_ref = stage_new_holon_api(context, enum_type.clone())?;
 
     // Add its relationships
 
