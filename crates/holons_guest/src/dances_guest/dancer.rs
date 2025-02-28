@@ -168,6 +168,8 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
 fn initialize_context_from_request(
     request: &DanceRequest,
 ) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
+    info!("Initializing context from request: {:#?}", request);
+
     // Since `dance()` validates the request, we can safely unwrap the state.
     let session_state = request.state.as_ref().expect("Valid request should have a state");
 

@@ -3,7 +3,7 @@ use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile}
 use holons_client::ConductorDanceCaller;
 use holons_core::dances::{DanceRequest, DanceResponse};
 
-const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";
+const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
 
 #[derive(Debug)]
 pub struct MockConductorConfig {
@@ -18,7 +18,7 @@ pub struct MockConductorConfig {
 impl ConductorDanceCaller for MockConductorConfig {
     fn conductor_dance_call(&self, request: DanceRequest) -> DanceResponse {
         futures::executor::block_on(async {
-            self.conductor.call(&self.cell.zome("dances"), "dance", request).await
+            self.conductor.call(&self.cell.zome("holons"), "dance", request).await
         })
     }
 }
@@ -26,6 +26,7 @@ impl ConductorDanceCaller for MockConductorConfig {
 /// MOCK CONDUCTOR
 
 pub async fn setup_conductor() -> MockConductorConfig {
+    println!("Current working directory: {:?}", std::env::current_dir().unwrap());
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(&DNA_FILEPATH)).await.unwrap();
 
     let mut conductor = SweetConductor::from_standard_config().await;
