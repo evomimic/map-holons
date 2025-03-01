@@ -1,8 +1,8 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use hdi::prelude::debug;
-use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::holon_operations_api::*;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
 

@@ -222,7 +222,7 @@ impl Holon {
     // }
     // }
 
-    // NOTE: Holon does NOT  implement HolonGettableTrait because the functions defined by that
+    // NOTE: Holon does NOT  implement HolonReadable Trait because the functions defined by that
     // Trait include a context parameter.
 
     /// This function returns the primary key value for the holon or None if there is no key value
@@ -314,9 +314,11 @@ impl Holon {
                 )),
             },
             HolonState::Changed => match access_type {
-                 AccessType::Abandon | AccessType::Clone | AccessType::Commit | AccessType::Read | AccessType::Write => {
-                    Ok(())
-                }
+                AccessType::Abandon
+                | AccessType::Clone
+                | AccessType::Commit
+                | AccessType::Read
+                | AccessType::Write => Ok(()),
             },
             HolonState::Fetched => match access_type {
                 AccessType::Clone | AccessType::Read | AccessType::Write => Ok(()), // Write access is ok for cached Holons
@@ -326,18 +328,21 @@ impl Holon {
                 )),
             },
             HolonState::New => match access_type {
-                AccessType::Abandon | AccessType::Clone | AccessType::Commit | AccessType::Read | AccessType::Write  => {
-                    Ok(())
-                }
+                AccessType::Abandon
+                | AccessType::Clone
+                | AccessType::Commit
+                | AccessType::Read
+                | AccessType::Write => Ok(()),
             },
             HolonState::Saved => match access_type {
                 AccessType::Read | AccessType::Commit => Ok(()),
-                AccessType::Abandon | AccessType::Clone | AccessType::Write => Err(HolonError::NotAccessible(
-                    format!("{:?}", access_type),
-                    format!("{:?}", self.state),
-                )),
+                AccessType::Abandon | AccessType::Clone | AccessType::Write => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state),
+                    ))
+                }
             },
-            
         }
     }
 

@@ -26,14 +26,15 @@ holons_integrity = { workspace = true }
 # MAP Dependencies
 shared_types_holon = { workspace = true }
 holons_core = { workspace = true }
+holon_dance_builders = { workspace = true }
 
 
 [dev-dependencies]
 
-#async-std = { workspace = true }
-#futures = { workspace = true }
-#pretty_assertions = { workspace = true }
-#rstest = { workspace = true }
+async-std = { workspace = true }
+futures = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
 
 # Target-specific dev dependencies for non-WASM builds
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

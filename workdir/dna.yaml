@@ -17,11 +17,6 @@ coordinator:
       bundled: "../target/wasm32-unknown-unknown/release/holons.wasm"
       dependencies:
         - name: holons_integrity
-    - name: dances
-      hash: ~
-      bundled: "../target/wasm32-unknown-unknown/release/dances.wasm"
-      dependencies: ~
-
     - name: descriptors
       hash: ~
       bundled: "../target/wasm32-unknown-unknown/release/descriptors.wasm"
