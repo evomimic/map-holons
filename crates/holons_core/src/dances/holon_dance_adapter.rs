@@ -22,6 +22,7 @@ use crate::dances::dance_request::{DanceType, RequestBody};
 use crate::dances::dance_response::ResponseBody;
 use crate::dances::DanceRequest;
 use crate::query_layer::evaluate_query;
+use crate::reference_layer::get_all_holons;
 use crate::{HolonWritable, HolonsContextBehavior, SmartReference};
 use hdk::prelude::*;
 
@@ -157,21 +158,17 @@ pub fn delete_holon_dance(
 /// - request_body: None
 ///
 /// *ResponseBody:*
-/// - Holons -- will be replaced by SmartCollection once supported
+/// - HolonCollection
 ///
 pub fn get_all_holons_dance(
-    _context: &dyn HolonsContextBehavior,
+    context: &dyn HolonsContextBehavior,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // TODO: add support for descriptor parameter
     //
     //
-    info!("----- Entered get_all_holons dance");
-    let query_result = Holon::get_all_holons();
-    match query_result {
-        Ok(holons) => Ok(ResponseBody::Holons(holons)),
-        Err(holon_error) => Err(holon_error.into()),
-    }
+    info!("----- Entered get_all_holons dance ----");
+    Ok(ResponseBody::HolonCollection(get_all_holons(context)?))
 }
 
 /// Gets Holon from persistent store, located by HolonId
@@ -239,7 +236,7 @@ pub fn query_relationships_dance(
                 };
 
             let result_collection = evaluate_query(node_collection, context, relationship_name)?;
-            Ok(ResponseBody::Collection(result_collection))
+            Ok(ResponseBody::NodeCollection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
             "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),

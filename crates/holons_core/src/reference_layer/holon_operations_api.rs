@@ -23,37 +23,14 @@
 
 use crate::core_shared_objects::{CommitResponse, Holon, HolonError};
 use crate::{
-    HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior, SmartReference,
-    StagedReference,
+    HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
+    SmartReference, StagedReference,
 };
 use shared_types_holon::{LocalId, MapString, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::sync::Arc;
 
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
-
-pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {
-    let key_option = map.get(&PropertyName(MapString("key".to_string())));
-    if let Some(key) = key_option {
-        Some(MapString(key.into()))
-    } else {
-        None
-    }
-}
-
-pub fn get_staged_holon_by_key(
-    context: &dyn HolonsContextBehavior,
-    key: &MapString,
-) -> Result<StagedReference, HolonError> {
-    let staging_service = get_staging_service(context);
-    let staging_service_borrow = staging_service.borrow();
-    staging_service_borrow.get_staged_holon_by_key(key)
-}
-// Standalone function to summarize a vector of Holons
-pub fn summarize_holons(holons: &Vec<Holon>) -> String {
-    let summaries: Vec<String> = holons.iter().map(|holon| holon.summarize()).collect();
-    format!("Holons: [{}]", summaries.join(", "))
-}
 
 /// Commits the state of all staged holons and their relationships to the DHT.
 ///
@@ -148,6 +125,44 @@ pub fn delete_holon_api(
     delete_service.delete_holon(&local_id)
 }
 
+pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+    let holon_service = get_holon_service(context);
+    holon_service.get_all_holons(context)
+}
+
+fn get_holon_service(context: &dyn HolonsContextBehavior) -> Arc<dyn HolonServiceApi> {
+    let space_manager = context.get_space_manager();
+    let holon_service = space_manager.get_holon_service();
+
+    Arc::clone(&holon_service)
+}
+
+pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {
+    let key_option = map.get(&PropertyName(MapString("key".to_string())));
+    if let Some(key) = key_option {
+        Some(MapString(key.into()))
+    } else {
+        None
+    }
+}
+
+pub fn get_staged_holon_by_key(
+    context: &dyn HolonsContextBehavior,
+    key: &MapString,
+) -> Result<StagedReference, HolonError> {
+    let staging_service = get_staging_service(context);
+    let staging_service_borrow = staging_service.borrow();
+    staging_service_borrow.get_staged_holon_by_key(key)
+}
+
+fn get_staging_service(
+    context: &dyn HolonsContextBehavior,
+) -> Arc<RefCell<dyn HolonStagingBehavior>> {
+    let space_manager = context.get_space_manager();
+
+    space_manager.get_staging_behavior_access()
+}
+
 /// Stages a new holon as a clone of the original holon.
 ///
 /// This function creates a new holon in the staging area by cloning the `original_holon`,
@@ -236,17 +251,8 @@ pub fn stage_new_version_api(
     Ok(staged_reference)
 }
 
-fn get_staging_service(
-    context: &dyn HolonsContextBehavior,
-) -> Arc<RefCell<dyn HolonStagingBehavior>> {
-    let space_manager = context.get_space_manager();
-
-    space_manager.get_staging_behavior_access()
-}
-
-fn get_holon_service(context: &dyn HolonsContextBehavior) -> Arc<dyn HolonServiceApi> {
-    let space_manager = context.get_space_manager();
-    let holon_service = space_manager.get_holon_service();
-
-    Arc::clone(&holon_service)
+// Standalone function to summarize a vector of Holons
+pub fn summarize_holons(holons: &Vec<Holon>) -> String {
+    let summaries: Vec<String> = holons.iter().map(|holon| holon.summarize()).collect();
+    format!("Holons: [{}]", summaries.join(", "))
 }

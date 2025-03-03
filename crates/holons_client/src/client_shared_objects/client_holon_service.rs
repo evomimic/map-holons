@@ -36,6 +36,10 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
+    fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+        todo!()
+    }
+
     fn stage_new_from_clone(
         &self,
         _context: &dyn HolonsContextBehavior,

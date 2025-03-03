@@ -25,7 +25,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use super::get_all_relationship_links;
+use super::{fetch_links_to_all_holons, get_all_relationship_links};
 
 // #[hdk_entry_helper]
 #[derive(Clone)]
@@ -285,6 +285,18 @@ impl HolonServiceApi for GuestHolonService {
             let holon_reference = smartlink.to_holon_reference();
             collection.add_reference_with_key(smartlink.get_key().as_ref(), &holon_reference)?;
         }
+        Ok(collection)
+    }
+
+    fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+        let mut collection = HolonCollection::new_existing();
+        let smart_links = fetch_links_to_all_holons()?;
+        let mut holon_references = Vec::new();
+        for link in smart_links {
+            holon_references.push(link.to_holon_reference());
+        }
+        collection.add_references(context, holon_references);
+
         Ok(collection)
     }
 
