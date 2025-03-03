@@ -4,6 +4,7 @@ use async_std::task;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
+use holons_core::HolonCollectionApi;
 
 use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
@@ -37,16 +38,12 @@ pub async fn execute_ensure_database_count(
     let response = test_state.dance_call_service.dance_call(context, request);
 
     // 4. Verify response contains Holons
-    if let ResponseBody::Holons(holons) = response.body {
-        let actual_count = MapInteger(holons.len() as i64);
+    if let ResponseBody::HolonCollection(holon_collection) = response.body {
+        let actual_count = holon_collection.get_count();
         info!(
             "--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons ---",
             expected_count, actual_count.0
         );
-
-        for holon in holons {
-            info!("{:?}", holon.summarize());
-        }
 
         // 5. Assert that the expected count matches actual count
         assert_eq!(expected_count, actual_count);

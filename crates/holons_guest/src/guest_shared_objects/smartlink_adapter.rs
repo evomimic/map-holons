@@ -52,24 +52,26 @@ impl SmartLink {
 
 // UTILITY FUNCTIONS //
 
-pub fn fetch_links_to_all_holons() -> Result<Vec<SmartLink>, HolonError> {
+pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
     let path = Path::from("all_holon_nodes");
     let links = get_links(
         GetLinksInputBuilder::try_new(path.path_entry_hash()?, LinkTypes::AllHolonNodes)?.build(),
     )?;
+    let mut holon_ids = Vec::new();
     info!(
         "Retrieved {:?} links for 'all_holon_nodes' path, converting to SmartLinks..",
         links.len()
     );
-    let mut smart_links = Vec::new();
+    debug!("Links: {:?}", links);
     for link in links {
-        let source_hash = link.base.clone().into_action_hash().ok_or(
-            HolonError::HashConversion("Source/Base".to_string(), "ActionHash".to_string()),
-        )?;
-        smart_links.push(get_smartlink_from_link(source_hash, link)?);
+        let holon_id =
+            HolonId::Local(LocalId::from(link.target.clone().into_action_hash().ok_or(
+                HolonError::HashConversion("Source/Base".to_string(), "ActionHash".to_string()),
+            )?));
+        holon_ids.push(holon_id);
     }
 
-    Ok(smart_links)
+    Ok(holon_ids)
 }
 
 /// Gets all SmartLinks across all relationships from the given source
