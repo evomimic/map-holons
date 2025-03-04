@@ -9,7 +9,7 @@ use holons_core::core_shared_objects::{
     AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState,
     NurseryAccess, RelationshipName, StagedRelationshipMap,
 };
-use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
+use holons_core::reference_layer::{smart_reference, HolonServiceApi, HolonsContextBehavior};
 use holons_core::{
     HolonCollectionApi, HolonReadable, HolonReference, HolonWritable,
     SmartReference, StagedReference,
@@ -25,7 +25,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use super::get_all_relationship_links;
+use super::{fetch_links_to_all_holons, get_all_relationship_links};
 
 // #[hdk_entry_helper]
 #[derive(Clone)]
@@ -285,6 +285,18 @@ impl HolonServiceApi for GuestHolonService {
             let holon_reference = smartlink.to_holon_reference();
             collection.add_reference_with_key(smartlink.get_key().as_ref(), &holon_reference)?;
         }
+        Ok(collection)
+    }
+
+    fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+        let mut collection = HolonCollection::new_existing();
+        let holon_ids = fetch_links_to_all_holons()?;
+        let mut holon_references = Vec::new();
+        for id in holon_ids {
+            holon_references.push(HolonReference::from_id(id));
+        }
+        collection.add_references(context, holon_references)?;
+
         Ok(collection)
     }
 

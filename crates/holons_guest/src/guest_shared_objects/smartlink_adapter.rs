@@ -9,6 +9,7 @@ use shared_types_holon::{
 use holons_core::core_shared_objects::{get_key_from_property_map, HolonError, RelationshipName};
 use holons_core::reference_layer::{HolonReference, SmartReference};
 use std::{collections::BTreeMap, str};
+
 // const fn smartlink_tag_header_length() -> usize {
 //     // leaving this nomenclature for now
 //     SMARTLINK_HEADER_BYTES.len()
@@ -50,6 +51,28 @@ impl SmartLink {
 }
 
 // UTILITY FUNCTIONS //
+
+pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
+    let path = Path::from("all_holon_nodes");
+    let links = get_links(
+        GetLinksInputBuilder::try_new(path.path_entry_hash()?, LinkTypes::AllHolonNodes)?.build(),
+    )?;
+    let mut holon_ids = Vec::new();
+    info!(
+        "Retrieved {:?} links for 'all_holon_nodes' path, converting to SmartLinks..",
+        links.len()
+    );
+    debug!("Links: {:?}", links);
+    for link in links {
+        let holon_id =
+            HolonId::Local(LocalId::from(link.target.clone().into_action_hash().ok_or(
+                HolonError::HashConversion("Source/Base".to_string(), "ActionHash".to_string()),
+            )?));
+        holon_ids.push(holon_id);
+    }
+
+    Ok(holon_ids)
+}
 
 /// Gets all SmartLinks across all relationships from the given source
 pub fn get_all_relationship_links(local_source_id: &LocalId) -> Result<Vec<SmartLink>, HolonError> {

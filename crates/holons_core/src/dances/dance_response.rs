@@ -6,7 +6,7 @@ use crate::core_shared_objects::{summarize_holons, Holon, HolonError};
 use crate::query_layer::NodeCollection;
 
 use crate::dances::SessionState;
-use crate::{HolonReference, StagedReference};
+use crate::{HolonCollection, HolonReference, StagedReference};
 use shared_types_holon::MapString;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -42,11 +42,12 @@ pub enum ResponseStatusCode {
 pub enum ResponseBody {
     None,
     Holon(Holon),
+    HolonCollection(HolonCollection),
     Holons(Vec<Holon>), // will be replaced by SmartCollection once supported
+    HolonReference(HolonReference),
+    NodeCollection(NodeCollection),
     // SmartCollection(SmartCollection),
     StagedRef(StagedReference),
-    HolonReference(HolonReference),
-    Collection(NodeCollection),
 }
 
 impl From<HolonError> for ResponseStatusCode {

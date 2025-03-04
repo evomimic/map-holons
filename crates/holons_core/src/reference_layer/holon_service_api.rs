@@ -24,6 +24,9 @@ pub trait HolonServiceApi: Debug {
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
 
+    /// Retrieves all persisted Holons, as a HolonCollection
+    fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError>;
+
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
     fn stage_new_from_clone(
