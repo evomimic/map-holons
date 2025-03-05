@@ -34,7 +34,7 @@ pub struct TestHolonData {
 /// - `C`: A type implementing `DanceCaller`, used to execute dance calls.
 #[derive(Debug)]
 pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
-    pub context: Arc<dyn HolonsContextBehavior>,
+    context: Arc<dyn HolonsContextBehavior>,
     pub dance_call_service: Arc<DanceCallService<C>>,
     pub created_holons: BTreeMap<MapString, Holon>,
 }
@@ -176,6 +176,9 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
             dance_call_service,
             created_holons: BTreeMap::new(),
         }
+    }
+    pub fn context(&self) -> &dyn HolonsContextBehavior {
+        &*self.context
     }
     pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
         self.created_holons.get(key).cloned()

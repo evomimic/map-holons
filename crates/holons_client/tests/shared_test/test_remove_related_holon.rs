@@ -46,7 +46,7 @@ pub async fn execute_remove_related_holons(
     info!("--- TEST STEP: Removing Related Holons ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build the DanceRequest (state is handled inside dance_call)
     let request = build_remove_related_holons_dance_request(

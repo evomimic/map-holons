@@ -48,7 +48,7 @@ pub async fn execute_stage_new_from_clone(
     info!("--- TEST STEP: Cloning a Holon ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Construct the HolonReference to the original holon
     let original_holon_ref: HolonReference = match original_test_ref {

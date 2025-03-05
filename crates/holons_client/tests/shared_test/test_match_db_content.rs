@@ -28,7 +28,7 @@ pub async fn execute_match_db_content(
     info!("test_state {:#?}", test_state);
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Iterate through all created holons and verify them in the database
     for (_key, expected_holon) in test_state.created_holons.clone() {

@@ -33,7 +33,7 @@ pub async fn execute_with_properties(
     info!("--- TEST STEP: Updating Holon with Properties ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     debug!("Original Holon: {:?}", original_holon);
 

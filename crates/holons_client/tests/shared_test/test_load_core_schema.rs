@@ -24,7 +24,7 @@ pub async fn execute_load_new_schema(
     info!("--- TEST STEP: Loading Core Schema ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build the load_core_schema DanceRequest
     let request =

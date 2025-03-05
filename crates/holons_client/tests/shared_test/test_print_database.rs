@@ -26,7 +26,7 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
     info!("--- TEST STEP: Print Database Contents ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build the get_all_holons DanceRequest
     let request =
