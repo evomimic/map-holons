@@ -88,4 +88,10 @@ pub trait HolonSpaceBehavior {
     /// # Returns
     /// - An `Arc<RefCell<dyn HolonCollectionApi>>` for managing transient holon collections.
     fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>>;
+
+    /// Updates the local space holon reference.
+    ///
+    /// # Arguments
+    /// - `space` - The new `HolonReference` for the space.
+    fn set_space_holon(&self, space: HolonReference);
 }

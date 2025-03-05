@@ -30,6 +30,7 @@ impl SmartReference {
     pub fn new_from_id(holon_id: HolonId) -> Self {
         SmartReference { holon_id, smart_property_values: None }
     }
+
     pub fn clone_reference(&self) -> SmartReference {
         SmartReference {
             holon_id: self.holon_id.clone(),

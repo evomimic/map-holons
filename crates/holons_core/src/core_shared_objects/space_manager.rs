@@ -14,22 +14,21 @@ use std::sync::Arc;
 use crate::HolonCollectionApi;
 use std::fmt::{Debug, Formatter, Result};
 
-
 pub struct HolonSpaceManager {
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
-    pub holon_service: Arc<dyn HolonServiceApi>,
+    holon_service: Arc<dyn HolonServiceApi>,
 
     /// Optional reference to the space holon (authoritative context for other holons).
-    pub local_holon_space: Option<HolonReference>,
+    local_holon_space: RefCell<Option<HolonReference>>,
 
     /// The Nursery manages **staged holons** for commit operations.
-    pub nursery: Arc<RefCell<Nursery>>,
+    nursery: Arc<RefCell<Nursery>>,
 
     /// Manages cache access for retrieving both local and external holons efficiently.
-    pub cache_request_router: Arc<dyn HolonCacheAccess>,
+    cache_request_router: Arc<dyn HolonCacheAccess>,
 
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
-    pub transient_state: Arc<RefCell<TransientCollection>>,
+    transient_state: Arc<RefCell<TransientCollection>>,
 }
 
 impl HolonSpaceManager {
@@ -71,19 +70,11 @@ impl HolonSpaceManager {
         // Step 4: Initialize and return the HolonSpaceManager
         Self {
             holon_service,
-            local_holon_space,
+            local_holon_space: RefCell::new(local_holon_space),
             nursery: nursery_arc,
             cache_request_router,
             transient_state: Arc::new(RefCell::new(TransientCollection::new())),
         }
-    }
-
-    /// Updates the local space holon reference.
-    ///
-    /// # Arguments
-    /// - `space` - The new `HolonReference` for the space.
-    pub fn set_space_holon(&mut self, space: HolonReference) {
-        self.local_holon_space = Some(space);
     }
 }
 
@@ -105,7 +96,7 @@ impl HolonSpaceBehavior for HolonSpaceManager {
 
     /// Retrieves a reference to the space holon if it exists.
     fn get_space_holon(&self) -> Option<HolonReference> {
-        self.local_holon_space.clone()
+        self.local_holon_space.borrow().clone()
     }
 
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
@@ -126,6 +117,10 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Retrieves a shared reference to the transient state.
     fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>> {
         Arc::clone(&self.transient_state) as Arc<RefCell<dyn HolonCollectionApi>>
+    }
+
+    fn set_space_holon(&self, holon: HolonReference) {
+        *self.local_holon_space.borrow_mut() = Some(holon);
     }
 }
 impl Debug for HolonSpaceManager {

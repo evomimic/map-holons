@@ -41,7 +41,7 @@ pub async fn execute_stage_new_holon(
 
     // 3. Call the dance
     let response = test_state.dance_call_service.dance_call(context, request);
-    debug!("Dance Response: {:#?}", response.clone());
+    info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status
     assert_eq!(

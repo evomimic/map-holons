@@ -89,13 +89,16 @@ pub fn init_guest_context(
     })?;
     service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
 
-    // Step 4: Ensure HolonSpace Holon exists in the local DHT
-    service.ensure_local_holon_space()?;
+    // Step 4: Ensure HolonSpace Holon exists
+    let ensured_local_space_holon = match local_space_holon {
+        Some(space_holon) => space_holon, // space holon already in session state
+        None => service.ensure_local_holon_space()?, // get space_holon from DHT, creating it if necessary
+    };
 
     // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
     let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
         guest_holon_service, // ✅ No need to clone, safe ownership transfer
-        local_space_holon,
+        Some(ensured_local_space_holon),
         ServiceRoutingPolicy::Combined,
         nursery, // ✅ Injected
     ));
