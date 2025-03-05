@@ -14,7 +14,7 @@ use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{HolonReadable, HolonReference, SmartReference};
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.

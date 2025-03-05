@@ -28,6 +28,8 @@ use shared_types_holon::{
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
 
+use super::BOOK_KEY;
+
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
@@ -63,10 +65,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // 5) (disabled) Try to remove related holons using invalid relationship name
     // 6) Remove 1 related holon
 
-    let book_key = MapString("Emerging World".to_string());
-
     // Retrieve the book from the context
-    let staged_book_holon_ref = get_staged_holon_by_key(&*fixture_context, &book_key)?;
+    let staged_book_holon_ref =
+        get_staged_holon_by_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
 
     // Get its current authors
 
@@ -120,7 +121,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     //  QUERY RELATIONSHIPS  //
     let query_expression = QueryExpression::new(relationship_name.clone());
     test_case.add_query_relationships_step(
-        book_key.clone(),
+        MapString(BOOK_KEY.to_string()),
         query_expression,
         ResponseStatusCode::OK,
     )?;

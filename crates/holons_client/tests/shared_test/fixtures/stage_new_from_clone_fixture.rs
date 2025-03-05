@@ -73,7 +73,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let cloned_book_ref = staging_service.borrow().stage_new_holon(cloned_book)?;
 
     test_case.add_stage_new_from_clone_step(
-        TestReference::StagedHolon(cloned_book_ref.clone()),
+        TestReference::StagedHolon(book_holon_ref.clone()),
         ResponseStatusCode::OK,
     )?;
 

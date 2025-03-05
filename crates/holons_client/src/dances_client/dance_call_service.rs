@@ -4,7 +4,7 @@ use crate::dances_client::ConductorDanceCaller;
 
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
 use holons_core::HolonsContextBehavior;
-use tracing::{debug, error, info, trace, warn, Level};
+use tracing::debug;
 
 /// A service that executes dance calls while managing session state.
 ///
@@ -65,7 +65,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         self.load_nursery(context, response_session_state);
 
         // 5. Update space manager's local_holon_space without moving response
-        let mut space_manager = context.get_space_manager();
+        let space_manager = context.get_space_manager();
         space_manager.set_space_holon(response_session_state.get_local_holon_space().unwrap());
 
         response

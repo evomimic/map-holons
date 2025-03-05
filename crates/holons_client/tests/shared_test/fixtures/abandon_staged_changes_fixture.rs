@@ -24,6 +24,8 @@ use shared_types_holon::{
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
 
+use super::{BOOK_KEY, PERSON_1_KEY};
+
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
 pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
@@ -52,11 +54,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
     expected_count += staging_service.borrow().staged_count();
 
-    let person_1_key = MapString("Roger Briggs".to_string());
-    let person_1_ref = staging_service.borrow().get_staged_holon_by_key(&person_1_key)?;
+    let person_1_ref =
+        staging_service.borrow().get_staged_holon_by_key(&MapString(PERSON_1_KEY.to_string()))?;
 
-    let book_key = MapString("Emerging World".to_string());
-    let book_ref = staging_service.borrow().get_staged_holon_by_key(&book_key)?;
+    let book_ref =
+        staging_service.borrow().get_staged_holon_by_key(&MapString(BOOK_KEY.to_string()))?;
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
@@ -131,7 +133,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // ADD STEP: QUERY RELATIONSHIPS //
     let query_expression = QueryExpression::new(relationship_name.clone());
     test_case.add_query_relationships_step(
-        book_key.clone(),
+        MapString(BOOK_KEY.to_string()),
         query_expression,
         ResponseStatusCode::OK,
     )?;
