@@ -49,8 +49,18 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     let publisher_holon_reference =
         staging_service.borrow().get_staged_holon_by_key(&publisher_key)?;
 
-    // CLONE A STAGED HOLON
-    //  STAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
+    // Clone and Modify a Staged Holon
+    // When stage_new_from_clone is executed (during the test execution phase, it will add an exact
+    // copy of the book holon to the Nursery. We then want to modify its key a few properties
+    // and add modify a few relationships before we commit it and compare expected clone with actual.
+    //
+    //
+    // The basic strategy is to use the fixture's nursery to create the expected data so we can
+    // them to supply data to test step builders.
+    // 1. Add a stage_new_from_cloneCreate a local clone of the book holon
+    // 2. Create a PropertyMap with the intended property updates
+    // 3.
+    // 1. Within the fixture... clone the book holon and stage it in the fixture nurseryTAGE_NEW_FROM_CLONE -- StagedReference -- Book Holon Clone  //
 
     let mut cloned_book = book_holon_ref.clone_holon(&*fixture_context)?;
     let cloned_book_key = MapString(format!("A clone from: {}", book_key.0));
@@ -76,6 +86,27 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         TestReference::StagedHolon(book_holon_ref.clone()),
         ResponseStatusCode::OK,
     )?;
+
+    //  CHANGE PROPERTIES  //
+
+    // let cloned_from_staged_book_key = BaseValue::StringValue(MapString(
+    //     "A clone from the saved Holon: Emerging World".to_string(),
+    // ));
+    // let mut changed_properties = PropertyMap::new();
+    // changed_properties
+    //     .insert(PropertyName(MapString("title".to_string())), cloned_from_staged_book_key.clone());
+    // changed_properties
+    //     .insert(PropertyName(MapString("key".to_string())), cloned_from_staged_book_key);
+    // changed_properties.insert(
+    //     PropertyName(MapString("description".to_string())),
+    //     BaseValue::StringValue(MapString("this is testing a clone from a staged Holon, changing it, modifying relationships, then committing".to_string())),
+    // );
+    //
+    // test_case.add_with_properties_step(
+    //     cloned_from_staged_book_index,
+    //     changed_properties.clone(),
+    //     ResponseStatusCode::OK,
+    // )?;
 
     /* TODO: The following code needs to rewritten to setup the add related holons to cloned book
 

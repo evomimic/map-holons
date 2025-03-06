@@ -91,7 +91,7 @@ pub async fn execute_stage_new_from_clone(
     // 6. If successful, verify the cloned Holon
     if response.status_code == ResponseStatusCode::OK {
         if let ResponseBody::StagedRef(cloned_holon) = response.body {
-            debug!("Cloned holon reference returned: {:?}", cloned_holon);
+            info!("Cloned holon reference returned: {:?}", cloned_holon);
 
             assert_eq!(
                 original_holon.essential_content(),
