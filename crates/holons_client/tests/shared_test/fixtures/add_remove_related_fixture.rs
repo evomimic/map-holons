@@ -15,6 +15,8 @@ use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keys
 
 use crate::shared_test::test_context::init_test_context;
 use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
+use crate::shared_test::test_data_types::BOOK_KEY;
+use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::holon_operations_api::*;
 use holons_core::query_layer::QueryExpression;
@@ -27,8 +29,6 @@ use shared_types_holon::{
 };
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
-
-use super::BOOK_KEY;
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
@@ -44,6 +44,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
          8) Commit,\n\
          9) QueryRelationships.\n".to_string(),
     );
+
+    let _ = holochain_trace::test_run();
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
@@ -61,6 +63,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
+    info!("fixture: book and author setup complete.");
+
     // 4) (disabled) Try to remove related holons using invalid source holon
     // 5) (disabled) Try to remove related holons using invalid relationship name
     // 6) Remove 1 related holon
@@ -74,9 +78,13 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let authors_ref =
         staged_book_holon_ref.get_related_holons(&*fixture_context, &relationship_name)?;
 
+    info!("authors retrieved for book: {:?}", authors_ref);
+
     let author_name_to_remove = MapString("George Smith".to_string());
 
     let maybe_author_to_remove = authors_ref.as_ref().get_by_key(&author_name_to_remove)?;
+
+    info!("result of searching for George Smith authors: {:?}", maybe_author_to_remove);
 
     if let Some(author_to_remove) = maybe_author_to_remove {
         let mut remove_vector = Vec::new();

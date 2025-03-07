@@ -178,7 +178,7 @@ impl HolonCollectionApi for HolonCollection {
                     // let existing_holon_ref = &self.members[index];
                     warn!("Duplicate holons with key {:#?}", key.0.clone());
                 } else {
-                    let index = self.members.len();
+                    let index = self.members.len() - 1;
                     // self.members.push(holon_ref.clone());
                     self.keyed_index.insert(key, index);
                 }
@@ -197,7 +197,7 @@ impl HolonCollectionApi for HolonCollection {
         reference: &HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let index = self.members.len();
+        let index = self.members.len() - 1;
         self.members.push(reference.clone());
         if let Some(key) = key {
             self.keyed_index.insert(key.clone(), index);
@@ -220,6 +220,7 @@ impl HolonCollectionApi for HolonCollection {
     fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let index = self.keyed_index.get(key);
+        debug!("Found {:?} at index: {:?}", key, index);
         if let Some(index) = index {
             Ok(Some(self.members[*index].clone()))
         } else {

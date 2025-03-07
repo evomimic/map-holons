@@ -1,15 +1,13 @@
-use std::collections::BTreeMap;
-
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
-use crate::shared_test::{setup_book_author_steps_with_context, BOOK_KEY};
-use holons_core::core_shared_objects::{HolonError, RelationshipName};
+use crate::shared_test::setup_book_author_steps_with_context;
+use crate::shared_test::test_data_types::{DancesTestCase, BOOK_KEY};
+use holons_core::core_shared_objects::HolonError;
 
 use crate::shared_test::test_context::init_test_context;
 use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::HolonReference;
 use rstest::*;
-use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyName};
+use shared_types_holon::{BaseValue, MapInteger, MapString};
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]

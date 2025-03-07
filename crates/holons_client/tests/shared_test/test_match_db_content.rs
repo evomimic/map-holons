@@ -25,7 +25,6 @@ pub async fn execute_match_db_content(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
 ) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
-    info!("test_state {:#?}", test_state);
 
     // 1. Get context from test_state
     let context = test_state.context();

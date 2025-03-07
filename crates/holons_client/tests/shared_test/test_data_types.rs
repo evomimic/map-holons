@@ -1,20 +1,28 @@
 use derive_new::new;
 
-use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
+use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
 
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
-use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
-use holons_core::core_shared_objects::{Holon, HolonError, HolonPool, RelationshipName};
-use holons_core::dances::{ResponseStatusCode, SessionState};
+use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
+use holons_core::dances::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
-use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyMap, PropertyValue};
+use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::sync::Arc;
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
+
+// These constants allow consistency between the helper function and its callers
+pub const BOOK_KEY: &str =
+    "Emerging World: The Evolution of Consciousness and the Future of Humanity";
+pub const PERSON_1_KEY: &str = "Roger Briggs";
+pub const PERSON_2_KEY: &str = "George Smith";
+pub const PUBLISHER_KEY: &str = "Publishing Company";
+pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AUTHORED_BY";
+pub const EDITOR_FOR: &str = "EDITOR_FOR";
 
 #[derive(new, Clone, Debug)]
 pub struct TestHolonData {
@@ -58,7 +66,7 @@ pub enum DanceTestStep {
     AddRelatedHolons(
         StagedReference,
         RelationshipName,
-        Vec<HolonReference>,
+        Vec<TestReference>,
         ResponseStatusCode,
         Holon,
     ), // Adds relationship between two Holons
@@ -180,8 +188,117 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
     pub fn context(&self) -> &dyn HolonsContextBehavior {
         &*self.context
     }
+
+    /// Converts a vector of [`HolonReference`]s into a vector of [`TestReference`]s.
+    ///
+    /// For `HolonReference::Smart` entries, this method calls `get_key` on the `SmartReference`.
+    /// If `get_key` fails or returns `None`, an error is returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `holon_references` - A vector of `HolonReference`s to convert.
+    /// * `context` - A reference to the [`HolonsContextBehavior`] for resolving keys.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<TestReference>)` on success.
+    /// * `Err(HolonError)` if any `SmartReference` fails to resolve a valid key.
+    pub fn convert_holon_references_to_test_references(
+        &self,
+        holon_references: &[HolonReference],
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Vec<TestReference>, HolonError> {
+        holon_references
+            .iter()
+            .map(|reference| match reference {
+                HolonReference::Staged(staged_ref) => {
+                    Ok(TestReference::StagedHolon(staged_ref.clone()))
+                }
+                HolonReference::Smart(smart_ref) => match smart_ref.get_key(context)? {
+                    Some(key) => Ok(TestReference::SavedHolon(key)),
+                    None => Err(HolonError::InvalidHolonReference(
+                        "SmartReference failed to provide a valid key".to_string(),
+                    )),
+                },
+            })
+            .collect()
+    }
     pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
         self.created_holons.get(key).cloned()
+    }
+
+    /// Resolves a [`TestReference`] into a [`HolonReference`].
+    ///
+    /// This function attempts to resolve a `TestReference` into a valid `HolonReference`.
+    /// - If the reference is a `StagedHolon`, it directly converts it into a `HolonReference::Staged`.
+    /// - If the reference is a `SavedHolon`, it looks up the corresponding `Holon` by key.
+    ///   - If the `Holon` is found, it extracts its local ID and converts it into a `HolonReference`.
+    ///   - If the `Holon` is not found or its local ID cannot be retrieved, an error is returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `test_ref` - The [`TestReference`] to resolve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(HolonReference)` if resolution succeeds.
+    /// * `Err(HolonError::InvalidHolonReference)` if:
+    ///   - The referenced `SavedHolon` does not exist.
+    ///   - Retrieving the local ID of the `Holon` fails.
+    ///
+    /// # Errors
+    ///
+    /// This function returns a `HolonError::InvalidHolonReference` if:
+    /// - The given `SavedHolon` key does not correspond to a known `Holon`.
+    /// - Retrieving the `Holon`'s local ID fails.
+
+    pub fn resolve_test_reference(
+        &self,
+        test_ref: &TestReference,
+    ) -> Result<HolonReference, HolonError> {
+        match test_ref {
+            TestReference::StagedHolon(staged_reference) => {
+                Ok(HolonReference::Staged(staged_reference.clone()))
+            }
+            TestReference::SavedHolon(key) => {
+                let holon = self.get_created_holon_by_key(key).ok_or_else(|| {
+                    HolonError::InvalidHolonReference(format!(
+                        "Couldn't resolve TestReference for SavedHolon({})",
+                        key
+                    ))
+                })?;
+
+                let holon_id = HolonId::from(holon.get_local_id().map_err(|e| {
+                    HolonError::InvalidHolonReference(format!(
+                        "Couldn't resolve TestReference for SavedHolon({}): {}",
+                        key, e
+                    ))
+                })?);
+
+                Ok(HolonReference::from_id(holon_id))
+            }
+        }
+    }
+    /// Resolves a vector of [`TestReference`]s into a vector of [`HolonReference`]s.
+    ///
+    /// # Arguments
+    ///
+    /// * `test_refs` - A vector of `TestReference`s to resolve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<HolonReference>)` if all references are successfully resolved.
+    /// * `Err(HolonError)` if any reference fails to resolve.
+    ///
+    /// # Errors
+    ///
+    /// If any `TestReference` cannot be resolved, this function returns the first encountered error.
+    ///
+    pub fn resolve_test_reference_vector(
+        &self,
+        test_refs: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        test_refs.iter().map(|test_ref| self.resolve_test_reference(test_ref)).collect()
     }
 }
 
@@ -272,7 +389,7 @@ impl DancesTestCase {
         &mut self,
         staged_holon: StagedReference, // "owning" source Holon, which owns the Relationship
         relationship_name: RelationshipName,
-        related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
+        related_holons: Vec<TestReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
         expected_holon: Holon,
     ) -> Result<(), HolonError> {

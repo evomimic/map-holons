@@ -1,31 +1,19 @@
 #![allow(dead_code)]
 
-// use crate::get_holon_by_key_from_test_state;
-use core::panic;
-use std::cell::RefCell;
-use tracing::{error, info, warn};
 //use holochain::core::author_key_is_valid;
 
 use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_data_types::DancesTestCase;
+use crate::shared_test::test_data_types::{DancesTestCase, TestReference, BOOK_KEY, PERSON_1_KEY};
 
 use crate::shared_test::test_context::init_test_context;
 use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
 use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
-use pretty_assertions::assert_eq;
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{
-    HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
-use std::collections::btree_map::BTreeMap;
-use std::rc::Rc;
-
-use super::{BOOK_KEY, PERSON_1_KEY};
-
+use shared_types_holon::{MapInteger, MapString, PropertyName};
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
 pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
@@ -45,7 +33,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    let holons_to_add: Vec<HolonReference> = Vec::new();
+    let holons_to_add: Vec<TestReference> = Vec::new();
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
