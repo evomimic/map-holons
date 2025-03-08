@@ -6,13 +6,13 @@ use hdk::prelude::*;
 
 use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use holons_core::core_shared_objects::{
-    AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState,
-    NurseryAccess, RelationshipName, StagedRelationshipMap,
+    AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState, NurseryAccess,
+    RelationshipName, StagedRelationshipMap,
 };
-use holons_core::reference_layer::{smart_reference, HolonServiceApi, HolonsContextBehavior};
+use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{
-    HolonCollectionApi, HolonReadable, HolonReference, HolonWritable,
-    SmartReference, StagedReference,
+    HolonCollectionApi, HolonReadable, HolonReference, HolonWritable, SmartReference,
+    StagedReference,
 };
 use holons_integrity::LinkTypes;
 use shared_types_holon::{
@@ -170,30 +170,35 @@ impl GuestHolonService {
             }
         }
     }
-    /// Ensure that a Local Space Holon exists in the DHT and, if not, creates one. This method
-    /// is intended to be implemented by guest
+    /// Ensures that a Local Space Holon exists in the DHT. If not, it creates one.
     ///
-    /// This function attempts to fetch the SpaceHolon from the persistent store. If that fails,
-    /// it creates one.
-    ///
-    /// # Arguments
-    ///
-    /// * *none*
+    /// This function attempts to fetch the SpaceHolon from persistent storage.
+    /// If previously saved, return a HolonReference to it.
+    /// Otherwise, create (and persist) it and return a HolonReference to it.
     ///
     /// # Returns
     ///
-    /// `Ok(Holon)` the Local Space Holon reference if successful.
-    /// `Err(HolonError)` if any errors occur during the process.
-    pub fn ensure_local_holon_space(&self) -> Result<Holon, HolonError> {
+    /// * `Ok(HolonReference::Smart)` – The Local Space Holon reference if successful.
+    /// * `Err(HolonError)` – If any errors occur during retrieval or creation.
+    pub fn ensure_local_holon_space(&self) -> Result<HolonReference, HolonError> {
         let space_holon_result =
             get_holon_by_path(LOCAL_HOLON_SPACE_PATH.to_string(), LinkTypes::LocalHolonSpace)?;
-        match space_holon_result {
-            Some(holon) => Ok(holon),
+
+        let holon = match space_holon_result {
+            Some(holon) => holon,
             None => {
                 info!("Local Space Holon not found in storage, creating a new one.");
-                self.create_local_space_holon()
+                self.create_local_space_holon()?
             }
-        }
+        };
+
+        holon
+            .get_local_id()
+            .map(|id| HolonReference::Smart(SmartReference::new_from_id(HolonId::Local(id))))
+            .map_err(|e| {
+                error!("Failed to retrieve local holon ID: {:?}", e);
+                e
+            })
     }
 
     // fn get_internal_nursery_access(
@@ -288,7 +293,10 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+    fn get_all_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
         let holon_ids = fetch_links_to_all_holons()?;
         let mut holon_references = Vec::new();
@@ -334,22 +342,24 @@ impl HolonServiceApi for GuestHolonService {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
     /// to be retrieved by key
-    fn stage_new_version(&self, context: &dyn HolonsContextBehavior, original_holon: SmartReference) -> Result<StagedReference, HolonError> {
+    fn stage_new_version(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        original_holon: SmartReference,
+    ) -> Result<StagedReference, HolonError> {
         original_holon.is_accessible(context, AccessType::Clone)?;
 
         let mut cloned_holon = original_holon.clone_holon(context)?;
 
-        cloned_holon.staged_relationship_map = self
-            .clone_existing_relationships_into_staged_map(
-                context,
-                original_holon.get_id()?,
-            )?;
+        cloned_holon.staged_relationship_map =
+            self.clone_existing_relationships_into_staged_map(context, original_holon.get_id()?)?;
 
         let cloned_staged_reference =
             self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;
 
         // Reset the PREDECESSOR to None
-        cloned_staged_reference.with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
+        cloned_staged_reference
+            .with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
 
         Ok(cloned_staged_reference)
     }

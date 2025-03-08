@@ -13,7 +13,7 @@ use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
 /// state (and therefore owned by the CacheManager) or being staged for creation/update (and therefore owned by the
-/// CommitManager).
+/// Nursery).
 ///
 /// HolonReference also hides whether the referenced holon is in the local space or an external space
 pub enum HolonReference {

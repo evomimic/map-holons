@@ -4,6 +4,7 @@ use crate::dances_client::ConductorDanceCaller;
 
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
 use holons_core::HolonsContextBehavior;
+use tracing::debug;
 
 /// A service that executes dance calls while managing session state.
 ///
@@ -40,12 +41,15 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         context: &dyn HolonsContextBehavior,
         mut request: DanceRequest,
     ) -> DanceResponse {
-        // 1. Load session state into the request if it’s missing
-        if request.state.is_none() {
-            let mut session_state = SessionState::default();
-            self.load_session_state(context, &mut session_state);
-            request.state = Some(session_state);
-        }
+        // info!("entered dance call with context: {context} for request: {request:?}");
+
+        // 1. Load session state into the request
+
+        let mut session_state = SessionState::default();
+        self.load_session_state(context, &mut session_state);
+        request.state = Some(session_state);
+
+        debug!("\n\ndance call: request state {:?}", request.state);
 
         // 2. Execute the dance call
         let response = self.conductor.conductor_dance_call(request);
@@ -57,7 +61,12 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         );
 
         // 4. Restore session state from the response
-        self.load_nursery(context, response.state.as_ref().unwrap());
+        let response_session_state = response.state.as_ref().unwrap();
+        self.load_nursery(context, response_session_state);
+
+        // 5. Update space manager's local_holon_space without moving response
+        let space_manager = context.get_space_manager();
+        space_manager.set_space_holon(response_session_state.get_local_holon_space().unwrap());
 
         response
     }
@@ -82,6 +91,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         let space_manager = context.get_space_manager();
         let staged_holons = space_manager.export_staged_holons();
         session_state.set_staged_holons(staged_holons);
+        session_state.set_local_holon_space(space_manager.get_space_holon());
     }
 
     /// Restores the nursery from the given `SessionState`, updating the local HolonSpace.

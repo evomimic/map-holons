@@ -23,7 +23,7 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
     info!("--- TEST STEP: Committing Staged Holons ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build commit DanceRequest (state is handled inside dance_call)
     let request = build_commit_dance_request().expect("Failed to build commit DanceRequest");

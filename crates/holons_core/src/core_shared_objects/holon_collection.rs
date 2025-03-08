@@ -78,29 +78,37 @@ impl HolonCollection {
         match self.state {
             CollectionState::Fetched => match access_type {
                 AccessType::Read | AccessType::Write => Ok(()), // Write access to cached Holons are ok
-                AccessType::Abandon | AccessType::Clone | AccessType::Commit => Err(HolonError::NotAccessible(
-                    format!("{:?}", access_type),
-                    format!("{:?}", self.state),
-                )),
-            },
-            CollectionState::Staged => match access_type {
-                 AccessType::Abandon | AccessType::Clone | AccessType::Commit | AccessType::Read | AccessType::Write => {
-                    Ok(())
+                AccessType::Abandon | AccessType::Clone | AccessType::Commit => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state),
+                    ))
                 }
             },
+            CollectionState::Staged => match access_type {
+                AccessType::Abandon
+                | AccessType::Clone
+                | AccessType::Commit
+                | AccessType::Read
+                | AccessType::Write => Ok(()),
+            },
             CollectionState::Saved => match access_type {
-                AccessType::Commit | AccessType::Read=> Ok(()),
-                AccessType::Clone | AccessType::Write | AccessType::Abandon => Err(HolonError::NotAccessible(
-                    format!("{:?}", access_type),
-                    format!("{:?}", self.state),
-                )),
+                AccessType::Commit | AccessType::Read => Ok(()),
+                AccessType::Clone | AccessType::Write | AccessType::Abandon => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state),
+                    ))
+                }
             },
             CollectionState::Abandoned => match access_type {
                 AccessType::Abandon | AccessType::Commit => Ok(()),
-                AccessType::Clone | AccessType::Read | AccessType::Write => Err(HolonError::NotAccessible(
-                    format!("{:?}", access_type),
-                    format!("{:?}", self.state),
-                )),
+                AccessType::Clone | AccessType::Read | AccessType::Write => {
+                    Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        format!("{:?}", self.state),
+                    ))
+                }
             },
         }
     }
@@ -158,6 +166,11 @@ impl HolonCollectionApi for HolonCollection {
         self.is_accessible(AccessType::Write)?;
 
         for holon_ref in holons {
+            // Add reference to collection
+            self.members.push(holon_ref.clone());
+
+            // Add reference to keyed index (unless it is a duplicate key, in which case just
+            // issue a warning
             let key = holon_ref.get_key(context)?;
 
             if let Some(key) = key {
@@ -165,8 +178,8 @@ impl HolonCollectionApi for HolonCollection {
                     // let existing_holon_ref = &self.members[index];
                     warn!("Duplicate holons with key {:#?}", key.0.clone());
                 } else {
-                    let index = self.members.len();
-                    self.members.push(holon_ref.clone());
+                    let index = self.members.len() - 1;
+                    // self.members.push(holon_ref.clone());
                     self.keyed_index.insert(key, index);
                 }
             }
@@ -184,7 +197,7 @@ impl HolonCollectionApi for HolonCollection {
         reference: &HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let index = self.members.len();
+        let index = self.members.len() - 1;
         self.members.push(reference.clone());
         if let Some(key) = key {
             self.keyed_index.insert(key.clone(), index);
@@ -207,6 +220,7 @@ impl HolonCollectionApi for HolonCollection {
     fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let index = self.keyed_index.get(key);
+        debug!("Found {:?} at index: {:?}", key, index);
         if let Some(index) = index {
             Ok(Some(self.members[*index].clone()))
         } else {

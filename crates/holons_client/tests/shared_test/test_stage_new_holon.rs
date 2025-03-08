@@ -31,7 +31,7 @@ pub async fn execute_stage_new_holon(
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build the DanceRequest
     let request = build_stage_new_holon_dance_request(expected_holon.clone())
@@ -41,7 +41,7 @@ pub async fn execute_stage_new_holon(
 
     // 3. Call the dance
     let response = test_state.dance_call_service.dance_call(context, request);
-    debug!("Dance Response: {:#?}", response.clone());
+    info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status
     assert_eq!(

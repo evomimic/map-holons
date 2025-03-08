@@ -1,41 +1,25 @@
 #![allow(dead_code)]
 
-use core::panic;
-use holochain::core::author_key_is_valid;
+use crate::shared_test::test_data_types::{
+    DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
+    PERSON_2_KEY, PUBLISHER_KEY,
+};
 
-use crate::shared_test::test_data_types::DancesTestCase;
-
-use pretty_assertions::assert_eq;
-use rstest::*;
 use shared_types_holon::value_types::BaseValue;
-use std::collections::btree_map::BTreeMap;
 use std::string::ToString; // Import the test-only extension
 
-use holons_core::core_shared_objects::holon_pool::HolonPool;
-use holons_core::core_shared_objects::{
-    Holon, HolonCollection, HolonError, RelationshipName, TransientCollection,
-};
+use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::holon_operations_api::*;
 
 use holons_core::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
-use shared_types_holon::{
-    HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
+use shared_types_holon::{MapString, PropertyName};
 
 // pub struct TestHolon {
 //     pub staged_index: StagedIndex,
 //     pub key: MapString,
 //     pub expected_holon: Option<Holon>,
 // }
-
-// These constants allow consistency between the helper function and its callers
-pub const BOOK_KEY: &str =
-    "Emerging World: The Evolution of Consciousness and the Future of Humanity";
-pub const PERSON_1_KEY: &str = "Roger Briggs";
-pub const PERSON_2_KEY: &str = "George Smith";
-pub const PUBLISHER_KEY: &str = "Publishing Company";
-pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AUTHORED_BY";
 
 /// This function updates the supplied test_case with a set of steps that establish some basic
 /// data the different test cases can then extend for different purposes.
@@ -134,11 +118,19 @@ pub fn setup_book_author_steps_with_context(
     stage_new_holon_api(context, publisher_holon.clone())?;
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
-    let mut target_references: Vec<HolonReference> = Vec::new();
-    target_references.push(HolonReference::from_staged(person_1_reference));
-    target_references.push(HolonReference::from_staged(person_2_reference));
+    let mut fixture_target_references: Vec<HolonReference> = Vec::new();
+    fixture_target_references.push(HolonReference::from_staged(person_1_reference.clone()));
+    fixture_target_references.push(HolonReference::from_staged(person_2_reference.clone()));
 
-    book_ref.add_related_holons(context, relationship_name.clone(), target_references.clone())?;
+    book_ref.add_related_holons(
+        context,
+        relationship_name.clone(),
+        fixture_target_references.clone(),
+    )?;
+
+    let mut target_references: Vec<TestReference> = Vec::new();
+    target_references.push(TestReference::StagedHolon(person_1_reference));
+    target_references.push(TestReference::StagedHolon(person_2_reference));
 
     // Create the expected_holon
     test_case.add_related_holons_step(

@@ -31,7 +31,7 @@ pub async fn execute_delete_holon(
     );
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Retrieve the Holon to delete
     let holon_to_delete = test_state

@@ -28,7 +28,7 @@ pub async fn execute_ensure_database_count(
     info!("--- TEST STEP: Ensuring database holds {} holons ---", expected_count.0);
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build the get_all_holons DanceRequest
     let request =

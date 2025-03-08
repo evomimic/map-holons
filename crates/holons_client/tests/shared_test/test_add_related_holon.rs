@@ -1,4 +1,4 @@
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase, TestReference};
 use crate::shared_test::*;
 use async_std::task;
 
@@ -20,25 +20,31 @@ use std::collections::BTreeMap;
 use tracing::info;
 
 /// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
-/// and holons
+/// and holon references. Accepting holons_to_add as TestReferences allows the target holons to
+/// be either StagedHolons or SavedHolons. In the latter case, the executor needs to resolve
+/// the TestReference's key into a HolonReference
 ///
 
 pub async fn execute_add_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     source_holon: StagedReference,
     relationship_name: RelationshipName,
-    holons_to_add: Vec<HolonReference>,
+    holons_to_add: Vec<TestReference>,
     expected_response: ResponseStatusCode,
     expected_holon: Holon,
 ) {
     info!("--- TEST STEP: Add Related Holons ---");
 
     // 1. Get the context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Build the DanceRequest (state is handled inside dance_call)
+    let references_to_add = test_state
+        .resolve_test_reference_vector(&holons_to_add)
+        .expect("Failed to resolve one or more TestReferences in execute_add_related_holons");
+
     let request =
-        build_add_related_holons_dance_request(source_holon, relationship_name, holons_to_add)
+        build_add_related_holons_dance_request(source_holon, relationship_name, references_to_add)
             .expect("Failed to build add_related_holons request");
 
     info!("Dance Request: {:#?}", request);

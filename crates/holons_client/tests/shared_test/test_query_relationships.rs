@@ -29,7 +29,7 @@ pub async fn execute_query_relationships(
     info!("--- TEST STEP: Querying Relationships ---");
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 2. Retrieve the source Holon
     let source_holon = test_state

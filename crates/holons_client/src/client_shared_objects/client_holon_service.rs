@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 use holons_core::core_shared_objects::{
     CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
@@ -36,7 +37,10 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+    fn get_all_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<HolonCollection, HolonError> {
         todo!()
     }
 

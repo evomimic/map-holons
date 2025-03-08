@@ -29,7 +29,7 @@ pub async fn execute_stage_new_version(
     let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
 
     // 1. Get context from test_state
-    let context = &*test_state.context;
+    let context = test_state.context();
 
     // 1. Retrieve the original Holon
     let original_holon =
@@ -47,7 +47,7 @@ pub async fn execute_stage_new_version(
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(&*test_state.context, request);
+    let response = test_state.dance_call_service.dance_call(test_state.context(), request);
     info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status
