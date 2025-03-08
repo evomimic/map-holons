@@ -141,7 +141,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     );
 
     test_case.add_with_properties_step(
-        expected_fixture_holon_ref.clone(),
+        expected_executor_holon_ref.clone(),
         changed_properties.clone(),
         ResponseStatusCode::OK,
     )?;

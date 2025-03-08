@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 //! This file defines the DancesAdaptors offered by the descriptors zome.
 //! TODO: Move these adaptors to their own zome (at some point)
 //!

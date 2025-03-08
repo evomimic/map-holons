@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 use holons_core::core_shared_objects::{
     CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };

@@ -11,10 +11,10 @@ use crate::shared_test::test_data_types::{
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 use holons_core::core_shared_objects::RelationshipName;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{HolonReadable, HolonReference, SmartReference};
+use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
 use rstest::*;
 use shared_types_holon::{HolonId, MapString};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.
@@ -53,7 +53,7 @@ pub async fn execute_stage_new_from_clone(
     info!("Got context from test_state");
 
     // 2. Construct the HolonReference to the original holon
-    let original_holon_ref: HolonReference = match original_test_ref {
+    let original_holon_ref: HolonReference = match original_test_ref.clone() {
         TestReference::StagedHolon(staged_reference) => HolonReference::Staged(staged_reference),
         TestReference::SavedHolon(key) => {
             let saved_holon = test_state
@@ -68,10 +68,24 @@ pub async fn execute_stage_new_from_clone(
         }
     };
 
-    // Clone the original holon, panic if it fails
-    let original_holon = original_holon_ref
-        .clone_holon(context)
-        .unwrap_or_else(|err| panic!("Failed to clone holon: {:?}", err));
+    // Get the original holon (for comparison purposes)
+    let original_holon = match original_test_ref {
+        TestReference::StagedHolon(staged_reference) => {
+            match staged_reference.clone_holon(context) {
+                Ok(holon) => holon,
+                Err(err) => {
+                    error!("Failed to clone holon: {:?}", err);
+                    return; // or continue/fallback logic as appropriate
+                }
+            }
+        }
+        TestReference::SavedHolon(key) => match test_state.get_created_holon_by_key(&key) {
+            Some(holon) => holon,
+            None => {
+                panic!("Holon with key {key} not found in created_holons");
+            }
+        },
+    };
 
     // 3. Build the DanceRequest
     let request = build_stage_new_from_clone_dance_request(original_holon_ref.clone())

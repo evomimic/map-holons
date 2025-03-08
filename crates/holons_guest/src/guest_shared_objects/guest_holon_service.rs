@@ -9,7 +9,7 @@ use holons_core::core_shared_objects::{
     AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState, NurseryAccess,
     RelationshipName, StagedRelationshipMap,
 };
-use holons_core::reference_layer::{smart_reference, HolonServiceApi, HolonsContextBehavior};
+use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{
     HolonCollectionApi, HolonReadable, HolonReference, HolonWritable, SmartReference,
     StagedReference,
