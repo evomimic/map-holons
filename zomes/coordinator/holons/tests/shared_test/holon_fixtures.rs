@@ -14,14 +14,11 @@
 #![allow(dead_code)]
 
 use core::panic;
-use holons::context::HolonsContext;
-use holons::helpers::*;
-use holons::holon::Holon;
-use holons::holon_api::*;
+
+use holons_core::core_shared_objects::{Holon, HolonError};
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
-
 // use hdk::prelude::*;
 
 use crate::shared_test::test_data_types::HolonCreatesTestCase;
@@ -30,7 +27,6 @@ use crate::shared_test::test_data_types::HolonCreatesTestCase;
 //     create_example_property_descriptors, create_example_updates_for_property_descriptors,
 // };
 
-use holons::holon_error::HolonError;
 use shared_types_holon::{MapBoolean, MapString, PropertyName};
 
 /// This function creates a set of simple (undescribed) holons

@@ -1,17 +1,15 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
-use holons::context::HolonsContext;
-use holons::holon::Holon;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::holon_writable::HolonWritable;
-use holons::space_manager::HolonStagingBehavior;
-use holons::staged_reference::StagedReference;
+
+use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+
+use holons_core::holon_operations_api::*;
+use holons_core::{
+    Holon, HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+};
 use shared_types_holon::value_types::{BaseType, ValueType};
 use shared_types_holon::{BaseValue, MapString, PropertyName};
 use CoreSchemaPropertyTypeName::TypeName;
-
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 pub struct BooleanTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -22,7 +20,7 @@ pub struct BooleanTypeDefinition {
 /// as MapBoolean. It has no type-specific properties or relationships. Agent-defined types can be the
 /// `ValueType` for a MapProperty.
 pub fn define_boolean_type(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     definition: BooleanTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
@@ -54,7 +52,15 @@ pub fn define_boolean_type(
 
     debug!("Staging... {:#?}", boolean_type.clone());
 
-    let boolean_type_ref = context.space_manager.borrow().stage_new_holon(boolean_type.clone())?;
+    let boolean_type_ref = stage_new_holon_api(context, boolean_type.clone())?;
+
+    // let boolean_type_ref = {
+    //     let staging_behavior = context.get_space_manager().get_staging_behavior_access();
+    //     let mut borrowed_staging_behavior = staging_behavior.borrow_mut(); // Borrow mutably
+    //     let staged_reference =
+    //         borrowed_staging_behavior.stage_new_holon(context, boolean_type.clone())?; // Use it
+    //     staged_reference // Return the result to ensure borrow ends here
+    // };
 
     // Add its relationships
 

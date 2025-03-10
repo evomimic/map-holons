@@ -1,44 +1,21 @@
-use hdi::prelude::debug;
+use hdk::prelude::*;
 
-use hdk::prelude::info;
-use holons::commit_service::CommitResponse;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::space_manager::HolonStagingBehavior;
-use strum::IntoEnumIterator;
-// use holons::holon::Holon;
-use holons::holon_reference::HolonReference;
+use holons_core::{HolonReference, HolonsContextBehavior};
 
-// use holons::staged_reference::StagedReference;
-use shared_types_holon::{MapString, PropertyName};
-
-use descriptors::descriptor_types::{CoreSchemaName, Schema};
-use holons::holon::Holon;
-// use holons::holon_api::get_all_holons;
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
-use holons::json_adapter::as_json;
-// use descriptors::holon_descriptor::{define_holon_type};
-//use descriptors::meta_type_loader::load_core_meta_types;
-// use descriptors::type_descriptor::TypeDescriptorDefinition;
-// use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
 use crate::enum_type_loader::CoreEnumTypeName;
-// use crate::integer_value_type_loader::CoreIntegerValueTypeName;
-// use crate::string_value_type_loader::CoreStringValueTypeName;
-// use crate::enum_type_loader::CoreEnumTypeName;
-// use crate::holon_type_loader::CoreHolonTypeName;
-// use crate::holon_type_loader::CoreHolonTypeName::HolonType;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::meta_type_loader::CoreMetaTypeName;
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
 use crate::value_type_loader::CoreValueTypeName;
-// use crate::meta_type_loader::CoreMetaTypeName;
-// use crate::meta_type_loader::CoreMetaTypeName::{MetaBooleanType, MetaEnumType, MetaEnumVariantType, MetaHolonCollectionType, MetaHolonType, MetaIntegerType, MetaPropertyType, MetaRelationshipType, MetaStringType, MetaType, MetaValueArrayType};
-// use crate::value_type_loader::CoreValueTypeName;
-
-//use descriptors::value_type_loader::load_core_value_types;
+use descriptors::descriptor_types::{CoreSchemaName, Schema};
+use holons_core::core_shared_objects::stage_new_holon_api;
+use holons_core::core_shared_objects::{CommitResponse, HolonError};
+use shared_types_holon::MapString;
+use strum::IntoEnumIterator;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
 /// MAP L0 Schema Descriptors defined in `CoreSchemaNames`
@@ -50,12 +27,13 @@ use crate::value_type_loader::CoreValueTypeName;
 /// The full implementation of this function will emerge incrementally... starting with a minimal schema
 ///
 
-pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, HolonError> {
+pub fn load_core_schema(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
     info!("vvvvvvvv Entered: load_core_schema vvvvvvvvv");
     // Begin by staging `schema`. It's HolonReference becomes the target of
     // the COMPONENT_OF relationship for all schema components
     let _ = context
-        .get_local_space_holon()
+        .get_space_manager()
+        .get_space_holon()
         .ok_or(HolonError::HolonNotFound("Local holon space not found".to_string()));
 
     let schema = Schema::new(
@@ -66,10 +44,13 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
     )?;
 
     info!("Staging Schema...");
-    let staged_schema_ref =
-        HolonReference::Staged(context.space_manager.borrow().stage_new_holon(schema.0.clone())?);
+    let staged_schema_ref = HolonReference::Staged(stage_new_holon_api(context, schema.0.clone())?);
 
-    context.add_reference_to_dance_state(staged_schema_ref.clone())?;
+    context
+        .get_space_manager()
+        .get_transient_state()
+        .borrow_mut()
+        .add_references(context, vec![staged_schema_ref.clone()])?;
 
     let initial_load_set = get_initial_load_set();
 
@@ -93,7 +74,9 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("^^^^^^^ STAGING COMPLETE: Committing schema...");
 
-    let response = context.space_manager.borrow().commit(context)?;
+    let holon_service = context.get_space_manager().get_holon_service();
+
+    let response = holon_service.commit(context)?;
 
     let r = response.clone();
 
@@ -104,29 +87,30 @@ pub fn load_core_schema(context: &HolonsContext) -> Result<CommitResponse, Holon
 
     info!("DATABASE DUMP (max 300 records)");
 
-    let holons = Holon::get_all_holons()?;
-    // for holon in holons.iter().take(30) {
-    //     info!("Holon:\n{}",as_json(holon));
+    // TODO: Restore this functionality once support for get_all_holons is provided
+    // let holons = Holon::get_all_holons()?;
+    // // for holon in holons.iter().take(30) {
+    // //     info!("Holon:\n{}",as_json(holon));
+    // // }
+    //
+    // for holon in holons.iter().take(300) {
+    //     let key_result = holon.get_key();
+    //     let property_name = PropertyName(MapString("base_type".to_string()));
+    //     let base_type = holon.get_property_value(&property_name);
+    //     match key_result {
+    //         Ok(key) => {
+    //             info!(
+    //                 "key = {:?}, base_type= {:?}",
+    //                 key.unwrap_or_else(|| MapString("<None>".to_string())).0,
+    //                 base_type,
+    //             );
+    //             debug!("Holon {}", as_json(&holon));
+    //         }
+    //         Err(holon_error) => {
+    //             panic!("Attempt to get_key() resulted in error {:?}", holon_error,);
+    //         }
+    //     }
     // }
-
-    for holon in holons.iter().take(300) {
-        let key_result = holon.get_key();
-        let property_name = PropertyName(MapString("base_type".to_string()));
-        let base_type = holon.get_property_value(&property_name);
-        match key_result {
-            Ok(key) => {
-                info!(
-                    "key = {:?}, base_type= {:?}",
-                    key.unwrap_or_else(|| MapString("<None>".to_string())).0,
-                    base_type,
-                );
-                debug!("Holon {}", as_json(&holon));
-            }
-            Err(holon_error) => {
-                panic!("Attempt to get_key() resulted in error {:?}", holon_error,);
-            }
-        }
-    }
 
     Ok(response)
 }

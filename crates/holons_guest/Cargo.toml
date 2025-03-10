@@ -1,0 +1,42 @@
+[package]
+name = "holons_guest"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "holons_guest"
+
+[features]
+guest = []  # This crate supports the `guest` feature
+
+[dependencies]
+# General dev-dependencies (platform-agnostic)
+derive-new = { workspace = true }
+Inflector = { workspace = true }
+quick_cache = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Holochain Dependencies
+hdk = { workspace = true }
+hdi = { workspace = true }
+holons_integrity = { workspace = true }
+
+# MAP Dependencies
+shared_types_holon = { workspace = true }
+holons_core = { workspace = true }
+holon_dance_builders = { workspace = true }
+
+
+[dev-dependencies]
+
+async-std = { workspace = true }
+futures = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
+
+# Target-specific dev dependencies for non-WASM builds
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+holochain = { version = "0.3", default-features = false, features = ["test_utils", "sqlite-encrypted"] }
+tokio = { version = "1.35.1", features = ["full"] }

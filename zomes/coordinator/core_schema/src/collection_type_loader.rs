@@ -1,16 +1,12 @@
 use crate::core_schema_types::SchemaNamesTrait;
+use crate::holon_type_loader::CoreHolonTypeName;
 use descriptors::collection_descriptor::CollectionSemantic;
 use descriptors::collection_descriptor::{define_collection_type, CollectionTypeDefinition};
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons::context::HolonsContext;
-use holons::holon_error::HolonError;
-use holons::holon_reference::HolonReference;
-use holons::staged_reference::StagedReference;
+use holons_core::core_shared_objects::HolonError;
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use shared_types_holon::{MapBoolean, MapInteger, MapString};
-// use crate::core_schema_types::CoreSchemaTypeName::HolonType;
-use crate::holon_type_loader::CoreHolonTypeName;
-// use crate::property_type_loader::CorePropertyTypeName::{Description, Name};
 
 #[derive(Debug)]
 pub struct CollectionTypeSpec {
@@ -36,7 +32,7 @@ struct CollectionTypeLoader {
 impl SchemaNamesTrait for CollectionTypeSpec {
     fn load_core_type(
         &self,
-        context: &HolonsContext,
+        context: &dyn HolonsContextBehavior,
         schema: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // Set the type specific variables for this type, then call the load_property_definition
@@ -180,7 +176,7 @@ impl CollectionTypeSpec {
 
 /// This function stages a new collection type definition and adds a reference to it to the dance_state
 fn load_collection_type_definition(
-    context: &HolonsContext,
+    context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
     loader: CollectionTypeLoader,
 ) -> Result<StagedReference, HolonError> {
@@ -214,8 +210,10 @@ fn load_collection_type_definition(
     let staged_ref = define_collection_type(context, schema, definition)?;
 
     context
-        .add_reference_to_dance_state(HolonReference::Staged(staged_ref.clone()))
-        .expect("Unable to add reference to dance_state");
+        .get_space_manager()
+        .get_transient_state()
+        .borrow_mut()
+        .add_references(context, vec![HolonReference::Staged(staged_ref.clone())])?;
 
     Ok(staged_ref)
 }

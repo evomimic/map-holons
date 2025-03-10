@@ -1,10 +1,12 @@
 [workspace]
 members = [
+    # Coordinator Zomes
     "zomes/coordinator/holons",
     "zomes/coordinator/descriptors",
     "zomes/coordinator/core_schema",
-    "zomes/coordinator/dances",
+    # Integrity Zome
     "zomes/integrity/holons_integrity",
+    # Shared Types and Validation
     "crates/shared_types/holon",
     "crates/shared_validation",
     "crates/type_system/base_types",
@@ -12,15 +14,17 @@ members = [
     "crates/type_system/descriptor_types",
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
+    # Shared Core & Guest Libraries
+    "crates/holons_client",
+    "crates/holons_core",
+    "crates/holon_dance_builders",
+    "crates/holons_guest",
 ]
 resolver = "2"
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
 path = "zomes/coordinator/holons"
-
-[workspace.dependencies.dances]
-path = "zomes/coordinator/dances"
 
 [workspace.dependencies.descriptors]
 path = "zomes/coordinator/descriptors"
@@ -37,10 +41,23 @@ path = "crates/shared_types/holon"
 [workspace.dependencies.shared_validation]
 path = "crates/shared_validation"
 
+[workspace.dependencies.holons_core]
+path = "crates/holons_core"
+
+[workspace.dependencies.holons_guest]
+path = "crates/holons_guest"
+
+[workspace.dependencies.holons_client]
+path = "crates/holons_client"
+
+[workspace.dependencies.holon_dance_builders]
+path = "crates/holon_dance_builders"
+
 # External dependencies
 [workspace.dependencies]
 ahash = "=0.8.11"
 derive-new = "0.6"
+hex = "0.4"
 hdi = "0.4"
 hdk = "0.3"
 holochain_integrity_types = "0.3"
