@@ -36,11 +36,11 @@ impl SmartLink {
     /// KEY_PROPERTIES relationship. However, the current parameters to this function are not
     /// sufficient to do this.
     /// TODO: update this function to align with described key property list design
-    pub fn get_key(&self) -> Option<MapString> {
+    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(ref map) = self.smart_property_values {
             get_key_from_property_map(map)
         } else {
-            None
+            Ok(None)
         }
     }
     pub fn to_holon_reference(&self) -> HolonReference {
@@ -303,7 +303,7 @@ fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
                 property_map.insert(
                     PropertyName(MapString(property_name.to_string())),
-                    BaseValue::StringValue(MapString(property_value.to_string())),
+                    Some(BaseValue::StringValue(MapString(property_value.to_string()))),
                 );
             }
         }
@@ -446,13 +446,13 @@ mod tests {
         let mut property_values: PropertyMap = BTreeMap::new();
         let name_1 = PropertyName(MapString("ex_name_1".to_string()));
         let value_1 = BaseValue::StringValue(MapString("ex_value_1".to_string()));
-        property_values.insert(name_1, value_1);
+        property_values.insert(name_1, Some(value_1));
         let name_2 = PropertyName(MapString("ex_name_2".to_string()));
         let value_2 = BaseValue::StringValue(MapString("ex_value_2".to_string()));
-        property_values.insert(name_2, value_2);
+        property_values.insert(name_2, Some(value_2));
         let name_3 = PropertyName(MapString("ex_name_3".to_string()));
         let value_3 = BaseValue::StringValue(MapString("ex_value_3".to_string()));
-        property_values.insert(name_3, value_3);
+        property_values.insert(name_3, Some(value_3));
 
         let encoded_link_tag =
             encode_link_tag(&relationship_name, holon_id, Some(property_values.clone())).unwrap();

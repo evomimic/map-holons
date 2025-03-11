@@ -300,7 +300,7 @@ fn save_smartlinks_for_collection(
                 let mut prop_vals: PropertyMap = BTreeMap::new();
                 prop_vals.insert(
                     PropertyName(MapString("key".to_string())),
-                    BaseValue::StringValue(key),
+                    Some(BaseValue::StringValue(key)),
                 );
                 SmartLink {
                     from_address: source_id.clone(),

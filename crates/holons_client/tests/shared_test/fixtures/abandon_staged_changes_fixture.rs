@@ -77,11 +77,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let mut abandoned_holon_1 = Holon::new();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
-        BaseValue::StringValue(MapString("Abandon1".to_string())),
+        Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
     )?;
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("example abandon".to_string())),
-        BaseValue::StringValue(MapString("test1".to_string())),
+        Some(BaseValue::StringValue(MapString("test1".to_string()))),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
     expected_count += 1;
@@ -90,11 +90,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let mut abandoned_holon_2 = Holon::new();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("key".to_string())),
-        BaseValue::StringValue(MapString("Abandon2".to_string())),
+        Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),
     )?;
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("example abandon".to_string())),
-        BaseValue::StringValue(MapString("test2".to_string())),
+        Some(BaseValue::StringValue(MapString("test2".to_string()))),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
     expected_count += 1;

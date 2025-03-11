@@ -59,32 +59,32 @@ pub fn define_type_descriptor(
     descriptor
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(definition.descriptor_name.clone()),
+            Some(BaseValue::StringValue(definition.descriptor_name.clone())),
         )?
         .with_property_value(
             DescriptorName.as_property_name(),
-            BaseValue::StringValue(definition.descriptor_name.clone()),
+            Some(BaseValue::StringValue(definition.descriptor_name.clone())),
         )?
         .with_property_value(
             Description.as_property_name(),
-            BaseValue::StringValue(definition.description),
+            Some(BaseValue::StringValue(definition.description)),
         )?
-        .with_property_value(Label.as_property_name(), BaseValue::StringValue(definition.label))?
+        .with_property_value(Label.as_property_name(), Some(BaseValue::StringValue(definition.label)))?
         .with_property_value(
             CoreSchemaPropertyTypeName::BaseType.as_property_name(),
-            BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string()))),
+            Some(BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string())))),
         )?
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
-            BaseValue::BooleanValue(definition.is_dependent),
+            Some(BaseValue::BooleanValue(definition.is_dependent)),
         )?
         .with_property_value(
             PropertyName(MapString("is_value_descriptor".to_string())),
-            BaseValue::BooleanValue(definition.is_value_type),
+            Some(BaseValue::BooleanValue(definition.is_value_type)),
         )?
         .with_property_value(
             PropertyName(MapString("version".to_string())),
-            BaseValue::StringValue(initial_version),
+            Some(BaseValue::StringValue(initial_version)),
         )?;
 
     // Stage the new TypeDescriptor

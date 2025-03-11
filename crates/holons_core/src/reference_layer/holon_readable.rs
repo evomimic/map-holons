@@ -14,7 +14,7 @@ pub trait HolonReadable {
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError>;
+    ) -> Result<Option<PropertyValue>, HolonError>;
 
     /// This function returns the primary key value for the holon or None if there is no key value
     /// for this holon (NOTE: Not all holon types have defined keys.)

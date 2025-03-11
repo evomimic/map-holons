@@ -231,14 +231,19 @@ impl Holon {
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let key = self.property_map.get(&PropertyName(MapString("key".to_string())));
-        if let Some(key) = key {
-            let string_value: String = key.try_into().map_err(|_| {
-                HolonError::UnexpectedValueType(format!("{:?}", key), "MapString".to_string())
+
+        if let Some(Some(inner_value)) =
+            self.property_map.get(&PropertyName(MapString("key".to_string())))
+        {
+            let string_value: String = inner_value.try_into().map_err(|_| {
+                HolonError::UnexpectedValueType(
+                    format!("{:?}", inner_value),
+                    "MapString".to_string(),
+                )
             })?;
             Ok(Some(MapString(string_value)))
         } else {
-            trace!(" returning from get_key() with None");
+            trace!("Key 'key' either missing or has a None value.");
             Ok(None)
         }
     }
@@ -261,7 +266,7 @@ impl Holon {
     pub fn get_property_value(
         &self,
         property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError> {
+    ) -> Result<Option<PropertyValue>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         self.property_map
             .get(property_name)
@@ -551,7 +556,7 @@ impl Holon {
     pub fn with_property_value(
         &mut self,
         property: PropertyName,
-        value: BaseValue,
+        value: Option<BaseValue>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
@@ -564,53 +569,6 @@ impl Holon {
         Ok(self)
     }
 
-    #[deprecated]
-    pub fn get_name_deprecated(&self) -> Result<MapString, HolonError> {
-        let property_name = PropertyName(MapString("name".to_string()));
-        match self.get_property_value(&property_name)? {
-            PropertyValue::StringValue(name) => Ok(name),
-            _ => Err(HolonError::InvalidType(format!(
-                "Expected StringValue for '{}'",
-                property_name.0
-            ))),
-        }
-    }
-
-    pub fn get_description_deprecated(&self) -> Result<MapString, HolonError> {
-        let property_name = PropertyName(MapString("description".to_string()));
-        match self.get_property_value(&property_name)? {
-            PropertyValue::StringValue(name) => Ok(name),
-            _ => Err(HolonError::InvalidType(format!(
-                "Expected StringValue for '{}'",
-                property_name.0
-            ))),
-        }
-    }
-
-    pub fn with_description_deprecated(
-        &mut self,
-        description: &MapString,
-    ) -> Result<&Self, HolonError> {
-        self.with_property_value(
-            PropertyName(MapString("description".to_string())),
-            description.clone().into_base_value(),
-        )?;
-        Ok(self)
-    }
-
-    /// Sets the name property for the Holon
-    pub fn with_name_deprecated(&mut self, name: &MapString) -> Result<&Self, HolonError> {
-        self.with_property_value(
-            PropertyName(MapString("name".to_string())),
-            name.clone().into_base_value(),
-        )?
-        // TODO: drop this once descriptor-based key support is implemented
-        .with_property_value(
-            PropertyName(MapString("key".to_string())),
-            name.clone().into_base_value(),
-        )?;
-        Ok(self)
-    }
 }
 fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
     match record.entry() {

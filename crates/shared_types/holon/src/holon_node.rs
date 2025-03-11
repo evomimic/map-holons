@@ -15,7 +15,7 @@ pub const LOCAL_HOLON_SPACE_DESCRIPTION: &str = "Default Local Holon Space";
 // 📦 Type Aliases
 // ===============================
 pub type PropertyValue = BaseValue;
-pub type PropertyMap = BTreeMap<PropertyName, PropertyValue>;
+pub type PropertyMap = BTreeMap<PropertyName, Option<PropertyValue>>;
 
 // ===============================
 // 🌳 HolonNode Struct (holochain EntryType)

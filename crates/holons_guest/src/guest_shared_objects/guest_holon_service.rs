@@ -117,15 +117,15 @@ impl GuestHolonService {
         space_holon
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
-                name.clone().into_base_value(),
+                Some(name.clone().into_base_value()),
             )?
             .with_property_value(
                 PropertyName(MapString("key".to_string())),
-                name.clone().into_base_value(),
+                Some(name.clone().into_base_value()),
             )?
             .with_property_value(
                 PropertyName(MapString("description".to_string())),
-                description.into_base_value(),
+                Some(description.into_base_value()),
             )?;
 
         // Try to create the holon node in the DHT
@@ -288,7 +288,7 @@ impl HolonServiceApi for GuestHolonService {
 
         for smartlink in smartlinks {
             let holon_reference = smartlink.to_holon_reference();
-            collection.add_reference_with_key(smartlink.get_key().as_ref(), &holon_reference)?;
+            collection.add_reference_with_key(smartlink.get_key()?.as_ref(), &holon_reference)?;
         }
         Ok(collection)
     }
