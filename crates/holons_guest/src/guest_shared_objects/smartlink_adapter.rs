@@ -340,7 +340,9 @@ fn encode_link_tag(
             bytes.extend_from_slice(property.0 .0.as_bytes());
             bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
             bytes.extend_from_slice(&PROPERTY_VALUE_SEPARATOR);
-            bytes.extend_from_slice(&value.into_bytes().0);
+            if let Some(value) = value {
+                bytes.extend_from_slice(&value.into_bytes().0);
+            }
             bytes.extend_from_slice(&UNICODE_NUL_STR.as_bytes());
         }
     }
