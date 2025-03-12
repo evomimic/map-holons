@@ -54,6 +54,6 @@ pub trait HolonWritable {
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
-        value: BaseValue,
+        value: Option<BaseValue>,
     ) -> Result<&Self, HolonError>;
 }

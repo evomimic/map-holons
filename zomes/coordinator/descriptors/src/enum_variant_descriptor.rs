@@ -50,15 +50,15 @@ pub fn define_enum_variant_type(
     enum_variant_type
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(definition.type_name.clone()),
+            Some(BaseValue::StringValue(definition.type_name.clone())),
         )?
         .with_property_value(
             TypeName.as_property_name(),
-            BaseValue::StringValue(definition.type_name.clone()),
+            Some(BaseValue::StringValue(definition.type_name.clone())),
         )?
         .with_property_value(
             VariantOrder.as_property_name(),
-            BaseValue::IntegerValue(definition.variant_order),
+            Some(BaseValue::IntegerValue(definition.variant_order)),
         )?;
 
     // Stage the type

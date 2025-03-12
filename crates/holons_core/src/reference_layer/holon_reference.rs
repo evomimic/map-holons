@@ -33,7 +33,7 @@ impl HolonReadable for HolonReference {
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError> {
+    ) -> Result<Option<PropertyValue>, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => {
                 smart_reference.get_property_value(context, property_name)

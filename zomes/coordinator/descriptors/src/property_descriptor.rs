@@ -42,11 +42,11 @@ pub fn define_property_type(
     property_type
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(definition.property_name.0.clone()),
+            Some(BaseValue::StringValue(definition.property_name.0.clone())),
         )?
         .with_property_value(
             CoreSchemaPropertyTypeName::PropertyTypeName.as_property_name(),
-            BaseValue::StringValue(definition.property_name.0.clone()),
+            Some(BaseValue::StringValue(definition.property_name.0.clone())),
         )?;
 
     // Stage the PropertyType

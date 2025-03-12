@@ -53,11 +53,11 @@ pub fn define_enum_type(
     enum_type
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(definition.type_name.clone()),
+            Some(BaseValue::StringValue(definition.type_name.clone())),
         )?
         .with_property_value(
             TypeName.as_property_name(),
-            BaseValue::StringValue(definition.type_name),
+            Some(BaseValue::StringValue(definition.type_name)),
         )?;
 
     // Stage the type

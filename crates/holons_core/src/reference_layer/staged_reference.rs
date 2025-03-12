@@ -88,7 +88,7 @@ impl HolonReadable for StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
-    ) -> Result<PropertyValue, HolonError> {
+    ) -> Result<Option<PropertyValue>, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         borrowed_holon.get_property_value(property_name)
@@ -324,7 +324,7 @@ impl HolonWritable for StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
-        value: BaseValue,
+        value: Option<BaseValue>,
     ) -> Result<&Self, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.borrow_mut();

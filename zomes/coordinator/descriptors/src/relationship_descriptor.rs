@@ -79,27 +79,27 @@ pub fn define_relationship_type(
     relationship_type
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(definition.relationship_type_name.0.clone()),
+            Some(BaseValue::StringValue(definition.relationship_type_name.0.clone())),
         )?
         .with_property_value(
             CoreSchemaPropertyTypeName::RelationshipName.as_property_name(),
-            BaseValue::StringValue(definition.relationship_type_name.0.clone()),
+            Some(BaseValue::StringValue(definition.relationship_type_name.0.clone())),
         )?
         .with_property_value(
             PropertyName(MapString("source_owns_relationship".to_string())),
-            BaseValue::BooleanValue(definition.source_owns_relationship),
+            Some(BaseValue::BooleanValue(definition.source_owns_relationship)),
         )?
         .with_property_value(
             PropertyName(MapString("load_links_immediate".to_string())),
-            BaseValue::BooleanValue(definition.load_links_immediate),
+            Some(BaseValue::BooleanValue(definition.load_links_immediate)),
         )?
         .with_property_value(
             PropertyName(MapString("load_holons_immediate".to_string())),
-            BaseValue::BooleanValue(definition.load_holons_immediate),
+            Some(BaseValue::BooleanValue(definition.load_holons_immediate)),
         )?
         .with_property_value(
             PropertyName(MapString("deletion_semantic".to_string())),
-            BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant()),
+            Some(BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant())),
         )?;
 
     debug!("Staging new relationship_type {:#?}", relationship_type.clone());

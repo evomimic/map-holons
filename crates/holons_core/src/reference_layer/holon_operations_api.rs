@@ -137,12 +137,18 @@ fn get_holon_service(context: &dyn HolonsContextBehavior) -> Arc<dyn HolonServic
     Arc::clone(&holon_service)
 }
 
-pub fn get_key_from_property_map(map: &PropertyMap) -> Option<MapString> {
+pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
     let key_option = map.get(&PropertyName(MapString("key".to_string())));
-    if let Some(key) = key_option {
-        Some(MapString(key.into()))
+    if let Some(Some(inner_value)) = key_option {
+        let string_value: String = inner_value.try_into().map_err(|_| {
+            HolonError::UnexpectedValueType(
+                format!("{:?}", inner_value),
+                "MapString".to_string(),
+            )
+        })?;
+        Ok(Some(MapString(string_value)))
     } else {
-        None
+        Ok(None)
     }
 }
 
