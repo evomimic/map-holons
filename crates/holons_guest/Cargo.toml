@@ -30,13 +30,9 @@ holon_dance_builders = { workspace = true }
 
 
 [dev-dependencies]
-
 async-std = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-
-# Target-specific dev dependencies for non-WASM builds
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-holochain = { version = "0.3", default-features = false, features = ["test_utils", "sqlite-encrypted"] }
-tokio = { version = "1.35.1", features = ["full"] }
+holochain = { workspace = true } 
+tokio = { workspace = true } 

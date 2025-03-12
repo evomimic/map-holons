@@ -5,15 +5,15 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@angular-devkit/build-angular": "0.1101.2",
+    "@angular-devkit/build-angular": "19.2.2",
     "@holochain/client": "^0.17.1",
-    "@holochain/tryorama": "^0.16.0",
-    "@msgpack/msgpack": "^3.0.0-beta2",
-    "typescript": "^5.4.5",
-    "vitest": "^3.0.7"
+    "@holochain/tryorama": "^0.17.1",
+    "@msgpack/msgpack": "^3.1.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
   },
   "type": "module",
   "devDependencies": {
-    "@types/node": "^22.1.0"
+    "@types/node": "^22.13.10"
   }
 }
