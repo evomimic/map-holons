@@ -72,11 +72,11 @@ async-std = "1.1.12"
 futures = { version = "0.3.1", default-features = false }
 pretty_assertions = "1.4.0"
 rstest = "0.25.0"
-holochain = { version = "0.4.2", default-features = false, features = [
+holochain = { version = "0.4", default-features = false, features = [
     "test_utils",
     "wasmer_sys"
 ] }
-holochain_trace = "0.4.2"
+holochain_trace = "0.4"
 tokio = { version = "1.35", features = ["full"] }
 
 

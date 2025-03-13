@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 name = "holon_dance_builders"
 
 [dependencies]
@@ -17,12 +17,4 @@ serde_json = { workspace = true }
 # MAP Dependencies
 shared_types_holon = { workspace = true }
 holons_core = { workspace = true }
-#holons_guest = { workspace = true }
 
-[dev-dependencies]
-#async-std = { workspace = true }
-#futures = { workspace = true }
-#pretty_assertions = { workspace = true }
-#rstest = { workspace = true }
-#holochain = { workspace = true } 
-#tokio = { workspace = true }

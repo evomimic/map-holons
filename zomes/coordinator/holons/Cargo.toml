@@ -4,6 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [lib]
+# WASM and non-WASM compatible
 crate-type = ["cdylib", "rlib"]
 name = "holons"
 
@@ -27,5 +28,3 @@ async-std = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-holochain = { workspace = true }
-tokio = { workspace = true }

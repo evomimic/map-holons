@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+# WASM and non-WASM compatible
 crate-type = ["cdylib", "rlib"]
 name = "core_schema"
 
@@ -23,5 +24,3 @@ shared_types_holon = { workspace = true }
 descriptors = { workspace = true }
 
 [dev-dependencies]
-holochain = { workspace = true }
-tokio = { workspace = true }

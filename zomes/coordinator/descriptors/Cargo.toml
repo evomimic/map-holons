@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+# WASM and non-WASM compatible
 crate-type = ["cdylib", "rlib"]
 name = "descriptors"
 
@@ -21,7 +22,4 @@ hdi = { workspace = true }
 holons_core = { workspace = true }
 shared_types_holon = { workspace = true }
 
-
 [dev-dependencies]
-holochain = { workspace = true } 
-tokio = { workspace = true }
