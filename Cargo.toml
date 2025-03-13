@@ -73,9 +73,10 @@ futures = { version = "0.3.1", default-features = false }
 pretty_assertions = "1.4.0"
 rstest = "0.25.0"
 holochain = { version = "0.4.2", default-features = false, features = [
-  "test_utils",
-  "wasmer_sys"
+    "test_utils",
+    "wasmer_sys"
 ] }
+holochain_trace = "0.4.2"
 tokio = { version = "1.35", features = ["full"] }
 
 

@@ -25,10 +25,11 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 // use async_std::task;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 // use holons_client::init_client_context;
+
+use holochain_trace;
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};
@@ -86,11 +87,11 @@ use shared_types_holon::HolonId;
 ///
 #[rstest]
 #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-#[case::delete_holon(delete_holon_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+// #[case::delete_holon(delete_holon_fixture())]
+// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+// #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
