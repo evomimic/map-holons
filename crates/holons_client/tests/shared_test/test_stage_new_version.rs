@@ -6,7 +6,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::mock_conductor::MockConductorConfig;
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::proptest::test_runner::contextualize_config;
+// use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::proptest::test_runner::contextualize_config;
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use holons_core::core_shared_objects::{HolonCollection, RelationshipName};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};

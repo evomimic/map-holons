@@ -9,7 +9,7 @@ import { ClickOutsideDirective } from '../../helpers/clickout';
 @Component({
   selector: 'app-viewer',
   standalone: true,
-  imports: [CommonModule,ClickOutsideDirective],
+  imports: [CommonModule],//,ClickOutsideDirective],
   templateUrl: './viewer.component.html',
 })
 export class ViewerComponent implements OnInit {

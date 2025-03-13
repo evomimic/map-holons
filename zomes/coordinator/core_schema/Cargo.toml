@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+# WASM and non-WASM compatible
 crate-type = ["cdylib", "rlib"]
 name = "core_schema"
 
@@ -22,11 +23,4 @@ holons_core = { workspace = true }
 shared_types_holon = { workspace = true }
 descriptors = { workspace = true }
 
-# General dev-dependencies (platform-agnostic)
 [dev-dependencies]
-
-
-# Target-specific dev dependencies for non-WASM builds
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-holochain = { version = "0.3", default-features = false, features = ["test_utils", "sqlite-encrypted"] }
-tokio = { version = "1.35.1", features = ["full"] }

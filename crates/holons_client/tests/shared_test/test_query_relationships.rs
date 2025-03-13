@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use async_std::task;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
+// use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
