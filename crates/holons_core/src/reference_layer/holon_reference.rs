@@ -198,8 +198,8 @@ impl HolonReference {
 
     pub fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
+            HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(),
+            HolonReference::Staged(staged_reference) => staged_reference.get_holon_id(context),
         }
     }
 

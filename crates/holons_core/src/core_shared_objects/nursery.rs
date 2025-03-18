@@ -19,9 +19,9 @@ impl Nursery {
         Self { staged_holons: Rc::new(RefCell::new(HolonPool::new())) }
     }
 
-    pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
-        self
-    }
+    // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
+    //     self
+    // }
 
     /// Stages a new holon.
     ///
