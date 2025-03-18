@@ -5,6 +5,7 @@ use crate::reference_layer::HolonsContextBehavior;
 use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
 };
+use crate::utils::uuid::TemporaryId;
 use shared_types_holon::{MapString, PropertyName, PropertyValue};
 
 pub trait HolonReadable {

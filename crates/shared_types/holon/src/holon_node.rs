@@ -3,6 +3,7 @@ use derive_new::new;
 use hdi::prelude::*;
 use std::collections::btree_map::BTreeMap;
 use std::fmt;
+use uuid::Uuid;
 
 // ===============================
 // 📌 Constants
@@ -45,12 +46,15 @@ pub struct ExternalId {
     pub local_id: LocalId,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct TemporaryId(pub Uuid);
+
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum HolonId {
     Local(LocalId),
     External(ExternalId),
-    // Temporary(TemporaryId)
+    Temporary(TemporaryId),
 }
 
 // ===============================
@@ -151,6 +155,10 @@ impl HolonId {
         matches!(self, HolonId::External(_))
     }
 
+    pub fn is_temporary(&self) -> bool {
+        matches!(self, HolonId::Temporary(_))
+    }
+
     /// Extracts the `LocalId` from both `Local` and `External` variants.
     pub fn local_id(&self) -> &LocalId {
         match self {
@@ -174,6 +182,7 @@ impl fmt::Display for HolonId {
         match self {
             HolonId::Local(local_id) => write!(f, "Local({})", local_id),
             HolonId::External(external_id) => write!(f, "External({})", external_id),
+            HolonId::Temporary(temporary_id) => write!(f, "Temporary({:?})", temporary_id),
         }
     }
 }

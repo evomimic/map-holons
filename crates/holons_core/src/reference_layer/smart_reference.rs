@@ -40,7 +40,7 @@ impl SmartReference {
 
     // *************** ACCESSORS ***************
 
-    pub fn get_id(&self) -> Result<HolonId, HolonError> {
+    pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
 

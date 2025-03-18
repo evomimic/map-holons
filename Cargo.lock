@@ -6399,6 +6399,7 @@ dependencies = [
  "hex",
  "serde",
  "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]

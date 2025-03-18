@@ -34,6 +34,15 @@ impl StagedReference {
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
         StagedReference { id: id.clone() }
     }
+
+    /// Retrieves a shared reference to the holon with interior mutability.
+    ///
+    /// # Arguments
+    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
+    ///
+    /// # Returns
+    /// Rc<RefCell<Holon>>>
+    ///
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -66,6 +75,10 @@ impl StagedReference {
 
         // Get the nursery access
         space_manager.get_nursery_access()
+    }
+
+    fn get_temporary_id(&self) -> TemporaryId {
+        self.id.clone()
     }
 }
 
@@ -133,10 +146,6 @@ impl HolonReadable for StagedReference {
 
         Ok(())
     }
-
-    // fn get_id(&self) -> TemporaryId {
-    //     self.id
-    // }
 }
 
 impl HolonWritable for StagedReference {
@@ -189,10 +198,10 @@ impl HolonWritable for StagedReference {
     }
 
     fn clone_reference(&self) -> StagedReference {
-        StagedReference { id: self.get_id() }
+        StagedReference { id: self.get_temporary_id() }
     }
 
-    fn get_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         if borrowed_holon.state == HolonState::Saved {
