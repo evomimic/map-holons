@@ -28,7 +28,7 @@ use hdk::prelude::*;
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
-/// - dance_type: Command(StagedIndex) -- references the staged holon that is the `source` of the relationship being extended
+/// - dance_type: CommandMethod(StagedReference) -- references the staged holon that is the `source` of the relationship being extended
 /// - request_body:
 ///     _TargetHolons_: specifying the RelationshipName and list of PortableReferences to the holons to add
 ///
@@ -248,7 +248,7 @@ pub fn query_relationships_dance(
 ///
 /// *DanceRequest:*
 /// - dance_name: "remove_related_holons"
-/// - dance_type: CommandMethod(StagedIndex) -- identifies the holon that is the `source` of the relationship being navigated
+/// - dance_type: CommandMethod(StagedReference) -- identifies the holon that is the `source` of the relationship being navigated
 /// - request_body:
 ///     TargetHolons(RelationshipName, Vec<HolonReference>),
 ///
@@ -299,7 +299,8 @@ pub fn remove_related_holons_dance(
             // }
         }
         _ => Err(HolonError::InvalidParameter(
-            "Invalid DanceType: expected CommandMethod(StagedIndex), didn't get one".to_string(),
+            "Invalid DanceType: expected CommandMethod(StagedReference), didn't get one"
+                .to_string(),
         )),
     }
 }
@@ -419,7 +420,7 @@ pub fn stage_new_version_dance(
 ///
 /// *DanceRequest:*
 /// - dance_name: "with_properties"
-/// - dance_type: Command(StagedIndex) -- references staged_holon to update
+/// - dance_type: Command(StagedReference) -- references staged_holon to update
 /// - request_body:
 ///     ParameterValues: specifying the set of properties to set in the staged_holon
 ///
@@ -490,7 +491,7 @@ pub fn with_properties_dance(
 ///
 /// *DanceRequest:*
 /// - dance_name: "abandon_staged_changes"
-/// - dance_type: Command(StagedIndex) -- references the staged holon whose changes are being abandoned
+/// - dance_type: Command(StagedReference) -- references the staged holon whose changes are being abandoned
 /// - request_body: None
 ///
 ///

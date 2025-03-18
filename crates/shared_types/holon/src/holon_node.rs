@@ -50,6 +50,7 @@ pub struct ExternalId {
 pub enum HolonId {
     Local(LocalId),
     External(ExternalId),
+    // Temporary(TemporaryId)
 }
 
 // ===============================

@@ -16,7 +16,6 @@ use holons_core::{HolonReadable, HolonReference, HolonWritable, HolonsContextBeh
 use shared_types_holon::{MapString, PropertyName};
 
 // pub struct TestHolon {
-//     pub staged_index: StagedIndex,
 //     pub key: MapString,
 //     pub expected_holon: Option<Holon>,
 // }

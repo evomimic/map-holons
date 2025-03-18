@@ -1,20 +1,12 @@
 use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
-use crate::reference_layer::staged_reference::StagedIndex;
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
+use crate::utils::uuid::TemporaryId;
 
 use shared_types_holon::MapString;
 use std::any::Any;
-use std::cell::Ref;
 use std::{cell::RefCell, rc::Rc};
-
-// #[hdk_entry_helper]
-// #[derive(Clone, PartialEq, Eq)]
-// pub struct Nursery {
-//     staged_holons: Vec<Rc<RefCell<Holon>>>, // Contains all holons staged for commit
-//     keyed_index: BTreeMap<MapString, usize>, // Allows lookup by key to staged holons for which keys are defined
-// }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Nursery {
@@ -26,85 +18,54 @@ impl Nursery {
     pub fn new() -> Self {
         Self { staged_holons: Rc::new(RefCell::new(HolonPool::new())) }
     }
-    // /// Initializes a `Nursery` from a set of staged holons and a keyed index
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `staged_holons` - A vector of staged holons.
-    // /// * `keyed_index` - A map of keys to indices into the staged_holons vector
-    // ///
-    // /// # Returns
-    // ///
-    // /// A `Nursery` instance initialized with the provided holons and keyed index.
-    // /// Creates a new Nursery from a given stage
-    // /// Initializes a `Nursery` from a set of Holons and a keyed index.
-    // pub fn new_from_staged_holons(
-    //     holons: Vec<Rc<RefCell<Holon>>>,
-    //     keyed_index: BTreeMap<MapString, usize>,
-    // ) -> Self {
-    //     Self { staged_holons: RefCell::new(HolonPool::new(holons, keyed_index)) }
-    // }
-    // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
-    //     self
-    // }
 
-    /// Stages a new holon and optionally updates the keyed index.
+    pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
+        self
+    }
+
+    /// Stages a new holon.
     ///
     /// # Arguments
     /// * `holon` - A reference to the holon to be staged.
     ///
     /// # Returns
-    /// The index of the staged holon in the nursery.
-    fn stage_holon(&self, holon: Holon) -> usize {
+    /// The TemporaryId, which is used a unique identifier.
+    fn stage_holon(&self, holon: Holon) -> TemporaryId {
         self.staged_holons.borrow_mut().insert_holon(holon)
     }
 
-    /// This function converts a StagedIndex into a StagedReference
-    /// Returns HolonError::IndexOutOfRange if index is out range for staged_holons vector
+    /// This function converts a TemporaryId into a StagedReference
+    /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
     /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
     fn to_validated_staged_reference(
         &self,
-        staged_index: StagedIndex,
+        id: &TemporaryId,
     ) -> Result<StagedReference, HolonError> {
-        if let Ok(holon_rc) = self.get_holon_by_index(staged_index) {
-            let holon = holon_rc.borrow();
-            if let HolonState::Abandoned = holon.state {
-                return Err(HolonError::NotAccessible(
-                    "to_validated_staged_reference".to_string(),
-                    "Abandoned".to_string(),
-                ));
-            }
-            Ok(StagedReference::from_index(staged_index))
-        } else {
-            Err(HolonError::IndexOutOfRange(staged_index.to_string()))
-        }
-    }
+        let holon_rc = self.get_holon_by_id(id)?;
 
-    /// Checks if an index is valid within the `staged_holons` vector.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - The index to check.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the index is valid, `false` otherwise.
-    #[allow(dead_code)]
-    pub fn is_valid_index(&self, index: usize) -> bool {
-        self.staged_holons.borrow().is_valid_index(index)
+        let holon = holon_rc.borrow();
+        if let HolonState::Abandoned = holon.state {
+            return Err(HolonError::NotAccessible(
+                "to_validated_staged_reference".to_string(),
+                "Abandoned".to_string(),
+            ));
+        }
+
+        Ok(StagedReference::from_temporary_id(id))
     }
 }
+
 impl NurseryAccess for Nursery {
     /// Retrieves a staged holon by index.
-    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        self.staged_holons.borrow().get_holon_by_index(index)
+    fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError> {
+        self.staged_holons.borrow().get_holon_by_id(id)
     }
 }
 
 impl HolonStagingBehavior for Nursery {
     fn get_staged_holon_by_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
-        let index = self.staged_holons.borrow().get_index_by_key(&key)?;
-        self.to_validated_staged_reference(index)
+        let id = self.staged_holons.borrow().get_id_by_key(key)?;
+        self.to_validated_staged_reference(&id)
     }
 
     fn staged_count(&self) -> i64 {
@@ -112,8 +73,8 @@ impl HolonStagingBehavior for Nursery {
     }
 
     fn stage_new_holon(&self, holon: Holon) -> Result<StagedReference, HolonError> {
-        let new_index = self.stage_holon(holon);
-        self.to_validated_staged_reference(new_index)
+        let new_id = self.stage_holon(holon);
+        self.to_validated_staged_reference(&new_id)
     }
 }
 
@@ -130,8 +91,8 @@ impl NurseryAccessInternal for Nursery {
     //     self.holon_store.borrow().keyed_index.clone()
     // }
 
-    fn get_index_by_key(&self, key: &MapString) -> Result<usize, HolonError> {
-        self.staged_holons.borrow().get_index_by_key(key)
+    fn get_id_by_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
+        self.staged_holons.borrow().get_id_by_key(key)
     }
 
     /// Exports the staged holons using `SerializableHolonPool`
@@ -143,10 +104,10 @@ impl NurseryAccessInternal for Nursery {
         self.staged_holons.borrow_mut().import_pool(pool); // Mutates existing HolonPool
     }
 
-    /// Returns a reference to the staged Holons in the `HolonPool`,
+    /// Returns the staged Holons in the `HolonPool`,
     /// ensuring that commit functions can access the actual Holon instances.
-    fn get_holons_to_commit(&self) -> Ref<Vec<Rc<RefCell<Holon>>>> {
-        Ref::map(self.staged_holons.borrow(), |pool| pool.get_all_holons())
+    fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
+        self.staged_holons.borrow().get_all_holons()
     }
 
     // fn stage_holon(&self, holon: Holon) -> usize {

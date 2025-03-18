@@ -12,15 +12,13 @@ use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, HolonState,
     NurseryAccess, RelationshipName,
 };
+use crate::utils::uuid::TemporaryId;
 use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
-
-/// a StagedIndex identifies a StagedHolon by its position within the staged_holons vector
-pub type StagedIndex = usize;
 
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct StagedReference {
-    pub holon_index: StagedIndex, // the position of the holon with CommitManager's staged_holons vector
+    id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
 }
 
 impl StagedReference {
@@ -33,8 +31,8 @@ impl StagedReference {
     /// # Returns
     ///
     /// A new `StagedReference` wrapping the provided index.
-    pub fn from_index(index: usize) -> Self {
-        StagedReference { holon_index: index }
+    pub fn from_temporary_id(id: &TemporaryId) -> Self {
+        StagedReference { id: id.clone() }
     }
     fn get_rc_holon(
         &self,
@@ -46,7 +44,7 @@ impl StagedReference {
         let nursery_read = nursery_access.borrow();
 
         // Retrieve the holon by its index
-        let rc_holon = nursery_read.get_holon_by_index(self.holon_index)?;
+        let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
 
         // Return a clone of the Rc<RefCell<Holon>>
         Ok(rc_holon.clone())
@@ -73,7 +71,7 @@ impl StagedReference {
 
 impl fmt::Display for StagedReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "StagedReference(index: {})", self.holon_index)
+        write!(f, "StagedReference(index: {:?})", self.id)
     }
 }
 
@@ -82,6 +80,15 @@ impl HolonReadable for StagedReference {
         let holon = self.get_rc_holon(context)?;
         let holon_read = holon.borrow();
         holon_read.clone_holon()
+    }
+
+    fn essential_content(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.essential_content()
     }
 
     fn get_property_value(
@@ -115,15 +122,6 @@ impl HolonReadable for StagedReference {
         Ok(holon.staged_relationship_map.get_related_holons(relationship_name))
     }
 
-    fn essential_content(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        borrowed_holon.essential_content()
-    }
-
     fn is_accessible(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -135,6 +133,10 @@ impl HolonReadable for StagedReference {
 
         Ok(())
     }
+
+    // fn get_id(&self) -> TemporaryId {
+    //     self.id
+    // }
 }
 
 impl HolonWritable for StagedReference {
@@ -142,14 +144,14 @@ impl HolonWritable for StagedReference {
         &mut self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.holon_index);
+        debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.id);
         // Get mutable access to the source holon
         let holon_refcell = self.get_rc_holon(context)?;
 
         // Borrow the holon from the RefCell
         let mut holon = holon_refcell.borrow_mut();
 
-        debug!("borrowed mut for holon: {:#?}", self.holon_index);
+        debug!("borrowed mut for holon: {:#?}", self.id);
 
         holon.abandon_staged_changes()?;
 
@@ -187,7 +189,7 @@ impl HolonWritable for StagedReference {
     }
 
     fn clone_reference(&self) -> StagedReference {
-        StagedReference { holon_index: self.holon_index.clone() }
+        StagedReference { id: self.get_id() }
     }
 
     fn get_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {

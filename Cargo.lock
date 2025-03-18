@@ -696,6 +696,7 @@ dependencies = [
  "shared_types_holon",
  "shared_validation",
  "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]
