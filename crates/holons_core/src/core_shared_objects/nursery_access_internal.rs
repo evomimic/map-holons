@@ -1,5 +1,6 @@
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::{Holon, HolonError, NurseryAccess};
+use crate::utils::uuid::TemporaryId;
 use crate::HolonStagingBehavior;
 use shared_types_holon::MapString;
 use std::any::Any;
@@ -28,7 +29,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// Clears the Nursery's staged holons
     fn clear_stage(&mut self);
 
-    /// Finds a holon by its key and returns its index.
+    /// Finds a holon by its key and returns its TemporaryId.
     ///
     /// # Arguments
     ///
@@ -36,8 +37,8 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     ///
     /// # Returns
     ///
-    /// `Ok(usize)` containing the index if the key exists, or an `Err` if the key is not found.
-    fn get_index_by_key(&self, key: &MapString) -> Result<usize, HolonError>;
+    /// `Ok(TemporaryId)` containing the index if the key exists, or an `Err` if the key is not found.
+    fn get_id_by_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
 
     /// Exports the currently staged holons as a `SerializableHolonPool`.
     ///
@@ -82,7 +83,8 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// # Returns
     ///
     /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all staged Holons.
-    fn get_holons_to_commit(&self) -> Ref<Vec<Rc<RefCell<Holon>>>>;
+    // fn get_holons_to_commit(&self) -> Ref<Vec<Rc<RefCell<Holon>>>>;
+    fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_;
 
     // /// Stages a new holon and optionally updates the keyed index.
     // ///

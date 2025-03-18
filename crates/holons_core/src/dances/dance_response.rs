@@ -37,7 +37,6 @@ pub enum ResponseStatusCode {
 // Read-only results can be returned directly in ResponseBody as either a Holon or a
 // (serialized) SmartCollection
 // Staged holons will be returned via the StagingArea.
-// StagedIndex is used to return a (reference) to a StagedHolon
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseBody {
     None,
