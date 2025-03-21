@@ -15,12 +15,13 @@ members = [
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
     # Shared Core & Guest Libraries
-    "crates/holons_client",
     "crates/holons_core",
     "crates/holon_dance_builders",
     "crates/holons_guest",
 ]
 resolver = "2"
+
+exclude = ["crates/holons_client"]
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
@@ -72,12 +73,7 @@ async-std = "1.1.12"
 futures = { version = "0.3.1", default-features = false }
 pretty_assertions = "1.4.0"
 rstest = "0.25.0"
-holochain = { version = "0.4", default-features = false, features = [
-    "test_utils",
-    "wasmer_sys"
-] }
-holochain_trace = "0.4"
-tokio = { version = "1.35", features = ["full"] }
+#holochain_trace = "0.4"
 
 
 [profile.dev]

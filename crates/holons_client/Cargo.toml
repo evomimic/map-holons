@@ -9,25 +9,28 @@ name = "holons_client"
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-derive-new = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+derive-new = "0.7.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.109"
 tracing = "0.1"
 
 # Holochain Dependencies
-#hdi = { workspace = true }
-holochain_trace = { workspace = true }
+hdi = "0.5"
+holochain_trace = "0.4"
 
 # MAP Dependencies
-shared_types_holon = { workspace = true }
-holons_core = { workspace = true }
-holon_dance_builders = { workspace = true }
+shared_types_holon = { path = "../shared_types/holon" }
+holons_core = { path = "../holons_core" }
+holon_dance_builders = { path = "../holon_dance_builders" }
 
 [dev-dependencies]
-async-std = { workspace = true }
-futures = { workspace = true }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
-holochain = { workspace = true }
-tokio = { workspace = true }
+futures = { version = "0.3.1", default-features = false }
+pretty_assertions = "1.4.0"
+rstest = "0.25.0"
+holochain = { version = "0.4", default-features = false, features = [
+    "sweettest",
+    "wasmer_sys"
+] }
+tokio = { version = "1.35", features = ["full"] }
+async-std = "1.1.12"
 tracing-subscriber = "0.3"
