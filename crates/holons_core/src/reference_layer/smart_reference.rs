@@ -16,8 +16,7 @@ use crate::core_shared_objects::{
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SmartReference {
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
@@ -40,7 +39,8 @@ impl SmartReference {
 
     // *************** ACCESSORS ***************
 
-    pub fn get_holon_id(&self) -> Result<HolonId, HolonError> {
+    /// Outside helper method for serialization purposes, that does not require a context.
+    pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
 
@@ -233,6 +233,10 @@ impl HolonReadable for SmartReference {
         holon_borrow.clone_holon()
     }
 
+    fn get_holon_id(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+        Ok(self.holon_id.clone())
+    }
+
     /// `get_property_value` returns the value for the specified property name
     /// It will attempt to get it from the smart_property_values map first to avoid having to
     /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache
@@ -269,7 +273,9 @@ impl HolonReadable for SmartReference {
         // Since smart_property_values is an optional PropertyMap, first check to see if one exists..
         if let Some(smart_property_values) = self.smart_property_values.clone() {
             // If found, do a get on the PropertyMap to see if it contains a value.
-            if let Some(Some(inner_value)) = smart_property_values.get(&PropertyName(MapString("key".to_string()))) {
+            if let Some(Some(inner_value)) =
+                smart_property_values.get(&PropertyName(MapString("key".to_string())))
+            {
                 // Try to convert a Some value to String, throws an error on failure because all values for the Key 'key' should be MapString.
                 let string_value: String = inner_value.try_into().map_err(|_| {
                     HolonError::UnexpectedValueType(
@@ -278,19 +284,17 @@ impl HolonReadable for SmartReference {
                     )
                 })?;
                 Ok(Some(MapString(string_value)))
-            } 
-            else {
+            } else {
                 Ok(None)
             }
         }
         // Then if not, check the reference..
-         else {
+        else {
             let holon = self.get_rc_holon(context)?;
             let key_option = holon.borrow().get_key()?;
             if let Some(key) = key_option {
                 Ok(Some(key))
-            }
-            else {
+            } else {
                 Ok(None)
             }
         }

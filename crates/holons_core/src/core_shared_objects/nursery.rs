@@ -2,7 +2,7 @@ use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
-use crate::utils::uuid::TemporaryId;
+use shared_types_holon::holon_node::TemporaryId;
 
 use shared_types_holon::MapString;
 use std::any::Any;
@@ -106,7 +106,8 @@ impl NurseryAccessInternal for Nursery {
 
     /// Returns the staged Holons in the `HolonPool`,
     /// ensuring that commit functions can access the actual Holon instances.
-    fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
+    // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
+    fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>> {
         self.staged_holons.borrow().get_all_holons()
     }
 

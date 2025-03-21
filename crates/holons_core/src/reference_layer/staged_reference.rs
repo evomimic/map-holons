@@ -12,11 +12,10 @@ use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, HolonState,
     NurseryAccess, RelationshipName,
 };
-use crate::utils::uuid::TemporaryId;
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue};
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue, TemporaryId};
+
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StagedReference {
     id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
 }
@@ -77,9 +76,12 @@ impl StagedReference {
         space_manager.get_nursery_access()
     }
 
-    fn get_temporary_id(&self) -> TemporaryId {
+    pub fn get_temporary_id(&self) -> TemporaryId {
         self.id.clone()
     }
+
+    
+
 }
 
 impl fmt::Display for StagedReference {
@@ -102,6 +104,14 @@ impl HolonReadable for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         borrowed_holon.essential_content()
+    }
+
+    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        let local_id = borrowed_holon.get_local_id()?;
+        
+        Ok(HolonId::from(local_id))
     }
 
     fn get_property_value(
@@ -201,15 +211,15 @@ impl HolonWritable for StagedReference {
         StagedReference { id: self.get_temporary_id() }
     }
 
-    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        if borrowed_holon.state == HolonState::Saved {
-            Ok(HolonId::from(borrowed_holon.get_local_id()?))
-        } else {
-            Err(HolonError::NotAccessible("Id".to_string(), format!("{:?}", borrowed_holon.state)))
-        }
-    }
+    // fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    //     let rc_holon = self.get_rc_holon(context)?;
+    //     let borrowed_holon = rc_holon.borrow();
+    //     if borrowed_holon.state == HolonState::Saved {
+    //         Ok(HolonId::from(borrowed_holon.get_local_id()?))
+    //     } else {
+    //         Err(HolonError::NotAccessible("Id".to_string(), format!("{:?}", borrowed_holon.state)))
+    //     }
+    // }
 
     fn get_predecessor(
         &self,

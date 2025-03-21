@@ -2,8 +2,7 @@ use hdk::prelude::*;
 use shared_validation::ValidationError;
 use thiserror::Error;
 
-#[hdk_entry_helper]
-#[derive(Error, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
     #[error("Holon not found: {0}")]
     HolonNotFound(String),

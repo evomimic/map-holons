@@ -5,11 +5,14 @@ use crate::reference_layer::HolonsContextBehavior;
 use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
 };
-use crate::utils::uuid::TemporaryId;
-use shared_types_holon::{MapString, PropertyName, PropertyValue};
+use crate::HolonState;
+use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 pub trait HolonReadable {
     fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError>;
+
+    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;
+
     /// Returns the value for the specified property
     fn get_property_value(
         &self,

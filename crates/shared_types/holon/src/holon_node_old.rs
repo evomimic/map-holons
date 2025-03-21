@@ -8,16 +8,15 @@ pub const LOCAL_HOLON_SPACE_PATH: &str = "local_holon_space";
 pub const LOCAL_HOLON_SPACE_NAME: &str = "LocalHolonSpace";
 pub const LOCAL_HOLON_SPACE_DESCRIPTION: &str = "Default Local Holon Space";
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct HolonNode {
     pub original_id: Option<LocalId>,
     pub property_map: PropertyMap,
 }
 pub type PropertyValue = BaseValue;
 pub type PropertyMap = BTreeMap<PropertyName, PropertyValue>;
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum HolonId {
     Local(LocalId),
     External(ExternalId),
@@ -62,8 +61,7 @@ impl HolonId {
     }
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct OutboundProxyId(pub ActionHash);
 
 impl From<ActionHash> for OutboundProxyId {
@@ -72,8 +70,7 @@ impl From<ActionHash> for OutboundProxyId {
     }
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct LocalId(pub ActionHash);
 
 impl From<ActionHash> for LocalId {
@@ -82,8 +79,7 @@ impl From<ActionHash> for LocalId {
     }
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct ExternalId {
     pub space_id: OutboundProxyId,
     pub local_id: LocalId,
@@ -93,9 +89,7 @@ impl From<(OutboundProxyId, LocalId)> for ExternalId {
         ExternalId { space_id: tuple.0, local_id: tuple.1 }
     }
 }
-
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PropertyName(pub MapString);
 impl fmt::Display for PropertyName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
