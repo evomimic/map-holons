@@ -1,11 +1,10 @@
 use crate::core_shared_objects::{Holon, HolonError};
-use crate::utils::uuid::{generate_temporary_id, TemporaryId};
+use crate::utils::uuid::generate_temporary_id;
 use hdi::prelude::{Deserialize, Serialize};
-use shared_types_holon::MapString;
+use shared_types_holon::{MapString, TemporaryId};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use uuid::Uuid;
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
 
@@ -54,8 +53,8 @@ impl HolonPool {
     ///
     /// # Returns
     /// An iterator of Rc<RefCell< staged Holons.
-    pub fn get_all_holons(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
-        self.holons.values().cloned()
+    pub fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+        self.holons.values().cloned().collect()
     }
 
     /// Retrieves a Holon by its key.

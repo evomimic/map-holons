@@ -1,7 +1,6 @@
 use crate::core_shared_objects::{
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
-use derive_new::new;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::value_types::BaseValue;
@@ -29,8 +28,7 @@ impl fmt::Display for AccessType {
     }
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,                 // only relevant for staged holons
     pub validation_state: ValidationState, // only relevant for staged holons
@@ -44,8 +42,7 @@ pub struct Holon {
 }
 
 /// Type used for testing in order to match the essential content of a Holon
-#[hdk_entry_helper]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
     // pub relationship_map: RelationshipMap,
@@ -53,8 +50,7 @@ pub struct EssentialHolonContent {
     pub errors: Vec<HolonError>,
 }
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum HolonState {
     New,
     Fetched,
@@ -568,7 +564,6 @@ impl Holon {
         }
         Ok(self)
     }
-
 }
 fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
     match record.entry() {

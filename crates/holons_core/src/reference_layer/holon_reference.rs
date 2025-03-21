@@ -29,6 +29,33 @@ impl HolonReadable for HolonReference {
         }
     }
 
+    fn essential_content(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
+            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
+        }
+    }
+
+    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_holon_id(context),
+        }
+    }
+
+    fn get_key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<MapString>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
+        }
+    }
+
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -44,16 +71,6 @@ impl HolonReadable for HolonReference {
         }
     }
 
-    fn get_key(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<MapString>, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
-            HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
-        }
-    }
-
     fn get_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -66,16 +83,6 @@ impl HolonReadable for HolonReference {
             HolonReference::Staged(reference) => {
                 reference.get_related_holons(context, relationship_name)
             }
-        }
-    }
-
-    fn essential_content(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
-            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
         }
     }
 
@@ -193,13 +200,6 @@ impl HolonReference {
                     Ok(Some(members[0].clone()))
                 }
             }
-        }
-    }
-
-    pub fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(),
-            HolonReference::Staged(staged_reference) => staged_reference.get_holon_id(context),
         }
     }
 

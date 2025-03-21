@@ -1,7 +1,7 @@
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::{Holon, HolonError, NurseryAccess};
-use crate::utils::uuid::TemporaryId;
 use crate::HolonStagingBehavior;
+use shared_types_holon::holon_node::TemporaryId;
 use shared_types_holon::MapString;
 use std::any::Any;
 use std::cell::{Ref, RefCell};
@@ -83,8 +83,8 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// # Returns
     ///
     /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all staged Holons.
-    // fn get_holons_to_commit(&self) -> Ref<Vec<Rc<RefCell<Holon>>>>;
-    fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_;
+    // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_;
+    fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>>;
 
     // /// Stages a new holon and optionally updates the keyed index.
     // ///

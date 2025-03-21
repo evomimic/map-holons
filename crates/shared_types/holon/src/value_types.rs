@@ -10,8 +10,7 @@ use std::fmt;
 // ===============================
 // 📦 MapString
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MapString(pub String);
 
 impl fmt::Display for MapString {
@@ -30,8 +29,7 @@ impl MapString {
 // ===============================
 // 📦 MapBoolean
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MapBoolean(pub bool);
 
 impl fmt::Display for MapBoolean {
@@ -44,8 +42,7 @@ impl fmt::Display for MapBoolean {
 // ===============================
 // 📦 MapInteger
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MapInteger(pub i64);
 
 impl fmt::Display for MapInteger {
@@ -58,8 +55,7 @@ impl fmt::Display for MapInteger {
 // ===============================
 // 📦 MapEnumValue
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MapEnumValue(pub MapString);
 
 impl fmt::Display for MapEnumValue {
@@ -87,8 +83,7 @@ impl fmt::Display for MapBytes {
 // ===============================
 // 📦 BaseValue Enum
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, new)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, new)]
 pub enum BaseValue {
     StringValue(MapString),
     BooleanValue(MapBoolean),
@@ -142,8 +137,7 @@ impl Into<String> for &BaseValue {
 // ===============================
 // 📦 EnumValue
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EnumValue(pub String);
 
 impl fmt::Display for EnumValue {
@@ -156,8 +150,7 @@ impl fmt::Display for EnumValue {
 // ===============================
 // 📦 BaseType Enum
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum BaseType {
     Holon,
@@ -201,8 +194,7 @@ impl fmt::Display for BaseType {
 // ===============================
 // 📦 ValueType Enum
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum ValueType {
     Boolean,

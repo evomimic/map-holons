@@ -6,8 +6,7 @@ use shared_types_holon::{HolonId, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 use std::fmt;
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Holon {
     pub state: HolonState,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
@@ -25,8 +24,7 @@ pub struct Holon {
 //     }
 // }
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum HolonState {
     New,
     Fetched,
@@ -43,4 +41,3 @@ impl fmt::Display for HolonState {
         }
     }
 }
-

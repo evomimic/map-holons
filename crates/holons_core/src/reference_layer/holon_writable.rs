@@ -18,8 +18,6 @@ pub trait HolonWritable {
 
     fn clone_reference(&self) -> StagedReference;
 
-    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;
-
     fn get_predecessor(
         &self,
         context: &dyn HolonsContextBehavior,
