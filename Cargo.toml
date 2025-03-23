@@ -48,9 +48,6 @@ path = "crates/holons_core"
 [workspace.dependencies.holons_guest]
 path = "crates/holons_guest"
 
-[workspace.dependencies.holons_client]
-path = "crates/holons_client"
-
 [workspace.dependencies.holon_dance_builders]
 path = "crates/holon_dance_builders"
 
