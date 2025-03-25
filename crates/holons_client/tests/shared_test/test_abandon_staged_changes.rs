@@ -45,7 +45,7 @@ pub async fn execute_abandon_staged_changes(
     info!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
 
     // 4. Validate response status
     assert_eq!(response.status_code, expected_response);

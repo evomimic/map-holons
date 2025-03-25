@@ -35,7 +35,7 @@ pub async fn execute_ensure_database_count(
         build_get_all_holons_dance_request().expect("Failed to build get_all_holons request");
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
 
     // 4. Verify response contains Holons
     if let ResponseBody::HolonCollection(holon_collection) = response.body {

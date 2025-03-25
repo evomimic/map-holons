@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use holochain::prelude::AgentPubKey;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use holons_client::ConductorDanceCaller;
 use holons_core::dances::{DanceRequest, DanceResponse};
+use async_trait::async_trait;
 
 const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
 
@@ -15,11 +18,11 @@ pub struct MockConductorConfig {
 /// Implements `DanceCaller` for the Sweetest mock conductor.
 ///
 /// This allows `MockConductorConfig` to be used inside `DanceCallService`.
+#[async_trait::async_trait(?Send)]
 impl ConductorDanceCaller for MockConductorConfig {
-    fn conductor_dance_call(&self, request: DanceRequest) -> DanceResponse {
-        futures::executor::block_on(async {
-            self.conductor.call(&self.cell.zome("holons"), "dance", request).await
-        })
+    async fn conductor_dance_call(&self, request: DanceRequest) -> DanceResponse {
+        let res = self.conductor.call(&self.cell.zome("holons"), "dance", request).await;
+        DanceResponse::from(res)
     }
 }
 

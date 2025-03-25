@@ -94,7 +94,7 @@ pub async fn execute_stage_new_from_clone(
     debug!("Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status
