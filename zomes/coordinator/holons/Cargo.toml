@@ -27,4 +27,4 @@ shared_types_holon = { workspace = true }
 async-std = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }
-rstest = { workspace = true }
+#rstest = { workspace = true }

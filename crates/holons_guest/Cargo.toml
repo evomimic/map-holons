@@ -27,10 +27,3 @@ holons_integrity = { workspace = true }
 shared_types_holon = { workspace = true }
 holons_core = { workspace = true }
 holon_dance_builders = { workspace = true }
-
-
-[dev-dependencies]
-async-std = { workspace = true }
-futures = { workspace = true }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }

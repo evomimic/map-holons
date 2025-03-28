@@ -18,10 +18,11 @@ members = [
     "crates/holons_core",
     "crates/holon_dance_builders",
     "crates/holons_guest",
+    "crates/holons_client"
 ]
 resolver = "2"
 
-exclude = ["crates/holons_client"]
+exclude = ["tests/rust"] #["crates/holons_client"]
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
@@ -48,6 +49,9 @@ path = "crates/holons_core"
 [workspace.dependencies.holons_guest]
 path = "crates/holons_guest"
 
+[workspace.dependencies.holons_client]
+path = "crates/holons_client"
+
 [workspace.dependencies.holon_dance_builders]
 path = "crates/holon_dance_builders"
 
@@ -67,10 +71,10 @@ strum = "0.27"
 strum_macros = "0.27"
 thiserror = "1"
 async-std = "1.1.12"
+async-trait = "0.1.51"
 futures = { version = "0.3.1", default-features = false }
 pretty_assertions = "1.4.0"
-rstest = "0.25.0"
-#holochain_trace = "0.4"
+tracing = { version = "0.1", features = ["log"] }
 
 
 [profile.dev]

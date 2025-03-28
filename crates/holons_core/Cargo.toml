@@ -22,10 +22,3 @@ hdk = { workspace = true }
 # MAP Dependencies
 shared_types_holon = { workspace = true }
 shared_validation = { workspace = true }
-
-
-[dev-dependencies]
-async-std = { workspace = true }
-futures = { workspace = true }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }

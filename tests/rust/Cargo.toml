@@ -1,0 +1,37 @@
+[package]
+name = "holons_test"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+name = "holons_test"
+
+[dependencies]
+# General dev-dependencies (platform-agnostic)
+derive-new = "0.7.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.109"
+tracing = "0.1"
+async-trait = "0.1.51"
+
+# Holochain Dependencies
+holochain_trace = "0.4"
+
+# MAP Dependencies
+shared_types_holon = { path = "../../crates/shared_types/holon" }
+holons_core = { path = "../../crates/holons_core" }
+holon_dance_builders = { path = "../../crates/holon_dance_builders" }
+holons_client = { path = "../../crates/holons_client" }
+
+[dev-dependencies]
+futures = { version = "0.3.1", default-features = false }
+pretty_assertions = "1.4.0"
+rstest = "0.25.0"
+holochain = { version = "0.4", default-features = false, features = [
+    "sweettest",
+    "wasmer_sys"
+] }
+tokio = { version = "1.35", features = ["full"] }
+async-std = "1.1.12"
+tracing-subscriber = "0.3"
