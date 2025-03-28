@@ -22,7 +22,7 @@ members = [
 ]
 resolver = "2"
 
-exclude = ["tests/rust"] #["crates/holons_client"]
+exclude = ["tests/sweetests"]
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
