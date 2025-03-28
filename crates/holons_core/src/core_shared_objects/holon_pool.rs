@@ -1,15 +1,19 @@
 use crate::core_shared_objects::{Holon, HolonError};
-use crate::utils::uuid::generate_temporary_id;
+use crate::HolonServiceApi;
+
 use hdi::prelude::{Deserialize, Serialize};
 use shared_types_holon::{MapString, TemporaryId};
+
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct HolonPool {
+    holon_service: Arc<dyn HolonServiceApi>,
     holons: BTreeMap<TemporaryId, Rc<RefCell<Holon>>>, // Stores Holons with shared ownership
     keyed_index: BTreeMap<MapString, TemporaryId>,     // Maps keys to Holon indices
 }
@@ -28,8 +32,8 @@ impl Default for SerializableHolonPool {
 
 impl HolonPool {
     /// Creates an empty HolonPool
-    pub fn new() -> Self {
-        Self { holons: BTreeMap::new(), keyed_index: BTreeMap::new() }
+    pub fn new(holon_service: Arc<dyn HolonServiceApi>) -> Self {
+        Self { holon_service, holons: BTreeMap::new(), keyed_index: BTreeMap::new() }
     }
 
     /// Clears all Holons and their associated key mappings.
@@ -121,7 +125,7 @@ impl HolonPool {
     /// - `TemporaryId` representing the index where the Holon was inserted.
     pub fn insert_holon(&mut self, holon: Holon) -> TemporaryId {
         // Create random id.
-        let id = generate_temporary_id();
+        let id = self.holon_service.generate_temporary_id().unwrap(); // TODO: handle error
 
         // Update index if Holon has a key.
         if let Ok(Some(key)) = &holon.get_key() {

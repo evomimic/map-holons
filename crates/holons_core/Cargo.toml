@@ -14,12 +14,9 @@ quick_cache = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-getrandom = { version = "0.2", features = ["js"] }
-uuid = { version = "1", features = ["serde", "v4", "js", "rng-getrandom"] }
-wasm-bindgen = "0.2"
+
 # Holochain Dependencies
 hdi = { workspace = true }
-
 hdk = { workspace = true }
 #holochain_conductor_api = "0.3"
 #holochain_client = "0.5"
@@ -28,7 +25,6 @@ hdk = { workspace = true }
 #holochain_types = "0.3"
 #holochain_zome_types = "0.3"
 #kitsune_p2p_types = "0.3"
-
 
 # MAP Dependencies
 shared_types_holon = { workspace = true }
@@ -41,6 +37,3 @@ async-std = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-
-[target.wasm32-unknown-unknown]
-rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

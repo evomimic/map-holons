@@ -2,7 +2,7 @@ use crate::core_shared_objects::{
     CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use crate::reference_layer::HolonsContextBehavior;
-use shared_types_holon::{HolonId, LocalId};
+use shared_types_holon::{HolonId, LocalId, TemporaryId};
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
@@ -23,6 +23,8 @@ pub trait HolonServiceApi: Debug {
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
+
+    fn generate_temporary_id(&self) -> Result<TemporaryId, HolonError>;
 
     /// Retrieves all persisted Holons, as a HolonCollection
     fn get_all_holons(&self, context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError>;

@@ -42,7 +42,7 @@ pub fn init_test_context(
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
     // Step 2: Create an empty Nursery for the client
-    let nursery = Nursery::new();
+    let nursery = Nursery::new(holon_service.clone());
 
     // Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(

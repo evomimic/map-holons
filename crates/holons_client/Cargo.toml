@@ -10,9 +10,11 @@ name = "holons_client"
 [dependencies]
 # General dev-dependencies (platform-agnostic)
 derive-new = { workspace = true }
+getrandom = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tracing = "0.1"
+tracing = { workspace = true }
+uuid = { workspace = true }
 
 # Holochain Dependencies
 #hdi = { workspace = true }

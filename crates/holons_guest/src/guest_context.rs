@@ -7,6 +7,7 @@ use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::{HolonError, Nursery, ServiceRoutingPolicy};
 use holons_core::reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior};
 use std::sync::Arc;
+use tracing::info;
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations **within the Holochain guest environment**.
@@ -77,8 +78,10 @@ pub fn init_guest_context(
     // Step 1: Create the GuestHolonService
     let mut guest_holon_service = Arc::new(GuestHolonService::new()); // ✅ Freshly created
 
+    info!("Initializing Guest Context.. About to create Nursery");
+
     // Step 2: Create and initialize the Nursery
-    let mut nursery = Nursery::new();
+    let mut nursery = Nursery::new(guest_holon_service.clone());
     nursery.import_staged_holons(staged_holons); // ✅ Load staged holons
 
     // Step 3: Register internal access

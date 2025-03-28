@@ -2,21 +2,23 @@ use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
+use crate::HolonServiceApi;
 use shared_types_holon::holon_node::TemporaryId;
 
 use shared_types_holon::MapString;
 use std::any::Any;
+use std::sync::Arc;
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Nursery {
     staged_holons: Rc<RefCell<HolonPool>>, // Uses Rc<RefCell<HolonPool>> for interior mutability
 }
 
 impl Nursery {
     /// Creates a new Nursery with an empty HolonPool
-    pub fn new() -> Self {
-        Self { staged_holons: Rc::new(RefCell::new(HolonPool::new())) }
+    pub fn new(holon_service: Arc<dyn HolonServiceApi>) -> Self {
+        Self { staged_holons: Rc::new(RefCell::new(HolonPool::new(holon_service))) }
     }
 
     // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {

@@ -16,7 +16,7 @@ use holons_core::{
 };
 use holons_integrity::LinkTypes;
 use shared_types_holon::{
-    HolonId, LocalId, MapString, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION,
+    HolonId, LocalId, MapString, PropertyName, TemporaryId, LOCAL_HOLON_SPACE_DESCRIPTION,
     LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
 };
 use std::cell::RefCell;
@@ -24,6 +24,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
+use uuid::Uuid;
 
 use super::{fetch_links_to_all_holons, get_all_relationship_links};
 
@@ -292,6 +293,16 @@ impl HolonServiceApi for GuestHolonService {
             collection.add_reference_with_key(smartlink.get_key()?.as_ref(), &holon_reference)?;
         }
         Ok(collection)
+    }
+
+    /// Generates a pseudo-UUID by calling random_bytes from HC
+    fn generate_temporary_id(&self) -> Result<TemporaryId, HolonError> {
+        let random_bytes: Vec<u8> = random_bytes(16).map_err(|e| HolonError::from(e))?.into_vec();
+
+        let uuid =
+            Uuid::from_slice(&random_bytes).expect("Expected a 16-byte vector to create UUID"); // TODO: handle error
+
+        Ok(TemporaryId(uuid))
     }
 
     fn get_all_holons(

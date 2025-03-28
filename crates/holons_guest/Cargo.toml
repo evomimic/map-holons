@@ -17,6 +17,8 @@ Inflector = { workspace = true }
 quick_cache = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
 
 # Holochain Dependencies
 hdk = { workspace = true }
@@ -30,7 +32,6 @@ holon_dance_builders = { workspace = true }
 
 
 [dev-dependencies]
-
 async-std = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }

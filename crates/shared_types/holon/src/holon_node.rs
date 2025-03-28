@@ -133,7 +133,7 @@ impl fmt::Display for ExternalId {
 // --- TemporaryId ---
 impl fmt::Display for TemporaryId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{:?}", self.0)
     }
 }
 
