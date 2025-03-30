@@ -2,7 +2,7 @@
   "name": "map-holons-dev",
   "private": true,
   "workspaces": [
-    "tests",
+    "tests/tryorama",
     "ui"
   ],
   "scripts": {
@@ -15,16 +15,16 @@
     "test": "npm run build:zomes && hc app pack workdir --recursive && npm t -w tests",
     "set-holochain-log": "export H_LOG=holochain=warn,holochain_sqlite=warn,kitsune_p2p_types=warn,holochain::core::queue_consumer=warn",
     "sweetest": "npm run sweetest:custom",
-    "sweetest:quiet": "npm run build:happ && export WASM_LOG=$H_LOG,dances=info,holons=info,descriptors=info && export RUST_LOG=$H_LOG,dances=info,holons=info,descriptors=info && npm run client:test",
-    "sweetest:info": "export RUST_LOG=info,WASM_LOG=info && npm run build:happ && npm run client:test",
-    "sweetest:debug": "export RUST_LOG=info && export WASM_LOG=debug && npm run build:happ && npm run client:test",
-    "sweetest:custom": "export RUST_LOG=warn && export WASM_LOG=warn && npm run build:happ && clear && npm run client:test",
-    "client:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
+    "sweetest:quiet": "npm run build:happ && export WASM_LOG=$H_LOG,dances=info,holons=info,descriptors=info && export RUST_LOG=$H_LOG,dances=info,holons=info,descriptors=info && npm run sweet:test",
+    "sweetest:info": "export RUST_LOG=info,WASM_LOG=info && npm run build:happ && npm run sweet:test",
+    "sweetest:debug": "export RUST_LOG=info && export WASM_LOG=debug && npm run build:happ && npm run sweet:test",
+    "sweetest:custom": "export RUST_LOG=warn && export WASM_LOG=warn && npm run build:happ && clear && npm run sweet:test",
+    "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
     "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown",
     "clean": "npx rimraf target && npx rimraf .cargo && npx rimraf Cargo.lock && npx rimraf flake.lock && npx rimraf tests/sweetests/target && npx rimraf tests/sweetests/Cargo.lock && cargo clean",
-    "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/node_modules",
+    "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/tryorama/node_modules",
     "cb": "clear && npm run build:happ",
     "ct": "clear && npm run sweetest"
   },

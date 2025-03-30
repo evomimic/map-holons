@@ -24,7 +24,4 @@ holons_guest = { workspace = true }
 shared_types_holon = { workspace = true }
 
 [dev-dependencies]
-async-std = { workspace = true }
-futures = { workspace = true }
 pretty_assertions = { workspace = true }
-#rstest = { workspace = true }
