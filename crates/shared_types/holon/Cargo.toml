@@ -15,5 +15,3 @@ derive-new = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-
-uuid = { version = "1.8", features = ["serde", "v4"] }
