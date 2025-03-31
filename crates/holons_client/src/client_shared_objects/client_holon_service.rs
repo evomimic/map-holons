@@ -5,7 +5,7 @@ use holons_core::core_shared_objects::{
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};
 use shared_types_holon::{HolonId, LocalId, TemporaryId};
-use uuid::Uuid;
+// use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -39,7 +39,8 @@ impl HolonServiceApi for ClientHolonService {
     }
 
     fn generate_temporary_id(&self) -> Result<TemporaryId, HolonError> {
-        Ok(TemporaryId(Uuid::new_v4()))
+        // Ok(TemporaryId(Uuid::new_v4()))
+        todo!()
     }
 
     fn get_all_holons(

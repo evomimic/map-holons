@@ -81,6 +81,14 @@ impl From<BorrowError> for HolonError {
     }
 }
 
+use shared_types_holon::ConversionError;
+
+impl From<ConversionError> for HolonError {
+    fn from(error: ConversionError) -> Self {
+        HolonError::InvalidType(format!("{}", error))
+    }
+}
+
 impl HolonError {
     pub fn combine_errors(errors: Vec<HolonError>) -> String {
         let mut combined = String::new();

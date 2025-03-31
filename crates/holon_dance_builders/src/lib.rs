@@ -10,3 +10,4 @@ pub mod stage_new_holon_dance;
 pub mod stage_new_version_dance;
 pub mod with_properties_dance;
 pub mod abandon_staged_changes_dance;
+pub mod generate_temporary_ids;

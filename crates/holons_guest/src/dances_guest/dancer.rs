@@ -104,6 +104,7 @@ impl Dancer {
         dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
+        dispatch_table.insert("generate_temporary_ids", generate_temporary_ids_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::dances::SessionState;
 use crate::query_layer::{NodeCollection, QueryExpression};
 use crate::{HolonReference, StagedReference};
-use shared_types_holon::{HolonId, LocalId, MapString, PropertyMap};
+use shared_types_holon::{HolonId, LocalId, MapInteger, MapString, PropertyMap};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceRequest {
@@ -17,23 +17,24 @@ pub struct DanceRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum DanceType {
-    Standalone,                     // i.e., a dance not associated with a specific holon
-    QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
-    CommandMethod(StagedReference), // a mutating method operating on a specific staged_holon identified by StagedReference
-    CloneMethod(HolonReference),    // a specific method for cloning a Holon
-    NewVersionMethod(HolonId), // a SmartReference only method for cloning a Holon as new version by linking to the original Holon it was cloned from via PREDECESSOR relationship
+    CloneMethod(HolonReference),    // a specific method for cloning a Holon.
+    CommandMethod(StagedReference), // a mutating method operating on a specific staged_holon identified by StagedReference.
     DeleteMethod(LocalId),
+    GenerateTemporaryIds(MapInteger), // calls random_bytes from guest for generating a batch of temporary ids for holons.
+    NewVersionMethod(HolonId), // a SmartReference only method for cloning a Holon as new version by linking to the original Holon it was cloned from via PREDECESSOR relationship.
+    QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon.
+    Standalone,                  // i.e., a dance not associated with a specific holon.
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum RequestBody {
     None,
     Holon(Holon),
-    TargetHolons(RelationshipName, Vec<HolonReference>),
     HolonId(HolonId),
     ParameterValues(PropertyMap),
-    StagedRef(StagedReference),
     QueryExpression(QueryExpression),
+    StagedRef(StagedReference),
+    TargetHolons(RelationshipName, Vec<HolonReference>),
 }
 
 impl RequestBody {

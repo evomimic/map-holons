@@ -118,6 +118,13 @@ impl BaseValue {
             Self::EnumValue(map_enum) => MapBytes(map_enum.0 .0.clone().into_bytes()),
         }
     }
+
+    pub fn into_integer(&self) -> Result<i64, ConversionError> {
+        match self {
+            Self::IntegerValue(integer) => Ok(integer.0),
+            _ => Err(ConversionError::InvalidType("Integer".to_string())),
+        }
+    }
 }
 
 // ===============================
@@ -213,4 +220,11 @@ impl fmt::Display for ValueType {
             ValueType::String => write!(f, "String"),
         }
     }
+}
+
+/// Custom error when trying to access the incorrect enum type inner value.
+#[derive(thiserror::Error, Debug)]
+pub enum ConversionError {
+    #[error("Incorrect inner value type, expected: {0}")]
+    InvalidType(String),
 }

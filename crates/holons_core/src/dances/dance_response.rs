@@ -7,7 +7,7 @@ use crate::query_layer::NodeCollection;
 
 use crate::dances::SessionState;
 use crate::{HolonCollection, HolonReference, StagedReference};
-use shared_types_holon::MapString;
+use shared_types_holon::{MapString, TemporaryId};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceResponse {
@@ -47,6 +47,7 @@ pub enum ResponseBody {
     NodeCollection(NodeCollection),
     // SmartCollection(SmartCollection),
     StagedRef(StagedReference),
+    TemporaryIds(Vec<TemporaryId>),
 }
 
 impl From<HolonError> for ResponseStatusCode {

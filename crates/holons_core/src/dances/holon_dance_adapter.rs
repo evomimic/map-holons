@@ -25,6 +25,7 @@ use crate::query_layer::evaluate_query;
 use crate::reference_layer::get_all_holons;
 use crate::{HolonWritable, HolonsContextBehavior, SmartReference};
 use hdk::prelude::*;
+use shared_types_holon::{MapString, PropertyName};
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
@@ -148,6 +149,54 @@ pub fn delete_holon_dance(
             "Invalid DanceType: expected DeleteMethod(HolonId), didn't get one".to_string(),
         )),
     }
+}
+
+/// Generates a batch of temporary ids for holons from a guest side call.
+///
+/// *DanceRequest:*
+/// - dance_name: "generate_temporary_ids"
+/// - dance_type: GenerateTemporaryIds
+/// - request_body:
+///     - ParameterValues
+///
+/// *ResponseBody:*
+///     - TemporaryIds(Vec<TemporaryId>)
+///
+pub fn generate_temporary_ids_dance(
+    context: &dyn HolonsContextBehavior,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    info!("----- Entered generate_temporary_ids dance.");
+    let mut amount = match request.body {
+        // The only parameter should be an integer amount
+        RequestBody::ParameterValues(parameters) => Ok(parameters
+            .get(&PropertyName(MapString("Amount".to_string())))
+            .ok_or(HolonError::EmptyField("Amount value".to_string()))?
+            .clone()),
+        _ => Err(HolonError::InvalidParameter("RequestBody variant must be Amount".to_string())),
+    }?
+    .ok_or(HolonError::InvalidParameter("Amount -- not found in PropertyMap".to_string()))?
+    .into_integer() // Convert BaseValue into integer
+    .map_err(|e| HolonError::from(e))?;
+
+    // Check is positive
+    if amount < 1 {
+        return Err(HolonError::InvalidParameter("Amount must be greater than 0".to_string()));
+    }
+
+    debug!("getting space_manager from context");
+    let space_manager = context.get_space_manager();
+    let holon_service = space_manager.get_holon_service();
+
+    debug!("asking holon_service to generate temporary ids from random bytes..");
+    let mut ids = Vec::new();
+    while amount != 0 {
+        let id = holon_service.generate_temporary_id()?;
+        ids.push(id);
+        amount -= 1;
+    }
+
+    Ok(ResponseBody::TemporaryIds(ids))
 }
 
 /// Get all holons from the persistent store
