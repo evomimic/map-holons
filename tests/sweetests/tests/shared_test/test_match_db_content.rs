@@ -42,7 +42,7 @@ pub async fn execute_match_db_content(
         info!("Dance Request: {:#?}", request);
 
         // 4. Call the dance
-        let response = test_state.dance_call_service.dance_call(context, request);
+        let response = test_state.dance_call_service.dance_call(context, request).await;
 
         // 5. Ensure response contains the expected Holon
         if let ResponseBody::Holon(actual_holon) = response.body {

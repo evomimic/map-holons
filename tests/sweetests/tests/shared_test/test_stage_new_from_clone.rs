@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::sodoken::crypto_box::curve25519xchacha20poly1305::SEALBYTES;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
@@ -94,7 +93,7 @@ pub async fn execute_stage_new_from_clone(
     debug!("Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status

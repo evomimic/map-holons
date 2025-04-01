@@ -33,7 +33,7 @@ pub async fn execute_load_new_schema(
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status

@@ -25,12 +25,14 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 // use async_std::task;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 // use holons_client::init_client_context;
+
+use holochain_trace;
 use rstest::*;
 use serde::de::Expected;
+use shared_test::mock_conductor::MockConductorConfig;
 use std::sync::{Arc, Mutex};
 use test_query_relationships::execute_query_relationships;
 use tracing::{debug, error, info, trace, warn, Level};

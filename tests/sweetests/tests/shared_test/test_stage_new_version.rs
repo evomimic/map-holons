@@ -6,7 +6,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::mock_conductor::MockConductorConfig;
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::proptest::test_runner::contextualize_config;
+
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use holons_core::core_shared_objects::{HolonCollection, RelationshipName};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
@@ -47,7 +47,7 @@ pub async fn execute_stage_new_version(
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(test_state.context(), request);
+    let response = test_state.dance_call_service.dance_call(test_state.context(), request).await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status

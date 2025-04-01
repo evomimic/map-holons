@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use async_std::task;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::nanoid::format;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
@@ -53,7 +52,7 @@ pub async fn execute_query_relationships(
     debug!("Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status

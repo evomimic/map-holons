@@ -11,12 +11,10 @@ use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, Relat
 
 use crate::shared_test::setup_book_author_steps_with_context;
 use crate::shared_test::test_add_related_holon::execute_add_related_holons;
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::config::get_server_pub_key_from_connection_url;
 
 use crate::shared_test::test_context::init_test_context;
 use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
 use crate::shared_test::test_data_types::BOOK_KEY;
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::holochain_trace;
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::holon_operations_api::*;
 use holons_core::query_layer::QueryExpression;

@@ -8,7 +8,7 @@ import { ViewerComponent } from './components/viewer/viewer.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet,
+  imports: [//RouterOutlet,
     CommonModule,
     ToolbarComponent,
     FooterComponent,
