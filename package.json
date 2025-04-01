@@ -18,7 +18,7 @@
     "sweetest:quiet": "npm run build:happ && export WASM_LOG=$H_LOG,dances=info,holons=info,descriptors=info && export RUST_LOG=$H_LOG,dances=info,holons=info,descriptors=info && npm run sweet:test",
     "sweetest:info": "export RUST_LOG=info,WASM_LOG=info && npm run build:happ && npm run sweet:test",
     "sweetest:debug": "export RUST_LOG=info && export WASM_LOG=debug && npm run build:happ && npm run sweet:test",
-    "sweetest:custom": "export RUST_LOG=warn && export WASM_LOG=warn && npm run build:happ && clear && npm run sweet:test",
+    "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && clear && npm run sweet:test",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
