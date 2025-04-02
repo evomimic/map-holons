@@ -1,5 +1,5 @@
 use crate::core_shared_objects::{Holon, HolonError};
-use crate::utils::uuid::generate_temporary_id;
+use crate::utils::uuid::create_temporary_id;
 use hdi::prelude::{Deserialize, Serialize};
 use shared_types_holon::{MapString, TemporaryId};
 use std::cell::RefCell;
@@ -111,7 +111,13 @@ impl HolonPool {
         self.keyed_index.extend(pool.keyed_index);
     }
 
-    /// Inserts a new Holon into the pool and if it has a key, update the keyed_index. Returns its TemporaryId.
+    ////
+    // ==== TEMPORARY WORKAROUND === //
+    //  -- Until client is functional and we can call a generate random number dance --
+    ////
+    ///
+    /// Inserts a new Holon into the pool and updates the keyed_index. Returns its TemporaryId (first 16 bytes of sha2 hash of its 'key').
+    ///
     /// NOTE: Silently ignores a potential is_accessible error from get_key because it assumes acccessiblity is checked by the caller.
     ///
     /// # Arguments
@@ -119,21 +125,50 @@ impl HolonPool {
     ///
     /// # Returns
     /// - `TemporaryId` representing the index where the Holon was inserted.
-    pub fn insert_holon(&mut self, holon: Holon) -> TemporaryId {
+    pub fn insert_holon(&mut self, holon: Holon) -> Result<TemporaryId, HolonError> {
         // Create random id.
-        let id = generate_temporary_id();
+        let key = &holon
+            .get_key()?
+            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
-        // Update index if Holon has a key.
-        if let Ok(Some(key)) = &holon.get_key() {
-            self.keyed_index.insert(key.clone(), id.clone());
-        }
+        let id = create_temporary_id(key);
+        self.keyed_index.insert(key.clone(), id.clone());
 
         // update pool
         let rc_holon = Rc::new(RefCell::new(holon));
         self.holons.insert(id.clone(), rc_holon);
 
-        id
+        Ok(id)
     }
+
+    //// == SAVE == ////
+    //
+    // /// Inserts a new Holon into the pool and if it has a key, update the keyed_index. Returns its TemporaryId.
+    // /// NOTE: Silently ignores a potential is_accessible error from get_key because it assumes acccessiblity is checked by the caller.
+    // ///
+    // /// # Arguments
+    // /// - `holon` - The Holon to be inserted.
+    // ///
+    // /// # Returns
+    // /// - `TemporaryId` representing the index where the Holon was inserted.
+    // pub fn insert_holon(&mut self, holon: Holon) -> TemporaryId {
+    //     // Create random id.
+    //     let id = generate_temporary_id();
+
+    //     // Update index if Holon has a key.
+    //     if let Ok(Some(key)) = &holon.get_key() {
+    //         self.keyed_index.insert(key.clone(), id.clone());
+    //     }
+
+    // TODO: should return an error because get_key() throws one if the value of the key cannot be returned as a MapString
+
+    //     // update pool
+    //     let rc_holon = Rc::new(RefCell::new(holon));
+    //     self.holons.insert(id.clone(), rc_holon);
+
+    //     id
+    // }
+
     /// Returns the number of Holons in the pool.
     ///
     /// # Returns

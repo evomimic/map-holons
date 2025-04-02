@@ -13,17 +13,12 @@ derive-new = { workspace = true }
 quick_cache = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
-fastrand = "2"
-rand = { version = "0.8", default-features = false, features = ["small_rng"] }
-# getrandom = { version = "0.3", features = ["custom"] }
-# getrandom = "0.2"
-# uuid = { version = "1", features = ["serde", "v4"] }
-# wasm-bindgen = "0.2"
+uuid = { workspace = true }
 
 # Holochain Dependencies
 hdi = { workspace = true }
-
 hdk = { workspace = true }
 #holochain_conductor_api = "0.3"
 #holochain_client = "0.5"

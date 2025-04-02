@@ -9,9 +9,10 @@ crate-type = ["cdylib", "rlib"]
 name = "shared_types_holon"
 
 [dependencies]
+derive-new = { workspace = true }
 hdi = { workspace = true }
 hdk = { workspace = true }
-derive-new = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+uuid ={ workspace = true}

@@ -22,10 +22,11 @@ use shared_types_holon::{MapString, PropertyName};
 
 /// This function updates the supplied test_case with a set of steps that establish some basic
 /// data the different test cases can then extend for different purposes.
-/// Specifically, this function stages (but does NOT commit) the following test data:
+/// Specifically, this function stages 4 Holons (but does NOT commit) and creates 1 Relationship, with the following test data:
 /// *Book Holon* with BOOK_KEY title
 /// *Person Holon with PERSON_1_KEY*
 /// *Person Holon with PERSON_2_KEY*
+/// *Publisher Holon with PUBLISHER_KEY*
 /// *BOOK_TO_PERSON_RELATIONSHIP from Book Holon to person 1 and person 2
 /// The Nursery within the supplied context is used as the test data setup area
 pub fn setup_book_author_steps_with_context(

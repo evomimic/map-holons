@@ -56,23 +56,25 @@ path = "crates/holon_dance_builders"
 # External dependencies
 [workspace.dependencies]
 ahash = "=0.8.11"
+async-std = "1.1.12"
 derive-new = "0.6"
+futures = { version = "0.3.1", default-features = false }
 hex = "0.4"
 hdi = "0.4"
 hdk = "0.3"
 holochain_integrity_types = "0.3"
+home = "0.5.9" # unpin this when we move to rust 1.81.0 or later
 Inflector = "0.11"
+pretty_assertions = "1.4.0"
 quick_cache = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.109"
+sha2 = "0.10.8"
 strum = "0.26"
 strum_macros = "0.26"
 thiserror = "1"
-async-std = "1.1.12"
-futures = { version = "0.3.1", default-features = false }
-pretty_assertions = "1.4.0"
 rstest = "0.21"
-home = "0.5.9" # unpin this when we move to rust 1.81.0 or later
+uuid = { version = "1", features = ["serde"] }
 
 
 [profile.dev]
