@@ -40,6 +40,10 @@ impl HolonServiceApi for ClientHolonService {
 
     fn generate_temporary_id(&self) -> Result<TemporaryId, HolonError> {
         // Ok(TemporaryId(Uuid::new_v4()))
+
+        //let request = build_commit_dance_request(&SessionState::empty())?;
+        // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
+        // _context.get_space_manager()
         todo!()
     }
 

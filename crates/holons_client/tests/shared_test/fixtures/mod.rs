@@ -6,6 +6,7 @@ pub mod descriptor_dance_fixtures;
 pub mod simple_create_holon_fixture;
 pub mod stage_new_from_clone_fixture;
 pub mod stage_new_version_fixture;
+pub mod generate_temporary_ids_fixture;
 
 pub use abandon_staged_changes_fixture::*;
 pub use add_remove_related_fixture::*;
@@ -14,3 +15,4 @@ pub use delete_holon_fixture::*;
 pub use simple_create_holon_fixture::*;
 pub use stage_new_from_clone_fixture::*;
 pub use stage_new_version_fixture::*;
+pub use generate_temporary_ids_fixture::*;

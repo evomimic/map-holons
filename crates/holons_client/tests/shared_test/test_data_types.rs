@@ -74,6 +74,7 @@ pub enum DanceTestStep {
     DatabasePrint, // Writes log messages for each holon in the persistent store
     DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
+    GenerateTemporaryIds(MapInteger), // Generates a batch of temporary ids
     // LoadCoreSchema,
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
@@ -116,6 +117,9 @@ impl Display for DanceTestStep {
             }
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
+            }
+            DanceTestStep::GenerateTemporaryIds(count) => {
+                write!(f, "GenerateTemporaryIds = {}", count.0)
             }
             // DanceTestStep::LoadCoreSchema => {
             //     write!(f, "LoadCoreSchema")
@@ -331,6 +335,7 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::DatabasePrint);
         Ok(())
     }
+
     pub fn add_delete_holon_step(
         &mut self,
         holon_to_delete: MapString,
@@ -339,10 +344,17 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::DeleteHolon(holon_to_delete, expected_response));
         Ok(())
     }
+
     pub fn add_ensure_database_count_step(&mut self, count: MapInteger) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
+
+    pub fn add_generate_temporary_ids_step(&mut self, amount: MapInteger) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::GenerateTemporaryIds(amount));
+        Ok(())
+    }
+
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);
         Ok(())

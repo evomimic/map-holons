@@ -20,6 +20,7 @@ pub mod test_stage_new_from_clone;
 pub mod test_stage_new_holon;
 pub mod test_stage_new_version;
 pub mod test_with_properties_command;
+pub mod test_generate_temporary_ids;
 
 use holochain::sweettest::{SweetCell, SweetConductor};
 use shared_types_holon::{HolonId, MapString};
