@@ -30,7 +30,7 @@ impl Nursery {
     ///
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
-    fn stage_holon(&self, holon: Holon) -> TemporaryId {
+    fn stage_holon(&self, holon: Holon) -> Result<TemporaryId, HolonError> {
         self.staged_holons.borrow_mut().insert_holon(holon)
     }
 
@@ -73,7 +73,7 @@ impl HolonStagingBehavior for Nursery {
     }
 
     fn stage_new_holon(&self, holon: Holon) -> Result<StagedReference, HolonError> {
-        let new_id = self.stage_holon(holon);
+        let new_id = self.stage_holon(holon)?;
         self.to_validated_staged_reference(&new_id)
     }
 }

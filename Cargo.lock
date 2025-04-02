@@ -1911,18 +1911,18 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "derive-new",
- "fastrand",
  "futures",
  "hdi",
  "hdk",
  "quick_cache",
- "rand 0.8.5",
  "rstest",
  "serde",
  "serde_json",
+ "sha2",
  "shared_types_holon",
  "shared_validation",
  "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]
@@ -4984,6 +4984,7 @@ dependencies = [
  "hex",
  "serde",
  "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]

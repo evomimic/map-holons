@@ -1,6 +1,7 @@
 use crate::value_types::{BaseValue, MapString};
 use derive_new::new;
 use hdi::prelude::*;
+use uuid::Uuid;
 use std::collections::btree_map::BTreeMap;
 use std::fmt;
 
@@ -45,7 +46,7 @@ pub struct ExternalId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct TemporaryId(pub Vec<u128>);
+pub struct TemporaryId(pub Uuid);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum HolonId {
