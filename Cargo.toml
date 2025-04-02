@@ -75,7 +75,7 @@ strum = "0.26"
 strum_macros = "0.26"
 thiserror = "1"
 tracing = "0.1.41"
-uuid = { version = "1", features = ["serde", "v4", "rng-getrandom"] }
+# uuid = { version = "1", features = ["serde"] }
 
 
 [profile.dev]

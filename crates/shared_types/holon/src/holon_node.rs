@@ -3,7 +3,7 @@ use derive_new::new;
 use hdi::prelude::*;
 use std::collections::btree_map::BTreeMap;
 use std::fmt;
-use uuid::Uuid;
+// use uuid::Uuid;
 
 // ===============================
 // 📌 Constants
@@ -46,7 +46,8 @@ pub struct ExternalId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct TemporaryId(pub Uuid);
+// pub struct TemporaryId(pub Uuid);
+pub struct TemporaryId(pub MapString);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum HolonId {

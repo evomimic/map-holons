@@ -15,4 +15,4 @@ derive-new = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-uuid = { workspace = true }
+# uuid = { workspace = true }

@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::utils::generate_temporary_id;
+
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
 
 #[derive(Debug, Clone)]
@@ -123,9 +125,9 @@ impl HolonPool {
     ///
     /// # Returns
     /// - `TemporaryId` representing the index where the Holon was inserted.
-    pub fn insert_holon(&mut self, holon: Holon) -> TemporaryId {
+    pub fn insert_holon(&mut self, holon: Holon) -> Result<TemporaryId, HolonError> {
         // Create random id.
-        let id = self.holon_service.generate_temporary_id().unwrap(); // TODO: handle error
+        let id = generate_temporary_id()?;
 
         // Update index if Holon has a key.
         if let Ok(Some(key)) = &holon.get_key() {
@@ -136,7 +138,7 @@ impl HolonPool {
         let rc_holon = Rc::new(RefCell::new(holon));
         self.holons.insert(id.clone(), rc_holon);
 
-        id
+       Ok(id)
     }
     /// Returns the number of Holons in the pool.
     ///
