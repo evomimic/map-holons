@@ -16,6 +16,7 @@
 
       devShells.default = pkgs.mkShell {
         inputsFrom = [ inputs'.holonix.devShells.default ];
+        nativeBuildInputs = [ pkgs.libsodium pkgs.pkg-config ];
 
         packages = (with pkgs; [
           nodejs_20
