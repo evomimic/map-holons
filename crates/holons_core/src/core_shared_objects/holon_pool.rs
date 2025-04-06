@@ -1,5 +1,5 @@
 use crate::core_shared_objects::{Holon, HolonError};
-use crate::utils::uuid::create_temporary_id;
+use crate::utils::uuid::create_temporary_id_from_key;
 use hdi::prelude::{Deserialize, Serialize};
 use shared_types_holon::{MapString, TemporaryId};
 use std::cell::RefCell;
@@ -101,6 +101,7 @@ impl HolonPool {
     /// # Arguments
     /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
     pub fn import_pool(&mut self, pool: SerializableHolonPool) -> () {
+        self.holons.clear(); // Remove existing holons
         self.keyed_index.clear(); // Remove existing index
 
         // Populate with new holons
@@ -131,7 +132,7 @@ impl HolonPool {
             .get_key()?
             .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
-        let id = create_temporary_id(key);
+        let id = create_temporary_id_from_key(key);
         self.keyed_index.insert(key.clone(), id.clone());
 
         // update pool

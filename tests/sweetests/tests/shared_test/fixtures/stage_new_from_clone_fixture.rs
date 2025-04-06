@@ -120,7 +120,7 @@
 
 //     // Mirror the test step in the fixture's Nursery
 //     let expected_fixture_holon_ref = staging_service.borrow().stage_new_holon(expected_holon)?;
-//     let expected_executor_holon_ref = expected_fixture_holon_ref.get_id().unwrap();
+//     let expected_executor_holon_ref = StagedReference::from_index(0);
 
 //     // Step 2: with_properties step to modify the staged clone's properties
 
