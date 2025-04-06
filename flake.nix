@@ -14,6 +14,10 @@
       formatter = pkgs.nixpkgs-fmt;
 
       devShells.default = pkgs.mkShell {
+        nativeBuildInputs = [
+          pkgs.libsodium   # needed for sweetest dependency of sodoken -> libsodium-sys
+          pkgs.pkg-config  # for build.rs to locate libsodium
+        ];
         packages = (with inputs'.holonix.packages; [
           holochain
           lair-keystore
