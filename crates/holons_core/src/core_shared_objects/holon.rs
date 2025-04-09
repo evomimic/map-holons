@@ -1,6 +1,7 @@
 use crate::core_shared_objects::{
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
+use crate::HolonReference;
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::value_types::BaseValue;
@@ -39,6 +40,13 @@ pub struct Holon {
     // pub holon_space: HolonReference,
     // pub dancer : Dancer,
     pub errors: Vec<HolonError>, // only relevant for staged holons
+}
+
+/// Type used to set the components for key derivation. Contains a HolonReference to original Holon to be cloned from.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct KeyPropertyMap {
+    pub holon_type: HolonReference,
+    pub key_components: PropertyMap,
 }
 
 /// Type used for testing in order to match the essential content of a Holon
@@ -542,6 +550,20 @@ impl Holon {
 
         Ok(holon)
     }
+
+    // Updates Holon Key
+    pub fn with_key(&mut self, key_components: PropertyMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let key: String =
+            key_components.values().flatten().map(|val| Into::<String>::into(val)).collect();
+        self.property_map.insert(
+            PropertyName(MapString("key".to_string())),
+            Some(BaseValue::StringValue(MapString(key))),
+        );
+
+        Ok(())
+    }
+
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors

@@ -1,195 +1,193 @@
-// use crate::shared_test::setup_book_author_steps_with_context;
-// use crate::shared_test::test_context::init_test_context;
-// use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-// use crate::shared_test::test_data_types::{
-//     DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
-// };
+use crate::shared_test::setup_book_author_steps_with_context;
+use crate::shared_test::test_context::init_test_context;
+use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
+use crate::shared_test::test_data_types::{
+    DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
+};
 
-// use holons_core::core_shared_objects::HolonError;
-// use holons_core::dances::ResponseStatusCode;
-// use holons_core::{HolonReadable, HolonReference, HolonWritable};
-// use holons_core::{RelationshipName, StagedReference};
+use holons_core::core_shared_objects::HolonError;
+use holons_core::dances::ResponseStatusCode;
+use holons_core::{HolonReadable, HolonReference, HolonWritable};
+use holons_core::{RelationshipName, StagedReference};
 
-// use rstest::*;
-// use shared_types_holon::{BaseValue, MapInteger, MapString, PropertyMap, PropertyName};
+use rstest::*;
+use shared_types_holon::{BaseValue, MapInteger, MapString, PropertyMap, PropertyName};
 
-// /// Fixture for creating Simple StageNewFromClone Testcase
-// #[fixture]
-// pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
-//     // The fixture has its own Nursery which is used as a scratch pad during the test setup phase.
-//     // Test Holons are staged (but never committed) in the fixture_context's Nursery
-//     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-//     let fixture_context = init_test_context(TestFixture);
-//     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
+/// Fixture for creating Simple StageNewFromClone Testcase
+#[fixture]
+pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
+    // The fixture has its own Nursery which is used as a scratch pad during the test setup phase.
+    // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    let fixture_context = init_test_context(TestFixture);
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
-//     let mut test_case = DancesTestCase::new(
-//         "Simple StageNewFromClone Testcase".to_string(),
-//         "Phase 1 clones a staged holon, Phase 2 clones a saved holon, changes some of its\n\
-//         properties, adds a relationship, commits it and then compares essential content of existing \n\
-//         holon and cloned holon".to_string(),
-//     );
-//     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-//     let mut expected_count: i64 = 1;
+    let mut test_case = DancesTestCase::new(
+        "Simple StageNewFromClone Testcase".to_string(),
+        "Phase 1 clones a staged holon, Phase 2 clones a saved holon, changes some of its\n\
+        properties, adds a relationship, commits it and then compares essential content of existing \n\
+        holon and cloned holon".to_string(),
+    );
 
-//     //  ENSURE DATABASE COUNT -- Empty except for HolonSpace  //
-//     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count: i64 = 1;
 
-//     // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
-//     // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
-//     // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
+    //  ENSURE DATABASE COUNT -- Empty except for HolonSpace  //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-//     let _author_relationship_name =
-//         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+    // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
+    // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
+    // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
-//     // The following assumes the fixture's nursery contains the same number of holons as
-//     // test executor's nursery will have staged immediately prior to commit
-//     expected_count += staging_service.borrow().staged_count();
+    let _author_relationship_name =
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
-//     // Get references to the Holons stashed in the fixture's Nursery.
-//     let book_key = MapString(BOOK_KEY.to_string());
-//     let book_ref = staging_service.borrow().get_staged_holon_by_key(&book_key)?;
+    // The following assumes the fixture's nursery contains the same number of holons as
+    // test executor's nursery will have staged immediately prior to commit
+    expected_count += staging_service.borrow().staged_count();
 
-//     // Save info about publisher and person 2 to use in Phase 2
-//     let person_2_key = MapString(PERSON_2_KEY.to_string());
-//     let person_2_ref = staging_service.borrow().get_staged_holon_by_key(&person_2_key)?;
+    // Get references to the Holons stashed in the fixture's Nursery.
+    let book_key = MapString(BOOK_KEY.to_string());
+    let book_ref = staging_service.borrow().get_staged_holon_by_key(&book_key)?;
 
-//     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-//     let publisher_ref = staging_service.borrow().get_staged_holon_by_key(&publisher_key)?;
+    // Save info about publisher and person 2 to use in Phase 2
+    let person_2_key = MapString(PERSON_2_KEY.to_string());
+    let person_2_ref = staging_service.borrow().get_staged_holon_by_key(&person_2_key)?;
 
-//     // The publisher holon will be the holon cloned in Phase II. Clone it here to use as a basis
-//     // for mirroring the Phase II test step actions.
-//     let expected_holon = publisher_ref.clone_holon(&*fixture_context)?;
+    let publisher_key = MapString(PUBLISHER_KEY.to_string());
+    let publisher_ref = staging_service.borrow().get_staged_holon_by_key(&publisher_key)?;
 
-//     // ******************     PHASE 1: CLONE A STAGED HOLON     **********************************
-//     // When stage_new_from_clone is executed (during the test execution phase), it will add an exact
-//     // copy of the book holon to the Nursery. For this phase of the test case we will commit
-//     // the duplicate. This step should fail on commit once we have duplicate-key prevention logic
-//     // But for now, this commit will succeed.
-//     //
+    // The publisher holon will be the holon cloned in Phase II. Clone it here to use as a basis
+    // for mirroring the Phase II test step actions.
+    let expected_holon = publisher_ref.clone_holon(&*fixture_context)?;
 
-//     // // Do a local clone of the book holon
-//     // let mut expected_holon = book_holon_ref.clone_holon(&*fixture_context)?;
-//     //
-//     // // add the expected holon to the fixture's nursery to keep the staged references in sync between
-//     // // the fixture and the test executor
-//     // let expected_holon_reference = staging_service.borrow().stage_new_holon(expected_holon)?;
+    // ******************     PHASE 1: CLONE A STAGED HOLON     **********************************
+    // When stage_new_from_clone is executed (during the test execution phase), it will add an exact
+    // copy of the book holon to the Nursery. For this phase of the test case we will commit
+    // the duplicate. This step should fail on commit once we have duplicate-key prevention logic
+    // But for now, this commit will succeed.
+    //
 
-//     // Add a test step to the test case that will stage an exact duplicate of the book holon
+    // // Do a local clone of the book holon
+    // let mut expected_holon = book_holon_ref.clone_holon(&*fixture_context)?;
+    //
+    // // add the expected holon to the fixture's nursery to keep the staged references in sync between
+    // // the fixture and the test executor
+    // let expected_holon_reference = staging_service.borrow().stage_new_holon(expected_holon)?;
 
-//     test_case.add_stage_new_from_clone_step(
-//         TestReference::StagedHolon(book_ref.clone()),
-//         ResponseStatusCode::OK,
-//     )?;
+    // Add a test step to the test case that will stage an exact duplicate of the book holon
 
-//     //  COMMIT  // all Holons in staging_area
-//     test_case.add_commit_step()?;
+    test_case.add_stage_new_from_clone_step(
+        TestReference::StagedHolon(book_ref.clone()),
+        ResponseStatusCode::OK,
+    )?;
 
-//     expected_count += 1;
+    //  COMMIT  // all Holons in staging_area
+    test_case.add_commit_step()?;
+    expected_count += 1;
 
-//     //  ENSURE DATABASE COUNT //
-//     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    //  ENSURE DATABASE COUNT //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-//     //  MATCH SAVED CONTENT  //
-//     test_case.add_match_saved_content_step()?;
+    //  MATCH SAVED CONTENT  //
+    test_case.add_match_saved_content_step()?;
 
-//     // ******************     PHASE 2: CLONE A SAVED HOLON     ************************************
-//     // TEST STEPS:
-//     // Step 1: stage_new_from_clone for the publisher holon committed in phase 1
-//     // Step 2: with_properties step to modify the staged clone's properties
-//     // Step 3: add
-//     // Step 4: Commit
-//     // Step 5: Ensure DB count (s/b 1 more than previous commit)
-//     // Step 6: Match DB content to ensure original holon is unchanged and clone has expected
-//     // properties and related holons
-//     //
-//     // NOTE: In each step we need to mirror the actions being added via test steps in the
-//     // fixture's nursery in order to build the expected holon.
-//     //
-//     // NOTE: Since Phase I concludes with a `commit` step, the test executor's Nursery will be reset.
-//     // But the fixture's nursery never commits, so it will continue to grow. This means we will need
-//     // to track index position separately in Phase 2 of the fixture and synthetically create
-//     // the StagedReference passed to its test step constructors
+    // ******************     PHASE 2: CLONE A SAVED HOLON     ************************************
+    // TEST STEPS:
+    // Step 1: stage_new_from_clone for the publisher holon committed in phase 1
+    // Step 2: with_properties step to modify the staged clone's properties
+    // Step 3: add
+    // Step 4: Commit
+    // Step 5: Ensure DB count (s/b 1 more than previous commit)
+    // Step 6: Match DB content to ensure original holon is unchanged and clone has expected
+    // properties and related holons
+    //
+    // NOTE: In each step we need to mirror the actions being added via test steps in the
+    // fixture's nursery in order to build the expected holon.
+    //
+    // NOTE: Since Phase I concludes with a `commit` step, the test executor's Nursery will be reset.
+    // But the fixture's nursery never commits, so it will continue to grow. This means we will need
+    // to track index position separately in Phase 2 of the fixture and synthetically create
+    // the StagedReference passed to its test step constructors
 
-//     // Step 1: stage_new_from_clone for the publisher holon committed in Phase I.
-//     // This will create an exact copy of the publisher holon.
+    // Step 1: stage_new_from_clone for the publisher holon committed in Phase I.
+    // This will create an exact copy of the publisher holon, except for a new key that is appended with a key_suffix_count from test session state.
 
-//     test_case.add_stage_new_from_clone_step(
-//         TestReference::SavedHolon(publisher_key.clone()),
-//         ResponseStatusCode::OK,
-//     )?;
+    test_case.add_stage_new_from_clone_step(
+        TestReference::SavedHolon(publisher_key.clone()),
+        ResponseStatusCode::OK,
+    )?;
 
-//     // Mirror the test step in the fixture's Nursery
-//     let expected_fixture_holon_ref = staging_service.borrow().stage_new_holon(expected_holon)?;
-//     let expected_executor_holon_ref = StagedReference::from_index(0);
+    // Mirror the test step in the fixture's Nursery
+    let expected_fixture_holon_ref = staging_service.borrow().stage_new_holon(expected_holon)?;
+    let expected_executor_holon_ref = expected_fixture_holon_ref.clone();
 
-//     // Step 2: with_properties step to modify the staged clone's properties
+    // Step 2: with_properties step to modify the staged clone's properties
+    let mut changed_properties = PropertyMap::new();
 
-//     let mut changed_properties = PropertyMap::new();
+    let cloned_holon_key = MapString("A clone of original publisher".to_string());
+    changed_properties.insert(
+        PropertyName(MapString("title".to_string())),
+        Some(BaseValue::StringValue(cloned_holon_key.clone())),
+    );
+    changed_properties.insert(
+        PropertyName(MapString("key".to_string())),
+        Some(BaseValue::StringValue(cloned_holon_key.clone())),
+    );
+    changed_properties.insert(
+        PropertyName(MapString("description".to_string())),
+        Some(BaseValue::StringValue(MapString("this is testing a clone from a saved Holon, changing it, modifying relationships, then committing".to_string()))),
+    );
 
-//     let cloned_holon_key = MapString("A clone of original publisher".to_string());
-//     changed_properties.insert(
-//         PropertyName(MapString("title".to_string())),
-//         Some(BaseValue::StringValue(cloned_holon_key.clone())),
-//     );
-//     changed_properties.insert(
-//         PropertyName(MapString("key".to_string())),
-//         Some(BaseValue::StringValue(cloned_holon_key.clone())),
-//     );
-//     changed_properties.insert(
-//         PropertyName(MapString("description".to_string())),
-//         Some(BaseValue::StringValue(MapString("this is testing a clone from a saved Holon, changing it, modifying relationships, then committing".to_string()))),
-//     );
+    // test_case.add_with_properties_step(
+    //     expected_executor_holon_ref.clone(),
+    //     changed_properties.clone(),
+    //     ResponseStatusCode::OK,
+    // )?;
 
-//     test_case.add_with_properties_step(
-//         expected_executor_holon_ref.clone(),
-//         changed_properties.clone(),
-//         ResponseStatusCode::OK,
-//     )?;
+    for (property_name, value) in changed_properties.iter() {
+        expected_fixture_holon_ref.with_property_value(
+            &*fixture_context,
+            property_name.clone(),
+            value.clone(),
+        )?;
+    }
 
-//     for (property_name, value) in changed_properties.iter() {
-//         expected_fixture_holon_ref.with_property_value(
-//             &*fixture_context,
-//             property_name.clone(),
-//             value.clone(),
-//         );
-//     }
+    // // Step 3: add_related_holons step to stage an additional relationship for the clone
+    // let publisher_relationship_name = RelationshipName(MapString(EDITOR_FOR.to_string()));
 
-//     // Step 3: add_related_holons step to stage an additional relationship for the clone
+    // let mut fixture_holons_to_add: Vec<HolonReference> = Vec::new();
+    // let mut holons_to_add: Vec<TestReference> = Vec::new();
 
-//     let publisher_relationship_name = RelationshipName(MapString(EDITOR_FOR.to_string()));
+    // fixture_holons_to_add.push(HolonReference::Staged(person_2_ref));
 
-//     let mut fixture_holons_to_add: Vec<HolonReference> = Vec::new();
-//     let mut holons_to_add: Vec<TestReference> = Vec::new();
+    // let person_test_ref = TestReference::SavedHolon(person_2_key.clone());
+    // holons_to_add.push(person_test_ref);
 
-//     fixture_holons_to_add.push(HolonReference::Staged(person_2_ref));
+    // // Update the fixture's expected holon
+    // expected_fixture_holon_ref.add_related_holons(
+    //     &*fixture_context,
+    //     publisher_relationship_name.clone(),
+    //     fixture_holons_to_add.clone(),
+    // )?;
 
-//     let person_test_ref = TestReference::SavedHolon(person_2_key.clone());
-//     holons_to_add.push(person_test_ref);
+    // test_case.add_related_holons_step(
+    //     expected_executor_holon_ref.clone(), // source holon
+    //     publisher_relationship_name.clone(),
+    //     holons_to_add,
+    //     ResponseStatusCode::OK,
+    //     expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap(), // expected holon
+    // )?;
 
-//     // Update the fixture's expected holon
-//     expected_fixture_holon_ref.add_related_holons(
-//         &*fixture_context,
-//         publisher_relationship_name.clone(),
-//         fixture_holons_to_add.clone(),
-//     );
+    //  COMMIT  // the cloned & modified Book Holon
+    test_case.add_commit_step()?;
+    expected_count += 1;
 
-//     test_case.add_related_holons_step(
-//         expected_executor_holon_ref.clone(), // source holon
-//         publisher_relationship_name.clone(),
-//         holons_to_add,
-//         ResponseStatusCode::OK,
-//         expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap(), // expected holon
-//     )?;
+    //  ENSURE DATABASE COUNT -- 7 Holons  //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-//     //  COMMIT  // the cloned & modified Book Holon
-//     test_case.add_commit_step()?;
-//     expected_count += 1;
+    //  MATCH SAVED CONTENT //
+    test_case.add_match_saved_content_step()?;
 
-//     //  ENSURE DATABASE COUNT -- 7 Holons  //
-//     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
-
-//     //  MATCH SAVED CONTENT //
-//     test_case.add_match_saved_content_step()?;
-
-//     Ok(test_case.clone())
-// }
+    Ok(test_case.clone())
+}

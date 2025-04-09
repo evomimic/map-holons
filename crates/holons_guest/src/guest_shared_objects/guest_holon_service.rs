@@ -6,8 +6,8 @@ use hdk::prelude::*;
 
 use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use holons_core::core_shared_objects::{
-    AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState, NurseryAccess,
-    RelationshipName, StagedRelationshipMap,
+    AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState, KeyPropertyMap,
+    NurseryAccess, RelationshipName, StagedRelationshipMap,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{
@@ -314,11 +314,15 @@ impl HolonServiceApi for GuestHolonService {
     fn stage_new_from_clone(
         &self,
         context: &dyn HolonsContextBehavior,
-        original_holon: HolonReference,
+        key_property_map: KeyPropertyMap,
     ) -> Result<StagedReference, HolonError> {
+        let original_holon = key_property_map.holon_type;
         original_holon.is_accessible(context, AccessType::Clone)?;
 
         let mut cloned_holon = original_holon.clone_holon(context)?;
+
+        // update key
+        cloned_holon.with_key(key_property_map.key_components)?;
 
         match original_holon {
             HolonReference::Staged(_) => {}

@@ -21,7 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{CommitResponse, Holon, HolonError};
+use crate::core_shared_objects::{CommitResponse, Holon, HolonError, KeyPropertyMap};
 use crate::{
     HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
     SmartReference, StagedReference,
@@ -141,10 +141,7 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>,
     let key_option = map.get(&PropertyName(MapString("key".to_string())));
     if let Some(Some(inner_value)) = key_option {
         let string_value: String = inner_value.try_into().map_err(|_| {
-            HolonError::UnexpectedValueType(
-                format!("{:?}", inner_value),
-                "MapString".to_string(),
-            )
+            HolonError::UnexpectedValueType(format!("{:?}", inner_value), "MapString".to_string())
         })?;
         Ok(Some(MapString(string_value)))
     } else {
@@ -192,10 +189,10 @@ fn get_staging_service(
 ///
 pub fn stage_new_from_clone_api(
     context: &dyn HolonsContextBehavior,
-    original_holon: HolonReference,
+    key_property_map: KeyPropertyMap,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_space_manager().get_holon_service();
-    let staged_reference = staging_service.stage_new_from_clone(context, original_holon)?;
+    let staged_reference = staging_service.stage_new_from_clone(context, key_property_map)?;
 
     Ok(staged_reference)
 }
