@@ -322,7 +322,7 @@ pub fn stage_new_from_clone_dance(
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_from_clone dance");
 
-    let holon_reference = match request.dance_type {
+    let key_property_map = match request.dance_type {
         DanceType::CloneMethod(holon_reference) => holon_reference,
         _ => {
             return Err(HolonError::InvalidParameter(
@@ -331,7 +331,7 @@ pub fn stage_new_from_clone_dance(
         }
     };
 
-    let staged_reference = stage_new_from_clone_api(context, holon_reference)?;
+    let staged_reference = stage_new_from_clone_api(context, key_property_map)?;
 
     Ok(ResponseBody::StagedRef(staged_reference))
 }

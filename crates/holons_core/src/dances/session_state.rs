@@ -7,24 +7,22 @@ use serde::{Deserialize, Serialize};
 /// state info that is just being maintained via the ping pong process. This also should make it
 /// easier to evolve to token-based state management approach where, say, the state token is
 /// actually a reference into the ephemeral store.
+/// The key_suffix_count is part of a workaround involving the hashing of key plus this suffix_count as a way to
+/// create a unique temporary id for each Holon in the session specific Nursery.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SessionState {
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReference>,
+    pub key_suffix_count: usize, // default beginning count is 0
 }
 
 impl SessionState {
-    /// Creates an empty session state.
-    pub fn empty() -> Self {
-        Self { staged_holons: SerializableHolonPool::default(), local_holon_space: None }
-    }
-
     /// Creates a new session state with the provided staged holons and local holon space.
     pub fn new(
         staged_holons: SerializableHolonPool,
         local_holon_space: Option<HolonReference>,
     ) -> Self {
-        Self { staged_holons, local_holon_space }
+        Self { staged_holons, local_holon_space, key_suffix_count: 1 }
     }
 
     pub fn get_local_holon_space(&self) -> Option<HolonReference> {
