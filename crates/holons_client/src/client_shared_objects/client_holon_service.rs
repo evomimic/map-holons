@@ -1,10 +1,10 @@
 #![allow(unused_variables)]
 use holons_core::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, KeyPropertyMap, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
-use holons_core::{SmartReference, StagedReference};
-use shared_types_holon::{HolonId, LocalId};
+use holons_core::{HolonReference, SmartReference, StagedReference};
+use shared_types_holon::{HolonId, LocalId, MapString};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -47,7 +47,8 @@ impl HolonServiceApi for ClientHolonService {
     fn stage_new_from_clone(
         &self,
         _context: &dyn HolonsContextBehavior,
-        _key_property_map: KeyPropertyMap,
+        _original_holon: HolonReference,
+        _new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
         todo!()
     }

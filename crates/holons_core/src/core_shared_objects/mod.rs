@@ -24,7 +24,7 @@ pub use cache_access::HolonCacheAccess;
 pub use cache_request_router::ServiceRoutingPolicy;
 pub use commit_response::{CommitRequestStatus, CommitResponse};
 pub use holon::{
-    AccessType, EssentialHolonContent, Holon, HolonState, HolonSummary, KeyPropertyMap,
+    AccessType, EssentialHolonContent, Holon, HolonState, HolonSummary,
     ValidationState,
 };
 pub use holon_cache::HolonCache;

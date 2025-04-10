@@ -9,7 +9,7 @@ use crate::shared_test::test_data_types::{
     DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
 };
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
-use holons_core::core_shared_objects::{KeyPropertyMap, RelationshipName};
+use holons_core::core_shared_objects::RelationshipName;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
 use rstest::*;
@@ -43,6 +43,7 @@ use tracing::{debug, error, info, warn};
 pub async fn execute_stage_new_from_clone(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     original_test_ref: TestReference,
+    new_key: MapString,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Cloning a Holon ---");
@@ -87,44 +88,24 @@ pub async fn execute_stage_new_from_clone(
         },
     };
 
-    // 3. Constuct the KeyPropertyMap with the HolonReference and parameters for the key components of:  'key' + key_suffix_count
-    let original_key = original_holon_ref
-        .get_key(context)
-        .expect("Failure! get_key for orginal_holon_ref returned: ")
-        .expect("Holon must have a key");
-    let mut key_components_property_map = BTreeMap::new();
-    key_components_property_map.insert(
-        PropertyName(MapString("key".to_string())),
-        Some(BaseValue::StringValue(original_key)),
-    );
-    key_components_property_map.insert(
-        PropertyName(MapString("key_suffix_count".to_string())),
-        Some(BaseValue::StringValue(MapString(test_state.key_suffix_count.to_string()))),
-    );
-
-    let key_property_map = KeyPropertyMap {
-        holon_type: original_holon_ref,
-        key_components: key_components_property_map,
-    };
-
-    // 4. Build the DanceRequest
-    let request = build_stage_new_from_clone_dance_request(key_property_map)
+    // 3. Build the DanceRequest
+    let request = build_stage_new_from_clone_dance_request(original_holon_ref, new_key)
         .expect("Failed to build stage_new_from_clone request");
 
     debug!("Dance Request: {:#?}", request);
 
-    // 5. Call the dance
+    // 4. Call the dance
     let response = test_state.dance_call_service.dance_call(context, request);
     debug!("Dance Response: {:#?}", response.clone());
 
-    // 6. Validate response status
+    // 5. Validate response status
     assert_eq!(
         response.status_code, expected_response,
         "stage_new_from_clone request returned unexpected status: {}",
         response.description
     );
 
-    // 7. If successful, verify the cloned Holon
+    // 6. If successful, verify the cloned Holon
     if response.status_code == ResponseStatusCode::OK {
         if let ResponseBody::StagedRef(cloned_holon) = response.body {
             info!("Cloned holon reference returned: {:?}", cloned_holon);
