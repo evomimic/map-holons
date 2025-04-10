@@ -57,7 +57,6 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_match_saved_content_step()?;
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
-    // let cloned_book_index = 0;
     let cloned_book_key =
         BaseValue::StringValue(MapString("A new version of: Emerging World".to_string()));
 

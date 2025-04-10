@@ -42,13 +42,6 @@ pub struct Holon {
     pub errors: Vec<HolonError>, // only relevant for staged holons
 }
 
-/// Type used to set the components for key derivation. Contains a HolonReference to original Holon to be cloned from.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct KeyPropertyMap {
-    pub holon_type: HolonReference,
-    pub key_components: PropertyMap,
-}
-
 /// Type used for testing in order to match the essential content of a Holon
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialHolonContent {
@@ -549,19 +542,6 @@ impl Holon {
         // TODO: populate `key` from the property map once we have Descriptors/Constraints available
 
         Ok(holon)
-    }
-
-    // Updates Holon Key
-    pub fn with_key(&mut self, key_components: PropertyMap) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        let key: String =
-            key_components.values().flatten().map(|val| Into::<String>::into(val)).collect();
-        self.property_map.insert(
-            PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(MapString(key))),
-        );
-
-        Ok(())
     }
 
     // NOTE: this function doesn't check if supplied PropertyName is a valid property

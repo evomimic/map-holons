@@ -1,8 +1,8 @@
 use crate::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, KeyPropertyMap, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use crate::reference_layer::HolonsContextBehavior;
-use shared_types_holon::{HolonId, LocalId};
+use shared_types_holon::{HolonId, LocalId, MapString};
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
@@ -35,7 +35,8 @@ pub trait HolonServiceApi: Debug {
     fn stage_new_from_clone(
         &self,
         context: &dyn HolonsContextBehavior,
-        key_property_map: KeyPropertyMap,
+        original_holon: HolonReference,
+        new_key: MapString,
     ) -> Result<StagedReference, HolonError>;
 
     /// Stages the provided holon and returns a reference-counted reference to it
