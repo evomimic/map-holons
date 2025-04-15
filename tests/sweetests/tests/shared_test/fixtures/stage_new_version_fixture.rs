@@ -45,7 +45,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
 
     // Get and set the various Holons data.
     let book_key = MapString(BOOK_KEY.to_string());
-    // let book_holon_ref = staging_service.get_staged_holon_by_key(fixture_context, &book_key)?;
+    // let book_holon_ref = staging_service.get_staged_holon_by_base_key(fixture_context, &book_key)?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
