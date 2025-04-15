@@ -44,11 +44,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
     expected_count += staging_service.borrow().staged_count();
 
-    let person_1_ref =
-        staging_service.borrow().get_staged_holon_by_key(&MapString(PERSON_1_KEY.to_string()))?;
+    let person_1_ref = staging_service
+        .borrow()
+        .get_staged_holon_by_base_key(&MapString(PERSON_1_KEY.to_string()))?;
 
     let book_ref =
-        staging_service.borrow().get_staged_holon_by_key(&MapString(BOOK_KEY.to_string()))?;
+        staging_service.borrow().get_staged_holon_by_base_key(&MapString(BOOK_KEY.to_string()))?;
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the

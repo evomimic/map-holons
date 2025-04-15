@@ -149,13 +149,13 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>,
     }
 }
 
-pub fn get_staged_holon_by_key(
+pub fn get_staged_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = get_staging_service(context);
     let staging_service_borrow = staging_service.borrow();
-    staging_service_borrow.get_staged_holon_by_key(key)
+    staging_service_borrow.get_staged_holon_by_base_key(key)
 }
 
 fn get_staging_service(

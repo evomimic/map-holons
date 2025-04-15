@@ -48,14 +48,14 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // Get references to the Holons stashed in the fixture's Nursery.
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_ref = staging_service.borrow().get_staged_holon_by_key(&book_key)?;
+    let book_ref = staging_service.borrow().get_staged_holon_by_base_key(&book_key)?;
 
     // Save info about publisher and person 2 to use in Phase 2
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let person_2_ref = staging_service.borrow().get_staged_holon_by_key(&person_2_key)?;
+    let person_2_ref = staging_service.borrow().get_staged_holon_by_base_key(&person_2_key)?;
 
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let publisher_ref = staging_service.borrow().get_staged_holon_by_key(&publisher_key)?;
+    let publisher_ref = staging_service.borrow().get_staged_holon_by_base_key(&publisher_key)?;
 
     // The publisher holon will be the holon cloned in Phase II. Clone it here to use as a basis
     // for mirroring the Phase II test step actions.

@@ -4,7 +4,7 @@ use crate::HolonStagingBehavior;
 use shared_types_holon::holon_node::TemporaryId;
 use shared_types_holon::MapString;
 use std::any::Any;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 /// Provides **internal management** of staged holons in the nursery.
@@ -29,7 +29,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// Clears the Nursery's staged holons
     fn clear_stage(&mut self);
 
-    /// Finds a holon by its key and returns its TemporaryId.
+    /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
     ///
     /// # Arguments
     ///
@@ -38,7 +38,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// # Returns
     ///
     /// `Ok(TemporaryId)` containing the index if the key exists, or an `Err` if the key is not found.
-    fn get_id_by_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
+    fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
 
     /// Exports the currently staged holons as a `SerializableHolonPool`.
     ///

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-// use crate::get_holon_by_key_from_test_state;
+// use crate::get_holon_by_base_key_from_test_state;
 use core::panic;
 use std::cell::RefCell;
 use tracing::{error, info, warn};
@@ -35,8 +35,8 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     );
     book_holon.with_property_value(
         PropertyName(MapString("key".to_string())),
-        Some(BaseValue::StringValue(book_holon_key.clone()),
-    ))?;
+        Some(BaseValue::StringValue(book_holon_key.clone())),
+    )?;
     book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
         Some(BaseValue::StringValue(MapString(

@@ -1,11 +1,11 @@
 use crate::core_shared_objects::{
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
-use crate::HolonReference;
+
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{LocalId, MapString};
+use shared_types_holon::{LocalId, MapInteger, MapString};
 use std::fmt;
 use std::rc::Rc;
 
@@ -31,7 +31,8 @@ impl fmt::Display for AccessType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Holon {
-    pub state: HolonState,                 // only relevant for staged holons
+    pub version_sequence_count: MapInteger, // used to add to hash content for creating TemporaryID
+    pub state: HolonState,    // only relevant for staged holons
     pub validation_state: ValidationState, // only relevant for staged holons
     original_id: Option<LocalId>,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
@@ -104,6 +105,7 @@ impl Holon {
     /// Stages a new empty holon.
     pub fn new() -> Holon {
         Holon {
+            version_sequence_count: MapInteger(1),
             state: HolonState::New,
             validation_state: ValidationState::NoDescriptor,
             original_id: None,
@@ -526,6 +528,7 @@ impl Holon {
         });
 
         let holon = Holon {
+            version_sequence_count: MapInteger(1),
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
             original_id,
