@@ -110,18 +110,15 @@ pub async fn execute_stage_new_from_clone(
         if let ResponseBody::StagedRef(cloned_holon) = response.body {
             info!("Cloned holon reference returned: {:?}", cloned_holon);
 
-            // assert_eq!(
-            //     original_holon.essential_content(),
-            //     cloned_holon.essential_content(context),
-            //     "Cloned Holon content did not match original"
-            // );
+            assert_eq!(
+                original_holon.essential_content(),
+                cloned_holon.essential_content(context),
+                "Cloned Holon content did not match original"
+            );
 
             info!("Success! Cloned holon matched expected content");
         } else {
             panic!("Expected StagedRef in response body, but got {:?}", response.body);
         }
     }
-
-    // 8. Update the key_suffix_count
-    test_state.key_suffix_count += 1;
 }

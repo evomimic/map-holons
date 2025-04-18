@@ -1,5 +1,5 @@
 use crate::core_shared_objects::{Holon, HolonError};
-use crate::utils::uuid::{create_temporary_id_from_key, create_versioned_key};
+use crate::utils::uuid::create_temporary_id_from_key;
 use hdi::prelude::{Deserialize, Serialize};
 use shared_types_holon::{MapInteger, MapString, TemporaryId};
 use std::cell::RefCell;
@@ -85,7 +85,7 @@ impl HolonPool {
             return Err(HolonError::HolonNotFound(format!("for key: {}", key)));
         }
         if ids.len() > 1 {
-            return Err(HolonError::HolonNotFound(format!("for key: {}", key)));
+            return Err(HolonError::DuplicateError("Holons".to_string(), format!("key: {}", key)));
         }
 
         Ok(ids[0].clone())
@@ -165,21 +165,16 @@ impl HolonPool {
     /// # Returns
     /// - `TemporaryId` representing the index where the Holon was inserted.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
-        // Holon must have a key
-        let base_key = &holon
-            .get_key()?
-            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
         // Concatenate base_key with version_sequence_count
-        let mut versioned_key = create_versioned_key(base_key, &holon.version_sequence_count);
+        let mut versioned_key = holon.get_versioned_key()?;
 
         // Check for existing, if found, increment count
-        let mut count = holon.version_sequence_count.0.clone();
         while self.keyed_index.get(&versioned_key).is_some() {
-            count += 1;
-            versioned_key = create_versioned_key(base_key, &MapInteger(count));
+            holon.version_sequence_count.0 += 1;
+            versioned_key = holon.get_versioned_key()?;
         }
-        holon.version_sequence_count = MapInteger(count);
+        holon.version_sequence_count = MapInteger(holon.version_sequence_count.0);
 
         // Create temporary id
         let id = create_temporary_id_from_key(&versioned_key);

@@ -11,6 +11,7 @@ pub mod test_data_types;
 pub mod test_delete_holon;
 pub mod test_ensure_database_count;
 // pub mod test_extensions;
+pub mod test_get_staged_holon_by_base_key;
 pub mod test_load_core_schema;
 pub mod test_match_db_content;
 pub mod test_print_database;

@@ -16,9 +16,3 @@ pub fn create_temporary_id_from_key(key: &MapString) -> TemporaryId {
 
     TemporaryId(uuid)
 }
-
-pub fn create_versioned_key(base_key: &MapString, version_sequence_count: &MapInteger) -> MapString {
-
-    MapString(base_key.0.clone() + &version_sequence_count.0.to_string())
-
-}

@@ -225,8 +225,8 @@ impl Holon {
     // Trait include a context parameter.
 
     /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon (NOTE: Not all holon types have defined keys.)
-    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// for this holon, which must have a key.
+    /// If key cannot be returned as a MapString, this function
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
@@ -302,6 +302,12 @@ impl Holon {
     /// permissible. Use `is_accessible()` for this purpose instead.
     pub fn get_state(&self) -> HolonState {
         self.state.clone()
+    }
+
+    pub fn get_versioned_key(&self) -> Result<MapString, HolonError> {
+        let key = self.get_key()?.ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+
+        Ok(MapString( key.0 + &self.version_sequence_count.0.to_string()))
     }
 
     pub fn into_node(self) -> HolonNode {

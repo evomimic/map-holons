@@ -56,6 +56,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
             HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
+            HolonError::DuplicateError(_,_) => ResponseStatusCode::Conflict,
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,

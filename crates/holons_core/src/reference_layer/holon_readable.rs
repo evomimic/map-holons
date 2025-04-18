@@ -5,12 +5,13 @@ use crate::reference_layer::HolonsContextBehavior;
 use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
 };
-use crate::HolonState;
+
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
 pub trait HolonReadable {
     fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError>;
 
+    /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;
 
     /// Returns the value for the specified property
@@ -53,6 +54,11 @@ pub trait HolonReadable {
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError>;
+
+    fn get_versioned_key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<MapString, HolonError>;
 
     fn essential_content(
         &self,

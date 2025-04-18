@@ -76,12 +76,9 @@ impl StagedReference {
         space_manager.get_nursery_access()
     }
 
-    pub fn get_temporary_id(&self) -> TemporaryId {
-        self.id.clone()
+    pub fn get_temporary_id(&self) -> &TemporaryId {
+        &self.id
     }
-
-    
-
 }
 
 impl fmt::Display for StagedReference {
@@ -110,7 +107,7 @@ impl HolonReadable for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         let local_id = borrowed_holon.get_local_id()?;
-        
+
         Ok(HolonId::from(local_id))
     }
 
@@ -143,6 +140,16 @@ impl HolonReadable for StagedReference {
 
         // Use the public `get_related_holons` method on the `StagedRelationshipMap`
         Ok(holon.staged_relationship_map.get_related_holons(relationship_name))
+    }
+
+    fn get_versioned_key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<MapString, HolonError> {
+        let holon = self.get_rc_holon(context)?;
+        let key = holon.borrow().get_versioned_key()?;
+        
+        Ok(key)
     }
 
     fn is_accessible(
@@ -208,7 +215,7 @@ impl HolonWritable for StagedReference {
     }
 
     fn clone_reference(&self) -> StagedReference {
-        StagedReference { id: self.get_temporary_id() }
+        StagedReference { id: self.get_temporary_id().clone() }
     }
 
     // fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {

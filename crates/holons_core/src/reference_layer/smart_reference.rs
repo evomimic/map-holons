@@ -310,6 +310,16 @@ impl HolonReadable for SmartReference {
         cache_access.get_related_holons(&self.holon_id, relationship_name)
     }
 
+    fn get_versioned_key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<MapString, HolonError> {
+        let holon = self.get_rc_holon(context)?;
+        let key = holon.borrow().get_versioned_key()?;
+        
+        Ok(key)
+    }
+
     fn essential_content(
         &self,
         context: &dyn HolonsContextBehavior,
