@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use holochain::prelude::dependencies::kitsune_p2p_types::dependencies::lair_keystore_api::dependencies::sodoken::crypto_box::curve25519xchacha20poly1305::SEALBYTES;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
@@ -13,7 +12,7 @@ use holons_core::core_shared_objects::RelationshipName;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
 use rstest::*;
-use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyName};
+use shared_types_holon::{HolonId, MapString};
 use tracing::{debug, error, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
@@ -43,7 +42,6 @@ use tracing::{debug, error, info, warn};
 pub async fn execute_stage_new_from_clone(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     original_test_ref: TestReference,
-    new_key: MapString,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Cloning a Holon ---");
@@ -89,13 +87,13 @@ pub async fn execute_stage_new_from_clone(
     };
 
     // 3. Build the DanceRequest
-    let request = build_stage_new_from_clone_dance_request(original_holon_ref, new_key)
+    let request = build_stage_new_from_clone_dance_request(original_holon_ref.clone())
         .expect("Failed to build stage_new_from_clone request");
 
     debug!("Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request);
+    let response = test_state.dance_call_service.dance_call(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status

@@ -43,7 +43,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
     // The following assumes the fixture's nursery contains the same number of holons as
-    // test executor's nursery will have staged immediately prior to commit
+    // test executor's nursery will have staged immediately prior to commit.
     expected_count += staging_service.borrow().staged_count();
 
     // Get references to the Holons stashed in the fixture's Nursery.
@@ -59,7 +59,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // The publisher holon will be the holon cloned in Phase II. Clone it here to use as a basis
     // for mirroring the Phase II test step actions.
-    let mut expected_holon = publisher_ref.clone_holon(&*fixture_context)?;
+    let expected_holon = publisher_ref.clone_holon(&*fixture_context)?;
 
     // ******************     PHASE 1: CLONE A STAGED HOLON     **********************************
     // When stage_new_from_clone is executed (during the test execution phase), it will add an exact
@@ -75,13 +75,11 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // // the fixture and the test executor
     // let expected_holon_reference = staging_service.borrow().stage_new_holon(expected_holon)?;
 
-    // Add a test step to the test case that will stage an exact duplicate of the book holon, except with a new key.
-
-    let cloned_book_key = MapString("A clone of original book".to_string());
+    // Add a test step to the test case that will stage an exact duplicate of the book holon.
 
     test_case.add_stage_new_from_clone_step(
         TestReference::StagedHolon(book_ref.clone()),
-        cloned_book_key,
+        book_key,
         ResponseStatusCode::OK,
     )?;
 
@@ -114,19 +112,12 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // the StagedReference passed to its test step constructors
 
     // Step 1: stage_new_from_clone for the publisher holon committed in Phase I.
-    // This will create an exact copy of the publisher holon, except for a new key.
-
-    let cloned_publisher_key = MapString("A clone of original publisher".to_string());
+    // This will create an exact copy of the publisher holon.
 
     test_case.add_stage_new_from_clone_step(
         TestReference::SavedHolon(publisher_key.clone()),
-        cloned_publisher_key.clone(),
+        publisher_key.clone(),
         ResponseStatusCode::OK,
-    )?;
-
-    expected_holon.with_property_value(
-        PropertyName(MapString("key".to_string())),
-        Some(BaseValue::StringValue(cloned_publisher_key.clone())),
     )?;
 
     // Mirror the test step in the fixture's Nursery
@@ -138,7 +129,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     changed_properties.insert(
         PropertyName(MapString("title".to_string())),
-        Some(BaseValue::StringValue(cloned_publisher_key)),
+        Some(BaseValue::StringValue(publisher_key)),
     );
     changed_properties.insert(
         PropertyName(MapString("description".to_string())),

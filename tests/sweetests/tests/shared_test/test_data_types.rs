@@ -45,7 +45,6 @@ pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
     context: Arc<dyn HolonsContextBehavior>,
     pub dance_call_service: Arc<DanceCallService<C>>,
     pub created_holons: BTreeMap<MapString, Holon>,
-    pub key_suffix_count: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -184,7 +183,6 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
             context: test_context,
             dance_call_service,
             created_holons: BTreeMap::new(),
-            key_suffix_count: 1,
         }
     }
     pub fn context(&self) -> &dyn HolonsContextBehavior {
@@ -345,6 +343,7 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
+
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);
         Ok(())

@@ -86,6 +86,17 @@ impl HolonReadable for HolonReference {
         }
     }
 
+    fn get_versioned_key(&self, context: &dyn HolonsContextBehavior,) -> Result<MapString, HolonError> {
+        match self {
+            HolonReference::Smart(reference) => {
+                reference.get_versioned_key(context)
+            }
+            HolonReference::Staged(reference) => {
+                reference.get_versioned_key(context)
+            }
+        }
+    }
+
     fn is_accessible(
         &self,
         context: &dyn HolonsContextBehavior,

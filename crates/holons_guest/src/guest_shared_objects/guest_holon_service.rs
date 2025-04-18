@@ -321,12 +321,6 @@ impl HolonServiceApi for GuestHolonService {
 
         let mut cloned_holon = original_holon.clone_holon(context)?;
 
-        // update key
-        cloned_holon.with_property_value(
-            PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(new_key)),
-        )?;
-
         match original_holon {
             HolonReference::Staged(_) => {}
             HolonReference::Smart(_) => {
