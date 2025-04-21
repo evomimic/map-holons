@@ -12,7 +12,7 @@ use holons_core::core_shared_objects::RelationshipName;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
 use rstest::*;
-use shared_types_holon::{HolonId, MapString};
+use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyName};
 use tracing::{debug, error, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
@@ -42,6 +42,7 @@ use tracing::{debug, error, info, warn};
 pub async fn execute_stage_new_from_clone(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     original_test_ref: TestReference,
+    new_key: MapString,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Cloning a Holon ---");
@@ -87,7 +88,7 @@ pub async fn execute_stage_new_from_clone(
     };
 
     // 3. Build the DanceRequest
-    let request = build_stage_new_from_clone_dance_request(original_holon_ref.clone())
+    let request = build_stage_new_from_clone_dance_request(original_holon_ref, new_key)
         .expect("Failed to build stage_new_from_clone request");
 
     debug!("Dance Request: {:#?}", request);

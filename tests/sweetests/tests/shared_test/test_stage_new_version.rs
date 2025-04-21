@@ -158,7 +158,7 @@ pub async fn execute_stage_new_version(
     debug!("2nd Dance Request: {:#?}", next_request);
 
     let next_response =
-        test_state.dance_call_service.dance_call(test_state.context(), next_request);
+        test_state.dance_call_service.dance_call(test_state.context(), next_request).await;
     info!("2nd Dance Response: {:#?}", next_response.clone());
 
     assert_eq!(
@@ -214,7 +214,11 @@ pub async fn execute_stage_new_version(
         .get_staged_holon_by_base_key(&original_holon_key)
         .expect_err("Expected duplicate error");
     assert_eq!(
-        HolonError::DuplicateError("Holons".to_string(), "key: Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string()),
+        HolonError::DuplicateError(
+            "Holons".to_string(),
+            "key: Emerging World: The Evolution of Consciousness and the Future of Humanity"
+                .to_string()
+        ),
         book_holon_staged_reference_result
     );
 
