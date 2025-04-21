@@ -17,3 +17,4 @@ Cargo.lock
 /package-lock.json
 settings.json
 /tests/node_modules/
+/tests/sweetests/target

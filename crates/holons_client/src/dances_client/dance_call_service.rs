@@ -36,7 +36,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     /// - Restores session state from the response.
     ///
     /// This function is **synchronous** because all conductor calls are synchronous.
-    pub fn dance_call(
+    pub async fn dance_call(
         &self,
         context: &dyn HolonsContextBehavior,
         mut request: DanceRequest,
@@ -52,7 +52,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         debug!("\n\ndance call: request state {:?}", request.state);
 
         // 2. Execute the dance call
-        let response = self.conductor.conductor_dance_call(request);
+        let response = self.conductor.conductor_dance_call(request).await;
 
         // 3. Ensure the response includes a valid session state
         assert!(

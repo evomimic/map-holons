@@ -19,8 +19,11 @@ members = [
     "crates/holons_core",
     "crates/holon_dance_builders",
     "crates/holons_guest",
+    
 ]
 resolver = "2"
+
+exclude = ["tests/sweetests"]
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
@@ -41,14 +44,14 @@ path = "crates/shared_types/holon"
 [workspace.dependencies.shared_validation]
 path = "crates/shared_validation"
 
+[workspace.dependencies.holons_client]
+path = "crates/holons_client"
+
 [workspace.dependencies.holons_core]
 path = "crates/holons_core"
 
 [workspace.dependencies.holons_guest]
 path = "crates/holons_guest"
-
-[workspace.dependencies.holons_client]
-path = "crates/holons_client"
 
 [workspace.dependencies.holon_dance_builders]
 path = "crates/holon_dance_builders"
@@ -57,22 +60,23 @@ path = "crates/holon_dance_builders"
 [workspace.dependencies]
 ahash = "=0.8.11"
 async-std = "1.1.12"
-derive-new = "0.6"
+async-trait = "0.1.51"
+derive-new = "0.7.0"
 futures = { version = "0.3.1", default-features = false }
 hex = "0.4"
-hdi = "0.4"
-hdk = "0.3"
-holochain_integrity_types = "0.3"
-home = "0.5.9" # unpin this when we move to rust 1.81.0 or later
+hdi = "0.5"
+hdk = "0.4"
+holochain_integrity_types = "0.4"
 Inflector = "0.11"
 pretty_assertions = "1.4.0"
 quick_cache = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.109"
 sha2 = "0.10.8"
-strum = "0.26"
-strum_macros = "0.26"
+strum = "0.27"
+strum_macros = "0.27"
 thiserror = "1"
+tracing = "0.1"
 rstest = "0.21"
 uuid = { version = "1", features = ["serde"] }
 

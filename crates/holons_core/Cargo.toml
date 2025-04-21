@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 name = "holons_core"
 
 [dependencies]
@@ -20,14 +20,6 @@ uuid = { workspace = true }
 # Holochain Dependencies
 hdi = { workspace = true }
 hdk = { workspace = true }
-#holochain_conductor_api = "0.3"
-#holochain_client = "0.5"
-#holochain = "0.3"
-#holochain_websocket = "0.3"
-#holochain_types = "0.3"
-#holochain_zome_types = "0.3"
-#kitsune_p2p_types = "0.3"
-
 
 # MAP Dependencies
 shared_types_holon = { workspace = true }

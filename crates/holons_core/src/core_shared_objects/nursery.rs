@@ -63,8 +63,33 @@ impl NurseryAccess for Nursery {
 }
 
 impl HolonStagingBehavior for Nursery {
-    fn get_staged_holon_by_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
-        let id = self.staged_holons.borrow().get_id_by_key(key)?;
+    // Caller is assuming there is only one, returns duplicate error if multiple.
+    fn get_staged_holon_by_base_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
+        let id = self.staged_holons.borrow().get_id_by_base_key(key)?;
+        self.to_validated_staged_reference(&id)
+    }
+
+    fn get_staged_holons_by_base_key(
+        &self,
+        key: &MapString,
+    ) -> Result<Vec<StagedReference>, HolonError> {
+        let mut staged_references = Vec::new();
+        let nursery = self.staged_holons.borrow();
+        let ids = nursery.get_ids_by_base_key(key)?;
+        for id in ids {
+            let validated_staged_reference = self.to_validated_staged_reference(&id)?;
+            staged_references.push(validated_staged_reference);
+        }
+
+        Ok(staged_references)
+    }
+
+    /// Does a lookup by full (unique) key on staged holons.
+    fn get_staged_holon_by_versioned_key(
+        &self,
+        key: &MapString,
+    ) -> Result<StagedReference, HolonError> {
+        let id = self.staged_holons.borrow().get_id_by_versioned_key(key)?;
         self.to_validated_staged_reference(&id)
     }
 
@@ -91,8 +116,8 @@ impl NurseryAccessInternal for Nursery {
     //     self.holon_store.borrow().keyed_index.clone()
     // }
 
-    fn get_id_by_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
-        self.staged_holons.borrow().get_id_by_key(key)
+    fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
+        self.staged_holons.borrow().get_id_by_versioned_key(key)
     }
 
     /// Exports the staged holons using `SerializableHolonPool`
