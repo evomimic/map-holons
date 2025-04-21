@@ -60,6 +60,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // The publisher holon will be the holon cloned in Phase II. Clone it here to use as a basis
     // for mirroring the Phase II test step actions.
     let expected_holon = publisher_ref.clone_holon(&*fixture_context)?;
+    let expected_executor_holon_ref =
+        staging_service.borrow().get_staged_holon_by_base_key(&publisher_key)?;
 
     // ******************     PHASE 1: CLONE A STAGED HOLON     **********************************
     // When stage_new_from_clone is executed (during the test execution phase), it will add an exact
@@ -122,7 +124,6 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // Mirror the test step in the fixture's Nursery
     let expected_fixture_holon_ref = staging_service.borrow().stage_new_holon(expected_holon)?;
-    let expected_executor_holon_ref = expected_fixture_holon_ref.clone();
 
     // Step 2: with_properties step to modify the staged clone's properties
     let mut changed_properties = PropertyMap::new();
