@@ -92,7 +92,7 @@ use shared_types_holon::HolonId;
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-// #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {

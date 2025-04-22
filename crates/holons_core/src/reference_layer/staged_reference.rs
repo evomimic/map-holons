@@ -76,7 +76,7 @@ impl StagedReference {
         space_manager.get_nursery_access()
     }
 
-    pub fn get_temporary_id(&self) -> &TemporaryId {
+    fn get_temporary_id(&self) -> &TemporaryId {
         &self.id
     }
 }
@@ -148,7 +148,7 @@ impl HolonReadable for StagedReference {
     ) -> Result<MapString, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let key = holon.borrow().get_versioned_key()?;
-        
+
         Ok(key)
     }
 
@@ -170,7 +170,7 @@ impl HolonWritable for StagedReference {
         &mut self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_index: {:#?}", self.id);
+        debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
         // Get mutable access to the source holon
         let holon_refcell = self.get_rc_holon(context)?;
 
@@ -217,16 +217,6 @@ impl HolonWritable for StagedReference {
     fn clone_reference(&self) -> StagedReference {
         StagedReference { id: self.get_temporary_id().clone() }
     }
-
-    // fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
-    //     let rc_holon = self.get_rc_holon(context)?;
-    //     let borrowed_holon = rc_holon.borrow();
-    //     if borrowed_holon.state == HolonState::Saved {
-    //         Ok(HolonId::from(borrowed_holon.get_local_id()?))
-    //     } else {
-    //         Err(HolonError::NotAccessible("Id".to_string(), format!("{:?}", borrowed_holon.state)))
-    //     }
-    // }
 
     fn get_predecessor(
         &self,
