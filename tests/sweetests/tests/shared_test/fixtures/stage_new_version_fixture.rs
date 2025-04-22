@@ -61,84 +61,17 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
         BaseValue::StringValue(MapString("A new version of: Emerging World".to_string()));
 
     test_case.add_stage_new_version_step(book_key, ResponseStatusCode::OK)?;
-    // Don't increment expected count because new version replaces previous version.
-
-    /* TODO: Following code needs to be fixed to refer to cloned holon by key instead of index
-
-    //  CHANGE PROPERTIES  //
-    let mut changed_properties = BTreeMap::new();
-    changed_properties
-        .insert(PropertyName(MapString("title".to_string())), cloned_book_key.clone());
-    changed_properties.insert(PropertyName(MapString("key".to_string())), cloned_book_key.clone());
-    changed_properties.insert(
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString(
-            "example property change for a new version from staged Holon".to_string(),
-        )),
-    );
-
-    test_case.add_with_properties_step(
-        cloned_book_key,
-        changed_properties.clone(),
-        ResponseStatusCode::OK,
-    )?;
-
-    // // STAGE:  A 2nd publisher Holon
-    // // Another staged test Holon for adding a relationship to // temp workaround until support for passing TestReference to other test steps
-    // let mut publisher_2_holon = Holon::new();
-    // let publisher_2_index: usize = 1; // assume publisher is at this position in new staged_holons vector
-    // let publisher_2_key = MapString("AnotherPublishingCompany".to_string());
-    // let publisher_2_holon_reference = HolonReference::Staged(StagedReference {
-    //     holon_index: publisher_2_index.clone(),
-    // });
-    // publisher_2_holon
-    //     .with_property_value(
-    //         PropertyName(MapString("name".to_string())),
-    //         BaseValue::StringValue(MapString("Another Publishing Company".to_string())),
-    //     )?
-    //     .with_property_value(
-    //         PropertyName(MapString("key".to_string())),
-    //         BaseValue::StringValue(publisher_2_key.clone()),
-    //     )?
-    //     .with_property_value(
-    //         PropertyName(MapString("description".to_string())),
-    //         BaseValue::StringValue(MapString(
-    //             "Again, We publish Holons for testing purposes".to_string(),
-    //         )),
-    //     )?;
-    // test_case.add_stage_holon_step(publisher_2_holon.clone())?;
-
-    // // //  ADD RELATIONSHIP: Cloned Book -> Publisher  //
-    // let published_by_relationship_name = RelationshipName(MapString("PUBLISHED_BY".to_string()));
-    // // set expected
-    // let mut expected_book_holon = book_holon.clone();
-    // expected_book_holon.property_map = changed_properties;
-    // let mut expected_publisher_holon_collection = HolonCollection::new_staged();
-    // expected_publisher_holon_collection
-    //     .add_reference_with_key(Some(&publisher_2_key), &publisher_2_holon_reference)?;
-    // expected_book_holon.relationship_map.0.insert(
-    //     published_by_relationship_name.clone(),
-    //     expected_publisher_holon_collection,
-    // );
-
-    // test_case.add_related_holons_step(
-    //     cloned_book_index, // source holon
-    //     published_by_relationship_name.clone(),
-    //     vec![publisher_2_holon_reference],
-    //     ResponseStatusCode::OK,
-    //     expected_book_holon.clone(), // expected holon
-    // )?;
+    // NOTE: Assume this test step executor actually stages TWO new versions from original
+    expected_count += 2;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step()?;
+    // test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    // test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step()?;
-
-     */
+    // test_case.add_match_saved_content_step()?;
 
     Ok(test_case.clone())
 }

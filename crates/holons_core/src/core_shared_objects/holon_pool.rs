@@ -37,7 +37,7 @@ impl HolonPool {
         self.holons.clear();
         self.keyed_index.clear();
     }
-    /// Returns a reference to the internal vector of staged Holons.
+    /// Get a vector of references to the Holons in the HolonPool.
     ///
     /// # ⚠️ Caution:
     /// - This method is **intended solely for use during the commit process**.
@@ -165,7 +165,6 @@ impl HolonPool {
     /// # Returns
     /// - `TemporaryId` representing the index where the Holon was inserted.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
-
         // Concatenate base_key with version_sequence_count
         let mut versioned_key = holon.get_versioned_key()?;
 

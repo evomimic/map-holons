@@ -32,8 +32,8 @@ impl fmt::Display for AccessType {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Holon {
     pub version_sequence_count: MapInteger, // used to add to hash content for creating TemporaryID
-    pub state: HolonState,    // only relevant for staged holons
-    pub validation_state: ValidationState, // only relevant for staged holons
+    pub state: HolonState,                  // only relevant for staged holons
+    pub validation_state: ValidationState,  // only relevant for staged holons
     original_id: Option<LocalId>,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub property_map: PropertyMap,
@@ -225,7 +225,7 @@ impl Holon {
     // Trait include a context parameter.
 
     /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon, which must have a key.
+    /// for this holon.
     /// If key cannot be returned as a MapString, this function
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
@@ -305,9 +305,11 @@ impl Holon {
     }
 
     pub fn get_versioned_key(&self) -> Result<MapString, HolonError> {
-        let key = self.get_key()?.ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+        let key = self
+            .get_key()?
+            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
-        Ok(MapString( key.0 + &self.version_sequence_count.0.to_string()))
+        Ok(MapString(key.0 + &self.version_sequence_count.0.to_string()))
     }
 
     pub fn into_node(self) -> HolonNode {

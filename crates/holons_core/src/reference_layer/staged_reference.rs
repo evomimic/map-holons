@@ -21,15 +21,15 @@ pub struct StagedReference {
 }
 
 impl StagedReference {
-    /// Creates a new `StagedReference` from a given index without validation.
+    /// Creates a new `StagedReference` from a given TemporaryId without validation.
     ///
     /// # Arguments
     ///
-    /// * `index` - A `usize` representing the staged index of the holon.
+    /// * `id` - A TemporaryId
     ///
     /// # Returns
     ///
-    /// A new `StagedReference` wrapping the provided index.
+    /// A new `StagedReference` wrapping the provided id.
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
         StagedReference { id: id.clone() }
     }
@@ -51,7 +51,7 @@ impl StagedReference {
 
         let nursery_read = nursery_access.borrow();
 
-        // Retrieve the holon by its index
+        // Retrieve the holon by its temporaryId
         let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
 
         // Return a clone of the Rc<RefCell<Holon>>
@@ -83,7 +83,7 @@ impl StagedReference {
 
 impl fmt::Display for StagedReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "StagedReference(index: {:?})", self.id)
+        write!(f, "StagedReference(id: {:?})", self.id)
     }
 }
 
