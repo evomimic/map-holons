@@ -60,99 +60,61 @@ pub async fn execute_stage_new_version(
         response.description
     );
 
-    // 5. If successful, verify the new version
-    let version_1: StagedReference = {
-        if response.status_code == ResponseStatusCode::OK {
-            if let ResponseBody::StagedRef(new_version_holon) = response.body {
-                debug!("New version Holon reference returned: {:?}", new_version_holon);
+    // 5. Extract the new version holon from the response
+    let version_1: StagedReference = match response.status_code {
+        ResponseStatusCode::OK => match response.body {
+            ResponseBody::StagedRef(ref h) => h.clone(),
+            _ => panic!("Expected StagedRef in response body, but got {:?}", response.body),
+        },
+        _ => panic!("Expected Ok response, but got {:?}", response.status_code),
+    };
 
-                // Ensure essential content is preserved
-                assert_eq!(
-                    original_holon.essential_content(),
-                    new_version_holon.essential_content(context),
-                    "New version Holon content did not match original"
-                );
+    debug!("New version Holon reference returned: {:?}", version_1);
 
-                /* TODO: re-consider how to validate relationships -- need ALL populated relationships
+    // 6. Verify the new version matches original version's essential content
+    assert_eq!(
+        original_holon.essential_content(),
+        version_1.essential_content(context),
+        "New version Holon content did not match original"
+    );
 
-                // Validate relationships (excluding predecessor relationship)
-                let original_relationship_map: BTreeMap<RelationshipName, HolonCollection> =
-                    original_holon
-                        .staged_relationship_map
-                        .0
-                        .clone()
-                        .into_iter()
-                        .filter(|(name, _)| *name != predecessor_relationship_name)
-                        .collect();
+    // 7. Verify the new version as the original holon as its predecessor
+    let related_holons =
+        version_1.get_related_holons(context, &predecessor_relationship_name).expect(&format!(
+            "{:?} relationship should exist in the returned holon",
+            predecessor_relationship_name
+        ));
 
-                for (name, original_collection) in original_relationship_map {
-                    let expected_collection = new_version_holon
-                        .relationship_map
-                        .get_collection_for_relationship(&name)
-                        .expect(&format!("{:?} relationship should exist in the returned holon", name));
-                    assert_eq!(
-                        original_collection.get_keyed_index(),
-                        expected_collection.get_keyed_index(),
-                        "Mismatch in relationship {:?}",
-                        name
-                    );
-                }
-                */
+    let predecessor = related_holons
+        .get_by_index(0)
+        .expect("Predecessor relationship should contain at least one member");
 
-                // Validate predecessor relationship
-                // Get the related holons into a longer-lived variable
-                let related_holons = new_version_holon
-                    .get_related_holons(context, &predecessor_relationship_name)
-                    .expect(&format!(
-                        "{:?} relationship should exist in the returned holon",
-                        predecessor_relationship_name
-                    ));
+    assert_eq!(
+        predecessor,
+        HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None)),
+        "Predecessor relationship did not match expected"
+    );
 
-                // Extract the first member
-                let predecessor = related_holons
-                    .get_by_index(0)
-                    .expect("Predecessor relationship should contain at least one member");
+    // 8. Verify new version's key matches original holon's key and that it is the ONLY staged
+    // holon whose key matches.
+    let by_base =
+        staging_service.borrow().get_staged_holon_by_base_key(&original_holon_key).unwrap();
 
-                assert_eq!(
-                    predecessor,
-                    HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None)),
-                    "Predecessor relationship did not match expected"
-                );
+    assert_eq!(version_1, by_base, "get_staged_holon_by_base_key did not match expected");
 
-                // Confirm that get_staged_holon_by_base_key returns the new version
-                let book_holon_staged_reference = staging_service
-                    .borrow()
-                    .get_staged_holon_by_base_key(&original_holon_key)
-                    .unwrap();
-                assert_eq!(
-                    new_version_holon, book_holon_staged_reference,
-                    "get_staged_holon_by_base_key did not match expected"
-                );
+    // 9. Verify staged holon retrieval by versioned key
+    let by_version = staging_service
+        .borrow()
+        .get_staged_holon_by_versioned_key(&version_1.get_versioned_key(context).unwrap())
+        .unwrap();
 
-                // Confirm that get_staged_holon_by_versioned_key returns the new version
-                let book_holon_staged_reference = staging_service
-                    .borrow()
-                    .get_staged_holon_by_versioned_key(
-                        &new_version_holon.get_versioned_key(context).unwrap(),
-                    )
-                    .unwrap();
-                assert_eq!(
-                    new_version_holon, book_holon_staged_reference,
-                    "get_staged_holon_by_versioned_key did not match expected"
-                );
+    assert_eq!(version_1, by_version, "get_staged_holon_by_versioned_key did not match expected");
 
-                info!("Success! New version Holon matched expected content and relationships.");
-                Ok(book_holon_staged_reference)
-            } else {
-                Err(format!("Expected StagedRef in response body, but got {:?}", response.body))
-            }
-        } else {
-            Err(format!("Expected Ok response, but got {:?}", response.status_code))
-        }
-    }
-    .expect("Response Failure: ");
+    info!("Success! New version Holon matched expected content and relationships.");
 
-    // 2nd Pass //
+    // Stage a second version from the same original holon in order to verify that:
+    // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
+    // b. get_staged_holons_by_base_key correctly returns BOTH stage holons
     let next_request = build_stage_new_version_dance_request(original_holon_id.clone())
         .expect("Failed to build stage_new_version request");
     debug!("2nd Dance Request: {:#?}", next_request);
@@ -167,46 +129,36 @@ pub async fn execute_stage_new_version(
         response.description
     );
 
-    let version_2: StagedReference = {
-        if next_response.status_code == ResponseStatusCode::OK {
-            if let ResponseBody::StagedRef(second_new_version_holon) = next_response.body {
-                debug!(
-                    "Second New version Holon reference returned: {:?}",
-                    second_new_version_holon
-                );
+    // Extract the second new version holon from the response
+    let version_2: StagedReference = match next_response.status_code {
+        ResponseStatusCode::OK => match next_response.body {
+            ResponseBody::StagedRef(ref h) => h.clone(),
+            _ => panic!("Expected StagedRef in response body, but got {:?}", next_response.body),
+        },
+        _ => panic!("Expected Ok response, but got {:?}", next_response.status_code),
+    };
 
-                // Ensure essential content is preserved
-                assert_eq!(
-                    original_holon.essential_content(),
-                    second_new_version_holon.essential_content(context),
-                    "New version Holon content did not match original"
-                );
+    debug!("Second New version Holon reference returned: {:?}", version_2);
 
-                // Confirm that get_staged_holon_by_versioned_key returns the new version
-                let book_holon_staged_reference = staging_service
-                    .borrow()
-                    .get_staged_holon_by_versioned_key(
-                        &second_new_version_holon.get_versioned_key(context).unwrap(),
-                    )
-                    .unwrap();
-                assert_eq!(
-                    second_new_version_holon, book_holon_staged_reference,
-                    "get_staged_holon_by_versioned_key did not match expected"
-                );
+    // Ensure essential content is preserved
+    assert_eq!(
+        original_holon.essential_content(),
+        version_2.essential_content(context),
+        "New version Holon content did not match original"
+    );
 
-                info!("Success! New version Holon matched expected content and relationships.");
-                Ok(book_holon_staged_reference)
-            } else {
-                Err(format!(
-                    "Expected StagedRef in response body, but got {:?}",
-                    next_response.body
-                ))
-            }
-        } else {
-            Err(format!("Expected Ok response, but got {:?}", response.status_code))
-        }
-    }
-    .expect("Response Failure: ");
+    // Confirm that get_staged_holon_by_versioned_key returns the new version
+    let versioned_lookup = staging_service
+        .borrow()
+        .get_staged_holon_by_versioned_key(&version_2.get_versioned_key(context).unwrap())
+        .unwrap();
+
+    assert_eq!(
+        version_2, versioned_lookup,
+        "get_staged_holon_by_versioned_key did not match expected"
+    );
+
+    info!("Success! Second new version Holon matched expected content and relationships.");
 
     // Confirm that get_staged_holon_by_base_key returns a duplicate error.
     let book_holon_staged_reference_result = staging_service
