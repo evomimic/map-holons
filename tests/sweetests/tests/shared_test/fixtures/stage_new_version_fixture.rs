@@ -68,7 +68,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?; 
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

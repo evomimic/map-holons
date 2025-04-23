@@ -77,8 +77,8 @@ impl HolonCollection {
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.state {
             CollectionState::Fetched => match access_type {
-                AccessType::Read | AccessType::Write => Ok(()), // Write access to cached Holons are ok
-                AccessType::Abandon | AccessType::Clone | AccessType::Commit => {
+                AccessType::Read | AccessType::Write | AccessType::Commit => Ok(()), // Write access to cached Holons are ok, Commit is a no op
+                AccessType::Abandon | AccessType::Clone => {
                     Err(HolonError::NotAccessible(
                         format!("{:?}", access_type),
                         format!("{:?}", self.state),
