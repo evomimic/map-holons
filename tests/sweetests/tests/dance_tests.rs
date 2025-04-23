@@ -197,9 +197,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::StageHolon(holon) => {
                 execute_stage_new_holon(&mut test_state, holon).await
             }
-            DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
-                execute_stage_new_from_clone(&mut test_state, original_holon, expected_response)
-                    .await
+            DanceTestStep::StageNewFromClone(original_holon, new_key, expected_response) => {
+                execute_stage_new_from_clone(
+                    &mut test_state,
+                    original_holon,
+                    new_key,
+                    expected_response,
+                )
+                .await
             }
             DanceTestStep::StageNewVersion(original_holon_key, expected_response) => {
                 execute_stage_new_version(&mut test_state, original_holon_key, expected_response)

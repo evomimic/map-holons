@@ -72,10 +72,13 @@ pretty_assertions = "1.4.0"
 quick_cache = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.109"
+sha2 = "0.10.8"
 strum = "0.27"
 strum_macros = "0.27"
 thiserror = "1"
-tracing = { version = "0.1", features = ["log"] }
+tracing = "0.1"
+rstest = "0.21"
+uuid = { version = "1", features = ["serde"] }
 
 
 [profile.dev]
@@ -83,3 +86,4 @@ opt-level = "z"
 
 [profile.release]
 opt-level = "z"
+

@@ -4,7 +4,7 @@ use holons_core::core_shared_objects::{
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};
-use shared_types_holon::{HolonId, LocalId};
+use shared_types_holon::{HolonId, LocalId, MapString};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -15,7 +15,7 @@ impl HolonServiceApi for ClientHolonService {
     //}
 
     fn commit(&self, _context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
-        //let request = build_commit_dance_request(&SessionState::empty())?;
+        //let request = build_commit_dance_request(&SessionState::default())?;
         // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
         // _context.get_space_manager()
         todo!()
@@ -48,6 +48,7 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         _context: &dyn HolonsContextBehavior,
         _original_holon: HolonReference,
+        _new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
         todo!()
     }

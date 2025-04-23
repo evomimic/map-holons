@@ -10,10 +10,12 @@ use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
 use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
+use holons_core::reference_layer::stage_new_holon_api;
 use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
 use rstest::*;
 use shared_types_holon::value_types::BaseValue;
 use shared_types_holon::{MapInteger, MapString, PropertyName};
+
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
 pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
@@ -23,7 +25,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     );
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    // This allows them to be assigned StagedReferences and also retrieved by either key
     let fixture_context = init_test_context(TestFixture);
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
@@ -42,11 +44,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
     expected_count += staging_service.borrow().staged_count();
 
-    let person_1_ref =
-        staging_service.borrow().get_staged_holon_by_key(&MapString(PERSON_1_KEY.to_string()))?;
+    let person_1_ref = staging_service
+        .borrow()
+        .get_staged_holon_by_base_key(&MapString(PERSON_1_KEY.to_string()))?;
 
     let book_ref =
-        staging_service.borrow().get_staged_holon_by_key(&MapString(BOOK_KEY.to_string()))?;
+        staging_service.borrow().get_staged_holon_by_base_key(&MapString(BOOK_KEY.to_string()))?;
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
@@ -80,10 +83,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
     )?;
     abandoned_holon_1.with_property_value(
-        PropertyName(MapString("example abandon".to_string())),
+        PropertyName(MapString("example abandon1".to_string())),
         Some(BaseValue::StringValue(MapString("test1".to_string()))),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
+    let abandoned_holon_1_ref = stage_new_holon_api(&*fixture_context, abandoned_holon_1.clone())?;
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
@@ -93,20 +97,19 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),
     )?;
     abandoned_holon_2.with_property_value(
-        PropertyName(MapString("example abandon".to_string())),
+        PropertyName(MapString("example abandon2".to_string())),
         Some(BaseValue::StringValue(MapString("test2".to_string()))),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
+    let abandoned_holon_2_ref = stage_new_holon_api(&*fixture_context, abandoned_holon_2.clone())?;
     expected_count += 1;
 
     // ABANDON:  H4
-    test_case
-        .add_abandon_staged_changes_step(StagedReference::from_index(0), ResponseStatusCode::OK)?;
+    test_case.add_abandon_staged_changes_step(abandoned_holon_1_ref, ResponseStatusCode::OK)?;
     expected_count -= 1;
 
     // ABANDON:  H5
-    test_case
-        .add_abandon_staged_changes_step(StagedReference::from_index(1), ResponseStatusCode::OK)?;
+    test_case.add_abandon_staged_changes_step(abandoned_holon_2_ref, ResponseStatusCode::OK)?;
     expected_count -= 1;
 
     // COMMIT  // all Holons in staging_area

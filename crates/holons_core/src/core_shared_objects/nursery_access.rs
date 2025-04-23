@@ -1,4 +1,5 @@
 use crate::core_shared_objects::{Holon, HolonError};
+use shared_types_holon::holon_node::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 
@@ -14,10 +15,10 @@ pub trait NurseryAccess: Any {
     /// at the specified index.
     ///
     /// # Arguments
-    /// - `index` - The index of the staged holon within the nursery.
+    /// - `id` - The index (represented by TemporaryId) of the staged holon within the nursery.
     ///
     /// # Returns
     /// - `Ok(Rc<RefCell<Holon>>)` if the index is valid.
     /// - `Err(HolonError::IndexOutOfRange)` if the index is invalid.
-    fn get_holon_by_index(&self, index: usize) -> Result<Rc<RefCell<Holon>>, HolonError>;
+    fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError>;
 }

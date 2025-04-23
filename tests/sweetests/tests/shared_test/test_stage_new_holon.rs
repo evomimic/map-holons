@@ -65,4 +65,7 @@ pub async fn execute_stage_new_holon(
     } else {
         panic!("Expected StagedRef in response body, but got {:?}", response.body);
     }
+
+    // 6. Update the key_suffix_count
+    test_state.key_suffix_count += 1;
 }

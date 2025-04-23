@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-// use crate::get_holon_by_key_from_test_state;
+// use crate::get_holon_by_base_key_from_test_state;
 use core::panic;
 use std::cell::RefCell;
 use tracing::{error, info, warn};
@@ -69,7 +69,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Retrieve the book from the context
     let staged_book_holon_ref =
-        get_staged_holon_by_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
+        get_staged_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
 
     // Get its current authors
 

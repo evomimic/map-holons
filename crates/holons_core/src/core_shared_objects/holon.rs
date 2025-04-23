@@ -1,11 +1,11 @@
 use crate::core_shared_objects::{
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
-use derive_new::new;
+
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
 use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{LocalId, MapString};
+use shared_types_holon::{LocalId, MapInteger, MapString};
 use std::fmt;
 use std::rc::Rc;
 
@@ -29,11 +29,11 @@ impl fmt::Display for AccessType {
     }
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Holon {
-    pub state: HolonState,                 // only relevant for staged holons
-    pub validation_state: ValidationState, // only relevant for staged holons
+    pub version_sequence_count: MapInteger, // used to add to hash content for creating TemporaryID
+    pub state: HolonState,                  // only relevant for staged holons
+    pub validation_state: ValidationState,  // only relevant for staged holons
     original_id: Option<LocalId>,
     pub saved_node: Option<Record>, // The last saved state of HolonNode. None = not yet created
     pub property_map: PropertyMap,
@@ -44,8 +44,7 @@ pub struct Holon {
 }
 
 /// Type used for testing in order to match the essential content of a Holon
-#[hdk_entry_helper]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
     // pub relationship_map: RelationshipMap,
@@ -53,8 +52,7 @@ pub struct EssentialHolonContent {
     pub errors: Vec<HolonError>,
 }
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum HolonState {
     New,
     Fetched,
@@ -107,6 +105,7 @@ impl Holon {
     /// Stages a new empty holon.
     pub fn new() -> Holon {
         Holon {
+            version_sequence_count: MapInteger(1),
             state: HolonState::New,
             validation_state: ValidationState::NoDescriptor,
             original_id: None,
@@ -226,8 +225,8 @@ impl Holon {
     // Trait include a context parameter.
 
     /// This function returns the primary key value for the holon or None if there is no key value
-    /// for this holon (NOTE: Not all holon types have defined keys.)
-    /// If the holon has a key, but it cannot be returned as a MapString, this function
+    /// for this holon.
+    /// If key cannot be returned as a MapString, this function
     /// returns a HolonError::UnexpectedValueType.
     pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
@@ -303,6 +302,14 @@ impl Holon {
     /// permissible. Use `is_accessible()` for this purpose instead.
     pub fn get_state(&self) -> HolonState {
         self.state.clone()
+    }
+
+    pub fn get_versioned_key(&self) -> Result<MapString, HolonError> {
+        let key = self
+            .get_key()?
+            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+
+        Ok(MapString(key.0 + &self.version_sequence_count.0.to_string()))
     }
 
     pub fn into_node(self) -> HolonNode {
@@ -529,6 +536,7 @@ impl Holon {
         });
 
         let holon = Holon {
+            version_sequence_count: MapInteger(1),
             state: HolonState::Fetched,
             validation_state: ValidationState::Validated,
             original_id,
@@ -546,6 +554,7 @@ impl Holon {
 
         Ok(holon)
     }
+
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
     // this checking while the type system is being bootstrapped, since the descriptors
@@ -568,7 +577,6 @@ impl Holon {
         }
         Ok(self)
     }
-
 }
 fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
     match record.entry() {

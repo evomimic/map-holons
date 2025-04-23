@@ -268,6 +268,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::CommitFailure(_)
         | HolonError::DeletionNotAllowed(_)
         | HolonError::DowncastFailure(_)
+        | HolonError::DuplicateError(_,_)
         | HolonError::EmptyField(_)
         | HolonError::FailedToBorrow(_)
         | HolonError::HashConversion(_, _)

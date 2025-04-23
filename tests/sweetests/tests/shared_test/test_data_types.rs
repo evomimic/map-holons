@@ -45,6 +45,7 @@ pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
     context: Arc<dyn HolonsContextBehavior>,
     pub dance_call_service: Arc<DanceCallService<C>>,
     pub created_holons: BTreeMap<MapString, Holon>,
+    pub key_suffix_count: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -79,7 +80,7 @@ pub enum DanceTestStep {
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
     StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
-    StageNewFromClone(TestReference, ResponseStatusCode),
+    StageNewFromClone(TestReference, MapString, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedReference, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedReference with PropertyMap
 }
@@ -148,11 +149,11 @@ impl Display for DanceTestStep {
                     original_holon_id, expected_response
                 )
             }
-            DanceTestStep::StageNewFromClone(original_holon, expected_response) => {
+            DanceTestStep::StageNewFromClone(original_holon, new_key, expected_response) => {
                 write!(
                     f,
-                    "StageNewFromClone for original_holon: {:#?}, expecting response: {:#?}",
-                    original_holon, expected_response
+                    "StageNewFromClone for original_holon: {:#?}, with new key: {:?}, expecting response: {:#?}",
+                    original_holon, new_key, expected_response
                 )
             }
             DanceTestStep::WithProperties(staged_reference, properties, expected_response) => {
@@ -183,6 +184,7 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
             context: test_context,
             dance_call_service,
             created_holons: BTreeMap::new(),
+            key_suffix_count: 1,
         }
     }
     pub fn context(&self) -> &dyn HolonsContextBehavior {
@@ -343,6 +345,7 @@ impl DancesTestCase {
         self.steps.push_back(DanceTestStep::EnsureDatabaseCount(count));
         Ok(())
     }
+
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);
         Ok(())
@@ -356,9 +359,14 @@ impl DancesTestCase {
     pub fn add_stage_new_from_clone_step(
         &mut self,
         original_holon: TestReference,
+        new_key: MapString,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::StageNewFromClone(original_holon, expected_response));
+        self.steps.push_back(DanceTestStep::StageNewFromClone(
+            original_holon,
+            new_key,
+            expected_response,
+        ));
         Ok(())
     }
 

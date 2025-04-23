@@ -6,8 +6,8 @@ use holons_core::core_shared_objects::{Holon, HolonError};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseValue, MapInteger, MapString};
 
-#[hdk_entry_helper]
-#[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]
+
+#[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SemanticVersion {
     major: i64,
     minor: i64,

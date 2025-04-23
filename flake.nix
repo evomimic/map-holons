@@ -15,12 +15,27 @@
       formatter = pkgs.nixpkgs-fmt;
 
       devShells.default = pkgs.mkShell {
-        inputsFrom = [ inputs'.holonix.devShells.default ];
-        nativeBuildInputs = [ pkgs.libsodium pkgs.pkg-config ];
-
-        packages = (with pkgs; [
-          nodejs_20
-          binaryen
+        nativeBuildInputs = [
+          pkgs.libsodium   # needed for sweetest dependency of sodoken -> libsodium-sys
+          pkgs.pkg-config  # for build.rs to locate libsodium
+        ];
+        packages = (with inputs'.holonix.packages; [
+          holochain
+          lair-keystore
+          hc-launch
+          hc-scaffold
+          hn-introspect
+          rust # For Rust development, with the WASM target included for zome builds
+        ]) ++ (with pkgs; [
+          nodejs_20 # For UI development
+          binaryen # For WASM optimisation
+          (lib.optional pkgs.stdenv.isDarwin [
+            libiconv
+            pkgs.darwin.apple_sdk.frameworks.CoreFoundation
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ])
+          # Add any other packages you need here
         ]);
 
         shellHook = ''

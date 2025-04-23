@@ -1,6 +1,7 @@
 use crate::value_types::{BaseValue, MapString};
 use derive_new::new;
 use hdi::prelude::*;
+use uuid::Uuid;
 use std::collections::btree_map::BTreeMap;
 use std::fmt;
 
@@ -20,6 +21,7 @@ pub type PropertyMap = BTreeMap<PropertyName, Option<PropertyValue>>;
 // ===============================
 // 🌳 HolonNode Struct (holochain EntryType)
 // ===============================
+
 #[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq)]
 pub struct HolonNode {
@@ -30,23 +32,23 @@ pub struct HolonNode {
 // ===============================
 // 🆔 Identifier Types
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct LocalId(pub ActionHash);
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OutboundProxyId(pub ActionHash);
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ExternalId {
     pub space_id: OutboundProxyId,
     pub local_id: LocalId,
 }
 
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct TemporaryId(pub Uuid);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum HolonId {
     Local(LocalId),
     External(ExternalId),
@@ -55,8 +57,8 @@ pub enum HolonId {
 // ===============================
 // 🔑 Property Types
 // ===============================
-#[hdk_entry_helper]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PropertyName(pub MapString);
 
 impl fmt::Display for PropertyName {
@@ -128,6 +130,13 @@ impl fmt::Display for ExternalId {
     }
 }
 
+// --- TemporaryId ---
+impl fmt::Display for TemporaryId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
 // --- HolonId ---
 impl From<LocalId> for HolonId {
     fn from(local_id: LocalId) -> Self {
@@ -151,6 +160,7 @@ impl HolonId {
     }
 
     /// Extracts the `LocalId` from both `Local` and `External` variants.
+    // pub fn local_id(&self) -> Result<&LocalId, Error> {
     pub fn local_id(&self) -> &LocalId {
         match self {
             HolonId::Local(local_id) => local_id,

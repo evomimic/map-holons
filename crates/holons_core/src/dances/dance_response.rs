@@ -37,7 +37,6 @@ pub enum ResponseStatusCode {
 // Read-only results can be returned directly in ResponseBody as either a Holon or a
 // (serialized) SmartCollection
 // Staged holons will be returned via the StagingArea.
-// StagedIndex is used to return a (reference) to a StagedHolon
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseBody {
     None,
@@ -57,6 +56,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
             HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
+            HolonError::DuplicateError(_,_) => ResponseStatusCode::Conflict,
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,

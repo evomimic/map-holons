@@ -6,8 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-#[hdk_entry_helper]
-#[derive(Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct RelationshipName(pub MapString);
 impl fmt::Display for RelationshipName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

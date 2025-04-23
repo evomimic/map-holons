@@ -29,6 +29,33 @@ impl HolonReadable for HolonReference {
         }
     }
 
+    fn essential_content(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
+            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
+        }
+    }
+
+    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_holon_id(context),
+        }
+    }
+
+    fn get_key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<MapString>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
+        }
+    }
+
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -41,16 +68,6 @@ impl HolonReadable for HolonReference {
             HolonReference::Staged(staged_reference) => {
                 staged_reference.get_property_value(context, property_name)
             }
-        }
-    }
-
-    fn get_key(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<MapString>, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
-            HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
         }
     }
 
@@ -69,13 +86,14 @@ impl HolonReadable for HolonReference {
         }
     }
 
-    fn essential_content(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
+    fn get_versioned_key(&self, context: &dyn HolonsContextBehavior,) -> Result<MapString, HolonError> {
         match self {
-            HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
-            HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
+            HolonReference::Smart(reference) => {
+                reference.get_versioned_key(context)
+            }
+            HolonReference::Staged(reference) => {
+                reference.get_versioned_key(context)
+            }
         }
     }
 
@@ -193,13 +211,6 @@ impl HolonReference {
                     Ok(Some(members[0].clone()))
                 }
             }
-        }
-    }
-
-    pub fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
-        match self {
-            HolonReference::Smart(smart_reference) => smart_reference.get_id(),
-            HolonReference::Staged(staged_reference) => staged_reference.get_id(context),
         }
     }
 

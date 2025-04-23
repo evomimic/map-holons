@@ -2,8 +2,7 @@ use hdk::prelude::*;
 use shared_validation::ValidationError;
 use thiserror::Error;
 
-#[hdk_entry_helper]
-#[derive(Error, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
     #[error("Holon not found: {0}")]
     HolonNotFound(String),
@@ -17,6 +16,8 @@ pub enum HolonError {
     DeletionNotAllowed(String),
     #[error("Failed to downcast to {0}")]
     DowncastFailure(String),
+    #[error("Multiple {0} found for: {1}")]
+    DuplicateError(String, String),
     #[error("{0} field is missing")]
     EmptyField(String),
     #[error("Failed to Borrow {0}")]

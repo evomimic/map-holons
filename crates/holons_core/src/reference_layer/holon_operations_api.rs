@@ -141,10 +141,7 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>,
     let key_option = map.get(&PropertyName(MapString("key".to_string())));
     if let Some(Some(inner_value)) = key_option {
         let string_value: String = inner_value.try_into().map_err(|_| {
-            HolonError::UnexpectedValueType(
-                format!("{:?}", inner_value),
-                "MapString".to_string(),
-            )
+            HolonError::UnexpectedValueType(format!("{:?}", inner_value), "MapString".to_string())
         })?;
         Ok(Some(MapString(string_value)))
     } else {
@@ -152,13 +149,13 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>,
     }
 }
 
-pub fn get_staged_holon_by_key(
+pub fn get_staged_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = get_staging_service(context);
     let staging_service_borrow = staging_service.borrow();
-    staging_service_borrow.get_staged_holon_by_key(key)
+    staging_service_borrow.get_staged_holon_by_base_key(key)
 }
 
 fn get_staging_service(
@@ -193,9 +190,11 @@ fn get_staging_service(
 pub fn stage_new_from_clone_api(
     context: &dyn HolonsContextBehavior,
     original_holon: HolonReference,
+    new_key: MapString,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_space_manager().get_holon_service();
-    let staged_reference = staging_service.stage_new_from_clone(context, original_holon)?;
+    let staged_reference =
+        staging_service.stage_new_from_clone(context, original_holon, new_key)?;
 
     Ok(staged_reference)
 }

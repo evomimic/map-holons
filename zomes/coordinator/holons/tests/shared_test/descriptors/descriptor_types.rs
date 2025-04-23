@@ -10,7 +10,6 @@ use derive_new::*;
 
 use shared_types_holon::value_types::BaseValue;
 // TODO: Is SemanticVersion struct needed, since SemanticVersion is just a Holon?
-//#[hdk_entry_helper]
 #[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SemanticVersion {
     major: u8,
@@ -20,11 +19,7 @@ pub struct SemanticVersion {
 
 impl Default for SemanticVersion {
     fn default() -> Self {
-        SemanticVersion {
-            major: 0,
-            minor: 0,
-            patch: 1,
-        }
+        SemanticVersion { major: 0, minor: 0, patch: 1 }
     }
 }
 

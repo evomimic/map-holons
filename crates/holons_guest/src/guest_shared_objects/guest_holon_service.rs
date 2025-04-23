@@ -16,7 +16,7 @@ use holons_core::{
 };
 use holons_integrity::LinkTypes;
 use shared_types_holon::{
-    HolonId, LocalId, MapString, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION,
+    BaseValue, HolonId, LocalId, MapString, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION,
     LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
 };
 use std::cell::RefCell;
@@ -27,7 +27,6 @@ use std::sync::Arc;
 
 use super::{fetch_links_to_all_holons, get_all_relationship_links};
 
-// #[hdk_entry_helper]
 #[derive(Clone)]
 pub struct GuestHolonService {
     /// Holds the internal nursery access after registration
@@ -69,7 +68,9 @@ impl GuestHolonService {
             BTreeMap::new();
 
         let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
-        let smartlinks = get_all_relationship_links(original_holon.local_id())?;
+
+        let smartlinks = get_all_relationship_links(original_holon.local_id())
+            .map_err(|e| HolonError::InvalidParameter(e.to_string()))?;
         debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {
@@ -314,10 +315,17 @@ impl HolonServiceApi for GuestHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
         original_holon: HolonReference,
+        new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
         original_holon.is_accessible(context, AccessType::Clone)?;
 
         let mut cloned_holon = original_holon.clone_holon(context)?;
+
+        // update key
+        cloned_holon.with_property_value(
+            PropertyName(MapString("key".to_string())),
+            Some(BaseValue::StringValue(new_key)),
+        )?;
 
         match original_holon {
             HolonReference::Staged(_) => {}
@@ -351,8 +359,10 @@ impl HolonServiceApi for GuestHolonService {
 
         let mut cloned_holon = original_holon.clone_holon(context)?;
 
-        cloned_holon.staged_relationship_map =
-            self.clone_existing_relationships_into_staged_map(context, original_holon.get_id()?)?;
+        cloned_holon.staged_relationship_map = self.clone_existing_relationships_into_staged_map(
+            context,
+            original_holon.get_holon_id(context)?,
+        )?;
 
         let cloned_staged_reference =
             self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;
