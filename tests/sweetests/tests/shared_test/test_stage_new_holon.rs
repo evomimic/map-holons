@@ -17,7 +17,7 @@ use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{HolonReadable, HolonsContextBehavior, StagedReference};
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 use tracing::{debug, info};
 

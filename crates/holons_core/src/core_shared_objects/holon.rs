@@ -1,11 +1,10 @@
 use crate::core_shared_objects::{
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
-
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName, PropertyValue};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{LocalId, MapInteger, MapString};
+use shared_types_holon::holon_node::HolonNode;
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{LocalId, PropertyName, PropertyValue, PropertyMap};
 use std::fmt;
 use std::rc::Rc;
 

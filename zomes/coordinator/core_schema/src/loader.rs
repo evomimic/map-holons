@@ -14,7 +14,7 @@ use crate::value_type_loader::CoreValueTypeName;
 use descriptors::descriptor_types::{CoreSchemaName, Schema};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{CommitResponse, HolonError};
-use shared_types_holon::MapString;
+use base_types::MapString;
 use strum::IntoEnumIterator;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
@@ -126,7 +126,7 @@ fn get_initial_load_set() -> Vec<CoreSchemaTypeName> {
         // ValueType(StringType(SemanticVersionType)),
         // ValueType(IntegerType(MapIntegerType)),
         // ValueType(BooleanType(MapBooleanType)),
-        // ValueType(EnumType(MapBaseType)),
+        // ValueType(EnumType(MapTypeKind)),
         // ValueType(EnumType(DeletionSemanticType)),
         // HolonType(HolonSpaceType),
         // HolonType(SchemaType),

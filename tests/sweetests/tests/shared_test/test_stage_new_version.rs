@@ -14,7 +14,7 @@ use holons_core::{
     HolonCollectionApi, HolonError, HolonReadable, HolonReference, SmartReference, StagedReference,
 };
 use rstest::*;
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyName};
+use shared_types_holon::{BaseTypeKind, HolonId, MapString, PropertyName};
 use std::collections::BTreeMap;
 use tracing::{debug, info};
 

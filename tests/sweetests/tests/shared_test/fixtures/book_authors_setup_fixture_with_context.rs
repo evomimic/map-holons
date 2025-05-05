@@ -5,7 +5,7 @@ use crate::shared_test::test_data_types::{
     PERSON_2_KEY, PUBLISHER_KEY,
 };
 
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use std::string::ToString; // Import the test-only extension
 
 use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
@@ -42,15 +42,15 @@ pub fn setup_book_author_steps_with_context(
     book_holon
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(book_holon_key.clone())),
+            Some(BaseTypeKind::StringValue(book_holon_key.clone())),
         )?
         .with_property_value(
             PropertyName(MapString("title".to_string())),
-            Some(BaseValue::StringValue(book_holon_key.clone())),
+            Some(BaseTypeKind::StringValue(book_holon_key.clone())),
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            Some(BaseValue::StringValue(MapString(
+            Some(BaseTypeKind::StringValue(MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
             ))),
         )?;
@@ -64,15 +64,15 @@ pub fn setup_book_author_steps_with_context(
     person_1_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
-            Some(BaseValue::StringValue(MapString("Roger".to_string()))),
+            Some(BaseTypeKind::StringValue(MapString("Roger".to_string()))),
         )?
         .with_property_value(
             PropertyName(MapString("last name".to_string())),
-            Some(BaseValue::StringValue(MapString("Briggs".to_string()))),
+            Some(BaseTypeKind::StringValue(MapString("Briggs".to_string()))),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(person_1_key.clone())),
+            Some(BaseTypeKind::StringValue(person_1_key.clone())),
         )?;
     test_case.add_stage_holon_step(person_1_holon.clone())?;
     let person_1_reference = stage_new_holon_api(context, person_1_holon.clone())?;
@@ -84,15 +84,15 @@ pub fn setup_book_author_steps_with_context(
     person_2_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
-            Some(BaseValue::StringValue(MapString("George".to_string()))),
+            Some(BaseTypeKind::StringValue(MapString("George".to_string()))),
         )?
         .with_property_value(
             PropertyName(MapString("last name".to_string())),
-            Some(BaseValue::StringValue(MapString("Smith".to_string()))),
+            Some(BaseTypeKind::StringValue(MapString("Smith".to_string()))),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(person_2_key.clone())),
+            Some(BaseTypeKind::StringValue(person_2_key.clone())),
         )?;
     test_case.add_stage_holon_step(person_2_holon.clone())?;
     let person_2_reference = stage_new_holon_api(context, person_2_holon.clone())?;
@@ -104,15 +104,15 @@ pub fn setup_book_author_steps_with_context(
     publisher_holon
         .with_property_value(
             PropertyName(MapString("name".to_string())),
-            Some(BaseValue::StringValue(publisher_key.clone())),
+            Some(BaseTypeKind::StringValue(publisher_key.clone())),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(publisher_key.clone())),
+            Some(BaseTypeKind::StringValue(publisher_key.clone())),
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            Some(BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string()))),
+            Some(BaseTypeKind::StringValue(MapString("We publish Holons for testing purposes".to_string()))),
         )?;
     test_case.add_stage_holon_step(publisher_holon.clone())?;
     stage_new_holon_api(context, publisher_holon.clone())?;

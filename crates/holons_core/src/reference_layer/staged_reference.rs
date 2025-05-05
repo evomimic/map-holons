@@ -1,6 +1,6 @@
 use derive_new::new;
 use hdk::prelude::*;
-use shared_types_holon::holon_node::PropertyName;
+use core_types::PropertyName;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
@@ -13,7 +13,9 @@ use crate::core_shared_objects::{
     NurseryAccess, RelationshipName,
 };
 
-use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue, TemporaryId};
+//use shared_types_holon::{BaseValue, HolonId, MapString, PropertyValue, TemporaryId};
+use base_types::{BaseValue, MapString};
+use core_types::{HolonId, TemporaryId, PropertyValue};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StagedReference {

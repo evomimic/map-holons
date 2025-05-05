@@ -1,7 +1,9 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
 
 use crate::core_shared_objects::{Holon, HolonError, RelationshipName};
-use shared_types_holon::{BaseValue, HolonId, PropertyName};
+
+use base_types::BaseValue;
+use core_types::PropertyName;
 
 pub trait HolonWritable {
     fn abandon_staged_changes(

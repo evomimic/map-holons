@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 use holons_core::{core_shared_objects::HolonError, HolonReference};
-use shared_types_holon::{BaseValue, MapString, PropertyName};
+use base_types::{BaseValue, MapString};
+use core_types::PropertyName;
 
 ///
 /// Builds a dance request for staging a new cloned Holon

@@ -1,6 +1,7 @@
 use holons_core::core_shared_objects::HolonError;
 use holons_core::dances::{DanceRequest, DanceType, RequestBody};
-use shared_types_holon::{LocalId, MapString};
+use base_types::MapString;
+use core_types::LocalId;
 
 /// Builds a DanceRequest for deleting a local Holon from the persistent store
 pub fn build_delete_holon_dance_request(

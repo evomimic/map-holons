@@ -16,7 +16,7 @@ use holons_core::query_layer::QueryExpression;
 use holons_core::{HolonsContextBehavior, StagedReference};
 use pretty_assertions::assert_eq;
 use rstest::*;
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use shared_types_holon::{
     HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
 };

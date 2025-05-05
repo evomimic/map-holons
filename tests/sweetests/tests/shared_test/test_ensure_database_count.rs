@@ -13,7 +13,7 @@ use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_reque
 use holons_core::dances::ResponseBody;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 use tracing::info;
 

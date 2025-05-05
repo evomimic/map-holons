@@ -4,8 +4,8 @@
 use crate::descriptor_types::Schema;
 use holons_core::core_shared_objects::{Holon, HolonError};
 
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{BaseValue, MapString};
+use core_types::PropertyName;
+use base_types::{BaseValue, MapString};
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon
@@ -59,7 +59,7 @@ impl Schema {
     //         let meta_descriptor = define_type_descriptor(
     //             self,
     //             MapString(TYPE_METADESCRIPTOR),
-    //             BaseType::Holon,
+    //             TypeKind::Holon,
     //             "Metadescriptor for the TypeDescriptor".to_string(),
     //             "Type Metadescriptor".to_string(),
     //             false,

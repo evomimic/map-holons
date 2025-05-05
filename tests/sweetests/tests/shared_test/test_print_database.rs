@@ -13,7 +13,7 @@ use holons_core::dances::ResponseBody;
 use holons_core::utils::as_json;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use shared_types_holon::{HolonId, MapInteger, MapString};
 use tracing::{debug, info};
 

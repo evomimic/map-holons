@@ -27,3 +27,5 @@ holons_integrity = { workspace = true }
 shared_types_holon = { workspace = true }
 holons_core = { workspace = true }
 holon_dance_builders = { workspace = true }
+base_types = { workspace = true }
+core_types = { workspace = true }

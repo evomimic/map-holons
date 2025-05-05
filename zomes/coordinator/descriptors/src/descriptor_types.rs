@@ -14,8 +14,8 @@ use crate::string_descriptor::StringTypeDefinition;
 use holons_core::core_shared_objects::{Holon, HolonCollection, RelationshipName};
 use holons_core::HolonReference;
 use inflector::Inflector;
-use shared_types_holon::value_types::{MapEnumValue, MapString};
-use shared_types_holon::{BaseType, MapBoolean, MapInteger, PropertyName};
+use base_types::{MapBoolean, MapEnumValue, MapInteger, MapString};
+use core_types::{PropertyName, TypeKind};
 
 /// All MAP Descriptors are stored as Holons. This file defines structs for each kind of Core Type
 /// in order to allow type-safe references and to provide a higher-level representation. Conversion
@@ -33,7 +33,7 @@ pub struct Schema(pub Holon);
 pub struct TypeDescriptor {
     descriptor_name: MapString,
     label: MapString,
-    base_type: BaseType,
+    base_type: TypeKind,
     description: MapString,
     is_dependent: MapBoolean,
     is_builtin_type: MapBoolean,
@@ -200,7 +200,7 @@ impl CoreMetaSchemaName {
 }
 
 pub enum CoreValueTypeName {
-    BaseTypeEnumType,
+    TypeKindEnumType,
     DeletionSemanticEnumType,
     HolonStateEnumType,
     MapBooleanType,
@@ -215,7 +215,7 @@ impl CoreValueTypeName {
     pub fn as_str(&self) -> &str {
         use CoreValueTypeName::*;
         match self {
-            BaseTypeEnumType => "BaseTypeEnumType",
+            TypeKindEnumType => "TypeKindEnumType",
             DeletionSemanticEnumType => "DeletionSemanticEnumType",
             HolonStateEnumType => "HolonStateEnumType",
             MapBooleanType => "MapBooleanType",
@@ -231,7 +231,7 @@ impl CoreValueTypeName {
 #[derive(Debug)]
 pub enum CoreSchemaPropertyTypeName {
     AllowsDuplicates, // MapBooleanType
-    BaseType,         // Enum -- BaseTypeEnumType
+    TypeKind,         // Enum -- TypeKindEnumType
     DeletionSemantic, // Enum -- DeletionSemanticEnumType
     DescriptorName,   // MapStringType
     Description,      // MapStringType
@@ -276,7 +276,7 @@ impl SchemaNamesTrait for CoreSchemaPropertyTypeName {
         use CoreSchemaPropertyTypeName::*;
         match self {
             AllowsDuplicates => MapString("If true, this collection can contain duplicate items.".to_string()),
-            BaseType => MapString("Specifies the MAP BaseType of this object. ".to_string()),
+            TypeKind => MapString("Specifies the MAP TypeKind of this object. ".to_string()),
             DeletionSemantic => MapString("Offers different options for whether requests to delete a \
             source Holon (i.e., mark as deleted) should be allowed for a given relationship.".to_string()),
             DescriptorName => MapString("The name for the unique key for the descriptor of MAP type.".to_string()),
@@ -296,18 +296,18 @@ impl SchemaNamesTrait for CoreSchemaPropertyTypeName {
                 .to_string()),
             MaxCardinality => MapString("Specifies the maximum number of members allowed in this \
             collection. max_cardinality must be greater than or equal to min_cardinality.".to_string()),
-            MaxLength => MapString("max_length is a property of a value type based on the BaseType \
+            MaxLength => MapString("max_length is a property of a value type based on the TypeKind \
             MapString. It defines the maximum allowed length for string instances of this value \
             type. max_length must be greater than or equal to min_length.".to_string()),
-            MaxValue => MapString("max_value is a property of a value type based on the BaseType \
+            MaxValue => MapString("max_value is a property of a value type based on the TypeKind \
             MapInteger. It defines the largest allowed value for this integer instances of this value \
             type. max_value must be greater than or equal to min_value.".to_string()),
             MinCardinality => MapString("Specifies the minimum number of members allowed in this \
             collection. min_cardinality must be greater than or equal to zero.".to_string()),
-            MinLength => MapString("min_length is a property of a value type based on the BaseType \
+            MinLength => MapString("min_length is a property of a value type based on the TypeKind \
             MapString. It defines the minimum allowed length for string instances of this value \
             type. min_length must be greater than or equal to zero.".to_string()),
-            MinValue => MapString("min_value is a property of a value type based on the BaseType \
+            MinValue => MapString("min_value is a property of a value type based on the TypeKind \
             MapInteger. It defines the smallest allowed value for this integer instances of this \
             value type. min_value can be negative and must be less than or equal to max_value."
                 .to_string()),
@@ -329,7 +329,7 @@ impl CoreSchemaPropertyTypeName {
         use CoreSchemaPropertyTypeName::*;
         match self {
             AllowsDuplicates => "allows_duplicates_property",
-            BaseType => "base_type",
+            TypeKind => "base_type",
             DeletionSemantic => "deletion_semantic_property",
             DescriptorName => "descriptor_name_property",
             Description => "description_property",

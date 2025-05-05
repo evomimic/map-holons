@@ -1,7 +1,7 @@
 use crate::reference_layer::StagedReference;
 
 use crate::core_shared_objects::{Holon, HolonError};
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 /// Defines **high-level staging behavior**, abstracting away direct nursery operations.
 ///

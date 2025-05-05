@@ -7,7 +7,7 @@
           "type_name": "SchemaDescriptor",
           "description": "Describes the Schema HolonType",
           "label": "Holon Collection",
-          "base_type": "BaseType::Holon",
+          "base_type": "TypeKind::Holon",
           "is_dependent": false,
           "is_built_in": true
         },
@@ -15,7 +15,7 @@
           "type_name": "SchemaDescriptor",
           "description": "Describes the Schema HolonType",
           "label": "Holon Collection",
-          "base_type": "BaseType::Holon",
+          "base_type": "TypeKind::Holon",
           "is_dependent": false,
           "is_built_in": true
         }

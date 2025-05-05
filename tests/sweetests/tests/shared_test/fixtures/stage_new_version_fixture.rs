@@ -7,7 +7,7 @@ use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::HolonReference;
 use rstest::*;
-use shared_types_holon::{BaseValue, MapInteger, MapString};
+use shared_types_holon::{BaseTypeKind, MapInteger, MapString};
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
@@ -58,7 +58,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let cloned_book_key =
-        BaseValue::StringValue(MapString("A new version of: Emerging World".to_string()));
+        BaseTypeKind::StringValue(MapString("A new version of: Emerging World".to_string()));
 
     test_case.add_stage_new_version_step(book_key, ResponseStatusCode::OK)?;
     // NOTE: Assume this test step executor actually stages TWO new versions from original

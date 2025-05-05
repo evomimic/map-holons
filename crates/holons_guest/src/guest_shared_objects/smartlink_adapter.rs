@@ -2,9 +2,8 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{
-    BaseValue, ExternalId, HolonId, LocalId, MapString, OutboundProxyId, PropertyMap, PropertyName,
-};
+use base_types::{BaseValue, MapString};
+use core_types::{ExternalId, HolonId, LocalId, OutboundProxyId, PropertyMap, PropertyName};
 
 use holons_core::core_shared_objects::{get_key_from_property_map, HolonError, RelationshipName};
 use holons_core::reference_layer::{HolonReference, SmartReference};

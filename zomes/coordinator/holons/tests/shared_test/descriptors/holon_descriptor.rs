@@ -6,7 +6,7 @@ use holons::relationship::HolonCollection;
 use holons::relationship::HolonCollection::*;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 /// This file creates a HolonDescriptor Holon and its Associated Relationships
@@ -36,7 +36,7 @@ pub fn define_holon_type_descriptor() -> Holon {
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            BaseValue::StringValue(MapString("TypeKind::Holon".to_string())),
         )
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
@@ -76,7 +76,7 @@ pub fn define_collection_type_descriptor() -> Holon {
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::StringValue(MapString("BaseType::Collection".to_string())),
+            BaseValue::StringValue(MapString("TypeKind::Collection".to_string())),
         )
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
@@ -113,7 +113,7 @@ pub fn define_collection_descriptor() -> Holon {
 //     supertype_descriptor.with_property_value("type_name".to_string(), BaseValue::StringValue(type_name))
 //         .with_property_value("description".to_string(), BaseValue::StringValue(description))
 //         .with_property_value("label".to_string(), BaseValue::StringValue(label))
-//         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//         .with_property_value("base_type".to_string(), BaseValue::StringValue("TypeKind::Holon".to_string()))
 //         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
 //
 //     // Define a HolonCollection for the TypeDescriptor
@@ -133,7 +133,7 @@ pub fn define_collection_descriptor() -> Holon {
 //     //     .with_property_value("description".to_string(), BaseValue::StringValue(
 //     //         "Describes a relationship between two types of holons".to_string()))
 //     //     .with_property_value("label".to_string(), BaseValue::StringValue("Relationship Descriptor".to_string()))
-//     //     .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//     //     .with_property_value("base_type".to_string(), BaseValue::StringValue("TypeKind::Holon".to_string()))
 //     //     .with_property_value("version".to_string(), BaseValue::StringValue("0.0.1 -- Semantic Version really be a String?".to_string()))
 //     //     .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false));
 //
@@ -159,7 +159,7 @@ pub fn define_collection_descriptor() -> Holon {
 //         .with_property_value("description".to_string(), BaseValue::StringValue(
 //             "Defines the its properties, constraints, relationships, and dances".to_string()))
 //         .with_property_value("label".to_string(), BaseValue::StringValue("Holon Descriptor".to_string()))
-//         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//         .with_property_value("base_type".to_string(), BaseValue::StringValue("TypeKind::Holon".to_string()))
 //         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(true));
 //
 //

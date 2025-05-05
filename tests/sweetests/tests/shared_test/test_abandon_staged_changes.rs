@@ -17,7 +17,7 @@ use holons_core::dances::DanceResponse;
 use holons_core::{HolonWritable, StagedReference};
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use shared_types_holon::{HolonId, MapBoolean, MapInteger, MapString};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,
@@ -58,7 +58,7 @@ pub async fn execute_abandon_staged_changes(
                 abandoned_holon.with_property_value(
                     context, // ✅ Pass context for proper behavior
                     PropertyName(MapString("some_name".to_string())),
-                    Some(BaseValue::BooleanValue(MapBoolean(true)))
+                    Some(BaseTypeKind::BooleanValue(MapBoolean(true)))
                 ),
                 Err(HolonError::NotAccessible(_, _))
             ));
@@ -113,7 +113,7 @@ pub async fn execute_abandon_staged_changes(
     //                             assert!(matches!(
     //                                 abandoned_holon.with_property_value(
     //                                     PropertyName(MapString("some_name".to_string())),
-    //                                     BaseValue::BooleanValue(MapBoolean(true))
+    //                                     BaseTypeKind::BooleanValue(MapBoolean(true))
     //                                 ),
     //                                 Err(HolonError::NotAccessible(_, _))
     //                             ));
