@@ -19,10 +19,8 @@ use crate::shared_test::test_data_types::DancesTestCase;
 
 use holons_core::core_shared_objects::HolonError;
 use rstest::*;
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{
-    MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::{PropertyMap, PropertyName, PropertyValue};
 use std::collections::btree_map::BTreeMap;
 
 /// This function creates a set of simple (undescribed) holons
@@ -52,10 +50,10 @@ pub fn load_core_schema_test_fixture() -> Result<DancesTestCase, HolonError> {
     // book_holon
     //     .with_property_value(
     //         PropertyName(MapString("title".to_string())),
-    //         BaseTypeKind::StringValue(MapString("Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string())))
+    //         BaseValue::StringValue(MapString("Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string())))
     //     .with_property_value(
     //         PropertyName(MapString("description".to_string())),
-    //         BaseTypeKind::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
+    //         BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())))
     //     ;
     // test_case.add_create_step(book_holon)?;
 

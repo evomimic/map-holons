@@ -13,8 +13,8 @@ use holons_core::query_layer::QueryExpression;
 use holons_core::reference_layer::stage_new_holon_api;
 use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
 use rstest::*;
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{MapInteger, MapString, PropertyName};
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::PropertyName;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
@@ -80,11 +80,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let mut abandoned_holon_1 = Holon::new();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
-        Some(BaseTypeKind::StringValue(MapString("Abandon1".to_string()))),
+        Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
     )?;
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("example abandon1".to_string())),
-        Some(BaseTypeKind::StringValue(MapString("test1".to_string()))),
+        Some(BaseValue::StringValue(MapString("test1".to_string()))),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
     let abandoned_holon_1_ref = stage_new_holon_api(&*fixture_context, abandoned_holon_1.clone())?;
@@ -94,11 +94,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let mut abandoned_holon_2 = Holon::new();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("key".to_string())),
-        Some(BaseTypeKind::StringValue(MapString("Abandon2".to_string()))),
+        Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),
     )?;
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("example abandon2".to_string())),
-        Some(BaseTypeKind::StringValue(MapString("test2".to_string()))),
+        Some(BaseValue::StringValue(MapString("test2".to_string()))),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
     let abandoned_holon_2_ref = stage_new_holon_api(&*fixture_context, abandoned_holon_2.clone())?;

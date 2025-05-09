@@ -16,9 +16,9 @@ use holons_core::dances::dance_response::{ResponseBody, ResponseStatusCode};
 use holons_core::dances::DanceResponse;
 use holons_core::{HolonWritable, StagedReference};
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{HolonId, MapBoolean, MapInteger, MapString};
+use shared_types_holon::holon_node::HolonNode;
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::{HolonId, PropertyMap, PropertyName};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,
 /// If the `ResponseStatusCode` returned by the dance != `expected_response`, panic to fail the test
@@ -58,7 +58,7 @@ pub async fn execute_abandon_staged_changes(
                 abandoned_holon.with_property_value(
                     context, // ✅ Pass context for proper behavior
                     PropertyName(MapString("some_name".to_string())),
-                    Some(BaseTypeKind::BooleanValue(MapBoolean(true)))
+                    Some(BaseValue::BooleanValue(MapBoolean(true)))
                 ),
                 Err(HolonError::NotAccessible(_, _))
             ));
@@ -113,7 +113,7 @@ pub async fn execute_abandon_staged_changes(
     //                             assert!(matches!(
     //                                 abandoned_holon.with_property_value(
     //                                     PropertyName(MapString("some_name".to_string())),
-    //                                     BaseTypeKind::BooleanValue(MapBoolean(true))
+    //                                     BaseValue::BooleanValue(MapBoolean(true))
     //                                 ),
     //                                 Err(HolonError::NotAccessible(_, _))
     //                             ));

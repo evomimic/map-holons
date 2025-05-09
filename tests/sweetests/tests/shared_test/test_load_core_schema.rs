@@ -10,9 +10,9 @@ use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCas
 use crate::shared_test::*;
 use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use shared_types_holon::holon_node::HolonNode;
+use base_types::{MapInteger, MapString};
+use core_types::{HolonId, PropertyMap, PropertyName};
 use tracing::{debug, info};
 /// This function builds and dances a `load_core_schema` DanceRequest
 /// and confirms a Success response

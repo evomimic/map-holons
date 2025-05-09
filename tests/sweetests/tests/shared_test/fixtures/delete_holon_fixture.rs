@@ -13,10 +13,8 @@ use holons_core::query_layer::QueryExpression;
 use holons_core::HolonsContextBehavior;
 use pretty_assertions::assert_eq;
 use rstest::*;
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{
-    HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::{HolonId, PropertyMap, PropertyName, PropertyValue};
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
 
@@ -35,16 +33,16 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     );
     book_holon.with_property_value(
         PropertyName(MapString("key".to_string())),
-        Some(BaseTypeKind::StringValue(book_holon_key.clone())),
+        Some(BaseValue::StringValue(book_holon_key.clone())),
     )?;
     book_holon.with_property_value(
         PropertyName(MapString("title".to_string())),
-        Some(BaseTypeKind::StringValue(MapString(
+        Some(BaseValue::StringValue(MapString(
             "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
         )),
     ))?.with_property_value(
         PropertyName(MapString("description".to_string())),
-        Some(BaseTypeKind::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())),
+        Some(BaseValue::StringValue(MapString("Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string())),
     ))?;
     test_case.add_stage_holon_step(book_holon)?;
 

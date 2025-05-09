@@ -13,9 +13,9 @@ use holons_core::dances::ResponseStatusCode;
 use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::{HolonReference, SmartReference};
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use shared_types_holon::holon_node::HolonNode;
+use base_types::{MapInteger, MapString};
+use core_types::{HolonId, PropertyMap, PropertyName};
 use tracing::{debug, info};
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.

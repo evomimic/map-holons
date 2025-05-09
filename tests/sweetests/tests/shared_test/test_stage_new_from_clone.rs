@@ -12,7 +12,8 @@ use holons_core::core_shared_objects::RelationshipName;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
 use rstest::*;
-use shared_types_holon::{BaseTypeKind, HolonId, MapInteger, MapString, PropertyName};
+use base_types::{MapInteger, MapString};
+use core_types::{HolonId, PropertyName};
 use tracing::{debug, error, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied

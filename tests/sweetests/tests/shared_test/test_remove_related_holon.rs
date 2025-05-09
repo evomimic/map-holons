@@ -13,9 +13,9 @@ use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{HolonReference, StagedReference};
 use pretty_assertions::assert_eq;
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseTypeKind;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use shared_types_holon::holon_node::HolonNode;
+use base_types::{MapInteger, MapString};
+use core_types::{PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 use tracing::info;
 
