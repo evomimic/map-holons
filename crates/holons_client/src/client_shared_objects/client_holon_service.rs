@@ -4,7 +4,8 @@ use holons_core::core_shared_objects::{
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};
-use shared_types_holon::{HolonId, LocalId, MapString};
+use base_types::MapString;
+use core_types::{HolonId, LocalId};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -21,7 +22,7 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn delete_holon(&self, _local_id: &LocalId) -> Result<(), HolonError> {
+    fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
         todo!()
     }
 

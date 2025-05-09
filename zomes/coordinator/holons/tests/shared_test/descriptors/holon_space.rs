@@ -3,7 +3,7 @@
 use holons::holon_types::Holon;
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 pub fn new_holon_space() -> Holon {
@@ -27,7 +27,7 @@ pub fn define_holon_space_descriptor() -> Holon {
         .with_property_value(PropertyName(MapString("description".to_string())), BaseValue::StringValue(
             MapString("Describes a MAP Holon Space, including its properties, constraints, relationships, and dances".to_string())))
         .with_property_value(PropertyName(MapString("label".to_string())), BaseValue::StringValue(MapString("Holon Space".to_string())))
-        .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("BaseType::Holon".to_string())))
+        .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("TypeKind::Holon".to_string())))
         .with_property_value(PropertyName(MapString("is_dependent".to_string())), BaseValue::BooleanValue(MapBoolean(false)));
 
     // TODO: Add Relationhips

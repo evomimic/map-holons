@@ -1,7 +1,7 @@
 use crate::core_shared_objects::{HolonCollection, HolonError, RelationshipMap, RelationshipName};
 use crate::reference_layer::HolonServiceApi;
 use hdk::prelude::debug;
-use shared_types_holon::HolonId;
+use core_types::HolonId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;

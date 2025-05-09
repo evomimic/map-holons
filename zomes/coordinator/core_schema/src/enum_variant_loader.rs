@@ -4,32 +4,32 @@ use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-use shared_types_holon::{MapBoolean, MapInteger, MapString};
+use base_types::{MapBoolean, MapInteger, MapString};
 use strum_macros::EnumIter;
 // use crate::enum_variant_loader;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::{
-    BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship,
-    BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray,
-    BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray,
+    TypeKindCollection, TypeKindEnumVariant, TypeKindHolon, TypeKindProperty, TypeKindRelationship,
+    TypeKindValueBoolean, TypeKindValueBooleanArray, TypeKindValueEnum, TypeKindValueEnumArray,
+    TypeKindValueInteger, TypeKindValueIntegerArray, TypeKindValueString, TypeKindValueStringArray,
     DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade,
 };
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreEnumVariantTypeName {
     #[default]
-    BaseTypeHolon,
-    BaseTypeCollection,
-    BaseTypeProperty,
-    BaseTypeRelationship,
-    BaseTypeEnumVariant,
-    BaseTypeValueBoolean,
-    BaseTypeValueEnum,
-    BaseTypeValueInteger,
-    BaseTypeValueString,
-    BaseTypeValueBooleanArray,
-    BaseTypeValueEnumArray,
-    BaseTypeValueIntegerArray,
-    BaseTypeValueStringArray,
+    TypeKindHolon,
+    TypeKindCollection,
+    TypeKindProperty,
+    TypeKindRelationship,
+    TypeKindEnumVariant,
+    TypeKindValueBoolean,
+    TypeKindValueEnum,
+    TypeKindValueInteger,
+    TypeKindValueString,
+    TypeKindValueBooleanArray,
+    TypeKindValueEnumArray,
+    TypeKindValueIntegerArray,
+    TypeKindValueStringArray,
     DeletionSemanticAllow,
     DeletionSemanticBlock,
     DeletionSemanticCascade,
@@ -87,121 +87,121 @@ impl CoreEnumVariantTypeName {
     fn get_variant_loader(&self) -> EnumVariantLoader {
         // use CoreEnumVariantTypeName::*;
         // use shared_types_holon::MapInteger;
-        // use crate::enum_variant_loader::CoreEnumVariantTypeName::{BaseTypeCollection, BaseTypeEnumVariant, BaseTypeHolon, BaseTypeProperty, BaseTypeRelationship, BaseTypeValueBoolean, BaseTypeValueBooleanArray, BaseTypeValueEnum, BaseTypeValueEnumArray, BaseTypeValueInteger, BaseTypeValueIntegerArray, BaseTypeValueString, BaseTypeValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
+        // use crate::enum_variant_loader::CoreEnumVariantTypeName::{TypeKindCollection, TypeKindEnumVariant, TypeKindHolon, TypeKindProperty, TypeKindRelationship, TypeKindValueBoolean, TypeKindValueBooleanArray, TypeKindValueEnum, TypeKindValueEnumArray, TypeKindValueInteger, TypeKindValueIntegerArray, TypeKindValueString, TypeKindValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
         // use crate::enum_variant_loader::EnumVariantLoader;
         match self {
-            BaseTypeHolon => EnumVariantLoader {
+            TypeKindHolon => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Holon".into()),
+                description: MapString("Describes a TypeKind::Holon".into()),
                 label: MapString("Holon".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(1),
             },
-            BaseTypeCollection => EnumVariantLoader {
+            TypeKindCollection => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Collection".into()),
+                description: MapString("Describes a TypeKind::Collection".into()),
                 label: MapString("Collection".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(2),
             },
-            BaseTypeProperty => EnumVariantLoader {
+            TypeKindProperty => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Property".into()),
+                description: MapString("Describes a TypeKind::Property".into()),
                 label: MapString("Property".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(3),
             },
-            BaseTypeRelationship => EnumVariantLoader {
+            TypeKindRelationship => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Enum".into()),
+                description: MapString("Describes a TypeKind::Enum".into()),
                 label: MapString("Enum".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(4),
             },
-            BaseTypeEnumVariant => EnumVariantLoader {
+            TypeKindEnumVariant => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::EnumVariant".into()),
+                description: MapString("Describes a TypeKind::EnumVariant".into()),
                 label: MapString("EnumVariant".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(5),
             },
-            BaseTypeValueBoolean => EnumVariantLoader {
+            TypeKindValueBoolean => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Value(Boolean)".into()),
+                description: MapString("Describes a TypeKind::Value(Boolean)".into()),
                 label: MapString("BooleanValue".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(6),
             },
-            BaseTypeValueEnum => EnumVariantLoader {
+            TypeKindValueEnum => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Value(Enum)".into()),
+                description: MapString("Describes a TypeKind::Value(Enum)".into()),
                 label: MapString("EnumValue".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(7),
             },
-            BaseTypeValueInteger => EnumVariantLoader {
+            TypeKindValueInteger => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Value(Integer)".into()),
+                description: MapString("Describes a TypeKind::Value(Integer)".into()),
                 label: MapString("IntegerValue".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(8),
             },
-            BaseTypeValueString => EnumVariantLoader {
+            TypeKindValueString => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::Value(String)".into()),
+                description: MapString("Describes a TypeKind::Value(String)".into()),
                 label: MapString("StringValue".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(9),
             },
-            BaseTypeValueBooleanArray => EnumVariantLoader {
+            TypeKindValueBooleanArray => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::ValueArray(Boolean)".into()),
+                description: MapString("Describes a TypeKind::ValueArray(Boolean)".into()),
                 label: MapString("Holon".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(10),
             },
-            BaseTypeValueEnumArray => EnumVariantLoader {
+            TypeKindValueEnumArray => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::ValueArray(Enum)".into()),
+                description: MapString("Describes a TypeKind::ValueArray(Enum)".into()),
                 label: MapString("Array of EnumValue".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(11),
             },
-            BaseTypeValueIntegerArray => EnumVariantLoader {
+            TypeKindValueIntegerArray => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::ValueArray(".into()),
+                description: MapString("Describes a TypeKind::ValueArray(".into()),
                 label: MapString("Array of IntegerValue".into()),
                 described_by: None,
                 owned_by: None,
                 variant_order: MapInteger(12),
             },
-            BaseTypeValueStringArray => EnumVariantLoader {
+            TypeKindValueStringArray => EnumVariantLoader {
                 type_name: self.derive_type_name(),
                 descriptor_name: self.derive_descriptor_name(),
-                description: MapString("Describes a BaseType::ValueArray(String)".into()),
+                description: MapString("Describes a TypeKind::ValueArray(String)".into()),
                 label: MapString("Array of StringValue".into()),
                 described_by: None,
                 owned_by: None,
@@ -261,7 +261,7 @@ fn load_enum_variant_definition(
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
-        // TODO: add base_type: BaseType::EnumVariant
+        // TODO: add base_type: TypeKind::EnumVariant
         is_dependent: MapBoolean(true),
         is_value_type: MapBoolean(false),
         described_by: loader.described_by,

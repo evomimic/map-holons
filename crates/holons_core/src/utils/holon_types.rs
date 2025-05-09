@@ -1,7 +1,7 @@
 use crate::relationship::RelationshipMap;
 use derive_new::new;
 use hdk::prelude::*;
-use shared_types_holon::value_types::BaseValue;
+use shared_types_holon::value_types::BaseTypeKind;
 use shared_types_holon::{HolonId, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 use std::fmt;

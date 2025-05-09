@@ -8,7 +8,7 @@ use hdk::entry::get;
 use hdk::prelude::GetOptions;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_integrity::LinkTypes;
-use shared_types_holon::LocalId;
+use core_types::LocalId;
 //Stateless HDI service to bridge Holon and HolonNode
 //Holochain API logic and calls should all done from the HolonNode module (separation of concerns)
 //Holon should be mostly self-referential methods and data

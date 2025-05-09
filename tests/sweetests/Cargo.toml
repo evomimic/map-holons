@@ -23,6 +23,8 @@ shared_types_holon = { path = "../../crates/shared_types/holon" }
 holons_core = { path = "../../crates/holons_core" }
 holon_dance_builders = { path = "../../crates/holon_dance_builders" }
 holons_client = { path = "../../crates/holons_client" }
+base_types = { path = "../../crates/type_system/base_types" }
+core_types = { path = "../../crates/type_system/core_types" }
 
 [dev-dependencies]
 futures = { version = "0.3.1", default-features = false }

@@ -24,6 +24,8 @@ hdk = { workspace = true }
 # MAP Dependencies
 shared_types_holon = { workspace = true }
 shared_validation = { workspace = true }
+base_types = { workspace = true }
+core_types = { workspace = true }
 
 
 [dev-dependencies]

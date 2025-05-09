@@ -8,7 +8,9 @@ use crate::reference_layer::{
 use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
 };
-use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
+
+use base_types::MapString;
+use core_types::{HolonId, PropertyName, PropertyValue};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only

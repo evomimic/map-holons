@@ -1,6 +1,6 @@
 use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 use holons_core::{core_shared_objects::HolonError, StagedReference};
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 ///
 /// Builds a DanceRequest for abandoning changes to a staged Holon.

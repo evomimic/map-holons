@@ -1,11 +1,11 @@
 use derive_new::new;
-use hdi::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// The MAP Value Type System is INTENDED to have three layers:
-/// 1️⃣ Rust Layer: Basic Rust data types
-/// 2️⃣ Tuple Structs Layer: Encapsulates Rust types using the newtype pattern
-/// 3️⃣ Enum Layer: `BaseValue` enum representing various MAP Value Types
+// Scalar Wrapper Types – newtype wrappers around primitive Rust types
+//  (e.g., `MapString`, `MapBoolean`, `MapInteger`, `MapEnumValue`, `MapBytes`)
+//  that support serialization, hashing, and consistent formatting.
+
 
 // ===============================
 // 📦 MapString
@@ -130,87 +130,6 @@ impl Into<String> for &BaseValue {
             BaseValue::IntegerValue(val) => val.0.to_string(),
             BaseValue::BooleanValue(val) => val.0.to_string(),
             BaseValue::EnumValue(val) => val.0 .0.clone(),
-        }
-    }
-}
-
-// ===============================
-// 📦 EnumValue
-// ===============================
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct EnumValue(pub String);
-
-impl fmt::Display for EnumValue {
-    /// Displays the enum value directly as its string content.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-// ===============================
-// 📦 BaseType Enum
-// ===============================
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(tag = "type")]
-pub enum BaseType {
-    Holon,
-    Collection,
-    Property,
-    Relationship,
-    EnumVariant,
-    Value(ValueType),
-    ValueArray(ValueType),
-}
-
-impl fmt::Display for BaseType {
-    /// Displays the `BaseType` with clear type labeling.
-    ///
-    /// Example:
-    /// - `Value(Integer)` → `IntegerValue`
-    /// - `ValueArray(String)` → `Array of StringValue`
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            BaseType::Holon => write!(f, "Holon"),
-            BaseType::Collection => write!(f, "Collection"),
-            BaseType::Property => write!(f, "Property"),
-            BaseType::Relationship => write!(f, "Relationship"),
-            BaseType::EnumVariant => write!(f, "EnumVariant"),
-            BaseType::Value(value_type) => match value_type {
-                ValueType::Boolean => write!(f, "BooleanValue"),
-                ValueType::Enum => write!(f, "EnumValue"),
-                ValueType::Integer => write!(f, "IntegerValue"),
-                ValueType::String => write!(f, "StringValue"),
-            },
-            BaseType::ValueArray(value_type) => match value_type {
-                ValueType::Boolean => write!(f, "Array of BooleanValue"),
-                ValueType::Enum => write!(f, "Array of EnumValue"),
-                ValueType::Integer => write!(f, "Array of IntegerValue"),
-                ValueType::String => write!(f, "Array of StringValue"),
-            },
-        }
-    }
-}
-
-// ===============================
-// 📦 ValueType Enum
-// ===============================
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(tag = "type")]
-pub enum ValueType {
-    Boolean,
-    Enum,
-    Integer,
-    String,
-}
-
-impl fmt::Display for ValueType {
-    /// Displays the `ValueType` in a readable format.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ValueType::Boolean => write!(f, "Boolean"),
-            ValueType::Enum => write!(f, "Enum"),
-            ValueType::Integer => write!(f, "Integer"),
-            ValueType::String => write!(f, "String"),
         }
     }
 }

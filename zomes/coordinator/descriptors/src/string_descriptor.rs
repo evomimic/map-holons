@@ -4,8 +4,8 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
-use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
-use shared_types_holon::PropertyName;
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{BaseTypeKind, PropertyName, TypeKind};
 use CoreSchemaPropertyTypeName::TypeName;
 
 pub struct StringTypeDefinition {
@@ -36,7 +36,7 @@ pub fn define_string_type(
     let type_descriptor_ref = define_type_descriptor(
         context,
         schema,
-        BaseType::Value(ValueType::String),
+        TypeKind::Value(BaseTypeKind::String),
         definition.header,
     )?;
 

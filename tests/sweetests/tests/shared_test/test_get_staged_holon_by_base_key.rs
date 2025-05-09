@@ -1,6 +1,6 @@
 use holochain::conductor::config::KeystoreConfig;
 use holons_core::core_shared_objects::nursery;
-use shared_types_holon::MapString;
+use base_types::MapString;
 use tracing::info;
 
 use super::{mock_conductor::MockConductorConfig, test_data_types::DanceTestExecutionState};

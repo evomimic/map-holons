@@ -3,7 +3,7 @@ use holons_core::{
     core_shared_objects::{HolonError, RelationshipName},
     HolonReference, StagedReference,
 };
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 /// Builds a DanceRequest for removing related holons to a source_holon.
 pub fn build_remove_related_holons_dance_request(

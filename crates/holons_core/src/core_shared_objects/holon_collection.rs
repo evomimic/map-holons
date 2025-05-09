@@ -4,7 +4,7 @@ use crate::core_shared_objects::{AccessType, HolonError};
 use crate::HolonCollectionApi;
 use core::fmt;
 use hdk::prelude::*;
-use shared_types_holon::{MapInteger, MapString};
+use base_types::{MapInteger, MapString};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
