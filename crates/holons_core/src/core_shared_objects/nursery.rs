@@ -4,7 +4,6 @@ use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
 use core_types::TemporaryId;
 use base_types::MapString;
-// use std::borrow::Borrow;  //  This was overriding RefCell's internal borrow and causing errors
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 
