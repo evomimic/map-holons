@@ -15,7 +15,8 @@ use crate::core_shared_objects::{
 };
 
 use base_types::MapString;
-use core_types::{HolonId, PropertyMap, PropertyName, PropertyValue};
+use core_types::HolonId;
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SmartReference {

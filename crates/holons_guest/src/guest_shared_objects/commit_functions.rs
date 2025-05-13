@@ -13,7 +13,7 @@ use holons_core::core_shared_objects::{
 use holons_core::reference_layer::{HolonReadable, HolonsContextBehavior};
 use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{LocalId, PropertyMap, PropertyName};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;

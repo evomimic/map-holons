@@ -13,7 +13,7 @@ use holons_core::core_shared_objects::HolonError;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use base_types::{MapBoolean, MapString};
-use core_types::PropertyName;
+use integrity_core_types::PropertyName;
 use strum_macros::EnumIter;
 use CorePropertyTypeName::*;
 

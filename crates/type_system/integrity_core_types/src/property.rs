@@ -1,9 +1,10 @@
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
+use std::collections::BTreeMap;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 
 // ===============================
-// 🔑 Property Types
+// 🔑 Property Name
 // ===============================
 
 /// A strongly-typed wrapper around MapString for property keys.
@@ -15,3 +16,14 @@ impl fmt::Display for PropertyName {
         write!(f, "{}", self.0)
     }
 }
+
+// ===============================
+// 📦 Type Aliases
+// ===============================
+
+
+/// The type of a property’s value at runtime.
+pub type PropertyValue = BaseValue;
+
+/// The map from property names to optional property values.
+pub type PropertyMap = BTreeMap<PropertyName, Option<PropertyValue>>;

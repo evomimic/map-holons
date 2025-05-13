@@ -4,7 +4,7 @@
 use crate::descriptor_types::Schema;
 use holons_core::core_shared_objects::{Holon, HolonError};
 
-use core_types::PropertyName;
+use integrity_core_types::PropertyName;
 use base_types::{BaseValue, MapString};
 
 impl Schema {

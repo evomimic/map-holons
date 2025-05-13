@@ -1,21 +1,7 @@
 use std::fmt;
 use hdi::prelude::*;
 use uuid::Uuid;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct LocalId(pub ActionHash);
-
-impl From<ActionHash> for LocalId {
-    fn from(action_hash: ActionHash) -> Self {
-        LocalId(action_hash)
-    }
-}
-
-impl fmt::Display for LocalId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", short_hash(&self.0, 6))
-    }
-}
+use integrity_core_types::LocalId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OutboundProxyId(pub ActionHash);

@@ -1,6 +1,6 @@
-// use shared_types_holon::{BaseTypeKind, HolonId, PropertyMap};
 use base_types::BaseValue;
-use core_types::{PropertyMap, HolonId};
+use core_types::HolonId;
+use integrity_core_types::PropertyMap;
 
 use crate::reference_layer::SmartReference;
 use hdk::prelude::*;

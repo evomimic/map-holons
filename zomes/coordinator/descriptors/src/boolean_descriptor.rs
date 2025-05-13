@@ -8,9 +8,8 @@ use holons_core::{
     Holon, HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
 use core_types::{TypeKind, BaseTypeKind};
-//use shared_types_holon::{BaseValue, MapString, PropertyName};
 use base_types::{BaseValue, MapString};
-use core_types::PropertyName;
+use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::TypeName;
 
 pub struct BooleanTypeDefinition {

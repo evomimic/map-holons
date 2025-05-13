@@ -10,3 +10,4 @@ serde = { workspace = true }
 uuid = { workspace = true}
 base_types = { workspace = true }
 hdi = { workspace = true }
+integrity_core_types = { workspace = true }

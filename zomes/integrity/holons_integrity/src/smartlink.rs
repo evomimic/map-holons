@@ -1,5 +1,5 @@
 use hdi::prelude::*;
-//use shared_types_holon::holon_node::{HolonNode};
+//use integrity_core_types::holon_node::{HolonNode};
 
 pub const EXTERNAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 141]; // Unicode 'Ⓧ' // hex bytes: [0xE2] [0x93] [0x8D]
 pub const LOCAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 129]; // Unicode 'Ⓛ' // hex bytes: [0xE2] [0x93] [0x81]

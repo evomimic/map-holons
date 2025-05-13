@@ -5,7 +5,8 @@ use holons_core::core_shared_objects::{
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};
 use base_types::MapString;
-use core_types::{HolonId, LocalId};
+use core_types::HolonId;
+use integrity_core_types::LocalId;
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;

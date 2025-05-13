@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::dances::SessionState;
 use crate::query_layer::{NodeCollection, QueryExpression};
 use crate::{HolonReference, StagedReference};
-use core_types::{HolonId, LocalId, PropertyMap};
+use core_types::HolonId;
+use integrity_core_types::{LocalId, PropertyMap};
 use base_types::MapString;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

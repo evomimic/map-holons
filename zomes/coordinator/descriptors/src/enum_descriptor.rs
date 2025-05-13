@@ -6,7 +6,8 @@ use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapString};
-use core_types::{TypeKind, BaseTypeKind, PropertyName};
+use core_types::{TypeKind, BaseTypeKind};
+use integrity_core_types::PropertyName;
 
 pub struct EnumTypeDefinition {
     pub header: TypeDescriptorDefinition,

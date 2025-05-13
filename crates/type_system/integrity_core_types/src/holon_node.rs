@@ -1,4 +1,4 @@
-use core_types::{PropertyMap, LocalId};
+use crate::{PropertyMap, LocalId};
 use derive_new::new;
 use hdi::prelude::*;
 

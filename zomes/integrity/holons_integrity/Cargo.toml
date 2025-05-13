@@ -16,5 +16,5 @@ serde = { workspace = true }
 derive-new = { workspace = true }
 thiserror = { workspace = true }
 
-shared_types_holon = {workspace = true}
 shared_validation = {workspace = true}
+integrity_core_types = {workspace = true}

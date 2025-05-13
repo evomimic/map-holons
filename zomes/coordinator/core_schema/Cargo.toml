@@ -23,5 +23,6 @@ holons_core = { workspace = true }
 descriptors = { workspace = true }
 base_types = { workspace = true }
 core_types = { workspace = true }
+integrity_core_types = { workspace = true }
 
 [dev-dependencies]

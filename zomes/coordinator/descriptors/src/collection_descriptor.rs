@@ -9,7 +9,8 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons_core::core_shared_objects::stage_new_holon_api;
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::{PropertyName, TypeKind};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
 
 pub struct CollectionTypeDefinition {
     pub header: TypeDescriptorDefinition,

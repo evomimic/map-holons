@@ -15,7 +15,8 @@ use holons_core::core_shared_objects::{Holon, HolonCollection, RelationshipName}
 use holons_core::HolonReference;
 use inflector::Inflector;
 use base_types::{MapBoolean, MapEnumValue, MapInteger, MapString};
-use core_types::{PropertyName, TypeKind};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
 
 /// All MAP Descriptors are stored as Holons. This file defines structs for each kind of Core Type
 /// in order to allow type-safe references and to provide a higher-level representation. Conversion

@@ -15,17 +15,13 @@
 //! and are shared across guest and client implementations.
 
 pub mod ids;
-pub mod maps;
-// pub mod core_names;
+// pub mod names;
 pub mod type_kinds;
-pub mod property_name;
 
 
 pub use ids::*;
-pub use maps::*;
-// pub use core_names::*;
+// pub use names::*;
 pub use type_kinds::*;
-pub use property_name::*;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

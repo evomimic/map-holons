@@ -5,7 +5,8 @@ use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{BaseTypeKind, PropertyName, TypeKind};
+use core_types::{BaseTypeKind, TypeKind};
+use integrity_core_types::PropertyName;
 
 #[derive(Clone)]
 pub struct IntegerTypeDefinition {
