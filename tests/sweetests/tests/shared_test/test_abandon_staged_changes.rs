@@ -16,9 +16,9 @@ use holons_core::dances::dance_response::{ResponseBody, ResponseStatusCode};
 use holons_core::dances::DanceResponse;
 use holons_core::{HolonWritable, StagedReference};
 use rstest::*;
-use shared_types_holon::holon_node::HolonNode;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::{HolonId, PropertyMap, PropertyName};
+use core_types::HolonId;
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,
 /// If the `ResponseStatusCode` returned by the dance != `expected_response`, panic to fail the test

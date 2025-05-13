@@ -12,7 +12,7 @@ use holons_core::{RelationshipName, StagedReference};
 
 use rstest::*;
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName};
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]

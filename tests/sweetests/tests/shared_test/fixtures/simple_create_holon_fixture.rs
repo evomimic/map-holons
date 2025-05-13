@@ -17,7 +17,8 @@ use holons_core::{HolonsContextBehavior, StagedReference};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{HolonId, PropertyMap, PropertyName, PropertyValue};
+use core_types::HolonId;
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
 

@@ -22,7 +22,8 @@ use holons_core::{HolonCollectionApi, HolonReadable, HolonWritable, HolonsContex
 use pretty_assertions::assert_eq;
 use rstest::*;
 use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{HolonId, BaseTypeKind, PropertyMap, PropertyName, PropertyValue};
+use core_types::{HolonId, BaseTypeKind};
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
 

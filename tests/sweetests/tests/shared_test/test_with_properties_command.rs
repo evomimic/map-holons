@@ -14,9 +14,9 @@ use holon_dance_builders::with_properties_dance::build_with_properties_dance_req
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{HolonReadable, StagedReference};
 use rstest::*;
-use shared_types_holon::holon_node::HolonNode;
 use base_types::{MapInteger, MapString};
-use core_types::{HolonId, PropertyMap, PropertyName};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

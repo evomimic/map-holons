@@ -13,7 +13,8 @@ use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
 use rstest::*;
 use base_types::{MapInteger, MapString};
-use core_types::{HolonId, PropertyName};
+use core_types::HolonId;
+use integrity_core_types::PropertyName;
 use tracing::{debug, error, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied

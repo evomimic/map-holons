@@ -13,7 +13,7 @@ use holons_core::holon_operations_api::*;
 
 use holons_core::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 use base_types::{BaseValue, MapString};
-use core_types::PropertyName;
+use integrity_core_types::PropertyName;
 
 // pub struct TestHolon {
 //     pub key: MapString,

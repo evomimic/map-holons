@@ -15,7 +15,8 @@ use holons_core::{
 };
 use rstest::*;
 use base_types::MapString;
-use core_types::{HolonId, PropertyName};
+use core_types::HolonId;
+use integrity_core_types::PropertyName;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
 
