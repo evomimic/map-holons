@@ -26,7 +26,8 @@ use crate::{
     HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
     SmartReference, StagedReference,
 };
-use shared_types_holon::{LocalId, MapString, PropertyMap, PropertyName};
+use base_types::MapString;
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::sync::Arc;
 

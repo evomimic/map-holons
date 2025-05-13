@@ -1,6 +1,6 @@
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-use shared_types_holon::MapString;
+use base_types::MapString;
 use strum_macros::EnumIter;
 
 use crate::core_schema_types::SchemaNamesTrait;
@@ -87,7 +87,7 @@ impl CoreMetaTypeName {
                 properties: vec![
                     DescriptorName,
                     Label,
-                    BaseType,
+                    TypeKind,
                     Description,
                     IsDependent,
                     IsBuiltinType,
@@ -285,7 +285,7 @@ impl CoreMetaTypeName {
 //         descriptor_name: loader.descriptor_name,
 //         description: loader.description,
 //         label: loader.label,
-//         // TODO: add base_type: BaseType::EnumVariant
+//         // TODO: add base_type: TypeKind::EnumVariant
 //         is_dependent: MapBoolean(true),
 //         is_value_type: MapBoolean(false),
 //         described_by: loader.described_by,

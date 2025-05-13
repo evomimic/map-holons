@@ -1,7 +1,7 @@
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::SchemaNamesTrait;

@@ -2,9 +2,8 @@ use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
-use shared_types_holon::holon_node::TemporaryId;
-
-use shared_types_holon::MapString;
+use core_types::TemporaryId;
+use base_types::MapString;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 

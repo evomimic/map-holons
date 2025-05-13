@@ -5,7 +5,7 @@ import {  } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 
 import { DanceRequest, createHolon } from './common.js';
-import { BaseValueType, Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
+import { BaseTypeKindType, Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
 
 test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
   await runScenario(async scenario => {
@@ -49,7 +49,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     //task 3 - add a title property to holon at index 0
     console.log(" -- -- Alice adds a title property to the Book Holon at index 0\n")
     let properties:PropertyMap = {}
-    properties["title"] = {[BaseValueType.StringValue]:"mybook"}
+    properties["title"] = {[BaseTypeKindType.StringValue]:"mybook"}
     response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
     //assertions:
     assert.equal(response.getStagedObjects().length, 1);
@@ -63,7 +63,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     //task 4 - add description to existing book holon
     console.warn("---- Alice adds a description property to the book Holon at index 0\n")
     properties = {}
-    properties["description"] = {[BaseValueType.StringValue]:"some description"}
+    properties["description"] = {[BaseTypeKindType.StringValue]:"some description"}
     response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
     //assertions
     //console.log("property add result:",response)
@@ -78,8 +78,8 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     // task 5 - build a person holon and send it in the body
     console.warn("--- Alice builds and stages a new person holon\n")
     properties = {}
-    properties["first_name"] = {[BaseValueType.StringValue]:"Thomas"}
-    properties["favourite number"] = {[BaseValueType.IntegerValue]:42}
+    properties["first_name"] = {[BaseTypeKindType.StringValue]:"Thomas"}
+    properties["favourite number"] = {[BaseTypeKindType.IntegerValue]:42}
     let holon:Holon = createHolon(properties)
     response = await alicerequest.createOne("stage_new_holon",holon)
     //assertions

@@ -1,5 +1,5 @@
 use crate::core_schema_types::SchemaNamesTrait;
-use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
+use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapTypeKind};
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::*;
 use descriptors::enum_descriptor::{define_enum_type, EnumTypeDefinition};
@@ -9,13 +9,13 @@ use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
-use shared_types_holon::{MapBoolean, MapString};
+use base_types::{MapBoolean, MapString};
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreEnumTypeName {
     #[default]
-    MapBaseType, // Enum -- BaseTypeEnumType
+    MapTypeKind, // Enum -- TypeKindEnumType
     DeletionSemanticType, // Enum -- DeletionSemanticEnumType
 }
 pub struct EnumTypeLoader {
@@ -66,9 +66,9 @@ impl SchemaNamesTrait for CoreEnumTypeName {
     /// This method returns the human-readable description of this type
     fn derive_description(&self) -> MapString {
         // use CoreEnumTypeName::*;
-        // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
+        // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapTypeKind};
         match self {
-            MapBaseType => MapString("Specifies the MAP BaseType of this object. ".to_string()),
+            MapTypeKind => MapString("Specifies the MAP TypeKind of this object. ".to_string()),
             DeletionSemanticType => MapString(
                 "Offers different options handling requests to delete a \
             source Holon of  relationship."
@@ -82,23 +82,23 @@ impl CoreEnumTypeName {
     /// This function returns the list of type names for the variants defined for this enum type
     fn specify_variants(&self) -> Vec<CoreEnumVariantTypeName> {
         // use CoreEnumTypeName::*;
-        // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapBaseType};
+        // use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapTypeKind};
         match self {
-            MapBaseType => {
+            MapTypeKind => {
                 vec![
-                    BaseTypeHolon,
-                    BaseTypeCollection,
-                    BaseTypeProperty,
-                    BaseTypeRelationship,
-                    BaseTypeEnumVariant,
-                    BaseTypeValueBoolean,
-                    BaseTypeValueEnum,
-                    BaseTypeValueInteger,
-                    BaseTypeValueString,
-                    BaseTypeValueBooleanArray,
-                    BaseTypeValueEnumArray,
-                    BaseTypeValueIntegerArray,
-                    BaseTypeValueStringArray,
+                    TypeKindHolon,
+                    TypeKindCollection,
+                    TypeKindProperty,
+                    TypeKindRelationship,
+                    TypeKindEnumVariant,
+                    TypeKindValueBoolean,
+                    TypeKindValueEnum,
+                    TypeKindValueInteger,
+                    TypeKindValueString,
+                    TypeKindValueBooleanArray,
+                    TypeKindValueEnumArray,
+                    TypeKindValueIntegerArray,
+                    TypeKindValueStringArray,
                 ]
             }
 
@@ -120,7 +120,7 @@ fn load_enum_type_definition(
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
-        // TODO: add base_type: BaseType::Enum,
+        // TODO: add base_type: TypeKind::Enum,
         is_dependent: MapBoolean(true),
         is_value_type: MapBoolean(true),
         described_by: loader.described_by,

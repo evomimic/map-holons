@@ -1,5 +1,5 @@
 use hdi::prelude::*;
-use shared_types_holon::holon_node::HolonNode;
+use integrity_core_types::holon_node::HolonNode;
 pub mod smartlink;
 pub use smartlink::*;
 pub mod holon_node;

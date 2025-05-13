@@ -5,7 +5,7 @@ import {  } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 
 import { DanceRequest, createHolon } from './common.js';
-import { BaseValueType, Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
+import { BaseTypeKindType, Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
 
 test('Dummy TEST for build', async () => {
   await runScenario(async scenario => {

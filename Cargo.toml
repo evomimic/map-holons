@@ -7,10 +7,10 @@ members = [
     # Integrity Zome
     "zomes/integrity/holons_integrity",
     # Shared Types and Validation
-    "crates/shared_types/holon",
     "crates/shared_validation",
     "crates/type_system/base_types",
     "crates/type_system/core_types",
+    "crates/type_system/integrity_core_types",
     "crates/type_system/descriptor_types",
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
@@ -38,8 +38,14 @@ path = "zomes/coordinator/core_schema"
 [workspace.dependencies.holons_integrity]
 path = "zomes/integrity/holons_integrity"
 
-[workspace.dependencies.shared_types_holon]
-path = "crates/shared_types/holon"
+[workspace.dependencies.base_types]
+path = "crates/type_system/base_types"
+
+[workspace.dependencies.core_types]
+path = "crates/type_system/core_types"
+
+[workspace.dependencies.integrity_core_types]
+path = "crates/type_system/integrity_core_types"
 
 [workspace.dependencies.shared_validation]
 path = "crates/shared_validation"

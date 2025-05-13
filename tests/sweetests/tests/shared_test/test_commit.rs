@@ -11,9 +11,9 @@ use crate::shared_test::*;
 use holon_dance_builders::commit_dance::build_commit_dance_request;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use tracing::{debug, info};
 
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon

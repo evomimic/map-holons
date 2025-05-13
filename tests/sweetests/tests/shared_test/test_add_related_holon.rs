@@ -13,9 +13,9 @@ use holons_core::reference_layer::StagedReference;
 use holons_core::{HolonReadable, HolonReference};
 use pretty_assertions::assert_eq;
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use std::collections::BTreeMap;
 use tracing::info;
 

@@ -10,4 +10,4 @@ derive-new = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 
-shared_types_holon = { workspace = true }
+integrity_core_types = { workspace = true }

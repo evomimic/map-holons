@@ -1,6 +1,6 @@
 use crate::core_shared_objects::Holon;
 use quick_cache::unsync::Cache;
-use shared_types_holon::HolonId;
+use core_types::HolonId;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;

@@ -5,7 +5,7 @@ import { NewEntryAction, ActionHash, AppBundleSource,  fakeActionHash, fakeAgent
 import { decode } from '@msgpack/msgpack';
 
 import { addProperty, build_dance_request, createHolon, send_dance_request } from './common.js';
-import { BaseValue, BaseValueType, DanceResponse, Holon, DanceTypeEnum, RequestBodyEnum, PropertyMap, ResponseStatusCodeMap, ResponseStatusCode, PortableReferenceEnum, TargetHolons } from "./types.js";
+import { BaseTypeKind, BaseTypeKindType, DanceResponse, Holon, DanceTypeEnum, RequestBodyEnum, PropertyMap, ResponseStatusCodeMap, ResponseStatusCode, PortableReferenceEnum, TargetHolons } from "./types.js";
 
 test('TEST CASE 2, Stage, Cancel, Commit, Delete Holons', async () => {
   await runScenario(async scenario => {
@@ -56,7 +56,7 @@ test('TEST CASE 2, Stage, Cancel, Commit, Delete Holons', async () => {
     //task 3 - add a title property to holon at index 0
     console.warn("Alice adds a title property to the Book Holon at index 0")
     let properties:PropertyMap = {}
-    properties["title"] = {[BaseValueType.StringValue]:"mybook"}
+    properties["title"] = {[BaseTypeKindType.StringValue]:"mybook"}
     response = await send_dance_request(
       alice.cells[0],
       "with_properties",
@@ -73,7 +73,7 @@ test('TEST CASE 2, Stage, Cancel, Commit, Delete Holons', async () => {
     //task 4 - add description to existing book holon
     console.warn("Alice adds a decription property to the book Holon at index 0") 
     properties = {}
-    properties["description"] = {[BaseValueType.StringValue]:"some description"}
+    properties["description"] = {[BaseTypeKindType.StringValue]:"some description"}
     response = await send_dance_request(
       alice.cells[0],
       "with_properties",
@@ -88,8 +88,8 @@ test('TEST CASE 2, Stage, Cancel, Commit, Delete Holons', async () => {
     // task 5 - build a person holon and send it in the body
     console.warn("Alice builds and adds a new person holon") 
     properties = {}
-    properties["first_name"] = {[BaseValueType.StringValue]:"Thomas"}
-    properties["favourite number"] = {[BaseValueType.IntegerValue]:42}
+    properties["first_name"] = {[BaseTypeKindType.StringValue]:"Thomas"}
+    properties["favourite number"] = {[BaseTypeKindType.IntegerValue]:42}
     let holon:Holon = createHolon(properties)
     response = await send_dance_request(
       alice.cells[0],
@@ -158,7 +158,7 @@ test('TEST CASE 2, Stage, Cancel, Commit, Delete Holons', async () => {
     await dhtSync([alice], alice.cells[0].cell_id[0]);
 
      // Alice adds another property to the Holon
-     let value2:BaseValue = {type: BaseValueType.StringValue, value: "some description"};
+     let value2:BaseTypeKind = {type: BaseTypeKindType.StringValue, value: "some description"};
      console.log("here",value2)
      const updatedHolon2: Holon = await addProperty(alice.cells[0], updatedHolon, "description", [value2] );
      assert.ok(updatedHolon2);

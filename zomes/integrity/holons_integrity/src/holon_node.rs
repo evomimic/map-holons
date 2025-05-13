@@ -1,5 +1,5 @@
 use hdi::prelude::*;
-use shared_types_holon::HolonNode;
+use integrity_core_types::HolonNode;
 
 pub fn validate_create_holon_node(
     _action: EntryCreationAction,

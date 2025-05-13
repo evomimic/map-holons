@@ -20,7 +20,9 @@ hdk = { workspace = true }
 
 # MAP Dependencies
 holons_core = { workspace = true }
-shared_types_holon = { workspace = true }
 descriptors = { workspace = true }
+base_types = { workspace = true }
+core_types = { workspace = true }
+integrity_core_types = { workspace = true }
 
 [dev-dependencies]

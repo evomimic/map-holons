@@ -6,7 +6,9 @@ use crate::core_shared_objects::{
     AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
 };
 
-use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
+use base_types::MapString;
+use core_types::HolonId;
+use integrity_core_types::{PropertyName, PropertyValue};
 
 pub trait HolonReadable {
     fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError>;

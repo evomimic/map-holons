@@ -10,7 +10,7 @@ use holons_core::dances::holon_dance_adapter::*;
 use holons_core::dances::{
     DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState,
 };
-use shared_types_holon::MapString;
+use base_types::MapString;
 use std::collections::HashMap;
 use std::sync::Arc;
 

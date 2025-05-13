@@ -13,8 +13,8 @@ use holons_core::query_layer::QueryExpression;
 use holons_core::reference_layer::stage_new_holon_api;
 use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
 use rstest::*;
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{MapInteger, MapString, PropertyName};
+use base_types::{BaseValue, MapInteger, MapString};
+use integrity_core_types::PropertyName;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]

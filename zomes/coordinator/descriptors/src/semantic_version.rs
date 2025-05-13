@@ -3,8 +3,8 @@ use derive_new::new;
 use hdk::prelude::*;
 
 use holons_core::core_shared_objects::{Holon, HolonError};
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{BaseValue, MapInteger, MapString};
+use integrity_core_types::PropertyName;
+use base_types::{BaseValue, MapInteger, MapString};
 
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -54,7 +54,7 @@ pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon,
 //
 // ) -> Holon {
 //
-//     define_type_descriptor(&(), (), BaseType::Holon, (), (), false, false);
+//     define_type_descriptor(&(), (), TypeKind::Holon, (), (), false, false);
 //     let mut descriptor = Holon::new();
 //
 //
@@ -63,7 +63,7 @@ pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon,
 //         .with_property_value("description".to_string(), BaseValue::StringValue(
 //             "Supports a structured approach to tracking changes to a chain of TypeDescriptor versions.".to_string()))
 //         .with_property_value("label".to_string(), BaseValue::StringValue("Semantic Version".to_string()))
-//         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//         .with_property_value("base_type".to_string(), BaseValue::StringValue("TypeKind::Holon".to_string()))
 //         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(true));
 //
 //     descriptor

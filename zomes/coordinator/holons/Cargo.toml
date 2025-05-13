@@ -21,7 +21,7 @@ holons_integrity = { workspace = true }
 # MAP Dependencies
 holons_core = { workspace = true }
 holons_guest = { workspace = true }
-shared_types_holon = { workspace = true }
+
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

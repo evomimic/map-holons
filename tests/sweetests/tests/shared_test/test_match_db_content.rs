@@ -12,9 +12,9 @@ use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_req
 use holons_client::init_client_context;
 use holons_core::dances::ResponseBody;
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use tracing::info;
 
 /// This function iterates through the expected_holons vector supplied as a parameter

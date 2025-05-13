@@ -13,7 +13,7 @@ use holons::holon_types::Holon;
 use holons::relationship::{RelationshipName, HolonCollection};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 pub fn define_schema() -> Holon {
@@ -107,7 +107,7 @@ pub fn define_schema_descriptor(schema_target: &HolonCollection) -> Holon {
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::EnumValue(MapEnumValue(MapString("BaseType::Holon".to_string()))),
+            BaseValue::EnumValue(MapEnumValue(MapString("TypeKind::Holon".to_string()))),
         )
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),
@@ -154,7 +154,7 @@ pub fn define_schema_relationship_descriptor(schema_target: &HolonCollection) ->
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            BaseValue::StringValue(MapString("TypeKind::Holon".to_string())),
         )
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),

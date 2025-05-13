@@ -61,9 +61,8 @@ use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
 use holons_core::core_shared_objects::HolonError;
 use shared_test::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::HolonId;
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
 /// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.

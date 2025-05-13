@@ -4,7 +4,9 @@ use hdi::prelude::debug;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::holon_operations_api::*;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
-use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
+use base_types::{BaseValue, MapString};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
 
 pub struct PropertyTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -32,7 +34,7 @@ pub fn define_property_type(
     definition: PropertyTypeDefinition,
 ) -> Result<StagedReference, HolonError> {
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, BaseType::Property, definition.header)?;
+        define_type_descriptor(context, schema, TypeKind::Property, definition.header)?;
 
     // Build the PropertyType
     let mut property_type = Holon::new();

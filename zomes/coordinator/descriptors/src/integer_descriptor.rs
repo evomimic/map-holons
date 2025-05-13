@@ -4,8 +4,9 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
-use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
-use shared_types_holon::PropertyName;
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{BaseTypeKind, TypeKind};
+use integrity_core_types::PropertyName;
 
 #[derive(Clone)]
 pub struct IntegerTypeDefinition {
@@ -28,7 +29,7 @@ pub fn define_integer_type(
     let type_descriptor_ref = define_type_descriptor(
         context,
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
-        BaseType::Value(ValueType::Integer),
+        TypeKind::Value(BaseTypeKind::Integer),
         definition.header.clone(),
     )?;
 

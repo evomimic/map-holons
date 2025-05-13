@@ -1,6 +1,7 @@
 use holons_core::core_shared_objects::HolonError;
 use holons_core::dances::{DanceRequest, DanceType, RequestBody};
-use shared_types_holon::{HolonId, MapString};
+use base_types::MapString;
+use core_types::HolonId;
 
 ///
 /// Builds a dance request for staging a new cloned Holon
