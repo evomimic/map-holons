@@ -4,7 +4,7 @@ use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
 
-use crate::{core_shared_objects::holon::holon_utils::{key_info, local_id_info}, HolonCollection, HolonError, HolonsContextBehavior, RelationshipName, StagedRelationshipMap};
+use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship}, HolonCollection, HolonError, HolonsContextBehavior, RelationshipName, StagedRelationshipMap};
 
 use super::{holon_utils::EssentialHolonContent, saved_holon_node::SavedHolonNode, state::{AccessType, HolonState, StagedState, ValidationState}, HolonBehavior, TransientHolon};
 
@@ -40,7 +40,7 @@ impl StagedHolon {
             validation_state: ValidationState::ValidationRequired,
             temporary_id: None,
             property_map: PropertyMap::new(),
-            staged_relationships: StagedRelationshipMap::new(),
+            staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
             errors: Vec::new(),
         }
@@ -55,7 +55,7 @@ impl StagedHolon {
             validation_state: ValidationState::ValidationRequired,
             temporary_id: None,
             property_map: PropertyMap::new(),
-            staged_relationships: StagedRelationshipMap::new(),
+            staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: Some(original_id),
             errors: Vec::new(),
         }

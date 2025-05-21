@@ -16,6 +16,8 @@ pub mod relationship_cache;
 pub mod space_manager;
 pub mod staged_relationship;
 pub mod transient_collection;
+pub mod transient_relationship;
+pub mod relationship_behavior;
 
 pub use crate::reference_layer::holon_operations_api::*;
 pub use cache_access::HolonCacheAccess;
@@ -31,5 +33,6 @@ pub use nursery_access::NurseryAccess;
 pub use relationship::{RelationshipMap, RelationshipName};
 pub use relationship_cache::RelationshipCache;
 pub use staged_relationship::StagedRelationshipMap;
-
+pub use transient_relationship::TransientRelationshipMap;
 pub use transient_collection::TransientCollection;
+pub use relationship_behavior::{ReadableRelationship, WritableRelationship};
