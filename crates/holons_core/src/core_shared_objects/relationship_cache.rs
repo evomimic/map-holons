@@ -68,7 +68,7 @@ impl RelationshipCache {
         {
             let mut cache = self.cache.borrow_mut();
             let relationship_map =
-                cache.entry(source_holon_id.clone()).or_insert_with(RelationshipMap::new);
+                cache.entry(source_holon_id.clone()).or_insert_with(RelationshipMap::new_empty);
             relationship_map.insert(relationship_name.clone(), fetched_holons_rc.clone());
         } // Mutable borrow ends here
 

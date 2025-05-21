@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use shared_types_holon::{LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
 
-use crate::{core_shared_objects::holon::holon_utils::{key_info, local_id_info}, HolonError, RelationshipMap};
+use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, TransientRelationshipMap}, HolonError};
 
 use super::{holon_utils::EssentialHolonContent, state::{AccessType, HolonState, ValidationState}, HolonBehavior};
 
@@ -42,7 +42,7 @@ impl TransientHolon {
             validation_state: ValidationState::ValidationRequired,
             temporary_id: None,
             property_map: PropertyMap::new(),
-            transient_relationships: RelationshipMap::new(),
+            transient_relationships: TransientRelationshipMap::new(),
             original_id: None,
         }
     }
@@ -57,7 +57,7 @@ impl TransientHolon {
             validation_state: ValidationState::ValidationRequired,
             temporary_id: None,
             property_map: PropertyMap::new(),
-            transient_relationships: RelationshipMap::new(),
+            transient_relationships: TransientRelationshipMap::new(),
             original_id: None,
         }
     }
