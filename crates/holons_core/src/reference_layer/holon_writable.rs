@@ -1,6 +1,6 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
 
-use crate::core_shared_objects::{Holon, HolonError, RelationshipName};
+use crate::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
 use shared_types_holon::{BaseValue, HolonId, PropertyName};
 
 pub trait HolonWritable {
@@ -17,11 +17,6 @@ pub trait HolonWritable {
     ) -> Result<(), HolonError>;
 
     fn clone_reference(&self) -> StagedReference;
-
-    fn get_predecessor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError>;
 
     fn remove_related_holons(
         &self,

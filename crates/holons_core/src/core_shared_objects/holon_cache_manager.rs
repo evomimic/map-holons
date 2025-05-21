@@ -1,8 +1,6 @@
-use crate::core_shared_objects::holon_cache::HolonCache;
+use super::{holon_cache::HolonCache, holon::Holon};
 
-use crate::core_shared_objects::{
-    Holon, HolonCacheAccess, HolonCollection, HolonError, RelationshipCache, RelationshipName,
-};
+use crate::{HolonCacheAccess, HolonCollection, HolonError, RelationshipCache, RelationshipName,};
 use crate::reference_layer::HolonServiceApi;
 use hdk::prelude::debug;
 use shared_types_holon::HolonId;

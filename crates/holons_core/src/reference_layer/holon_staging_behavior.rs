@@ -1,6 +1,7 @@
+use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::StagedReference;
 
-use crate::core_shared_objects::{Holon, HolonError};
+use crate::core_shared_objects::HolonError;
 use shared_types_holon::MapString;
 
 /// Defines **high-level staging behavior**, abstracting away direct nursery operations.
@@ -41,5 +42,5 @@ pub trait HolonStagingBehavior {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
     /// to be retrieved by key
-    fn stage_new_holon(&self, holon: Holon) -> Result<StagedReference, HolonError>;
+    fn stage_new_holon(&self, holon: TransientHolon) -> Result<StagedReference, HolonError>;
 }

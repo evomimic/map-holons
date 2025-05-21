@@ -1,11 +1,12 @@
 use shared_types_holon::{BaseValue, HolonId, PropertyMap};
 
+use crate::core_shared_objects::holon::state::{HolonState, ValidationState};
+use crate::core_shared_objects::holon::Holon;
 use crate::reference_layer::SmartReference;
 use hdk::prelude::*;
 
 use crate::core_shared_objects::{
-    CollectionState, Holon, HolonCollection, HolonError, HolonState, StagedRelationshipMap,
-    ValidationState,
+    CollectionState, HolonCollection, HolonError, StagedRelationshipMap,
 };
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Serialize, Serializer};
@@ -19,13 +20,8 @@ impl<'a> Serialize for HolonStateWrapper<'a> {
         S: Serializer,
     {
         match self.0 {
-            HolonState::New => serializer.serialize_unit_variant("HolonState", 0, "New"),
-            HolonState::Fetched => serializer.serialize_unit_variant("HolonState", 1, "Fetched"),
-            HolonState::Changed => serializer.serialize_unit_variant("HolonState", 2, "Changed"),
-            HolonState::Saved => serializer.serialize_unit_variant("HolonState", 3, "Saved"),
-            HolonState::Abandoned => {
-                serializer.serialize_unit_variant("HolonState", 4, "Abandoned")
-            }
+            HolonState::Mutable => serializer.serialize_unit_variant("HolonState", 0, "Mutable"),
+            HolonState::Immutable => serializer.serialize_unit_variant("HolonState", 1, "Immutable"),
         }
     }
 }

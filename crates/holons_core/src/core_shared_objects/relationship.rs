@@ -1,10 +1,7 @@
 use crate::core_shared_objects::HolonCollection;
 use hdk::prelude::*;
 use shared_types_holon::MapString;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt;
-use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, rc::Rc, fmt};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct RelationshipName(pub MapString);
@@ -14,7 +11,7 @@ impl fmt::Display for RelationshipName {
     }
 }
 /// Custom RelationshipMap is only used for caching and will never be serialized
-#[derive(SerializedBytes, Clone, Debug)]
+#[derive(Clone, Debug, SerializedBytes, Eq, PartialEq)]
 pub struct RelationshipMap {
     map: RefCell<HashMap<RelationshipName, Rc<HolonCollection>>>,
 }

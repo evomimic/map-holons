@@ -45,7 +45,7 @@ pub struct ExternalId {
     pub local_id: LocalId,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TemporaryId(pub Uuid);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

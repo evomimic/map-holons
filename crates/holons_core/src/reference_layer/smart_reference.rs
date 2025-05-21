@@ -5,16 +5,16 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::core_shared_objects::holon::HolonBehavior as _;
 use crate::reference_layer::{
     HolonReadable, HolonReference, HolonsContextBehavior, StagedReference,
 };
 
-use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::{
-    AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
+cache_access::HolonCacheAccess,
+   holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError, RelationshipName,
 };
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::{HolonId, MapString, PropertyMap, PropertyValue};
+use shared_types_holon::{holon_node::PropertyName, HolonId, MapString, PropertyMap, PropertyValue};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SmartReference {
@@ -42,37 +42,6 @@ impl SmartReference {
     /// Outside helper method for serialization purposes, that does not require a context.
     pub fn get_id(&self) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
-    }
-
-    pub fn get_predecessor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-        // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-        let collection = self.get_related_holons(context, &relationship_name)?;
-        collection.is_accessible(AccessType::Read)?;
-        let members = collection.get_members();
-        if members.len() > 1 {
-            return Err(HolonError::Misc(format!(
-                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
-                members
-            )));
-        }
-        if members.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(members[0].clone()))
-        }
-    }
-
-    pub fn get_property_map(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<PropertyMap, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let holon_refcell = holon.borrow();
-        Ok(holon_refcell.property_map.clone())
     }
 
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
@@ -235,6 +204,27 @@ impl HolonReadable for SmartReference {
 
     fn get_holon_id(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
+    }
+
+    fn get_predecessor(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
+        let collection = self.get_related_holons(context, &relationship_name)?;
+        collection.is_accessible(AccessType::Read)?;
+        let members = collection.get_members();
+        if members.len() > 1 {
+            return Err(HolonError::Misc(format!(
+                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                members
+            )));
+        }
+        if members.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(members[0].clone()))
+        }
     }
 
     /// `get_property_value` returns the value for the specified property name

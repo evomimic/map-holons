@@ -6,10 +6,12 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon};
+use crate::core_shared_objects::staged_relationship;
 use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 
 use crate::core_shared_objects::{
-    AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, HolonState,
+    holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError,
     NurseryAccess, RelationshipName,
 };
 
@@ -45,7 +47,7 @@ impl StagedReference {
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    ) -> Result<Rc<RefCell<StagedHolon>>, HolonError> {
         // Get NurseryAccess
         let nursery_access = Self::get_nursery_access(context);
 
@@ -54,8 +56,13 @@ impl StagedReference {
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
 
-        // Return a clone of the Rc<RefCell<Holon>>
-        Ok(rc_holon.clone())
+        // Confirm it references a StagedHolon and return an Rc<RefCell
+        let holon = rc_holon.borrow();
+        match holon.clone() {
+            Holon::Staged(staged_holon) => Ok(Rc::new(RefCell::new(staged_holon))),
+            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a StagedReference must return a StagedHolon!".to_string()))
+            
+        }
     }
 
     /// Retrieves access to the nursery via the provided context.
@@ -111,6 +118,27 @@ impl HolonReadable for StagedReference {
         Ok(HolonId::from(local_id))
     }
 
+    fn get_predecessor(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
+        let collection = self.get_related_holons(context, &relationship_name)?;
+        collection.is_accessible(AccessType::Read)?;
+        let members = collection.get_members();
+        if members.len() > 1 {
+            return Err(HolonError::Misc(format!(
+                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                members
+            )));
+        }
+        if members.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(members[0].clone()))
+        }
+    }
+
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -139,7 +167,7 @@ impl HolonReadable for StagedReference {
         let holon = rc_holon.borrow();
 
         // Use the public `get_related_holons` method on the `StagedRelationshipMap`
-        Ok(holon.staged_relationship_map.get_related_holons(relationship_name))
+        Ok(holon.get_related_holons(context, relationship_name)?)
     }
 
     fn get_versioned_key(
@@ -175,11 +203,11 @@ impl HolonWritable for StagedReference {
         let holon_refcell = self.get_rc_holon(context)?;
 
         // Borrow the holon from the RefCell
-        let mut holon = holon_refcell.borrow_mut();
+        let mut staged_holon = holon_refcell.borrow_mut();
 
         debug!("borrowed mut for holon: {:#?}", self.id);
 
-        holon.abandon_staged_changes()?;
+        staged_holon.abandon_staged_changes()?;
 
         Ok(())
     }
@@ -194,21 +222,22 @@ impl HolonWritable for StagedReference {
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
-        // Get mutable access to the source holon
+        // Get access to the source holon and its relationshp map
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon = rc_holon.borrow_mut();
+        let holon = rc_holon.borrow_mut();
+        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
 
         debug!(
             "Here is the RelationshipMap before adding related Holons: {:#?}",
-            holon.staged_relationship_map
+            staged_relationship_map
         );
 
         // Delegate adding holons to the `StagedRelationshipMap`
-        holon.staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
+        staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
 
         debug!(
             "Here is the RelationshipMap after adding related Holons: {:#?}",
-            holon.staged_relationship_map
+            staged_relationship_map
         );
 
         Ok(())
@@ -216,28 +245,6 @@ impl HolonWritable for StagedReference {
 
     fn clone_reference(&self) -> StagedReference {
         StagedReference { id: self.get_temporary_id().clone() }
-    }
-
-    fn get_predecessor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-        // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-        let collection = self.get_related_holons(context, &relationship_name)?;
-        collection.is_accessible(AccessType::Read)?;
-        let members = collection.get_members();
-        if members.len() > 1 {
-            return Err(HolonError::Misc(format!(
-                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
-                members
-            )));
-        }
-        if members.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(members[0].clone()))
-        }
     }
 
     fn remove_related_holons(
@@ -251,21 +258,22 @@ impl HolonWritable for StagedReference {
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
-        // Get mutable access to the source holon
+        // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon = rc_holon.borrow_mut();
+        let holon = rc_holon.borrow_mut();
+        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
 
         debug!(
             "Here is the RelationshipMap before removing related Holons: {:#?}",
-            holon.staged_relationship_map
+            staged_relationship_map
         );
 
         // Delegate the removal of holons to the `StagedRelationshipMap`
-        holon.staged_relationship_map.remove_related_holons(context, relationship_name, holons)?;
+        staged_relationship_map.remove_related_holons(context, relationship_name, holons)?;
 
         debug!(
             "Here is the RelationshipMap after removing related Holons: {:#?}",
-            holon.staged_relationship_map
+            staged_relationship_map
         );
 
         Ok(())

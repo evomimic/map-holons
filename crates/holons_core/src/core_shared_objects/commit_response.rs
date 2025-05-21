@@ -1,5 +1,6 @@
-use crate::core_shared_objects::{Holon, HolonError};
+use crate::HolonError;
 use shared_types_holon::{LocalId, MapInteger, MapString};
+use super::holon::{Holon, HolonBehavior};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {

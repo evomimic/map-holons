@@ -14,9 +14,10 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
+use crate::core_shared_objects::holon::TransientHolon;
 use crate::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, Holon, HolonError,
+    stage_new_version_api, CommitRequestStatus, holon::Holon, HolonError,
 };
 use crate::dances::dance_request::{DanceType, RequestBody};
 use crate::dances::dance_response::ResponseBody;
@@ -377,7 +378,7 @@ pub fn stage_new_holon_dance(
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage new holon dance");
     // Create and stage new Holon
-    let mut new_holon = Holon::new();
+    let mut new_holon = TransientHolon::new();
 
     // Populate parameters if available
     match request.body {
@@ -390,7 +391,7 @@ pub fn stage_new_holon_dance(
         //         new_holon.with_property_value(property_name.clone(), base_value.clone())?;
         //     }
         // }
-        RequestBody::Holon(holon) => {
+        RequestBody::TransientHolon(holon) => {
             new_holon = holon;
             debug!("Request body matched holon variant");
         }

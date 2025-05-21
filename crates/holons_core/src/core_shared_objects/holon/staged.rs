@@ -1,0 +1,350 @@
+
+use std::rc::Rc;
+
+use serde::{Deserialize, Serialize};
+use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
+
+use crate::{core_shared_objects::holon::holon_utils::{key_info, local_id_info}, HolonCollection, HolonError, HolonsContextBehavior, RelationshipName, StagedRelationshipMap};
+
+use super::{holon_utils::EssentialHolonContent, saved_holon_node::SavedHolonNode, state::{AccessType, HolonState, StagedState, ValidationState}, HolonBehavior, TransientHolon};
+
+/// Represents a Holon that has been staged for persistence or updates.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct StagedHolon {
+    version: MapInteger, // Used to add to hash content for creating TemporaryID
+    holon_state: HolonState,                // Mutable or Immutable
+    staged_state: StagedState,              // ForCreate, ForUpdate, Abandoned, or Committed
+    validation_state: ValidationState, 
+    temporary_id: Option<TemporaryId>,      // Ephemeral identifier for staged Holons // RFC4122 UUID                
+    property_map: PropertyMap,              // Self-describing property data
+    staged_relationships: StagedRelationshipMap,  
+    original_id: Option<LocalId>,           // Tracks the predecessor, if cloned from a SavedHolon
+    errors: Vec<HolonError>, 
+}
+
+// ==================================
+//   ASSOCIATED METHODS (IMPL BLOCK)
+// ==================================
+impl StagedHolon {
+
+    // =================
+    //   CONSTRUCTORS
+    // =================
+
+    /// Creates a new StagedHolon in the `ForCreate` state.
+    pub fn new_for_create() -> Self {
+        Self {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            staged_state: StagedState::ForCreate,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: PropertyMap::new(),
+            staged_relationships: StagedRelationshipMap::new(),
+            original_id: None,
+            errors: Vec::new(),
+        }
+    }
+
+    /// Creates a new StagedHolon in the `ForUpdate` state, linked to a predecessor.
+    pub fn new_for_update(original_id: LocalId) -> Self {
+        Self {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            staged_state: StagedState::ForUpdate,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: PropertyMap::new(),
+            staged_relationships: StagedRelationshipMap::new(),
+            original_id: Some(original_id),
+            errors: Vec::new(),
+        }
+    }
+
+    // ====================
+    //    DATA ACCESSORS
+    // ====================
+
+    /// **TODO DOC
+    pub fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
+    }
+
+    /// Retrieves the HolonCollection that is the target of the specified relationships from the `staged_relationship_map`.
+    ///
+    /// # Semantics
+    /// - Ensures `StagedHolon` is accessible for reading.
+    /// - Returns an empty `HolonCollection` if the relationship is undefined.
+    pub fn get_staged_relationship(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
+    }
+
+    /// Retrieves a clone of the StagedRelationshipMap.
+    ///
+    /// # Semantics
+    /// - Ensures `StagedHolon` is accessible for reading.
+    /// - Returns the private map.
+    pub fn get_staged_relationship_map(
+        &self,
+    ) -> Result<StagedRelationshipMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+
+        Ok(self.staged_relationships.clone())
+    }
+
+    // ==============
+    //    MUTATORS
+    // ==============
+
+    /// Marks a `StagedHolon` as `Abandoned`.
+    ///
+    /// # Semantics
+    /// - Only applies to `StagedHolons`.
+    /// - Ensures the `StagedState` is correctly updated.
+    pub fn abandon_staged_changes(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Abandon)?;
+
+        match self.staged_state {
+            StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateChanged => {
+                self.staged_state = StagedState::Abandoned;
+                self.holon_state = HolonState::Immutable; // Abandoned holons are no longer mutable
+                Ok(())
+            }
+            _ => Err(HolonError::InvalidTransition(
+                "Only uncommitted StagedHolons can be abandoned".to_string(),
+            )),
+        }
+    } 
+
+    /// Marks the `StagedHolon` as `Changed`.
+    ///
+    /// This is used to transition a `ForUpdate` Holon that has been modified.
+    pub fn mark_as_changed(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        if matches!(self.staged_state, StagedState::ForUpdate) {
+            self.staged_state = StagedState::ForUpdateChanged;
+        }
+        Ok(())
+    }
+
+    /// Marks the `StagedHolon` as `Committed` and assigns its `SavedHolonNode`.
+    ///
+    /// This assumes the Holon has already been persisted to the DHT.
+    pub fn to_committed(&mut self, saved_node: SavedHolonNode) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+
+        self.staged_state = StagedState::Committed(saved_node);
+        self.holon_state = HolonState::Immutable;
+        Ok(())
+    }
+
+    fn update_relationship_map(&mut self, map: StagedRelationshipMap) {
+        self.staged_relationships = map;
+    }
+
+    pub fn with_property_value(
+          &mut self,
+          property: PropertyName,
+          value: Option<BaseValue>,
+    ) -> Result<&mut Self, HolonError> {
+            self.is_accessible(AccessType::Write)?;
+            self.property_map.insert(property, value);
+            match self.staged_state {
+                StagedState::ForUpdate => self.staged_state = StagedState::ForUpdateChanged,
+                _ => {}
+
+            }
+
+            Ok(self)
+      }
+
+     
+}
+
+// ==================================
+//     HOLONBEHAVIOR IMPLEMENTATION
+// ==================================
+impl HolonBehavior for StagedHolon {
+    // =====================
+    //    DATA ACCESSORS
+    // =====================
+
+    fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
+        let mut holon = TransientHolon::new();
+
+        // Retains the predecessor, reference as a LocalId
+        holon.update_original_id(self.original_id.clone());
+
+        // Copy the existing holon's PropertyMap into the new Holon
+        holon.update_property_map(self.property_map.clone());
+
+        // Update in place each relationship's HolonCollection State to Staged
+        holon.update_relationship_map(self.staged_relationships.clone_for_new_source()?);
+
+        Ok(holon)
+    }
+
+    /// Extracts essential content for comparison or testing.
+    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
+        Ok(EssentialHolonContent::new(
+            self.property_map.clone(),
+            self.get_key()?,
+            self.errors.clone()
+        ))
+    }
+
+    /// Retrieves the Holon's primary key, if defined in its `property_map`.
+    fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+        if let Some(Some(inner_value)) =
+            self.property_map.get(&PropertyName(MapString("key".to_string())))
+        {
+            let string_value: String = inner_value.try_into().map_err(|_| {
+                HolonError::UnexpectedValueType(
+                    format!("{:?}", inner_value),
+                    "MapString".to_string(),
+                )
+            })?;
+            Ok(Some(MapString(string_value)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Retrieves the `LocalId` if the Holon is committed.
+    fn get_local_id(&self) -> Result<LocalId, HolonError> {
+        match &self.staged_state {
+            StagedState::Committed(saved_node) => Ok(saved_node.get_local_id()),
+            _ => Err(HolonError::EmptyField("Uncommitted StagedHolons do not have LocalIds.".to_string())),
+        }
+    }
+
+    /// Retrieves the `original_id`, if present.
+    fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
+        Ok(self.original_id.clone())
+    }
+
+    /// Retrieves the specified property value.
+    fn get_property_value(&self, property_name: &PropertyName) -> Result<Option<PropertyValue>, HolonError> {
+        Ok(self.property_map.get(property_name).cloned().flatten())
+    }
+
+    /// Retrieves the unique versioned key (key property value + versioned suffix)
+    ///
+    /// # Semantics
+    /// - The versioned key is used for identifying Holons in the Nursery where multiple have been staged with the same base key.
+    /// - Returns error if the Holon does not have a key, since that is required for this function call.
+    ///
+    /// # Errors
+    /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
+    fn get_versioned_key(&self) -> Result<MapString, HolonError> {
+        let key = self
+            .get_key()?
+            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+
+        Ok(MapString(key.0 + &self.version.0.to_string()))
+    }
+
+    // =======================
+    //     ACCESS CONTROL
+    // =======================
+
+    /// Enforces access control rules for `StagedHolon` states.
+    fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
+        match self.holon_state {
+            HolonState::Mutable => match self.staged_state {
+                StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateChanged => match access_type {
+                    AccessType::Read
+                    | AccessType::Write
+                    | AccessType::Clone
+                    | AccessType::Abandon
+                    | AccessType::Commit => Ok(()),
+                },
+                StagedState::Abandoned | StagedState::Committed(_) => match access_type {
+                    AccessType::Read => Ok(()),
+                    _ => Err(HolonError::NotAccessible(
+                        format!("{:?}", access_type),
+                        "Immutable StagedHolon".to_string(),
+                    )),
+                },
+            },
+            HolonState::Immutable => Err(HolonError::NotAccessible(
+                format!("{:?}", access_type),
+                "Immutable StagedHolon".to_string(),
+            )),
+        }
+    }
+
+    // =================
+    //     MUTATORS
+    // =================
+
+    fn increment_version(&mut self) {
+        self.version.0 += 1;
+    }
+
+    fn update_original_id(&mut self, id: Option<LocalId>) {
+        self.original_id = id;
+    }
+
+    fn update_property_map(&mut self, map: PropertyMap) {
+        self.property_map = map;
+    }
+
+
+
+    // =========================
+    //       DIAGNOSTICS
+    // =========================
+        fn debug_info(&self) -> String {
+            let phase_info = "StagedHolon";
+            let state_info = format!(
+                "{} / {}",
+                format!("{:?}", self.holon_state),  // Mutable/Immutable
+                format!("{:?}", self.staged_state)  // ForCreate, ForUpdate, etc.
+            );
+    
+            format!(
+                "{} / {} / {} / {}",
+                phase_info,
+                state_info,
+                key_info(self),
+                local_id_info(self)
+            )
+        }
+
+    // =========================
+    //       HELPERS
+    // =========================
+
+    fn summarize(&self) -> String {
+        // Attempt to extract key from the property_map (if present), default to "None" if not available
+        let key = match self.get_key() {
+            Ok(Some(key)) => key.0,  // Extract the key from MapString
+            Ok(None) => "<None>".to_string(),   // Key is None
+            Err(_) => "<Error>".to_string(),    // Error encountered while fetching key
+        };
+
+        // Attempt to extract local_id using get_local_id method, default to "None" if not available
+        let local_id = match self.get_local_id() {
+            Ok(local_id) => local_id.0.to_string(), // Convert LocalId to String
+            Err(_) => "<None>".to_string(),    // If local_id is not found or error occurred
+        };
+
+        // Format the summary string
+        format!(
+            "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
+            key, local_id, self.holon_state, self.validation_state
+        )
+    }
+     
+}

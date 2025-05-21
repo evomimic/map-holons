@@ -8,11 +8,10 @@ pub mod utils;
 
 // pub use core_shared_objects::*;
 pub use core_shared_objects::{
-    AccessType, CollectionState, CommitRequestStatus, CommitResponse, EssentialHolonContent, Holon,
+    CollectionState, CommitRequestStatus, CommitResponse,
     HolonCache, HolonCacheAccess, HolonCacheManager, HolonCollection, HolonError, HolonPool,
-    HolonState, HolonSummary, Nursery, NurseryAccess, RelationshipCache, RelationshipMap,
+    Nursery, NurseryAccess, RelationshipCache, RelationshipMap,
     RelationshipName, ServiceRoutingPolicy, StagedRelationshipMap, TransientCollection,
-    ValidationState,
 };
 pub use reference_layer::holon_operations_api;
 pub use reference_layer::{

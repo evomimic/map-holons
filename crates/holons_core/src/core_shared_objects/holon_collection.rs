@@ -1,7 +1,6 @@
 use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
-
-use crate::core_shared_objects::{AccessType, HolonError};
-use crate::HolonCollectionApi;
+use super::holon::state::AccessType;
+use crate::{HolonCollectionApi, HolonError};
 use core::fmt;
 use hdk::prelude::*;
 use shared_types_holon::{MapInteger, MapString};

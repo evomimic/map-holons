@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt;
 
-use crate::core_shared_objects::{summarize_holons, Holon, HolonError};
+use crate::core_shared_objects::holon::HolonBehavior;
+use crate::core_shared_objects::{summarize_holons, holon::Holon, HolonError};
 use crate::query_layer::NodeCollection;
 
 use crate::dances::SessionState;
@@ -65,6 +66,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::InvalidHolonReference(_) => ResponseStatusCode::BadRequest,
             HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
             HolonError::InvalidRelationship(_, _) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidUpdate(_) => ResponseStatusCode::ServerError,
             HolonError::Misc(_) => ResponseStatusCode::ServerError,

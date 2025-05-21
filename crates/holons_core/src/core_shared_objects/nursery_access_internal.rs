@@ -1,5 +1,5 @@
-use crate::core_shared_objects::holon_pool::SerializableHolonPool;
-use crate::core_shared_objects::{Holon, HolonError, NurseryAccess};
+use super::{holon_pool::SerializableHolonPool, holon::Holon};
+use crate::{HolonError, NurseryAccess};
 use crate::HolonStagingBehavior;
 use shared_types_holon::holon_node::TemporaryId;
 use shared_types_holon::MapString;

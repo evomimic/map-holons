@@ -5,8 +5,7 @@ use crate::reference_layer::{
     HolonReadable, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
 };
 
-use crate::core_shared_objects::{
-    AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
+use crate::core_shared_objects::{holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError, RelationshipName,
 };
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
@@ -53,6 +52,16 @@ impl HolonReadable for HolonReference {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.get_key(context),
             HolonReference::Staged(staged_reference) => staged_reference.get_key(context),
+        }
+    }
+
+    fn get_predecessor(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_predecessor(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_predecessor(context),
         }
     }
 
