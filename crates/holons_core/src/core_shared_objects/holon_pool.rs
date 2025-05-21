@@ -1,7 +1,8 @@
-use crate::core_shared_objects::{Holon, HolonError};
+use crate::HolonError;
+use super::holon::{Holon, HolonBehavior};
 use crate::utils::uuid::create_temporary_id_from_key;
 use hdi::prelude::{Deserialize, Serialize};
-use base_types::{MapInteger, MapString};
+use base_types::{MapString};
 use core_types::TemporaryId;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -171,10 +172,9 @@ impl HolonPool {
 
         // Check for existing, if found, increment count
         while self.keyed_index.get(&versioned_key).is_some() {
-            holon.version_sequence_count.0 += 1;
+            holon.increment_version();
             versioned_key = holon.get_versioned_key()?;
         }
-        holon.version_sequence_count = MapInteger(holon.version_sequence_count.0);
 
         // Create temporary id
         let id = create_temporary_id_from_key(&versioned_key);
@@ -184,9 +184,13 @@ impl HolonPool {
 
         // Update pool
         let rc_holon = Rc::new(RefCell::new(holon));
+
+
         self.holons.insert(id.clone(), rc_holon);
 
+
         Ok(id)
+    
     }
 
     /// Returns the number of Holons in the pool.

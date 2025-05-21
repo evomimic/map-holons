@@ -268,7 +268,10 @@ impl HolonServiceApi for GuestHolonService {
     fn fetch_holon(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
 
-        let holon_node_record = get_original_holon_node(local_id.0.clone())?; // Retrieve the holon node
+        // Retrieve the exact HolonNode for the specific ActionHash.
+        // DISCLAIMER: The name of this scaffolded function is misleading... it does not 'walk the tree' to get the original record.
+        // keeping the terminology per policy not to change scaffolded code.
+        let holon_node_record = get_original_holon_node(local_id.0.clone())?; 
         if let Some(node) = holon_node_record {
             let holon = Holon::try_from_node(node)?;
             Ok(holon)
@@ -353,7 +356,7 @@ impl HolonServiceApi for GuestHolonService {
 
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
-    /// to be retrieved by key
+    /// to be retrieved by key.
     fn stage_new_version(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -371,7 +374,7 @@ impl HolonServiceApi for GuestHolonService {
         let cloned_staged_reference =
             self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;
 
-        // Reset the PREDECESSOR to None
+        // Reset the PREDECESSOR to the original Holon being cloned from.
         cloned_staged_reference
             .with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
 

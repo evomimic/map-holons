@@ -21,7 +21,8 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{CommitResponse, Holon, HolonError};
+
+use crate::core_shared_objects::{holon::{Holon, HolonBehavior, TransientHolon}, CommitResponse, HolonError};
 use crate::{
     HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
     SmartReference, StagedReference,
@@ -220,7 +221,7 @@ pub fn stage_new_from_clone_api(
 ///
 pub fn stage_new_holon_api(
     context: &dyn HolonsContextBehavior,
-    holon: Holon,
+    holon: TransientHolon,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = get_staging_service(context);
     let staged_reference = staging_service.borrow().stage_new_holon(holon)?;

@@ -4,8 +4,6 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
-    #[error("Holon not found: {0}")]
-    HolonNotFound(String),
     #[error("Cache Error: {0}")]
     CacheError(String),
     #[error("Commit Failure {0}")]
@@ -24,10 +22,14 @@ pub enum HolonError {
     FailedToBorrow(String),
     #[error("Couldn't convert {0} into {1} ")]
     HashConversion(String, String),
+    #[error("Holon not found: {0}")]
+    HolonNotFound(String),
     #[error("Index {0} into Holons Vector is Out of Range")]
     IndexOutOfRange(String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
+    #[error("Invalid Transition, {0}")]
+    InvalidTransition(String),
     #[error("Invalid Type, {0}")]
     InvalidType(String),
     #[error("Invalid Parameter: {0}")]

@@ -1,4 +1,5 @@
-use crate::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
+use super::holon::Holon;
+use crate::{HolonCollection, HolonError, RelationshipName};
 use core_types::HolonId;
 use std::cell::RefCell;
 use std::fmt::Debug;
