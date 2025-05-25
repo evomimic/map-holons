@@ -7,8 +7,9 @@ use holons_core::holon_operations_api::*;
 use holons_core::{
     Holon, HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use shared_types_holon::value_types::{BaseType, ValueType};
-use shared_types_holon::{BaseValue, MapString, PropertyName};
+use core_types::{TypeKind, BaseTypeKind};
+use base_types::{BaseValue, MapString};
+use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::TypeName;
 
 pub struct BooleanTypeDefinition {
@@ -28,7 +29,7 @@ pub fn define_boolean_type(
     let type_descriptor_ref = define_type_descriptor(
         context,
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
-        BaseType::Value(ValueType::Boolean),
+        TypeKind::Value(BaseTypeKind::Boolean),
         definition.header.clone(),
     )?;
 

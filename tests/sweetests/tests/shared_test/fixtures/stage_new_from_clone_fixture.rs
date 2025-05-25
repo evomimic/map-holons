@@ -11,7 +11,8 @@ use holons_core::{HolonReadable, HolonReference, HolonWritable};
 use holons_core::{RelationshipName, StagedReference};
 
 use rstest::*;
-use shared_types_holon::{BaseValue, MapInteger, MapString, PropertyMap, PropertyName};
+use base_types::{BaseValue, MapInteger, MapString};
+use integrity_core_types::{PropertyMap, PropertyName};
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]

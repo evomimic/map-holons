@@ -25,7 +25,8 @@ use crate::query_layer::evaluate_query;
 use crate::reference_layer::get_all_holons;
 use crate::{HolonWritable, HolonsContextBehavior, SmartReference};
 use hdk::prelude::*;
-use shared_types_holon::{MapString, PropertyName};
+use base_types::MapString;
+use integrity_core_types::PropertyName;
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"

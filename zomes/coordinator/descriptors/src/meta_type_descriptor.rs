@@ -25,7 +25,7 @@ pub struct MetaTypeDefinition {
 //     let meta_descriptor_ref = define_type_descriptor(
 //         context,
 //         schema,
-//         BaseType::Holon,
+//         TypeKind::Holon,
 //         definition.header,
 //     )?;
 //
@@ -41,7 +41,7 @@ pub struct MetaTypeDefinition {
 //     let descriptor = define_type_descriptor(
 //         context,
 //         schema,
-//         BaseType::Holon,
+//         TypeKind::Holon,
 //         header,
 //     )?;
 //

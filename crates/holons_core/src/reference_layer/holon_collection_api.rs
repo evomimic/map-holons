@@ -1,5 +1,5 @@
 use crate::core_shared_objects::HolonError;
-use shared_types_holon::{MapInteger, MapString};
+use base_types::{MapInteger, MapString};
 use std::fmt::Debug;
 
 use super::{HolonReference, HolonsContextBehavior};

@@ -2,7 +2,9 @@ use crate::core_shared_objects::{
     CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use crate::reference_layer::HolonsContextBehavior;
-use shared_types_holon::{HolonId, LocalId, MapString};
+use core_types::HolonId;
+use integrity_core_types::LocalId;
+use base_types::MapString;
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
