@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
+use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::HolonsContextBehavior;
 
 use crate::core_shared_objects::{
-    holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError, RelationshipName,
+    holon::{state::AccessType, holon_utils::EssentialHolonContent}, HolonCollection, HolonError, RelationshipName,
 };
 
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
@@ -11,7 +12,7 @@ use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 use super::HolonReference;
 
 pub trait HolonReadable {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError>;
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError>;
 
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;

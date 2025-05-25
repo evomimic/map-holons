@@ -5,7 +5,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::core_shared_objects::holon::HolonBehavior as _;
+use crate::core_shared_objects::holon::{HolonBehavior as _, TransientHolon};
 use crate::reference_layer::{
     HolonReadable, HolonReference, HolonsContextBehavior, StagedReference,
 };
@@ -196,7 +196,7 @@ impl fmt::Display for SmartReference {
 }
 
 impl HolonReadable for SmartReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_borrow = holon.borrow();
         holon_borrow.clone_holon()

@@ -28,8 +28,6 @@ pub async fn execute_stage_new_version(
 ) {
     info!("--- TEST STEP: Staging a New Version of a Holon ---");
 
-    let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-
     // 1. Get context from test_state
     let context = test_state.context();
     let staging_service = context.get_space_manager().get_staging_behavior_access();
@@ -79,15 +77,7 @@ pub async fn execute_stage_new_version(
     );
 
     // 7. Verify the new version as the original holon as its predecessor
-    let related_holons =
-        version_1.get_related_holons(context, &predecessor_relationship_name).expect(&format!(
-            "{:?} relationship should exist in the returned holon",
-            predecessor_relationship_name
-        ));
-
-    let predecessor = related_holons
-        .get_by_index(0)
-        .expect("Predecessor relationship should contain at least one member");
+    let predecessor = version_1.get_predecessor(context).unwrap();
 
     assert_eq!(
         predecessor,

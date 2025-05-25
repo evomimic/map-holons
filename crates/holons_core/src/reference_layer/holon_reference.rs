@@ -1,11 +1,12 @@
 use hdk::prelude::*;
 use std::rc::Rc;
 
+use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::{
     HolonReadable, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
 };
 
-use crate::core_shared_objects::{holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError, RelationshipName,
+use crate::core_shared_objects::{holon::{state::AccessType, holon_utils::EssentialHolonContent}, HolonCollection, HolonError, RelationshipName,
 };
 use shared_types_holon::{HolonId, MapString, PropertyName, PropertyValue};
 
@@ -21,7 +22,7 @@ pub enum HolonReference {
 }
 
 impl HolonReadable for HolonReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.clone_holon(context),
             HolonReference::Staged(staged_reference) => staged_reference.clone_holon(context),

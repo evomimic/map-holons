@@ -6,8 +6,8 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon};
-use crate::core_shared_objects::staged_relationship;
+use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon, TransientHolon};
+use crate::core_shared_objects::WritableRelationship;
 use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 
 use crate::core_shared_objects::{
@@ -95,7 +95,7 @@ impl fmt::Display for StagedReference {
 }
 
 impl HolonReadable for StagedReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_read = holon.borrow();
         holon_read.clone_holon()
@@ -167,7 +167,7 @@ impl HolonReadable for StagedReference {
         let holon = rc_holon.borrow();
 
         // Use the public `get_related_holons` method on the `StagedRelationshipMap`
-        Ok(holon.get_related_holons(context, relationship_name)?)
+        Ok(holon.get_related_holons(relationship_name)?)
     }
 
     fn get_versioned_key(
@@ -288,7 +288,7 @@ impl HolonWritable for StagedReference {
         let cloned_holon = holon.borrow().clone_holon()?;
         // cloned_holon.load_all_relationships(context)?;
 
-        Ok(cloned_holon)
+        Ok(Holon::Transient(cloned_holon))
     }
 
     fn with_descriptor(

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{HolonReference, HolonsContextBehavior};
 
-use super::{holon::state::AccessType, HolonCollection, HolonError, RelationshipName};
+use super::{HolonCollection, HolonError, RelationshipName, TransientRelationshipMap};
 
 
 
@@ -16,9 +16,9 @@ pub trait ReadableRelationship {
     /// for the new source using their `clone_for_new_source` method.
     ///
     /// # Returns
-    /// - `Ok( Relationship Map trait object with cloned `HolonCollection` objects.)
+    /// - `Ok( TransientRelationshipMap with cloned `HolonCollection` objects.)
     /// - `Err(HolonError)`: If cloning any `HolonCollection` fails.
-    fn clone_for_new_source(&self) -> Result<Box<dyn ReadableRelationship>, HolonError>;
+    fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError>;
 
     // ====================
     //    DATA ACCESSORS
