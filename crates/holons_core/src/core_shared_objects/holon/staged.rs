@@ -4,7 +4,7 @@ use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
 
-use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship}, HolonCollection, HolonError, HolonsContextBehavior, RelationshipName, StagedRelationshipMap};
+use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship}, HolonCollection, HolonError, RelationshipName, StagedRelationshipMap};
 
 use super::{holon_utils::EssentialHolonContent, saved_holon_node::SavedHolonNode, state::{AccessType, HolonState, StagedState, ValidationState}, HolonBehavior, TransientHolon};
 

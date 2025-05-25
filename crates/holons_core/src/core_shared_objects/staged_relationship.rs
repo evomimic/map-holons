@@ -69,8 +69,8 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use super::holon::state::AccessType;
-use super::{ReadableRelationship, WritableRelationship};
+
+use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
 
 /// Represents a map of staged relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates
@@ -202,7 +202,7 @@ impl ReadableRelationship for StagedRelationshipMap {
     //     CONSTRUCTORS
     // =====================
 
-    fn clone_for_new_source(&self) -> Result<Box<dyn ReadableRelationship + 'static>, HolonError> {
+    fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
         let mut cloned_relationship_map = BTreeMap::new();
 
         for (name, collection) in &self.map {
@@ -210,14 +210,13 @@ impl ReadableRelationship for StagedRelationshipMap {
             cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
         }
 
-        Ok(Box::new(Self::new(cloned_relationship_map)))
+        Ok(TransientRelationshipMap::new(cloned_relationship_map))
     }
 
     // ====================
     //    DATA ACCESSORS
     // ====================
 
-    /// **TODO DOC
     fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection

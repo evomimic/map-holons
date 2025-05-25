@@ -1,12 +1,14 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-
+use hdk::prelude::*;
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 
-use super::{HolonCollection, HolonError, ReadableRelationship, RelationshipName, WritableRelationship};
+use super::{
+    HolonCollection, HolonError, ReadableRelationship, RelationshipName, WritableRelationship,
+};
 
 /// Represents a map of transient relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates
@@ -22,103 +24,103 @@ impl TransientRelationshipMap {
         Self { map: BTreeMap::new() }
     }
 
-/* // **TODO: Delete? ////
-    /// Clones the `TransientRelationshipMap` for a new source. The `HolonCollection` objects are also cloned
-    /// for the new source using their `clone_for_new_source` method.
-    ///
-    /// # Returns
-    /// - `Ok(Self)`: A new `TransientRelationshipMap` with cloned `HolonCollection` objects.
-    /// - `Err(HolonError)`: If cloning any `HolonCollection` fails.
-    pub fn clone_for_new_source(&self) -> Result<Self, HolonError> {
-        let mut cloned_relationship_map = BTreeMap::new();
+    /* // **TODO: Delete? ////
+        /// Clones the `TransientRelationshipMap` for a new source. The `HolonCollection` objects are also cloned
+        /// for the new source using their `clone_for_new_source` method.
+        ///
+        /// # Returns
+        /// - `Ok(Self)`: A new `TransientRelationshipMap` with cloned `HolonCollection` objects.
+        /// - `Err(HolonError)`: If cloning any `HolonCollection` fails.
+        pub fn clone_for_new_source(&self) -> Result<Self, HolonError> {
+            let mut cloned_relationship_map = BTreeMap::new();
 
-        for (name, collection) in &self.map {
-            let cloned_collection = collection.borrow().clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
-            cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
+            for (name, collection) in &self.map {
+                let cloned_collection = collection.borrow().clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
+                cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
+            }
+
+            Ok(Self { map: cloned_relationship_map })
         }
 
-        Ok(Self { map: cloned_relationship_map })
-    }
+        /// Adds the specified holons to the collection associated with the given relationship name.
+        /// If a collection for the relationship already exists, the holons are added to it.
+        /// If no such collection exists, a new one is created and inserted into the map.
+        ///
+        /// # Arguments
+        /// - `relationship_name`: The name of the relationship to modify or create.
+        /// - `context`: The operational context for validation and access.
+        /// - `holons`: A list of `HolonReference`s to add to the collection.
+        ///
+        /// # Errors
+        /// - Returns an error if adding references fails due to validation or other issues.
+        pub fn add_related_holons(
+            &mut self,
+            context: &dyn HolonsContextBehavior,
+            relationship_name: RelationshipName,
+            holons: Vec<HolonReference>,
+        ) -> Result<(), HolonError> {
+            // Retrieve or create the collection for the specified relationship name
+            let collection = self
+                .map
+                .entry(relationship_name)
+                .or_insert_with(|| Rc::new(RefCell::new(HolonCollection::new_Transient())));
 
-    /// Adds the specified holons to the collection associated with the given relationship name.
-    /// If a collection for the relationship already exists, the holons are added to it.
-    /// If no such collection exists, a new one is created and inserted into the map.
-    ///
-    /// # Arguments
-    /// - `relationship_name`: The name of the relationship to modify or create.
-    /// - `context`: The operational context for validation and access.
-    /// - `holons`: A list of `HolonReference`s to add to the collection.
-    ///
-    /// # Errors
-    /// - Returns an error if adding references fails due to validation or other issues.
-    pub fn add_related_holons(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        relationship_name: RelationshipName,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        // Retrieve or create the collection for the specified relationship name
-        let collection = self
-            .map
-            .entry(relationship_name)
-            .or_insert_with(|| Rc::new(RefCell::new(HolonCollection::new_Transient())));
+            // Borrow the `HolonCollection` mutably to add the supplied holons
+            collection.borrow_mut().add_references(context, holons)?;
 
-        // Borrow the `HolonCollection` mutably to add the supplied holons
-        collection.borrow_mut().add_references(context, holons)?;
-
-        Ok(())
-    }
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
-    ///
-    /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
-    /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
-    /// `HolonCollection` wrapped in an `Rc` is returned instead.
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
-    ///
-    /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
-    /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
-    /// `HolonCollection` wrapped in an `Rc` is returned instead.
-    pub fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
-        if let Some(rc_refcell) = self.map.get(relationship_name) {
-            // Borrow the RefCell and clone the inner HolonCollection
-            Rc::new(rc_refcell.borrow().clone())
-        } else {
-            // Return a new Rc<HolonCollection> if the entry doesn't exist
-            Rc::new(HolonCollection::new_Transient())
-        }
-    }
-
-    /// Removes the specified holons from the collection associated with the given relationship name.
-    ///
-    /// If the relationship exists, the supplied holons are removed from its collection.
-    /// If the relationship doesn't exist, an error is returned.
-    ///
-    /// # Arguments
-    /// - `relationship_name`: The name of the relationship to modify.
-    /// - `context`: The operational context for validation and access.
-    /// - `holons`: A list of `HolonReference`s to remove from the collection.
-    ///
-    /// # Errors
-    /// - Returns an error if the relationship doesn't exist.
-    /// - Returns an error if removing references fails due to validation or other issues.
-    pub fn remove_related_holons(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        relationship_name: &RelationshipName,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        if let Some(collection) = self.map.get(relationship_name) {
-            // Borrow the `HolonCollection` mutably to remove the supplied holons
-            collection.borrow_mut().remove_references(context, holons)?;
             Ok(())
-        } else {
-            Err(HolonError::InvalidRelationship(
-                format!("Invalid relationship: {}", relationship_name),
-                "No matching collection found in the map.".to_string(),
-            ))
         }
-    }
-*/
+        /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
+        ///
+        /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
+        /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
+        /// `HolonCollection` wrapped in an `Rc` is returned instead.
+        /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
+        ///
+        /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
+        /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
+        /// `HolonCollection` wrapped in an `Rc` is returned instead.
+        pub fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
+            if let Some(rc_refcell) = self.map.get(relationship_name) {
+                // Borrow the RefCell and clone the inner HolonCollection
+                Rc::new(rc_refcell.borrow().clone())
+            } else {
+                // Return a new Rc<HolonCollection> if the entry doesn't exist
+                Rc::new(HolonCollection::new_Transient())
+            }
+        }
+
+        /// Removes the specified holons from the collection associated with the given relationship name.
+        ///
+        /// If the relationship exists, the supplied holons are removed from its collection.
+        /// If the relationship doesn't exist, an error is returned.
+        ///
+        /// # Arguments
+        /// - `relationship_name`: The name of the relationship to modify.
+        /// - `context`: The operational context for validation and access.
+        /// - `holons`: A list of `HolonReference`s to remove from the collection.
+        ///
+        /// # Errors
+        /// - Returns an error if the relationship doesn't exist.
+        /// - Returns an error if removing references fails due to validation or other issues.
+        pub fn remove_related_holons(
+            &mut self,
+            context: &dyn HolonsContextBehavior,
+            relationship_name: &RelationshipName,
+            holons: Vec<HolonReference>,
+        ) -> Result<(), HolonError> {
+            if let Some(collection) = self.map.get(relationship_name) {
+                // Borrow the `HolonCollection` mutably to remove the supplied holons
+                collection.borrow_mut().remove_references(context, holons)?;
+                Ok(())
+            } else {
+                Err(HolonError::InvalidRelationship(
+                    format!("Invalid relationship: {}", relationship_name),
+                    "No matching collection found in the map.".to_string(),
+                ))
+            }
+        }
+    */
 
     /// Returns an iterator over the key-value pairs in the map. This is primarily intended for
     /// use by adapters that serialize TransientRelationshipMap into other representations
@@ -138,7 +140,7 @@ impl ReadableRelationship for TransientRelationshipMap {
     //     CONSTRUCTORS
     // =====================
 
-    fn clone_for_new_source(&self) -> Result<Box<dyn ReadableRelationship + 'static>, HolonError> {
+    fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
         let mut cloned_relationship_map = BTreeMap::new();
 
         for (name, collection) in &self.map {
@@ -146,14 +148,13 @@ impl ReadableRelationship for TransientRelationshipMap {
             cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
         }
 
-        Ok(Box::new(Self::new(cloned_relationship_map)))
+        Ok(TransientRelationshipMap::new(cloned_relationship_map))
     }
 
     // ====================
     //    DATA ACCESSORS
     // ====================
 
-    /// **TODO DOC
     fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection
@@ -201,7 +202,6 @@ impl WritableRelationship for TransientRelationshipMap {
             ))
         }
     }
-    
 }
 
 impl Serialize for TransientRelationshipMap {
