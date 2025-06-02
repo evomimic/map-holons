@@ -82,7 +82,7 @@ pub fn init_guest_context(
     nursery.import_staged_holons(staged_holons); // ✅ Load staged holons
 
     // Step 3: Register internal access
-    let service = Arc::get_mut(&mut guest_holon_service).ok_or_else(|| {
+    let service:&mut GuestHolonService = Arc::get_mut(&mut guest_holon_service).ok_or_else(|| {
         HolonError::FailedToBorrow(
             "Failed to get mutable reference to GuestHolonService".to_string(),
         )

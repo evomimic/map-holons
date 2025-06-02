@@ -44,7 +44,7 @@ pub async fn setup_conductor() -> MockConductorConfig {
     let cell = app.into_cells()[0].clone();
 
     let agent_hash = holochain_agent.into_inner();
-    let agent = AgentPubKey::from_raw_39(agent_hash).unwrap();
+    let agent = AgentPubKey::from_raw_39(agent_hash);
 
     MockConductorConfig { conductor, agent, cell }
 }

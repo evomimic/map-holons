@@ -4,7 +4,6 @@ name: map_holons
 integrity:
   network_seed: ~
   properties: ~
-  origin_time: 1686235145735615
   zomes:
     - name: holons_integrity
       hash: ~
