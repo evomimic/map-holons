@@ -226,7 +226,7 @@ fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
         if let Some(proxy_id_end) = proxy_id_end_option {
             link_tag_object.proxy_id = Some(OutboundProxyId(
-                ActionHash::from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
+                ActionHash::try_from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
                     HolonError::HashConversion(
                         "LinkTag proxy_id bytes".to_string(),
                         "ActionHash".to_string(),

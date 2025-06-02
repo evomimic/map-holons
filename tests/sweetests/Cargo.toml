@@ -16,7 +16,7 @@ tracing = "0.1"
 async-trait = "0.1.51"
 
 # Holochain Dependencies
-holochain_trace = "0.4"
+holochain_trace = "0.5"
 
 # MAP Dependencies
 holons_core = { path = "../../crates/holons_core" }
@@ -30,7 +30,7 @@ integrity_core_types = { path = "../../crates/type_system/integrity_core_types" 
 futures = { version = "0.3.1", default-features = false }
 pretty_assertions = "1.4.0"
 rstest = "0.25.0"
-holochain = { version = "0.4", default-features = false, features = [
+holochain = { version = "0.5", default-features = false, features = [
     "sweettest",
     "wasmer_sys"
 ] }
