@@ -23,7 +23,8 @@ pub mod test_stage_new_version;
 pub mod test_with_properties_command;
 
 use holochain::sweettest::{SweetCell, SweetConductor};
-use shared_types_holon::{HolonId, MapString};
+use base_types::MapString;
+use core_types::HolonId;
 use test_data_types::DanceTestExecutionState;
 
 // const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";

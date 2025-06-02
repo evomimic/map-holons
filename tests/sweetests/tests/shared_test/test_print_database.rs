@@ -12,9 +12,9 @@ use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_reque
 use holons_core::dances::ResponseBody;
 use holons_core::utils::as_json;
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use tracing::{debug, info};
 
 /// This function retrieves all holons and then writes log messages for each holon:

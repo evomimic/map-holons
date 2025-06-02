@@ -1,6 +1,6 @@
 use crate::core_shared_objects::HolonCollection;
 use hdk::prelude::*;
-use shared_types_holon::MapString;
+use base_types::MapString;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;

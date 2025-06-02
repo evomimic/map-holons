@@ -5,3 +5,6 @@ edition = "2021"
 
 
 [dependencies]
+hex = { workspace = true }
+serde = { workspace = true }
+derive-new = { workspace = true }

@@ -13,10 +13,9 @@ use holons_core::query_layer::QueryExpression;
 use holons_core::HolonsContextBehavior;
 use pretty_assertions::assert_eq;
 use rstest::*;
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{
-    HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
 

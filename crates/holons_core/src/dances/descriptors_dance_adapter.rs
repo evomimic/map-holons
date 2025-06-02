@@ -17,7 +17,7 @@
 
 use crate::dances::{DanceRequest, DanceType, RequestBody, ResponseBody};
 use crate::{HolonError, HolonsContextBehavior};
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 /// *DanceRequest:*
 /// - dance_name: "load_core_schema"

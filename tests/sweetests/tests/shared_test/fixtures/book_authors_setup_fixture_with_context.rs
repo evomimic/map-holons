@@ -5,7 +5,6 @@ use crate::shared_test::test_data_types::{
     PERSON_2_KEY, PUBLISHER_KEY,
 };
 
-use shared_types_holon::value_types::BaseValue;
 use std::string::ToString; // Import the test-only extension
 
 use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
@@ -13,7 +12,8 @@ use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::holon_operations_api::*;
 
 use holons_core::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
-use shared_types_holon::{MapString, PropertyName};
+use base_types::{BaseValue, MapString};
+use integrity_core_types::PropertyName;
 
 // pub struct TestHolon {
 //     pub key: MapString,

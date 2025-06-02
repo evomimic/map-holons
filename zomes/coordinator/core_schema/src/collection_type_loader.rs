@@ -6,7 +6,7 @@ use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-use shared_types_holon::{MapBoolean, MapInteger, MapString};
+use base_types::{MapBoolean, MapInteger, MapString};
 
 #[derive(Debug)]
 pub struct CollectionTypeSpec {
@@ -187,7 +187,7 @@ fn load_collection_type_definition(
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
-        // TODO: add base_type: BaseType::EnumVariant
+        // TODO: add base_type: TypeKind::EnumVariant
         is_dependent: MapBoolean(false),
         is_value_type: MapBoolean(false),
         described_by: loader.described_by,

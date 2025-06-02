@@ -12,9 +12,9 @@ use crate::shared_test::*;
 use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_request;
 use holons_core::dances::ResponseBody;
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use tracing::info;
 
 /// This function builds and dances a `get_all_holons` DanceRequest and confirms that the number

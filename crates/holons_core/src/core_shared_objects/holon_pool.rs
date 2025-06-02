@@ -1,7 +1,8 @@
 use crate::core_shared_objects::{Holon, HolonError};
 use crate::utils::uuid::create_temporary_id_from_key;
 use hdi::prelude::{Deserialize, Serialize};
-use shared_types_holon::{MapInteger, MapString, TemporaryId};
+use base_types::{MapInteger, MapString};
+use core_types::TemporaryId;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
