@@ -15,6 +15,7 @@ guest = []  # This crate supports the `guest` feature
 Inflector = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
 
 # Holochain Dependencies
 hdk = { workspace = true }

@@ -1,9 +1,8 @@
 use std::fmt;
 
 use derive_new::new;
-use hdi::prelude::{Record,RecordEntry};
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{HolonNode, MapString, PropertyMap};
+use shared_types_holon::{MapString, PropertyMap};
 
 use crate::HolonError;
 

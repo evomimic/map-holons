@@ -1,6 +1,7 @@
-
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{
+    HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
+};
 
 use crate::{
     core_shared_objects::holon::holon_utils::{key_info, local_id_info},
@@ -8,7 +9,9 @@ use crate::{
 };
 
 use super::{
-    holon_utils::EssentialHolonContent, saved_holon_node::SavedHolonNode, state::{AccessType, HolonState, SavedState, ValidationState}, HolonBehavior, TransientHolon
+    holon_utils::EssentialHolonContent,
+    state::{AccessType, HolonState, SavedState, ValidationState},
+    HolonBehavior, TransientHolon,
 };
 
 /// Represents a Holon that has been persisted in the DHT.
@@ -16,9 +19,10 @@ use super::{
 pub struct SavedHolon {
     holon_state: HolonState,           // Always `Immutable`
     validation_state: ValidationState, //
-    saved_node: SavedHolonNode,        // Links to persisted Holon data
-    version: MapInteger, 
+    saved_id: LocalId,              // Links to persisted Holon data
+    version: MapInteger,
     saved_state: SavedState,
+    // HolonNode data:
     property_map: PropertyMap,    // Self-describing property data
     original_id: Option<LocalId>, // Tracks predecessor, if applicable
 }
@@ -31,7 +35,7 @@ impl SavedHolon {
     ///
     /// This method is called during inflation from a `HolonNode`.
     pub fn new(
-        saved_node: SavedHolonNode,
+        saved_id: LocalId,
         property_map: PropertyMap,
         original_id: Option<LocalId>,
         version: MapInteger,
@@ -39,7 +43,7 @@ impl SavedHolon {
         Self {
             holon_state: HolonState::Immutable,
             validation_state: ValidationState::ValidationRequired,
-            saved_node,
+            saved_id,
             version,
             saved_state: SavedState::Fetched,
             property_map,
@@ -47,7 +51,6 @@ impl SavedHolon {
         }
     }
 }
-
 
 // ==================================
 //    HOLONBEHAVIOR IMPLEMENTATION
@@ -61,11 +64,10 @@ impl HolonBehavior for SavedHolon {
         let mut holon = TransientHolon::new();
 
         // Retains the predecessor node, referenced by LocalId
-        holon.update_original_id(Some(self.saved_node.get_local_id())); 
+        holon.update_original_id(Some(self.get_local_id()?));
 
         // Copy the existing holon's PropertyMap into the new Holon
         holon.update_property_map(self.property_map.clone());
-
 
         Ok(holon)
     }
@@ -108,14 +110,14 @@ impl HolonBehavior for SavedHolon {
         Ok(MapString(key.0 + &self.version.0.to_string()))
     }
 
-    /// Retrieves the `LocalId` from the `SavedHolonNode`.
+    /// Retrieves the `LocalId`.
     fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        Ok(self.saved_node.get_local_id())
+        Ok(self.saved_id.clone())
     }
 
     /// Retrieves the `original_id`, if present.
-    fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
-        Ok(self.original_id.clone())
+    fn get_original_id(&self) -> Option<LocalId>{
+        self.original_id.clone()
     }
 
     /// Retrieves the specified property value.
@@ -126,9 +128,13 @@ impl HolonBehavior for SavedHolon {
         Ok(self.property_map.get(property_name).cloned().flatten())
     }
 
-    // =========================
+    fn into_node(&self) -> HolonNode {
+        HolonNode::new(self.original_id.clone(), self.property_map.clone())
+    }
+
+    // =======================
     //     ACCESS CONTROL
-    // =========================
+    // =======================
 
     /// Enforces access control rules for `SavedHolon`.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -147,22 +153,27 @@ impl HolonBehavior for SavedHolon {
     //     MUTATORS
     // =================
 
-    fn increment_version(&mut self) {
+    fn increment_version(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.version.0 += 1;
+        Ok(())
     }
 
-    fn update_original_id(&mut self, id: Option<LocalId>) {
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.original_id = id;
+        Ok(())
     }
 
-    fn update_property_map(&mut self, map: PropertyMap) {
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.property_map = map;
+        Ok(())
     }
 
-
-    // =========================
-    //       DIAGNOSTICS
-    // =========================
+    // ====================
+    //     DIAGNOSTICS
+    // ====================
 
     /// Provides structured diagnostic information about the Holon's phase and state.
     fn debug_info(&self) -> String {
@@ -176,17 +187,17 @@ impl HolonBehavior for SavedHolon {
         format!("{} / {} / {} / {}", phase_info, state_info, key_info(self), local_id_info(self))
     }
 
-    // =========================
-    //       HELPERS
-    // =========================
+    // ==============
+    //    HELPERS
+    // ==============
 
     /// Returns a String summary of the Holon.
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.get_key() {
-            Ok(Some(key)) => key.0,  // Extract the key from MapString
-            Ok(None) => "<None>".to_string(),   // Key is None
-            Err(_) => "<Error>".to_string(),    // Error encountered while fetching key
+            Ok(Some(key)) => key.0,           // Extract the key from MapString
+            Ok(None) => "<None>".to_string(), // Key is None
+            Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
         };
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available
@@ -203,75 +214,3 @@ impl HolonBehavior for SavedHolon {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{core_shared_objects::holon::saved_holon_node::SavedHolonNode, HolonError};
-    use hdk::prelude::{ActionHash, Record};
-
-    /// Utility function to create a mock `Record`.
-    fn mock_record(hash_str: &str) -> Record {
-        let action_hash = ActionHash::from_raw_32(hash_str.as_bytes());
-        Record::new(action_hash)
-    }
-
-    #[test]
-    fn get_local_id_returns_local_id_when_saved_node_is_present() {
-        // Arrange
-        let record = mock_record("valid_hash");
-        let saved_holon_node = SavedHolonNode { saved_node: Some(record.clone()) };
-
-        // Act
-        let result = saved_holon_node.get_local_id();
-
-        // Assert
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), LocalId(record.action_address().clone()));
-    }
-
-    #[test]
-    fn get_local_id_returns_error_when_saved_node_is_none() {
-        // Arrange
-        let saved_holon_node = SavedHolonNode { saved_node: None };
-
-        // Act
-        let result = saved_holon_node.get_local_id();
-
-        // Assert
-        assert!(result.is_err());
-        assert!(matches!(result, Err(HolonError::HolonNotFound(_))));
-    }
-
-    #[test]
-    fn get_local_id_produces_correct_error_message() {
-        // Arrange
-        let saved_holon_node = SavedHolonNode { saved_node: None };
-
-        // Act
-        let result = saved_holon_node.get_local_id();
-
-        // Assert
-        match result {
-            Err(HolonError::HolonNotFound(msg)) => {
-                assert_eq!(msg, "SavedHolonNode is empty");
-            }
-            _ => panic!("Expected HolonNotFound error with correct message"),
-        }
-    }
-
-    #[test]
-    fn get_local_id_with_different_records_produces_correct_ids() {
-        // Arrange
-        let record1 = mock_record("hash_one");
-        let record2 = mock_record("hash_two");
-
-        let node1 = SavedHolonNode { saved_node: Some(record1.clone()) };
-
-        let node2 = SavedHolonNode { saved_node: Some(record2.clone()) };
-
-        // Act & Assert
-        assert_eq!(node1.get_local_id().unwrap(), LocalId(record1.action_address().clone()));
-        assert_eq!(node2.get_local_id().unwrap(), LocalId(record2.action_address().clone()));
-        assert_ne!(node1.get_local_id().unwrap(), node2.get_local_id().unwrap());
-    }
-}

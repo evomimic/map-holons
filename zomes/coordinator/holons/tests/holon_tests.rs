@@ -68,7 +68,7 @@
 //         let _p_count = test_holon.property_map.len();
 //
 //         println!("\n****** Starting create/get test for the following Holon:");
-//         // print_holon_without_saved_node(&test_holon);
+//         // print_holon_without_record(&test_holon);
 //
 //         let _builder_holon = Holon::new();
 //
@@ -132,7 +132,7 @@
 //     println!("To re-run just this test with output, use: 'cargo test -p holons --test holon_tests  -- --show-output'");
 // }
 // #[allow(dead_code)]
-// fn print_holon_without_saved_node(holon: &Holon) {
+// fn print_holon_without_record(holon: &Holon) {
 //     println!("{:#?} Holon: with property map: ", holon.state.clone());
 //     println!("{:#?}", holon.property_map.clone());
 // }

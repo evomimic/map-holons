@@ -23,7 +23,9 @@ impl<'a> Serialize for HolonStateWrapper<'a> {
     {
         match self.0 {
             HolonState::Mutable => serializer.serialize_unit_variant("HolonState", 0, "Mutable"),
-            HolonState::Immutable => serializer.serialize_unit_variant("HolonState", 1, "Immutable"),
+            HolonState::Immutable => {
+                serializer.serialize_unit_variant("HolonState", 1, "Immutable")
+            }
         }
     }
 }
@@ -64,6 +66,9 @@ impl<'a> Serialize for CollectionStateWrapper<'a> {
         match self.0 {
             CollectionState::Fetched => {
                 serializer.serialize_unit_variant("CollectionState", 0, "Fetched")
+            }
+            CollectionState::Transient => {
+                serializer.serialize_unit_variant("CollectionState", 0, "Transient")
             }
             CollectionState::Staged => {
                 serializer.serialize_unit_variant("CollectionState", 1, "Staged")
@@ -237,44 +242,44 @@ impl<'a> Serialize for SmartReferenceOptionWrapper<'a> {
 struct SerializableHolon<'a> {
     state: HolonStateWrapper<'a>,
     validation_state: ValidationStateWrapper<'a>,
-    saved_node: SavedNodeWrapper<'a>,
+    record: SavedNodeWrapper<'a>,
     property_map: PropertyMapWrapper<'a>,
     staged_relationship_map: StagedRelationshipMapWrapper<'a>,
     errors: Vec<HolonErrorWrapper<'a>>,
 }
 
-impl<'a> Serialize for SerializableHolon<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("SerializableHolon", 7)?;
-        state.serialize_field("state", &self.state)?;
-        state.serialize_field("validation_state", &self.validation_state)?;
-        state.serialize_field("saved_node", &self.saved_node)?;
-        state.serialize_field("property_map", &self.property_map)?;
-        state.serialize_field("staged_relationship_map", &self.staged_relationship_map)?;
-        state.serialize_field("errors", &self.errors)?;
-        state.end()
-    }
-}
+// impl<'a> Serialize for SerializableHolon<'a> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let mut state = serializer.serialize_struct("SerializableHolon", 7)?;
+//         state.serialize_field("state", &self.state)?;
+//         state.serialize_field("validation_state", &self.validation_state)?;
+//         state.serialize_field("record", &self.record)?;
+//         state.serialize_field("property_map", &self.property_map)?;
+//         state.serialize_field("staged_relationship_map", &self.staged_relationship_map)?;
+//         state.serialize_field("errors", &self.errors)?;
+//         state.end()
+//     }
+// }
 
-pub fn as_json(holon: &Holon) -> String {
-    let state_wrapper = HolonStateWrapper(&holon.state);
-    let validation_state_wrapper = ValidationStateWrapper(&holon.validation_state);
-    let saved_node_wrapper = SavedNodeWrapper(&holon.saved_node);
-    let property_map_wrapper = PropertyMapWrapper(&holon.property_map);
-    let relationship_map_wrapper = StagedRelationshipMapWrapper(&holon.staged_relationship_map);
-    let errors_wrappers: Vec<HolonErrorWrapper> =
-        holon.errors.iter().map(|e| HolonErrorWrapper(e)).collect();
+// pub fn as_json(holon: &Holon) -> String {
+//     let state_wrapper = HolonStateWrapper(&holon.state);
+//     let validation_state_wrapper = ValidationStateWrapper(&holon.validation_state);
+//     let record_wrapper = SavedNodeWrapper(&holon.record);
+//     let property_map_wrapper = PropertyMapWrapper(&holon.property_map);
+//     let relationship_map_wrapper = StagedRelationshipMapWrapper(&holon.staged_relationship_map);
+//     let errors_wrappers: Vec<HolonErrorWrapper> =
+//         holon.errors.iter().map(|e| HolonErrorWrapper(e)).collect();
 
-    serde_json::to_string_pretty(&SerializableHolon {
-        state: state_wrapper,
-        validation_state: validation_state_wrapper,
-        saved_node: saved_node_wrapper,
-        property_map: property_map_wrapper,
-        staged_relationship_map: relationship_map_wrapper,
-        errors: errors_wrappers,
-    })
-    .unwrap()
-}
+//     serde_json::to_string_pretty(&SerializableHolon {
+//         state: state_wrapper,
+//         validation_state: validation_state_wrapper,
+//         record: record_wrapper,
+//         property_map: property_map_wrapper,
+//         staged_relationship_map: relationship_map_wrapper,
+//         errors: errors_wrappers,
+//     })
+//     .unwrap()
+// }

@@ -1,6 +1,6 @@
 use crate::HolonError;
 use base_types::{MapInteger, MapString};
-use super::holon::{Holon, HolonBehavior};
+use super::holon::{Holon, HolonBehavior, SavedHolon};
 use integrity_core_types::LocalId;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -8,7 +8,7 @@ pub struct CommitResponse {
     pub status: CommitRequestStatus,
     pub commits_attempted: MapInteger,
     // could the order of these Vec cause challenges with identifying Holons in relation to their staged_index?
-    pub saved_holons: Vec<Holon>, // should this be indexed? where else used?
+    pub saved_holons: Vec<SavedHolon>, // should this be indexed? where else used?
     pub abandoned_holons: Vec<Holon>, // should this be indexed?
 }
 #[derive(Debug, Eq, PartialEq, Clone)]

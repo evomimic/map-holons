@@ -1,4 +1,4 @@
-use shared_types_holon::{LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
+use shared_types_holon::{HolonNode, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
 
 use crate::HolonError;
 
@@ -15,7 +15,6 @@ pub trait HolonBehavior {
     ///
     /// Regardless of the source phase, cloned Holons are always `TransientHolons`.
     fn clone_holon(&self) -> Result<TransientHolon, HolonError>;
-
 
     // =======================
     //     DATA ACCESSORS
@@ -52,7 +51,7 @@ pub trait HolonBehavior {
     /// - **`StagedHolons`** may have an `original_id` if cloned as part of a `ForUpdate` cycle.  
     /// - **`SavedHolons`** may have an `original_id` if they are a version of a prior Holon.  
     /// - New Holons created without cloning will have `None` as their `original_id`.
-    fn get_original_id(&self) -> Result<Option<LocalId>, HolonError>;
+    fn get_original_id(&self) -> Option<LocalId>;
 
     /// Retrieves the specified property value from the Holon.
     ///
@@ -67,16 +66,21 @@ pub trait HolonBehavior {
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError>;
 
-    // /// Retrieves the unique versioned key (key + versioned_sequence_count suffix)
-    // ///
-    // /// # Semantics
-    // /// - The versioned key is used for identifying Holons in the Nursery where multiple have been staged with the same base key.
-    // /// - Returns error if the Holon does not have a key, since that is required for this function call.
-    // ///
-    // /// # Errors
-    // /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
+    /// Retrieves the unique versioned key (key + versioned_sequence_count suffix)
+    ///
+    /// # Semantics
+    /// - The versioned key is used for identifying Holons in the Nursery where multiple have been staged with the same base key.
+    /// - Returns error if the Holon does not have a key, since that is required for this function call.
+    ///
+    /// # Errors
+    /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn get_versioned_key(&self) -> Result<MapString, HolonError>;
 
+    /// Converts a Holon into a HolonNode.
+    /// 
+    ///  # Semantics
+    /// 
+    fn into_node(&self) -> HolonNode;
 
     // =========================
     //      ACCESS CONTROL
@@ -101,13 +105,13 @@ pub trait HolonBehavior {
     /// Called by HolonPool::insert_holon() to increment the version.
     /// 
     /// Used to track ephemeral versions of Holons with the same key.
-    fn increment_version(&mut self);
+    fn increment_version(&mut self) -> Result<(), HolonError>;
 
     /// **TODO DOC: Updates
-    fn update_original_id(&mut self, id: Option<LocalId>);
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError>;
 
     /// **TODO DOC: Updates
-    fn update_property_map(&mut self, map: PropertyMap);
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError>;
 
 
     // =========================

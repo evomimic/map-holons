@@ -44,7 +44,7 @@ pub fn load_core_schema(context: &dyn HolonsContextBehavior) -> Result<CommitRes
     )?;
 
     info!("Staging Schema...");
-    let staged_schema_ref = HolonReference::Staged(stage_new_holon_api(context, schema.0.clone())?);
+    let staged_schema_ref = HolonReference::Staged(stage_new_holon_api(context, schema.0.into_transient()?)?);
 
     context
         .get_space_manager()

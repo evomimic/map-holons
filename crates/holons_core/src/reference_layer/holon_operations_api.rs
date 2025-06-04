@@ -53,7 +53,7 @@ use std::sync::Arc;
 /// If the commit process fully succeeds:
 /// - The `CommitResponse` will have a `Complete` status.
 /// - All staged holons and their relationships are successfully persisted to the DHT.
-/// - The `CommitResponse` includes a list of all successfully saved holons, with their `saved_node`
+/// - The `CommitResponse` includes a list of all successfully saved holons, with their `record`
 /// (including their `LocalId`) populated.
 /// - The `space_manager`'s list of staged holons is cleared.
 ///
@@ -64,12 +64,12 @@ use std::sync::Arc;
 /// - Holons that were successfully committed:
 ///     - Have their state updated to `Saved`.
 ///     - Include their saved node (indicating they were persisted).
-///     - Are added to the `CommitResponse`'s `saved_nodes` list.
+///     - Are added to the `CommitResponse`'s `records` list.
 /// - Holons that were **not successfully committed**:
 ///     - Retain their previous state (unchanged).
 ///     - Have their `errors` vector populated with the errors encountered during the commit.
 ///     - Do **not** include a saved node.
-///     - Are **not** added to the `CommitResponse`'s `saved_nodes` list.
+///     - Are **not** added to the `CommitResponse`'s `records` list.
 /// - Correctable errors in the `errors` vector allow the `commit` call to be retried until the
 ///   process succeeds completely.
 ///

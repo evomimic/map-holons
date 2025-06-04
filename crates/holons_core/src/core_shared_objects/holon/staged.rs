@@ -1,37 +1,48 @@
-
 use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
+use shared_types_holon::{
+    BaseValue, HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
+    TemporaryId,
+};
 
-use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship}, HolonCollection, HolonError, RelationshipName, StagedRelationshipMap};
+use crate::{
+    core_shared_objects::{
+        holon::holon_utils::{key_info, local_id_info},
+        ReadableRelationship,
+    },
+    HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
+};
 
-use super::{holon_utils::EssentialHolonContent, saved_holon_node::SavedHolonNode, state::{AccessType, HolonState, StagedState, ValidationState}, HolonBehavior, TransientHolon};
+use super::{
+    holon_utils::EssentialHolonContent,
+    state::{AccessType, HolonState, StagedState, ValidationState},
+    HolonBehavior, TransientHolon,
+};
 
 /// Represents a Holon that has been staged for persistence or updates.
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StagedHolon {
-    version: MapInteger, // Used to add to hash content for creating TemporaryID
-    holon_state: HolonState,                // Mutable or Immutable
-    staged_state: StagedState,              // ForCreate, ForUpdate, Abandoned, or Committed
-    validation_state: ValidationState, 
-    temporary_id: Option<TemporaryId>,      // Ephemeral identifier for staged Holons // RFC4122 UUID                
-    property_map: PropertyMap,              // Self-describing property data
-    staged_relationships: StagedRelationshipMap,  
-    original_id: Option<LocalId>,           // Tracks the predecessor, if cloned from a SavedHolon
-    errors: Vec<HolonError>, 
+    version: MapInteger,       // Used to add to hash content for creating TemporaryID
+    holon_state: HolonState,   // Mutable or Immutable
+    staged_state: StagedState, // ForCreate, ForUpdate, Abandoned, or Committed
+    validation_state: ValidationState,
+    temporary_id: Option<TemporaryId>, // Ephemeral identifier for staged Holons // RFC4122 UUID
+    property_map: PropertyMap,         // Self-describing property data
+    staged_relationships: StagedRelationshipMap,
+    original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
+    errors: Vec<HolonError>,
 }
 
 // ==================================
 //   ASSOCIATED METHODS (IMPL BLOCK)
 // ==================================
 impl StagedHolon {
-
     // =================
     //   CONSTRUCTORS
     // =================
 
-    /// Creates a new StagedHolon in the `ForCreate` state.
+    /// Creates a new StagedHolon in the `ForCreate` state.   
     pub fn new_for_create() -> Self {
         Self {
             version: MapInteger(1),
@@ -65,7 +76,6 @@ impl StagedHolon {
     //    DATA ACCESSORS
     // ====================
 
-    /// **TODO DOC
     pub fn get_related_holons(
         &self,
         relationship_name: &RelationshipName,
@@ -74,11 +84,6 @@ impl StagedHolon {
         Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
-    /// Retrieves the HolonCollection that is the target of the specified relationships from the `staged_relationship_map`.
-    ///
-    /// # Semantics
-    /// - Ensures `StagedHolon` is accessible for reading.
-    /// - Returns an empty `HolonCollection` if the relationship is undefined.
     pub fn get_staged_relationship(
         &self,
         relationship_name: &RelationshipName,
@@ -88,17 +93,14 @@ impl StagedHolon {
         Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
-    /// Retrieves a clone of the StagedRelationshipMap.
-    ///
-    /// # Semantics
-    /// - Ensures `StagedHolon` is accessible for reading.
-    /// - Returns the private map.
-    pub fn get_staged_relationship_map(
-        &self,
-    ) -> Result<StagedRelationshipMap, HolonError> {
+    pub fn get_staged_relationship_map(&self) -> Result<StagedRelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
         Ok(self.staged_relationships.clone())
+    }
+
+    fn into_node(&self) -> HolonNode {
+        HolonNode::new(self.original_id.clone(), self.property_map.clone())
     }
 
     // ==============
@@ -123,7 +125,7 @@ impl StagedHolon {
                 "Only uncommitted StagedHolons can be abandoned".to_string(),
             )),
         }
-    } 
+    }
 
     /// Marks the `StagedHolon` as `Changed`.
     ///
@@ -137,38 +139,26 @@ impl StagedHolon {
         Ok(())
     }
 
-    /// Marks the `StagedHolon` as `Committed` and assigns its `SavedHolonNode`.
-    ///
-    /// This assumes the Holon has already been persisted to the DHT.
-    pub fn to_committed(&mut self, saved_node: SavedHolonNode) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Commit)?;
-
-        self.staged_state = StagedState::Committed(saved_node);
-        self.holon_state = HolonState::Immutable;
+    fn update_relationship_map(&mut self, map: StagedRelationshipMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.staged_relationships = map;
         Ok(())
     }
 
-    fn update_relationship_map(&mut self, map: StagedRelationshipMap) {
-        self.staged_relationships = map;
-    }
-
     pub fn with_property_value(
-          &mut self,
-          property: PropertyName,
-          value: Option<BaseValue>,
+        &mut self,
+        property: PropertyName,
+        value: Option<BaseValue>,
     ) -> Result<&mut Self, HolonError> {
-            self.is_accessible(AccessType::Write)?;
-            self.property_map.insert(property, value);
-            match self.staged_state {
-                StagedState::ForUpdate => self.staged_state = StagedState::ForUpdateChanged,
-                _ => {}
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.insert(property, value);
+        match self.staged_state {
+            StagedState::ForUpdate => self.staged_state = StagedState::ForUpdateChanged,
+            _ => {}
+        }
 
-            }
-
-            Ok(self)
-      }
-
-     
+        Ok(self)
+    }
 }
 
 // ==================================
@@ -199,7 +189,7 @@ impl HolonBehavior for StagedHolon {
         Ok(EssentialHolonContent::new(
             self.property_map.clone(),
             self.get_key()?,
-            self.errors.clone()
+            self.errors.clone(),
         ))
     }
 
@@ -223,18 +213,23 @@ impl HolonBehavior for StagedHolon {
     /// Retrieves the `LocalId` if the Holon is committed.
     fn get_local_id(&self) -> Result<LocalId, HolonError> {
         match &self.staged_state {
-            StagedState::Committed(saved_node) => Ok(saved_node.get_local_id()),
-            _ => Err(HolonError::EmptyField("Uncommitted StagedHolons do not have LocalIds.".to_string())),
+            StagedState::Committed(saved_id) => Ok(saved_id.clone()),
+            _ => Err(HolonError::EmptyField(
+                "Uncommitted StagedHolons do not have LocalIds.".to_string(),
+            )),
         }
     }
 
     /// Retrieves the `original_id`, if present.
-    fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
-        Ok(self.original_id.clone())
+    fn get_original_id(&self) -> Option<LocalId> {
+        self.original_id.clone()
     }
 
     /// Retrieves the specified property value.
-    fn get_property_value(&self, property_name: &PropertyName) -> Result<Option<PropertyValue>, HolonError> {
+    fn get_property_value(
+        &self,
+        property_name: &PropertyName,
+    ) -> Result<Option<PropertyValue>, HolonError> {
         Ok(self.property_map.get(property_name).cloned().flatten())
     }
 
@@ -254,6 +249,10 @@ impl HolonBehavior for StagedHolon {
         Ok(MapString(key.0 + &self.version.0.to_string()))
     }
 
+    fn into_node(&self) -> HolonNode {
+        HolonNode { original_id: self.original_id.clone(), property_map: self.property_map.clone() }
+    }
+
     // =======================
     //     ACCESS CONTROL
     // =======================
@@ -262,13 +261,15 @@ impl HolonBehavior for StagedHolon {
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
             HolonState::Mutable => match self.staged_state {
-                StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateChanged => match access_type {
-                    AccessType::Read
-                    | AccessType::Write
-                    | AccessType::Clone
-                    | AccessType::Abandon
-                    | AccessType::Commit => Ok(()),
-                },
+                StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateChanged => {
+                    match access_type {
+                        AccessType::Read
+                        | AccessType::Write
+                        | AccessType::Clone
+                        | AccessType::Abandon
+                        | AccessType::Commit => Ok(()),
+                    }
+                }
                 StagedState::Abandoned | StagedState::Committed(_) => match access_type {
                     AccessType::Read => Ok(()),
                     _ => Err(HolonError::NotAccessible(
@@ -288,39 +289,36 @@ impl HolonBehavior for StagedHolon {
     //     MUTATORS
     // =================
 
-    fn increment_version(&mut self) {
+    fn increment_version(&mut self) -> Result<(), HolonError> {
         self.version.0 += 1;
+        Ok(())
     }
 
-    fn update_original_id(&mut self, id: Option<LocalId>) {
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.original_id = id;
+        Ok(())
     }
 
-    fn update_property_map(&mut self, map: PropertyMap) {
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.property_map = map;
+        Ok(())
     }
-
-
 
     // =========================
     //       DIAGNOSTICS
     // =========================
-        fn debug_info(&self) -> String {
-            let phase_info = "StagedHolon";
-            let state_info = format!(
-                "{} / {}",
-                format!("{:?}", self.holon_state),  // Mutable/Immutable
-                format!("{:?}", self.staged_state)  // ForCreate, ForUpdate, etc.
-            );
-    
-            format!(
-                "{} / {} / {} / {}",
-                phase_info,
-                state_info,
-                key_info(self),
-                local_id_info(self)
-            )
-        }
+    fn debug_info(&self) -> String {
+        let phase_info = "StagedHolon";
+        let state_info = format!(
+            "{} / {}",
+            format!("{:?}", self.holon_state),  // Mutable/Immutable
+            format!("{:?}", self.staged_state)  // ForCreate, ForUpdate, etc.
+        );
+
+        format!("{} / {} / {} / {}", phase_info, state_info, key_info(self), local_id_info(self))
+    }
 
     // =========================
     //       HELPERS
@@ -329,15 +327,15 @@ impl HolonBehavior for StagedHolon {
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.get_key() {
-            Ok(Some(key)) => key.0,  // Extract the key from MapString
-            Ok(None) => "<None>".to_string(),   // Key is None
-            Err(_) => "<Error>".to_string(),    // Error encountered while fetching key
+            Ok(Some(key)) => key.0,           // Extract the key from MapString
+            Ok(None) => "<None>".to_string(), // Key is None
+            Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
         };
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available
         let local_id = match self.get_local_id() {
             Ok(local_id) => local_id.0.to_string(), // Convert LocalId to String
-            Err(_) => "<None>".to_string(),    // If local_id is not found or error occurred
+            Err(_) => "<None>".to_string(),         // If local_id is not found or error occurred
         };
 
         // Format the summary string
@@ -346,5 +344,108 @@ impl HolonBehavior for StagedHolon {
             key, local_id, self.holon_state, self.validation_state
         )
     }
-     
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::collections::BTreeMap;
+
+    use shared_types_holon::{MapBoolean, MapEnumValue};
+
+    use super::*;
+
+    #[test]
+    fn instantiate_and_modify() {
+        // Initialize default Holon
+        let mut initial_holon = StagedHolon::new_for_create();
+         let expected_holon = 
+        StagedHolon {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            staged_state: StagedState::ForCreate,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: BTreeMap::new(),
+            staged_relationships: StagedRelationshipMap::new_empty(),
+            original_id: None,
+            errors: Vec::new(),
+        };
+
+        assert_eq!(initial_holon, expected_holon);
+
+        // Create example PropertyMap and modify Holon with its update
+        let mut property_map = BTreeMap::new();
+        let string_property_name = PropertyName(MapString("string property".to_string()));
+        let string_value = Some(BaseValue::StringValue(MapString("string_value".to_string())));
+        property_map.insert(string_property_name, string_value);
+        let boolean_property_name = PropertyName(MapString("boolean property".to_string()));
+        let boolean_value = Some(BaseValue::BooleanValue(MapBoolean(true)));
+        property_map.insert(boolean_property_name, boolean_value);
+        let integer_property_name = PropertyName(MapString("integer property".to_string()));
+        let integer_value = Some(BaseValue::IntegerValue(MapInteger(1000)));
+        property_map.insert(integer_property_name, integer_value);
+        let enum_property_name = PropertyName(MapString("enum property".to_string()));
+        let enum_value = Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
+        property_map.insert(enum_property_name, enum_value);
+
+        initial_holon.update_property_map(property_map.clone()).unwrap();
+
+        assert_eq!(initial_holon.property_map, property_map);
+
+    }
+
+    #[test]
+    fn property_management() {
+        let mut holon = StagedHolon::new_for_create();
+        let property_name = PropertyName(MapString("first property".to_string()));
+        // Add a value to the property map
+        let initial_value = BaseValue::IntegerValue(MapInteger(1));
+        holon.with_property_value(property_name.clone(), Some(initial_value.clone()));
+        assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(initial_value));
+        // Update value for the same property name
+        let changed_value = BaseValue::StringValue(MapString("changed value".to_string()));
+        holon.with_property_value(property_name.clone(), Some(changed_value.clone()));
+        assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(changed_value));
+        // Remove value by updating to None
+        holon.with_property_value(property_name.clone(), None);
+        assert_eq!(holon.get_property_value(&property_name).unwrap(), None);
+    }
+
+    // #[test]
+    // fn relationship_management() {
+    //     let mut holon = StagedHolon::new_for_create();
+    //     let relationship_name = RelationshipName(MapString("first relationship".to_string()));
+    //     let first_collection = HolonCollection::new_existing();
+    //     //
+
+    //     // // Add a relationship to the relationship map
+    //     // holon.add_related_holon(relationship_name.clone(), Some(initial_value));
+    //     // assert_eq!();
+    //     // // Update relationship value for the same relationship name
+    //     // let changed_collection = BaseValue::StringValue(MapString("changed value".to_string()));
+    //     // holon.remove_related_holon();
+    //     // assert_eq!();
+
+    //     // TODO: remove relationship
+    // }
+
+
+    #[test]
+    fn verify_default_values() {
+        let default_holon = StagedHolon::new_for_create();
+        let expected_holon = StagedHolon {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            staged_state: StagedState::ForCreate,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: BTreeMap::new(),
+            staged_relationships: StagedRelationshipMap { map: BTreeMap::new() },
+            original_id: None,
+            errors: Vec::new(),
+        };
+
+        assert_eq!(default_holon, expected_holon);
+    }
 }
