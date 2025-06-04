@@ -1,0 +1,21 @@
+{
+  "variant": "SchemaType",
+  "header": {
+    "descriptor_name": "SchemaTypeDescriptor",
+    "description": "Describes the scope, purpose and noteworthy aspects of this Schema.",
+    "label": "SchemaType",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "properties": [
+    "Name",
+    "Description"
+  ],
+  "key_properties": [
+    "Name"
+  ],
+  "source_for": []
+}

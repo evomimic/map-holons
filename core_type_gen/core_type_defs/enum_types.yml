@@ -1,0 +1,43 @@
+ttype_kind: Enum
+variants:
+  - variant: MapTypeKind
+    type_name: MapTypeKind
+    header:
+      descriptor_name: MapTypeKindDescriptor
+      description: Specifies the MAP TypeKind of this object.
+      label: Map Type Kind
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    variants:
+      - TypeKindHolon
+      - TypeKindCollection
+      - TypeKindProperty
+      - TypeKindRelationship
+      - TypeKindEnumVariant
+      - TypeKindValueBoolean
+      - TypeKindValueEnum
+      - TypeKindValueInteger
+      - TypeKindValueString
+      - TypeKindValueBooleanArray
+      - TypeKindValueEnumArray
+      - TypeKindValueIntegerArray
+      - TypeKindValueStringArray
+
+  - variant: DeletionSemanticType
+    type_name: DeletionSemanticType
+    header:
+      descriptor_name: DeletionSemanticTypeDescriptor
+      description: Offers different options handling requests to delete a source Holon of a relationship.
+      label: Deletion Semantic Type
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    variants:
+      - DeletionSemanticAllow
+      - DeletionSemanticBlock
+      - DeletionSemanticCascade

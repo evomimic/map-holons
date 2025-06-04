@@ -1,0 +1,56 @@
+type_kind: Value(String)
+variants:
+  - variant: MapStringType
+    header:
+      descriptor_name: MapStringTypeDescriptor
+      description: Built-in MAP String Type
+      label: MapString
+      is_dependent: true
+      is_value_type: false
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    type_name: MapStringType
+    min_length: 0
+    max_length: 32768
+  - variant: PropertyNameType
+    header:
+      descriptor_name: PropertyNameTypeDescriptor
+      description: Names for Holon properties. Should be snake_case
+      label: PropertyName
+      is_dependent: true
+      is_value_type: false
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    type_name: PropertyNameType
+    min_length: 3
+    max_length: 72
+  - variant: RelationshipNameType
+    header:
+      descriptor_name: RelationshipNameTypeDescriptor
+      description: Names for relationships between Holons. To align with OpenCypher/GQL
+        standard, should be SCREAMING_UPPER_CASE (all uppercase letters with words separated
+        by underscores).
+      label: RelationshipName
+      is_dependent: true
+      is_value_type: false
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    type_name: RelationshipNameType
+    min_length: 3
+    max_length: 72
+  - variant: SemanticVersionType
+    header:
+      descriptor_name: SemanticVersionTypeDescriptor
+      description: String Type for representing Semantic Versions of the form (<major>.<minor>.<patch>)
+      label: SemanticVersion
+      is_dependent: true
+      is_value_type: false
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    type_name: SemanticVersionType
+    min_length: 5
+    max_length: 14

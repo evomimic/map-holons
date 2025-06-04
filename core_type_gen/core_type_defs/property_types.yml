@@ -1,0 +1,299 @@
+type_kind: Property
+variants:
+  - variant: AllowDuplicates
+    header:
+      descriptor_name: AllowDuplicatesDescriptor
+      description: If true, this collection can contain duplicate items.
+      label: AllowDuplicates
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: AllowDuplicates
+    value_type_name: BooleanType(MapBooleanType)
+  - variant: TypeKind
+    header:
+      descriptor_name: TypeKindDescriptor
+      description: Specifies the MAP TypeKind of this object.
+      label: TypeKind
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: TypeKind
+    value_type_name: EnumType(MapTypeKind)
+  - variant: DeletionSemantic
+    header:
+      descriptor_name: DeletionSemanticDescriptor
+      description: Offers different options for whether requests to delete a source
+        Holon (i.e., mark as deleted) should be allowed for a given relationship.
+      label: DeletionSemantic
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: DeletionSemantic
+    value_type_name: EnumType(DeletionSemanticType)
+  - variant: DescriptorName
+    header:
+      descriptor_name: DescriptorNameDescriptor
+      description: The name for the unique key for the descriptor of MAP type.
+      label: DescriptorName
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: DescriptorName
+    value_type_name: StringType(MapStringType)
+  - variant: Description
+    header:
+      descriptor_name: DescriptionDescriptor
+      description: A human readable description of this type that should clarify the purpose of the type and any caveats or to aware of.
+      label: Description
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: Description
+    value_type_name: StringType(MapStringType)
+  - variant: IsBuiltinType
+    header:
+      descriptor_name: IsBuiltinTypeDescriptor
+      description: If `true`, this a type offered by Map Core. Otherwise this is an agent-defined type that extends the MapCore Schema.
+      label: IsBuiltinType
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: IsBuiltinType
+    value_type_name: BooleanType(MapBooleanType)
+  - variant: IsDependent
+    header:
+      descriptor_name: IsDependentDescriptor
+      description: If true, then instances of this type cannot exist independently of some parent. For example, properties can not exist independently of their holon.
+      label: IsDependent
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: IsDependent
+    value_type_name: BooleanType(MapBooleanType)
+  - variant: IsOrdered
+    header:
+      descriptor_name: IsOrderedDescriptor
+      description: If true, then the position of members of this collection conforms to some order. In other words, this collection behaves like an array
+      label: IsOrdered
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: IsOrdered
+    value_type_name: BooleanType(MapBooleanType)
+  - variant: IsValueType
+    header:
+      descriptor_name: IsValueTypeDescriptor
+      description: If true, this type can be used as the value type for a property.
+      label: IsValueType
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: IsValueType
+    value_type_name: BooleanType(MapBooleanType)
+  - variant: Label
+    header:
+      descriptor_name: LabelDescriptor
+      description: A human readable name for this property. Typically used in when displaying a property in the Human Experience of the map as part of a label/value pair
+      label: Label
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: Label
+    value_type_name: StringType(MapStringType)
+  - variant: MaxCardinality
+    header:
+      descriptor_name: MaxCardinalityDescriptor
+      description: Specifies the maximum number of members allowed in this collection. max_cardinality must be greater than or equal to min_cardinality.
+      label: MaxCardinality
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: MaxCardinality
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: MaxLength
+    header:
+      descriptor_name: MaxLengthDescriptor
+      description: max_length is a property of a value type based on the TypeKind MapString. It defines the maximum allowed length for string instances of this value type. max_length must be greater than or equal to min_length.
+      label: MaxLength
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: MaxLength
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: MaxValue
+    header:
+      descriptor_name: MaxValueDescriptor
+      description: max_value is a property of a value type based on the TypeKind MapInteger.
+        It defines the largest allowed value for this integer instances of this value
+        type. max_value must be greater than or equal to min_value.
+      label: MaxValue
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: MaxValue
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: MinCardinality
+    header:
+      descriptor_name: MinCardinalityDescriptor
+      description: Specifies the minimum number of members allowed in this collection.
+        min_cardinality must be greater than or equal to zero.
+      label: MinCardinality
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: MinCardinality
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: MinLength
+    header:
+      descriptor_name: MinLengthDescriptor
+      description: min_length is a property of a value type based on the TypeKind MapString.
+        It defines the minimum allowed length for string instances of this value type.
+        min_length must be greater than or equal to zero.
+      label: MinLength
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: MinLength
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: MinValue
+    header:
+      descriptor_name: MinValueDescriptor
+      description: min_value is a property of a value type based on the TypeKind MapInteger.
+        It defines the smallest allowed value for this integer instances of this value
+        type. min_value can be negative and must be less than or equal to max_value.
+      label: MinValue
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: MinValue
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: Name
+    header:
+      descriptor_name: NameDescriptor
+      description: Specifies the human-readable name for this Holon.
+      label: Name
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: Name
+    value_type_name: StringType(MapStringType)
+  - variant: PropertyTypeName
+    header:
+      descriptor_name: PropertyTypeNameDescriptor
+      description: Specifies the (internal) name for this property type.
+      label: PropertyTypeName
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: PropertyTypeName
+    value_type_name: StringType(PropertyNameType)
+  - variant: RelationshipName
+    header:
+      descriptor_name: RelationshipNameDescriptor
+      description: Specifies the (internal) name for this relationship type.
+      label: RelationshipName
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: RelationshipName
+    value_type_name: StringType(RelationshipNameType)
+  - variant: SchemaName
+    header:
+      descriptor_name: SchemaNameDescriptor
+      description: Specifies the human-readable name for this schema.
+      label: SchemaName
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: SchemaName
+    value_type_name: StringType(MapStringType)
+  - variant: TypeName
+    header:
+      descriptor_name: TypeNameDescriptor
+      description: Specifies the (internal) name for this type.
+      label: TypeName
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: TypeName
+    value_type_name: StringType(MapStringType)
+  - variant: VariantName
+    header:
+      descriptor_name: VariantNameDescriptor
+      description: Specifies the (internal) name for this Variant.
+      label: VariantName
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: VariantName
+    value_type_name: StringType(MapStringType)
+  - variant: VariantOrder
+    header:
+      descriptor_name: VariantOrderDescriptor
+      description: Specifies the ordering (e.g., for sorting or salience purposes) for
+        this specific variant relative to other variants in this enum.
+      label: VariantOrder
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: VariantOrder
+    value_type_name: IntegerType(MapIntegerType)
+  - variant: Version
+    header:
+      descriptor_name: VersionDescriptor
+      description: Specifies the semantic version of this type descriptor.
+      label: Version
+      is_dependent: true
+      is_value_type: true
+      described_by: null
+      is_subtype_of: null
+      owned_by: null
+    property_name: Version
+    value_type_name: StringType(SemanticVersionType)

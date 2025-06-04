@@ -1,0 +1,18 @@
+type_kind: EnumVariant
+variants:
+  - variant: TypeKindHolon
+  - variant: TypeKindCollection
+  - variant: TypeKindProperty
+  - variant: TypeKindRelationship
+  - variant: TypeKindEnumVariant
+  - variant: TypeKindValueBoolean
+  - variant: TypeKindValueEnum
+  - variant: TypeKindValueInteger
+  - variant: TypeKindValueString
+  - variant: TypeKindValueBooleanArray
+  - variant: TypeKindValueEnumArray
+  - variant: TypeKindValueIntegerArray
+  - variant: TypeKindValueStringArray
+  - variant: DeletionSemanticAllow
+  - variant: DeletionSemanticBlock
+  - variant: DeletionSemanticCascade

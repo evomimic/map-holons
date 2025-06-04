@@ -1,0 +1,21 @@
+{
+  "variant": "HolonSpaceType",
+  "header": {
+    "descriptor_name": "HolonSpaceTypeDescriptor",
+    "description": "Describes the purpose and noteworthy aspects of this HolonSpace",
+    "label": "HolonSpaceType",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "properties": [
+    "Name",
+    "Description"
+  ],
+  "key_properties": [
+    "Name"
+  ],
+  "source_for": []
+}

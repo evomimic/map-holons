@@ -1,0 +1,20 @@
+{
+  "variant": "ValueType",
+  "header": {
+    "descriptor_name": "ValueTypeDescriptor",
+    "description": "Describes the built-in TypeDescriptor type. This type specifies values for the common characteristics shared by all types.",
+    "label": "ValueType",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "properties": [
+    "DescriptorName"
+  ],
+  "key_properties": [
+    "DescriptorName"
+  ],
+  "source_for": []
+}

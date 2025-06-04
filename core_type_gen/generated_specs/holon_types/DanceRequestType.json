@@ -1,0 +1,20 @@
+{
+  "variant": "DanceRequestType",
+  "header": {
+    "descriptor_name": "DanceRequestTypeDescriptor",
+    "description": "Describes the built-in DanceRequest type. This type specifies values all dance request types.",
+    "label": "DanceRequestType",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "properties": [
+    "DescriptorName"
+  ],
+  "key_properties": [
+    "DescriptorName"
+  ],
+  "source_for": []
+}
