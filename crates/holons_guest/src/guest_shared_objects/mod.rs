@@ -1,6 +1,5 @@
 pub mod commit_functions;
 pub mod holon_service;
-// pub mod property_map;
 pub mod guest_holon_service;
 pub mod smartlink_adapter;
 

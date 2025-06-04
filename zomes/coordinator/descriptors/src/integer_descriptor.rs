@@ -1,8 +1,9 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::stage_new_holon_api;
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 use shared_types_holon::value_types::{BaseType, BaseValue, MapInteger, MapString, ValueType};
 use shared_types_holon::PropertyName;
@@ -32,7 +33,7 @@ pub fn define_integer_type(
         definition.header.clone(),
     )?;
 
-    let mut integer_type = Holon::new();
+    let mut integer_type = TransientHolon::new();
 
     // Add its properties
 

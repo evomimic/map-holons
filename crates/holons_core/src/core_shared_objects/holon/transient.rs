@@ -5,10 +5,12 @@
 // use crate::state::AccessType;
 // use crate::identifier::TemporaryId;
 
-use serde::{Deserialize, Serialize};
-use shared_types_holon::{LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
+use std::rc::Rc;
 
-use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, TransientRelationshipMap}, HolonError};
+use serde::{Deserialize, Serialize};
+use shared_types_holon::{BaseValue, HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
+
+use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship, TransientRelationshipMap}, HolonCollection, HolonError, RelationshipName};
 
 use super::{holon_utils::EssentialHolonContent, state::{AccessType, HolonState, ValidationState}, HolonBehavior};
 
@@ -42,10 +44,11 @@ impl TransientHolon {
             validation_state: ValidationState::ValidationRequired,
             temporary_id: None,
             property_map: PropertyMap::new(),
-            transient_relationships: TransientRelationshipMap::new(),
+            transient_relationships: TransientRelationshipMap::new_empty(),
             original_id: None,
         }
     }
+
 
     /// Creates a new, immutable `TransientHolon`.
     ///
@@ -57,7 +60,7 @@ impl TransientHolon {
             validation_state: ValidationState::ValidationRequired,
             temporary_id: None,
             property_map: PropertyMap::new(),
-            transient_relationships: TransientRelationshipMap::new(),
+            transient_relationships: TransientRelationshipMap::new_empty(),
             original_id: None,
         }
     }
@@ -73,9 +76,36 @@ impl TransientHolon {
         self.holon_state = HolonState::Immutable;
     }
 
-    pub fn update_relationship_map(&mut self, map: TransientRelationshipMap) {
+    pub fn update_relationship_map(&mut self, map: TransientRelationshipMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.transient_relationships = map;
+        Ok(())
     }
+
+    pub fn with_property_value(
+          &mut self,
+          property: PropertyName,
+          value: Option<BaseValue>,
+    ) -> Result<&mut Self, HolonError> {
+            self.is_accessible(AccessType::Write)?;
+            self.property_map.insert(property, value);
+            
+
+            Ok(self)
+      }
+
+    // =====================
+    //    DATA ACCESSORS
+    // =====================
+
+      fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
+    }
+    
 
 }
 
@@ -87,7 +117,7 @@ impl HolonBehavior for TransientHolon {
     //    DATA ACCESSORS
     // ====================
 
-    // /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit. ***
+    /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit.
     fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
         
         let mut holon = TransientHolon::new();
@@ -128,14 +158,6 @@ impl HolonBehavior for TransientHolon {
         }
     }
 
-    /// Retrieves the unique versioned_key (key property value + versioned suffix).
-    ///
-    /// # Semantics
-    /// - 
-    /// - Returns error if the Holon does not have a key, since that is required for this function call.
-    ///
-    /// # Errors
-    /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn get_versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
             .get_key()?
@@ -150,13 +172,17 @@ impl HolonBehavior for TransientHolon {
     }
 
     /// Retrieves the `original_id`, if present.
-    fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
-        Ok(self.original_id.clone())
+    fn get_original_id(&self) -> Option<LocalId> {
+        self.original_id.clone()
     }
 
     /// Retrieves the specified property value.
     fn get_property_value(&self, property_name: &PropertyName) -> Result<Option<PropertyValue>, HolonError> {
         Ok(self.property_map.get(property_name).cloned().flatten())
+    }
+
+    fn into_node(&self) -> HolonNode {
+        HolonNode::new(self.original_id.clone(), self.property_map.clone())
     }
 
     // =========================
@@ -191,16 +217,22 @@ impl HolonBehavior for TransientHolon {
     //     MUTATORS
     // =================
 
-    fn increment_version(&mut self) {
+    fn increment_version(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.version.0 += 1;
+        Ok(())
     }
 
-    fn update_original_id(&mut self, id: Option<LocalId>) {
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.original_id = id;
+        Ok(())
     }
 
-    fn update_property_map(&mut self, map: PropertyMap) {
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.property_map = map;
+        Ok(())
     }
 
     // =======================
@@ -244,5 +276,128 @@ impl HolonBehavior for TransientHolon {
             "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
             key, local_id, self.holon_state, self.validation_state
         )
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+
+    use std::collections::BTreeMap;
+
+    use shared_types_holon::{MapBoolean, MapEnumValue};
+
+    use super::*;
+
+    #[test]
+    fn instantiate_and_modify() {
+        // Initialize default Holon
+        let mut initial_holon = TransientHolon::new();
+         let expected_holon = 
+        TransientHolon {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: BTreeMap::new(),
+            transient_relationships: TransientRelationshipMap { map: BTreeMap::new() },
+            original_id: None,
+        };
+
+        assert_eq!(initial_holon, expected_holon);
+
+        // Create example PropertyMap and modify Holon with its update
+        let mut property_map = BTreeMap::new();
+        let string_property_name = PropertyName(MapString("string property".to_string()));
+        let string_value = Some(BaseValue::StringValue(MapString("string_value".to_string())));
+        property_map.insert(string_property_name, string_value);
+        let boolean_property_name = PropertyName(MapString("boolean property".to_string()));
+        let boolean_value = Some(BaseValue::BooleanValue(MapBoolean(true)));
+        property_map.insert(boolean_property_name, boolean_value);
+        let integer_property_name = PropertyName(MapString("integer property".to_string()));
+        let integer_value = Some(BaseValue::IntegerValue(MapInteger(1000)));
+        property_map.insert(integer_property_name, integer_value);
+        let enum_property_name = PropertyName(MapString("enum property".to_string()));
+        let enum_value = Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
+        property_map.insert(enum_property_name, enum_value);
+
+        initial_holon.update_property_map(property_map.clone()).unwrap();
+
+        assert_eq!(initial_holon.property_map, property_map);
+
+    }
+
+    #[test]
+    fn property_management() {
+        let mut holon = TransientHolon::new();
+        let property_name = PropertyName(MapString("first property".to_string()));
+        // Add a value to the property map
+        let initial_value = BaseValue::IntegerValue(MapInteger(1));
+        holon.with_property_value(property_name.clone(), Some(initial_value.clone()));
+        assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(initial_value));
+        // Update value with the same property name
+        let changed_value = BaseValue::StringValue(MapString("changed value".to_string()));
+        holon.with_property_value(property_name.clone(), Some(changed_value.clone()));
+        assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(changed_value));
+        // Remove value by updating to None
+        holon.with_property_value(property_name.clone(), None);
+        assert_eq!(holon.get_property_value(&property_name).unwrap(), None);
+    }
+
+    // #[test]
+    // fn relationship_management() {
+    //     let mut holon = TransientHolon::new();
+    //     let relationship_name = RelationshipName(MapString("first relationship".to_string()));
+    //     // let first_collection = HolonCollection::new_existing();
+    //     //
+
+    //     // // Add a relationship to the relationship map
+    //     // holon.add_related_holon(relationship_name.clone(), Some(initial_value));
+    //     // assert_eq!();
+    //     // // Update relationship value for the same relationship name
+    //     // let changed_collection = BaseValue::StringValue(MapString("changed value".to_string()));
+    //     // holon.remove_related_holon();
+    //     // assert_eq!();
+
+    //     // TODO: remove relationship
+    // }
+
+    // #[test]
+    // fn () {
+
+    // }
+
+    #[test]
+    fn try_modify_immutable_transient_holon() {
+        let mut holon = TransientHolon::new_immutable();
+
+        assert_eq!(holon.update_relationship_map(TransientRelationshipMap::new_empty()), Err(HolonError::NotAccessible(
+                        format!("{:?}", AccessType::Write),
+                        "Immutable TransientHolon".to_string(),
+                    )));
+        assert_eq!(holon.update_original_id(None), Err(HolonError::NotAccessible(
+                        format!("{:?}", AccessType::Write),
+                        "Immutable TransientHolon".to_string(),
+                    )));
+    }
+
+
+    #[test]
+    fn verify_default_values() {
+        let default_holon = TransientHolon::new();
+         let expected_holon = 
+        TransientHolon {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: BTreeMap::new(),
+            transient_relationships: TransientRelationshipMap::new_empty(),
+            original_id: None,
+        };
+
+        assert_eq!(default_holon, expected_holon);
+
     }
 }

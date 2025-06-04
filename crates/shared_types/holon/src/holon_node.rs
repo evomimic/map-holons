@@ -29,12 +29,24 @@ pub struct HolonNode {
     pub property_map: PropertyMap,
 }
 
+
+
 // ===============================
 // 🆔 Identifier Types
 // ===============================
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct LocalId(pub ActionHash);
+
+impl LocalId {
+    // pub fn from_bytes(bytes: [u8; 32]) -> Self {
+    //     LocalId(bytes)
+    // }
+
+    pub fn into_inner_bytes(&self) -> Vec<u8> {
+        self.0.clone().into_inner()
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OutboundProxyId(pub ActionHash);

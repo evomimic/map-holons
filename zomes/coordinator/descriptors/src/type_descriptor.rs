@@ -4,8 +4,9 @@ use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, Owned
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::semantic_version::SemanticVersion;
 use hdk::prelude::{debug, info};
+use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::stage_new_holon_api;
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
@@ -50,7 +51,7 @@ pub fn define_type_descriptor(
     info!("Staging... {:#?}", definition.descriptor_name.clone());
 
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
-    let mut descriptor = Holon::new();
+    let mut descriptor = TransientHolon::new();
 
     // Define a default semantic_version as a String Property
     let initial_version = MapString(SemanticVersion::default().to_string());

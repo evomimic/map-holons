@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
+use shared_types_holon::LocalId;
 use std::fmt;
 
 use crate::HolonError;
 
-use super::saved_holon_node::SavedHolonNode;
 
 #[derive(Debug)]
 pub enum AccessType {
@@ -75,7 +75,7 @@ pub enum StagedState {
     /// A Holon that was staged and intentionally abandoned (will not be committed).
     Abandoned,
     /// A Holon that has been successfully committed.
-    Committed(SavedHolonNode),
+    Committed(LocalId),
     /// A new Holon that has never been committed before.
     ForCreate,
     /// A Holon cloned from the persistent store for potential modification,
@@ -89,7 +89,7 @@ impl fmt::Display for StagedState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             StagedState::Abandoned => write!(f, "Abandoned"),
-            StagedState::Committed(node) => write!(f, "Committed: {:?}", node),
+            StagedState::Committed(saved_id) => write!(f, "Committed: {:?}", saved_id),
             StagedState::ForCreate => write!(f, "ForCreate"),
             StagedState::ForUpdate => write!(f, "ForUpdate"),
             StagedState::ForUpdateChanged => write!(f, "ForUpdateChanged"),

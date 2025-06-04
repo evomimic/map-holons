@@ -2,7 +2,6 @@ pub mod behavior;
 pub mod holon_enum;
 pub mod holon_utils;
 pub mod saved;
-pub mod saved_holon_node;
 pub mod staged;
 pub mod state;
 pub mod transient;

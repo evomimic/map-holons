@@ -1,16 +1,12 @@
-
 use crate::core_shared_objects::HolonError;
 
 use hdk::prelude::*;
 use shared_types_holon::holon_node::{PropertyName, PropertyValue};
-use shared_types_holon::{LocalId, MapString, PropertyMap};
+use shared_types_holon::{HolonNode, LocalId, MapString, PropertyMap};
 
 use super::holon_utils::EssentialHolonContent;
-use super::saved_holon_node::SavedHolonNode;
 use super::state::AccessType;
 use super::{HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
-
-
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,35 +25,35 @@ impl Holon {
         Holon::Transient(TransientHolon::new())
     }
 
-    // /// Retrieves 
-    // pub fn get_related_holons(&self, relationship: RelationshipName) -> Rc<HolonCollection> {
-    //     match self {
-    //         Self::Transient(h) => h.get_related_holons(relationship),
-    //         Self::Staged(h) => h.get_related_holons(relationship),
-    //         Self::Saved(h) => h.get_related_holons(relationship),
-    //     }
-    // }
-
-    /// Marks a `StagedHolon` as `Committed`,
-    pub fn to_committed(self, saved_node: SavedHolonNode) -> Result<Self, HolonError> {
+    /// Gets inner StagedHolon object for Staged variant
+    pub fn into_staged(self) -> Result<StagedHolon, HolonError> {
         match self {
-            Holon::Staged(mut staged) => {
-                staged.to_committed(saved_node)?;
-                Ok(Holon::Staged(staged))
+            Holon::Staged(staged_holon) => {
+                Ok(staged_holon)
             }
             _ => Err(HolonError::InvalidTransition(
-                "Only StagedHolons can transition to Committed".to_string(),
+                "Holon variant must be Staged".to_string(),
             )),
         }
     }
 
+    /// Gets inner TransientHolon object for Transient variant
+    pub fn into_transient(self) -> Result<TransientHolon, HolonError> {
+        match self {
+            Holon::Transient(transient_holon) => {
+                Ok(transient_holon)
+            }
+            _ => Err(HolonError::InvalidTransition(
+                "Holon variant must be Transient".to_string(),
+            )),
+        }
+    }
 }
 
 // ================================
 //   HOLONBEHAVIOR IMPLEMENTATION
 // ================================
 impl HolonBehavior for Holon {
-
     // ====================
     //    DATA ACCESSORS
     // ====================
@@ -94,7 +90,7 @@ impl HolonBehavior for Holon {
         }
     }
 
-    fn get_original_id(&self) -> Result<Option<LocalId>, HolonError> {
+    fn get_original_id(&self) -> Option<LocalId> {
         match self {
             Holon::Transient(h) => h.get_original_id(),
             Holon::Staged(h) => h.get_original_id(),
@@ -102,7 +98,10 @@ impl HolonBehavior for Holon {
         }
     }
 
-    fn get_property_value(&self, property_name: &PropertyName) -> Result<Option<PropertyValue>, HolonError> {
+    fn get_property_value(
+        &self,
+        property_name: &PropertyName,
+    ) -> Result<Option<PropertyValue>, HolonError> {
         match self {
             Holon::Transient(h) => h.get_property_value(property_name),
             Holon::Staged(h) => h.get_property_value(property_name),
@@ -116,7 +115,14 @@ impl HolonBehavior for Holon {
             Holon::Staged(h) => h.get_versioned_key(),
             Holon::Saved(h) => h.get_versioned_key(),
         }
-                
+    }
+
+    fn into_node(&self) -> HolonNode {
+        match self {
+            Holon::Transient(h) => h.into_node(),
+            Holon::Staged(h) => h.into_node(),
+            Holon::Saved(h) => h.into_node(),
+        }
     }
 
     // =================
@@ -124,7 +130,7 @@ impl HolonBehavior for Holon {
     // =================
 
     /// Updates the Holon's original id.
-    fn update_original_id(&mut self, id: Option<LocalId>) {
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
         match self {
             Holon::Transient(h) => h.update_original_id(id),
             Holon::Staged(h) => h.update_original_id(id),
@@ -133,7 +139,7 @@ impl HolonBehavior for Holon {
     }
 
     /// Updates the Holon's PropertyMap.
-    fn update_property_map(&mut self, map: PropertyMap) {
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
         match self {
             Holon::Transient(h) => h.update_property_map(map),
             Holon::Staged(h) => h.update_property_map(map),
@@ -141,7 +147,7 @@ impl HolonBehavior for Holon {
         }
     }
 
-    fn increment_version(&mut self) {
+    fn increment_version(&mut self) -> Result<(), HolonError> {
         match self {
             Holon::Transient(h) => h.increment_version(),
             Holon::Staged(h) => h.increment_version(),
@@ -173,7 +179,6 @@ impl HolonBehavior for Holon {
         }
     }
 
-
     // ===============
     //     HELPERS
     // ===============
@@ -187,7 +192,6 @@ impl HolonBehavior for Holon {
     }
 }
 
-
 // impl Holon {
 //     // CONSTRUCTORS //
 
@@ -198,7 +202,7 @@ impl HolonBehavior for Holon {
 //             state: HolonState::New,
 //             validation_state: ValidationState::NoDescriptor,
 //             original_id: None,
-//             saved_node: None,
+//             record: None,
 //             property_map: PropertyMap::new(),
 //             staged_relationship_map: StagedRelationshipMap::new(),
 //             errors: Vec::new(),
@@ -231,21 +235,21 @@ impl HolonBehavior for Holon {
 //         Ok(())
 //     }
 
-    // /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit.
-    // pub fn clone_holon(&self) -> Result<Holon, HolonError> {
-    //     let mut holon = Holon::new();
+// /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit.
+// pub fn clone_holon(&self) -> Result<Holon, HolonError> {
+//     let mut holon = Holon::new();
 
-    //     // Retain the saved_node Option
-    //     holon.saved_node = self.saved_node.clone();
+//     // Retain the record Option
+//     holon.record = self.record.clone();
 
-    //     // Copy the existing holon's PropertyMap into the new Holon
-    //     holon.property_map = self.property_map.clone();
+//     // Copy the existing holon's PropertyMap into the new Holon
+//     holon.property_map = self.property_map.clone();
 
-    //     // Update in place each relationship's HolonCollection State to Staged
-    //     holon.staged_relationship_map = self.staged_relationship_map.clone_for_new_source()?;
+//     // Update in place each relationship's HolonCollection State to Staged
+//     holon.staged_relationship_map = self.staged_relationship_map.clone_for_new_source()?;
 
-    //     Ok(holon)
-    // }
+//     Ok(holon)
+// }
 
 //     #[deprecated]
 //     pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
@@ -302,8 +306,6 @@ impl HolonBehavior for Holon {
 
 //     // NOTE: Holon does NOT  implement HolonReadable Trait because the functions defined by that
 //     // Trait include a context parameter.
-
-    
 
 //     pub fn get_property_value(
 //         &self,
@@ -583,7 +585,7 @@ impl HolonBehavior for Holon {
 //             state: HolonState::Fetched,
 //             validation_state: ValidationState::Validated,
 //             original_id,
-//             saved_node: Some(holon_node_record),
+//             record: Some(holon_node_record),
 //             property_map: holon_node.property_map,
 //             staged_relationship_map: StagedRelationshipMap::new(),
 //             errors: Vec::new(),
@@ -619,12 +621,5 @@ impl HolonBehavior for Holon {
 //             _ => {}
 //         }
 //         Ok(self)
-//     }
-// }
-// fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
-//     match record.entry() {
-//         RecordEntry::Present(entry) => HolonNode::try_from(entry.clone())
-//             .or(Err(HolonError::RecordConversion("HolonNode".to_string()))),
-//         _ => Err(HolonError::RecordConversion("Record does not have an entry".to_string())),
 //     }
 // }

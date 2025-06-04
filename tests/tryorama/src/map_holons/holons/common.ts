@@ -6,7 +6,7 @@ export function createHolon(props:PropertyMap):Holon {
     return {
         state: { New: null },
         validation_state: { NoDescriptor: null },
-        //saved_node: null,
+        //record: null,
         //predecessor: null,
         property_map: props,
         relationship_map: {},

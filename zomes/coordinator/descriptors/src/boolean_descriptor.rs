@@ -1,11 +1,12 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
+use holons_core::core_shared_objects::holon::TransientHolon;
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 use holons_core::holon_operations_api::*;
 use holons_core::{
-    Holon, HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+    HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
 use shared_types_holon::value_types::{BaseType, ValueType};
 use shared_types_holon::{BaseValue, MapString, PropertyName};
@@ -34,7 +35,7 @@ pub fn define_boolean_type(
 
     // Build the new type
 
-    let mut boolean_type = Holon::new();
+    let mut boolean_type = TransientHolon::new();
 
     // Add its properties
 

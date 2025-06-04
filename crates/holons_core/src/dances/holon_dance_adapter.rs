@@ -105,7 +105,7 @@ pub fn commit_dance(
     let commit_response = commit_api(context)?;
 
     match commit_response.status {
-        CommitRequestStatus::Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
+        CommitRequestStatus::Complete => Ok(ResponseBody::Holons(commit_response.saved_holons.iter().map(|h| Holon::Saved(h.clone())).collect())),
         CommitRequestStatus::Incomplete => {
             let completion_message = format!(
                 "{} of {:?} were successfully committed",

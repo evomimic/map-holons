@@ -17,6 +17,7 @@ Inflector = { workspace = true }
 quick_cache = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
 
 # Holochain Dependencies
 hdk = { workspace = true }

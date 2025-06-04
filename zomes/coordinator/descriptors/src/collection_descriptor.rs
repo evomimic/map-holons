@@ -1,5 +1,6 @@
 use hdi::prelude::debug;
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::holon::TransientHolon;
+use holons_core::core_shared_objects::HolonError;
 use holons_core::{
     HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
@@ -61,7 +62,7 @@ pub fn define_collection_type(
 
     let collection_type_name = generate_collection_type_name(context, &definition)?;
 
-    let mut collection_type = Holon::new();
+    let mut collection_type = TransientHolon::new();
 
     debug!("{:#?}", collection_type.clone());
     // Add its properties

@@ -1,12 +1,12 @@
 //
-use crate::persistence_layer::{
+use crate::{try_from_record, persistence_layer::{
     create_path_to_holon_node, delete_holon_node, get_all_holon_nodes, get_holon_node_by_path,
     CreatePathInput, GetPathInput,
-};
+}};
 use hdi::prelude::{ActionHash, Path};
 use hdk::entry::get;
 use hdk::prelude::GetOptions;
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::{holon::Holon, HolonError};
 use holons_integrity::LinkTypes;
 use shared_types_holon::LocalId;
 //Stateless HDI service to bridge Holon and HolonNode
@@ -31,8 +31,8 @@ pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
     let record = get(id.0.clone(), GetOptions::default())
         .map_err(|e| HolonError::from(e))?
         .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
-    let mut holon = Holon::try_from_node(record)?;
-    holon.is_deletable()?;
+    let mut holon = try_from_record(record)?;
+    // holon.is_deletable()?;
     delete_holon_node(id.0).map_err(|e| HolonError::from(e))
 }
 ///  ------ QUERIES ------
@@ -44,7 +44,7 @@ pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
         Ok(records) => {
             let mut holons = Vec::<Holon>::new();
             for holon_node_record in records.clone() {
-                let holon = Holon::try_from_node(holon_node_record.clone())?;
+                let holon = try_from_record(holon_node_record.clone())?;
                 holons.push(holon);
             }
             Ok(holons)
@@ -63,7 +63,7 @@ pub fn get_holon_by_path(
     match result {
         Ok(result) => {
             if let Some(record) = result {
-                return Ok(Some(Holon::try_from_node(record)?));
+                return Ok(Some(try_from_record(record)?));
             }
             Ok(None)
         }

@@ -1,7 +1,8 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use hdi::prelude::debug;
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::holon::TransientHolon;
+use holons_core::core_shared_objects::HolonError;
 use holons_core::holon_operations_api::*;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 use shared_types_holon::{BaseType, BaseValue, MapString, PropertyName};
@@ -35,7 +36,7 @@ pub fn define_property_type(
         define_type_descriptor(context, schema, BaseType::Property, definition.header)?;
 
     // Build the PropertyType
-    let mut property_type = Holon::new();
+    let mut property_type = TransientHolon::new();
 
     // Add properties
 

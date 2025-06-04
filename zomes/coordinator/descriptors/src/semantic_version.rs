@@ -2,7 +2,8 @@ use derive_new::new;
 
 use hdk::prelude::*;
 
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::holon::TransientHolon;
+use holons_core::core_shared_objects::{holon::Holon, HolonError};
 use shared_types_holon::holon_node::PropertyName;
 use shared_types_holon::value_types::{BaseValue, MapInteger, MapString};
 
@@ -28,7 +29,7 @@ impl SemanticVersion {
 #[allow(dead_code)]
 pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon, HolonError> {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
-    let mut version = Holon::new();
+    let mut version = TransientHolon::new();
 
     // ----------------  USE THE INTERNAL HOLONS API TO ADD TYPE_HEADER PROPERTIES -----------------
     version
@@ -45,7 +46,7 @@ pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon,
             Some(BaseValue::IntegerValue(MapInteger(patch))),
         )?;
 
-    Ok(version)
+    Ok(Holon::Transient(version))
 }
 
 // TODO: Implement and debug the following function

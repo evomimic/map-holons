@@ -121,6 +121,7 @@ impl HolonReadable for HolonReference {
             }
         }
     }
+
 }
 
 /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.

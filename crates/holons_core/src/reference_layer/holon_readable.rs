@@ -56,7 +56,6 @@ pub trait HolonReadable {
     /// # Notes
     /// - The method ensures that the returned `HolonCollection` is never `None`; it is guaranteed to
     ///   contain either related holons or be empty.
-
     fn get_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,

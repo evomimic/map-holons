@@ -2,18 +2,27 @@ use crate::guest_shared_objects::{
     commit_functions, create_local_path, get_holon_by_path, get_relationship_links,
 };
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
+use crate::try_from_record;
 use hdk::prelude::*;
 
-use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use holons_core::core_shared_objects::{
-    AccessType, CommitResponse, Holon, HolonCollection, HolonError, HolonState, NurseryAccess,
-    RelationshipName, StagedRelationshipMap,
-};
-use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
+use holons_core::core_shared_objects::holon::SavedHolon;
+use holons_core::core_shared_objects::TransientRelationshipMap;
 use holons_core::{
-    HolonCollectionApi, HolonReadable, HolonReference, HolonWritable, SmartReference,
-    StagedReference,
+    core_shared_objects::{
+        holon::{
+            state::{AccessType, HolonState},
+            Holon, HolonBehavior, TransientHolon,
+        },
+        nursery_access_internal::NurseryAccessInternal,
+        CommitResponse, HolonCollection, HolonError, NurseryAccess, RelationshipName,
+        StagedRelationshipMap,
+    },
+    reference_layer::{
+        HolonCollectionApi, HolonReadable, HolonReference, HolonServiceApi, HolonWritable,
+        HolonsContextBehavior, SmartReference, StagedReference,
+    },
 };
+
 use holons_integrity::LinkTypes;
 use shared_types_holon::{
     BaseValue, HolonId, LocalId, MapString, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION,
@@ -52,17 +61,63 @@ impl GuestHolonService {
             "GuestHolonService does not have internal nursery access.".to_string(),
         ))
     }
-    /// A private helper method for populating a StagedRelationshipMap for a newly staged Holon by cloning all existing relationships from a persisted Holon.
+    // /// A private helper method for populating a StagedRelationshipMap for a newly staged Holon by cloning all existing relationships from a persisted Holon.
+    // ///
+    // /// Populates a full StagedRelationshipMap by retrieving all SmartLinks for which this holon is the
+    // /// source. The map returned will ONLY contain entries for relationships that have at least
+    // /// one related holon (i.e., none of the holon collections returned via the result map will have
+    // /// zero members).
+    // fn clone_existing_relationships_into_staged_map(
+    //     &self,
+    //     context: &dyn HolonsContextBehavior,
+    //     original_holon: HolonId,
+    // ) -> Result<StagedRelationshipMap, HolonError> {
+    //     debug!("Loading all relationships...");
+    //     let mut relationship_map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>> =
+    //         BTreeMap::new();
+
+    //     let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
+
+    //     let smartlinks = get_all_relationship_links(original_holon.local_id())
+    //         .map_err(|e| HolonError::InvalidParameter(e.to_string()))?;
+    //     debug!("Retrieved {:?} smartlinks", smartlinks.len());
+
+    //     for smartlink in smartlinks {
+    //         let reference = smartlink.to_holon_reference();
+
+    //         // The following:
+    //         // 1) adds an entry for relationship name if not already present (via `entry` API)
+    //         // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+    //         // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+    //         reference_map
+    //             .entry(smartlink.relationship_name)
+    //             .or_insert_with(Vec::new)
+    //             .push(reference);
+    //     }
+
+    //     // Populate relationship_map
+
+    //     for (map_name, holons) in reference_map {
+    //         let mut collection = HolonCollection::new_existing();
+    //         collection.add_references(context, holons)?;
+    //         relationship_map.insert(map_name, Rc::new(RefCell::new(collection)));
+    //     }
+
+    //     Ok(StagedRelationshipMap { map: relationship_map })
+    // }
+
+    /// A private helper method for populating a TransientRelationshipMap for a TransientHolon by cloning all existing relationships from a persisted Holon.
     ///
-    /// Populates a full StagedRelationshipMap by retrieving all SmartLinks for which this holon is the
+    /// Populates a full TransientRelationshipMap by retrieving all SmartLinks for which this holon is the
     /// source. The map returned will ONLY contain entries for relationships that have at least
     /// one related holon (i.e., none of the holon collections returned via the result map will have
     /// zero members).
-    fn clone_existing_relationships_into_staged_map(
+    fn clone_existing_relationships_into_transient_map(
         &self,
         context: &dyn HolonsContextBehavior,
         original_holon: HolonId,
-    ) -> Result<StagedRelationshipMap, HolonError> {
+    ) -> Result<TransientRelationshipMap, HolonError> {
         debug!("Loading all relationships...");
         let mut relationship_map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>> =
             BTreeMap::new();
@@ -90,12 +145,12 @@ impl GuestHolonService {
         // Populate relationship_map
 
         for (map_name, holons) in reference_map {
-            let mut collection = HolonCollection::new_existing();
+            let mut collection = HolonCollection::new_transient();
             collection.add_references(context, holons)?;
             relationship_map.insert(map_name, Rc::new(RefCell::new(collection)));
         }
 
-        Ok(StagedRelationshipMap { map: relationship_map })
+        Ok(TransientRelationshipMap::new(relationship_map))
     }
 
     /// Helper function to create a new Local Space Holon (including its Path) in the DHT
@@ -114,7 +169,7 @@ impl GuestHolonService {
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
         // Create a new Holon and set its name and description
-        let mut space_holon = Holon::new();
+        let mut space_holon = TransientHolon::new();
         space_holon
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
@@ -128,21 +183,12 @@ impl GuestHolonService {
                 PropertyName(MapString("description".to_string())),
                 Some(description.into_base_value()),
             )?;
-
+        let space_holon_node = space_holon.clone().into_node();
+        
         // Try to create the holon node in the DHT
-        let result = create_holon_node(space_holon.clone().into_node());
+        let holon_record = create_holon_node(space_holon_node.clone()).map_err(|e| HolonError::from(e))?;
 
-        match result {
-            Ok(record) => {
-                // If successful, update the holon state and saved node
-                space_holon.state = HolonState::Saved;
-                space_holon.saved_node = Some(record);
-            }
-            Err(error) => {
-                // If there’s an error, return it as a HolonError
-                return Err(HolonError::from(error));
-            }
-        }
+        let saved_holon = try_from_record(holon_record)?;
 
         // Retrieve the local ID for the holon
         let local_id = space_holon.get_local_id()?;
@@ -158,7 +204,7 @@ impl GuestHolonService {
         )?;
 
         // Return the created holon
-        Ok(space_holon)
+        Ok(saved_holon)
     }
 
     /// "Guard" function that confirms the HolonId is a LocalId and, if not, returns an
@@ -252,8 +298,8 @@ impl HolonServiceApi for GuestHolonService {
         let record = get(local_id.0.clone(), GetOptions::default())
             .map_err(HolonError::from)?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
-        let mut holon = Holon::try_from_node(record)?;
-        holon.is_deletable()?;
+        let mut holon = try_from_record(record)?;
+        // holon.is_deletable()?;
         delete_holon_node(local_id.0.clone())
             .map(|_| ()) // Convert ActionHash to ()
             .map_err(HolonError::from)
@@ -267,9 +313,9 @@ impl HolonServiceApi for GuestHolonService {
         // Retrieve the exact HolonNode for the specific ActionHash.
         // DISCLAIMER: The name of this scaffolded function is misleading... it does not 'walk the tree' to get the original record.
         // keeping the terminology per policy not to change scaffolded code.
-        let holon_node_record = get_original_holon_node(local_id.0.clone())?; 
-        if let Some(node) = holon_node_record {
-            let holon = Holon::try_from_node(node)?;
+        let holon_node_record = get_original_holon_node(local_id.0.clone())?;
+        if let Some(record) = holon_node_record {
+            let holon = try_from_record(record)?;
             Ok(holon)
         } else {
             // No holon_node fetched for the specified holon_id
@@ -330,15 +376,17 @@ impl HolonServiceApi for GuestHolonService {
             Some(BaseValue::StringValue(new_key)),
         )?;
 
+        // Reset the OriginalId to None
+        cloned_holon.update_original_id(None);
+
         match original_holon {
-            HolonReference::Staged(_) => {}
-            HolonReference::Smart(_) => {
-                cloned_holon.staged_relationship_map = self
-                    .clone_existing_relationships_into_staged_map(
-                        context,
-                        original_holon.get_holon_id(context)?,
-                    )?
-            }
+            HolonReference::Staged(_) => {},
+            HolonReference::Smart(_) => cloned_holon.update_relationship_map(
+                self.clone_existing_relationships_into_transient_map(
+                    context,
+                    original_holon.get_holon_id(context)?,
+                )?,
+            )?,
         }
 
         let cloned_staged_reference =
@@ -362,10 +410,12 @@ impl HolonServiceApi for GuestHolonService {
 
         let mut cloned_holon = original_holon.clone_holon(context)?;
 
-        cloned_holon.staged_relationship_map = self.clone_existing_relationships_into_staged_map(
-            context,
-            original_holon.get_holon_id(context)?,
-        )?;
+        cloned_holon.update_relationship_map(
+            self.clone_existing_relationships_into_transient_map(
+                context,
+                original_holon.get_holon_id(context)?,
+            )?,
+        );
 
         let cloned_staged_reference =
             self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;

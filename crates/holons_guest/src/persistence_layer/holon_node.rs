@@ -2,6 +2,7 @@ use hdk::prelude::*;
 use holons_integrity::*;
 use shared_types_holon::holon_node::HolonNode;
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreatePathInput {
     pub path: Path,

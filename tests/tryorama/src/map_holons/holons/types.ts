@@ -155,7 +155,7 @@ export type DanceResponseObject = {
 export type Holon = {
     state: { New: null },
     validation_state: { NoDescriptor: null },
-    //saved_node: null,
+    //record: null,
     //predecessor: null,
     property_map: PropertyMap,
     relationship_map: {},
