@@ -7,7 +7,9 @@ use tracing::{error, info, warn};
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
-use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{
+    holon::Holon, HolonCollection, HolonError, RelationshipName,
+};
 
 use crate::shared_test::setup_book_author_steps_with_context;
 use crate::shared_test::test_add_related_holon::execute_add_related_holons;

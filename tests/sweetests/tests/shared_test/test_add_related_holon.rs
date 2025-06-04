@@ -7,7 +7,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::mock_conductor::MockConductorConfig;
 use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dance_request;
-use holons_core::core_shared_objects::{Holon, RelationshipName};
+use holons_core::core_shared_objects::{holon::Holon, RelationshipName};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::StagedReference;
 use holons_core::{HolonReadable, HolonReference};

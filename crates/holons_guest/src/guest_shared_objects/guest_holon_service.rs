@@ -188,9 +188,10 @@ impl GuestHolonService {
                 Some(description.into_base_value()),
             )?;
         let space_holon_node = space_holon.clone().into_node();
-        
+
         // Try to create the holon node in the DHT
-        let holon_record = create_holon_node(space_holon_node.clone()).map_err(|e| HolonError::from(e))?;
+        let holon_record =
+            create_holon_node(space_holon_node.clone()).map_err(|e| HolonError::from(e))?;
 
         let saved_holon = try_from_record(holon_record)?;
 
@@ -381,10 +382,10 @@ impl HolonServiceApi for GuestHolonService {
         )?;
 
         // Reset the OriginalId to None
-        cloned_holon.update_original_id(None);
+        cloned_holon.update_original_id(None)?;
 
         match original_holon {
-            HolonReference::Staged(_) => {},
+            HolonReference::Staged(_) => {}
             HolonReference::Smart(_) => cloned_holon.update_relationship_map(
                 self.clone_existing_relationships_into_transient_map(
                     context,
@@ -419,7 +420,7 @@ impl HolonServiceApi for GuestHolonService {
                 context,
                 original_holon.get_holon_id(context)?,
             )?,
-        );
+        )?;
 
         let cloned_staged_reference =
             self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;

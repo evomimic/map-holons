@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 //use holochain::core::author_key_is_valid;
 
 use crate::shared_test::test_data_types::DancesTestCase;
-use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{holon::Holon, HolonCollection, HolonError, RelationshipName};
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
 use holons_core::HolonsContextBehavior;

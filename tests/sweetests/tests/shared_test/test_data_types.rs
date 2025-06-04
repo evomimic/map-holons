@@ -4,7 +4,7 @@ use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedRe
 
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
-use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
 use holons_core::dances::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
 use base_types::{MapInteger, MapString};
