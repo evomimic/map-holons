@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use shared_types_holon::{MapInteger, MapString, TemporaryId};
+use shared_types_holon::{MapString, TemporaryId};
 use uuid::Builder;
 
 pub fn create_temporary_id_from_key(key: &MapString) -> TemporaryId {

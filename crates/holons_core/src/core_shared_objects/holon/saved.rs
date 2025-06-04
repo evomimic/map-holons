@@ -64,10 +64,10 @@ impl HolonBehavior for SavedHolon {
         let mut holon = TransientHolon::new();
 
         // Retains the predecessor node, referenced by LocalId
-        holon.update_original_id(Some(self.get_local_id()?));
+        holon.update_original_id(Some(self.get_local_id()?))?;
 
         // Copy the existing holon's PropertyMap into the new Holon
-        holon.update_property_map(self.property_map.clone());
+        holon.update_property_map(self.property_map.clone())?;
 
         Ok(holon)
     }

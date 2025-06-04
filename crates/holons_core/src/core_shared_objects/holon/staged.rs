@@ -31,7 +31,7 @@ pub struct StagedHolon {
     property_map: PropertyMap,         // Self-describing property data
     staged_relationships: StagedRelationshipMap,
     original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
-    errors: Vec<HolonError>,
+    errors: Vec<HolonError>, // Populated during the commit process
 }
 
 // ==================================
@@ -99,8 +99,8 @@ impl StagedHolon {
         Ok(self.staged_relationships.clone())
     }
 
-    fn into_node(&self) -> HolonNode {
-        HolonNode::new(self.original_id.clone(), self.property_map.clone())
+    pub fn get_staged_state(&self) -> StagedState {
+        self.staged_state.clone()
     }
 
     // ==============
@@ -127,6 +127,15 @@ impl StagedHolon {
         }
     }
 
+    /// Adds an associated HolonError to the errors Vec.
+    /// 
+    /// Used to track all errors obtained during the multi-stage commit process.
+    pub fn add_error(&mut self, error: HolonError) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.errors.push(error);
+        Ok(())
+    }
+
     /// Marks the `StagedHolon` as `Changed`.
     ///
     /// This is used to transition a `ForUpdate` Holon that has been modified.
@@ -139,9 +148,20 @@ impl StagedHolon {
         Ok(())
     }
 
-    fn update_relationship_map(&mut self, map: StagedRelationshipMap) -> Result<(), HolonError> {
+    /// Marks the `StagedHolon` as `Committed` and assigns its saved `LocalId`.
+    ///
+    /// This assumes the Holon has already been persisted to the DHT.
+    pub fn to_committed(&mut self, saved_id: LocalId) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+
+        self.staged_state = StagedState::Committed(saved_id);
+        self.holon_state = HolonState::Immutable;
+        Ok(())
+    }
+
+    pub fn update_staged_state(&mut self, new_state: StagedState) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.staged_relationships = map;
+        self.staged_state = new_state;
         Ok(())
     }
 
@@ -173,13 +193,13 @@ impl HolonBehavior for StagedHolon {
         let mut holon = TransientHolon::new();
 
         // Retains the predecessor, reference as a LocalId
-        holon.update_original_id(self.original_id.clone());
+        holon.update_original_id(self.original_id.clone())?;
 
         // Copy the existing holon's PropertyMap into the new Holon
-        holon.update_property_map(self.property_map.clone());
+        holon.update_property_map(self.property_map.clone())?;
 
         // Update in place each relationship's HolonCollection State to Staged
-        holon.update_relationship_map(self.staged_relationships.clone_for_new_source()?);
+        holon.update_relationship_map(self.staged_relationships.clone_for_new_source()?)?;
 
         Ok(holon)
     }
@@ -401,14 +421,14 @@ mod tests {
         let property_name = PropertyName(MapString("first property".to_string()));
         // Add a value to the property map
         let initial_value = BaseValue::IntegerValue(MapInteger(1));
-        holon.with_property_value(property_name.clone(), Some(initial_value.clone()));
+        holon.with_property_value(property_name.clone(), Some(initial_value.clone())).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(initial_value));
         // Update value for the same property name
         let changed_value = BaseValue::StringValue(MapString("changed value".to_string()));
-        holon.with_property_value(property_name.clone(), Some(changed_value.clone()));
+        holon.with_property_value(property_name.clone(), Some(changed_value.clone())).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(changed_value));
         // Remove value by updating to None
-        holon.with_property_value(property_name.clone(), None);
+        holon.with_property_value(property_name.clone(), None).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), None);
     }
 

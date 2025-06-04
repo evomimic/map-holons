@@ -10,7 +10,7 @@ use crate::shared_test::*;
 use crate::shared_test::mock_conductor::MockConductorConfig;
 use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_request;
 use holons_core::dances::ResponseBody;
-use holons_core::utils::as_json;
+// use holons_core::utils::as_json;
 use rstest::*;
 use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
 use shared_types_holon::value_types::BaseValue;
@@ -52,7 +52,7 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
 
             info!("Key = {:?}", key.0);
             info!("{:?}", holon.summarize());
-            debug!("Holon JSON: {:?}", as_json(&holon));
+            // debug!("Holon JSON: {:?}", as_json(&holon));
         }
     } else {
         panic!("Expected get_all_holons to return Holons response, but got {:?}", response.body);

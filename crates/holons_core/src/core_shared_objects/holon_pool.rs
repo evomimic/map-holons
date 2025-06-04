@@ -171,7 +171,7 @@ impl HolonPool {
 
         // Check for existing, if found, increment count
         while self.keyed_index.get(&versioned_key).is_some() {
-            holon.increment_version();
+            holon.increment_version()?;
             versioned_key = holon.get_versioned_key()?;
         }
 

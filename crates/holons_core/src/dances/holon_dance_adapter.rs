@@ -17,7 +17,7 @@
 use crate::core_shared_objects::holon::TransientHolon;
 use crate::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, holon::Holon, HolonError,
+    stage_new_version_api, CommitRequestStatus, HolonError,
 };
 use crate::dances::dance_request::{DanceType, RequestBody};
 use crate::dances::dance_response::ResponseBody;
@@ -105,7 +105,7 @@ pub fn commit_dance(
     let commit_response = commit_api(context)?;
 
     match commit_response.status {
-        CommitRequestStatus::Complete => Ok(ResponseBody::Holons(commit_response.saved_holons.iter().map(|h| Holon::Saved(h.clone())).collect())),
+        CommitRequestStatus::Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
         CommitRequestStatus::Incomplete => {
             let completion_message = format!(
                 "{} of {:?} were successfully committed",

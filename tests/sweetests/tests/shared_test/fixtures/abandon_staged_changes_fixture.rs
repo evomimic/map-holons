@@ -7,7 +7,7 @@ use crate::shared_test::test_data_types::{DancesTestCase, TestReference, BOOK_KE
 
 use crate::shared_test::test_context::init_test_context;
 use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
 use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
 use holons_core::reference_layer::stage_new_holon_api;

@@ -1,13 +1,13 @@
-use crate::HolonError;
+use crate::{core_shared_objects::holon::Holon, HolonError};
 use shared_types_holon::{LocalId, MapInteger, MapString};
-use super::holon::{Holon, HolonBehavior, SavedHolon};
+use super::holon::HolonBehavior;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {
     pub status: CommitRequestStatus,
     pub commits_attempted: MapInteger,
     // could the order of these Vec cause challenges with identifying Holons in relation to their staged_index?
-    pub saved_holons: Vec<SavedHolon>, // should this be indexed? where else used?
+    pub saved_holons: Vec<Holon>, // should this be indexed? where else used?
     pub abandoned_holons: Vec<Holon>, // should this be indexed?
 }
 #[derive(Debug, Eq, PartialEq, Clone)]

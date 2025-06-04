@@ -5,12 +5,10 @@
 // use crate::state::AccessType;
 // use crate::identifier::TemporaryId;
 
-use std::rc::Rc;
-
 use serde::{Deserialize, Serialize};
 use shared_types_holon::{BaseValue, HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue, TemporaryId};
 
-use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship, TransientRelationshipMap}, HolonCollection, HolonError, RelationshipName};
+use crate::{core_shared_objects::{holon::holon_utils::{key_info, local_id_info}, ReadableRelationship, TransientRelationshipMap}, HolonError};
 
 use super::{holon_utils::EssentialHolonContent, state::{AccessType, HolonState, ValidationState}, HolonBehavior};
 
@@ -98,12 +96,10 @@ impl TransientHolon {
     //    DATA ACCESSORS
     // =====================
 
-      fn get_related_holons(
+    pub fn get_transient_relationship_map(
         &self,
-        relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
-        Ok(self.transient_relationships.get_related_holons(relationship_name))
+    ) -> TransientRelationshipMap {
+        self.transient_relationships.clone()
     }
     
 
@@ -334,14 +330,14 @@ mod tests {
         let property_name = PropertyName(MapString("first property".to_string()));
         // Add a value to the property map
         let initial_value = BaseValue::IntegerValue(MapInteger(1));
-        holon.with_property_value(property_name.clone(), Some(initial_value.clone()));
+        holon.with_property_value(property_name.clone(), Some(initial_value.clone())).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(initial_value));
         // Update value with the same property name
         let changed_value = BaseValue::StringValue(MapString("changed value".to_string()));
-        holon.with_property_value(property_name.clone(), Some(changed_value.clone()));
+        holon.with_property_value(property_name.clone(), Some(changed_value.clone())).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(changed_value));
         // Remove value by updating to None
-        holon.with_property_value(property_name.clone(), None);
+        holon.with_property_value(property_name.clone(), None).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), None);
     }
 
