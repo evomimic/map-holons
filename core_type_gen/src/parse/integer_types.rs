@@ -5,44 +5,35 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RelationshipTypesFile {
+pub struct IntegerTypesFile {
     pub type_kind: String,
-    pub variants: Vec<RelationshipTypeEntry>,
+    pub variants: Vec<IntegerTypeEntry>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RelationshipTypeEntry {
+pub struct IntegerTypeEntry {
     pub variant: String,
     pub header: TypeHeader,
-    pub relationship_name: String,
-    pub source_owns_relationship: bool,
-    pub deletion_semantic: String,
-    pub load_links_immediate: bool,
-    pub target_collection_type: TargetCollectionType,
-    pub has_inverse: Option<String>,
+    pub type_name: String,
+    pub min_value: String, // stay as string for now due to extreme bounds
+    pub max_value: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TargetCollectionType {
-    pub semantic: String,
-    pub holon_type: String,
-}
-
-pub fn parse_relationship_types_yaml(path: &Path) -> Result<RelationshipTypesFile, String> {
+pub fn parse_integer_types_yaml(path: &Path) -> Result<IntegerTypesFile, String> {
     let contents =
         fs::read_to_string(path).map_err(|e| format!("Failed to read {:?}: {}", path, e))?;
     serde_yaml::from_str(&contents).map_err(|e| format!("Failed to parse {:?}: {}", path, e))
 }
 
-impl ParseTypeKind for RelationshipTypesFile {
-    type TypeSpecItem = RelationshipTypeEntry;
+impl ParseTypeKind for IntegerTypesFile {
+    type TypeSpecItem = IntegerTypeEntry;
 
     fn type_kind_name() -> &'static str {
-        "RelationshipTypes"
+        "IntegerTypes"
     }
 
     fn parse_yaml(path: &Path) -> Result<Self, String> {
-        parse_relationship_types_yaml(path)
+        parse_integer_types_yaml(path)
     }
 
     fn type_spec_items(&self) -> Vec<(String, &Self::TypeSpecItem)> {

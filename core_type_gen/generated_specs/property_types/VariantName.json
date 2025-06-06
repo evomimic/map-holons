@@ -1,0 +1,15 @@
+{
+  "variant": "VariantName",
+  "header": {
+    "descriptor_name": "VariantNameDescriptor",
+    "description": "Specifies the (internal) name for this Variant.",
+    "label": "VariantName",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "VariantName",
+  "value_type_name": "StringType(MapStringType)"
+}

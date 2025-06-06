@@ -1,0 +1,22 @@
+{
+  "variant": "SourceHolonType",
+  "header": {
+    "descriptor_name": "SourceHolonTypeDescriptor",
+    "description": "Description for SourceHolonType relationship type.",
+    "label": "SourceHolonType",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "relationship_name": "SourceHolonType",
+  "source_owns_relationship": true,
+  "deletion_semantic": "Allow",
+  "load_links_immediate": false,
+  "target_collection_type": {
+    "semantic": "Set",
+    "holon_type": "TypeDescriptor"
+  },
+  "has_inverse": null
+}

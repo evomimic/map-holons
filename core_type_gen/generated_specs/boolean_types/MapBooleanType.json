@@ -1,0 +1,14 @@
+{
+  "variant": "MapBooleanType",
+  "type_name": "MapBooleanType",
+  "header": {
+    "descriptor_name": "MapBooleanTypeDescriptor",
+    "description": "Built-in MAP Boolean Type",
+    "label": "MapBoolean",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "variant": "IsBuiltinType",
+  "header": {
+    "descriptor_name": "IsBuiltinTypeDescriptor",
+    "description": "If `true`, this a type offered by Map Core. Otherwise this is an agent-defined type that extends the MapCore Schema.",
+    "label": "IsBuiltinType",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "IsBuiltinType",
+  "value_type_name": "BooleanType(MapBooleanType)"
+}

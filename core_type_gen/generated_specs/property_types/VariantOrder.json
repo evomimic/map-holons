@@ -1,0 +1,15 @@
+{
+  "variant": "VariantOrder",
+  "header": {
+    "descriptor_name": "VariantOrderDescriptor",
+    "description": "Specifies the ordering (e.g., for sorting or salience purposes) for this specific variant relative to other variants in this enum.",
+    "label": "VariantOrder",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "VariantOrder",
+  "value_type_name": "IntegerType(MapIntegerType)"
+}

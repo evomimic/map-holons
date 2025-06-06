@@ -1,0 +1,15 @@
+{
+  "variant": "DeletionSemantic",
+  "header": {
+    "descriptor_name": "DeletionSemanticDescriptor",
+    "description": "Offers different options for whether requests to delete a source Holon (i.e., mark as deleted) should be allowed for a given relationship.",
+    "label": "DeletionSemantic",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "DeletionSemantic",
+  "value_type_name": "EnumType(DeletionSemanticType)"
+}

@@ -1,0 +1,15 @@
+{
+  "variant": "TypeKind",
+  "header": {
+    "descriptor_name": "TypeKindDescriptor",
+    "description": "Specifies the MAP TypeKind of this object.",
+    "label": "TypeKind",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "TypeKind",
+  "value_type_name": "EnumType(MapTypeKind)"
+}

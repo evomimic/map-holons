@@ -1,0 +1,15 @@
+{
+  "variant": "IsOrdered",
+  "header": {
+    "descriptor_name": "IsOrderedDescriptor",
+    "description": "If true, then the position of members of this collection conforms to some order. In other words, this collection behaves like an array",
+    "label": "IsOrdered",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "IsOrdered",
+  "value_type_name": "BooleanType(MapBooleanType)"
+}

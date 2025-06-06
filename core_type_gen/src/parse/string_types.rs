@@ -5,44 +5,35 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RelationshipTypesFile {
+pub struct StringTypesFile {
     pub type_kind: String,
-    pub variants: Vec<RelationshipTypeEntry>,
+    pub variants: Vec<StringTypeEntry>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RelationshipTypeEntry {
+pub struct StringTypeEntry {
     pub variant: String,
     pub header: TypeHeader,
-    pub relationship_name: String,
-    pub source_owns_relationship: bool,
-    pub deletion_semantic: String,
-    pub load_links_immediate: bool,
-    pub target_collection_type: TargetCollectionType,
-    pub has_inverse: Option<String>,
+    pub type_name: String,
+    pub min_length: u32,
+    pub max_length: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TargetCollectionType {
-    pub semantic: String,
-    pub holon_type: String,
-}
-
-pub fn parse_relationship_types_yaml(path: &Path) -> Result<RelationshipTypesFile, String> {
+pub fn parse_string_types_yaml(path: &Path) -> Result<StringTypesFile, String> {
     let contents =
         fs::read_to_string(path).map_err(|e| format!("Failed to read {:?}: {}", path, e))?;
     serde_yaml::from_str(&contents).map_err(|e| format!("Failed to parse {:?}: {}", path, e))
 }
 
-impl ParseTypeKind for RelationshipTypesFile {
-    type TypeSpecItem = RelationshipTypeEntry;
+impl ParseTypeKind for StringTypesFile {
+    type TypeSpecItem = StringTypeEntry;
 
     fn type_kind_name() -> &'static str {
-        "RelationshipTypes"
+        "StringTypes"
     }
 
     fn parse_yaml(path: &Path) -> Result<Self, String> {
-        parse_relationship_types_yaml(path)
+        parse_string_types_yaml(path)
     }
 
     fn type_spec_items(&self) -> Vec<(String, &Self::TypeSpecItem)> {

@@ -1,0 +1,16 @@
+{
+  "variant": "PropertyNameType",
+  "header": {
+    "descriptor_name": "PropertyNameTypeDescriptor",
+    "description": "Names for Holon properties. Should be snake_case",
+    "label": "PropertyName",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "type_name": "PropertyNameType",
+  "min_length": 3,
+  "max_length": 72
+}

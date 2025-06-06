@@ -1,0 +1,22 @@
+{
+  "variant": "Predecessor",
+  "header": {
+    "descriptor_name": "PredecessorDescriptor",
+    "description": "Description for Predecessor relationship type.",
+    "label": "Predecessor",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "relationship_name": "Predecessor",
+  "source_owns_relationship": true,
+  "deletion_semantic": "Allow",
+  "load_links_immediate": false,
+  "target_collection_type": {
+    "semantic": "Set",
+    "holon_type": "TypeDescriptor"
+  },
+  "has_inverse": null
+}

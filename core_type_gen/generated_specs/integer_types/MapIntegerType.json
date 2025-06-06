@@ -1,0 +1,16 @@
+{
+  "variant": "MapIntegerType",
+  "header": {
+    "descriptor_name": "MapIntegerTypeDescriptor",
+    "description": "Built-in MAP Integer Type",
+    "label": "MapInteger",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "type_name": "MapIntegerType",
+  "min_value": "-9223372036854775808",
+  "max_value": "9223372036854775807"
+}

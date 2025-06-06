@@ -1,0 +1,15 @@
+{
+  "variant": "MinCardinality",
+  "header": {
+    "descriptor_name": "MinCardinalityDescriptor",
+    "description": "Specifies the minimum number of members allowed in this collection. min_cardinality must be greater than or equal to zero.",
+    "label": "MinCardinality",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "MinCardinality",
+  "value_type_name": "IntegerType(MapIntegerType)"
+}

@@ -1,0 +1,15 @@
+{
+  "variant": "SchemaName",
+  "header": {
+    "descriptor_name": "SchemaNameDescriptor",
+    "description": "Specifies the human-readable name for this schema.",
+    "label": "SchemaName",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "SchemaName",
+  "value_type_name": "StringType(MapStringType)"
+}

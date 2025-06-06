@@ -1,0 +1,15 @@
+{
+  "variant": "MaxCardinality",
+  "header": {
+    "descriptor_name": "MaxCardinalityDescriptor",
+    "description": "Specifies the maximum number of members allowed in this collection. max_cardinality must be greater than or equal to min_cardinality.",
+    "label": "MaxCardinality",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "MaxCardinality",
+  "value_type_name": "IntegerType(MapIntegerType)"
+}

@@ -1,0 +1,15 @@
+{
+  "variant": "MinLength",
+  "header": {
+    "descriptor_name": "MinLengthDescriptor",
+    "description": "min_length is a property of a value type based on the TypeKind MapString. It defines the minimum allowed length for string instances of this value type. min_length must be greater than or equal to zero.",
+    "label": "MinLength",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "MinLength",
+  "value_type_name": "IntegerType(MapIntegerType)"
+}

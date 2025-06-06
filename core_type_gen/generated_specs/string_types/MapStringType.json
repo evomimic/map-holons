@@ -1,0 +1,16 @@
+{
+  "variant": "MapStringType",
+  "header": {
+    "descriptor_name": "MapStringTypeDescriptor",
+    "description": "Built-in MAP String Type",
+    "label": "MapString",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "type_name": "MapStringType",
+  "min_length": 0,
+  "max_length": 32768
+}

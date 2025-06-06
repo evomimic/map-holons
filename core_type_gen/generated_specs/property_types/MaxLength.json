@@ -1,0 +1,15 @@
+{
+  "variant": "MaxLength",
+  "header": {
+    "descriptor_name": "MaxLengthDescriptor",
+    "description": "max_length is a property of a value type based on the TypeKind MapString. It defines the maximum allowed length for string instances of this value type. max_length must be greater than or equal to min_length.",
+    "label": "MaxLength",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "MaxLength",
+  "value_type_name": "IntegerType(MapIntegerType)"
+}

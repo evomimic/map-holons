@@ -1,0 +1,15 @@
+{
+  "variant": "AllowDuplicates",
+  "header": {
+    "descriptor_name": "AllowDuplicatesDescriptor",
+    "description": "If true, this collection can contain duplicate items.",
+    "label": "AllowDuplicates",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "AllowDuplicates",
+  "value_type_name": "BooleanType(MapBooleanType)"
+}

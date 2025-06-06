@@ -1,0 +1,15 @@
+{
+  "variant": "Version",
+  "header": {
+    "descriptor_name": "VersionDescriptor",
+    "description": "Specifies the semantic version of this type descriptor.",
+    "label": "Version",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "Version",
+  "value_type_name": "StringType(SemanticVersionType)"
+}

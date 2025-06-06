@@ -1,0 +1,15 @@
+{
+  "variant": "Label",
+  "header": {
+    "descriptor_name": "LabelDescriptor",
+    "description": "A human readable name for this property. Typically used in when displaying a property in the Human Experience of the map as part of a label/value pair",
+    "label": "Label",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "Label",
+  "value_type_name": "StringType(MapStringType)"
+}

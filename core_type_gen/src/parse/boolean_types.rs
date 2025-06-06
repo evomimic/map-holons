@@ -5,44 +5,33 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RelationshipTypesFile {
+pub struct BooleanTypesFile {
     pub type_kind: String,
-    pub variants: Vec<RelationshipTypeEntry>,
+    pub variants: Vec<BooleanTypeEntry>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RelationshipTypeEntry {
+pub struct BooleanTypeEntry {
     pub variant: String,
+    pub type_name: String,
     pub header: TypeHeader,
-    pub relationship_name: String,
-    pub source_owns_relationship: bool,
-    pub deletion_semantic: String,
-    pub load_links_immediate: bool,
-    pub target_collection_type: TargetCollectionType,
-    pub has_inverse: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TargetCollectionType {
-    pub semantic: String,
-    pub holon_type: String,
-}
-
-pub fn parse_relationship_types_yaml(path: &Path) -> Result<RelationshipTypesFile, String> {
+pub fn parse_boolean_types_yaml(path: &Path) -> Result<BooleanTypesFile, String> {
     let contents =
         fs::read_to_string(path).map_err(|e| format!("Failed to read {:?}: {}", path, e))?;
     serde_yaml::from_str(&contents).map_err(|e| format!("Failed to parse {:?}: {}", path, e))
 }
 
-impl ParseTypeKind for RelationshipTypesFile {
-    type TypeSpecItem = RelationshipTypeEntry;
+impl ParseTypeKind for BooleanTypesFile {
+    type TypeSpecItem = BooleanTypeEntry;
 
     fn type_kind_name() -> &'static str {
-        "RelationshipTypes"
+        "BooleanTypes"
     }
 
     fn parse_yaml(path: &Path) -> Result<Self, String> {
-        parse_relationship_types_yaml(path)
+        parse_boolean_types_yaml(path)
     }
 
     fn type_spec_items(&self) -> Vec<(String, &Self::TypeSpecItem)> {

@@ -1,0 +1,15 @@
+{
+  "variant": "RelationshipName",
+  "header": {
+    "descriptor_name": "RelationshipNameDescriptor",
+    "description": "Specifies the (internal) name for this relationship type.",
+    "label": "RelationshipName",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "RelationshipName",
+  "value_type_name": "StringType(RelationshipNameType)"
+}

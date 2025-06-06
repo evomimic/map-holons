@@ -1,0 +1,15 @@
+{
+  "variant": "Name",
+  "header": {
+    "descriptor_name": "NameDescriptor",
+    "description": "Specifies the human-readable name for this Holon.",
+    "label": "Name",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "Name",
+  "value_type_name": "StringType(MapStringType)"
+}

@@ -1,0 +1,22 @@
+{
+  "variant": "ValueTypeFor",
+  "header": {
+    "descriptor_name": "ValueTypeForDescriptor",
+    "description": "Description for ValueTypeFor relationship type.",
+    "label": "ValueTypeFor",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "relationship_name": "ValueTypeFor",
+  "source_owns_relationship": true,
+  "deletion_semantic": "Allow",
+  "load_links_immediate": false,
+  "target_collection_type": {
+    "semantic": "Set",
+    "holon_type": "TypeDescriptor"
+  },
+  "has_inverse": null
+}

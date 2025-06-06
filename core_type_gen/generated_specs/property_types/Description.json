@@ -1,0 +1,15 @@
+{
+  "variant": "Description",
+  "header": {
+    "descriptor_name": "DescriptionDescriptor",
+    "description": "A human readable description of this type that should clarify the purpose of the type and any caveats or to aware of.",
+    "label": "Description",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "Description",
+  "value_type_name": "StringType(MapStringType)"
+}

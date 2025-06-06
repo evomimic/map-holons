@@ -3,6 +3,23 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
+use super::type_kind_parser::ParseTypeKind;
+
+impl ParseTypeKind for HolonTypesFile {
+    type TypeSpecItem = HolonTypeEntry;
+
+    fn type_kind_name() -> &'static str {
+        "HolonTypes"
+    }
+
+    fn parse_yaml(path: &Path) -> Result<Self, String> {
+        parse_holon_types_yaml(path)
+    }
+
+    fn type_spec_items(&self) -> Vec<(String, &Self::TypeSpecItem)> {
+        self.variants.iter().map(|v| (v.variant.clone(), v)).collect()
+    }
+}
 #[derive(Debug, Deserialize, Serialize)]
 pub struct HolonTypesFile {
     pub type_kind: String,

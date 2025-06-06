@@ -1,0 +1,15 @@
+{
+  "variant": "DescriptorName",
+  "header": {
+    "descriptor_name": "DescriptorNameDescriptor",
+    "description": "The name for the unique key for the descriptor of MAP type.",
+    "label": "DescriptorName",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "DescriptorName",
+  "value_type_name": "StringType(MapStringType)"
+}

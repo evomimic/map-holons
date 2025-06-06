@@ -1,0 +1,16 @@
+{
+  "variant": "RelationshipNameType",
+  "header": {
+    "descriptor_name": "RelationshipNameTypeDescriptor",
+    "description": "Names for relationships between Holons. To align with OpenCypher/GQL standard, should be SCREAMING_UPPER_CASE (all uppercase letters with words separated by underscores).",
+    "label": "RelationshipName",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "type_name": "RelationshipNameType",
+  "min_length": 3,
+  "max_length": 72
+}

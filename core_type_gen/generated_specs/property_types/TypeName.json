@@ -1,0 +1,15 @@
+{
+  "variant": "TypeName",
+  "header": {
+    "descriptor_name": "TypeNameDescriptor",
+    "description": "Specifies the (internal) name for this type.",
+    "label": "TypeName",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "TypeName",
+  "value_type_name": "StringType(MapStringType)"
+}

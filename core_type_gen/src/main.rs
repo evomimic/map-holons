@@ -1,51 +1,67 @@
-use crate::templates::enum_template::ENUM_TEMPLATE;
-use std::fs;
-use std::path::Path;
-use std::process;
-
 mod generate;
 mod parse;
 mod templates;
 
-use generate::holon_types::generate_json_specs_from_yaml;
-use generate::template::generate_enum_from_template;
-use parse::holon_types::parse_holon_types_yaml;
+use crate::generate::core_type_generator::generate_enum_and_json;
+use crate::parse::boolean_types::BooleanTypesFile;
+use crate::parse::holon_types::HolonTypesFile;
+use crate::parse::integer_types::IntegerTypesFile;
+use crate::parse::property_types::PropertyTypesFile;
+use crate::parse::relationship_types::RelationshipTypesFile;
+use crate::parse::string_types::StringTypesFile;
+use crate::parse::type_kind_parser::ParseTypeKind;
+use serde::Serialize;
+use std::path::Path;
+// + other type kinds...
 
-fn main() {
-    let yaml_path = Path::new("core_type_gen/core_type_defs/holon_types.yml");
-    let enum_output_path =
-        Path::new("crates/type_system/type_names/src/generated/core_holon_type_name.rs");
-    let json_output_dir = Path::new("core_type_gen/generated_specs/holon_types/");
+fn main() -> Result<(), String> {
+    generate_enum_and_json::<HolonTypesFile>(
+        Path::new("core_type_gen/core_type_defs/holon_types.yml"),
+        Path::new("crates/type_system/type_names/src/generated/core_holon_type_name.rs"),
+        Path::new("core_type_gen/generated_specs/holon_types/"),
+        "CoreHolonType",
+        |file| file.variants.iter().map(|v| v.variant.clone()).collect(),
+    )?;
 
-    println!("📦 Parsing {:?}", yaml_path);
-    let holon_file = match parse_holon_types_yaml(yaml_path) {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("❌ Error parsing YAML: {e}");
-            process::exit(1);
-        }
-    };
+    generate_enum_and_json::<PropertyTypesFile>(
+        Path::new("core_type_gen/core_type_defs/property_types.yml"),
+        Path::new("crates/type_system/type_names/src/generated/core_property_type_name.rs"),
+        Path::new("core_type_gen/generated_specs/property_types/"),
+        "CorePropertyType",
+        |file| file.variants.iter().map(|v| v.variant.clone()).collect(),
+    )?;
 
-    let variant_names: Vec<String> =
-        holon_file.variants.iter().map(|entry| entry.variant.clone()).collect();
+    generate_enum_and_json::<StringTypesFile>(
+        Path::new("core_type_gen/core_type_defs/string_types.yml"),
+        Path::new("crates/type_system/type_names/src/generated/core_string_type_name.rs"),
+        Path::new("core_type_gen/generated_specs/string_types/"),
+        "CoreStringType",
+        |file| file.variants.iter().map(|v| v.variant.clone()).collect(),
+    )?;
 
-    if let Some(parent) = enum_output_path.parent() {
-        fs::create_dir_all(parent).expect("Failed to create enum output directory");
-    }
+    generate_enum_and_json::<RelationshipTypesFile>(
+        Path::new("core_type_gen/core_type_defs/relationship_types.yml"),
+        Path::new("crates/type_system/type_names/src/generated/core_relationship_type_name.rs"),
+        Path::new("core_type_gen/generated_specs/relationship_types/"),
+        "CoreRelationshipType",
+        |file| file.variants.iter().map(|v| v.variant.clone()).collect(),
+    )?;
 
-    println!("🛠️  Generating enum to {:?}", enum_output_path);
-    if let Err(e) =
-        generate_enum_from_template("CoreHolonTypeName", &variant_names, enum_output_path)
-    {
-        eprintln!("❌ Failed to generate enum: {e}");
-        process::exit(1);
-    }
+    generate_enum_and_json::<IntegerTypesFile>(
+        Path::new("core_type_gen/core_type_defs/integer_types.yml"),
+        Path::new("crates/type_system/type_names/src/generated/core_integer_type_name.rs"),
+        Path::new("core_type_gen/generated_specs/integer_types/"),
+        "CoreIntegerType",
+        |file| file.variants.iter().map(|v| v.variant.clone()).collect(),
+    )?;
 
-    println!("📁 Generating JSON specs to {:?}", json_output_dir);
-    if let Err(e) = generate_json_specs_from_yaml(&holon_file, json_output_dir) {
-        eprintln!("❌ Failed to generate JSON specs: {e}");
-        process::exit(1);
-    }
+    generate_enum_and_json::<BooleanTypesFile>(
+        Path::new("core_type_gen/core_type_defs/boolean_types.yml"),
+        Path::new("crates/type_system/type_names/src/generated/core_boolean_type_name.rs"),
+        Path::new("core_type_gen/generated_specs/boolean_types/"),
+        "CoreBooleanType",
+        |file| file.variants.iter().map(|v| v.variant.clone()).collect(),
+    )?;
 
-    println!("✅ Enum and JSON spec generation complete.");
+    Ok(())
 }

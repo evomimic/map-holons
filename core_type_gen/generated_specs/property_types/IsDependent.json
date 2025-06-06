@@ -1,0 +1,15 @@
+{
+  "variant": "IsDependent",
+  "header": {
+    "descriptor_name": "IsDependentDescriptor",
+    "description": "If true, then instances of this type cannot exist independently of some parent. For example, properties can not exist independently of their holon.",
+    "label": "IsDependent",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "IsDependent",
+  "value_type_name": "BooleanType(MapBooleanType)"
+}

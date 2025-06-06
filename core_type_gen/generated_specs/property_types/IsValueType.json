@@ -1,0 +1,15 @@
+{
+  "variant": "IsValueType",
+  "header": {
+    "descriptor_name": "IsValueTypeDescriptor",
+    "description": "If true, this type can be used as the value type for a property.",
+    "label": "IsValueType",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "IsValueType",
+  "value_type_name": "BooleanType(MapBooleanType)"
+}

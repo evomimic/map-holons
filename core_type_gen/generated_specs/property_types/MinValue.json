@@ -1,0 +1,15 @@
+{
+  "variant": "MinValue",
+  "header": {
+    "descriptor_name": "MinValueDescriptor",
+    "description": "min_value is a property of a value type based on the TypeKind MapInteger. It defines the smallest allowed value for this integer instances of this value type. min_value can be negative and must be less than or equal to max_value.",
+    "label": "MinValue",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "MinValue",
+  "value_type_name": "IntegerType(MapIntegerType)"
+}

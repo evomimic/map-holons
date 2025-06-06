@@ -1,0 +1,16 @@
+{
+  "variant": "SemanticVersionType",
+  "header": {
+    "descriptor_name": "SemanticVersionTypeDescriptor",
+    "description": "String Type for representing Semantic Versions of the form (<major>.<minor>.<patch>)",
+    "label": "SemanticVersion",
+    "is_dependent": true,
+    "is_value_type": false,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "type_name": "SemanticVersionType",
+  "min_length": 5,
+  "max_length": 14
+}

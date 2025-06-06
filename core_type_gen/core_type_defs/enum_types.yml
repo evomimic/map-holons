@@ -1,4 +1,4 @@
-ttype_kind: Enum
+type_kind: Enum
 variants:
   - variant: MapTypeKind
     type_name: MapTypeKind

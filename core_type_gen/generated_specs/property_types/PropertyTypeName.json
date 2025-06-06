@@ -1,0 +1,15 @@
+{
+  "variant": "PropertyTypeName",
+  "header": {
+    "descriptor_name": "PropertyTypeNameDescriptor",
+    "description": "Specifies the (internal) name for this property type.",
+    "label": "PropertyTypeName",
+    "is_dependent": true,
+    "is_value_type": true,
+    "described_by": null,
+    "is_subtype_of": null,
+    "owned_by": null
+  },
+  "property_name": "PropertyTypeName",
+  "value_type_name": "StringType(PropertyNameType)"
+}
