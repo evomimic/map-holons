@@ -1,16 +1,19 @@
-use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_context::init_test_context;
-use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use crate::shared_test::test_data_types::{
-    DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
+use rstest::*;
+
+use crate::shared_test::{
+    setup_book_author_steps_with_context,
+    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_data_types::{
+        DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
+    },
 };
 
-use holons_core::core_shared_objects::HolonError;
-use holons_core::dances::ResponseStatusCode;
-use holons_core::{HolonReadable, HolonReference, HolonWritable};
-use holons_core::{RelationshipName, StagedReference};
-
-use rstest::*;
+use holons_core::{
+    core_shared_objects::HolonError,
+    dances::ResponseStatusCode,
+    reference_layer::{HolonReadable, HolonReference, HolonWritable, StagedReference},
+    RelationshipName,
+};
 use base_types::{BaseValue, MapInteger, MapString};
 use integrity_core_types::{PropertyMap, PropertyName};
 

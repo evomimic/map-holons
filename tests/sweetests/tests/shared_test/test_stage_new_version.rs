@@ -1,24 +1,34 @@
-use crate::shared_test::test_data_types::{
-    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-};
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
-use holons_core::core_shared_objects::{HolonCollection, RelationshipName};
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{
-    HolonCollectionApi, HolonError, HolonReadable, HolonReference, SmartReference, StagedReference,
+    core_shared_objects::{
+        holon::{Holon, HolonBehavior},
+        HolonCollection, HolonError, RelationshipName,
+    },
+    dances::{ResponseBody, ResponseStatusCode},
+    reference_layer::{
+        HolonCollectionApi, HolonReadable, HolonReference, SmartReference, StagedReference,
+    },
 };
-use rstest::*;
+
 use base_types::MapString;
 use core_types::HolonId;
 use integrity_core_types::PropertyName;
-use std::collections::BTreeMap;
-use tracing::{debug, info};
+
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{
+        DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    },
+};
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -83,7 +93,7 @@ pub async fn execute_stage_new_version(
 
     assert_eq!(
         predecessor,
-        HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None)),
+        Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
         "Predecessor relationship did not match expected"
     );
 

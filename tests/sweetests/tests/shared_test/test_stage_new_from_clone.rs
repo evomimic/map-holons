@@ -1,4 +1,8 @@
+use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+use tracing::{debug, error, info, warn};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -8,14 +12,14 @@ use crate::shared_test::test_data_types::{
     DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
 };
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
-use holons_core::core_shared_objects::RelationshipName;
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{Holon, HolonReadable, HolonReference, SmartReference};
-use rstest::*;
+use holons_core::{
+    core_shared_objects::holon::{Holon, HolonBehavior},
+    dances::{ResponseBody, ResponseStatusCode},
+    HolonReadable, HolonReference, RelationshipName, SmartReference,
+};
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use integrity_core_types::PropertyName;
-use tracing::{debug, error, info, warn};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.
@@ -65,16 +69,16 @@ pub async fn execute_stage_new_from_clone(
             let local_id = saved_holon.get_local_id().expect("Failed to get LocalId");
             HolonReference::Smart(SmartReference::new(
                 HolonId::Local(local_id),
-                Some(saved_holon.property_map.clone()),
+                Some(saved_holon.into_node().property_map.clone()),
             ))
         }
     };
 
     // Get the original holon (for comparison purposes)
-    let original_holon = match original_test_ref {
+    let original_holon: Holon = match original_test_ref {
         TestReference::StagedHolon(staged_reference) => {
             match staged_reference.clone_holon(context) {
-                Ok(holon) => holon,
+                Ok(holon) => Holon::Transient(holon),
                 Err(err) => {
                     error!("Failed to clone holon: {:?}", err);
                     return; // or continue/fallback logic as appropriate

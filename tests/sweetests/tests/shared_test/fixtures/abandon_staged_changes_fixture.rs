@@ -1,17 +1,5 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
-//use holochain::core::author_key_is_valid;
-
-use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_data_types::{DancesTestCase, TestReference, BOOK_KEY, PERSON_1_KEY};
-
-use crate::shared_test::test_context::init_test_context;
-use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use holons_core::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::query_layer::QueryExpression;
-use holons_core::reference_layer::stage_new_holon_api;
-use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
 use rstest::*;
 use base_types::{BaseValue, MapInteger, MapString};
 use integrity_core_types::PropertyName;
@@ -77,7 +65,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_match_saved_content_step()?;
 
     //  STAGE:  Abandoned Holon1 (H4)  //
-    let mut abandoned_holon_1 = Holon::new();
+    let mut abandoned_holon_1 = Holon::new_transient();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
         Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
@@ -91,7 +79,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
-    let mut abandoned_holon_2 = Holon::new();
+    let mut abandoned_holon_2 = Holon::new_transient();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("key".to_string())),
         Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),
