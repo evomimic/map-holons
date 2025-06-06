@@ -1,19 +1,19 @@
 #![allow(dead_code)]
 
+use std::string::ToString; // Import the test-only extension
+
 use crate::shared_test::test_data_types::{
     DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
     PERSON_2_KEY, PUBLISHER_KEY,
 };
 
-use shared_types_holon::value_types::BaseValue;
-use std::string::ToString; // Import the test-only extension
-
-use holons_core::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
-use holons_core::dances::dance_response::ResponseStatusCode;
 use holons_core::holon_operations_api::*;
-
-use holons_core::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
-use shared_types_holon::{MapString, PropertyName};
+use holons_core::{
+    core_shared_objects::{holon::Holon, HolonError, RelationshipName},
+    dances::dance_response::ResponseStatusCode,
+    reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior},
+};
+use shared_types_holon::{value_types::BaseValue, MapString, PropertyName};
 
 // pub struct TestHolon {
 //     pub key: MapString,
@@ -36,7 +36,7 @@ pub fn setup_book_author_steps_with_context(
     let relationship_name = RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())); // ✅ Convert to MapString
 
     //  STAGE:  Book Holon  //
-    let mut book_holon = Holon::new();
+    let mut book_holon = Holon::new_transient();
     let book_holon_key = MapString(BOOK_KEY.to_string()); // ✅ Convert to MapString
 
     book_holon
@@ -58,7 +58,7 @@ pub fn setup_book_author_steps_with_context(
     let book_ref = stage_new_holon_api(context, book_holon)?;
 
     //  STAGE:  Person 1 //
-    let mut person_1_holon = Holon::new();
+    let mut person_1_holon = Holon::new_transient();
     let person_1_key = MapString(PERSON_1_KEY.to_string()); // ✅ Convert to MapString
 
     person_1_holon
@@ -78,7 +78,7 @@ pub fn setup_book_author_steps_with_context(
     let person_1_reference = stage_new_holon_api(context, person_1_holon.clone())?;
 
     //  STAGE:  Person 2 //
-    let mut person_2_holon = Holon::new();
+    let mut person_2_holon = Holon::new_transient();
     let person_2_key = MapString(PERSON_2_KEY.to_string()); // ✅ Convert to MapString
 
     person_2_holon
@@ -98,7 +98,7 @@ pub fn setup_book_author_steps_with_context(
     let person_2_reference = stage_new_holon_api(context, person_2_holon.clone())?;
 
     //  STAGE:  Publisher //
-    let mut publisher_holon = Holon::new();
+    let mut publisher_holon = Holon::new_transient();
     let publisher_key = MapString(PUBLISHER_KEY.to_string()); // ✅ Convert to MapString
 
     publisher_holon
@@ -112,7 +112,9 @@ pub fn setup_book_author_steps_with_context(
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            Some(BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string()))),
+            Some(BaseValue::StringValue(MapString(
+                "We publish Holons for testing purposes".to_string(),
+            ))),
         )?;
     test_case.add_stage_holon_step(publisher_holon.clone())?;
     stage_new_holon_api(context, publisher_holon.clone())?;

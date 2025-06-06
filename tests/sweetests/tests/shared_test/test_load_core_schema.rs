@@ -1,19 +1,19 @@
 use std::collections::BTreeMap;
-
+use pretty_assertions::assert_eq;
 use async_std::task;
+use tracing::{debug, info};
+
+use rstest::*;
+
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons_core::dances::descriptors_dance_adapter::build_load_core_schema_dance_request;
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 use crate::shared_test::*;
+use crate::shared_test::{mock_conductor::MockConductorConfig, test_data_types::{DanceTestExecutionState, DancesTestCase}};
 use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
-use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
-use tracing::{debug, info};
+use shared_types_holon::{HolonId, MapInteger, MapString, holon_node::{HolonNode, PropertyMap, PropertyName}, value_types::BaseValue};
+
 /// This function builds and dances a `load_core_schema` DanceRequest
 /// and confirms a Success response
 ///

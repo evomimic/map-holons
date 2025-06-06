@@ -1,22 +1,30 @@
-use std::collections::BTreeMap;
-
 use async_std::task;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+use pretty_assertions::assert_eq;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use tracing::{debug, info};
 
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
-use crate::shared_test::*;
-
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{HolonReadable, StagedReference};
 use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
+
+use crate::shared_test::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
+};
+
+use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
+use holons_core::{
+    core_shared_objects::holon::HolonBehavior,
+    dances::{ResponseBody, ResponseStatusCode},
+    reference_layer::{HolonReadable, StagedReference},
+};
+use shared_types_holon::{
+    holon_node::{HolonNode, PropertyMap, PropertyName},
+    value_types::BaseValue,
+    HolonId, MapInteger, MapString,
+};
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

@@ -34,7 +34,6 @@ use rstest::*;
 use serde::de::Expected;
 use shared_test::mock_conductor::MockConductorConfig;
 use std::sync::{Arc, Mutex};
-use test_query_relationships::execute_query_relationships;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
@@ -44,6 +43,7 @@ use self::test_commit::execute_commit;
 use self::test_ensure_database_count::execute_ensure_database_count;
 // use self::test_load_core_schema::execute_load_new_schema;
 use self::test_match_db_content::execute_match_db_content;
+use self::test_query_relationships::execute_query_relationships;
 use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 

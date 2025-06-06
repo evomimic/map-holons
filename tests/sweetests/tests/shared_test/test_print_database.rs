@@ -1,21 +1,26 @@
-use std::collections::BTreeMap;
-
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
+
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-
-use crate::shared_test::mock_conductor::MockConductorConfig;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
+};
 use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_request;
-use holons_core::dances::ResponseBody;
+use holons_core::{core_shared_objects::holon::HolonBehavior, dances::ResponseBody};
 // use holons_core::utils::as_json;
-use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
-use tracing::{debug, info};
+use shared_types_holon::{
+    holon_node::{HolonNode, PropertyMap, PropertyName},
+    value_types::BaseValue,
+    HolonId, MapInteger, MapString,
+};
 
 /// This function retrieves all holons and then writes log messages for each holon:
 /// `info!` -- writes only the "key" for each holon

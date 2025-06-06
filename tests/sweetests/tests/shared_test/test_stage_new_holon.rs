@@ -1,25 +1,33 @@
-use std::collections::BTreeMap;
-
-use crate::shared_test::test_data_types::{
-    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-};
-use crate::shared_test::*;
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
+use crate::shared_test::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{
+        DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    },
+};
+
 use holon_dance_builders::stage_new_holon_dance::build_stage_new_holon_dance_request;
 use holons_client::init_client_context;
-use holons_core::core_shared_objects::Holon;
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{HolonReadable, HolonsContextBehavior, StagedReference};
-use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
-use tracing::{debug, info};
+use holons_core::{
+    core_shared_objects::holon::{Holon, HolonBehavior},
+    dances::{ResponseBody, ResponseStatusCode},
+    reference_layer::{HolonReadable, HolonsContextBehavior, StagedReference},
+};
+use shared_types_holon::{
+    holon_node::{HolonNode, PropertyMap, PropertyName},
+    value_types::BaseValue,
+    HolonId, MapInteger, MapString,
+};
 
 /// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
 /// supplied Holon and confirms a Success response

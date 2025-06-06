@@ -1,23 +1,30 @@
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::info;
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
+};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
 use holon_dance_builders::remove_related_holons_dance::build_remove_related_holons_dance_request;
-use holons_core::core_shared_objects::{holon::Holon, RelationshipName};
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{HolonReference, StagedReference};
-use pretty_assertions::assert_eq;
-use rstest::*;
-use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{HolonId, MapInteger, MapString};
-use std::collections::BTreeMap;
-use tracing::info;
+use holons_core::{
+    core_shared_objects::{holon::Holon, RelationshipName},
+    dances::{ResponseBody, ResponseStatusCode},
+    HolonReference, StagedReference,
+};
+use shared_types_holon::{
+    holon_node::{HolonNode, PropertyMap, PropertyName},
+    value_types::BaseValue,
+    HolonId, MapInteger, MapString,
+};
 
 /// This function is intended to test the ability to remove holons from a specified relationship
 /// originating at a source_holon.

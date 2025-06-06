@@ -28,15 +28,10 @@ impl Holon {
     /// Gets inner TransientHolon object for Transient variant
     pub fn into_transient(self) -> Result<TransientHolon, HolonError> {
         match self {
-            Holon::Transient(transient_holon) => {
-                Ok(transient_holon)
-            }
-            _ => Err(HolonError::InvalidTransition(
-                "Holon variant must be Transient".to_string(),
-            )),
+            Holon::Transient(transient_holon) => Ok(transient_holon),
+            _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
         }
     }
-
 }
 
 // ================================

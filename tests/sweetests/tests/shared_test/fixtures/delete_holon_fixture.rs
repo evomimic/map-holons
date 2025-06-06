@@ -1,24 +1,26 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
-// use crate::get_holon_by_base_key_from_test_state;
 use core::panic;
-use std::cell::RefCell;
-use tracing::{error, info, warn};
-//use holochain::core::author_key_is_valid;
-
-use crate::shared_test::test_data_types::DancesTestCase;
-use holons_core::core_shared_objects::{holon::Holon, HolonCollection, HolonError, RelationshipName};
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::query_layer::QueryExpression;
-use holons_core::HolonsContextBehavior;
 use pretty_assertions::assert_eq;
-use rstest::*;
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{
-    HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
+use std::cell::RefCell;
 use std::collections::btree_map::BTreeMap;
 use std::rc::Rc;
+use tracing::{error, info, warn};
+
+use rstest::*;
+
+use crate::shared_test::test_data_types::DancesTestCase;
+use holons_core::{
+    core_shared_objects::{holon::Holon, HolonCollection, HolonError, RelationshipName},
+    dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression,
+    reference_layer::HolonsContextBehavior,
+};
+
+use shared_types_holon::{
+    value_types::BaseValue, HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName,
+    PropertyValue,
+};
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
@@ -29,7 +31,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     );
 
     //  ADD STEP:  STAGE:  Book Holon  //
-    let mut book_holon = Holon::new();
+    let mut book_holon = Holon::new_transient();
     let book_holon_key = MapString(
         "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
     );

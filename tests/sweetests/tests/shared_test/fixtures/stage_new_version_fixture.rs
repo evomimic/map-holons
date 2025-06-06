@@ -1,12 +1,14 @@
-use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_data_types::{DancesTestCase, BOOK_KEY};
-use holons_core::core_shared_objects::HolonError;
-
-use crate::shared_test::test_context::init_test_context;
-use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::HolonReference;
 use rstest::*;
+
+use crate::shared_test::{
+    setup_book_author_steps_with_context,
+    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_data_types::{DancesTestCase, BOOK_KEY},
+};
+
+use holons_core::{
+    core_shared_objects::HolonError, dances::dance_response::ResponseStatusCode, HolonReference,
+};
 use shared_types_holon::{BaseValue, MapInteger, MapString};
 
 /// Fixture for creating Simple NEWVERSION Testcase
@@ -68,7 +70,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_commit_step()?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?; 
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

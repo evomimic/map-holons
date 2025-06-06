@@ -79,7 +79,7 @@ pub trait HolonBehavior {
     /// Converts a Holon into a HolonNode.
     /// 
     ///  # Semantics
-    /// 
+    ///  -Extracts property_map and original_id fields
     fn into_node(&self) -> HolonNode;
 
     // =========================
