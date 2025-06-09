@@ -77,7 +77,7 @@ pub trait HolonBehavior {
     fn get_versioned_key(&self) -> Result<MapString, HolonError>;
 
     /// Converts a Holon into a HolonNode.
-    /// 
+    ///
     ///  # Semantics
     ///  -Extracts property_map and original_id fields
     fn into_node(&self) -> HolonNode;
@@ -97,13 +97,12 @@ pub trait HolonBehavior {
     /// Returns `Err(HolonError::NotAccessible)` if the requested access type is disallowed.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError>;
 
-
     // =================
     //     MUTATORS
     // =================
 
     /// Called by HolonPool::insert_holon() to increment the version.
-    /// 
+    ///
     /// Used to track ephemeral versions of Holons with the same key.
     fn increment_version(&mut self) -> Result<(), HolonError>;
 
@@ -112,7 +111,6 @@ pub trait HolonBehavior {
 
     /// **TODO DOC: Updates
     fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError>;
-
 
     // =========================
     //       DIAGNOSTICS
@@ -123,15 +121,8 @@ pub trait HolonBehavior {
     /// # Usage
     /// Designed for debugging, tracing, or visualizing Holon state.
     ///
-    /// # Example Output
-    /// ```
-    /// TransientHolon / Mutable
-    /// StagedHolon / ForCreate / Mutable
-    /// StagedHolon / Committed / Immutable
-    /// SavedHolon / Fetched / original_id: Some(<original_id>)
-    /// ```
-    fn debug_info(&self) -> String;
 
+    fn debug_info(&self) -> String;
 
     // ==================
     //      HELPERS
