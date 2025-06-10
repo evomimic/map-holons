@@ -9,7 +9,6 @@ name = "holon_dance_builders"
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-derive-new = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

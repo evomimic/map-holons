@@ -8,9 +8,13 @@ crate-type = ["rlib"]
 name = "holons_core"
 
 [dependencies]
+# getrandom wasm problem workarounds
+ahash = "=0.8.11"
+# only used by holons_core
+quick_cache = "0.6"
+
 # General dev-dependencies (platform-agnostic)
 derive-new = { workspace = true }
-quick_cache = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
@@ -30,7 +34,6 @@ integrity_core_types = { workspace = true }
 
 [dev-dependencies]
 # General dev-dependencies (platform-agnostic)
-async-std = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }

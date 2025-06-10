@@ -12,9 +12,7 @@ guest = []  # This crate supports the `guest` feature
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-derive-new = { workspace = true }
 Inflector = { workspace = true }
-quick_cache = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
