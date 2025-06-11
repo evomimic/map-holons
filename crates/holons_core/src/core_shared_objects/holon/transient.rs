@@ -23,7 +23,8 @@ use super::{
     HolonBehavior,
 };
 
-/// Represents a Holon that exists only in-memory and is never intended for persistence.
+/// Represents a Holon that exists only in-memory and cannot be persisted unless it becomes a StagedHolon.
+/// (for more information, see Holon LifeCycle [insert link] documentation/diagram)
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TransientHolon {
     version: MapInteger,     // Used to add to hash content for creating TemporaryID
@@ -111,15 +112,14 @@ impl TransientHolon {
     }
 }
 
-// ================================
-//   HOLONBEHAVIOR IMPLEMENTATION
-// ================================
+// ======================================
+//   HOLONBEHAVIOR TRAIT IMPLEMENTATION
+// ======================================
 impl HolonBehavior for TransientHolon {
     // ====================
     //    DATA ACCESSORS
     // ====================
 
-    /// Clone an existing Holon and return a Holon that can be staged for building and eventual commit.
     fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
         let mut holon = TransientHolon::new();
 
@@ -132,7 +132,6 @@ impl HolonBehavior for TransientHolon {
         Ok(holon)
     }
 
-    /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(
             self.property_map.clone(),
@@ -141,7 +140,6 @@ impl HolonBehavior for TransientHolon {
         ))
     }
 
-    /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(Some(inner_value)) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
@@ -166,17 +164,14 @@ impl HolonBehavior for TransientHolon {
         Ok(MapString(key.0 + &self.version.0.to_string()))
     }
 
-    /// `TransientHolons` do not have a `LocalId`.
     fn get_local_id(&self) -> Result<LocalId, HolonError> {
         Err(HolonError::EmptyField("TransientHolons do not have LocalIds.".to_string()))
     }
 
-    /// Retrieves the `original_id`, if present.
     fn get_original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
 
-    /// Retrieves the specified property value.
     fn get_property_value(
         &self,
         property_name: &PropertyName,
@@ -192,7 +187,6 @@ impl HolonBehavior for TransientHolon {
     //     ACCESS CONTROL
     // =========================
 
-    /// Enforces access control rules for `TransientHolon` states.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
             HolonState::Mutable => match access_type {
@@ -252,7 +246,6 @@ impl HolonBehavior for TransientHolon {
     //       HELPERS
     // ===================
 
-    /// Returns a String summary of the Holon.
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.get_key() {

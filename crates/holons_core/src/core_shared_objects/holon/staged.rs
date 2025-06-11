@@ -33,9 +33,7 @@ pub struct StagedHolon {
     errors: Vec<HolonError>,      // Populated during the commit process
 }
 
-// ==================================
-//   ASSOCIATED METHODS (IMPL BLOCK)
-// ==================================
+
 impl StagedHolon {
     // =================
     //   CONSTRUCTORS
@@ -180,9 +178,9 @@ impl StagedHolon {
     }
 }
 
-// ==================================
-//     HOLONBEHAVIOR IMPLEMENTATION
-// ==================================
+// ======================================
+//   HOLONBEHAVIOR TRAIT IMPLEMENTATION
+// ======================================
 impl HolonBehavior for StagedHolon {
     // =====================
     //    DATA ACCESSORS
@@ -203,7 +201,6 @@ impl HolonBehavior for StagedHolon {
         Ok(holon)
     }
 
-    /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(
             self.property_map.clone(),
@@ -212,7 +209,6 @@ impl HolonBehavior for StagedHolon {
         ))
     }
 
-    /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(Some(inner_value)) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
@@ -229,7 +225,6 @@ impl HolonBehavior for StagedHolon {
         }
     }
 
-    /// Retrieves the `LocalId` if the Holon is committed.
     fn get_local_id(&self) -> Result<LocalId, HolonError> {
         match &self.staged_state {
             StagedState::Committed(saved_id) => Ok(saved_id.clone()),
@@ -239,12 +234,10 @@ impl HolonBehavior for StagedHolon {
         }
     }
 
-    /// Retrieves the `original_id`, if present.
     fn get_original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
 
-    /// Retrieves the specified property value.
     fn get_property_value(
         &self,
         property_name: &PropertyName,
@@ -252,14 +245,6 @@ impl HolonBehavior for StagedHolon {
         Ok(self.property_map.get(property_name).cloned().flatten())
     }
 
-    /// Retrieves the unique versioned key (key property value + versioned suffix)
-    ///
-    /// # Semantics
-    /// - The versioned key is used for identifying Holons in the Nursery where multiple have been staged with the same base key.
-    /// - Returns error if the Holon does not have a key, since that is required for this function call.
-    ///
-    /// # Errors
-    /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn get_versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
             .get_key()?
@@ -276,7 +261,6 @@ impl HolonBehavior for StagedHolon {
     //     ACCESS CONTROL
     // =======================
 
-    /// Enforces access control rules for `StagedHolon` states.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
             HolonState::Mutable => match self.staged_state {
@@ -328,6 +312,7 @@ impl HolonBehavior for StagedHolon {
     // =========================
     //       DIAGNOSTICS
     // =========================
+    
     fn debug_info(&self) -> String {
         let phase_info = "StagedHolon";
         let state_info = format!(
