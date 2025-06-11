@@ -10,8 +10,7 @@ use base_types::{BaseValue, MapString};
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
-    stage_new_holon_api, HolonError, HolonReadable, HolonReference, HolonWritable,
-    HolonsContextBehavior, RelationshipName,
+    reference_layer::{ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior},
 };
 use integrity_core_types::PropertyName;
 

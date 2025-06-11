@@ -1,42 +1,33 @@
-use derive_new::new;
-use hdk::prelude::*;
-use std::cell::RefCell;
-use std::fmt;
-use std::rc::Rc;
-use std::sync::Arc;
-
-use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon, TransientHolon};
-use crate::core_shared_objects::WritableRelationship;
-use crate::reference_layer::{ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior};
-
-use crate::core_shared_objects::{
-    holon::{state::AccessType, EssentialHolonContent},
-    Holon, HolonBehavior, HolonCollection, HolonError, NurseryAccess, RelationshipName,
-    TransientHolon, WritableRelationship,
-};
-use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
-
-use base_types::{BaseValue, MapString};
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use tracing::debug;
+use base_types::MapString;
 use core_types::{HolonId, TemporaryId};
+use derive_new::new;
 use integrity_core_types::{PropertyName, PropertyValue};
+use serde::{Deserialize, Serialize};
 
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct StagedReference {
-    id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
+use crate::{
+    core_shared_objects::{holon::{
+        holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior, TransientHolon
+    }, TransientManagerAccess}, HolonCollection, HolonError, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName, WriteableHolon
+};
+
+#[derive(new, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransientReference {
+    id: TemporaryId,
 }
 
-impl StagedReference {
-    /// Creates a new `StagedReference` from a given TemporaryId without validation.
+impl TransientReference {
+    /// Creates a new `TransientReference` from a given TemporaryId without validation.
     ///
     /// # Arguments
-    ///
     /// * `id` - A TemporaryId
     ///
     /// # Returns
+    /// A new `TransientReference` wrapping the provided id.
     ///
-    /// A new `StagedReference` wrapping the provided id.
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
-        StagedReference { id: id.clone() }
+        TransientReference::new(id.clone())
     }
 
     /// Retrieves a shared reference to the holon with interior mutability.
@@ -50,34 +41,42 @@ impl StagedReference {
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        // Get NurseryAccess
-        let nursery_access = Self::get_nursery_access(context);
+    ) -> Result<Rc<RefCell<TransientHolon>>, HolonError> {
+        // Get TransientManagerAccess
+        let transient_manager_access = Self::get_transient_manager_access(context);
 
-        let nursery_read = nursery_access.borrow();
+        let transient_read = transient_manager_access.borrow();
 
-        // Retrieve the holon by its temporaryId
-        let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
+        // Retrieve the holon by its TemporaryId
+        let rc_holon = transient_read.get_holon_by_id(&self.id)?;
 
-        Ok(rc_holon.clone())
+        // Confirm it references a TransientHolon and return an Rc<RefCell
+        let holon = rc_holon.borrow();
+        match holon.clone() {
+            Holon::Transient(transient_holon) => Ok(Rc::new(RefCell::new(transient_holon))),
+            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a TransientReference must return a TransientHolon!".to_string()))
+
+        }
     }
 
-    /// Retrieves access to the nursery via the provided context.
+    /// Retrieves access to the TransientHolonManager via the provided context.
     ///
     /// # Arguments
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     ///
     /// # Returns
-    /// A reference to an object implementing the `NurseryAccess` trait.
+    /// A reference to an object implementing the `TransientManagerAccess` trait.
     ///
     /// # Panics
     /// This function assumes that the context and space manager will always return valid references.
-    fn get_nursery_access(context: &dyn HolonsContextBehavior) -> Arc<RefCell<dyn NurseryAccess>> {
+    fn get_transient_manager_access(
+        context: &dyn HolonsContextBehavior,
+    ) -> Arc<RefCell<dyn TransientManagerAccess>> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 
         // Get the nursery access
-        space_manager.get_nursery_access()
+        space_manager.get_transient_manager_access()
     }
 
     fn get_temporary_id(&self) -> &TemporaryId {
@@ -85,14 +84,21 @@ impl StagedReference {
     }
 }
 
-impl fmt::Display for StagedReference {
+impl fmt::Display for TransientReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "StagedReference(id: {:?})", self.id)
+        write!(f, "TransientReference(id: {:?})", self.id)
     }
 }
 
-impl ReadableHolon for StagedReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
+// ==========================
+//   TRAIT IMPLEMENTATIONS
+// ==========================
+
+impl ReadableHolon for TransientReference {
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_read = holon.borrow();
         holon_read.clone_holon()
@@ -161,23 +167,10 @@ impl ReadableHolon for StagedReference {
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-
         let holon = rc_holon.borrow();
 
-        match &*holon {
-            Holon::Staged(staged_holon) => {
-                let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                // Get collection for related holons
-                let collection = staged_relationship_map.get_related_holons(relationship_name);
-                Ok(collection)
-            }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
-            }
-        }
+        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
+        Ok(holon.get_related_holons(relationship_name)?)
     }
 
     fn get_versioned_key(
@@ -203,29 +196,21 @@ impl ReadableHolon for StagedReference {
     }
 }
 
-impl WriteableHolon for StagedReference {
+impl WriteableHolon for TransientReference {
     fn abandon_staged_changes(
         &mut self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
         debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
+        // Get mutable access to the source holon
+        let holon_refcell = self.get_rc_holon(context)?;
 
-        let rc_holon = self.get_rc_holon(context)?;
+        // Borrow the holon from the RefCell
+        let mut staged_holon = holon_refcell.borrow_mut();
 
-        // Mutably borrow the inner Holon and match it
-        let mut holon_mut = rc_holon.borrow_mut();
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                debug!("Mutably borrowing Holon::Staged for staged_id: {:#?}", self.id);
-                staged_holon.abandon_staged_changes()?;
-            }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
-            }
-        }
+        debug!("borrowed mut for holon: {:#?}", self.id);
+
+        staged_holon.abandon_staged_changes()?;
 
         Ok(())
     }
@@ -236,36 +221,33 @@ impl WriteableHolon for StagedReference {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::add_related_holons");
+        debug!("Entered TransientReference::add_related_holons");
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
         // Get access to the source holon and its relationshp map
         let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow_mut();
+        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
 
-        // Mutably borrow the inner Holon and match it
-        let mut holon_mut = rc_holon.borrow_mut();
+        debug!(
+            "Here is the RelationshipMap before adding related Holons: {:#?}",
+            staged_relationship_map
+        );
 
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                // Delegate the addition of holons to the `StagedRelationshipMap`
-                staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
-                staged_holon.init_relationships(staged_relationship_map)?;
-            }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
-            }
-        }
+        // Delegate adding holons to the `StagedRelationshipMap`
+        staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
+
+        debug!(
+            "Here is the RelationshipMap after adding related Holons: {:#?}",
+            staged_relationship_map
+        );
 
         Ok(())
     }
 
-    fn clone_reference(&self) -> StagedReference {
-        StagedReference { id: self.get_temporary_id().clone() }
+    fn clone_reference(&self) -> TransientReference {
+        TransientReference { id: self.get_temporary_id().clone() }
     }
 
     fn remove_related_holons(
@@ -274,35 +256,28 @@ impl WriteableHolon for StagedReference {
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::remove_related_holons");
+        debug!("Entered TransientReference::remove_related_holons");
 
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
         // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow_mut();
+        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
 
-        // Mutably borrow the inner Holon and match it
-        let mut holon_mut = rc_holon.borrow_mut();
+        debug!(
+            "Here is the RelationshipMap before removing related Holons: {:#?}",
+            staged_relationship_map
+        );
 
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                // Delegate the removal of holons to the `StagedRelationshipMap`
-                staged_relationship_map.remove_related_holons(
-                    context,
-                    relationship_name,
-                    holons,
-                )?;
-                staged_holon.init_relationships(staged_relationship_map)?;
-            }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
-            }
-        }
+        // Delegate the removal of holons to the `StagedRelationshipMap`
+        staged_relationship_map.remove_related_holons(context, relationship_name, holons)?;
+
+        debug!(
+            "Here is the RelationshipMap after removing related Holons: {:#?}",
+            staged_relationship_map
+        );
 
         Ok(())
     }
@@ -380,23 +355,11 @@ impl WriteableHolon for StagedReference {
         property: PropertyName,
         value: Option<BaseValue>,
     ) -> Result<&Self, HolonError> {
-        self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
+        let mut holon_refcell = rc_holon.borrow_mut();
 
-        // Mutably borrow the inner Holon and match it
-        let mut holon_mut = rc_holon.borrow_mut();
-
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                staged_holon.with_property_value(property, value)?;
-            }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
-            }
-        }
+        // Call the Holon's with_property_value method
+        holon_refcell.with_property_value(property, value)?;
 
         Ok(self)
     }

@@ -10,6 +10,12 @@ use crate::shared_test::{
     test_context::{init_test_context, TestContextConfigOption::TestFixture},
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
+
+use holons_core::holon_operations_api::*;
+use holons_core::query_layer::QueryExpression;
+use holons_core::{HolonCollectionApi, ReadableHolon, WriteableHolon, HolonsContextBehavior};
+use pretty_assertions::assert_eq;
+use rstest::*;
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::{BaseTypeKind, HolonId};
 use holons_core::{

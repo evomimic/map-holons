@@ -3,7 +3,7 @@ use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::{
-    HolonCacheAccess, HolonCacheManager, Nursery, NurseryAccess, ServiceRoutingPolicy,
+    HolonCacheAccess, HolonCacheManager, Nursery, NurseryAccess, ServiceRoutingPolicy, TransientHolonManager, TransientManagerAccess,
 };
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
@@ -23,6 +23,9 @@ pub struct HolonSpaceManager {
 
     /// The Nursery manages **staged holons** for commit operations.
     nursery: Arc<RefCell<Nursery>>,
+
+    /// Manages **transient holons** .
+    transient_manager: Arc<RefCell<TransientHolonManager>>,
 
     /// Manages cache access for retrieving both local and external holons efficiently.
     cache_request_router: Arc<dyn HolonCacheAccess>,
@@ -102,6 +105,11 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
     fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>> {
         Arc::clone(&self.nursery) as Arc<RefCell<dyn HolonStagingBehavior>>
+    }
+
+    /// Provides access to the nursery.
+    fn get_transient_manager_access(&self) -> Arc<RefCell<dyn TransientManagerAccess>> {
+        Arc::clone(&self.transient_manager) as Arc<RefCell<dyn TransientManagerAccess>>
     }
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.

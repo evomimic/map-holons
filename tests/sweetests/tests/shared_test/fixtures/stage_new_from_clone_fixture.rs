@@ -8,9 +8,12 @@ use crate::shared_test::{
     },
 };
 use base_types::{BaseValue, MapInteger, MapString};
+use base_types::{BaseValue, MapInteger, MapString};
 use holons_core::{
-    core_shared_objects::Holon, dances::ResponseStatusCode, HolonError, HolonReadable,
-    HolonReference, HolonWritable, RelationshipName, StagedReference,
+    core_shared_objects::HolonError,
+    dances::ResponseStatusCode,
+    reference_layer::{HolonReference, ReadableHolon, StagedReference, WriteableHolon},
+    RelationshipName,
 };
 use integrity_core_types::{PropertyMap, PropertyName};
 

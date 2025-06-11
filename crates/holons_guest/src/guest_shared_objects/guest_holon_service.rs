@@ -13,8 +13,8 @@ use holons_core::{
         TransientHolon,
     },
     reference_layer::{
-        HolonCollectionApi, HolonReadable, HolonReference, HolonServiceApi, HolonWritable,
-        HolonsContextBehavior, SmartReference, StagedReference,
+        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, ReadableHolon,
+        SmartReference, StagedReference, WriteableHolon,
     },
 };
 

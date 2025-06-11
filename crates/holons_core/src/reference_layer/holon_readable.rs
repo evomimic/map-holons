@@ -14,11 +14,8 @@ use integrity_core_types::{PropertyName, PropertyValue};
 
 use super::HolonReference;
 
-pub trait HolonReadable {
-    fn clone_holon(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientHolon, HolonError>;
+pub trait ReadableHolon {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError>;
 
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;

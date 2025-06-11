@@ -1,12 +1,15 @@
-pub mod cache_access;
+
 mod commit_response;
-pub mod holon;
+mod holon_cache_manager;
 mod holon_collection;
 mod holon_error;
+mod relationship;
 
+pub mod cache_access;
 pub mod cache_request_router;
+
+pub mod holon;
 pub mod holon_cache;
-mod holon_cache_manager;
 pub mod holon_pool;
 pub mod nursery;
 pub mod nursery_access;
@@ -17,6 +20,9 @@ pub mod relationship_cache;
 pub mod space_manager;
 pub mod staged_relationship;
 pub mod transient_collection;
+pub mod transient_holon_manager;
+pub mod transient_manager_access;
+pub mod transient_manager_access_internal;
 pub mod transient_relationship;
 
 pub use crate::reference_layer::holon_operations_api::*;
@@ -31,9 +37,11 @@ pub use holon_error::HolonError;
 pub use holon_pool::HolonPool;
 pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;
+pub use staged_relationship::StagedRelationshipMap;
+pub use transient_collection::TransientCollection;
+pub use transient_holon_manager::TransientHolonManager;
+pub use transient_manager_access::TransientManagerAccess;
+pub use transient_relationship::TransientRelationshipMap;
 pub use relationship::{RelationshipMap, RelationshipName};
 pub use relationship_behavior::{ReadableRelationship, WritableRelationship};
 pub use relationship_cache::RelationshipCache;
-pub use staged_relationship::StagedRelationshipMap;
-pub use transient_collection::TransientCollection;
-pub use transient_relationship::TransientRelationshipMap;

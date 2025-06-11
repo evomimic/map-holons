@@ -1,5 +1,5 @@
 use super::holon::state::AccessType;
-use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
+use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
 use crate::{HolonCollectionApi, HolonError};
 use core::fmt;
 use hdk::prelude::*;

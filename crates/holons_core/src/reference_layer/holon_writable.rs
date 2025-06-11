@@ -5,7 +5,7 @@ use crate::core_shared_objects::{Holon, HolonError, RelationshipName};
 use base_types::BaseValue;
 use integrity_core_types::PropertyName;
 
-pub trait HolonWritable {
+pub trait WriteableHolon {
     fn abandon_staged_changes(
         &mut self,
         context: &dyn HolonsContextBehavior,

@@ -16,7 +16,7 @@ use core_types::HolonId;
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    HolonReadable, HolonReference, RelationshipName, SmartReference,
+    ReadableHolon, HolonReference, RelationshipName, SmartReference,
 };
 use integrity_core_types::PropertyName;
 

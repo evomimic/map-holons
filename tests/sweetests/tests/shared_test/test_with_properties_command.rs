@@ -13,6 +13,11 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
+
+use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
+use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::{ReadableHolon, StagedReference};
+use rstest::*;
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
