@@ -18,7 +18,7 @@ use holon_dance_builders::abandon_staged_changes_dance::build_abandon_staged_cha
 use holons_core::core_shared_objects::HolonError;
 use holons_core::dances::dance_response::{ResponseBody, ResponseStatusCode};
 use holons_core::dances::DanceResponse;
-use holons_core::{HolonWritable, StagedReference};
+use holons_core::{WriteableHolon, StagedReference};
 use rstest::*;
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};

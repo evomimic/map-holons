@@ -751,6 +751,7 @@ dependencies = [
  "sha2",
  "shared_validation",
  "thiserror 2.0.12",
+ "tracing",
  "uuid",
 ]
 

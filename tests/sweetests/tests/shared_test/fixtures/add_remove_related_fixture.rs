@@ -18,7 +18,7 @@ use crate::shared_test::{
 
 use holons_core::holon_operations_api::*;
 use holons_core::query_layer::QueryExpression;
-use holons_core::{HolonCollectionApi, HolonReadable, HolonWritable, HolonsContextBehavior};
+use holons_core::{HolonCollectionApi, ReadableHolon, WriteableHolon, HolonsContextBehavior};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use base_types::{MapBoolean, MapInteger, MapString};

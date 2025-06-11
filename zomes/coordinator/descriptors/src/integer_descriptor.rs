@@ -4,7 +4,7 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::HolonError;
-use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
+use holons_core::{HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{BaseTypeKind, TypeKind};
 use integrity_core_types::PropertyName;

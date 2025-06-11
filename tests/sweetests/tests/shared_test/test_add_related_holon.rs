@@ -18,7 +18,7 @@ use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dan
 use holons_core::core_shared_objects::{holon::Holon, RelationshipName};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::StagedReference;
-use holons_core::{HolonReadable, HolonReference};
+use holons_core::{ReadableHolon, HolonReference};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use base_types::{MapInteger, MapString};

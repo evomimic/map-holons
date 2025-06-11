@@ -1,6 +1,6 @@
 use derive_new::new;
 
-use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
+use holons_core::{ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference};
 
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
@@ -25,7 +25,7 @@ use holons_core::{
     },
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference},
+    reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference},
 };
 use integrity_core_types::{HolonId, MapInteger, MapString, PropertyMap};
 

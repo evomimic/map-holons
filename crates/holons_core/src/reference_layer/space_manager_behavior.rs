@@ -1,3 +1,4 @@
+use crate::core_shared_objects::TransientManagerAccess;
 use crate::reference_layer::{HolonReference, HolonServiceApi, HolonStagingBehavior};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
@@ -60,6 +61,32 @@ pub trait HolonSpaceBehavior {
     /// - An `Arc<RefCell<dyn HolonStagingBehavior>>` for interacting with staged holons.
     fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>>;
 
+    /// Provides access to the **TransientHolonManager**, where transient holons are stored.
+    ///
+    /// The **TransientHolonManager** allows:
+    /// - Accessing holons that are not yet staged
+    /// - Managing relationships within transient holons
+    ///
+    /// # Behavior
+    /// - If the manager is **not yet initialized**, it will be created automatically.
+    ///
+    /// # Returns
+    /// - An `Arc<RefCell<dyn TransientManagerAccess>>` to allow interior mutability.
+    fn get_transient_manager_access(&self) -> Arc<RefCell<dyn TransientManagerAccess>>;
+
+    /// Provides access to a **transient state collection**, initializing it if necessary.
+    ///
+    /// The transient state:
+    /// - Stores temporary collections of holons that do **not require persistence**.
+    /// - Can be used to hold query results, temporary groupings, or working sets.
+    ///
+    /// # Behavior
+    /// - If the transient state has **not been initialized**, it is created automatically.
+    ///
+    /// # Returns
+    /// - An `Arc<RefCell<dyn HolonCollectionApi>>` for managing transient holon collections.
+    fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>>;
+
     /// **Mediates access to nursery exports, avoiding direct exposure in `NurseryAccess`.**
     ///
     /// This method is used when **sending the staged state** to another process (e.g., guest → client sync).
@@ -75,19 +102,6 @@ pub trait HolonSpaceBehavior {
     /// # Arguments
     /// - `staged_holons` - A `SerializableHolonPool` containing holons and their keyed index.
     fn import_staged_holons(&self, staged_holons: SerializableHolonPool);
-
-    /// Provides access to a **transient state collection**, initializing it if necessary.
-    ///
-    /// The transient state:
-    /// - Stores temporary collections of holons that do **not require persistence**.
-    /// - Can be used to hold query results, temporary groupings, or working sets.
-    ///
-    /// # Behavior
-    /// - If the transient state has **not been initialized**, it is created automatically.
-    ///
-    /// # Returns
-    /// - An `Arc<RefCell<dyn HolonCollectionApi>>` for managing transient holon collections.
-    fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>>;
 
     /// Updates the local space holon reference.
     ///

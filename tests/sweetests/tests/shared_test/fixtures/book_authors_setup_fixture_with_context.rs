@@ -15,7 +15,7 @@ use holons_core::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::{holon::Holon, HolonError, RelationshipName},
     dances::dance_response::ResponseStatusCode,
-    reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior},
+    reference_layer::{ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior},
 };
 use base_types::{value_types::BaseValue, BaseValue, MapString};
 use integrity_core_types::PropertyName;

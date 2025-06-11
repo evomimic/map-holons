@@ -11,7 +11,7 @@ use crate::shared_test::{
 use holons_core::{
     core_shared_objects::HolonError,
     dances::ResponseStatusCode,
-    reference_layer::{HolonReadable, HolonReference, HolonWritable, StagedReference},
+    reference_layer::{ReadableHolon, HolonReference, WriteableHolon, StagedReference},
     RelationshipName,
 };
 use base_types::{BaseValue, MapInteger, MapString};

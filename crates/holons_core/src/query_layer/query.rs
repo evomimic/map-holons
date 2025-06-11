@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::core_shared_objects::{HolonError, RelationshipName};
-use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
+use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
 use derive_new::new;
 use hdk::prelude::*;
 

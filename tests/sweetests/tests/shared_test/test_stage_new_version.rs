@@ -15,7 +15,7 @@ use holons_core::{
     },
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{
-        HolonCollectionApi, HolonReadable, HolonReference, SmartReference, StagedReference,
+        HolonCollectionApi, ReadableHolon, HolonReference, SmartReference, StagedReference,
     },
 };
 

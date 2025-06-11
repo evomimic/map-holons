@@ -7,7 +7,7 @@ use hdk::prelude::{debug, info};
 use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::HolonError;
-use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
+use holons_core::{HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapBoolean, MapEnumValue, MapString};
 use core_types::TypeKind;
 use integrity_core_types::PropertyName;

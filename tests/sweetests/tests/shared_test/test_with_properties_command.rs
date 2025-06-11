@@ -16,7 +16,7 @@ use crate::shared_test::{
 
 use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{HolonReadable, StagedReference};
+use holons_core::{ReadableHolon, StagedReference};
 use rstest::*;
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;

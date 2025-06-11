@@ -18,20 +18,18 @@ use holons_core::{
         StagedRelationshipMap,
     },
     reference_layer::{
-        HolonCollectionApi, HolonReadable, HolonReference, HolonServiceApi, HolonWritable,
-        HolonsContextBehavior, SmartReference, StagedReference,
+        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, ReadableHolon,
+        SmartReference, StagedReference, WriteableHolon,
     },
 };
 
-use holons_integrity::LinkTypes;
-use integrity_core_types::{
-    LOCAL_HOLON_SPACE_DESCRIPTION,
-    LOCAL_HOLON_SPACE_NAME, 
-    LOCAL_HOLON_SPACE_PATH,
-};
-use integrity_core_types::{LocalId, PropertyName};
 use base_types::{BaseValue, MapString};
 use core_types::HolonId;
+use holons_integrity::LinkTypes;
+use integrity_core_types::{LocalId, PropertyName};
+use integrity_core_types::{
+    LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
+};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;

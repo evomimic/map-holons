@@ -6,7 +6,7 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 use holons_core::holon_operations_api::*;
 use holons_core::{
-    HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+    HolonError, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference,
 };
 use core_types::{TypeKind, BaseTypeKind};
 use base_types::{BaseValue, MapString};

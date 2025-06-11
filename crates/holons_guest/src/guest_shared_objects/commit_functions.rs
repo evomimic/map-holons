@@ -14,7 +14,7 @@ use holons_core::core_shared_objects::{
     },
     CommitRequestStatus, CommitResponse, HolonCollection, HolonError, RelationshipName,
 };
-use holons_core::reference_layer::{HolonReadable, HolonsContextBehavior};
+use holons_core::reference_layer::{HolonsContextBehavior, ReadableHolon};
 // use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};

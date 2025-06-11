@@ -1,40 +1,33 @@
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use tracing::debug;
+use base_types::MapString;
+use core_types::{HolonId, TemporaryId};
 use derive_new::new;
-use hdk::prelude::*;
-use std::cell::RefCell;
-use std::fmt;
-use std::rc::Rc;
-use std::sync::Arc;
+use integrity_core_types::{PropertyName, PropertyValue};
+use serde::{Deserialize, Serialize};
 
-use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon, TransientHolon};
-use crate::core_shared_objects::WritableRelationship;
-use crate::reference_layer::{ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior};
-
-use crate::core_shared_objects::{
-    holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError,
-    NurseryAccess, RelationshipName,
+use crate::{
+    core_shared_objects::{holon::{
+        holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior, TransientHolon
+    }, TransientManagerAccess}, HolonCollection, HolonError, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName, WriteableHolon
 };
 
-use base_types::{BaseValue, MapString};
-use core_types::{HolonId, TemporaryId};
-use integrity_core_types::{PropertyName, PropertyValue};
-
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct StagedReference {
-    id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
+#[derive(new, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransientReference {
+    id: TemporaryId,
 }
 
-impl StagedReference {
-    /// Creates a new `StagedReference` from a given TemporaryId without validation.
+impl TransientReference {
+    /// Creates a new `TransientReference` from a given TemporaryId without validation.
     ///
     /// # Arguments
-    ///
     /// * `id` - A TemporaryId
     ///
     /// # Returns
+    /// A new `TransientReference` wrapping the provided id.
     ///
-    /// A new `StagedReference` wrapping the provided id.
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
-        StagedReference { id: id.clone() }
+        TransientReference::new(id.clone())
     }
 
     /// Retrieves a shared reference to the holon with interior mutability.
@@ -48,40 +41,42 @@ impl StagedReference {
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<Rc<RefCell<StagedHolon>>, HolonError> {
-        // Get NurseryAccess
-        let nursery_access = Self::get_nursery_access(context);
+    ) -> Result<Rc<RefCell<TransientHolon>>, HolonError> {
+        // Get TransientManagerAccess
+        let transient_manager_access = Self::get_transient_manager_access(context);
 
-        let nursery_read = nursery_access.borrow();
+        let transient_read = transient_manager_access.borrow();
 
-        // Retrieve the holon by its temporaryId
-        let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
+        // Retrieve the holon by its TemporaryId
+        let rc_holon = transient_read.get_holon_by_id(&self.id)?;
 
-        // Confirm it references a StagedHolon and return an Rc<RefCell
+        // Confirm it references a TransientHolon and return an Rc<RefCell
         let holon = rc_holon.borrow();
         match holon.clone() {
-            Holon::Staged(staged_holon) => Ok(Rc::new(RefCell::new(staged_holon))),
-            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a StagedReference must return a StagedHolon!".to_string()))
-            
+            Holon::Transient(transient_holon) => Ok(Rc::new(RefCell::new(transient_holon))),
+            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a TransientReference must return a TransientHolon!".to_string()))
+
         }
     }
 
-    /// Retrieves access to the nursery via the provided context.
+    /// Retrieves access to the TransientHolonManager via the provided context.
     ///
     /// # Arguments
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     ///
     /// # Returns
-    /// A reference to an object implementing the `NurseryAccess` trait.
+    /// A reference to an object implementing the `TransientManagerAccess` trait.
     ///
     /// # Panics
     /// This function assumes that the context and space manager will always return valid references.
-    fn get_nursery_access(context: &dyn HolonsContextBehavior) -> Arc<RefCell<dyn NurseryAccess>> {
+    fn get_transient_manager_access(
+        context: &dyn HolonsContextBehavior,
+    ) -> Arc<RefCell<dyn TransientManagerAccess>> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 
         // Get the nursery access
-        space_manager.get_nursery_access()
+        space_manager.get_transient_manager_access()
     }
 
     fn get_temporary_id(&self) -> &TemporaryId {
@@ -89,14 +84,21 @@ impl StagedReference {
     }
 }
 
-impl fmt::Display for StagedReference {
+impl fmt::Display for TransientReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "StagedReference(id: {:?})", self.id)
+        write!(f, "TransientReference(id: {:?})", self.id)
     }
 }
 
-impl ReadableHolon for StagedReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
+// ==========================
+//   TRAIT IMPLEMENTATIONS
+// ==========================
+
+impl ReadableHolon for TransientReference {
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_read = holon.borrow();
         holon_read.clone_holon()
@@ -194,7 +196,7 @@ impl ReadableHolon for StagedReference {
     }
 }
 
-impl WriteableHolon for StagedReference {
+impl WriteableHolon for TransientReference {
     fn abandon_staged_changes(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -219,7 +221,7 @@ impl WriteableHolon for StagedReference {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::add_related_holons");
+        debug!("Entered TransientReference::add_related_holons");
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
@@ -244,8 +246,8 @@ impl WriteableHolon for StagedReference {
         Ok(())
     }
 
-    fn clone_reference(&self) -> StagedReference {
-        StagedReference { id: self.get_temporary_id().clone() }
+    fn clone_reference(&self) -> TransientReference {
+        TransientReference { id: self.get_temporary_id().clone() }
     }
 
     fn remove_related_holons(
@@ -254,7 +256,7 @@ impl WriteableHolon for StagedReference {
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::remove_related_holons");
+        debug!("Entered TransientReference::remove_related_holons");
 
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
