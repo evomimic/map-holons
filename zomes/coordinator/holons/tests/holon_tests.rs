@@ -16,9 +16,9 @@
 // use shared_test::holon_fixtures::*;
 // use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
 // use shared_test::*;
-// use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-// use shared_types_holon::value_types::BaseValue;
-// use shared_types_holon::{HolonId, LocalId};
+// use integrity_core_types::holon_node::{HolonNode, PropertyMap, PropertyName};
+// use integrity_core_types::value_types::BaseValue;
+// use integrity_core_types::{HolonId, LocalId};
 //
 // /// This function iterates through the Vec of Holons provided by the test fixture
 // ///

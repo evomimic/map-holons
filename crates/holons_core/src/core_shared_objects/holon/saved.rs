@@ -1,7 +1,6 @@
+use base_types::{MapInteger, MapString};
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{
-    HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
 
 use crate::{
     core_shared_objects::holon::holon_utils::{key_info, local_id_info},
@@ -19,7 +18,7 @@ use super::{
 pub struct SavedHolon {
     holon_state: HolonState,           // Always `Immutable`
     validation_state: ValidationState, //
-    saved_id: LocalId,              // Links to persisted Holon data
+    saved_id: LocalId,                 // Links to persisted Holon data
     version: MapInteger,
     saved_state: SavedState,
     // HolonNode data:
@@ -116,7 +115,7 @@ impl HolonBehavior for SavedHolon {
     }
 
     /// Retrieves the `original_id`, if present.
-    fn get_original_id(&self) -> Option<LocalId>{
+    fn get_original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
 
@@ -213,4 +212,3 @@ impl HolonBehavior for SavedHolon {
         )
     }
 }
-

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use holons_core::core_shared_objects::Holon;
-use shared_types_holon::{HolonId, MapString, PropertyValue};
+use integrity_core_types::{HolonId, MapString, PropertyValue};
 
 // A HolonsTestCase contains a sequence of test steps. The type of the HolonTestStep determines the test behavior
 // EnsureEmpty -- Does a get_all_holons to confirm database is empty

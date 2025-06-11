@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::TemporaryId;
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{
-    BaseValue, HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-    TemporaryId,
-};
 
 use crate::{
     core_shared_objects::{
@@ -31,7 +30,7 @@ pub struct StagedHolon {
     property_map: PropertyMap,         // Self-describing property data
     staged_relationships: StagedRelationshipMap,
     original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
-    errors: Vec<HolonError>, // Populated during the commit process
+    errors: Vec<HolonError>,      // Populated during the commit process
 }
 
 // ==================================
@@ -128,7 +127,7 @@ impl StagedHolon {
     }
 
     /// Adds an associated HolonError to the errors Vec.
-    /// 
+    ///
     /// Used to track all errors obtained during the multi-stage commit process.
     pub fn add_error(&mut self, error: HolonError) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
@@ -371,7 +370,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use shared_types_holon::{MapBoolean, MapEnumValue};
+    use base_types::{MapBoolean, MapEnumValue};
 
     use super::*;
 
@@ -379,8 +378,7 @@ mod tests {
     fn instantiate_and_modify() {
         // Initialize default Holon
         let mut initial_holon = StagedHolon::new_for_create();
-         let expected_holon = 
-        StagedHolon {
+        let expected_holon = StagedHolon {
             version: MapInteger(1),
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
@@ -406,13 +404,13 @@ mod tests {
         let integer_value = Some(BaseValue::IntegerValue(MapInteger(1000)));
         property_map.insert(integer_property_name, integer_value);
         let enum_property_name = PropertyName(MapString("enum property".to_string()));
-        let enum_value = Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
+        let enum_value =
+            Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
         property_map.insert(enum_property_name, enum_value);
 
         initial_holon.update_property_map(property_map.clone()).unwrap();
 
         assert_eq!(initial_holon.property_map, property_map);
-
     }
 
     #[test]
@@ -449,7 +447,6 @@ mod tests {
 
     //     // TODO: remove relationship
     // }
-
 
     #[test]
     fn verify_default_values() {

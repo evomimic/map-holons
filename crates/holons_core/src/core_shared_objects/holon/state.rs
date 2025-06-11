@@ -1,9 +1,8 @@
+use integrity_core_types::LocalId;
 use serde::{Deserialize, Serialize};
-use shared_types_holon::LocalId;
 use std::fmt;
 
 use crate::HolonError;
-
 
 #[derive(Debug)]
 pub enum AccessType {
@@ -39,9 +38,9 @@ impl HolonState {
 
             (HolonState::Immutable, Read | Clone | Commit | Abandon) => Ok(()),
 
-            (HolonState::Immutable, Write ) => Err(HolonError::NotAccessible(
-                access_type.to_string(), self.to_string(),
-            )),
+            (HolonState::Immutable, Write) => {
+                Err(HolonError::NotAccessible(access_type.to_string(), self.to_string()))
+            }
         }
     }
 }
@@ -57,8 +56,8 @@ impl fmt::Display for HolonState {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum SavedState {
-    Deleted,    // Marked as deleted
-    Fetched,    // Retrieved from persistent storage
+    Deleted, // Marked as deleted
+    Fetched, // Retrieved from persistent storage
 }
 
 impl fmt::Display for SavedState {

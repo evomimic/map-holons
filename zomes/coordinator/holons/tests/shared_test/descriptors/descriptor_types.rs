@@ -8,7 +8,7 @@ use holons::relationship::HolonCollection::*;
 
 use derive_new::*;
 
-use shared_types_holon::value_types::BaseValue;
+use integrity_core_types::value_types::BaseValue;
 // TODO: Is SemanticVersion struct needed, since SemanticVersion is just a Holon?
 #[derive(new, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SemanticVersion {

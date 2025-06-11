@@ -1,8 +1,8 @@
 use crate::core_shared_objects::HolonError;
 
+use base_types::MapString;
 use hdk::prelude::*;
-use shared_types_holon::holon_node::{PropertyName, PropertyValue};
-use shared_types_holon::{HolonNode, LocalId, MapString, PropertyMap};
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::holon_utils::EssentialHolonContent;
 use super::state::AccessType;

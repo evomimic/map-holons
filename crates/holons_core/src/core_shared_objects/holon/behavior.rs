@@ -1,5 +1,5 @@
-use shared_types_holon::{HolonNode, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
-
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
+use base_types::MapString;
 use crate::HolonError;
 
 use super::{holon_utils::EssentialHolonContent, state::AccessType, TransientHolon};

@@ -17,7 +17,7 @@ use core::panic;
 
 use holons_core::core_shared_objects::{holon::Holon, HolonError};
 use rstest::*;
-use shared_types_holon::value_types::BaseValue;
+use integrity_core_types::value_types::BaseValue;
 use std::collections::btree_map::BTreeMap;
 // use hdk::prelude::*;
 
@@ -27,7 +27,7 @@ use crate::shared_test::test_data_types::HolonCreatesTestCase;
 //     create_example_property_descriptors, create_example_updates_for_property_descriptors,
 // };
 
-use shared_types_holon::{MapBoolean, MapString, PropertyName};
+use integrity_core_types::{MapBoolean, MapString, PropertyName};
 
 /// This function creates a set of simple (undescribed) holons
 ///

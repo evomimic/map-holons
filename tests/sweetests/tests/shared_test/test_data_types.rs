@@ -27,7 +27,7 @@ use holons_core::{
     query_layer::QueryExpression,
     reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference},
 };
-use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap};
+use integrity_core_types::{HolonId, MapInteger, MapString, PropertyMap};
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 

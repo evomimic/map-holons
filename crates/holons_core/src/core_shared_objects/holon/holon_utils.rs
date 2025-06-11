@@ -2,7 +2,8 @@ use std::fmt;
 
 use derive_new::new;
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{MapString, PropertyMap};
+use integrity_core_types::PropertyMap;
+use base_types::MapString;
 
 use crate::HolonError;
 
