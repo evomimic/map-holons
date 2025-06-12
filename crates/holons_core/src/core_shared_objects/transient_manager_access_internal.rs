@@ -3,8 +3,13 @@ use std::{any::Any, cell::RefCell, rc::Rc};
 use base_types::MapString;
 use core_types::TemporaryId;
 
-use crate::{core_shared_objects::{holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess}, HolonError, HolonStagingBehavior};
-
+use crate::{
+    core_shared_objects::{
+        holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess,
+    },
+    reference_layer::TransientHolonBehavior,
+    HolonError,
+};
 
 /// Provides **internal management** of transient holons in the TransientHolonManager.
 ///
@@ -12,7 +17,7 @@ use crate::{core_shared_objects::{holon::Holon, holon_pool::SerializableHolonPoo
 /// It defines methods for:
 /// - **Clearing transient holons**
 /// - **Retrieving holons by key**
-pub trait TransientManagerAccessInternal: TransientManagerAccess + HolonStagingBehavior {
+pub trait TransientManagerAccessInternal: TransientManagerAccess + TransientHolonBehavior {
     /// Enables safe downcasting of `TransientManagerAccessInternal` trait objects to their concrete type.
     ///
     /// This method is useful when working with `TransientManagerAccessInternal` as a trait object (`dyn TransientManagerAccessInternal`)
@@ -79,5 +84,4 @@ pub trait TransientManagerAccessInternal: TransientManagerAccess + HolonStagingB
     /// # Returns
     /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all transient Holons.
     fn get_transient_holons_pool(&self) -> Vec<Rc<RefCell<Holon>>>;
-
 }

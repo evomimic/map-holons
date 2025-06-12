@@ -76,14 +76,13 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         response
     }
 
-    /// Loads the current session state from the nursery into the given `SessionState` instance.
+    /// Loads the current session state from the managers into the given `SessionState` instance.
     ///
     /// This function retrieves staged holons from the HolonSpaceManager and injects them into
     /// the provided `session_state`, ensuring that the outgoing `DanceRequest` includes
     /// the latest state from the local context.
     ///
     /// # Arguments
-    ///
     /// * `context` - A reference to the `HolonsContextBehavior`, which provides access to the space manager.
     /// * `session_state` - A mutable reference to the `SessionState` that will be updated with staged holons.
     ///
@@ -95,7 +94,9 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     ) {
         let space_manager = context.get_space_manager();
         let staged_holons = space_manager.export_staged_holons();
+        let transient_holons = space_manager.export_transient_holons();
         session_state.set_staged_holons(staged_holons);
+        session_state.set_transient_holons(transient_holons);
         session_state.set_local_holon_space(space_manager.get_space_holon());
     }
 
@@ -106,7 +107,6 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     /// synchronized with the session state maintained by the client and guest.
     ///
     /// # Arguments
-    ///
     /// * `context` - A reference to the `HolonsContextBehavior`, used to access the space manager.
     /// * `session_state` - A reference to the `SessionState` from which staged holons will be restored.
     ///
@@ -115,6 +115,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     fn load_nursery(&self, context: &dyn HolonsContextBehavior, session_state: &SessionState) {
         let space_manager = context.get_space_manager();
         let staged_holons = session_state.get_staged_holons().clone();
+        // let transient_holons =
         space_manager.import_staged_holons(staged_holons);
     }
 }

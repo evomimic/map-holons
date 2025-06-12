@@ -2,7 +2,7 @@
 
 use crate::client_shared_objects::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
-use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy};
+use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy, TransientHolonManager};
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
 use std::sync::Arc;
 
@@ -38,12 +38,16 @@ pub fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
 
-    // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`
-    let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
+    // Step 3: Create an empty TransientHolonManager for the client
+    let transient_manager = TransientHolonManager::new();
+
+    // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
+    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
         nursery,
+        transient_manager,
     ));
 
     // Wrap in `ClientHolonsContext` and return as an Arc<dyn HolonsContextBehavior>

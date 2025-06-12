@@ -11,18 +11,20 @@ use serde::{Deserialize, Serialize};
 /// create a unique temporary id for each Holon in the session specific Nursery.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SessionState {
+    transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReference>,
     pub key_suffix_count: usize, // default beginning count is 0
 }
 
 impl SessionState {
-    /// Creates a new session state with the provided staged holons and local holon space.
+    /// Creates a new session state with the provided staged and transient holons and local holon space.
     pub fn new(
+        transient_holons: SerializableHolonPool,
         staged_holons: SerializableHolonPool,
         local_holon_space: Option<HolonReference>,
     ) -> Self {
-        Self { staged_holons, local_holon_space, key_suffix_count: 1 }
+        Self { transient_holons, staged_holons, local_holon_space, key_suffix_count: 1 }
     }
 
     pub fn get_local_holon_space(&self) -> Option<HolonReference> {
@@ -41,6 +43,11 @@ impl SessionState {
     /// Retrieves a mutable reference to the staged holon pool.
     pub fn get_staged_holons_mut(&mut self) -> &mut SerializableHolonPool {
         &mut self.staged_holons
+    }
+
+    /// Retrieves the transient holon pool.
+    pub fn get_transient_holons(&self) -> &SerializableHolonPool {
+        &self.transient_holons
     }
 
     /// Sets a new staged holon pool.

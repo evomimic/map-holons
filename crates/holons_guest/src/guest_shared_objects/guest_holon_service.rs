@@ -377,7 +377,8 @@ impl HolonServiceApi for GuestHolonService {
         cloned_holon.update_original_id(None)?;
 
         match original_holon {
-            HolonReference::Staged(_) => {}
+            HolonReference::Transient(_) => {},
+            HolonReference::Staged(_) => {},
             HolonReference::Smart(_) => cloned_holon.update_relationship_map(
                 self.clone_existing_relationships_into_transient_map(
                     context,
