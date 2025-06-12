@@ -1,15 +1,21 @@
-use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
-use tracing::debug;
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonId, TemporaryId};
 use derive_new::new;
 use integrity_core_types::{PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use tracing::debug;
 
 use crate::{
-    core_shared_objects::{holon::{
-        holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior, TransientHolon
-    }, TransientManagerAccess}, HolonCollection, HolonError, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName, WriteableHolon
+    core_shared_objects::{
+        holon::{
+            holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior,
+            TransientHolon,
+        },
+        TransientManagerAccess,
+    },
+    HolonCollection, HolonError, HolonReference, HolonsContextBehavior, ReadableHolon,
+    RelationshipName, WriteableHolon,
 };
 
 #[derive(new, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -169,7 +175,7 @@ impl ReadableHolon for TransientReference {
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.borrow();
 
-        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
+        // Use the public `get_related_holons` method on the `TransientRelationshipMap`
         Ok(holon.get_related_holons(relationship_name)?)
     }
 
@@ -197,24 +203,6 @@ impl ReadableHolon for TransientReference {
 }
 
 impl WriteableHolon for TransientReference {
-    fn abandon_staged_changes(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-        // Get mutable access to the source holon
-        let holon_refcell = self.get_rc_holon(context)?;
-
-        // Borrow the holon from the RefCell
-        let mut staged_holon = holon_refcell.borrow_mut();
-
-        debug!("borrowed mut for holon: {:#?}", self.id);
-
-        staged_holon.abandon_staged_changes()?;
-
-        Ok(())
-    }
-
     fn add_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -228,26 +216,22 @@ impl WriteableHolon for TransientReference {
         // Get access to the source holon and its relationshp map
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.borrow_mut();
-        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
+        let mut transient_relationship_map = holon.get_transient_relationship_map()?;
 
         debug!(
             "Here is the RelationshipMap before adding related Holons: {:#?}",
-            staged_relationship_map
+            transient_relationship_map
         );
 
-        // Delegate adding holons to the `StagedRelationshipMap`
-        staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
+        // Delegate adding holons to the `TransientRelationshipMap`
+        transient_relationship_map.add_related_holons(context, relationship_name, holons)?;
 
         debug!(
             "Here is the RelationshipMap after adding related Holons: {:#?}",
-            staged_relationship_map
+            transient_relationship_map
         );
 
         Ok(())
-    }
-
-    fn clone_reference(&self) -> TransientReference {
-        TransientReference { id: self.get_temporary_id().clone() }
     }
 
     fn remove_related_holons(
@@ -264,7 +248,7 @@ impl WriteableHolon for TransientReference {
         // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.borrow_mut();
-        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
+        let mut staged_relationship_map = holon.get_transient_relationship_map()?;
 
         debug!(
             "Here is the RelationshipMap before removing related Holons: {:#?}",

@@ -14,8 +14,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     core_shared_objects::{
         holon::holon_utils::{key_info, local_id_info},
-        ReadableRelationship, TransientRelationshipMap,
-    }, HolonCollection, HolonError, RelationshipName
+        TransientRelationshipMap,
+    },
+    HolonCollection, HolonError, RelationshipName,
 };
 
 use super::{
@@ -130,7 +131,6 @@ impl TransientHolon {
 
         Ok(self.transient_relationships.clone())
     }
-
 }
 
 // ======================================

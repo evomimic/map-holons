@@ -7,11 +7,13 @@ use std::sync::Arc;
 
 use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon, TransientHolon};
 use crate::core_shared_objects::WritableRelationship;
-use crate::reference_layer::{ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior};
+use crate::reference_layer::{
+    HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon,
+};
 
 use crate::core_shared_objects::{
-    holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError,
-    NurseryAccess, RelationshipName,
+    holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon},
+    HolonCollection, HolonError, NurseryAccess, RelationshipName,
 };
 
 use base_types::{BaseValue, MapString};
@@ -24,14 +26,36 @@ pub struct StagedReference {
 }
 
 impl StagedReference {
+    /// Marks the underlying StagedHolon that is referenced as 'Abandoned'
+    /// 
+    /// Prevents a commit from taking place and restricts Holon to read-only access.
+    ///
+    /// # Arguments
+    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
+    pub fn abandon_staged_changes(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<(), HolonError> {
+        debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
+        // Get mutable access to the source holon
+        let holon_refcell = self.get_rc_holon(context)?;
+
+        // Borrow the holon from the RefCell
+        let mut staged_holon = holon_refcell.borrow_mut();
+
+        debug!("borrowed mut for holon: {:#?}", self.id);
+
+        staged_holon.abandon_staged_changes()?;
+
+        Ok(())
+    }
+
     /// Creates a new `StagedReference` from a given TemporaryId without validation.
     ///
     /// # Arguments
-    ///
     /// * `id` - A TemporaryId
     ///
     /// # Returns
-    ///
     /// A new `StagedReference` wrapping the provided id.
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
         StagedReference { id: id.clone() }
@@ -61,8 +85,10 @@ impl StagedReference {
         let holon = rc_holon.borrow();
         match holon.clone() {
             Holon::Staged(staged_holon) => Ok(Rc::new(RefCell::new(staged_holon))),
-            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a StagedReference must return a StagedHolon!".to_string()))
-            
+            _ => Err(HolonError::InvalidHolonReference(
+                "The TemporaryId associated with a StagedReference must return a StagedHolon!"
+                    .to_string(),
+            )),
         }
     }
 
@@ -96,7 +122,10 @@ impl fmt::Display for StagedReference {
 }
 
 impl ReadableHolon for StagedReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_read = holon.borrow();
         holon_read.clone_holon()
@@ -195,24 +224,6 @@ impl ReadableHolon for StagedReference {
 }
 
 impl WriteableHolon for StagedReference {
-    fn abandon_staged_changes(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-        // Get mutable access to the source holon
-        let holon_refcell = self.get_rc_holon(context)?;
-
-        // Borrow the holon from the RefCell
-        let mut staged_holon = holon_refcell.borrow_mut();
-
-        debug!("borrowed mut for holon: {:#?}", self.id);
-
-        staged_holon.abandon_staged_changes()?;
-
-        Ok(())
-    }
-
     fn add_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -242,10 +253,6 @@ impl WriteableHolon for StagedReference {
         );
 
         Ok(())
-    }
-
-    fn clone_reference(&self) -> StagedReference {
-        StagedReference { id: self.get_temporary_id().clone() }
     }
 
     fn remove_related_holons(

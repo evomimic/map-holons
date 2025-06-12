@@ -33,13 +33,6 @@ impl SmartReference {
         SmartReference { holon_id, smart_property_values: None }
     }
 
-    pub fn clone_reference(&self) -> SmartReference {
-        SmartReference {
-            holon_id: self.holon_id.clone(),
-            smart_property_values: self.smart_property_values.clone(),
-        }
-    }
-
     // *************** ACCESSORS ***************
 
     /// Outside helper method for serialization purposes, that does not require a context.
@@ -142,6 +135,7 @@ impl SmartReference {
         // Get CacheAccess
         space_manager.get_cache_access()
     }
+
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
