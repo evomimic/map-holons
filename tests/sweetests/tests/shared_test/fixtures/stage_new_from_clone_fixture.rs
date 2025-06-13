@@ -7,14 +7,11 @@ use crate::shared_test::{
         DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-
-use holons_core::{
-    core_shared_objects::HolonError,
-    dances::ResponseStatusCode,
-    reference_layer::{HolonReadable, HolonReference, HolonWritable, StagedReference},
-    RelationshipName,
-};
 use base_types::{BaseValue, MapInteger, MapString};
+use holons_core::{
+    dances::ResponseStatusCode, HolonError, HolonReadable, HolonReference, HolonWritable,
+    RelationshipName, StagedReference,
+};
 use integrity_core_types::{PropertyMap, PropertyName};
 
 /// Fixture for creating Simple StageNewFromClone Testcase

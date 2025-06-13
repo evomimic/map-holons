@@ -1,22 +1,16 @@
 use derive_new::new;
 
-use holons_core::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference};
-
-use holons_client::dances_client::dance_call_service::DanceCallService;
-use holons_client::ConductorDanceCaller;
-use holons_core::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
-use holons_core::dances::ResponseStatusCode;
-use holons_core::query_layer::QueryExpression;
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
-use integrity_core_types::PropertyMap;
-use std::collections::{BTreeMap, VecDeque};
-use std::fmt;
-use std::fmt::{Debug, Display};
-use std::sync::Arc;
-
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
+use integrity_core_types::PropertyMap;
+use std::{
+    collections::{BTreeMap, VecDeque},
+    fmt,
+    fmt::{Debug, Display},
+    sync::Arc,
+};
 
 use holons_core::{
     core_shared_objects::{
@@ -27,7 +21,6 @@ use holons_core::{
     query_layer::QueryExpression,
     reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference},
 };
-use integrity_core_types::{HolonId, MapInteger, MapString, PropertyMap};
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 

@@ -9,14 +9,10 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use holons_core::{
-    core_shared_objects::{
-        holon::{Holon, HolonBehavior},
-        HolonCollection, HolonError, RelationshipName,
-    },
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{
-        HolonCollectionApi, HolonReadable, HolonReference, SmartReference, StagedReference,
-    },
+    core_shared_objects::holon::{Holon, HolonBehavior},
+    HolonCollection, HolonCollectionApi, HolonError, HolonReadable, HolonReference,
+    RelationshipName, SmartReference, StagedReference,
 };
 
 use base_types::MapString;

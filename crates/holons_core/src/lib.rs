@@ -13,7 +13,7 @@ pub use core_shared_objects::{
     Nursery, NurseryAccess, RelationshipCache, RelationshipMap,
     RelationshipName, ServiceRoutingPolicy, StagedRelationshipMap, TransientCollection,
 };
-pub use reference_layer::holon_operations_api;
+pub use reference_layer::holon_operations_api::*;
 pub use reference_layer::{
     HolonCollectionApi, HolonReadable, HolonReference, HolonServiceApi, HolonSpaceBehavior,
     HolonStagingBehavior, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,

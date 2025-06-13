@@ -2,14 +2,12 @@ use rstest::*;
 
 use crate::shared_test::{
     setup_book_author_steps_with_context,
-    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_context::init_test_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
-};
-
-use holons_core::{
-    core_shared_objects::HolonError, dances::dance_response::ResponseStatusCode, HolonReference,
+    TestContextConfigOption::TestFixture,
 };
 use base_types::{BaseValue, MapInteger, MapString};
+use holons_core::{dances::dance_response::ResponseStatusCode, HolonError, HolonReference};
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]

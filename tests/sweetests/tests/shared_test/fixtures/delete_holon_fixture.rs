@@ -1,26 +1,16 @@
 // #![allow(dead_code)]
 
-use core::panic;
-use pretty_assertions::assert_eq;
-use std::cell::RefCell;
-use std::collections::btree_map::BTreeMap;
-use std::rc::Rc;
-use tracing::{error, info, warn};
-
 use rstest::*;
 
 use crate::shared_test::test_data_types::DancesTestCase;
-use holons_core::core_shared_objects::{holon::Holon, HolonCollection, HolonError, RelationshipName};
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::query_layer::QueryExpression;
-use holons_core::HolonsContextBehavior;
-use pretty_assertions::assert_eq;
-use rstest::*;
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::HolonId;
+use holons_core::{
+    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression, HolonCollection, HolonError, HolonsContextBehavior,
+    RelationshipName,
+};
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
-use std::collections::btree_map::BTreeMap;
-use std::rc::Rc;
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]

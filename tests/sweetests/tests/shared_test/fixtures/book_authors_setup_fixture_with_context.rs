@@ -6,18 +6,12 @@ use crate::shared_test::test_data_types::{
     DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
     PERSON_2_KEY, PUBLISHER_KEY,
 };
-
-use std::string::ToString; // Import the test-only extension
-
-use holons_core::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::holon_operations_api::*;
+use base_types::{BaseValue, MapString};
 use holons_core::{
-    core_shared_objects::{holon::Holon, HolonError, RelationshipName},
-    dances::dance_response::ResponseStatusCode,
-    reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior},
+    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
+    stage_new_holon_api, HolonError, HolonReadable, HolonReference, HolonWritable,
+    HolonsContextBehavior, RelationshipName,
 };
-use base_types::{value_types::BaseValue, BaseValue, MapString};
 use integrity_core_types::PropertyName;
 
 // pub struct TestHolon {
