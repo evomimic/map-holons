@@ -8,7 +8,8 @@ use crate::shared_test::test_data_types::{
 };
 use base_types::{BaseValue, MapString};
 use holons_core::{
-    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
+    core_shared_objects::holon::{Holon, TransientHolon},
+    dances::dance_response::ResponseStatusCode,
     stage_new_holon_api, HolonError, HolonReadable, HolonReference, HolonWritable,
     HolonsContextBehavior, RelationshipName,
 };
@@ -35,7 +36,7 @@ pub fn setup_book_author_steps_with_context(
     let relationship_name = RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())); // ✅ Convert to MapString
 
     //  STAGE:  Book Holon  //
-    let mut book_holon = Holon::new_transient();
+    let mut book_holon = TransientHolon::new();
     let book_holon_key = MapString(BOOK_KEY.to_string()); // ✅ Convert to MapString
 
     book_holon
@@ -57,7 +58,7 @@ pub fn setup_book_author_steps_with_context(
     let book_ref = stage_new_holon_api(context, book_holon)?;
 
     //  STAGE:  Person 1 //
-    let mut person_1_holon = Holon::new_transient();
+    let mut person_1_holon = TransientHolon::new();
     let person_1_key = MapString(PERSON_1_KEY.to_string()); // ✅ Convert to MapString
 
     person_1_holon
@@ -77,7 +78,7 @@ pub fn setup_book_author_steps_with_context(
     let person_1_reference = stage_new_holon_api(context, person_1_holon.clone())?;
 
     //  STAGE:  Person 2 //
-    let mut person_2_holon = Holon::new_transient();
+    let mut person_2_holon = TransientHolon::new();
     let person_2_key = MapString(PERSON_2_KEY.to_string()); // ✅ Convert to MapString
 
     person_2_holon
@@ -97,7 +98,7 @@ pub fn setup_book_author_steps_with_context(
     let person_2_reference = stage_new_holon_api(context, person_2_holon.clone())?;
 
     //  STAGE:  Publisher //
-    let mut publisher_holon = Holon::new_transient();
+    let mut publisher_holon = TransientHolon::new();
     let publisher_key = MapString(PUBLISHER_KEY.to_string()); // ✅ Convert to MapString
 
     publisher_holon
@@ -139,7 +140,7 @@ pub fn setup_book_author_steps_with_context(
         relationship_name.clone(),
         target_references,
         ResponseStatusCode::OK,
-        book_ref.clone_holon(context)?,
+        Holon::Transient(book_ref.clone_holon(context)?),
     )?;
 
     Ok(relationship_name)

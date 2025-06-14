@@ -9,9 +9,11 @@ use crate::shared_test::{
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use holons_core::{
-    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression, stage_new_holon_api, HolonError, HolonReadable, HolonReference,
-    HolonsContextBehavior, RelationshipName, StagedReference,
+    core_shared_objects::holon::{Holon, TransientHolon},
+    dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression,
+    stage_new_holon_api, HolonError, HolonReadable, HolonReference, HolonsContextBehavior,
+    RelationshipName, StagedReference,
 };
 use integrity_core_types::PropertyName;
 
@@ -63,7 +65,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         RelationshipName(MapString("FRIENDS".to_string())),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
-        book_ref.clone_holon(&*fixture_context)?,
+        Holon::Transient(book_ref.clone_holon(&*fixture_context)?),
     )?;
 
     //  COMMIT  //  all Holons in staging_area
@@ -76,7 +78,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_match_saved_content_step()?;
 
     //  STAGE:  Abandoned Holon1 (H4)  //
-    let mut abandoned_holon_1 = Holon::new_transient();
+    let mut abandoned_holon_1 = TransientHolon::new();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
         Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
@@ -90,7 +92,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
-    let mut abandoned_holon_2 = Holon::new_transient();
+    let mut abandoned_holon_2 = TransientHolon::new();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("key".to_string())),
         Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),

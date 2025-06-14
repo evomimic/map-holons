@@ -162,6 +162,7 @@ impl StagedHolon {
         Ok(())
     }
 
+
     pub fn with_property_value(
         &mut self,
         property: PropertyName,
@@ -169,13 +170,10 @@ impl StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
-        match self.staged_state {
-            StagedState::ForUpdate => self.staged_state = StagedState::ForUpdateChanged,
-            _ => {}
-        }
 
         Ok(self)
     }
+
 }
 
 // ======================================
@@ -308,6 +306,7 @@ impl HolonBehavior for StagedHolon {
         self.property_map = map;
         Ok(())
     }
+
 
     // =========================
     //       DIAGNOSTICS

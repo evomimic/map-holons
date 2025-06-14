@@ -14,7 +14,7 @@ use std::{
 
 use holons_core::{
     core_shared_objects::{
-        holon::{Holon, HolonBehavior},
+        holon::{Holon, HolonBehavior, TransientHolon},
         HolonError, RelationshipName,
     },
     dances::ResponseStatusCode,
@@ -88,7 +88,7 @@ pub enum DanceTestStep {
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
-    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+    StageHolon(TransientHolon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     StageNewFromClone(TestReference, MapString, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedReference, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedReference with PropertyMap
@@ -360,7 +360,7 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
+    pub fn add_stage_holon_step(&mut self, holon: TransientHolon) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::StageHolon(holon));
         Ok(())
     }

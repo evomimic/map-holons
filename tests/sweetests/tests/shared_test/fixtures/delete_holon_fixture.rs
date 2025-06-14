@@ -6,9 +6,10 @@ use crate::shared_test::test_data_types::DancesTestCase;
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
-    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression, HolonCollection, HolonError, HolonsContextBehavior,
-    RelationshipName,
+    core_shared_objects::holon::{Holon, TransientHolon},
+    dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression,
+    HolonCollection, HolonError, HolonsContextBehavior, RelationshipName,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
@@ -21,7 +22,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     );
 
     //  ADD STEP:  STAGE:  Book Holon  //
-    let mut book_holon = Holon::new_transient();
+    let mut book_holon = TransientHolon::new();
     let book_holon_key = MapString(
         "Emerging World: The Evolution of Consciousness and the Future of Humanity".to_string(),
     );
