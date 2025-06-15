@@ -1799,7 +1799,6 @@ dependencies = [
 name = "type_definers_zome"
 version = "0.1.0"
 dependencies = [
- "hdk",
  "type_definers",
 ]
 

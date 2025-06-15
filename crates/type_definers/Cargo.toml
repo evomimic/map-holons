@@ -16,7 +16,6 @@ serde = { workspace = true }
 tracing = { workspace = true }
 
 # Holochain Dependencies
-# hdk = { workspace = true }
 hdi = { workspace = true }
 
 # MAP Dependencies
