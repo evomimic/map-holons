@@ -3,7 +3,7 @@
 use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::semantic_version::SemanticVersion;
-use hdk::prelude::{debug, info};
+use tracing::{debug, info};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};

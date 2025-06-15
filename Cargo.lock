@@ -1792,6 +1792,7 @@ dependencies = [
  "holons_core",
  "integrity_core_types",
  "serde",
+ "tracing",
 ]
 
 [[package]]

@@ -13,6 +13,7 @@ name = "type_definers"
 derive-new = { workspace = true }
 Inflector = { workspace = true }
 serde = { workspace = true }
+tracing = { workspace = true }
 
 # Holochain Dependencies
 # hdk = { workspace = true }
