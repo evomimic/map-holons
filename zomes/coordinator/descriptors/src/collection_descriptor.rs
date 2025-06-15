@@ -9,8 +9,9 @@ use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationship
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use holons_core::core_shared_objects::stage_new_holon_api;
 
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use shared_types_holon::{BaseType, PropertyName};
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
 
 pub struct CollectionTypeDefinition {
     pub header: TypeDescriptorDefinition,
@@ -56,7 +57,7 @@ pub fn define_collection_type(
     // Stage the new TypeDescriptor
 
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, BaseType::Collection, definition.header.clone())?;
+        define_type_descriptor(context, schema, TypeKind::Collection, definition.header.clone())?;
 
     // Build the new type
 

@@ -7,16 +7,15 @@ use crate::shared_test::{
     test_context::{init_test_context, TestContextConfigOption::TestFixture},
     test_data_types::{DancesTestCase, TestReference, BOOK_KEY, PERSON_1_KEY},
 };
+use base_types::{BaseValue, MapInteger, MapString};
 use holons_core::{
-    core_shared_objects::{holon::Holon, HolonError, RelationshipName},
+    core_shared_objects::holon::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{
-        stage_new_holon_api, HolonReadable, HolonReference, HolonsContextBehavior, StagedReference,
-    },
+    stage_new_holon_api, HolonError, HolonReadable, HolonReference, HolonsContextBehavior,
+    RelationshipName, StagedReference,
 };
-
-use shared_types_holon::{value_types::BaseValue, MapInteger, MapString, PropertyName};
+use integrity_core_types::PropertyName;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
@@ -66,7 +65,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         RelationshipName(MapString("FRIENDS".to_string())),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
-        book_ref.clone_holon(&*fixture_context)?,
+        Holon::Transient(book_ref.clone_holon(&*fixture_context)?),
     )?;
 
     //  COMMIT  //  all Holons in staging_area
@@ -79,7 +78,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_match_saved_content_step()?;
 
     //  STAGE:  Abandoned Holon1 (H4)  //
-    let mut abandoned_holon_1 = Holon::new_transient();
+    let mut abandoned_holon_1 = TransientHolon::new();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
         Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
@@ -93,7 +92,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
-    let mut abandoned_holon_2 = Holon::new_transient();
+    let mut abandoned_holon_2 = TransientHolon::new();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("key".to_string())),
         Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),

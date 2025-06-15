@@ -11,13 +11,16 @@ use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{
     DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
 };
-use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
 use holons_core::{
     core_shared_objects::holon::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
     HolonReadable, HolonReference, RelationshipName, SmartReference,
 };
-use shared_types_holon::{BaseValue, HolonId, MapInteger, MapString, PropertyName};
+use integrity_core_types::PropertyName;
+
+use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.

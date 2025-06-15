@@ -1,6 +1,8 @@
 use shared_types_holon::{HolonNode, LocalId, MapString, PropertyMap, PropertyName, PropertyValue};
 
 use crate::HolonError;
+use base_types::MapString;
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::{holon_utils::EssentialHolonContent, state::AccessType, TransientHolon};
 
@@ -101,15 +103,22 @@ pub trait HolonBehavior {
     //     MUTATORS
     // =================
 
+    // Note: these will always fail for Saved Holon variants since they are immutable..
+
+    // ?TODO: should we remove these from the trait and into respective impls for Staged & Transient ?
+
     /// Called by HolonPool::insert_holon() to increment the version.
     ///
     /// Used to track ephemeral versions of Holons with the same key.
     fn increment_version(&mut self) -> Result<(), HolonError>;
 
-    /// **TODO DOC: Updates
+    /// Replaces the 'OriginalId' with the provided optional 'LocalId'.
+    ///
+    /// Used when cloning a Holon to retain predecessor.
+    /// Called by stage_new_from_clone to reset predecessor to None.
     fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError>;
 
-    /// **TODO DOC: Updates
+    /// Modifies the Holon's 'property_map'.
     fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError>;
 
     // =========================
@@ -121,7 +130,6 @@ pub trait HolonBehavior {
     /// # Usage
     /// Designed for debugging, tracing, or visualizing Holon state.
     ///
-
     fn debug_info(&self) -> String;
 
     // ==================

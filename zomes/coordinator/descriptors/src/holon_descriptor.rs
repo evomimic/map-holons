@@ -6,8 +6,9 @@ use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
-use shared_types_holon::value_types::MapString;
-use shared_types_holon::{BaseType, BaseValue, PropertyName};
+use base_types::{BaseValue, MapString};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
 
 #[derive(Clone, Debug)]
 pub struct HolonTypeDefinition {
@@ -43,7 +44,7 @@ pub fn define_holon_type(
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, BaseType::Holon, definition.header.clone())?;
+        define_type_descriptor(context, schema, TypeKind::Holon, definition.header.clone())?;
 
     // Build new HolonType
 

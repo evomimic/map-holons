@@ -7,14 +7,12 @@ use crate::shared_test::{
         DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-
+use base_types::{BaseValue, MapInteger, MapString};
 use holons_core::{
-    core_shared_objects::HolonError,
-    dances::ResponseStatusCode,
-    reference_layer::{HolonReadable, HolonReference, HolonWritable, StagedReference},
-    RelationshipName,
+    core_shared_objects::holon::Holon, dances::ResponseStatusCode, HolonError, HolonReadable,
+    HolonReference, HolonWritable, RelationshipName, StagedReference,
 };
-use shared_types_holon::{BaseValue, MapInteger, MapString, PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName};
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]
@@ -177,7 +175,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         publisher_relationship_name.clone(),
         holons_to_add,
         ResponseStatusCode::OK,
-        expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap(), // expected holon
+        Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon
     )?;
 
     //  COMMIT  // the cloned & modified Book Holon

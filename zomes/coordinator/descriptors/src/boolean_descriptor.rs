@@ -1,15 +1,15 @@
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
-use holons_core::core_shared_objects::holon::TransientHolon;
+use holons_core::{core_shared_objects::holon::TransientHolon, stage_new_holon_api};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
-use holons_core::holon_operations_api::*;
+use base_types::{BaseValue, MapString};
+use core_types::{BaseTypeKind, TypeKind};
 use holons_core::{
     HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
 };
-use shared_types_holon::value_types::{BaseType, ValueType};
-use shared_types_holon::{BaseValue, MapString, PropertyName};
+use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::TypeName;
 
 pub struct BooleanTypeDefinition {
@@ -29,7 +29,7 @@ pub fn define_boolean_type(
     let type_descriptor_ref = define_type_descriptor(
         context,
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
-        BaseType::Value(ValueType::Boolean),
+        TypeKind::Value(BaseTypeKind::Boolean),
         definition.header.clone(),
     )?;
 

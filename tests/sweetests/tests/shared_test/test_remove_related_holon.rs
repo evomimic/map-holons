@@ -8,23 +8,19 @@ use rstest::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::*;
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 
+use base_types::{MapInteger, MapString};
 use holon_dance_builders::remove_related_holons_dance::build_remove_related_holons_dance_request;
 use holons_core::{
-    core_shared_objects::{holon::Holon, RelationshipName},
     dances::{ResponseBody, ResponseStatusCode},
-    HolonReference, StagedReference,
+    core_shared_objects::holon::Holon,
+    HolonReference, RelationshipName, StagedReference,
 };
-use shared_types_holon::{
-    holon_node::{HolonNode, PropertyMap, PropertyName},
-    value_types::BaseValue,
-    HolonId, MapInteger, MapString,
-};
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
 /// This function is intended to test the ability to remove holons from a specified relationship
 /// originating at a source_holon.

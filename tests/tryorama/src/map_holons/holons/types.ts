@@ -5,24 +5,24 @@ import { HoloHash, HoloHashB64 } from "@holochain/client"
 type RelationshipNameType = string
 type StagedIndex = number
 
-export enum BaseValueType {
+export enum BaseTypeKindType {
   StringValue = 'StringValue',
   BooleanValue = 'BooleanValue',
   IntegerValue = 'IntegerValue',
   EnumValue = 'EnumValue'
 }
 
-export type BaseValueMap = {
-  [BaseValueType.StringValue]: string;
-  [BaseValueType.BooleanValue]: boolean;
-  [BaseValueType.IntegerValue]: number;
-  [BaseValueType.EnumValue]: 'Option1' | 'Option2' | 'Option3';
+export type BaseTypeKindMap = {
+  [BaseTypeKindType.StringValue]: string;
+  [BaseTypeKindType.BooleanValue]: boolean;
+  [BaseTypeKindType.IntegerValue]: number;
+  [BaseTypeKindType.EnumValue]: 'Option1' | 'Option2' | 'Option3';
 };
 
-export type BaseValue = { [K in keyof BaseValueMap]: { [key in K]: BaseValueMap[K] } }[keyof BaseValueMap];
+export type BaseTypeKind = { [K in keyof BaseTypeKindMap]: { [key in K]: BaseTypeKindMap[K] } }[keyof BaseTypeKindMap];
 
-export type BaseValueList = [BaseValue]
-type PropertyValue = BaseValue
+export type BaseTypeKindList = [BaseTypeKind]
+type PropertyValue = BaseTypeKind
 type PropertyName = string
 export type PropertyMap = Record<PropertyName, PropertyValue>;
 
@@ -167,5 +167,5 @@ export type Holon = {
 export type WithPropertyInput = {
   holon: Holon,
   property_name: PropertyName,
-  value: BaseValueList,
+  value: BaseTypeKindList,
 }

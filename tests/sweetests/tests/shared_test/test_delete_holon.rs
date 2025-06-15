@@ -13,14 +13,13 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
 use holon_dance_builders::delete_holon_dance::build_delete_holon_dance_request;
 use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
-use holons_core::{core_shared_objects::holon::HolonBehavior, dances::ResponseStatusCode};
-use shared_types_holon::{
-    holon_node::{HolonNode, PropertyMap, PropertyName},
-    value_types::BaseValue,
-    HolonId, LocalId, MapInteger, MapString,
-};
+use holons_core::core_shared_objects::holon::HolonBehavior;
+use holons_core::dances::ResponseStatusCode;
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 
 /// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
 /// and matches the expected response

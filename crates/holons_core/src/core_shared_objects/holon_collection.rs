@@ -3,7 +3,7 @@ use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavio
 use crate::{HolonCollectionApi, HolonError};
 use core::fmt;
 use hdk::prelude::*;
-use shared_types_holon::{MapInteger, MapString};
+use base_types::{MapInteger, MapString};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]

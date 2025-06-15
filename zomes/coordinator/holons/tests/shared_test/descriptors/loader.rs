@@ -1,7 +1,7 @@
 /// This file loads the MAP Type System as a Vector of In-Memory Holons within a Test Fixture
 /// Since it is executing within a fixture, it cannot access any Conductor functions
 use holons::holon_types::Holon;
-use shared_types_holon::value_types::{BaseType, BaseValue};
+use integrity_core_types::value_types::{TypeKind, BaseValue};
 
 use crate::shared_test::descriptors::enum_descriptor::{
     define_enum_descriptor, define_enum_variant_descriptor,
@@ -32,7 +32,7 @@ pub fn load_type_system() -> Vec<Holon> {
     type_system.push(define_boolean_descriptor());
 
     type_system.push(define_enum_descriptor());
-    type_system.push(define_enum_variant_descriptor(BaseType::String));
+    type_system.push(define_enum_variant_descriptor(TypeKind::String));
 
     type_system
 }

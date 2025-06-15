@@ -1,7 +1,10 @@
+use base_types::MapInteger;
 use hdi::prelude::{Record, RecordEntry};
-use holons_core::{core_shared_objects::holon::{Holon, SavedHolon}, HolonError};
-use shared_types_holon::{HolonNode, LocalId, MapInteger};
-
+use holons_core::{
+    core_shared_objects::holon::{Holon, SavedHolon},
+    HolonError,
+};
+use integrity_core_types::{HolonNode, LocalId};
 
 // #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 // pub struct HolonRecord {
@@ -9,7 +12,7 @@ use shared_types_holon::{HolonNode, LocalId, MapInteger};
 // }
 
 // impl HolonRecord {
-//     /// Retrieves the `LocalId` from the underlying `Record`. 
+//     /// Retrieves the `LocalId` from the underlying `Record`.
 //     pub fn get_local_id(&self) -> LocalId {
 //             LocalId(self.record.action_address().clone())
 //     }
@@ -23,7 +26,6 @@ use shared_types_holon::{HolonNode, LocalId, MapInteger};
 pub fn try_from_record(record: Record) -> Result<Holon, HolonError> {
     let holon_node = get_holon_node_from_record(record.clone())?;
 
-
     let holon = SavedHolon::new(
         LocalId(record.action_address().clone()),
         holon_node.property_map,
@@ -35,7 +37,7 @@ pub fn try_from_record(record: Record) -> Result<Holon, HolonError> {
 }
 
 /// Inflates a 'HolonNode' from the underlying saved 'Record'.
-/// 
+///
 /// Private helper called by try_from_record.
 fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
     match record.entry() {
@@ -44,5 +46,3 @@ fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
         _ => Err(HolonError::RecordConversion("Record does not have an entry".to_string())),
     }
 }
-
-

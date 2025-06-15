@@ -1,22 +1,26 @@
 use derive_new::new;
-use std::collections::{BTreeMap, VecDeque};
-use std::fmt;
-use std::fmt::{Debug, Display};
-use std::sync::Arc;
 
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
+use integrity_core_types::PropertyMap;
+use std::{
+    collections::{BTreeMap, VecDeque},
+    fmt,
+    fmt::{Debug, Display},
+    sync::Arc,
+};
 
 use holons_core::{
     core_shared_objects::{
-        holon::{Holon, HolonBehavior},
+        holon::{Holon, HolonBehavior, TransientHolon},
         HolonError, RelationshipName,
     },
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference},
 };
-use shared_types_holon::{HolonId, MapInteger, MapString, PropertyMap};
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 
@@ -84,7 +88,7 @@ pub enum DanceTestStep {
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
-    StageHolon(Holon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+    StageHolon(TransientHolon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     StageNewFromClone(TestReference, MapString, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedReference, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedReference with PropertyMap
@@ -356,7 +360,7 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_stage_holon_step(&mut self, holon: Holon) -> Result<(), HolonError> {
+    pub fn add_stage_holon_step(&mut self, holon: TransientHolon) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::StageHolon(holon));
         Ok(())
     }

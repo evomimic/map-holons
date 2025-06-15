@@ -1,7 +1,7 @@
 use async_std::task;
+use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-use pretty_assertions::assert_eq;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -13,18 +13,16 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
-
-use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonReadable, StagedReference},
+    HolonReadable, StagedReference,
 };
-use shared_types_holon::{
-    holon_node::{HolonNode, PropertyMap, PropertyName},
-    value_types::BaseValue,
-    HolonId, MapInteger, MapString,
-};
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+
+use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

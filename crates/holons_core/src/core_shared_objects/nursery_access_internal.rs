@@ -1,8 +1,8 @@
 use super::{holon_pool::SerializableHolonPool, holon::Holon};
 use crate::{HolonError, NurseryAccess};
 use crate::HolonStagingBehavior;
-use shared_types_holon::holon_node::TemporaryId;
-use shared_types_holon::MapString;
+use core_types::TemporaryId;
+use base_types::MapString;
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;

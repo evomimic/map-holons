@@ -14,7 +14,10 @@ use crate::core_shared_objects::{
 cache_access::HolonCacheAccess,
    holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError, RelationshipName,
 };
-use shared_types_holon::{holon_node::PropertyName, HolonId, MapString, PropertyMap, PropertyValue};
+
+use base_types::MapString;
+use core_types::HolonId;
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SmartReference {

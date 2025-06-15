@@ -1,4 +1,6 @@
-use shared_types_holon::{BaseValue, HolonId, PropertyMap};
+use base_types::BaseValue;
+use core_types::HolonId;
+use integrity_core_types::PropertyMap;
 
 use crate::core_shared_objects::holon::state::{HolonState, ValidationState};
 use crate::core_shared_objects::holon::Holon;

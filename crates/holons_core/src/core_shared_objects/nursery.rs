@@ -5,9 +5,8 @@ use super::{
 };
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
 use crate::{HolonError, NurseryAccess};
-use shared_types_holon::holon_node::TemporaryId;
-
-use shared_types_holon::MapString;
+use core_types::TemporaryId;
+use base_types::MapString;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 

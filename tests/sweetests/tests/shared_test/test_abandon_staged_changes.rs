@@ -1,5 +1,4 @@
 use async_std::task;
-use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, error, info, warn};
 
@@ -8,24 +7,19 @@ use rstest::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::*;
-use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
-    test_data_types::{DanceTestExecutionState, DancesTestCase},
+use crate::shared_test::mock_conductor::MockConductorConfig;
+use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
+
+use holons_core::{
+    dances::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode},
+    HolonError, HolonWritable, StagedReference,
 };
+
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
 use holon_dance_builders::abandon_staged_changes_dance::build_abandon_staged_changes_dance_request;
-use holons_core::dances::{
-    dance_response::{ResponseBody, ResponseStatusCode},
-    DanceResponse,
-};
-use holons_core::{core_shared_objects::HolonError, HolonWritable, StagedReference};
-
-use shared_types_holon::{
-    holon_node::{HolonNode, PropertyMap, PropertyName},
-    value_types::BaseValue,
-    HolonId, MapBoolean, MapInteger, MapString,
-};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,
 /// If the `ResponseStatusCode` returned by the dance != `expected_response`, panic to fail the test

@@ -6,7 +6,7 @@ use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavio
 
 use crate::core_shared_objects::HolonError;
 use crate::HolonCollectionApi;
-use shared_types_holon::{MapInteger, MapString};
+use base_types::{MapInteger, MapString};
 
 /// These keyed collections can be used when there is a need for a collection of Holons, which we
 /// don't intend to persist and which are independent of a relationship. They currently contain

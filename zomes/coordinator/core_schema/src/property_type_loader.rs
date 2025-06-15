@@ -8,19 +8,19 @@ use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinit
 use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-
 use crate::value_type_loader::CoreValueTypeName;
 use holons_core::core_shared_objects::HolonError;
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
-use shared_types_holon::{MapBoolean, MapString, PropertyName};
+use base_types::{MapBoolean, MapString};
+use integrity_core_types::PropertyName;
 use strum_macros::EnumIter;
 use CorePropertyTypeName::*;
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CorePropertyTypeName {
     AllowDuplicates,  // MapBooleanType
-    BaseType,         // Enum -- BaseTypeEnumType
+    TypeKind,         // Enum -- TypeKindEnumType
     DeletionSemantic, // Enum -- DeletionSemanticEnumType
     DescriptorName,   // MapStringType
     Description,      // MapStringType
@@ -97,7 +97,7 @@ impl SchemaNamesTrait for CorePropertyTypeName {
         use CorePropertyTypeName::*;
         match self {
             AllowDuplicates => MapString("If true, this collection can contain duplicate items.".to_string()),
-            BaseType => MapString("Specifies the MAP BaseType of this object. ".to_string()),
+            TypeKind => MapString("Specifies the MAP TypeKind of this object. ".to_string()),
             DeletionSemantic => MapString("Offers different options for whether requests to delete a \
             source Holon (i.e., mark as deleted) should be allowed for a given relationship.".to_string()),
             DescriptorName => MapString("The name for the unique key for the descriptor of MAP type.".to_string()),
@@ -117,18 +117,18 @@ impl SchemaNamesTrait for CorePropertyTypeName {
                 .to_string()),
             MaxCardinality => MapString("Specifies the maximum number of members allowed in this \
             collection. max_cardinality must be greater than or equal to min_cardinality.".to_string()),
-            MaxLength => MapString("max_length is a property of a value type based on the BaseType \
+            MaxLength => MapString("max_length is a property of a value type based on the TypeKind \
             MapString. It defines the maximum allowed length for string instances of this value \
             type. max_length must be greater than or equal to min_length.".to_string()),
-            MaxValue => MapString("max_value is a property of a value type based on the BaseType \
+            MaxValue => MapString("max_value is a property of a value type based on the TypeKind \
             MapInteger. It defines the largest allowed value for this integer instances of this value \
             type. max_value must be greater than or equal to min_value.".to_string()),
             MinCardinality => MapString("Specifies the minimum number of members allowed in this \
             collection. min_cardinality must be greater than or equal to zero.".to_string()),
-            MinLength => MapString("min_length is a property of a value type based on the BaseType \
+            MinLength => MapString("min_length is a property of a value type based on the TypeKind \
             MapString. It defines the minimum allowed length for string instances of this value \
             type. min_length must be greater than or equal to zero.".to_string()),
-            MinValue => MapString("min_value is a property of a value type based on the BaseType \
+            MinValue => MapString("min_value is a property of a value type based on the TypeKind \
             MapInteger. It defines the smallest allowed value for this integer instances of this \
             value type. min_value can be negative and must be less than or equal to max_value."
                 .to_string()),
@@ -153,7 +153,7 @@ impl CorePropertyTypeName {
     fn specify_value_type(&self) -> CoreValueTypeName {
         match self {
             AllowDuplicates => BooleanType(MapBooleanType),
-            BaseType => EnumType(MapBaseType),
+            TypeKind => EnumType(MapTypeKind),
             DeletionSemantic => EnumType(DeletionSemanticType),
             DescriptorName => StringType(MapStringType),
             Description => StringType(MapStringType),
@@ -191,7 +191,7 @@ fn load_property_type_definition(
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
-        // TODO: add base_type: BaseType::Property,
+        // TODO: add base_type: TypeKind::Property,
         is_dependent: MapBoolean(true),
         is_value_type: MapBoolean(true),
         described_by: loader.described_by,

@@ -1,7 +1,12 @@
 use crate::core_shared_objects::HolonCollection;
+use base_types::MapString;
 use hdk::prelude::*;
-use shared_types_holon::MapString;
-use std::{cell::RefCell, collections::{BTreeMap, HashMap}, fmt, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    fmt,
+    rc::Rc,
+};
 
 use super::{HolonError, ReadableRelationship, TransientRelationshipMap};
 

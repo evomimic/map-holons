@@ -9,9 +9,10 @@ use crate::descriptor_types::{
     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
 };
 use holons_core::core_shared_objects::stage_new_holon_api;
-use shared_types_holon::value_types::{BaseValue, MapBoolean, MapString};
-use shared_types_holon::{BaseType, PropertyName};
-//
+use base_types::{BaseValue, MapBoolean, MapString};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
+
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
 pub struct RelationshipTypeDefinition {
@@ -70,7 +71,7 @@ pub fn define_relationship_type(
 
     // Stage the TypeDescriptor
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, BaseType::Relationship, definition.header)?;
+        define_type_descriptor(context, schema, TypeKind::Relationship, definition.header)?;
 
     // Build new Relationship Type
 

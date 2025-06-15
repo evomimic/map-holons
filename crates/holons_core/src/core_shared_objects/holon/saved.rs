@@ -1,7 +1,6 @@
+use base_types::{MapInteger, MapString};
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{
-    HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
 
 use crate::{
     core_shared_objects::holon::holon_utils::{key_info, local_id_info},
@@ -19,7 +18,7 @@ use super::{
 pub struct SavedHolon {
     holon_state: HolonState,           // Always `Immutable`
     validation_state: ValidationState, //
-    saved_id: LocalId,              // Links to persisted Holon data
+    saved_id: LocalId,                 // Links to persisted Holon data
     version: MapInteger,
     saved_state: SavedState,
     // HolonNode data:
@@ -116,7 +115,7 @@ impl HolonBehavior for SavedHolon {
     }
 
     /// Retrieves the `original_id`, if present.
-    fn get_original_id(&self) -> Option<LocalId>{
+    fn get_original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
 
@@ -128,6 +127,8 @@ impl HolonBehavior for SavedHolon {
         Ok(self.property_map.get(property_name).cloned().flatten())
     }
 
+    /// Extracts HolonNode data.
+    /// Converts 'original_id' and 'property_map' fields into a HolonNode object.
     fn into_node(&self) -> HolonNode {
         HolonNode::new(self.original_id.clone(), self.property_map.clone())
     }
@@ -150,24 +151,24 @@ impl HolonBehavior for SavedHolon {
     }
 
     // =================
-    //     MUTATORS
+    //     "MUTATORS"
     // =================
+
+    // These functions will always fail, since SavedHolons are immmutable.
+    // Implemented in the trait to ensure is_accessible checks on Holon enum.
 
     fn increment_version(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.version.0 += 1;
         Ok(())
     }
 
-    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
+    fn update_original_id(&mut self, _id: Option<LocalId>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.original_id = id;
         Ok(())
     }
 
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
+    fn update_property_map(&mut self, _map: PropertyMap) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.property_map = map;
         Ok(())
     }
 
@@ -191,7 +192,6 @@ impl HolonBehavior for SavedHolon {
     //    HELPERS
     // ==============
 
-    /// Returns a String summary of the Holon.
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.get_key() {
@@ -213,4 +213,3 @@ impl HolonBehavior for SavedHolon {
         )
     }
 }
-

@@ -4,9 +4,9 @@ use holons::holon_reference::{HolonReference, LocalHolonReference};
 use holons::holon_types::Holon;
 use holons::relationship::HolonCollection;
 use holons::relationship::HolonCollection::*;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+use integrity_core_types::holon_node::PropertyName;
+use integrity_core_types::value_types::{
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 /// This file creates a HolonDescriptor Holon and its Associated Relationships
@@ -36,7 +36,7 @@ pub fn define_property_type_descriptor() -> Holon {
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            BaseValue::StringValue(MapString("TypeKind::Holon".to_string())),
         )
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),

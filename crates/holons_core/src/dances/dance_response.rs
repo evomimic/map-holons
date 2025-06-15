@@ -8,7 +8,7 @@ use crate::query_layer::NodeCollection;
 
 use crate::dances::SessionState;
 use crate::{HolonCollection, HolonReference, StagedReference};
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceResponse {

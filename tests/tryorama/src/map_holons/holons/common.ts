@@ -1,6 +1,6 @@
 import { CallableCell } from '@holochain/tryorama';
 import { NewEntryAction, ActionHash, Record, AppBundleSource, fakeActionHash, fakeAgentPubKey, fakeEntryHash, fakeDnaHash } from '@holochain/client';
-import { BaseValue, BaseValueList, DanceRequestObject, Holon, WithPropertyInput, DanceTypeEnum, RequestBodyEnum, DanceResponseObject, DanceType, RequestBody, DanceTypeObject, RequestBodyObject, TargetHolons, StagingArea, PropertyMap, ResponseStatusCode, ResponseBody, HolonReference, ResponseBodyEnum, } from './types';
+import { BaseTypeKind, BaseTypeKindList, DanceRequestObject, Holon, WithPropertyInput, DanceTypeEnum, RequestBodyEnum, DanceResponseObject, DanceType, RequestBody, DanceTypeObject, RequestBodyObject, TargetHolons, StagingArea, PropertyMap, ResponseStatusCode, ResponseBody, HolonReference, ResponseBodyEnum, } from './types';
 
 export function createHolon(props:PropertyMap):Holon {
     return {

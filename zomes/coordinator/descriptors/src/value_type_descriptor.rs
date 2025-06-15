@@ -2,7 +2,7 @@ use crate::descriptor_types::CoreValueTypeName;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior};
 
-use shared_types_holon::MapString;
+use base_types::MapString;
 
 // TODO: Enhance to do a get from cache if not in dance_state
 pub fn get_core_value_type_descriptor_reference(
@@ -42,7 +42,7 @@ pub fn define_value_type(
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
 
-    let base_type = BaseType::Value(value_type);
+    let base_type = TypeKind::Value(value_type);
 
 
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------

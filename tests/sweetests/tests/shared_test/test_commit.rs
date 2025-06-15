@@ -1,5 +1,4 @@
 use async_std::task;
-use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
 
@@ -8,22 +7,19 @@ use rstest::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::*;
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DancesTestCase},
 };
-use holon_dance_builders::commit_dance::build_commit_dance_request;
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
 };
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
-use shared_types_holon::{
-    holon_node::{HolonNode, PropertyMap, PropertyName},
-    value_types::BaseValue,
-    HolonId, MapInteger, MapString,
-};
+use holon_dance_builders::commit_dance::build_commit_dance_request;
 
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response

@@ -1,6 +1,6 @@
 use super::holon::Holon;
 use crate::{HolonCollection, HolonError, RelationshipName};
-use shared_types_holon::HolonId;
+use core_types::HolonId;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;

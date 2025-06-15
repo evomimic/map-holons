@@ -14,19 +14,17 @@ use crate::shared_test::{
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 
-use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::ResponseStatusCode,
     query_layer::{Node, NodeCollection, QueryExpression},
     HolonReference, SmartReference,
 };
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
-use shared_types_holon::{
-    holon_node::{HolonNode, PropertyMap, PropertyName},
-    value_types::BaseValue,
-    HolonId, MapInteger, MapString,
-};
+use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(

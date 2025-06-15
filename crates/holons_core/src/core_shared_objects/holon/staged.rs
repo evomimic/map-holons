@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::TemporaryId;
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
-use shared_types_holon::{
-    BaseValue, HolonNode, LocalId, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-    TemporaryId,
-};
 
 use crate::{
     core_shared_objects::{
@@ -31,12 +30,10 @@ pub struct StagedHolon {
     property_map: PropertyMap,         // Self-describing property data
     staged_relationships: StagedRelationshipMap,
     original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
-    errors: Vec<HolonError>, // Populated during the commit process
+    errors: Vec<HolonError>,      // Populated during the commit process
 }
 
-// ==================================
-//   ASSOCIATED METHODS (IMPL BLOCK)
-// ==================================
+
 impl StagedHolon {
     // =================
     //   CONSTRUCTORS
@@ -128,7 +125,7 @@ impl StagedHolon {
     }
 
     /// Adds an associated HolonError to the errors Vec.
-    /// 
+    ///
     /// Used to track all errors obtained during the multi-stage commit process.
     pub fn add_error(&mut self, error: HolonError) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
@@ -165,6 +162,7 @@ impl StagedHolon {
         Ok(())
     }
 
+
     pub fn with_property_value(
         &mut self,
         property: PropertyName,
@@ -172,18 +170,15 @@ impl StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
-        match self.staged_state {
-            StagedState::ForUpdate => self.staged_state = StagedState::ForUpdateChanged,
-            _ => {}
-        }
 
         Ok(self)
     }
+
 }
 
-// ==================================
-//     HOLONBEHAVIOR IMPLEMENTATION
-// ==================================
+// ======================================
+//   HOLONBEHAVIOR TRAIT IMPLEMENTATION
+// ======================================
 impl HolonBehavior for StagedHolon {
     // =====================
     //    DATA ACCESSORS
@@ -204,7 +199,6 @@ impl HolonBehavior for StagedHolon {
         Ok(holon)
     }
 
-    /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(
             self.property_map.clone(),
@@ -213,7 +207,6 @@ impl HolonBehavior for StagedHolon {
         ))
     }
 
-    /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(Some(inner_value)) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
@@ -230,7 +223,6 @@ impl HolonBehavior for StagedHolon {
         }
     }
 
-    /// Retrieves the `LocalId` if the Holon is committed.
     fn get_local_id(&self) -> Result<LocalId, HolonError> {
         match &self.staged_state {
             StagedState::Committed(saved_id) => Ok(saved_id.clone()),
@@ -240,12 +232,10 @@ impl HolonBehavior for StagedHolon {
         }
     }
 
-    /// Retrieves the `original_id`, if present.
     fn get_original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
 
-    /// Retrieves the specified property value.
     fn get_property_value(
         &self,
         property_name: &PropertyName,
@@ -253,14 +243,6 @@ impl HolonBehavior for StagedHolon {
         Ok(self.property_map.get(property_name).cloned().flatten())
     }
 
-    /// Retrieves the unique versioned key (key property value + versioned suffix)
-    ///
-    /// # Semantics
-    /// - The versioned key is used for identifying Holons in the Nursery where multiple have been staged with the same base key.
-    /// - Returns error if the Holon does not have a key, since that is required for this function call.
-    ///
-    /// # Errors
-    /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn get_versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
             .get_key()?
@@ -277,7 +259,6 @@ impl HolonBehavior for StagedHolon {
     //     ACCESS CONTROL
     // =======================
 
-    /// Enforces access control rules for `StagedHolon` states.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
             HolonState::Mutable => match self.staged_state {
@@ -326,9 +307,11 @@ impl HolonBehavior for StagedHolon {
         Ok(())
     }
 
+
     // =========================
     //       DIAGNOSTICS
     // =========================
+    
     fn debug_info(&self) -> String {
         let phase_info = "StagedHolon";
         let state_info = format!(
@@ -371,7 +354,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use shared_types_holon::{MapBoolean, MapEnumValue};
+    use base_types::{MapBoolean, MapEnumValue};
 
     use super::*;
 
@@ -379,8 +362,7 @@ mod tests {
     fn instantiate_and_modify() {
         // Initialize default Holon
         let mut initial_holon = StagedHolon::new_for_create();
-         let expected_holon = 
-        StagedHolon {
+        let expected_holon = StagedHolon {
             version: MapInteger(1),
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
@@ -406,13 +388,13 @@ mod tests {
         let integer_value = Some(BaseValue::IntegerValue(MapInteger(1000)));
         property_map.insert(integer_property_name, integer_value);
         let enum_property_name = PropertyName(MapString("enum property".to_string()));
-        let enum_value = Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
+        let enum_value =
+            Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
         property_map.insert(enum_property_name, enum_value);
 
         initial_holon.update_property_map(property_map.clone()).unwrap();
 
         assert_eq!(initial_holon.property_map, property_map);
-
     }
 
     #[test]
@@ -449,7 +431,6 @@ mod tests {
 
     //     // TODO: remove relationship
     // }
-
 
     #[test]
     fn verify_default_values() {

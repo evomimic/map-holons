@@ -1,9 +1,9 @@
 // Bootstrap EnumDescriptor
 /// This file creates an EnumDescriptor Holon and its Associated EnumVariant Holon
 use holons::holon_types::Holon;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+use integrity_core_types::holon_node::PropertyName;
+use integrity_core_types::value_types::{
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 pub fn define_enum_descriptor() -> Holon {
@@ -40,7 +40,7 @@ pub fn define_enum_descriptor() -> Holon {
     descriptor
 }
 /// Enum
-pub fn define_enum_variant_descriptor(base_type: BaseType) -> Holon {
+pub fn define_enum_variant_descriptor(base_type: TypeKind) -> Holon {
     // ----------------  GET A NEW (EMPTY) HOLON -------------------------------
     let mut descriptor = Holon::new();
 

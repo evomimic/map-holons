@@ -2,9 +2,9 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use shared_types_holon::{
-    BaseValue, ExternalId, HolonId, LocalId, MapString, OutboundProxyId, PropertyMap, PropertyName,
-};
+use base_types::{BaseValue, MapString};
+use core_types::{ExternalId, HolonId, OutboundProxyId};
+use integrity_core_types::{LocalId, PropertyName, PropertyMap};
 
 use holons_core::core_shared_objects::{get_key_from_property_map, HolonError, RelationshipName};
 use holons_core::reference_layer::{HolonReference, SmartReference};
@@ -226,7 +226,7 @@ fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
 
         if let Some(proxy_id_end) = proxy_id_end_option {
             link_tag_object.proxy_id = Some(OutboundProxyId(
-                ActionHash::from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
+                ActionHash::try_from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
                     HolonError::HashConversion(
                         "LinkTag proxy_id bytes".to_string(),
                         "ActionHash".to_string(),

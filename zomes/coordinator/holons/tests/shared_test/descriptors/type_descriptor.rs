@@ -2,9 +2,9 @@
 
 use holons::holon_types::Holon;
 use holons::relationship::HolonCollection;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+use integrity_core_types::holon_node::PropertyName;
+use integrity_core_types::value_types::{
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 // Is a generic TypeDescriptor function needed?
@@ -17,7 +17,7 @@ pub fn define_type_descriptor() -> Holon {
     descriptor.with_property_value(PropertyName(MapString("type_name".to_string())), BaseValue::StringValue(MapString("TypeDescriptor".to_string())))
         .with_property_value(PropertyName(MapString("description".to_string())), BaseValue::StringValue(MapString(("A meta-descriptor that defines the properties, relationships and dances shared by all MAP descriptors (including itself).".to_string()))))
         .with_property_value(PropertyName(MapString("label".to_string())), BaseValue::StringValue(MapString("Type Descriptor".to_string())))
-        .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("BaseType::Holon".to_string())))
+        .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("TypeKind::Holon".to_string())))
         .with_property_value(PropertyName(MapString("is_dependent".to_string())), BaseValue::BooleanValue(MapBoolean(false)))
         .with_property_value(PropertyName(MapString("is_value_descriptor".to_string())), BaseValue::BooleanValue(MapBoolean(false)));
 
@@ -36,7 +36,7 @@ pub fn define_semantic_version_descriptor() -> Holon {
         .with_property_value(PropertyName(MapString("description".to_string())), BaseValue::StringValue(
             MapString("Supports a structured approach to tracking changes to a chain of TypeDescriptor versions.".to_string())))
         .with_property_value(PropertyName(MapString("label".to_string())), BaseValue::StringValue(MapString("Semantic Version".to_string())))
-        .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("BaseType::Holon".to_string())))
+        .with_property_value(PropertyName(MapString("base_type".to_string())), BaseValue::StringValue(MapString("TypeKind::Holon".to_string())))
         .with_property_value(PropertyName(MapString("is_dependent".to_string())), BaseValue::BooleanValue(MapBoolean(true)));
 
     descriptor
@@ -64,7 +64,7 @@ pub fn define_type_descriptor_to_semantic_version(schema_target: &HolonCollectio
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            BaseValue::StringValue(MapString("TypeKind::Holon".to_string())),
         )
         .with_property_value(
             PropertyName(MapString("is_dependent".to_string())),

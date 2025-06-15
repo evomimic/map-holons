@@ -24,10 +24,14 @@ use holons_core::{
 };
 
 use holons_integrity::LinkTypes;
-use shared_types_holon::{
-    BaseValue, HolonId, LocalId, MapString, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION,
-    LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
+use integrity_core_types::{
+    LOCAL_HOLON_SPACE_DESCRIPTION,
+    LOCAL_HOLON_SPACE_NAME, 
+    LOCAL_HOLON_SPACE_PATH,
 };
+use integrity_core_types::{LocalId, PropertyName};
+use base_types::{BaseValue, MapString};
+use core_types::HolonId;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;

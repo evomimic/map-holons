@@ -1,9 +1,9 @@
 // This file creates the descriptors for the built-in MAP Value Types
 
 use holons::holon_types::Holon;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{
-    BaseType, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
+use integrity_core_types::holon_node::PropertyName;
+use integrity_core_types::value_types::{
+    TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 
 // I don't think ValueDescriptor is needed as an intermediate supertype
@@ -16,7 +16,7 @@ use shared_types_holon::value_types::{
 //         .with_property_value("description".to_string(), BaseValue::StringValue(
 //             "Describes the supertype of all MAP ValueDescriptors".to_string()))
 //         .with_property_value("label".to_string(), BaseValue::StringValue("Value Descriptor".to_string()))
-//         .with_property_value("base_type".to_string(), BaseValue::StringValue("BaseType::Holon".to_string()))
+//         .with_property_value("base_type".to_string(), BaseValue::StringValue("TypeKind::Holon".to_string()))
 //         .with_property_value("is_dependent".to_string(), BaseValue::BooleanValue(false))
 //         .with_property_value("is_built_in_type".to_string(), BaseValue::BooleanValue(true));
 //
@@ -102,7 +102,7 @@ pub fn define_integer_type_descriptor() -> Holon {
         )
         .with_property_value(
             PropertyName(MapString("base_type".to_string())),
-            BaseValue::StringValue(MapString("BaseType::Holon".to_string())),
+            BaseValue::StringValue(MapString("TypeKind::Holon".to_string())),
         )
         .with_property_value(
             PropertyName(MapString("version".to_string())),

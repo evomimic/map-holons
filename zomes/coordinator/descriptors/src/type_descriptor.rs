@@ -8,8 +8,9 @@ use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{BaseType, BaseValue, MapBoolean, MapEnumValue, MapString};
+use base_types::{BaseValue, MapBoolean, MapEnumValue, MapString};
+use core_types::TypeKind;
+use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::*;
 
 #[derive(Debug, Clone)]
@@ -45,7 +46,7 @@ pub struct TypeDescriptorDefinition {
 pub fn define_type_descriptor(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference, // Type-COMPONENT_OF->Schema
-    base_type: BaseType,
+    base_type: TypeKind,
     definition: TypeDescriptorDefinition,
 ) -> Result<StagedReference, HolonError> {
     info!("Staging... {:#?}", definition.descriptor_name.clone());
@@ -72,7 +73,7 @@ pub fn define_type_descriptor(
         )?
         .with_property_value(Label.as_property_name(), Some(BaseValue::StringValue(definition.label)))?
         .with_property_value(
-            CoreSchemaPropertyTypeName::BaseType.as_property_name(),
+            CoreSchemaPropertyTypeName::TypeKind.as_property_name(),
             Some(BaseValue::EnumValue(MapEnumValue(MapString(base_type.to_string())))),
         )?
         .with_property_value(

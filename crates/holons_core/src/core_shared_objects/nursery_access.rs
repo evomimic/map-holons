@@ -1,6 +1,6 @@
 use crate::HolonError;
 use super::holon::Holon;
-use shared_types_holon::holon_node::TemporaryId;
+use core_types::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 

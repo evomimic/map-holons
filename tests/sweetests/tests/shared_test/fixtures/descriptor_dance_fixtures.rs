@@ -11,19 +11,15 @@
 //
 //
 
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
-use core::panic;
+use rstest::*;
 
 use crate::shared_test::test_data_types::DancesTestCase;
 
-use holons_core::core_shared_objects::HolonError;
-use rstest::*;
-use shared_types_holon::value_types::BaseValue;
-use shared_types_holon::{
-    MapBoolean, MapInteger, MapString, PropertyMap, PropertyName, PropertyValue,
-};
-use std::collections::btree_map::BTreeMap;
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use holons_core::HolonError;
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
 /// This function creates a set of simple (undescribed) holons
 ///

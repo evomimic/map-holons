@@ -1,12 +1,5 @@
 // #![allow(dead_code)]
 
-use core::panic;
-use pretty_assertions::assert_eq;
-use std::cell::RefCell;
-use std::collections::btree_map::BTreeMap;
-use std::rc::Rc;
-use tracing::{error, info, warn};
-
 use rstest::*;
 
 use crate::shared_test::{
@@ -14,17 +7,14 @@ use crate::shared_test::{
     test_context::{init_test_context, TestContextConfigOption::TestFixture},
     test_data_types::DancesTestCase,
 };
+use base_types::{MapBoolean, MapInteger, MapString};
+use core_types::HolonId;
 use holons_core::{
-    core_shared_objects::{holon::Holon, HolonCollection, HolonError, RelationshipName},
-    dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression,
-    reference_layer::{HolonsContextBehavior, StagedReference},
+    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression, HolonCollection, HolonError, HolonsContextBehavior,
+    RelationshipName, StagedReference,
 };
-
-use shared_types_holon::{
-    value_types::BaseValue, HolonId, MapBoolean, MapInteger, MapString, PropertyMap, PropertyName,
-    PropertyValue,
-};
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
 /// This function creates a set of simple (undescribed) holons
 ///

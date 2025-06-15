@@ -16,7 +16,8 @@ use holons_core::core_shared_objects::{
 };
 use holons_core::reference_layer::{HolonReadable, HolonsContextBehavior};
 // use holons_core::utils::as_json;
-use shared_types_holon::{BaseValue, LocalId, MapInteger, MapString, PropertyMap, PropertyName};
+use base_types::{BaseValue, MapInteger, MapString};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -24,19 +25,25 @@ use std::rc::Rc;
 /// `commit`
 ///
 /// This function attempts to persist the state of all staged_holons AND their relationships.
+/// It is not completely Atomic - since successfully committed holons will get saved to the Holochain persistance store,
+/// however, the CommitResponse is only considered 'Complete' if ALL the attempts are successful , as well as,
+/// the space_manager's staged_holons are only cleared IF this is the case. Otherwise, the failed holons StagedState will remain unchanged
+/// and their data objects will contain the associated errors that were returned.
+///
+///
+/// A further description of this process is detailed below:
 ///
 /// The commit is performed in two passes: (1) staged_holons, (2) their relationships.
 ///
 /// In the first pass,
 /// * if a staged_holon commit succeeds,
-///     * change holon's state to `Saved`
-///     * populate holon's record
-///     * add the holon to the records vector in the CommitResponse
+///     * get the LocalId from the action_address in the returned Record
+///     * StagedState variant is set to 'Committed' containing the above 'saved_id'
+///     * add the holon to the saved_holons vector in the CommitResponse
 /// * if a staged_holon commit fails,
 ///     * leave holon's state unchanged
-///     * leave holon's record unpopulated
-///     * push the error into the holon's errors vector
-///     * do NOT add the holon to the records vector in the CommitResponse
+///     * push the associated error into the holon's errors vector
+///     * do NOT add the holon to the saved_holons vector in the CommitResponse
 ///
 /// If ANY staged_holon commit fails:
 /// * The 2nd pass (to commit the staged_holon's relationships) is SKIPPED
@@ -45,8 +52,7 @@ use std::rc::Rc;
 ///
 /// Otherwise, the 2nd pass is performed.
 /// * If ANY attempt to add a relationship generates an Error, the error is pushed into the
-/// source holon's `errors` vector and processing continues
-///
+/// source holon's `errors` vector and processing continues.
 ///
 /// If relationship commits succeed for ALL staged_holons,
 ///     * The space_manager's staged_holons are cleared
@@ -255,7 +261,7 @@ fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
 /// `relationship_map` and calls commit on each member's HolonCollection.
 /// Any other states are ignored.
 ///
-/// The function only returns OK if ALL commits are successfull. 
+/// The function only returns OK if ALL commits are successfull.
 fn commit_relationships(
     context: &dyn HolonsContextBehavior,
     holon: &StagedHolon,
