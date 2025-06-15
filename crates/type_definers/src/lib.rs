@@ -13,14 +13,15 @@ mod semantic_version;
 pub mod string_descriptor;
 pub mod type_descriptor;
 pub mod value_type_descriptor;
-// pub fn add(left: usize, right: usize) -> usize {
+
+// pub fn add(left: u64, right: u64) -> u64 {
 //     left + right
 // }
-//
+// 
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
-//
+// 
 //     #[test]
 //     fn it_works() {
 //         let result = add(2, 2);

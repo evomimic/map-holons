@@ -11,13 +11,13 @@ use crate::property_type_loader::CorePropertyTypeName;
 use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
 use crate::value_type_loader::CoreValueTypeName;
-use descriptors::descriptor_types::{CoreSchemaName, Schema};
+use type_definers::descriptor_types::{CoreSchemaName, Schema};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{CommitResponse, HolonError};
 use base_types::MapString;
 use strum::IntoEnumIterator;
 
-/// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
+/// The load_core_schema function creates a new Schema Holon and populates it type_definers for all the
 /// MAP L0 Schema Descriptors defined in `CoreSchemaNames`
 ///
 /// It uses the transient collection in context's dance_state to support lookup of previously
@@ -39,7 +39,7 @@ pub fn load_core_schema(context: &dyn HolonsContextBehavior) -> Result<CommitRes
     let schema = Schema::new(
         CoreSchemaName::SchemaName.as_map_string(),
         MapString(
-            "The foundational MAP type descriptors for the L0 layer of the MAP Schema".to_string(),
+            "The foundational MAP type type_definers for the L0 layer of the MAP Schema".to_string(),
         ),
     )?;
 

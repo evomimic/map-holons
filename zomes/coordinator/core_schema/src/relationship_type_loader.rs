@@ -3,10 +3,10 @@ use hdi::prelude::info;
 use crate::collection_type_loader::CollectionTypeSpec;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use descriptors::collection_descriptor::CollectionSemantic;
-use descriptors::descriptor_types::DeletionSemantic;
-use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
+use type_definers::collection_descriptor::CollectionSemantic;
+use type_definers::descriptor_types::DeletionSemantic;
+use type_definers::holon_descriptor::{define_holon_type, HolonTypeDefinition};
+use type_definers::type_descriptor::TypeDescriptorDefinition;
 use holons_core::core_shared_objects::{HolonError, RelationshipName};
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
@@ -164,7 +164,7 @@ impl CoreRelationshipTypeName {
             Components => RelationshipTypeLoader {
                 descriptor_name,
                 description : MapString(
-                    format!("{} can be queried to get all of type descriptors \
+                    format!("{} can be queried to get all of type type_definers \
                     provided by this Schema.",
                             relationship_type_name.0.clone())
                 ),

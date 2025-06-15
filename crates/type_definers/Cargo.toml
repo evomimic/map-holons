@@ -1,12 +1,12 @@
 [package]
-name = "descriptors"
+name = "type_definers"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
 # WASM and non-WASM compatible
-crate-type = ["cdylib", "rlib"]
-name = "descriptors"
+crate-type = ["rlib"]
+name = "type_definers"
 
 [dependencies]
 # General Dependencies
@@ -15,7 +15,7 @@ Inflector = { workspace = true }
 serde = { workspace = true }
 
 # Holochain Dependencies
-hdk = { workspace = true }
+# hdk = { workspace = true }
 hdi = { workspace = true }
 
 # MAP Dependencies

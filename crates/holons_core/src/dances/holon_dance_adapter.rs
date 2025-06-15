@@ -129,7 +129,7 @@ pub fn commit_dance(
 /// *ResponseBody:*
 /// None
 ///
-// In the absence of descriptors that can specify the DeletionSemantic,
+// In the absence of type_definers that can specify the DeletionSemantic,
 // this enhancement will adopt Allow as a default policy. When we have RelationshipDescriptors, we can use their properties
 // to drive a richer range of deletion behaviors.
 //

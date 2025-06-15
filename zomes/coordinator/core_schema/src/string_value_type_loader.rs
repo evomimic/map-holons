@@ -1,6 +1,6 @@
 use crate::core_schema_types::SchemaNamesTrait;
-use descriptors::string_descriptor::{define_string_type, StringTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
+use type_definers::string_descriptor::{define_string_type, StringTypeDefinition};
+use type_definers::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};

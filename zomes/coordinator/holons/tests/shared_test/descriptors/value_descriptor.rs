@@ -1,4 +1,4 @@
-// This file creates the descriptors for the built-in MAP Value Types
+// This file creates the type_definers for the built-in MAP Value Types
 
 use holons::holon_types::Holon;
 use shared_types_holon::holon_node::PropertyName;

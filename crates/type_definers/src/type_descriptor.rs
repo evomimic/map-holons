@@ -30,8 +30,8 @@ pub struct TypeDescriptorDefinition {
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions.
 ///
-/// This function adds values for each of the properties shared by all type descriptors
-/// and (optionally) adds related holons for relationships shared by all type descriptors
+/// This function adds values for each of the properties shared by all type type_definers
+/// and (optionally) adds related holons for relationships shared by all type type_definers
 ///
 /// For now, `version` is being treated as a MapString property and is initialized to "0.0.1"
 ///

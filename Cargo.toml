@@ -2,7 +2,7 @@
 members = [
     # Coordinator Zomes
     "zomes/coordinator/holons",
-    "zomes/coordinator/descriptors",
+    "zomes/coordinator/type_definers",
     "zomes/coordinator/core_schema",
     # Integrity Zome
     "zomes/integrity/holons_integrity",
@@ -14,23 +14,24 @@ members = [
     "crates/type_system/descriptor_types",
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
+    "crates/type_definers",
     # Shared Core & Guest Libraries
     "crates/holons_client",
     "crates/holons_core",
     "crates/holon_dance_builders",
     "crates/holons_guest",
-    
 ]
 resolver = "2"
 
 exclude = ["tests/sweetests"]
 
 # Local workspace dependencies
+
 [workspace.dependencies.holons]
 path = "zomes/coordinator/holons"
 
-[workspace.dependencies.descriptors]
-path = "zomes/coordinator/descriptors"
+[workspace.dependencies.type_definers]
+path = "crates/type_definers"
 
 [workspace.dependencies.core_schema]
 path = "zomes/coordinator/core_schema"

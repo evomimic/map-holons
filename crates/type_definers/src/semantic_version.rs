@@ -1,6 +1,6 @@
 use derive_new::new;
 
-use hdk::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use holons_core::core_shared_objects::{Holon, HolonError};
 use integrity_core_types::PropertyName;

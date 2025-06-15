@@ -555,7 +555,7 @@ impl Holon {
 
     // NOTE: this function doesn't check if supplied PropertyName is a valid property
     // for the self holon. It probably needs to be possible to suspend
-    // this checking while the type system is being bootstrapped, since the descriptors
+    // this checking while the type system is being bootstrapped, since the type_definers
     // required by the validation may not yet exist.
     // TODO: Add conditional validation checking when adding properties
     // TODO: add error checking and HolonError result
