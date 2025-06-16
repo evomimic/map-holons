@@ -42,7 +42,7 @@ pub struct TypeHeaderSpec {
 /// * `Type-HAS_SUPERTYPE->TypeDescriptor` (if supplied)
 ///
 ///
-pub fn define_type_descriptor(
+pub fn define_type_header(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference, // Type-COMPONENT_OF->Schema
     base_type: TypeKind,

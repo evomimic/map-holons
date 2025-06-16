@@ -5,7 +5,7 @@ use holons_core::{
 };
 
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
+use crate::type_header::{define_type_header, TypeHeaderSpec};
 use holons_core::core_shared_objects::stage_new_holon_api;
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
@@ -56,7 +56,7 @@ pub fn define_collection_type(
     // Stage the new TypeDescriptor
 
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, TypeKind::Collection, definition.header.clone())?;
+        define_type_header(context, schema, TypeKind::Collection, definition.header.clone())?;
 
     // Build the new type
 

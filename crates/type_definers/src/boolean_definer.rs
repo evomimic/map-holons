@@ -1,7 +1,7 @@
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
 
-use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
+use crate::type_header::{define_type_header, TypeHeaderSpec};
 
 use holons_core::holon_operations_api::*;
 use holons_core::{
@@ -26,7 +26,7 @@ pub fn define_boolean_type(
     definition: BooleanTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let type_descriptor_ref = define_type_descriptor(
+    let type_descriptor_ref = define_type_header(
         context,
         schema, // should this be type safe (i.e., pass in either Schema or SchemaTarget)?
         TypeKind::Value(BaseTypeKind::Boolean),

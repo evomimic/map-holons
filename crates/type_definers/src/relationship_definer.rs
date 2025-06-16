@@ -12,7 +12,7 @@ use base_types::{BaseValue, MapBoolean, MapString};
 use core_types::TypeKind;
 use integrity_core_types::PropertyName;
 
-use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
+use crate::type_header::{define_type_header, TypeHeaderSpec};
 
 pub struct RelationshipTypeSpec {
     pub header: TypeHeaderSpec, // header.type_name is relationship_name
@@ -70,7 +70,7 @@ pub fn define_relationship_type(
 
     // Stage the TypeDescriptor
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, TypeKind::Relationship, definition.header)?;
+        define_type_header(context, schema, TypeKind::Relationship, definition.header)?;
 
     // Build new Relationship Type
 

@@ -1,5 +1,5 @@
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
+use crate::type_header::{define_type_header, TypeHeaderSpec};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::holon_operations_api::*;
@@ -34,7 +34,7 @@ pub fn define_property_type(
     definition: PropertyTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, TypeKind::Property, definition.header)?;
+        define_type_header(context, schema, TypeKind::Property, definition.header)?;
 
     // Build the PropertyType
     let mut property_type = Holon::new();

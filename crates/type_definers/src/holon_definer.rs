@@ -1,6 +1,6 @@
 use crate::descriptor_types_deprecated::CoreSchemaRelationshipTypeName::KeyProperties;
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
+use crate::type_header::{define_type_header, TypeHeaderSpec};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
@@ -43,7 +43,7 @@ pub fn define_holon_type(
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
     let type_descriptor_ref =
-        define_type_descriptor(context, schema, TypeKind::Holon, definition.header.clone())?;
+        define_type_header(context, schema, TypeKind::Holon, definition.header.clone())?;
 
     // Build new HolonType
 

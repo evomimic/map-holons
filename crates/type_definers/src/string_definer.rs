@@ -1,6 +1,6 @@
 use crate::descriptor_types_deprecated::CoreSchemaPropertyTypeName::{MaxLength, MinLength};
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
+use crate::type_header::{define_type_header, TypeHeaderSpec};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
@@ -34,7 +34,7 @@ pub fn define_string_type(
     definition: StringTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
-    let type_descriptor_ref = define_type_descriptor(
+    let type_descriptor_ref = define_type_header(
         context,
         schema,
         TypeKind::Value(BaseTypeKind::String),
