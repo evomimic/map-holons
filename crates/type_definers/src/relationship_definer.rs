@@ -12,10 +12,10 @@ use base_types::{BaseValue, MapBoolean, MapString};
 use core_types::TypeKind;
 use integrity_core_types::PropertyName;
 
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 
-pub struct RelationshipTypeDefinition {
-    pub header: TypeDescriptorDefinition, // header.type_name is relationship_name
+pub struct RelationshipTypeSpec {
+    pub header: TypeHeaderSpec, // header.type_name is relationship_name
     pub relationship_type_name: RelationshipName,
     pub source_owns_relationship: MapBoolean,
     // pub min_target_cardinality: MapInteger,  // CollectionDefinition
@@ -53,7 +53,7 @@ pub struct RelationshipTypeDefinition {
 pub fn define_relationship_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: RelationshipTypeDefinition,
+    definition: RelationshipTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // Validate the definition
     // TODO: Move this logic to the shared validation rules layer

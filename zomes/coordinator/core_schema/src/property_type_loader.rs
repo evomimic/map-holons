@@ -4,8 +4,8 @@ use crate::enum_type_loader::CoreEnumTypeName::*;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName::*;
 use crate::string_value_type_loader::CoreStringValueTypeName::*;
 use crate::value_type_loader::CoreValueTypeName::*;
-use type_definers::property_descriptor::{define_property_type, PropertyTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::property_definer::{define_property_type, PropertyTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use crate::value_type_loader::CoreValueTypeName;
@@ -187,7 +187,7 @@ fn load_property_type_definition(
     schema: &HolonReference,
     loader: PropertyTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -206,7 +206,7 @@ fn load_property_type_definition(
     let value_type =
         HolonReference::Staged(loader.value_type_name.load_core_type(context, schema)?);
 
-    let definition = PropertyTypeDefinition {
+    let definition = PropertyTypeSpec {
         header: type_header,
         property_name: loader.property_name.clone(),
         value_type,

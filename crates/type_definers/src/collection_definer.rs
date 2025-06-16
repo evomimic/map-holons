@@ -5,15 +5,15 @@ use holons_core::{
 };
 
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 use holons_core::core_shared_objects::stage_new_holon_api;
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::TypeKind;
 use integrity_core_types::PropertyName;
 
-pub struct CollectionTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct CollectionTypeSpec {
+    pub header: TypeHeaderSpec,
     pub collection_type_name: Option<MapString>,
     pub is_ordered: MapBoolean,
     pub allows_duplicates: MapBoolean,
@@ -51,7 +51,7 @@ pub enum CollectionSemantic {
 pub fn define_collection_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: CollectionTypeDefinition,
+    definition: CollectionTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // Stage the new TypeDescriptor
 
@@ -128,7 +128,7 @@ pub fn define_collection_type(
 /// otherwise it just returns the supplied collection_name
 fn generate_collection_type_name(
     context: &dyn HolonsContextBehavior,
-    definition: &CollectionTypeDefinition,
+    definition: &CollectionTypeSpec,
 ) -> Result<MapString, HolonError> {
     // let mut name = target_type.get_property_value(context, PropertyName(MapString("type_name".to_string())))?;
     // append "Collection"

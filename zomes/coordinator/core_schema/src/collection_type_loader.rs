@@ -1,15 +1,15 @@
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use type_definers::collection_descriptor::CollectionSemantic;
-use type_definers::collection_descriptor::{define_collection_type, CollectionTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::collection_definer::CollectionSemantic;
+use type_definers::collection_definer::{define_collection_type, CollectionTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use base_types::{MapBoolean, MapInteger, MapString};
 
 #[derive(Debug)]
-pub struct CollectionTypeSpec {
+pub struct CollectionTypeConfig {
     pub semantic: CollectionSemantic,
     pub holon_type: CoreHolonTypeName,
 }
@@ -29,7 +29,7 @@ struct CollectionTypeLoader {
     pub target_holon_type: CoreHolonTypeName,
 }
 
-impl SchemaNamesTrait for CollectionTypeSpec {
+impl SchemaNamesTrait for CollectionTypeConfig {
     fn load_core_type(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -93,7 +93,7 @@ impl SchemaNamesTrait for CollectionTypeSpec {
     }
 }
 
-impl CollectionTypeSpec {
+impl CollectionTypeConfig {
     fn build_collection_type_loader(&self) -> Result<CollectionTypeLoader, HolonError> {
         let type_name = self.derive_type_name();
         let descriptor_name = self.derive_descriptor_name();
@@ -183,7 +183,7 @@ fn load_collection_type_definition(
     let target_holon_type =
         loader.target_holon_type.lazy_get_core_type_definition(context, schema)?;
 
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -195,7 +195,7 @@ fn load_collection_type_definition(
         owned_by: loader.owned_by,
     };
 
-    let definition = CollectionTypeDefinition {
+    let definition = CollectionTypeSpec {
         header: type_header,
 
         collection_type_name: Some(loader.type_name.clone()),

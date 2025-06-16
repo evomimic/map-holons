@@ -1,6 +1,6 @@
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
@@ -9,8 +9,8 @@ use core_types::{BaseTypeKind, TypeKind};
 use integrity_core_types::PropertyName;
 
 #[derive(Clone)]
-pub struct IntegerTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct IntegerTypeSpec {
+    pub header: TypeHeaderSpec,
     pub type_name: MapString,
     pub min_value: MapInteger,
     pub max_value: MapInteger,
@@ -23,7 +23,7 @@ pub struct IntegerTypeDefinition {
 pub fn define_integer_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: IntegerTypeDefinition,
+    definition: IntegerTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_descriptor_ref = define_type_descriptor(

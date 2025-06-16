@@ -1,16 +1,16 @@
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 
-use crate::boolean_descriptor::BooleanTypeDefinition;
-use crate::collection_descriptor::CollectionTypeDefinition;
-use crate::enum_descriptor::EnumTypeDefinition;
-use crate::holon_descriptor::HolonTypeDefinition;
-use crate::integer_descriptor::IntegerTypeDefinition;
-use crate::meta_type_descriptor::MetaTypeDefinition;
-use crate::property_descriptor::PropertyTypeDefinition;
-use crate::relationship_descriptor::RelationshipTypeDefinition;
+use crate::boolean_definer::BooleanTypeSpec;
+use crate::collection_definer::CollectionTypeSpec;
+use crate::enum_definer::EnumTypeSpec;
+use crate::holon_definer::HolonTypeSpec;
+use crate::integer_definer::IntegerTypeSpec;
+use crate::meta_type_definer::MetaTypeSpec;
+use crate::property_definer::PropertyTypeSpec;
+use crate::relationship_definer::RelationshipTypeSpec;
 use crate::semantic_version::SemanticVersion;
-use crate::string_descriptor::StringTypeDefinition;
+use crate::string_definer::StringTypeSpec;
 use holons_core::core_shared_objects::{Holon, HolonCollection, RelationshipName};
 use holons_core::HolonReference;
 use inflector::Inflector;
@@ -135,15 +135,15 @@ impl DeletionSemantic {
 }
 
 pub enum SchemaTypeDefinition {
-    BooleanType(BooleanTypeDefinition),
-    CollectionType(CollectionTypeDefinition),
-    EnumType(EnumTypeDefinition),
-    HolonType(HolonTypeDefinition),
-    IntegerType(IntegerTypeDefinition),
-    MetaType(MetaTypeDefinition),
-    PropertyType(PropertyTypeDefinition),
-    RelationshipType(RelationshipTypeDefinition),
-    StringType(StringTypeDefinition),
+    BooleanType(BooleanTypeSpec),
+    CollectionType(CollectionTypeSpec),
+    EnumType(EnumTypeSpec),
+    HolonType(HolonTypeSpec),
+    IntegerType(IntegerTypeSpec),
+    MetaType(MetaTypeSpec),
+    PropertyType(PropertyTypeSpec),
+    RelationshipType(RelationshipTypeSpec),
+    StringType(StringTypeSpec),
 }
 
 #[allow(dead_code)]

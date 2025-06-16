@@ -1,18 +1,18 @@
-pub mod boolean_descriptor;
-pub mod collection_descriptor;
+pub mod boolean_definer;
+pub mod collection_definer;
 pub mod descriptor_types_deprecated;
-pub mod enum_descriptor;
-pub mod enum_variant_descriptor;
-pub mod holon_descriptor;
-pub mod integer_descriptor;
-pub mod meta_type_descriptor;
-pub mod property_descriptor;
-pub mod relationship_descriptor;
+pub mod enum_definer;
+pub mod enum_variant_definer;
+pub mod holon_definer;
+pub mod integer_definer;
+pub mod meta_type_definer;
+pub mod property_definer;
+pub mod relationship_definer;
 pub mod schema;
 mod semantic_version;
-pub mod string_descriptor;
-pub mod type_descriptor;
-pub mod value_type_descriptor;
+pub mod string_definer;
+pub mod type_header;
+pub mod value_type_definer;
 
 // pub fn add(left: u64, right: u64) -> u64 {
 //     left + right

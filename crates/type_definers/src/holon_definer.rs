@@ -1,6 +1,6 @@
 use crate::descriptor_types_deprecated::CoreSchemaRelationshipTypeName::KeyProperties;
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
@@ -10,8 +10,8 @@ use core_types::TypeKind;
 use integrity_core_types::PropertyName;
 
 #[derive(Clone, Debug)]
-pub struct HolonTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct HolonTypeSpec {
+    pub header: TypeHeaderSpec,
     pub type_name: MapString,
     pub properties: Vec<HolonReference>, // Property Descriptors
     pub key_properties: Option<Vec<HolonReference>>, // Order list of property names comprising the key for this holon type
@@ -38,7 +38,7 @@ pub struct HolonTypeDefinition {
 pub fn define_holon_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: HolonTypeDefinition,
+    definition: HolonTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 

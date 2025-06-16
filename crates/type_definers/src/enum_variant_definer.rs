@@ -1,7 +1,7 @@
 //use std::env::var;
 use crate::descriptor_types_deprecated::CoreSchemaPropertyTypeName::{TypeName, VariantOrder};
 use crate::descriptor_types_deprecated::CoreSchemaRelationshipTypeName;
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
@@ -10,8 +10,8 @@ use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{TypeKind, BaseTypeKind};
 use integrity_core_types::PropertyName;
 
-pub struct EnumVariantTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct EnumVariantTypeSpec {
+    pub header: TypeHeaderSpec,
     pub type_name: MapString, // unique variant name
     pub variant_order: MapInteger,
 }
@@ -33,7 +33,7 @@ pub struct EnumVariantTypeDefinition {
 pub fn define_enum_variant_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: EnumVariantTypeDefinition,
+    definition: EnumVariantTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  STAGE A NEW ENUM VARIANT TYPE DESCRIPTOR -------------------------------
     let enum_variant_type_descriptor_ref = define_type_descriptor(

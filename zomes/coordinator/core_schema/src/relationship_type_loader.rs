@@ -1,12 +1,12 @@
 use hdi::prelude::info;
 // use holons::smart_reference::SmartReference;
-use crate::collection_type_loader::CollectionTypeSpec;
+use crate::collection_type_loader::CollectionTypeConfig;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use type_definers::collection_descriptor::CollectionSemantic;
+use type_definers::collection_definer::CollectionSemantic;
 use type_definers::descriptor_types_deprecated::DeletionSemantic;
-use type_definers::holon_descriptor::{define_holon_type, HolonTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::holon_definer::{define_holon_type, HolonTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use holons_core::core_shared_objects::{HolonError, RelationshipName};
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
@@ -55,7 +55,7 @@ pub struct RelationshipTypeLoader {
     pub source_owns_relationship: MapBoolean,
     pub deletion_semantic: DeletionSemantic,
     pub load_links_immediate: MapBoolean,
-    pub target_collection_type: CollectionTypeSpec,
+    pub target_collection_type: CollectionTypeConfig,
     pub has_inverse: Option<CoreRelationshipTypeName>,
 }
 
@@ -115,7 +115,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonSpaceType,
                 },
@@ -133,7 +133,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::SchemaType,
                 },
@@ -154,7 +154,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::RelationshipType,
                 },
@@ -175,7 +175,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Block,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::TypeDescriptor,
                 },
@@ -196,7 +196,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::SchemaType,
                 },
@@ -217,7 +217,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::OptionalInstance,
                     holon_type: CoreHolonTypeName::HolonType
                 },
@@ -239,7 +239,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Cascade,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec {
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::RelationshipType,
                 },
@@ -262,7 +262,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Block,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec {
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::HolonType
                 },
@@ -283,7 +283,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Block,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::HolonType, // TODO: this should really by Holon, Not HolonType
                 },
@@ -303,7 +303,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Cascade,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::TypeDescriptor,
                 },
@@ -326,7 +326,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::RelationshipType,
                 },
@@ -345,7 +345,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Block,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::TypeDescriptor,
                 },
@@ -364,7 +364,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::HolonSpaceType
                 },
@@ -380,7 +380,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::OptionalInstance,
                     holon_type: CoreHolonTypeName::HolonType,
                 },
@@ -399,7 +399,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Cascade,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::PropertyType,
                 },
@@ -420,7 +420,7 @@ impl CoreRelationshipTypeName {
                     source_owns_relationship: MapBoolean(false),
                     deletion_semantic: DeletionSemantic::Block,
                     load_links_immediate: MapBoolean(false),
-                    target_collection_type: CollectionTypeSpec{
+                    target_collection_type: CollectionTypeConfig {
                         semantic: CollectionSemantic::Set,
                         holon_type: CoreHolonTypeName::HolonType
                     },
@@ -442,7 +442,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Cascade,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::RelationshipType,
                 },
@@ -462,7 +462,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonType,
                 },
@@ -479,7 +479,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Block,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::HolonType,
                 },
@@ -499,7 +499,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonCollectionType,
                 },
@@ -520,7 +520,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(true),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(true),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonType,
                 },
@@ -541,7 +541,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::HolonCollectionType,
                 },
@@ -561,7 +561,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::SingleInstance,
                     holon_type: CoreHolonTypeName::ValueType,
                 },
@@ -582,7 +582,7 @@ impl CoreRelationshipTypeName {
                 source_owns_relationship: MapBoolean(false),
                 deletion_semantic: DeletionSemantic::Allow,
                 load_links_immediate: MapBoolean(false),
-                target_collection_type: CollectionTypeSpec{
+                target_collection_type: CollectionTypeConfig {
                     semantic: CollectionSemantic::Set,
                     holon_type: CoreHolonTypeName::PropertyType,
                 },
@@ -600,7 +600,7 @@ pub fn load_relationship_type_definition(
     schema: &HolonReference,
     loader: RelationshipTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -612,7 +612,7 @@ pub fn load_relationship_type_definition(
         owned_by: loader.owned_by,
     };
 
-    let definition = HolonTypeDefinition {
+    let definition = HolonTypeSpec {
         header: type_header,
         type_name: loader.relationship_type_name.0.clone(),
         properties: vec![],

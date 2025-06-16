@@ -1,5 +1,5 @@
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_core::holon_operations_api::*;
@@ -8,8 +8,8 @@ use base_types::{BaseValue, MapString};
 use core_types::TypeKind;
 use integrity_core_types::PropertyName;
 
-pub struct PropertyTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct PropertyTypeSpec {
+    pub header: TypeHeaderSpec,
     pub property_name: PropertyName,
     pub value_type: HolonReference, // should be reference to the ValueType for this property
 }
@@ -31,7 +31,7 @@ pub struct PropertyTypeDefinition {
 pub fn define_property_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: PropertyTypeDefinition,
+    definition: PropertyTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     let type_descriptor_ref =
         define_type_descriptor(context, schema, TypeKind::Property, definition.header)?;

@@ -13,7 +13,7 @@ use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::*;
 
 #[derive(Debug, Clone)]
-pub struct TypeDescriptorDefinition {
+pub struct TypeHeaderSpec {
     pub descriptor_name: MapString,
     pub description: MapString,
     pub label: MapString, // Human-readable name for this type
@@ -46,7 +46,7 @@ pub fn define_type_descriptor(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference, // Type-COMPONENT_OF->Schema
     base_type: TypeKind,
-    definition: TypeDescriptorDefinition,
+    definition: TypeHeaderSpec,
 ) -> Result<StagedReference, HolonError> {
     info!("Staging... {:#?}", definition.descriptor_name.clone());
 

@@ -1,6 +1,6 @@
 use crate::core_schema_types::SchemaNamesTrait;
-use type_definers::enum_variant_descriptor::{define_enum_variant_type, EnumVariantTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::enum_variant_definer::{define_enum_variant_type, EnumVariantTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
@@ -257,7 +257,7 @@ fn load_enum_variant_definition(
     schema: &HolonReference,
     loader: EnumVariantLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -269,7 +269,7 @@ fn load_enum_variant_definition(
         owned_by: loader.owned_by,
     };
 
-    let definition = EnumVariantTypeDefinition {
+    let definition = EnumVariantTypeSpec {
         header: type_header,
         type_name: loader.type_name.clone(),
         variant_order: loader.variant_order,

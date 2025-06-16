@@ -1,5 +1,5 @@
-use type_definers::boolean_descriptor::{define_boolean_type, BooleanTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::boolean_definer::{define_boolean_type, BooleanTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 
 use holons_core::core_shared_objects::HolonError;
@@ -88,7 +88,7 @@ fn load_boolean_type_definition(
     schema: &HolonReference,
     loader: BooleanTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -101,7 +101,7 @@ fn load_boolean_type_definition(
     };
 
     let definition =
-        BooleanTypeDefinition { header: type_header, type_name: loader.type_name.clone() };
+        BooleanTypeSpec { header: type_header, type_name: loader.type_name.clone() };
 
     info!("Preparing to stage descriptor for {:#?}", loader.type_name.clone());
     let staged_ref = define_boolean_type(context, schema, definition)?;

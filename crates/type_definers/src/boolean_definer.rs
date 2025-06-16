@@ -1,7 +1,7 @@
 use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
 
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 
 use holons_core::holon_operations_api::*;
 use holons_core::{
@@ -12,8 +12,8 @@ use base_types::{BaseValue, MapString};
 use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::TypeName;
 
-pub struct BooleanTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct BooleanTypeSpec {
+    pub header: TypeHeaderSpec,
     pub type_name: MapString,
 }
 
@@ -23,7 +23,7 @@ pub struct BooleanTypeDefinition {
 pub fn define_boolean_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: BooleanTypeDefinition,
+    definition: BooleanTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
     let type_descriptor_ref = define_type_descriptor(

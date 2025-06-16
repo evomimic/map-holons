@@ -2,8 +2,8 @@ use crate::core_schema_types::SchemaNamesTrait;
 use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapTypeKind};
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::*;
-use type_definers::enum_descriptor::{define_enum_type, EnumTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::enum_definer::{define_enum_type, EnumTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
@@ -116,7 +116,7 @@ fn load_enum_type_definition(
     schema: &HolonReference,
     loader: EnumTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -127,7 +127,7 @@ fn load_enum_type_definition(
         is_subtype_of: None,
         owned_by: loader.owned_by,
     };
-    let mut definition = EnumTypeDefinition {
+    let mut definition = EnumTypeSpec {
         header: type_header,
         type_name: loader.type_name.clone(),
         variants: vec![],

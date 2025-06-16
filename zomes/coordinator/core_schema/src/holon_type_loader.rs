@@ -2,8 +2,8 @@ use hdi::prelude::info;
 use strum_macros::EnumIter;
 // use type_definers_zome::descriptor_types::CoreSchemaRelationshipTypeName::TargetCollectionType;
 use crate::core_schema_types::SchemaNamesTrait;
-use type_definers::holon_descriptor::{define_holon_type, HolonTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::holon_definer::{define_holon_type, HolonTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use base_types::{MapBoolean, MapString};
@@ -268,7 +268,7 @@ pub fn load_holon_type_definition(
     schema: &HolonReference,
     loader: HolonTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -280,7 +280,7 @@ pub fn load_holon_type_definition(
         owned_by: loader.owned_by,
     };
 
-    let mut definition = HolonTypeDefinition {
+    let mut definition = HolonTypeSpec {
         header: type_header,
         type_name: loader.type_name.clone(),
         properties: vec![],

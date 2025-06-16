@@ -1,6 +1,6 @@
 use crate::core_schema_types::SchemaNamesTrait;
-use type_definers::integer_descriptor::{define_integer_type, IntegerTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::integer_definer::{define_integer_type, IntegerTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
@@ -89,7 +89,7 @@ fn load_integer_type_definition(
     schema: &HolonReference,
     loader: IntegerTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -101,7 +101,7 @@ fn load_integer_type_definition(
         owned_by: loader.owned_by,
     };
 
-    let definition = IntegerTypeDefinition {
+    let definition = IntegerTypeSpec {
         header: type_header,
         type_name: loader.type_name.clone(),
         min_value: loader.min_length,

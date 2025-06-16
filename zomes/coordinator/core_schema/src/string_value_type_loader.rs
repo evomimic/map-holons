@@ -1,6 +1,6 @@
 use crate::core_schema_types::SchemaNamesTrait;
-use type_definers::string_descriptor::{define_string_type, StringTypeDefinition};
-use type_definers::type_descriptor::TypeDescriptorDefinition;
+use type_definers::string_definer::{define_string_type, StringTypeSpec};
+use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
@@ -123,7 +123,7 @@ pub(crate) fn load_string_type_definition(
     schema: &HolonReference,
     loader: StringTypeLoader,
 ) -> Result<StagedReference, HolonError> {
-    let type_header = TypeDescriptorDefinition {
+    let type_header = TypeHeaderSpec {
         descriptor_name: loader.descriptor_name,
         description: loader.description,
         label: loader.label,
@@ -135,7 +135,7 @@ pub(crate) fn load_string_type_definition(
         owned_by: loader.owned_by,
     };
 
-    let definition = StringTypeDefinition {
+    let definition = StringTypeSpec {
         header: type_header,
         type_name: loader.type_name.clone(),
         min_length: loader.min_length,

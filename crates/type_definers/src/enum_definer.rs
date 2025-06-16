@@ -1,6 +1,6 @@
 use crate::descriptor_types_deprecated::CoreSchemaPropertyTypeName::TypeName;
 use crate::descriptor_types_deprecated::CoreSchemaRelationshipTypeName;
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+use crate::type_header::{define_type_descriptor, TypeHeaderSpec};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::core_shared_objects::{Holon, HolonError};
@@ -9,8 +9,8 @@ use base_types::{BaseValue, MapString};
 use core_types::{TypeKind, BaseTypeKind};
 use integrity_core_types::PropertyName;
 
-pub struct EnumTypeDefinition {
-    pub header: TypeDescriptorDefinition,
+pub struct EnumTypeSpec {
+    pub header: TypeHeaderSpec,
     pub type_name: MapString,
     pub variants: Vec<HolonReference>,
 }
@@ -35,7 +35,7 @@ pub struct EnumTypeDefinition {
 pub fn define_enum_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
-    definition: EnumTypeDefinition,
+    definition: EnumTypeSpec,
 ) -> Result<StagedReference, HolonError> {
     // ----------------  STAGE A NEW ENUM TYPE DESCRIPTOR -------------------------------
     let enum_type_descriptor_ref = define_type_descriptor(
