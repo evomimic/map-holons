@@ -17,9 +17,9 @@ coordinator:
       bundled: "../target/wasm32-unknown-unknown/release/holons.wasm"
       dependencies:
         - name: holons_integrity
-    - name: type_definers
+    - name: type_definers_zome
       hash: ~
-      bundled: "../target/wasm32-unknown-unknown/release/type_definers.wasm"
+      bundled: "../target/wasm32-unknown-unknown/release/type_definers_zome.wasm"
       dependencies:
         - name: holons_integrity
 

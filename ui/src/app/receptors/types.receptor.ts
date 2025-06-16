@@ -9,7 +9,7 @@ import { Receptor } from '../helpers/abstract.receptor';
 })
 
 export class TypesReceptor extends Receptor implements OnDestroy {
-  ROLE = "type_definers"
+  ROLE = "type_definers_zome"
   
   //TODO add store of cell data logic to key URL
   //constructor(){}

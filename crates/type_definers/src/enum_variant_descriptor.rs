@@ -1,6 +1,6 @@
 //use std::env::var;
-use crate::descriptor_types::CoreSchemaPropertyTypeName::{TypeName, VariantOrder};
-use crate::descriptor_types::CoreSchemaRelationshipTypeName;
+use crate::descriptor_types_deprecated::CoreSchemaPropertyTypeName::{TypeName, VariantOrder};
+use crate::descriptor_types_deprecated::CoreSchemaRelationshipTypeName;
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use hdi::prelude::debug;
 use holons_core::core_shared_objects::stage_new_holon_api;

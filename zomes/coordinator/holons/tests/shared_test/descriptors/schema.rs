@@ -7,8 +7,8 @@ use crate::shared_test::descriptors::value_descriptor::*;
 use holons::helpers::*;
 use holons::holon_reference::HolonReference::Local;
 use holons::holon_reference::{HolonReference, LocalHolonReference};
-/// This file creates a Schema Holon and all of its child type_definers comprising the L0 layer
-/// of the MAP Ontology as well as the relationships between those type_definers
+/// This file creates a Schema Holon and all of its child type_definers_zome comprising the L0 layer
+/// of the MAP Ontology as well as the relationships between those type_definers_zome
 use holons::holon_types::Holon;
 use holons::relationship::{RelationshipName, HolonCollection};
 use shared_types_holon::holon_node::PropertyName;
@@ -31,7 +31,7 @@ pub fn define_schema() -> Holon {
         .with_property_value(
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
-                "The foundational MAP type type_definers for the L0 layer of the MAP Schema"
+                "The foundational MAP type type_definers_zome for the L0 layer of the MAP Schema"
                     .to_string(),
             )),
         );
@@ -79,7 +79,7 @@ pub fn define_schema() -> Holon {
     let value_array_descriptor = define_value_array_descriptor();
 
     //
-    // Define the relationship type_definers that relate the above type_definers
+    // Define the relationship type_definers_zome that relate the above type_definers_zome
     //
 
     schema

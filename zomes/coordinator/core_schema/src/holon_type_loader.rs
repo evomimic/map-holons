@@ -1,6 +1,6 @@
 use hdi::prelude::info;
 use strum_macros::EnumIter;
-// use type_definers::descriptor_types::CoreSchemaRelationshipTypeName::TargetCollectionType;
+// use type_definers_zome::descriptor_types::CoreSchemaRelationshipTypeName::TargetCollectionType;
 use crate::core_schema_types::SchemaNamesTrait;
 use type_definers::holon_descriptor::{define_holon_type, HolonTypeDefinition};
 use type_definers::type_descriptor::TypeDescriptorDefinition;

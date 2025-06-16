@@ -2,7 +2,7 @@
 members = [
     # Coordinator Zomes
     "zomes/coordinator/holons",
-    "zomes/coordinator/type_definers",
+    "zomes/coordinator/type_definers_zome",
     "zomes/coordinator/core_schema",
     # Integrity Zome
     "zomes/integrity/holons_integrity",

@@ -1,7 +1,7 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
 
-use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use crate::descriptor_types_deprecated::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
+use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::semantic_version::SemanticVersion;
 use tracing::{debug, info};
 use holons_core::core_shared_objects::stage_new_holon_api;
@@ -30,8 +30,8 @@ pub struct TypeDescriptorDefinition {
 /// This is a helper function that defines and stages (but does not commit) a new TypeDescriptor.
 /// It is intended to be called by other define_xxx_descriptor functions.
 ///
-/// This function adds values for each of the properties shared by all type type_definers
-/// and (optionally) adds related holons for relationships shared by all type type_definers
+/// This function adds values for each of the properties shared by all type type_definers_zome
+/// and (optionally) adds related holons for relationships shared by all type type_definers_zome
 ///
 /// For now, `version` is being treated as a MapString property and is initialized to "0.0.1"
 ///

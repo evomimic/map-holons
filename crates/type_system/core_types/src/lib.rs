@@ -11,7 +11,7 @@
 //! - **Structural Types**: like `PropertyMap`, `RelationshipMap`
 //! - **Type Classifiers**: such as `ValueType` and `TypeKind` (formerly `TypeKind`)
 //!
-//! These types define the shape and meaning of data in MAP holons and type_definers,
+//! These types define the shape and meaning of data in MAP holons and type_definers_zome,
 //! and are shared across guest and client implementations.
 
 pub mod ids;

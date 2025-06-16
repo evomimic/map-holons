@@ -4,7 +4,7 @@ use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedRe
 
 use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
 
-use crate::descriptor_types::{
+use crate::descriptor_types_deprecated::{
     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
 };
 use holons_core::core_shared_objects::stage_new_holon_api;

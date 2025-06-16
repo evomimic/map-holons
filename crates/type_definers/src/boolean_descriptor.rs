@@ -1,4 +1,4 @@
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use crate::descriptor_types_deprecated::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use hdi::prelude::debug;
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};

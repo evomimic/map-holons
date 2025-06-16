@@ -1,6 +1,6 @@
 pub mod boolean_descriptor;
 pub mod collection_descriptor;
-pub mod descriptor_types;
+pub mod descriptor_types_deprecated;
 pub mod enum_descriptor;
 pub mod enum_variant_descriptor;
 pub mod holon_descriptor;

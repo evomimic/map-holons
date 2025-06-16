@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 # WASM and non-WASM compatible
 crate-type = ["cdylib", "rlib"]
-name = "type_definers"
+name = "type_definers_zome"
 
 [dependencies]
 # General Dependencies

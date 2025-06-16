@@ -1,4 +1,4 @@
-use crate::descriptor_types::CoreValueTypeName;
+use crate::descriptor_types_deprecated::CoreValueTypeName;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior};
 

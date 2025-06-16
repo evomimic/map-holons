@@ -1,7 +1,7 @@
 /// MAP Schema objects maintain a set of MAP Descriptors
-/// They support  lazy creation of type_definers by offering "get_the_<type_name>" functions
+/// They support  lazy creation of type_definers_zome by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
-use crate::descriptor_types::Schema;
+use crate::descriptor_types_deprecated::Schema;
 use holons_core::core_shared_objects::{Holon, HolonError};
 
 use integrity_core_types::PropertyName;
