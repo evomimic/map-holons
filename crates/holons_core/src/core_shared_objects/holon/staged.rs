@@ -133,6 +133,14 @@ impl StagedHolon {
         Ok(())
     }
 
+    /// ?TODO: Delete this in place of a construcor with init params
+    pub fn init_relationships(&mut self, map: StagedRelationshipMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.staged_relationships = map;
+
+        Ok(())
+    }
+
     /// Marks the `StagedHolon` as `Changed`.
     ///
     /// This is used to transition a `ForUpdate` Holon that has been modified.

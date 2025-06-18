@@ -11,7 +11,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core_shared_objects::{
-        holon::holon_utils::{key_info, local_id_info},
+        holon::{
+            holon_utils::{key_info, local_id_info},
+            state::StagedState,
+            StagedHolon,
+        },
         ReadableRelationship, TransientRelationshipMap,
     },
     HolonError,
@@ -81,6 +85,22 @@ impl TransientHolon {
     /// Used in scenarios where immutability must be enforced post-creation.
     pub fn mark_as_immutable(&mut self) {
         self.holon_state = HolonState::Immutable;
+    }
+
+    /// Converts the `TransientHolon` into a 'StagedHolon,
+    ///
+    /// This lifecycle transition takes place during the staging process when stage_holon is called by the nursery to update its staged pool.
+    ///
+    pub fn to_staged(self) -> Result<StagedHolon, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        let mut staged_holon = StagedHolon::new_for_create();
+        staged_holon.update_original_id(self.original_id.clone())?;
+        staged_holon.update_property_map(self.property_map.clone())?;
+        let map = self.get_transient_relationship_map();
+        let staged_map = map.to_staged()?;
+        staged_holon.init_relationships(staged_map)?;
+
+        Ok(staged_holon)
     }
 
     pub fn update_relationship_map(

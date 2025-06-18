@@ -20,6 +20,17 @@ pub enum Holon {
 //   ASSOCIATED METHODS (IMPL BLOCK)
 // ==================================
 impl Holon {
+    /// Clones the Holon as a new `TransientHolon`.
+    ///
+    /// Regardless of the source phase, cloned Holons are always `TransientHolons`.
+    pub fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
+        match self {
+            Holon::Transient(transient) => transient.clone_holon(),
+            Holon::Staged(staged) => staged.clone_holon(),
+            Holon::Saved(saved) => saved.clone_holon(),
+        }
+    }
+
     /// Constructs a new `TransientHolon`.
     pub fn new_transient() -> Self {
         Holon::Transient(TransientHolon::new())
@@ -32,6 +43,7 @@ impl Holon {
             _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
         }
     }
+
 }
 
 // ================================

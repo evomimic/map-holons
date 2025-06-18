@@ -5,8 +5,8 @@ use super::{
 };
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
 use crate::{HolonError, NurseryAccess};
-use core_types::TemporaryId;
 use base_types::MapString;
+use core_types::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 
@@ -33,7 +33,8 @@ impl Nursery {
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
     fn stage_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
-        self.staged_holons.borrow_mut().insert_holon(Holon::Transient(holon))
+        let staged_holon = holon.to_staged()?;
+        self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))
     }
 
     /// This function converts a TemporaryId into a StagedReference.
