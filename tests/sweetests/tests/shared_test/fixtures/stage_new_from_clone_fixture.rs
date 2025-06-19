@@ -7,10 +7,10 @@ use crate::shared_test::{
         DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-use base_types::{BaseValue, MapInteger, MapString};
+
 use base_types::{BaseValue, MapInteger, MapString};
 use holons_core::{
-    core_shared_objects::HolonError,
+    core_shared_objects::{holon::Holon, HolonError},
     dances::ResponseStatusCode,
     reference_layer::{HolonReference, ReadableHolon, StagedReference, WriteableHolon},
     RelationshipName,
@@ -178,6 +178,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         publisher_relationship_name.clone(),
         holons_to_add,
         ResponseStatusCode::OK,
+        Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon
         Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon
     )?;
 

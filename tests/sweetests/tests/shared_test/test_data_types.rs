@@ -19,11 +19,15 @@ use std::{
     sync::Arc,
 };
 
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use integrity_core_types::PropertyMap;
+
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior, HolonError, RelationshipName, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference},
+    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference},
 };
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";

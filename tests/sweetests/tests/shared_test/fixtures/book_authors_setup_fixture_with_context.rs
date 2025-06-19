@@ -6,11 +6,13 @@ use crate::shared_test::test_data_types::{
     DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
     PERSON_2_KEY, PUBLISHER_KEY,
 };
+
 use base_types::{BaseValue, MapString};
+use holons_core::holon_operations_api::*;
 use holons_core::{
-    core_shared_objects::{Holon, TransientHolon},
+    core_shared_objects::{Holon, HolonError, RelationshipName},
     dances::dance_response::ResponseStatusCode,
-    reference_layer::{ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior},
+    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon},
 };
 use integrity_core_types::PropertyName;
 

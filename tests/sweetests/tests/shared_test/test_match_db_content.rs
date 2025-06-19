@@ -14,11 +14,10 @@ use crate::shared_test::{
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
-use holons_core::{core_shared_objects::HolonBehavior, dances::ResponseBody};
-use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-
 use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
 use holons_client::init_client_context;
+use holons_core::{core_shared_objects::holon::HolonBehavior, dances::ResponseBody};
+use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
 /// This function iterates through the expected_holons vector supplied as a parameter
 /// and for each holon: builds and dances a `get_holon_by_id` DanceRequest,

@@ -14,12 +14,16 @@ use crate::shared_test::{
 };
 
 use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dance_request;
-use holons_core::core_shared_objects::{holon::Holon, RelationshipName};
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::reference_layer::StagedReference;
-use holons_core::{ReadableHolon, HolonReference};
-use pretty_assertions::assert_eq;
-use rstest::*;
+use holons_core::{
+    core_shared_objects::{
+        holon::{Holon, HolonBehavior},
+        RelationshipName,
+    },
+    dances::{ResponseBody, ResponseStatusCode},
+    reference_layer::StagedReference,
+    HolonReference, ReadableHolon,
+};
+
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
@@ -28,8 +32,6 @@ use holons_core::{
     HolonReadable, HolonReference, RelationshipName, StagedReference,
 };
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-
-use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dance_request;
 
 /// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
 /// and holon references. Accepting holons_to_add as TestReferences allows the target holons to

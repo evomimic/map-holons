@@ -14,11 +14,12 @@ use crate::shared_test::{
 };
 
 use base_types::{MapInteger, MapString};
+use base_types::{MapInteger, MapString};
 use holon_dance_builders::remove_related_holons_dance::build_remove_related_holons_dance_request;
 use holons_core::{
+    core_shared_objects::{holon::Holon, RelationshipName},
     dances::{ResponseBody, ResponseStatusCode},
-    core_shared_objects::Holon,
-    HolonReference, RelationshipName, StagedReference,
+    HolonReference, StagedReference,
 };
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 
