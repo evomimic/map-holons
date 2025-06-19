@@ -4,6 +4,7 @@ use crate::reference_layer::{HolonReference, HolonServiceApi, HolonStagingBehavi
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::nursery_access::NurseryAccess;
+use crate::HolonCollectionApi;
 
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -73,6 +74,19 @@ pub trait HolonSpaceBehavior {
     /// # Returns
     /// - An `Arc<RefCell<dyn TransientManagerAccess>>` to allow interior mutability.
     fn get_transient_manager_access(&self) -> Arc<RefCell<dyn TransientManagerAccess>>;
+
+    /// Provides access to a **transient state collection**, initializing it if necessary.
+    ///
+    /// The transient state:
+    /// - Stores temporary collections of holons that do **not require persistence**.
+    /// - Can be used to hold query results, temporary groupings, or working sets.
+    ///
+    /// # Behavior
+    /// - If the transient state has **not been initialized**, it is created automatically.
+    ///
+    /// # Returns
+    /// - An `Arc<RefCell<dyn HolonCollectionApi>>` for managing transient holon collections.
+    fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>>;
 
     /// **Mediates access to nursery exports, avoiding direct exposure in `NurseryAccess`.**
     ///

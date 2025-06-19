@@ -9,6 +9,7 @@ use crate::core_shared_objects::{
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
 };
+use crate::{HolonCollectionApi, TransientCollection};
 use std::cell::RefCell;
 use std::sync::Arc;
 
@@ -29,6 +30,9 @@ pub struct HolonSpaceManager {
 
     /// Manages cache access for retrieving both local and external holons efficiently.
     cache_request_router: Arc<dyn HolonCacheAccess>,
+
+    /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
+    transient_state: Arc<RefCell<TransientCollection>>,
 }
 
 impl HolonSpaceManager {
@@ -75,6 +79,7 @@ impl HolonSpaceManager {
             cache_request_router,
             nursery: nursery_arc,
             transient_manager: transient_manager_arc,
+            transient_state: Arc::new(RefCell::new(TransientCollection::new())),
         }
     }
 }
@@ -108,6 +113,11 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Provides access to the TransientHolonManager.
     fn get_transient_manager_access(&self) -> Arc<RefCell<dyn TransientManagerAccess>> {
         Arc::clone(&self.transient_manager) as Arc<RefCell<dyn TransientManagerAccess>>
+    }
+
+    /// Retrieves a shared reference to the transient state.
+    fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>> {
+        Arc::clone(&self.transient_state) as Arc<RefCell<dyn HolonCollectionApi>>
     }
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.

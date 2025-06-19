@@ -11,6 +11,8 @@ use crate::shared_test::{
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
 
+use base_types::{MapBoolean, MapInteger, MapString};
+use core_types::{BaseTypeKind, HolonId};
 use holons_core::holon_operations_api::*;
 use holons_core::query_layer::QueryExpression;
 use holons_core::{HolonCollectionApi, ReadableHolon, WriteableHolon, HolonsContextBehavior};
