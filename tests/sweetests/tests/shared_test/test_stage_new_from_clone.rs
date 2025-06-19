@@ -13,14 +13,14 @@ use crate::shared_test::test_data_types::{
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    ReadableHolon, HolonReference, RelationshipName, SmartReference,
+    HolonReference, ReadableHolon, RelationshipName, SmartReference,
 };
 use integrity_core_types::PropertyName;
 
-use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.
@@ -38,6 +38,7 @@ use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone
 /// The `original_test_ref` can either be a:
 /// - `Saved` variant that holds the key for the previously saved holon to clone
 /// - `Staged` variant that holds a StagedReference to the Nursery resident holon to clone.
+/// - `Transient` variant that holds a TransientReference to the TransientHolonManager resident holon to clone.
 ///
 /// To get the `HolonReference` for the `Saved` case, we need to:
 ///      1. retrieve the holon via its key from the test_state
@@ -61,6 +62,9 @@ pub async fn execute_stage_new_from_clone(
 
     // 2. Construct the HolonReference to the original holon
     let original_holon_ref: HolonReference = match original_test_ref.clone() {
+        TestReference::TransientHolon(transient_reference) => {
+            HolonReference::Transient(transient_reference)
+        }
         TestReference::StagedHolon(staged_reference) => HolonReference::Staged(staged_reference),
         TestReference::SavedHolon(key) => {
             let saved_holon = test_state
@@ -77,6 +81,15 @@ pub async fn execute_stage_new_from_clone(
 
     // Get the original holon (for comparison purposes)
     let original_holon: Holon = match original_test_ref {
+        TestReference::TransientHolon(transient_reference) => {
+            match transient_reference.clone_holon(context) {
+                Ok(holon) => Holon::Transient(holon),
+                Err(err) => {
+                    error!("Failed to clone holon: {:?}", err);
+                    return; // or continue/fallback logic as appropriate
+                }
+            }
+        }
         TestReference::StagedHolon(staged_reference) => {
             match staged_reference.clone_holon(context) {
                 Ok(holon) => Holon::Transient(holon),

@@ -27,7 +27,9 @@ use holons_core::{
     core_shared_objects::{Holon, HolonBehavior, HolonError, RelationshipName, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference},
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
+    },
 };
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
@@ -69,6 +71,7 @@ pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
 pub enum TestReference {
     SavedHolon(MapString),
     StagedHolon(StagedReference),
+    TransientHolon(TransientReference),
 }
 
 #[derive(Clone, Debug)]
@@ -230,6 +233,9 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
         holon_references
             .iter()
             .map(|reference| match reference {
+                HolonReference::Transient(transient_ref) => {
+                    Ok(TestReference::TransientHolon(transient_ref.clone()))
+                }
                 HolonReference::Staged(staged_ref) => {
                     Ok(TestReference::StagedHolon(staged_ref.clone()))
                 }
@@ -276,6 +282,9 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
         test_ref: &TestReference,
     ) -> Result<HolonReference, HolonError> {
         match test_ref {
+            TestReference::TransientHolon(transient_reference) => {
+                Ok(HolonReference::Transient(transient_reference.clone()))
+            }
             TestReference::StagedHolon(staged_reference) => {
                 Ok(HolonReference::Staged(staged_reference.clone()))
             }
