@@ -68,6 +68,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         let response_session_state = response.state.as_ref().unwrap();
         // warn!("## GOT SESSION STATE :: {:?}"response_session_state);
         self.load_nursery(context, response_session_state);
+        self.load_transient_manager(context, response_session_state);
 
         // 5. Update space manager's local_holon_space without moving response
         let space_manager = context.get_space_manager();
@@ -117,5 +118,27 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         let staged_holons = session_state.get_staged_holons().clone();
         // let transient_holons =
         space_manager.import_staged_holons(staged_holons);
+    }
+
+    /// Restores the TransientHolonManager from the given `SessionState`, updating the local HolonSpace.
+    ///
+    /// This function takes the staged holons stored in the `session_state` (as received in a `DanceResponse`)
+    /// and imports them back into the HolonSpaceManager, ensuring that the local environment remains
+    /// synchronized with the session state maintained by the client and guest.
+    ///
+    /// # Arguments
+    /// * `context` - A reference to the `HolonsContextBehavior`, used to access the space manager.
+    /// * `session_state` - A reference to the `SessionState` from which staged holons will be restored.
+    ///
+    /// This function is automatically invoked within `dance_call` after receiving a response and should not
+    /// be used directly.
+    fn load_transient_manager(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        session_state: &SessionState,
+    ) {
+        let space_manager = context.get_space_manager();
+        let transient_holons = session_state.get_transient_holons().clone();
+        space_manager.import_transient_holons(transient_holons);
     }
 }

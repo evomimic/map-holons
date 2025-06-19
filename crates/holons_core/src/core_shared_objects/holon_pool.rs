@@ -73,7 +73,7 @@ impl HolonPool {
     }
 
     /// Retrieves the temporary id of a Holon by its base key.
-    /// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
+    /// Convenience method for retrieving a single reference for a base key, when the caller expects there to only be one.
     /// Returns a duplicate error if multiple found.
     pub fn get_id_by_base_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
         let ids: Vec<&TemporaryId> = self

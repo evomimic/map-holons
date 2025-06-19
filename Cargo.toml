@@ -2,8 +2,8 @@
 members = [
     # Coordinator Zomes
     "zomes/coordinator/holons",
-    "zomes/coordinator/descriptors",
-    "zomes/coordinator/core_schema",
+    # "zomes/coordinator/descriptors",
+    # "zomes/coordinator/core_schema",
     # Integrity Zome
     "zomes/integrity/holons_integrity",
     # Shared Types and Validation
@@ -22,7 +22,11 @@ members = [
 ]
 resolver = "2"
 
-exclude = ["tests/sweetests"]
+exclude = [
+    "tests/sweetests",
+    "zomes/coordinator/descriptors",
+    "zomes/coordinator/core_schema"
+]
 
 # Local workspace dependencies
 [workspace.dependencies.holons]

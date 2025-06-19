@@ -30,6 +30,7 @@ impl SessionState {
     pub fn get_local_holon_space(&self) -> Option<HolonReference> {
         self.local_holon_space.clone()
     }
+
     /// Sets a new local holon space reference.
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {
         self.local_holon_space = local_holon_space;
@@ -50,9 +51,19 @@ impl SessionState {
         &self.transient_holons
     }
 
+    /// Retrieves a mutable reference to the transient holon pool.
+    pub fn get_transient_holons_mut(&mut self) -> &mut SerializableHolonPool {
+        &mut self.transient_holons
+    }
+
     /// Sets a new staged holon pool.
     pub fn set_staged_holons(&mut self, staged_holons: SerializableHolonPool) {
         self.staged_holons = staged_holons;
+    }
+
+    /// Sets a new transient holon pool.
+    pub fn set_transient_holons(&mut self, transient_holons: SerializableHolonPool) {
+        self.transient_holons = transient_holons;
     }
 
     /// Summarizes the session state.
