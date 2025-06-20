@@ -1,0 +1,13 @@
+schema:
+  type_name: CoreSchema
+  described_by:
+    $ref:
+      type_name: SchemaType
+      schema: CoreSchema
+      space: https://space.map/schema
+  properties:
+    name: MAP Core Schema
+    description: All core types used by the MAP system
+
+type_files:
+  - test_holon_types.yml

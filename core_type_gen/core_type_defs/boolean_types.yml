@@ -1,13 +1,13 @@
-type_kind: Value(Boolean)
-variants:
-  - variant: MapBooleanType
-    type_name: MapBooleanType
-    header:
-      descriptor_name: MapBooleanTypeDescriptor
-      description: Built-in MAP Boolean Type
+types:
+  - type_name: MapBooleanType
+    type_kind: Value(Boolean)
+    described_by:
+      $ref:
+        type_name: MapBooleanTypeDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MapBoolean
+      description: Built-in MAP Boolean Type
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null

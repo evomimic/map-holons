@@ -6,6 +6,7 @@
     "ui"
   ],
   "scripts": {
+    "core_types_gen": "cargo run -p core_type_gen",
     "mock": "npm run mock -w ui",
     "start": "AGENTS=1 npm run network",
     "local-services": "hc run-local-services -b 54000 -s 55000",

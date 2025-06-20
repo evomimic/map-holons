@@ -1,20 +1,30 @@
 {
-  "variant": "HolonType",
-  "header": {
-    "descriptor_name": "HolonTypeDescriptor",
-    "description": "Describes the built-in HolonType",
-    "label": "HolonType",
-    "is_dependent": true,
-    "is_value_type": false,
-    "described_by": null,
-    "is_subtype_of": null,
-    "owned_by": null
+  "type_name": "HolonType",
+  "type_kind": "Holon",
+  "described_by": {
+    "$ref": {
+      "type_name": "HolonTypeDescriptor",
+      "schema": "CoreSchema",
+      "space": "https://space.map/schema"
+    }
   },
-  "properties": [
-    "TypeName"
-  ],
-  "key_properties": [
-    "TypeName"
-  ],
-  "source_for": []
+  "spec": {
+    "header": {
+      "descriptor_name": "HolonTypeDescriptor",
+      "description": "Describes the built-in HolonType",
+      "label": "HolonType",
+      "is_dependent": true,
+      "is_value_type": false,
+      "described_by": null,
+      "is_subtype_of": null,
+      "owned_by": null
+    },
+    "properties": [
+      "TypeName"
+    ],
+    "key_properties": [
+      "TypeName"
+    ],
+    "source_for": []
+  }
 }

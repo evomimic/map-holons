@@ -374,6 +374,7 @@ name = "core_type_gen"
 version = "0.1.0"
 dependencies = [
  "core_types",
+ "descriptors",
  "handlebars",
  "serde",
  "serde_json",

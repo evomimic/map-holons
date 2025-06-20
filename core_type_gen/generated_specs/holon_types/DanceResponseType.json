@@ -1,20 +1,30 @@
 {
-  "variant": "DanceResponseType",
-  "header": {
-    "descriptor_name": "DanceResponseTypeDescriptor",
-    "description": "Describes the built-in TypeDescriptor type. This type specifies values for the common characteristics shared by all types.",
-    "label": "DanceResponseType",
-    "is_dependent": true,
-    "is_value_type": false,
-    "described_by": null,
-    "is_subtype_of": null,
-    "owned_by": null
+  "type_name": "DanceResponseType",
+  "type_kind": "Holon",
+  "described_by": {
+    "$ref": {
+      "type_name": "DanceResponseTypeDescriptor",
+      "schema": "CoreSchema",
+      "space": "https://space.map/schema"
+    }
   },
-  "properties": [
-    "DescriptorName"
-  ],
-  "key_properties": [
-    "DescriptorName"
-  ],
-  "source_for": []
+  "spec": {
+    "header": {
+      "descriptor_name": "DanceResponseTypeDescriptor",
+      "description": "Describes the built-in TypeDescriptor type. This type specifies values for the common characteristics shared by all types.",
+      "label": "DanceResponseType",
+      "is_dependent": true,
+      "is_value_type": false,
+      "described_by": null,
+      "is_subtype_of": null,
+      "owned_by": null
+    },
+    "properties": [
+      "DescriptorName"
+    ],
+    "key_properties": [
+      "DescriptorName"
+    ],
+    "source_for": []
+  }
 }

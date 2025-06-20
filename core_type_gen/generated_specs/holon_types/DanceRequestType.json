@@ -1,20 +1,30 @@
 {
-  "variant": "DanceRequestType",
-  "header": {
-    "descriptor_name": "DanceRequestTypeDescriptor",
-    "description": "Describes the built-in DanceRequest type. This type specifies values all dance request types.",
-    "label": "DanceRequestType",
-    "is_dependent": true,
-    "is_value_type": false,
-    "described_by": null,
-    "is_subtype_of": null,
-    "owned_by": null
+  "type_name": "DanceRequestType",
+  "type_kind": "Holon",
+  "described_by": {
+    "$ref": {
+      "type_name": "DanceRequestTypeDescriptor",
+      "schema": "CoreSchema",
+      "space": "https://space.map/schema"
+    }
   },
-  "properties": [
-    "DescriptorName"
-  ],
-  "key_properties": [
-    "DescriptorName"
-  ],
-  "source_for": []
+  "spec": {
+    "header": {
+      "descriptor_name": "DanceRequestTypeDescriptor",
+      "description": "Describes the built-in DanceRequest type. This type specifies values all dance request types.",
+      "label": "DanceRequestType",
+      "is_dependent": true,
+      "is_value_type": false,
+      "described_by": null,
+      "is_subtype_of": null,
+      "owned_by": null
+    },
+    "properties": [
+      "DescriptorName"
+    ],
+    "key_properties": [
+      "DescriptorName"
+    ],
+    "source_for": []
+  }
 }

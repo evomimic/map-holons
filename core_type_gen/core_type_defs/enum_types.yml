@@ -1,43 +1,44 @@
-type_kind: Enum
-variants:
-  - variant: MapTypeKind
-    type_name: MapTypeKind
-    header:
-      descriptor_name: MapTypeKindDescriptor
-      description: Specifies the MAP TypeKind of this object.
+types:
+  - type_name: MapTypeKind
+    type_kind: Enum
+    described_by:
+      $ref:
+        type_name: MapTypeKindDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: Map Type Kind
+      description: Specifies the MAP TypeKind of this object.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    variants:
-      - TypeKindHolon
-      - TypeKindCollection
-      - TypeKindProperty
-      - TypeKindRelationship
-      - TypeKindEnumVariant
-      - TypeKindValueBoolean
-      - TypeKindValueEnum
-      - TypeKindValueInteger
-      - TypeKindValueString
-      - TypeKindValueBooleanArray
-      - TypeKindValueEnumArray
-      - TypeKindValueIntegerArray
-      - TypeKindValueStringArray
+      variants:
+        - TypeKindHolon
+        - TypeKindCollection
+        - TypeKindProperty
+        - TypeKindRelationship
+        - TypeKindEnumVariant
+        - TypeKindValueBoolean
+        - TypeKindValueEnum
+        - TypeKindValueInteger
+        - TypeKindValueString
+        - TypeKindValueBooleanArray
+        - TypeKindValueEnumArray
+        - TypeKindValueIntegerArray
+        - TypeKindValueStringArray
 
-  - variant: DeletionSemanticType
-    type_name: DeletionSemanticType
-    header:
-      descriptor_name: DeletionSemanticTypeDescriptor
-      description: Offers different options handling requests to delete a source Holon of a relationship.
+  - type_name: DeletionSemanticType
+    type_kind: Enum
+    described_by:
+      $ref:
+        type_name: DeletionSemanticTypeDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: Deletion Semantic Type
+      description: Offers different options handling requests to delete a source Holon of a relationship.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    variants:
-      - DeletionSemanticAllow
-      - DeletionSemanticBlock
-      - DeletionSemanticCascade
+      variants:
+        - DeletionSemanticAllow
+        - DeletionSemanticBlock
+        - DeletionSemanticCascade

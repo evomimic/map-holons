@@ -1,0 +1,23 @@
+types:
+  - type_kind: Holon
+    type_name: HolonType
+    described_by:
+      $ref:
+        type_name: HolonTypeDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
+      header:
+        descriptor_name: HolonTypeDescriptor
+        description: Example
+        label: HolonType
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      properties:
+        - TypeName
+      key_properties:
+        - TypeName
+      source_for: [ ]

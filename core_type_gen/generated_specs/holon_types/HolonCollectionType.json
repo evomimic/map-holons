@@ -1,20 +1,30 @@
 {
-  "variant": "HolonCollectionType",
-  "header": {
-    "descriptor_name": "HolonCollectionTypeDescriptor",
-    "description": "Describes the built-in type that serves as the common supertype of all HolonCollectionTypes.",
-    "label": "HolonCollectionType",
-    "is_dependent": true,
-    "is_value_type": false,
-    "described_by": null,
-    "is_subtype_of": null,
-    "owned_by": null
+  "type_name": "HolonCollectionType",
+  "type_kind": "Holon",
+  "described_by": {
+    "$ref": {
+      "type_name": "HolonCollectionTypeDescriptor",
+      "schema": "CoreSchema",
+      "space": "https://space.map/schema"
+    }
   },
-  "properties": [
-    "TypeName"
-  ],
-  "key_properties": [
-    "TypeName"
-  ],
-  "source_for": []
+  "spec": {
+    "header": {
+      "descriptor_name": "HolonCollectionTypeDescriptor",
+      "description": "Describes the built-in type that serves as the common supertype of all HolonCollectionTypes.",
+      "label": "HolonCollectionType",
+      "is_dependent": true,
+      "is_value_type": false,
+      "described_by": null,
+      "is_subtype_of": null,
+      "owned_by": null
+    },
+    "properties": [
+      "TypeName"
+    ],
+    "key_properties": [
+      "TypeName"
+    ],
+    "source_for": []
+  }
 }

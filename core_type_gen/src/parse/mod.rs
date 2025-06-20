@@ -1,8 +1,12 @@
 pub mod boolean_types;
+pub mod core_entry_types;
+pub mod core_types_parser;
+pub mod enum_types;
+pub mod enum_variant_types;
 pub mod holon_types;
 pub mod integer_types;
 pub mod property_types;
 pub mod relationship_types;
+pub mod schema_definition;
 pub mod string_types;
 pub mod type_header;
-pub mod type_kind_parser;

@@ -18,8 +18,9 @@ members = [
     "crates/holons_client",
     "crates/holons_core",
     "crates/holon_dance_builders",
-    "crates/holons_guest", "core_type_gen",
-    
+    "crates/holons_guest",
+    # Type Generator Tool
+    "core_type_gen",
 ]
 resolver = "2"
 

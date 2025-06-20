@@ -1,20 +1,30 @@
 {
-  "variant": "PropertyType",
-  "header": {
-    "descriptor_name": "PropertyTypeDescriptor",
-    "description": "Describes the built-in PropertyType type that serves as a shared supertype of all built-in PropertyTypes.",
-    "label": "PropertyType",
-    "is_dependent": true,
-    "is_value_type": false,
-    "described_by": null,
-    "is_subtype_of": null,
-    "owned_by": null
+  "type_name": "PropertyType",
+  "type_kind": "Holon",
+  "described_by": {
+    "$ref": {
+      "type_name": "PropertyTypeDescriptor",
+      "schema": "CoreSchema",
+      "space": "https://space.map/schema"
+    }
   },
-  "properties": [
-    "DescriptorName"
-  ],
-  "key_properties": [
-    "DescriptorName"
-  ],
-  "source_for": []
+  "spec": {
+    "header": {
+      "descriptor_name": "PropertyTypeDescriptor",
+      "description": "Describes the built-in PropertyType type that serves as a shared supertype of all built-in PropertyTypes.",
+      "label": "PropertyType",
+      "is_dependent": true,
+      "is_value_type": false,
+      "described_by": null,
+      "is_subtype_of": null,
+      "owned_by": null
+    },
+    "properties": [
+      "DescriptorName"
+    ],
+    "key_properties": [
+      "DescriptorName"
+    ],
+    "source_for": []
+  }
 }

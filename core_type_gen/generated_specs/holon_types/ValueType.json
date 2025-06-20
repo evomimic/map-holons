@@ -1,20 +1,30 @@
 {
-  "variant": "ValueType",
-  "header": {
-    "descriptor_name": "ValueTypeDescriptor",
-    "description": "Describes the built-in TypeDescriptor type. This type specifies values for the common characteristics shared by all types.",
-    "label": "ValueType",
-    "is_dependent": true,
-    "is_value_type": false,
-    "described_by": null,
-    "is_subtype_of": null,
-    "owned_by": null
+  "type_name": "ValueType",
+  "type_kind": "Holon",
+  "described_by": {
+    "$ref": {
+      "type_name": "ValueTypeDescriptor",
+      "schema": "CoreSchema",
+      "space": "https://space.map/schema"
+    }
   },
-  "properties": [
-    "DescriptorName"
-  ],
-  "key_properties": [
-    "DescriptorName"
-  ],
-  "source_for": []
+  "spec": {
+    "header": {
+      "descriptor_name": "ValueTypeDescriptor",
+      "description": "Describes the built-in TypeDescriptor type. This type specifies values for the common characteristics shared by all types.",
+      "label": "ValueType",
+      "is_dependent": true,
+      "is_value_type": false,
+      "described_by": null,
+      "is_subtype_of": null,
+      "owned_by": null
+    },
+    "properties": [
+      "DescriptorName"
+    ],
+    "key_properties": [
+      "DescriptorName"
+    ],
+    "source_for": []
+  }
 }

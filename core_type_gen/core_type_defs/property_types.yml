@@ -1,299 +1,360 @@
-type_kind: Property
-variants:
-  - variant: AllowDuplicates
-    header:
-      descriptor_name: AllowDuplicatesDescriptor
-      description: If true, this collection can contain duplicate items.
+types:
+  - type_name: AllowDuplicates
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: AllowDuplicatesDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: AllowDuplicates
+      description: If true, this collection can contain duplicate items.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: AllowDuplicates
-    value_type_name: BooleanType(MapBooleanType)
-  - variant: TypeKind
-    header:
-      descriptor_name: TypeKindDescriptor
-      description: Specifies the MAP TypeKind of this object.
+      property_name: AllowDuplicates
+      value_type_name: BooleanType(MapBooleanType)
+
+  - type_name: TypeKind
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: TypeKindDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: TypeKind
+      description: Specifies the MAP TypeKind of this object.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: TypeKind
-    value_type_name: EnumType(MapTypeKind)
-  - variant: DeletionSemantic
-    header:
-      descriptor_name: DeletionSemanticDescriptor
-      description: Offers different options for whether requests to delete a source
-        Holon (i.e., mark as deleted) should be allowed for a given relationship.
+      property_name: TypeKind
+      value_type_name: EnumType(MapTypeKind)
+
+  - type_name: DeletionSemantic
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: DeletionSemanticDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: DeletionSemantic
+      description: Offers different options for whether requests to delete a source Holon (i.e., mark as deleted) should be allowed for a given relationship.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: DeletionSemantic
-    value_type_name: EnumType(DeletionSemanticType)
-  - variant: DescriptorName
-    header:
-      descriptor_name: DescriptorNameDescriptor
-      description: The name for the unique key for the descriptor of MAP type.
+      property_name: DeletionSemantic
+      value_type_name: EnumType(DeletionSemanticType)
+
+  - type_name: DescriptorName
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: DescriptorNameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: DescriptorName
+      description: The name for the unique key for the descriptor of MAP type.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: DescriptorName
-    value_type_name: StringType(MapStringType)
-  - variant: Description
-    header:
-      descriptor_name: DescriptionDescriptor
-      description: A human readable description of this type that should clarify the purpose of the type and any caveats or to aware of.
+      property_name: DescriptorName
+      value_type_name: StringType(MapStringType)
+
+  - type_name: Description
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: DescriptionDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: Description
+      description: A human readable description of this type that should clarify the purpose of the type and any caveats or to aware of.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: Description
-    value_type_name: StringType(MapStringType)
-  - variant: IsBuiltinType
-    header:
-      descriptor_name: IsBuiltinTypeDescriptor
-      description: If `true`, this a type offered by Map Core. Otherwise this is an agent-defined type that extends the MapCore Schema.
+      property_name: Description
+      value_type_name: StringType(MapStringType)
+
+  - type_name: IsBuiltinType
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: IsBuiltinTypeDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: IsBuiltinType
+      description: If `true`, this a type offered by Map Core. Otherwise this is an agent-defined type that extends the MapCore Schema.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: IsBuiltinType
-    value_type_name: BooleanType(MapBooleanType)
-  - variant: IsDependent
-    header:
-      descriptor_name: IsDependentDescriptor
-      description: If true, then instances of this type cannot exist independently of some parent. For example, properties can not exist independently of their holon.
+      property_name: IsBuiltinType
+      value_type_name: BooleanType(MapBooleanType)
+
+  - type_name: IsDependent
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: IsDependentDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: IsDependent
+      description: If true, then instances of this type cannot exist independently of some parent. For example, properties can not exist independently of their holon.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: IsDependent
-    value_type_name: BooleanType(MapBooleanType)
-  - variant: IsOrdered
-    header:
-      descriptor_name: IsOrderedDescriptor
-      description: If true, then the position of members of this collection conforms to some order. In other words, this collection behaves like an array
+      property_name: IsDependent
+      value_type_name: BooleanType(MapBooleanType)
+
+  - type_name: IsOrdered
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: IsOrderedDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: IsOrdered
+      description: If true, then the position of members of this collection conforms to some order. In other words, this collection behaves like an array
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: IsOrdered
-    value_type_name: BooleanType(MapBooleanType)
-  - variant: IsValueType
-    header:
-      descriptor_name: IsValueTypeDescriptor
-      description: If true, this type can be used as the value type for a property.
+      property_name: IsOrdered
+      value_type_name: BooleanType(MapBooleanType)
+
+  - type_name: IsValueType
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: IsValueTypeDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: IsValueType
+      description: If true, this type can be used as the value type for a property.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: IsValueType
-    value_type_name: BooleanType(MapBooleanType)
-  - variant: Label
-    header:
-      descriptor_name: LabelDescriptor
-      description: A human readable name for this property. Typically used in when displaying a property in the Human Experience of the map as part of a label/value pair
+      property_name: IsValueType
+      value_type_name: BooleanType(MapBooleanType)
+
+  - type_name: Label
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: LabelDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: Label
+      description: A human readable name for this property. Typically used in when displaying a property in the Human Experience of the map as part of a label/value pair
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: Label
-    value_type_name: StringType(MapStringType)
-  - variant: MaxCardinality
-    header:
-      descriptor_name: MaxCardinalityDescriptor
-      description: Specifies the maximum number of members allowed in this collection. max_cardinality must be greater than or equal to min_cardinality.
+      property_name: Label
+      value_type_name: StringType(MapStringType)
+
+  - type_name: MaxCardinality
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: MaxCardinalityDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MaxCardinality
+      description: Specifies the maximum number of members allowed in this collection. max_cardinality must be greater than or equal to min_cardinality.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: MaxCardinality
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: MaxLength
-    header:
-      descriptor_name: MaxLengthDescriptor
-      description: max_length is a property of a value type based on the TypeKind MapString. It defines the maximum allowed length for string instances of this value type. max_length must be greater than or equal to min_length.
+      property_name: MaxCardinality
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: MaxLength
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: MaxLengthDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MaxLength
+      description: max_length is a property of a value type based on the TypeKind MapString. It defines the maximum allowed length for string instances of this value type. max_length must be greater than or equal to min_length.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: MaxLength
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: MaxValue
-    header:
-      descriptor_name: MaxValueDescriptor
-      description: max_value is a property of a value type based on the TypeKind MapInteger.
-        It defines the largest allowed value for this integer instances of this value
-        type. max_value must be greater than or equal to min_value.
+      property_name: MaxLength
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: MaxValue
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: MaxValueDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MaxValue
+      description: max_value is a property of a value type based on the TypeKind MapInteger. It defines the largest allowed value for this integer instances of this value type. max_value must be greater than or equal to min_value.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: MaxValue
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: MinCardinality
-    header:
-      descriptor_name: MinCardinalityDescriptor
-      description: Specifies the minimum number of members allowed in this collection.
-        min_cardinality must be greater than or equal to zero.
+      property_name: MaxValue
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: MinCardinality
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: MinCardinalityDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MinCardinality
+      description: Specifies the minimum number of members allowed in this collection. min_cardinality must be greater than or equal to zero.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: MinCardinality
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: MinLength
-    header:
-      descriptor_name: MinLengthDescriptor
-      description: min_length is a property of a value type based on the TypeKind MapString.
-        It defines the minimum allowed length for string instances of this value type.
-        min_length must be greater than or equal to zero.
+      property_name: MinCardinality
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: MinLength
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: MinLengthDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MinLength
+      description: min_length is a property of a value type based on the TypeKind MapString. It defines the minimum allowed length for string instances of this value type. min_length must be greater than or equal to zero.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: MinLength
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: MinValue
-    header:
-      descriptor_name: MinValueDescriptor
-      description: min_value is a property of a value type based on the TypeKind MapInteger.
-        It defines the smallest allowed value for this integer instances of this value
-        type. min_value can be negative and must be less than or equal to max_value.
+      property_name: MinLength
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: MinValue
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: MinValueDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: MinValue
+      description: min_value is a property of a value type based on the TypeKind MapInteger. It defines the smallest allowed value for this integer instances of this value type. min_value can be negative and must be less than or equal to max_value.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: MinValue
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: Name
-    header:
-      descriptor_name: NameDescriptor
-      description: Specifies the human-readable name for this Holon.
+      property_name: MinValue
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: Name
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: NameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: Name
+      description: Specifies the human-readable name for this Holon.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: Name
-    value_type_name: StringType(MapStringType)
-  - variant: PropertyTypeName
-    header:
-      descriptor_name: PropertyTypeNameDescriptor
-      description: Specifies the (internal) name for this property type.
+      property_name: Name
+      value_type_name: StringType(MapStringType)
+
+  - type_name: PropertyTypeName
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: PropertyTypeNameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: PropertyTypeName
+      description: Specifies the (internal) name for this property type.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: PropertyTypeName
-    value_type_name: StringType(PropertyNameType)
-  - variant: RelationshipName
-    header:
-      descriptor_name: RelationshipNameDescriptor
-      description: Specifies the (internal) name for this relationship type.
+      property_name: PropertyTypeName
+      value_type_name: StringType(PropertyNameType)
+
+  - type_name: RelationshipName
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: RelationshipNameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: RelationshipName
+      description: Specifies the (internal) name for this relationship type.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: RelationshipName
-    value_type_name: StringType(RelationshipNameType)
-  - variant: SchemaName
-    header:
-      descriptor_name: SchemaNameDescriptor
-      description: Specifies the human-readable name for this schema.
+      property_name: RelationshipName
+      value_type_name: StringType(RelationshipNameType)
+
+  - type_name: SchemaName
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: SchemaNameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: SchemaName
+      description: Specifies the human-readable name for this schema.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: SchemaName
-    value_type_name: StringType(MapStringType)
-  - variant: TypeName
-    header:
-      descriptor_name: TypeNameDescriptor
-      description: Specifies the (internal) name for this type.
+      property_name: SchemaName
+      value_type_name: StringType(MapStringType)
+
+  - type_name: TypeName
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: TypeNameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: TypeName
+      description: Specifies the (internal) name for this type.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: TypeName
-    value_type_name: StringType(MapStringType)
-  - variant: VariantName
-    header:
-      descriptor_name: VariantNameDescriptor
-      description: Specifies the (internal) name for this Variant.
+      property_name: TypeName
+      value_type_name: StringType(MapStringType)
+
+  - type_name: VariantName
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: VariantNameDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: VariantName
+      description: Specifies the (internal) name for this Variant.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: VariantName
-    value_type_name: StringType(MapStringType)
-  - variant: VariantOrder
-    header:
-      descriptor_name: VariantOrderDescriptor
-      description: Specifies the ordering (e.g., for sorting or salience purposes) for
-        this specific variant relative to other variants in this enum.
+      property_name: VariantName
+      value_type_name: StringType(MapStringType)
+
+  - type_name: VariantOrder
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: VariantOrderDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: VariantOrder
+      description: Specifies the ordering (e.g., for sorting or salience purposes) for this specific variant relative to other variants in this enum.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: VariantOrder
-    value_type_name: IntegerType(MapIntegerType)
-  - variant: Version
-    header:
-      descriptor_name: VersionDescriptor
-      description: Specifies the semantic version of this type descriptor.
+      property_name: VariantOrder
+      value_type_name: IntegerType(MapIntegerType)
+
+  - type_name: Version
+    type_kind: Property
+    described_by:
+      $ref:
+        type_name: VersionDescriptor
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec:
       label: Version
+      description: Specifies the semantic version of this type descriptor.
       is_dependent: true
       is_value_type: true
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    property_name: Version
-    value_type_name: StringType(SemanticVersionType)
+      property_name: Version
+      value_type_name: StringType(SemanticVersionType)

@@ -1,434 +1,207 @@
-type_kind: Relationship
-variants:
-  - variant: CoreSchema
-    header:
-      descriptor_name: CoreSchemaDescriptor
-      description: Description for CoreSchema relationship type.
-      label: CoreSchema
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: CoreSchema
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: CoreSchemaFor
-    header:
-      descriptor_name: CoreSchemaForDescriptor
-      description: Description for CoreSchemaFor relationship type.
-      label: CoreSchemaFor
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: CoreSchemaFor
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: CollectionFor
-    header:
-      descriptor_name: CollectionForDescriptor
-      description: Description for CollectionFor relationship type.
-      label: CollectionFor
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: CollectionFor
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: Components
-    header:
-      descriptor_name: ComponentsDescriptor
-      description: Description for Components relationship type.
-      label: Components
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: Components
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: ComponentOf
-    header:
-      descriptor_name: ComponentOfDescriptor
-      description: Description for ComponentOf relationship type.
-      label: ComponentOf
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: ComponentOf
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: DescribedBy
-    header:
-      descriptor_name: DescribedByDescriptor
-      description: Description for DescribedBy relationship type.
-      label: DescribedBy
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: DescribedBy
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: HasInverse
-    header:
-      descriptor_name: HasInverseDescriptor
-      description: Description for HasInverse relationship type.
-      label: HasInverse
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: HasInverse
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: HasSubtype
-    header:
-      descriptor_name: HasSubtypeDescriptor
-      description: Description for HasSubtype relationship type.
-      label: HasSubtype
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: HasSubtype
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: Instances
-    header:
-      descriptor_name: InstancesDescriptor
-      description: Description for Instances relationship type.
-      label: Instances
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: Instances
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: InverseOf
-    header:
-      descriptor_name: InverseOfDescriptor
-      description: Description for InverseOf relationship type.
-      label: InverseOf
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: InverseOf
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: IsA
-    header:
-      descriptor_name: IsADescriptor
-      description: Description for IsA relationship type.
-      label: IsA
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: IsA
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: OwnedBy
-    header:
-      descriptor_name: OwnedByDescriptor
-      description: Description for OwnedBy relationship type.
-      label: OwnedBy
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: OwnedBy
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: Owns
-    header:
-      descriptor_name: OwnsDescriptor
-      description: Description for Owns relationship type.
-      label: Owns
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: Owns
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: Predecessor
-    header:
-      descriptor_name: PredecessorDescriptor
-      description: Description for Predecessor relationship type.
-      label: Predecessor
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: Predecessor
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: Properties
-    header:
-      descriptor_name: PropertiesDescriptor
-      description: Description for Properties relationship type.
-      label: Properties
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: Properties
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: PropertyOf
-    header:
-      descriptor_name: PropertyOfDescriptor
-      description: Description for PropertyOf relationship type.
-      label: PropertyOf
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: PropertyOf
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: SourceFor
-    header:
-      descriptor_name: SourceForDescriptor
-      description: Description for SourceFor relationship type.
-      label: SourceFor
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: SourceFor
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: SourceHolonType
-    header:
-      descriptor_name: SourceHolonTypeDescriptor
-      description: Description for SourceHolonType relationship type.
-      label: SourceHolonType
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: SourceHolonType
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: Successor
-    header:
-      descriptor_name: SuccessorDescriptor
-      description: Description for Successor relationship type.
-      label: Successor
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: Successor
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: TargetCollectionType
-    header:
-      descriptor_name: TargetCollectionTypeDescriptor
-      description: Description for TargetCollectionType relationship type.
-      label: TargetCollectionType
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: TargetCollectionType
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: TargetHolonType
-    header:
-      descriptor_name: TargetHolonTypeDescriptor
-      description: Description for TargetHolonType relationship type.
-      label: TargetHolonType
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: TargetHolonType
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: TargetOfCollectionType
-    header:
-      descriptor_name: TargetOfCollectionTypeDescriptor
-      description: Description for TargetOfCollectionType relationship type.
-      label: TargetOfCollectionType
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: TargetOfCollectionType
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: ValueType
-    header:
-      descriptor_name: ValueTypeDescriptor
-      description: Description for ValueType relationship type.
-      label: ValueType
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: ValueType
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
-  - variant: ValueTypeFor
-    header:
-      descriptor_name: ValueTypeForDescriptor
-      description: Description for ValueTypeFor relationship type.
-      label: ValueTypeFor
-      is_dependent: true
-      is_value_type: false
-      described_by: null
-      is_subtype_of: null
-      owned_by: null
-    relationship_name: ValueTypeFor
-    source_owns_relationship: true
-    deletion_semantic: Allow
-    load_links_immediate: false
-    target_collection_type:
-      semantic: Set
-      holon_type: TypeDescriptor
-    has_inverse: null
+types:
+  - type_name: CoreSchema
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: CoreSchema
+      header:
+        descriptor_name: CoreSchemaDescriptor
+        description: Description for CoreSchema relationship type.
+        label: CoreSchema
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: CoreSchema
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: CoreSchemaFor
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: CoreSchemaFor
+      header:
+        descriptor_name: CoreSchemaForDescriptor
+        description: Description for CoreSchemaFor relationship type.
+        label: CoreSchemaFor
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: CoreSchemaFor
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: CollectionFor
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: CollectionFor
+      header:
+        descriptor_name: CollectionForDescriptor
+        description: Description for CollectionFor relationship type.
+        label: CollectionFor
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: CollectionFor
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: Components
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: Components
+      header:
+        descriptor_name: ComponentsDescriptor
+        description: Description for Components relationship type.
+        label: Components
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: Components
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: ComponentOf
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: ComponentOf
+      header:
+        descriptor_name: ComponentOfDescriptor
+        description: Description for ComponentOf relationship type.
+        label: ComponentOf
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: ComponentOf
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: DescribedBy
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: DescribedBy
+      header:
+        descriptor_name: DescribedByDescriptor
+        description: Description for DescribedBy relationship type.
+        label: DescribedBy
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: DescribedBy
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: HasInverse
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: HasInverse
+      header:
+        descriptor_name: HasInverseDescriptor
+        description: Description for HasInverse relationship type.
+        label: HasInverse
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: HasInverse
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: HasSubtype
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: HasSubtype
+      header:
+        descriptor_name: HasSubtypeDescriptor
+        description: Description for HasSubtype relationship type.
+        label: HasSubtype
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: HasSubtype
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null
+
+  - type_name: Instances
+    type_kind: Relationship
+    described_by: null
+    spec:
+      variant: Instances
+      header:
+        descriptor_name: InstancesDescriptor
+        description: Description for Instances relationship type.
+        label: Instances
+        is_dependent: true
+        is_value_type: false
+        described_by: null
+        is_subtype_of: null
+        owned_by: null
+      relationship_name: Instances
+      source_owns_relationship: true
+      deletion_semantic: Allow
+      load_links_immediate: false
+      target_collection_type:
+        semantic: Set
+        holon_type: TypeDescriptor
+      has_inverse: null

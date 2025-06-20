@@ -1,18 +1,144 @@
-type_kind: EnumVariant
-variants:
-  - variant: TypeKindHolon
-  - variant: TypeKindCollection
-  - variant: TypeKindProperty
-  - variant: TypeKindRelationship
-  - variant: TypeKindEnumVariant
-  - variant: TypeKindValueBoolean
-  - variant: TypeKindValueEnum
-  - variant: TypeKindValueInteger
-  - variant: TypeKindValueString
-  - variant: TypeKindValueBooleanArray
-  - variant: TypeKindValueEnumArray
-  - variant: TypeKindValueIntegerArray
-  - variant: TypeKindValueStringArray
-  - variant: DeletionSemanticAllow
-  - variant: DeletionSemanticBlock
-  - variant: DeletionSemanticCascade
+types:
+  - type_name: TypeKindHolon
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindHolon
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindCollection
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindCollection
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindProperty
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindProperty
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindRelationship
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindRelationship
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindEnumVariant
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindEnumVariant
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueBoolean
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueBoolean
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueEnum
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueEnum
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueInteger
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueInteger
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueString
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueString
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueBooleanArray
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueBooleanArray
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueEnumArray
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueEnumArray
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueIntegerArray
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueIntegerArray
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: TypeKindValueStringArray
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: TypeKindValueStringArray
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: DeletionSemanticAllow
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: DeletionSemanticAllow
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: DeletionSemanticBlock
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: DeletionSemanticBlock
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }
+
+  - type_name: DeletionSemanticCascade
+    type_kind: EnumVariant
+    described_by:
+      $ref:
+        type_name: DeletionSemanticCascade
+        schema: CoreSchema
+        space: https://space.map/schema
+    spec: { }

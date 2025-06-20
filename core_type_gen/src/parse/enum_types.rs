@@ -2,9 +2,8 @@ use crate::parse::type_header::TypeHeader;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PropertyTypeEntry {
-    pub type_name: String,
+pub struct EnumTypeEntry {
     pub header: TypeHeader,
-    pub property_name: String,
-    pub value_type_name: String,
+    pub type_name: String,
+    pub variants: Vec<String>,
 }
