@@ -42,7 +42,7 @@ impl TransientReference {
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     ///
     /// # Returns
-    /// Rc<RefCell<Holon>>>
+    /// Rc<RefCell<TransientHolon>>>
     ///
     fn get_rc_holon(
         &self,

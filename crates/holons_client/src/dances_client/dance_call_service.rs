@@ -48,7 +48,6 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         // info!("entered dance call with context: {context} for request: {request:?}");
 
         // 1. Load session state into the request
-
         let mut session_state = SessionState::default();
         self.load_session_state(context, &mut session_state);
         request.state = Some(session_state);
@@ -122,13 +121,13 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
 
     /// Restores the TransientHolonManager from the given `SessionState`, updating the local HolonSpace.
     ///
-    /// This function takes the staged holons stored in the `session_state` (as received in a `DanceResponse`)
+    /// Takes the transients holons stored in the `session_state` (as received in a `DanceResponse`)
     /// and imports them back into the HolonSpaceManager, ensuring that the local environment remains
     /// synchronized with the session state maintained by the client and guest.
     ///
     /// # Arguments
     /// * `context` - A reference to the `HolonsContextBehavior`, used to access the space manager.
-    /// * `session_state` - A reference to the `SessionState` from which staged holons will be restored.
+    /// * `session_state` - A reference to the `SessionState` from which transient holons will be restored.
     ///
     /// This function is automatically invoked within `dance_call` after receiving a response and should not
     /// be used directly.
@@ -139,6 +138,7 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     ) {
         let space_manager = context.get_space_manager();
         let transient_holons = session_state.get_transient_holons().clone();
+        // let transient_holons =
         space_manager.import_transient_holons(transient_holons);
     }
 }

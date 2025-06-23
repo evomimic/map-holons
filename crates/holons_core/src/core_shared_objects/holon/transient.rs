@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core_shared_objects::{
-        holon::holon_utils::{key_info, local_id_info},
+        holon::{
+            holon_utils::{key_info, local_id_info},
+            StagedHolon,
+        },
         TransientRelationshipMap,
     },
     HolonCollection, HolonError, RelationshipName,
