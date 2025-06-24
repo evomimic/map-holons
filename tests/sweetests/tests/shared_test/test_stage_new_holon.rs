@@ -1,7 +1,7 @@
 use async_std::task;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use rstest::*;
 
@@ -57,7 +57,7 @@ pub async fn execute_stage_new_holon(
 
     // 5. Verify the staged Holon
     if let ResponseBody::StagedRef(staged_holon) = response.body {
-        warn!("Staged holon reference returned: {:#?}", staged_holon);
+        debug!("Staged holon reference returned: {:#?}", staged_holon);
 
         assert_eq!(
             transient_holon.essential_content(),

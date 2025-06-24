@@ -33,7 +33,6 @@ pub struct StagedHolon {
     errors: Vec<HolonError>,      // Populated during the commit process
 }
 
-
 impl StagedHolon {
     // =================
     //   CONSTRUCTORS
@@ -128,7 +127,6 @@ impl StagedHolon {
     ///
     /// Used to track all errors obtained during the multi-stage commit process.
     pub fn add_error(&mut self, error: HolonError) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
         self.errors.push(error);
         Ok(())
     }
@@ -170,7 +168,6 @@ impl StagedHolon {
         Ok(())
     }
 
-
     pub fn with_property_value(
         &mut self,
         property: PropertyName,
@@ -181,7 +178,6 @@ impl StagedHolon {
 
         Ok(self)
     }
-
 }
 
 // ======================================
@@ -287,10 +283,13 @@ impl HolonBehavior for StagedHolon {
                     )),
                 },
             },
-            HolonState::Immutable => Err(HolonError::NotAccessible(
-                format!("{:?}", access_type),
-                "Immutable StagedHolon".to_string(),
-            )),
+            HolonState::Immutable => match access_type {
+                AccessType::Read | AccessType::Clone | AccessType::Commit => Ok(()),
+                AccessType::Abandon | AccessType::Write => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    "Immutable StagedHolon".to_string(),
+                )),
+            },
         }
     }
 
@@ -315,11 +314,10 @@ impl HolonBehavior for StagedHolon {
         Ok(())
     }
 
-
     // =========================
     //       DIAGNOSTICS
     // =========================
-    
+
     fn debug_info(&self) -> String {
         let phase_info = "StagedHolon";
         let state_info = format!(
