@@ -1,5 +1,5 @@
 pub mod boolean_definer;
-pub mod collection_definer;
+// pub mod collection_definer_deprecated;
 pub mod descriptor_types_deprecated;
 pub mod enum_definer;
 pub mod enum_variant_definer;

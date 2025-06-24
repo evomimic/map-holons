@@ -8,7 +8,7 @@ use crate::descriptor_types_deprecated::{
     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
 };
 use holons_core::core_shared_objects::stage_new_holon_api;
-use base_types::{BaseValue, MapBoolean, MapString};
+use base_types::{BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString};
 use core_types::TypeKind;
 use integrity_core_types::PropertyName;
 
@@ -18,38 +18,41 @@ pub struct RelationshipTypeSpec {
     pub header: TypeHeaderSpec, // header.type_name is relationship_name
     pub relationship_type_name: RelationshipName,
     pub source_owns_relationship: MapBoolean,
-    // pub min_target_cardinality: MapInteger,  // CollectionDefinition
-    // pub max_target_cardinality: MapInteger, // CollectionDefinition
     pub deletion_semantic: DeletionSemantic,
     pub load_links_immediate: MapBoolean,
     pub load_holons_immediate: MapBoolean,
-    //pub affinity: MapInteger,
-    pub target_collection_type: HolonReference, // CollectionType
-    pub has_inverse: Option<HolonReference>,    // Inverse RelationshipType
+    pub target_holon_type: HolonReference,
+    pub target_min_cardinality: MapInteger,
+    pub target_max_cardinality: MapInteger,
+    pub target_semantic: MapEnumValue, // e.g., "Set", "List", "SingleInstance"
+    pub has_inverse: Option<HolonReference>, // Inverse RelationshipType
 }
 
 /// This function defines and stages (but does not persist) a new RelationshipDescriptor.
-/// Values for each of the RelationshipDescriptor properties will be set based on supplied parameters.
+/// Values for each of the RelationshipDescriptor properties will be set based on the supplied `RelationshipTypeSpec`.
 ///
-/// *Naming Rules*:
-///     `type_name` := <source_for.type_name>"-"<relationship_name>"->"<target_of.type_name>"
-///     `descriptor_name`:= `<type_name>"Descriptor"`
+/// # Naming Rules
+/// - `type_name` := <source_for.type_name> "-" <relationship_name> "->" <target_of.type_name>
+/// - `descriptor_name` := <type_name> "Descriptor"
 ///
-/// The function assigns values for the following RelationshipDescriptor properties:
+/// # Assigned Properties
+/// - `relationship_name`: the canonical name of the relationship (e.g., HAS_MEMBER)
+/// - `source_owns_relationship`: whether the source holon owns the relationship
+/// - `deletion_semantic`: defines what happens to target holons when the source is deleted
+/// - `load_links_immediate`: whether link records are preloaded at runtime
+/// - `load_holons_immediate`: whether linked holons are preloaded at runtime
+/// - `target_min_cardinality`: minimum number of related target holons
+/// - `target_max_cardinality`: maximum number of related target holons
+/// - `target_semantic`: collection semantics of the relationship (e.g., "Set", "List", "SingleInstance")
 ///
-/// * min_target_cardinality: MapInteger (must be >=0)
-/// * max_target_cardinality: MapInteger (must be >= min_target_cardinality AND <= max_collection_size)
-/// * owned
-/// The function populates the following relationships:
-/// * DESCRIBED_BY->TypeDescriptor (if supplied)
-/// * COMPONENT_OF->Schema (supplied)
-/// * VERSION->SemanticVersion (default)
-/// * HAS_SUPERTYPE-> HolonType (if supplied)
-/// * SOURCE_FOR -> HolonType
-/// * TARGET_HOLON_TYPE -> HolonType (if supplied)
-/// * HAS_INVERSE->RelationshipType
+/// # Populated Relationships
+/// - `DESCRIBED_BY` → TypeDescriptor (internal relationship from RelationshipType to its descriptor holon)
+/// - `TARGET_HOLON_TYPE` → HolonType (the HolonType this relationship points to)
+/// - `HAS_INVERSE` → RelationshipType (optional inverse relationship, only if source owns it)
 ///
-///
+/// # Notes
+/// - Validation enforces that only the owning side may specify an inverse.
+/// - The resulting RelationshipType holon and its TypeDescriptor are staged but not yet committed.
 pub fn define_relationship_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
@@ -66,10 +69,10 @@ pub fn define_relationship_type(
         ));
     }
 
-    // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
+    // ----------------  GET A NEW TYPE HEADER -------------------------------
 
-    // Stage the TypeDescriptor
-    let type_descriptor_ref =
+    // Stage the TypeHeader
+    let type_header_ref =
         define_type_header(context, schema, TypeKind::Relationship, definition.header)?;
 
     // Build new Relationship Type
@@ -101,6 +104,18 @@ pub fn define_relationship_type(
         .with_property_value(
             PropertyName(MapString("deletion_semantic".to_string())),
             Some(BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant())),
+        )?
+        .with_property_value(
+            PropertyName(MapString("target_min_cardinality".to_string())),
+            Some(BaseValue::IntegerValue(definition.target_min_cardinality)),
+        )?
+        .with_property_value(
+            PropertyName(MapString("target_max_cardinality".to_string())),
+            Some(BaseValue::IntegerValue(definition.target_max_cardinality)),
+        )?
+        .with_property_value(
+            PropertyName(MapString("target_semantic".to_string())),
+            Some(BaseValue::EnumValue(definition.target_semantic)),
         )?;
 
     debug!("Staging new relationship_type {:#?}", relationship_type.clone());
@@ -113,12 +128,12 @@ pub fn define_relationship_type(
     relationship_type_ref.add_related_holons(
         context,
         CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
-        vec![HolonReference::Staged(type_descriptor_ref)],
+        vec![HolonReference::Staged(type_header_ref)],
     )?;
     relationship_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TargetCollectionType.as_rel_name(),
-        vec![definition.target_collection_type],
+        CoreSchemaRelationshipTypeName::TargetHolonType.as_rel_name(),
+        vec![definition.target_holon_type],
     )?;
 
     if let Some(inverse) = definition.has_inverse {

@@ -2,7 +2,6 @@ use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 
 use crate::boolean_definer::BooleanTypeSpec;
-use crate::collection_definer::CollectionTypeSpec;
 use crate::enum_definer::EnumTypeSpec;
 use crate::holon_definer::HolonTypeSpec;
 use crate::integer_definer::IntegerTypeSpec;
@@ -136,7 +135,7 @@ impl DeletionSemantic {
 
 pub enum SchemaTypeDefinition {
     BooleanType(BooleanTypeSpec),
-    CollectionType(CollectionTypeSpec),
+    // CollectionType(CollectionTypeSpec),
     EnumType(EnumTypeSpec),
     HolonType(HolonTypeSpec),
     IntegerType(IntegerTypeSpec),

@@ -3,7 +3,7 @@ use hdi::prelude::info;
 use crate::collection_type_loader::CollectionTypeConfig;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use type_definers::collection_definer::CollectionSemantic;
+use type_definers::collection_definer_deprecated::CollectionSemantic;
 use type_definers::descriptor_types_deprecated::DeletionSemantic;
 use type_definers::holon_definer::{define_holon_type, HolonTypeSpec};
 use type_definers::type_header::TypeHeaderSpec;

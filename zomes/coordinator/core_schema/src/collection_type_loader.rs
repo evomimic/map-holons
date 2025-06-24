@@ -1,7 +1,7 @@
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use type_definers::collection_definer::CollectionSemantic;
-use type_definers::collection_definer::{define_collection_type, CollectionTypeSpec};
+use type_definers::collection_definer_deprecated::CollectionSemantic;
+use type_definers::collection_definer_deprecated::{define_collection_type, CollectionTypeSpec};
 use type_definers::type_header::TypeHeaderSpec;
 use hdi::prelude::info;
 use holons_core::core_shared_objects::HolonError;
