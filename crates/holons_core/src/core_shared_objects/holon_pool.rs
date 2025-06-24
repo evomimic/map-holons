@@ -1,9 +1,9 @@
-use crate::HolonError;
 use super::holon::{Holon, HolonBehavior};
 use crate::utils::uuid::create_temporary_id_from_key;
-use hdi::prelude::{Deserialize, Serialize};
-use base_types::{MapString};
+use crate::HolonError;
+use base_types::MapString;
 use core_types::TemporaryId;
+use hdi::prelude::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -185,12 +185,9 @@ impl HolonPool {
         // Update pool
         let rc_holon = Rc::new(RefCell::new(holon));
 
-
         self.holons.insert(id.clone(), rc_holon);
 
-
         Ok(id)
-    
     }
 
     /// Returns the number of Holons in the pool.

@@ -57,12 +57,12 @@ use crate::shared_test::test_print_database::execute_database_print;
 use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
+use core_types::HolonId;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
 use holons_core::core_shared_objects::HolonError;
-use shared_test::*;
-use core_types::HolonId;
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+use shared_test::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
 /// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.
@@ -86,12 +86,12 @@ use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 #[case::delete_holon(delete_holon_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+// #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {

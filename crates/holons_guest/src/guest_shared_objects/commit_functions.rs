@@ -20,6 +20,7 @@ use base_types::{BaseValue, MapInteger, MapString};
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::fmt::format;
 use std::rc::Rc;
 
 /// `commit`
@@ -88,43 +89,46 @@ pub fn commit(
     {
         info!("\n\nStarting FIRST PASS... commit staged_holons...");
         for rc_holon in staged_holons {
-            rc_holon.borrow().is_accessible(AccessType::Commit)?;
-            match &*rc_holon.borrow() {
-                Holon::Staged(_staged_holon) => {
-                    trace!(" In commit_service... getting ready to call commit()");
-                    let outcome = commit_holon(rc_holon);
-                    match outcome {
-                        Ok(holon) => match holon {
-                            Holon::Staged(ref staged_holon) => {
-                                match staged_holon.get_staged_state() {
-                                    StagedState::Abandoned => {
-                                        // should these be indexed?
-                                        //if !response.abandoned_holons.contains(&holon) {
-                                        response.abandoned_holons.push(holon);
-                                        //}
-                                    }
-                                    StagedState::Committed(_saved_id) => {
-                                        response.saved_holons.push(holon);
-                                    }
-                                    _ => {}
+            {
+                rc_holon.borrow().is_accessible(AccessType::Commit)?;
+            }
+
+            let should_commit = {
+                let borrowed = rc_holon.borrow();
+                matches!(&*borrowed, Holon::Staged(_))
+            };
+
+            if should_commit {
+                trace!(" In commit_service... getting ready to call commit()");
+                let outcome = commit_holon(rc_holon);
+                warn!("COMMIT_OUTCOME :: {:#?}", outcome.clone());
+                match outcome {
+                    Ok(holon) => match holon {
+                        Holon::Staged(ref staged_holon) => {
+                            match staged_holon.get_staged_state() {
+                                StagedState::Abandoned => {
+                                    // should these be indexed?
+                                    //if !response.abandoned_holons.contains(&holon) {
+                                    response.abandoned_holons.push(holon);
+                                    //}
                                 }
+                                StagedState::Committed(_saved_id) => {
+                                    response.saved_holons.push(holon);
+                                }
+                                _ => {}
                             }
-                            _ => unreachable!(),
-                        },
-                        Err(error) => {
-                            response.status = CommitRequestStatus::Incomplete;
-                            warn!(
-                                "Attempt to commit holon returned error: {:?}",
-                                error.to_string()
-                            );
                         }
-                    };
-                }
-                _ => {
-                    return Err(HolonError::InvalidHolonReference(
-                        "All holons in staged_holons must be of type Holon::Staged".to_string(),
-                    ))
-                }
+                        _ => unreachable!(),
+                    },
+                    Err(error) => {
+                        response.status = CommitRequestStatus::Incomplete;
+                        warn!("Attempt to commit holon returned error: {:?}", error.to_string());
+                    }
+                };
+            } else {
+                return Err(HolonError::InvalidHolonReference(
+                    "All holons in staged_holons must be of type Holon::Staged".to_string(),
+                ));
             }
         }
     }
@@ -174,22 +178,18 @@ pub fn commit(
 /// is left unchanged and an Err is returned.
 ///
 fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
-    rc_holon.borrow().is_accessible(AccessType::Commit)?;
-
-    let mut holon_write = rc_holon.borrow_mut();
+    let mut holon_write =
+        rc_holon.try_borrow_mut().map_err(|e| HolonError::WasmError(e.to_string()))?;
 
     if let Holon::Staged(staged_holon) = &mut *holon_write {
         let staged_state = staged_holon.get_staged_state();
-        debug!(
-            "Entered Holon::commit for holon with key {:#?} in {:#?} state",
-            rc_holon.borrow().get_key()?.unwrap_or_else(|| MapString("<None>".to_string())).0,
-            staged_state
-        );
+
         match staged_state {
             StagedState::ForCreate => {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("StagedState is New... requesting new HolonNode be created in the DHT");
-                let result = create_holon_node(rc_holon.borrow().into_node());
+                let node = staged_holon.clone().into_node();
+                let result = create_holon_node(node);
 
                 match result {
                     Ok(record) => {
@@ -217,7 +217,7 @@ fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                         previous_holon_node_hash,
                         updated_holon_node: staged_holon.clone().into_node(),
                     };
-                    debug!("Requesting HolonNode be updated in the DHT");
+                    debug!("Requesting HolonNode be updated in the DHT"); //
 
                     let result = update_holon_node(input);
                     match result {
@@ -250,7 +250,10 @@ fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
             }
         }
     } else {
-        unreachable!()
+        Err(HolonError::InvalidParameter(format!(
+            "Can only commit staged holons, attempted to commit: {:?} ",
+            holon_write
+        )))
     }
 }
 

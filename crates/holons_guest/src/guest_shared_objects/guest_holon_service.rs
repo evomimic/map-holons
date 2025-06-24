@@ -23,15 +23,13 @@ use holons_core::{
     },
 };
 
-use holons_integrity::LinkTypes;
-use integrity_core_types::{
-    LOCAL_HOLON_SPACE_DESCRIPTION,
-    LOCAL_HOLON_SPACE_NAME, 
-    LOCAL_HOLON_SPACE_PATH,
-};
-use integrity_core_types::{LocalId, PropertyName};
 use base_types::{BaseValue, MapString};
 use core_types::HolonId;
+use holons_integrity::LinkTypes;
+use integrity_core_types::{LocalId, PropertyName};
+use integrity_core_types::{
+    LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
+};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -192,11 +190,10 @@ impl GuestHolonService {
         // Try to create the holon node in the DHT
         let holon_record =
             create_holon_node(space_holon_node.clone()).map_err(|e| HolonError::from(e))?;
-
         let saved_holon = try_from_record(holon_record)?;
 
         // Retrieve the local ID for the holon
-        let local_id = space_holon.get_local_id()?;
+        let local_id = saved_holon.get_local_id()?;
 
         // Log the creation of the LocalHolonSpace
         info!("Created LocalHolonSpace with id {:#?}", local_id);

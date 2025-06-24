@@ -10,8 +10,8 @@ use crate::core_shared_objects::WritableRelationship;
 use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 
 use crate::core_shared_objects::{
-    holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError,
-    NurseryAccess, RelationshipName,
+    holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon},
+    HolonCollection, HolonError, NurseryAccess, RelationshipName,
 };
 
 use base_types::{BaseValue, MapString};
@@ -61,8 +61,10 @@ impl StagedReference {
         let holon = rc_holon.borrow();
         match holon.clone() {
             Holon::Staged(staged_holon) => Ok(Rc::new(RefCell::new(staged_holon))),
-            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a StagedReference must return a StagedHolon!".to_string()))
-            
+            _ => Err(HolonError::InvalidHolonReference(
+                "The TemporaryId associated with a StagedReference must return a StagedHolon!"
+                    .to_string(),
+            )),
         }
     }
 
@@ -96,7 +98,10 @@ impl fmt::Display for StagedReference {
 }
 
 impl HolonReadable for StagedReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_read = holon.borrow();
         holon_read.clone_holon()
