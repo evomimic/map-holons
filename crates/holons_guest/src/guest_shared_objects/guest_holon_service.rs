@@ -5,17 +5,12 @@ use crate::persistence_layer::{create_holon_node, delete_holon_node, get_origina
 use crate::try_from_record;
 use hdk::prelude::*;
 
-use holons_core::core_shared_objects::holon::SavedHolon;
 use holons_core::core_shared_objects::TransientRelationshipMap;
 use holons_core::{
     core_shared_objects::{
-        holon::{
-            state::{AccessType, HolonState},
-            Holon, HolonBehavior, TransientHolon,
-        },
+        holon::{state::AccessType, Holon, HolonBehavior, TransientHolon},
         nursery_access_internal::NurseryAccessInternal,
         CommitResponse, HolonCollection, HolonError, NurseryAccess, RelationshipName,
-        StagedRelationshipMap,
     },
     reference_layer::{
         HolonCollectionApi, HolonReadable, HolonReference, HolonServiceApi, HolonWritable,
@@ -279,20 +274,20 @@ impl HolonServiceApi for GuestHolonService {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
 
-        // ✅ Step 1: Borrow immutably, immediately clone the Vec, then drop the borrow
+        // Step 1: Borrow immutably, immediately clone the Vec, then drop the borrow
         let staged_holons = {
             let nursery_read = internal_nursery.borrow();
-            let cloned_holons = nursery_read.get_holons_to_commit().clone(); // ✅ Clone while borrow is active
-            cloned_holons // ✅ Borrow ends here
-        }; // ✅ `nursery_read` is dropped immediately after this block
+            let cloned_holons = nursery_read.get_holons_to_commit().clone(); // Clone while borrow is active
+            cloned_holons // Borrow ends here
+        }; // `nursery_read` is dropped immediately after this block
 
-        // ✅ Step 2: Commit the staged holons
+        // Step 2: Commit the staged holons
         let commit_response = commit_functions::commit(context, &staged_holons)?;
 
-        // ✅ Step 3: Borrow mutably to clear the stage
-        internal_nursery.borrow_mut().clear_stage(); // ✅ Safe, no borrow conflict
+        // Step 3: Borrow mutably to clear the stage
+        internal_nursery.borrow_mut().clear_stage(); // Safe, no borrow conflict
 
-        // ✅ Step 4: Return the commit response
+        // Step 4: Return the commit response
         Ok(commit_response)
     }
 

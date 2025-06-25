@@ -36,6 +36,14 @@ impl Holon {
         Holon::Transient(TransientHolon::new())
     }
 
+    /// Gets inner StagedHolon object for Staged variant
+    pub fn into_staged(self) -> Result<StagedHolon, HolonError> {
+        match self {
+            Holon::Staged(staged_holon) => Ok(staged_holon),
+            _ => Err(HolonError::InvalidTransition("Holon variant must be Staged".to_string())),
+        }
+    }
+
     /// Gets inner TransientHolon object for Transient variant
     pub fn into_transient(self) -> Result<TransientHolon, HolonError> {
         match self {
@@ -43,7 +51,6 @@ impl Holon {
             _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
         }
     }
-
 }
 
 // ================================

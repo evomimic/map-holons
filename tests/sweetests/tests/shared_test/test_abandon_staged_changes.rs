@@ -1,4 +1,5 @@
 use async_std::task;
+use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, error, info, warn};
 
@@ -11,6 +12,7 @@ use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 
 use holons_core::{
+    core_shared_objects::holon::state::AccessType,
     dances::dance_response::{DanceResponse, ResponseBody, ResponseStatusCode},
     HolonError, HolonWritable, StagedReference,
 };
@@ -55,14 +57,17 @@ pub async fn execute_abandon_staged_changes(
     // 5. If successful, validate that operations on the abandoned Holon fail as expected
     if response.status_code == ResponseStatusCode::OK {
         if let ResponseBody::StagedRef(abandoned_holon) = &response.body {
-            assert!(matches!(
+            assert_eq!(
                 abandoned_holon.with_property_value(
-                    context, // ✅ Pass context for proper behavior
+                    context, // Pass context for proper behavior
                     PropertyName(MapString("some_name".to_string())),
                     Some(BaseValue::BooleanValue(MapBoolean(true)))
                 ),
-                Err(HolonError::NotAccessible(_, _))
-            ));
+                Err(HolonError::NotAccessible(
+                    format!("{:?}", AccessType::Write),
+                    "Immutable StagedHolon".to_string()
+                ))
+            );
             debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
         } else {
             panic!("Expected abandon_staged_changes to return a StagedRef response, but it didn't");
