@@ -1,5 +1,4 @@
 use hdk::prelude::*;
-use holons_core::core_shared_objects::holon::StagedHolon;
 
 // use crate::{
 //     create_holon_node, save_smartlink, update_holon_node, SmartLink, UpdateHolonNodeInput,
@@ -10,7 +9,7 @@ use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolon
 use holons_core::core_shared_objects::{
     holon::{
         state::{AccessType, StagedState},
-        Holon, HolonBehavior,
+        Holon, HolonBehavior, StagedHolon,
     },
     CommitRequestStatus, CommitResponse, HolonCollection, HolonError, RelationshipName,
 };
@@ -20,7 +19,7 @@ use base_types::{BaseValue, MapInteger, MapString};
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::fmt::format;
+// use std::fmt::format;
 use std::rc::Rc;
 
 /// `commit`
@@ -88,7 +87,7 @@ pub fn commit(
     // FIRST PASS: Commit Staged Holons
     {
         info!("\n\nStarting FIRST PASS... commit staged_holons...");
-        for rc_holon in staged_holons {
+        for rc_holon in staged_holons.iter().cloned() {
             {
                 rc_holon.borrow().is_accessible(AccessType::Commit)?;
             }
@@ -101,7 +100,6 @@ pub fn commit(
             if should_commit {
                 trace!(" In commit_service... getting ready to call commit()");
                 let outcome = commit_holon(rc_holon);
-                warn!("COMMIT_OUTCOME :: {:#?}", outcome.clone());
                 match outcome {
                     Ok(holon) => match holon {
                         Holon::Staged(ref staged_holon) => {
@@ -177,10 +175,9 @@ pub fn commit(
 /// If an error is encountered, it is pushed into the holons `errors` vector, the holon's state
 /// is left unchanged and an Err is returned.
 ///
-fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
+fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
     let mut holon_write =
         rc_holon.try_borrow_mut().map_err(|e| HolonError::WasmError(e.to_string()))?;
-
     if let Holon::Staged(staged_holon) = &mut *holon_write {
         let staged_state = staged_holon.get_staged_state();
 
@@ -188,7 +185,7 @@ fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
             StagedState::ForCreate => {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("StagedState is New... requesting new HolonNode be created in the DHT");
-                let node = staged_holon.clone().into_node();
+                let node = staged_holon.into_node();
                 let result = create_holon_node(node);
 
                 match result {
