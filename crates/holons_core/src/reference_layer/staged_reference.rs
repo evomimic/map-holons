@@ -204,27 +204,52 @@ impl HolonWritable for StagedReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
         debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-        // Get access to the source holon
+
         let rc_holon = self.get_rc_holon(context)?;
 
-        // Get inner value
-        let mut staged_holon = rc_holon.borrow().clone().into_staged()?;
-
-        debug!("borrowed mut for holon: {:#?}", self.id);
-
-        staged_holon.abandon_staged_changes()?;
-
-        // Update RefCell
+        // Mutably borrow the inner Holon and match it
         let mut holon_mut = rc_holon.borrow_mut();
         match &mut *holon_mut {
-            Holon::Staged(ref mut refcell_inner) => {
-                *refcell_inner = staged_holon;
+            Holon::Staged(staged_holon) => {
+                debug!("Mutably borrowing Holon::Staged for staged_id: {:#?}", self.id);
+                staged_holon.abandon_staged_changes()?;
             }
-            _ => unreachable!(),
+            other => {
+                return Err(HolonError::UnexpectedValueType(
+                    "Staged Holon".into(),
+                    format!("{:?}", other),
+                ));
+            }
         }
 
         Ok(())
     }
+    // fn abandon_staged_changes(
+    //     &mut self,
+    //     context: &dyn HolonsContextBehavior,
+    // ) -> Result<(), HolonError> {
+    //     debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
+    //     // Get access to the source holon
+    //     let rc_holon = self.get_rc_holon(context)?;
+    //
+    //     // Get inner value
+    //     let mut staged_holon = rc_holon.borrow().clone().into_staged()?;
+    //
+    //     debug!("borrowed mut for holon: {:#?}", self.id);
+    //
+    //     staged_holon.abandon_staged_changes()?;
+    //
+    //     // Update RefCell
+    //     let mut holon_mut = rc_holon.borrow_mut();
+    //     match &mut *holon_mut {
+    //         Holon::Staged(ref mut refcell_inner) => {
+    //             *refcell_inner = staged_holon;
+    //         }
+    //         _ => unreachable!(),
+    //     }
+    //
+    //     Ok(())
+    // }
 
     fn add_related_holons(
         &self,
