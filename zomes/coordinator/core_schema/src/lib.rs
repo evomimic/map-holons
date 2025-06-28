@@ -14,7 +14,7 @@ pub mod property_type_loader;
 pub mod value_type_loader;
 
 pub mod boolean_value_type_loader;
-pub mod collection_type_loader;
+// pub mod collection_type_loader;
 pub mod enum_type_loader;
 pub mod enum_variant_loader;
 pub mod holon_type_loader;

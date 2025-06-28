@@ -46,13 +46,17 @@ pub struct RelationshipTypeSpec {
 /// - `target_semantic`: collection semantics of the relationship (e.g., "Set", "List", "SingleInstance")
 ///
 /// # Populated Relationships
-/// - `DESCRIBED_BY` → TypeDescriptor (internal relationship from RelationshipType to its descriptor holon)
-/// - `TARGET_HOLON_TYPE` → HolonType (the HolonType this relationship points to)
-/// - `HAS_INVERSE` → RelationshipType (optional inverse relationship, only if source owns it)
+/// - `DESCRIBED_BY` → TypeDescriptor (links to the associated type header)
+/// - `COMPONENT_OF` → Schema (the schema this descriptor belongs to)
+/// - `VERSION` → SemanticVersion (default version assigned to the descriptor)
+/// - `HAS_SUPERTYPE` → HolonType (optional semantic superclass, if supplied)
+/// - `SOURCE_FOR` → HolonType (the source HolonType from which the relationship originates)
+/// - `TARGET_HOLON_TYPE` → HolonType (the HolonType this relationship targets)
+/// - `HAS_INVERSE` → RelationshipType (optional inverse relationship, if source owns it)
 ///
 /// # Notes
 /// - Validation enforces that only the owning side may specify an inverse.
-/// - The resulting RelationshipType holon and its TypeDescriptor are staged but not yet committed.
+/// - The resulting RelationshipType holon and its TypeHeader are staged but not yet committed to the DHT.
 pub fn define_relationship_type(
     context: &dyn HolonsContextBehavior,
     schema: &HolonReference,
