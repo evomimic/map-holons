@@ -20,7 +20,7 @@ use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holon_dance_builders::stage_new_holon_dance::build_stage_new_holon_dance_request;
 use holons_client::init_client_context;
-use holons_core::core_shared_objects::holon::{Holon, HolonBehavior, TransientHolon};
+use holons_core::core_shared_objects::{Holon, HolonBehavior, TransientHolon};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{HolonReadable, HolonsContextBehavior, StagedReference};
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};

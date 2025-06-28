@@ -3,7 +3,7 @@
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
 use crate::descriptor_types::Schema;
 use holons_core::core_shared_objects::holon::TransientHolon;
-use holons_core::core_shared_objects::{holon::Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, HolonError};
 
 use integrity_core_types::PropertyName;
 use base_types::{BaseValue, MapString};

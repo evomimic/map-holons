@@ -10,7 +10,7 @@ use crate::shared_test::{
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
-    core_shared_objects::holon::Holon, dances::dance_response::ResponseStatusCode,
+    core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression, HolonCollection, HolonError, HolonsContextBehavior,
     RelationshipName, StagedReference,
 };

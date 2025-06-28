@@ -25,8 +25,8 @@ use crate::dances::DanceRequest;
 use crate::query_layer::evaluate_query;
 use crate::reference_layer::get_all_holons;
 use crate::{HolonWritable, HolonsContextBehavior, SmartReference};
-use hdk::prelude::*;
 use base_types::MapString;
+use hdk::prelude::*;
 use integrity_core_types::PropertyName;
 
 /// *DanceRequest:*
@@ -459,32 +459,7 @@ pub fn with_properties_dance(
     info!("----- Entered with_properties_dance");
     match request.dance_type {
         DanceType::CommandMethod(staged_reference) => {
-            // debug!("looking for StagedHolon at index: {:#?}", staged_reference.holon_index);
-            // // Try to get a mutable reference to the staged holon referenced by its index
-            // let space_manager = match context.get_space_manager() {
-            //     Ok(space_manager) => space_manager,
-            //     Err(borrow_error) => {
-            //         error!(
-            //             "Failed to borrow commit_manager, it is already borrowed mutably: {:?}",
-            //             borrow_error
-            //         );
-            //         return Err(HolonError::FailedToBorrow(format!("{:?}", borrow_error)));
-            //     }
-            // };
-            // //let staged_holon = space_manager.get_mut_holon_by_index(staged_index.clone());
-            // let holon = space_manager.get_holon_by_index(staged_index.clone())?;
-            // let staged_holon = holon.try_borrow_mut().map_err(|e| {
-            //     HolonError::FailedToBorrow(format!("Unable to borrow holon immutably: {}", e))
-            // });
-
-            // match staged_holon {
-            //     Ok(mut holon_mut) => {
-            // Populate properties from parameters (if any)
             match request.body {
-                RequestBody::None => {
-                    // No parameters to populate, continue
-                    Ok(ResponseBody::StagedRef(staged_reference))
-                }
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
                     for (property_name, base_value) in parameters {
@@ -498,12 +473,6 @@ pub fn with_properties_dance(
                 }
                 _ => Err(HolonError::InvalidParameter("request.body".to_string())),
             }
-            //     }
-            //     Err(_) => Err(HolonError::IndexOutOfRange(
-            //         "Unable to borrow a mutable reference to holon at supplied staged_index"
-            //             .to_string(),
-            //     )),
-            // }
         }
         _ => Err(HolonError::InvalidParameter(
             "Expected Command(StagedReference) DanceType, didn't get one".to_string(),

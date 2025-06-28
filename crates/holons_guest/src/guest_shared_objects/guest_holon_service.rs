@@ -8,9 +8,9 @@ use hdk::prelude::*;
 use holons_core::core_shared_objects::TransientRelationshipMap;
 use holons_core::{
     core_shared_objects::{
-        holon::{state::AccessType, Holon, HolonBehavior, TransientHolon},
-        nursery_access_internal::NurseryAccessInternal,
-        CommitResponse, HolonCollection, HolonError, NurseryAccess, RelationshipName,
+        holon::state::AccessType, nursery_access_internal::NurseryAccessInternal, CommitResponse,
+        Holon, HolonBehavior, HolonCollection, HolonError, NurseryAccess, RelationshipName,
+        TransientHolon,
     },
     reference_layer::{
         HolonCollectionApi, HolonReadable, HolonReference, HolonServiceApi, HolonWritable,

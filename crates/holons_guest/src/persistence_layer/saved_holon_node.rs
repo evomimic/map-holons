@@ -1,9 +1,6 @@
 use base_types::MapInteger;
 use hdi::prelude::{Record, RecordEntry};
-use holons_core::{
-    core_shared_objects::holon::{Holon, SavedHolon},
-    HolonError,
-};
+use holons_core::core_shared_objects::{Holon, HolonError, SavedHolon};
 use integrity_core_types::{HolonNode, LocalId};
 
 // #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

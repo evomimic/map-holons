@@ -1,6 +1,6 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
 
-use crate::core_shared_objects::{holon::Holon, HolonError, RelationshipName};
+use crate::core_shared_objects::{Holon, HolonError, RelationshipName};
 
 use base_types::BaseValue;
 use integrity_core_types::PropertyName;

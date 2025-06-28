@@ -7,16 +7,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core_shared_objects::{
-        holon::holon_utils::{key_info, local_id_info},
+        holon::{key_info, local_id_info},
         ReadableRelationship,
     },
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
 };
 
 use super::{
-    holon_utils::EssentialHolonContent,
     state::{AccessType, HolonState, StagedState, ValidationState},
-    HolonBehavior, TransientHolon,
+    EssentialHolonContent, HolonBehavior, TransientHolon,
 };
 
 /// Represents a Holon that has been staged for persistence or updates.

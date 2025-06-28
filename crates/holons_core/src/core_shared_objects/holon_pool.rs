@@ -1,4 +1,4 @@
-use super::holon::{Holon, HolonBehavior};
+use super::{Holon, HolonBehavior};
 use crate::utils::uuid::create_temporary_id_from_key;
 use crate::HolonError;
 use base_types::MapString;

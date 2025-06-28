@@ -1,4 +1,4 @@
-use super::{holon_cache::HolonCache, holon::Holon};
+use super::{holon_cache::HolonCache, Holon};
 
 use crate::{HolonCacheAccess, HolonCollection, HolonError, RelationshipCache, RelationshipName,};
 use crate::reference_layer::HolonServiceApi;

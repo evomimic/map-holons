@@ -1,5 +1,5 @@
 use base_types::MapString;
-use holons_core::core_shared_objects::{holon::TransientHolon, HolonError};
+use holons_core::core_shared_objects::{HolonError, TransientHolon};
 use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 
 ///

@@ -1,4 +1,4 @@
-use super::holon::Holon;
+use super::Holon;
 use quick_cache::unsync::Cache;
 use core_types::HolonId;
 use std::cell::RefCell;

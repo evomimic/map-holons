@@ -5,14 +5,15 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::core_shared_objects::holon::{HolonBehavior as _, TransientHolon};
+use crate::core_shared_objects::{HolonBehavior as _, TransientHolon};
 use crate::reference_layer::{
     HolonReadable, HolonReference, HolonsContextBehavior, StagedReference,
 };
 
 use crate::core_shared_objects::{
-cache_access::HolonCacheAccess,
-   holon::{state::AccessType, holon_utils::EssentialHolonContent, Holon}, HolonCollection, HolonError, RelationshipName,
+    cache_access::HolonCacheAccess,
+    holon::{state::AccessType, EssentialHolonContent},
+    Holon, HolonCollection, HolonError, RelationshipName,
 };
 
 use base_types::MapString;
@@ -199,7 +200,10 @@ impl fmt::Display for SmartReference {
 }
 
 impl HolonReadable for SmartReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_borrow = holon.borrow();
         holon_borrow.clone_holon()
@@ -309,7 +313,7 @@ impl HolonReadable for SmartReference {
     ) -> Result<MapString, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let key = holon.borrow().get_versioned_key()?;
-        
+
         Ok(key)
     }
 

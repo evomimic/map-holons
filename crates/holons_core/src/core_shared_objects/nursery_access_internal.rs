@@ -1,4 +1,4 @@
-use super::{holon_pool::SerializableHolonPool, holon::Holon};
+use super::{holon_pool::SerializableHolonPool, Holon};
 use crate::{HolonError, NurseryAccess};
 use crate::HolonStagingBehavior;
 use core_types::TemporaryId;

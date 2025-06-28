@@ -21,8 +21,9 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-
-use crate::core_shared_objects::{holon::{Holon, HolonBehavior, TransientHolon}, CommitResponse, HolonError};
+use crate::core_shared_objects::{
+    CommitResponse, Holon, HolonBehavior, HolonError, TransientHolon,
+};
 use crate::{
     HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
     SmartReference, StagedReference,

@@ -2,7 +2,7 @@ use crate::HolonError;
 use base_types::MapString;
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
-use super::{holon_utils::EssentialHolonContent, state::AccessType, TransientHolon};
+use super::{EssentialHolonContent, state::AccessType, TransientHolon};
 
 /// The `HolonBehavior` trait defines the core interface for interacting with Holon instances,
 /// including data access, lifecycle control, and diagnostic capabilities.

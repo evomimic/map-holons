@@ -17,7 +17,7 @@ use base_types::{MapInteger, MapString};
 use holon_dance_builders::remove_related_holons_dance::build_remove_related_holons_dance_request;
 use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
-    core_shared_objects::holon::Holon,
+    core_shared_objects::Holon,
     HolonReference, RelationshipName, StagedReference,
 };
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};

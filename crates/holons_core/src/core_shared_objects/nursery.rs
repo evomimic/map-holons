@@ -1,7 +1,7 @@
 use super::{
-    holon::{Holon, TransientHolon},
     holon_pool::{HolonPool, SerializableHolonPool},
     nursery_access_internal::NurseryAccessInternal,
+    Holon, TransientHolon,
 };
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
 use crate::{HolonError, NurseryAccess};

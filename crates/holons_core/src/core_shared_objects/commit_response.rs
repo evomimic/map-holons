@@ -1,6 +1,8 @@
-use crate::{core_shared_objects::holon::Holon, HolonError};
+use crate::{
+    core_shared_objects::{Holon, HolonBehavior},
+    HolonError,
+};
 use base_types::{MapInteger, MapString};
-use super::holon::HolonBehavior;
 use integrity_core_types::LocalId;
 
 #[derive(Debug, Eq, PartialEq, Clone)]

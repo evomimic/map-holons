@@ -11,7 +11,7 @@ use crate::property_descriptor::PropertyTypeDefinition;
 use crate::relationship_descriptor::RelationshipTypeDefinition;
 use crate::semantic_version::SemanticVersion;
 use crate::string_descriptor::StringTypeDefinition;
-use holons_core::core_shared_objects::{holon::Holon, HolonCollection, RelationshipName};
+use holons_core::core_shared_objects::{Holon, HolonCollection, RelationshipName};
 use holons_core::HolonReference;
 use inflector::Inflector;
 use base_types::{MapBoolean, MapEnumValue, MapInteger, MapString};

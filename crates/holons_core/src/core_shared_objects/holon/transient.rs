@@ -1,6 +1,6 @@
 // use crate::holon::behavior::HolonBehavior;
 // use crate::common::{PropertyName, PropertyValue, EssentialHolonContent, MapString};
-// use crate::holon::{HolonError, HolonState};
+// use crate::HolonError, HolonState};
 // use crate::state::AccessType;
 // use crate::identifier::TemporaryId;
 
@@ -9,22 +9,14 @@ use core_types::TemporaryId;
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core_shared_objects::{
-        holon::{
-            holon_utils::{key_info, local_id_info},
-            state::StagedState,
-            StagedHolon,
-        },
-        ReadableRelationship, TransientRelationshipMap,
-    },
-    HolonError,
+use crate::core_shared_objects::{
+    holon::{key_info, local_id_info},
+    HolonError, ReadableRelationship, StagedHolon, TransientRelationshipMap,
 };
 
 use super::{
-    holon_utils::EssentialHolonContent,
     state::{AccessType, HolonState, ValidationState},
-    HolonBehavior,
+    EssentialHolonContent, HolonBehavior,
 };
 
 /// Represents a Holon that exists only in-memory and cannot be persisted unless it becomes a StagedHolon.

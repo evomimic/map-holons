@@ -11,7 +11,7 @@
 // use hdk::prelude::*;
 // use holochain::sweettest::*;
 // use holochain::sweettest::{SweetCell, SweetConductor};
-// use holons_core::core_shared_objects::{holon::Holon, HolonError};
+// use holons_core::core_shared_objects::{Holon, HolonError};
 // use rstest::*;
 // use shared_test::holon_fixtures::*;
 // use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};

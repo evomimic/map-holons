@@ -14,7 +14,7 @@ use crate::shared_test::test_data_types::{
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
-    core_shared_objects::holon::{Holon, HolonBehavior},
+    core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
     HolonReadable, HolonReference, RelationshipName, SmartReference,
 };

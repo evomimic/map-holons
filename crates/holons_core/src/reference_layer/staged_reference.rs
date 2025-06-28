@@ -5,10 +5,11 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::core_shared_objects::holon::{HolonBehavior, TransientHolon};
+use crate::core_shared_objects::ReadableRelationship;
 use crate::core_shared_objects::{
-    holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon},
-    HolonCollection, HolonError, NurseryAccess, RelationshipName, WritableRelationship,
+    holon::{state::AccessType, EssentialHolonContent},
+    Holon, HolonBehavior, HolonCollection, HolonError, NurseryAccess, RelationshipName,
+    TransientHolon, WritableRelationship,
 };
 use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 
@@ -169,10 +170,23 @@ impl HolonReadable for StagedReference {
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow().clone().into_staged()?;
 
-        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
-        Ok(holon.get_related_holons(relationship_name)?)
+        let holon = rc_holon.borrow();
+
+        match &*holon {
+            Holon::Staged(staged_holon) => {
+                let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
+                // Get collection for related holons
+                let collection = staged_relationship_map.get_related_holons(relationship_name);
+                Ok(collection)
+            }
+            other => {
+                return Err(HolonError::UnexpectedValueType(
+                    "Staged Holon".into(),
+                    format!("{:?}", other),
+                ));
+            }
+        }
     }
 
     fn get_versioned_key(
@@ -224,32 +238,6 @@ impl HolonWritable for StagedReference {
 
         Ok(())
     }
-    // fn abandon_staged_changes(
-    //     &mut self,
-    //     context: &dyn HolonsContextBehavior,
-    // ) -> Result<(), HolonError> {
-    //     debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-    //     // Get access to the source holon
-    //     let rc_holon = self.get_rc_holon(context)?;
-    //
-    //     // Get inner value
-    //     let mut staged_holon = rc_holon.borrow().clone().into_staged()?;
-    //
-    //     debug!("borrowed mut for holon: {:#?}", self.id);
-    //
-    //     staged_holon.abandon_staged_changes()?;
-    //
-    //     // Update RefCell
-    //     let mut holon_mut = rc_holon.borrow_mut();
-    //     match &mut *holon_mut {
-    //         Holon::Staged(ref mut refcell_inner) => {
-    //             *refcell_inner = staged_holon;
-    //         }
-    //         _ => unreachable!(),
-    //     }
-    //
-    //     Ok(())
-    // }
 
     fn add_related_holons(
         &self,
@@ -263,33 +251,23 @@ impl HolonWritable for StagedReference {
 
         // Get access to the source holon and its relationshp map
         let rc_holon = self.get_rc_holon(context)?;
-        // Get inner value
-        let mut staged_holon = rc_holon.borrow().clone().into_staged()?;
 
-        let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-
-        debug!(
-            "Here is the RelationshipMap before adding related Holons: {:#?}",
-            staged_relationship_map
-        );
-
-        // Delegate adding holons to the `StagedRelationshipMap`
-        staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
-
-        debug!(
-            "Here is the RelationshipMap after adding related Holons: {:#?}",
-            staged_relationship_map
-        );
-
-        staged_holon.init_relationships(staged_relationship_map)?;
-
-        // Update RefCell
+        // Mutably borrow the inner Holon and match it
         let mut holon_mut = rc_holon.borrow_mut();
+
         match &mut *holon_mut {
-            Holon::Staged(ref mut refcell_inner) => {
-                *refcell_inner = staged_holon;
+            Holon::Staged(staged_holon) => {
+                let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
+                // Delegate the addition of holons to the `StagedRelationshipMap`
+                staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
+                staged_holon.init_relationships(staged_relationship_map)?;
             }
-            _ => unreachable!(),
+            other => {
+                return Err(HolonError::UnexpectedValueType(
+                    "Staged Holon".into(),
+                    format!("{:?}", other),
+                ));
+            }
         }
 
         Ok(())
@@ -312,21 +290,28 @@ impl HolonWritable for StagedReference {
 
         // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow().clone().into_staged()?;
-        let mut staged_relationship_map = holon.get_staged_relationship_map()?;
 
-        debug!(
-            "Here is the RelationshipMap before removing related Holons: {:#?}",
-            staged_relationship_map
-        );
+        // Mutably borrow the inner Holon and match it
+        let mut holon_mut = rc_holon.borrow_mut();
 
-        // Delegate the removal of holons to the `StagedRelationshipMap`
-        staged_relationship_map.remove_related_holons(context, relationship_name, holons)?;
-
-        debug!(
-            "Here is the RelationshipMap after removing related Holons: {:#?}",
-            staged_relationship_map
-        );
+        match &mut *holon_mut {
+            Holon::Staged(staged_holon) => {
+                let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
+                // Delegate the removal of holons to the `StagedRelationshipMap`
+                staged_relationship_map.remove_related_holons(
+                    context,
+                    relationship_name,
+                    holons,
+                )?;
+                staged_holon.init_relationships(staged_relationship_map)?;
+            }
+            other => {
+                return Err(HolonError::UnexpectedValueType(
+                    "Staged Holon".into(),
+                    format!("{:?}", other),
+                ));
+            }
+        }
 
         Ok(())
     }
@@ -407,18 +392,19 @@ impl HolonWritable for StagedReference {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
 
-        // Get inner value
-        let mut staged_holon = rc_holon.borrow().clone().into_staged()?;
-
-        // Call the Holon's with_property_value method
-        staged_holon.with_property_value(property, value)?;
-
+        // Mutably borrow the inner Holon and match it
         let mut holon_mut = rc_holon.borrow_mut();
+
         match &mut *holon_mut {
-            Holon::Staged(ref mut refcell_inner) => {
-                *refcell_inner = staged_holon;
+            Holon::Staged(staged_holon) => {
+                staged_holon.with_property_value(property, value)?;
             }
-            _ => unreachable!(),
+            other => {
+                return Err(HolonError::UnexpectedValueType(
+                    "Staged Holon".into(),
+                    format!("{:?}", other),
+                ));
+            }
         }
 
         Ok(self)

@@ -2,15 +2,14 @@ use base_types::{MapInteger, MapString};
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core_shared_objects::holon::holon_utils::{key_info, local_id_info},
+use crate::core_shared_objects::{
+    holon::{key_info, local_id_info},
     HolonError,
 };
 
 use super::{
-    holon_utils::EssentialHolonContent,
     state::{AccessType, HolonState, SavedState, ValidationState},
-    HolonBehavior, TransientHolon,
+    EssentialHolonContent, HolonBehavior, TransientHolon,
 };
 
 /// Represents a Holon that has been persisted in the DHT.

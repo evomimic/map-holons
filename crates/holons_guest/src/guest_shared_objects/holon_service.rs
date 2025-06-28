@@ -6,7 +6,7 @@ use crate::{try_from_record, persistence_layer::{
 use hdi::prelude::{ActionHash, Path};
 use hdk::entry::get;
 use hdk::prelude::GetOptions;
-use holons_core::core_shared_objects::{holon::Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, HolonError};
 use holons_integrity::LinkTypes;
 use integrity_core_types::LocalId;
 //Stateless HDI service to bridge Holon and HolonNode

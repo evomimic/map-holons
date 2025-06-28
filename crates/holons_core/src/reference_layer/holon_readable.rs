@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
-use crate::core_shared_objects::holon::TransientHolon;
+use crate::core_shared_objects::{
+    holon::{state::AccessType, EssentialHolonContent},
+    TransientHolon,
+};
 use crate::reference_layer::HolonsContextBehavior;
 
-use crate::core_shared_objects::{
-    holon::{holon_utils::EssentialHolonContent, state::AccessType},
-    HolonCollection, HolonError, RelationshipName,
-};
+use crate::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
 
 use base_types::MapString;
 use core_types::HolonId;

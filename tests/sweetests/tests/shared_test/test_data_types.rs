@@ -13,10 +13,7 @@ use std::{
 };
 
 use holons_core::{
-    core_shared_objects::{
-        holon::{Holon, HolonBehavior, TransientHolon},
-        HolonError, RelationshipName,
-    },
+    core_shared_objects::{Holon, HolonBehavior, HolonError, RelationshipName, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior, StagedReference},

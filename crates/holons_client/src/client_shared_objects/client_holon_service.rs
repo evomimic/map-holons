@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 use holons_core::core_shared_objects::{
-    CommitResponse, holon::Holon, HolonCollection, HolonError, RelationshipName,
+    CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
 use holons_core::{HolonReference, SmartReference, StagedReference};

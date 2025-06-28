@@ -4,9 +4,9 @@ use base_types::MapString;
 use hdk::prelude::*;
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
-use super::holon_utils::EssentialHolonContent;
 use super::state::AccessType;
 use super::{HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
+use crate::core_shared_objects::holon::EssentialHolonContent;
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,13 +36,13 @@ impl Holon {
         Holon::Transient(TransientHolon::new())
     }
 
-    /// Gets inner StagedHolon object for Staged variant
-    pub fn into_staged(self) -> Result<StagedHolon, HolonError> {
-        match self {
-            Holon::Staged(staged_holon) => Ok(staged_holon),
-            _ => Err(HolonError::InvalidTransition("Holon variant must be Staged".to_string())),
-        }
-    }
+    // /// Gets inner StagedHolon object for Staged variant
+    // pub fn into_staged(self) -> Result<StagedHolon, HolonError> {
+    //     match self {
+    //         Holon::Staged(staged_holon) => Ok(staged_holon),
+    //         _ => Err(HolonError::InvalidTransition("Holon variant must be Staged".to_string())),
+    //     }
+    // }
 
     /// Gets inner TransientHolon object for Transient variant
     pub fn into_transient(self) -> Result<TransientHolon, HolonError> {

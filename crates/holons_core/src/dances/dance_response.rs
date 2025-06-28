@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt;
 
-use crate::core_shared_objects::holon::HolonBehavior;
-use crate::core_shared_objects::{summarize_holons, holon::Holon, HolonError};
+use crate::core_shared_objects::HolonBehavior;
+use crate::core_shared_objects::{summarize_holons, Holon, HolonError};
 use crate::query_layer::NodeCollection;
 
 use crate::dances::SessionState;

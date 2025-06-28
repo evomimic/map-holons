@@ -7,11 +7,9 @@ use crate::guest_shared_objects::{save_smartlink, SmartLink};
 use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolonNodeInput};
 
 use holons_core::core_shared_objects::{
-    holon::{
-        state::{AccessType, StagedState},
-        Holon, HolonBehavior, StagedHolon,
-    },
-    CommitRequestStatus, CommitResponse, HolonCollection, HolonError, RelationshipName,
+    holon::state::{AccessType, StagedState},
+    CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, HolonError,
+    RelationshipName, StagedHolon,
 };
 use holons_core::reference_layer::{HolonReadable, HolonsContextBehavior};
 // use holons_core::utils::as_json;

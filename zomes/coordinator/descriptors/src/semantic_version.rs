@@ -3,7 +3,7 @@ use derive_new::new;
 use hdk::prelude::*;
 
 use holons_core::core_shared_objects::holon::TransientHolon;
-use holons_core::core_shared_objects::{holon::Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, HolonError};
 use integrity_core_types::PropertyName;
 use base_types::{BaseValue, MapInteger, MapString};
 

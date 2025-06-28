@@ -3,7 +3,7 @@ use core_types::HolonId;
 use integrity_core_types::PropertyMap;
 
 use crate::core_shared_objects::holon::state::{HolonState, ValidationState};
-use crate::core_shared_objects::holon::Holon;
+use crate::core_shared_objects::Holon;
 use crate::reference_layer::SmartReference;
 use hdk::prelude::*;
 
