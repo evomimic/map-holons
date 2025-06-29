@@ -1,10 +1,13 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-use hdk::prelude::*;
 use derive_new::new;
+use hdk::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{CollectionState, HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
+use crate::{
+    CollectionState, HolonCollectionApi, HolonReference, HolonsContextBehavior,
+    StagedRelationshipMap,
+};
 
 use super::{
     HolonCollection, HolonError, ReadableRelationship, RelationshipName, WritableRelationship,
@@ -37,7 +40,7 @@ impl TransientRelationshipMap {
     }
 
     /// Converts to a StagedRelationshipMap
-    pub fn to_staged(self) -> Result<StagedRelationshipMap, HolonError> { 
+    pub fn to_staged(self) -> Result<StagedRelationshipMap, HolonError> {
         for (_name, collection) in self.map.iter() {
             let mut staged_collection = collection.borrow_mut();
             staged_collection.mark_as_staged()?;
@@ -68,6 +71,7 @@ impl ReadableRelationship for TransientRelationshipMap {
     //    DATA ACCESSORS
     // ====================
 
+    // See TODO on trait: clone required here due to current trait return type.
     fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection

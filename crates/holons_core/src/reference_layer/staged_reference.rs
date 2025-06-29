@@ -56,15 +56,6 @@ impl StagedReference {
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
 
-        // Confirm it references a StagedHolon and return an Rc<RefCell
-        let rc_borrow = rc_holon.borrow();
-        if !matches!(*rc_borrow, Holon::Staged(_)) {
-            return Err(HolonError::InvalidHolonReference(
-                "The TemporaryId associated with a StagedReference must return a StagedHolon!"
-                    .to_string(),
-            ));
-        }
-
         Ok(rc_holon.clone())
     }
 

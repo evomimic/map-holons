@@ -118,6 +118,7 @@ impl ReadableRelationship for StagedRelationshipMap {
     //    DATA ACCESSORS
     // ====================
 
+    // See TODO on trait: clone required here due to current trait return type.
     fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection
