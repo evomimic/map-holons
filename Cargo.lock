@@ -713,7 +713,6 @@ dependencies = [
  "holons_core",
  "holons_guest",
  "holons_integrity",
- "pretty_assertions",
  "serde",
  "serde_json",
 ]
@@ -742,6 +741,7 @@ dependencies = [
  "futures",
  "hdi",
  "hdk",
+ "holochain_serialized_bytes",
  "integrity_core_types",
  "pretty_assertions",
  "quick_cache",
@@ -780,7 +780,6 @@ dependencies = [
  "integrity_core_types",
  "serde",
  "shared_validation",
- "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -830,6 +829,7 @@ dependencies = [
  "base_types",
  "derive-new",
  "hdi",
+ "holochain_serialized_bytes",
  "serde",
 ]
 

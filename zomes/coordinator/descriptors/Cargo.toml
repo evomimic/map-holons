@@ -1,7 +1,7 @@
 [package]
 name = "descriptors"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 # WASM and non-WASM compatible
@@ -23,5 +23,3 @@ holons_core = { workspace = true }
 base_types = { workspace = true }
 core_types = { workspace = true }
 integrity_core_types = { workspace = true }
-
-[dev-dependencies]
