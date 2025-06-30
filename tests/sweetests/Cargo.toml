@@ -1,7 +1,7 @@
 [package]
 name = "holons_test"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["rlib"]
@@ -18,7 +18,7 @@ async-trait = "0.1.51"
 # Holochain Dependencies
 holochain_trace = "0.5"
 # ovveride the latest to avoid conflicts with rust version 1.83 (currrently used by holochain 0.5) 
-base64ct = "=1.7.3"
+#base64ct = "=1.7.3"
 
 # MAP Dependencies
 holons_core = { path = "../../crates/holons_core" }

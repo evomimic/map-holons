@@ -17,7 +17,9 @@
 
       devShells.default = pkgs.mkShell {
         inputsFrom = [ inputs'.holonix.devShells.default ];
-
+        #for mac OS
+        nativeBuildInputs = [ pkgs.libsodium pkgs.pkg-config pkgs.llvmPackages.libunwind ];
+        
         packages = (with pkgs; [
           nodejs_22
           binaryen

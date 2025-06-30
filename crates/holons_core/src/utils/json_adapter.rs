@@ -229,7 +229,7 @@ impl<'a> Serialize for SmartReferenceOptionWrapper<'a> {
         S: Serializer,
     {
         match self.0 {
-            Some(ref smart) => {
+            Some(smart) => {
                 let wrapper = SmartReferenceWrapper(smart);
                 wrapper.serialize(serializer)
             }

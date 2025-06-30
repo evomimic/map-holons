@@ -1,7 +1,7 @@
 [package]
 name = "holons"
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 
 [lib]
 # WASM and non-WASM compatible
@@ -21,7 +21,3 @@ holons_integrity = { workspace = true }
 # MAP Dependencies
 holons_core = { workspace = true }
 holons_guest = { workspace = true }
-
-
-[dev-dependencies]
-pretty_assertions = { workspace = true }
