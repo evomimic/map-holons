@@ -170,18 +170,6 @@ impl HolonBehavior for Holon {
         }
     }
 
-    // =====================
-    //      DIAGNOSTICS
-    // =====================
-
-    fn debug_info(&self) -> String {
-        match self {
-            Holon::Transient(h) => h.debug_info(),
-            Holon::Staged(h) => h.debug_info(),
-            Holon::Saved(h) => h.debug_info(),
-        }
-    }
-
     // ===============
     //     HELPERS
     // ===============

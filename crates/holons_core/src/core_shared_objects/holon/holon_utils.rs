@@ -1,18 +1,17 @@
 use std::fmt;
 
-use derive_new::new;
-use serde::{Deserialize, Serialize};
-use integrity_core_types::PropertyMap;
 use base_types::MapString;
+use derive_new::new;
+use integrity_core_types::PropertyMap;
+use serde::{Deserialize, Serialize};
 
 use crate::HolonError;
 
-use super::{state::{HolonState, ValidationState}, HolonBehavior};
+use super::state::{HolonState, ValidationState};
 
 //  ================
 //   HELPER OBJECTS
 //  ================
-
 
 /// Used for testing in order to match the EssentialContent of a Holon.
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -38,25 +37,5 @@ impl fmt::Display for HolonSummary {
             "HolonSummary {{ key: {:?}, local_id: {:?}, state: {}, validation_state: {:?} }}",
             self.key, self.local_id, self.state, self.validation_state,
         )
-    }
-}
-
-
-//  ===========
-//   FUNCTIONS
-//  ===========
-
-pub fn key_info(holon: &impl HolonBehavior) -> String {
-    match holon.get_key() {
-        Ok(Some(key)) => format!("key: {}", key.0),
-        Ok(None) => "key: <None>".to_string(),
-        Err(_) => "key: <Error>".to_string(),
-    }
-}
-
-pub fn local_id_info(holon: &impl HolonBehavior) -> String {
-    match holon.get_local_id() {
-        Ok(local_id) => format!("local_id: {}", local_id.0),
-        Err(_) => "local_id: <Error>".to_string(),
     }
 }

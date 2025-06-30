@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core_shared_objects::{
-        holon::{key_info, local_id_info},
         ReadableRelationship,
     },
     HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
@@ -311,21 +310,6 @@ impl HolonBehavior for StagedHolon {
         self.is_accessible(AccessType::Write)?;
         self.property_map = map;
         Ok(())
-    }
-
-    // =========================
-    //       DIAGNOSTICS
-    // =========================
-
-    fn debug_info(&self) -> String {
-        let phase_info = "StagedHolon";
-        let state_info = format!(
-            "{} / {}",
-            format!("{:?}", self.holon_state),  // Mutable/Immutable
-            format!("{:?}", self.staged_state)  // ForCreate, ForUpdate, etc.
-        );
-
-        format!("{} / {} / {} / {}", phase_info, state_info, key_info(self), local_id_info(self))
     }
 
     // =========================

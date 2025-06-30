@@ -2,7 +2,7 @@ use crate::HolonError;
 use base_types::MapString;
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
-use super::{EssentialHolonContent, state::AccessType, TransientHolon};
+use super::{state::AccessType, EssentialHolonContent, TransientHolon};
 
 /// The `HolonBehavior` trait defines the core interface for interacting with Holon instances,
 /// including data access, lifecycle control, and diagnostic capabilities.
@@ -118,17 +118,6 @@ pub trait HolonBehavior {
 
     /// Modifies the Holon's 'property_map'.
     fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError>;
-
-    // =========================
-    //       DIAGNOSTICS
-    // =========================
-
-    /// Provides structured diagnostic details about the Holon’s phase, state, and key metadata.
-    ///
-    /// # Usage
-    /// Designed for debugging, tracing, or visualizing Holon state.
-    ///
-    fn debug_info(&self) -> String;
 
     // ==================
     //      HELPERS

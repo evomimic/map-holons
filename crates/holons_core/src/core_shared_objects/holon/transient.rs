@@ -10,7 +10,6 @@ use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, Proper
 use serde::{Deserialize, Serialize};
 
 use crate::core_shared_objects::{
-    holon::{key_info, local_id_info},
     HolonError, ReadableRelationship, StagedHolon, TransientRelationshipMap,
 };
 
@@ -241,17 +240,6 @@ impl HolonBehavior for TransientHolon {
         self.is_accessible(AccessType::Write)?;
         self.property_map = map;
         Ok(())
-    }
-
-    // =======================
-    //       DIAGNOSTICS
-    // =======================
-
-    fn debug_info(&self) -> String {
-        let phase_info = "TransientHolon";
-        let state_info = format!("{:?}", self.holon_state); // Directly shows Mutable/Immutable
-
-        format!("{} / {} / {} / {}", phase_info, state_info, key_info(self), local_id_info(self))
     }
 
     // ===================

@@ -3,7 +3,6 @@ use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, Proper
 use serde::{Deserialize, Serialize};
 
 use crate::core_shared_objects::{
-    holon::{key_info, local_id_info},
     HolonError,
 };
 
@@ -158,33 +157,17 @@ impl HolonBehavior for SavedHolon {
 
     fn increment_version(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        Ok(())
+        unreachable!("SavedHolon should never allow write access")
     }
 
     fn update_original_id(&mut self, _id: Option<LocalId>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        Ok(())
+        unreachable!("SavedHolon should never allow write access")
     }
 
     fn update_property_map(&mut self, _map: PropertyMap) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        Ok(())
-    }
-
-    // ====================
-    //     DIAGNOSTICS
-    // ====================
-
-    /// Provides structured diagnostic information about the Holon's phase and state.
-    fn debug_info(&self) -> String {
-        let phase_info = "SavedHolon";
-        let state_info = format!(
-            "{} / {}",
-            format!("{:?}", self.holon_state), // Immutable/Deleted
-            format!("{:?}", self.saved_state)  // Fetched, Deleted, etc.
-        );
-
-        format!("{} / {} / {} / {}", phase_info, state_info, key_info(self), local_id_info(self))
+        unreachable!("SavedHolon should never allow write access")
     }
 
     // ==============
