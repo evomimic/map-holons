@@ -1,31 +1,24 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
-// use crate::get_holon_by_base_key_from_test_state;
-use core::panic;
-use std::cell::RefCell;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
-use crate::shared_test::test_data_types::DancesTestCase;
-
-use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
-
-use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_add_related_holon::execute_add_related_holons;
-
-use crate::shared_test::test_context::init_test_context;
-use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use crate::shared_test::test_data_types::BOOK_KEY;
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::holon_operations_api::*;
-use holons_core::query_layer::QueryExpression;
-use holons_core::{HolonCollectionApi, HolonReadable, HolonWritable, HolonsContextBehavior};
-use pretty_assertions::assert_eq;
 use rstest::*;
+
+use crate::shared_test::{
+    setup_book_author_steps_with_context,
+    test_add_related_holon::execute_add_related_holons,
+    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_data_types::{DancesTestCase, BOOK_KEY},
+};
 use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{HolonId, BaseTypeKind};
+use core_types::{BaseTypeKind, HolonId};
+use holons_core::{
+    core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression, reference_layer::get_staged_holon_by_base_key,
+    stage_new_holon_api, HolonCollection, HolonCollectionApi, HolonError, HolonReadable,
+    HolonWritable, HolonsContextBehavior, RelationshipName,
+};
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
-use std::collections::btree_map::BTreeMap;
-use std::rc::Rc;
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {

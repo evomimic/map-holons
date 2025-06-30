@@ -195,7 +195,7 @@ export interface Holon {
   id?: string //Holon_id  todo update types 
   state: HolonState,
   validation_state: ValidationState,
-  //saved_node: null,
+  //record: null,
   //predecessor: null,
   descriptor?: HolonReference
   property_map: PropertyMap,

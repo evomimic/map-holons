@@ -1,5 +1,5 @@
 use crate::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
+    Holon, CommitResponse, HolonCollection, HolonError, RelationshipName,
 };
 use crate::reference_layer::HolonsContextBehavior;
 use core_types::HolonId;

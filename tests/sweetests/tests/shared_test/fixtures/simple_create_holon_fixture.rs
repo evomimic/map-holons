@@ -1,26 +1,20 @@
 // #![allow(dead_code)]
 
-// use crate::get_holon_by_base_key_from_test_state;
-use core::panic;
-use std::cell::RefCell;
-use tracing::{error, info, warn};
-//use holochain::core::author_key_is_valid;
-
-use crate::shared_test::setup_book_author_steps_with_context;
-use crate::shared_test::test_context::init_test_context;
-use crate::shared_test::test_context::TestContextConfigOption::TestFixture;
-use crate::shared_test::test_data_types::DancesTestCase;
-use holons_core::core_shared_objects::{Holon, HolonCollection, HolonError, RelationshipName};
-use holons_core::dances::dance_response::ResponseStatusCode;
-use holons_core::query_layer::QueryExpression;
-use holons_core::{HolonsContextBehavior, StagedReference};
-use pretty_assertions::assert_eq;
 use rstest::*;
+
+use crate::shared_test::{
+    setup_book_author_steps_with_context,
+    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_data_types::DancesTestCase,
+};
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::HolonId;
+use holons_core::{
+    core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression, HolonCollection, HolonError, HolonsContextBehavior,
+    RelationshipName, StagedReference,
+};
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
-use std::collections::btree_map::BTreeMap;
-use std::rc::Rc;
 
 /// This function creates a set of simple (undescribed) holons
 ///

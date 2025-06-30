@@ -1,22 +1,30 @@
-use std::collections::BTreeMap;
-
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
-use holons_core::dances::ResponseStatusCode;
-use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
-use holons_core::{HolonReference, SmartReference};
-use rstest::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
+};
+
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use holons_core::{
+    core_shared_objects::HolonBehavior,
+    dances::ResponseStatusCode,
+    query_layer::{Node, NodeCollection, QueryExpression},
+    HolonReference, SmartReference,
+};
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-use tracing::{debug, info};
+
+use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(

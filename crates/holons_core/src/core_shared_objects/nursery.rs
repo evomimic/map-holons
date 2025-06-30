@@ -1,9 +1,12 @@
-use crate::core_shared_objects::holon_pool::{HolonPool, SerializableHolonPool};
-use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::{Holon, HolonError, HolonState, NurseryAccess};
+use super::{
+    holon_pool::{HolonPool, SerializableHolonPool},
+    nursery_access_internal::NurseryAccessInternal,
+    Holon, TransientHolon,
+};
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
-use core_types::TemporaryId;
+use crate::{HolonError, NurseryAccess};
 use base_types::MapString;
+use core_types::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
 
@@ -29,26 +32,19 @@ impl Nursery {
     ///
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
-    fn stage_holon(&self, holon: Holon) -> Result<TemporaryId, HolonError> {
-        self.staged_holons.borrow_mut().insert_holon(holon)
+    fn stage_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
+        let staged_holon = holon.to_staged()?;
+        self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))
     }
 
-    /// This function converts a TemporaryId into a StagedReference
+    /// This function converts a TemporaryId into a StagedReference.
     /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
-    /// Returns HolonError::NotAccessible if the staged holon is in an Abandoned state
     fn to_validated_staged_reference(
         &self,
         id: &TemporaryId,
     ) -> Result<StagedReference, HolonError> {
-        let holon_rc = self.get_holon_by_id(id)?;
-
-        let holon = holon_rc.borrow();
-        if let HolonState::Abandoned = holon.state {
-            return Err(HolonError::NotAccessible(
-                "to_validated_staged_reference".to_string(),
-                "Abandoned".to_string(),
-            ));
-        }
+        // Determine if the id references a StagedHolon in the Nursery
+        let _holon_rc = self.get_holon_by_id(id)?;
 
         Ok(StagedReference::from_temporary_id(id))
     }
@@ -96,7 +92,7 @@ impl HolonStagingBehavior for Nursery {
         self.staged_holons.borrow().len() as i64
     }
 
-    fn stage_new_holon(&self, holon: Holon) -> Result<StagedReference, HolonError> {
+    fn stage_new_holon(&self, holon: TransientHolon) -> Result<StagedReference, HolonError> {
         let new_id = self.stage_holon(holon)?;
         self.to_validated_staged_reference(&new_id)
     }

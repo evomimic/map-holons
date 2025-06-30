@@ -1,20 +1,32 @@
 use std::rc::Rc;
 
+use crate::core_shared_objects::{
+    holon::{state::AccessType, EssentialHolonContent},
+    TransientHolon,
+};
 use crate::reference_layer::HolonsContextBehavior;
 
-use crate::core_shared_objects::{
-    AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
-};
+use crate::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
 
 use base_types::MapString;
 use core_types::HolonId;
 use integrity_core_types::{PropertyName, PropertyValue};
 
+use super::HolonReference;
+
 pub trait HolonReadable {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError>;
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError>;
 
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;
+
+    fn get_predecessor(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<HolonReference>, HolonError>;
 
     /// Returns the value for the specified property
     fn get_property_value(
@@ -50,7 +62,6 @@ pub trait HolonReadable {
     /// # Notes
     /// - The method ensures that the returned `HolonCollection` is never `None`; it is guaranteed to
     ///   contain either related holons or be empty.
-
     fn get_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,

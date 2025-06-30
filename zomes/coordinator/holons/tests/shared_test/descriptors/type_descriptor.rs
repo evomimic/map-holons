@@ -2,8 +2,8 @@
 
 use holons::holon_types::Holon;
 use holons::relationship::HolonCollection;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{
+use integrity_core_types::holon_node::PropertyName;
+use integrity_core_types::value_types::{
     TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 

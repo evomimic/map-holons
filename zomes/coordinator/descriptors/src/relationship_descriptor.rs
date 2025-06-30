@@ -1,8 +1,9 @@
 use hdi::prelude::debug;
 
+use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::{HolonReference, HolonWritable, HolonsContextBehavior, StagedReference};
 
-use holons_core::core_shared_objects::{Holon, HolonError, RelationshipName};
+use holons_core::core_shared_objects::{HolonError, RelationshipName};
 
 use crate::descriptor_types::{
     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
@@ -74,7 +75,7 @@ pub fn define_relationship_type(
 
     // Build new Relationship Type
 
-    let mut relationship_type = Holon::new();
+    let mut relationship_type = TransientHolon::new();
 
     // Add its properties
     relationship_type

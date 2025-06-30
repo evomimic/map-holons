@@ -7,33 +7,41 @@ use crate::guest_shared_objects::{save_smartlink, SmartLink};
 use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolonNodeInput};
 
 use holons_core::core_shared_objects::{
-    AccessType, CommitRequestStatus, CommitResponse, Holon, HolonCollection, HolonError,
-    HolonState, RelationshipName,
+    holon::state::{AccessType, StagedState},
+    CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, HolonError,
+    RelationshipName, StagedHolon,
 };
 use holons_core::reference_layer::{HolonReadable, HolonsContextBehavior};
-use holons_core::utils::as_json;
+// use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+// use std::fmt::format;
 use std::rc::Rc;
 
 /// `commit`
 ///
 /// This function attempts to persist the state of all staged_holons AND their relationships.
+/// It is not completely Atomic - since successfully committed holons will get saved to the Holochain persistance store,
+/// however, the CommitResponse is only considered 'Complete' if ALL the attempts are successful , as well as,
+/// the space_manager's staged_holons are only cleared IF this is the case. Otherwise, the failed holons StagedState will remain unchanged
+/// and their data objects will contain the associated errors that were returned.
+///
+///
+/// A further description of this process is detailed below:
 ///
 /// The commit is performed in two passes: (1) staged_holons, (2) their relationships.
 ///
 /// In the first pass,
 /// * if a staged_holon commit succeeds,
-///     * change holon's state to `Saved`
-///     * populate holon's saved_node
-///     * add the holon to the saved_nodes vector in the CommitResponse
+///     * get the LocalId from the action_address in the returned Record
+///     * StagedState variant is set to 'Committed' containing the above 'saved_id'
+///     * add the holon to the saved_holons vector in the CommitResponse
 /// * if a staged_holon commit fails,
 ///     * leave holon's state unchanged
-///     * leave holon's saved_node unpopulated
-///     * push the error into the holon's errors vector
-///     * do NOT add the holon to the saved_nodes vector in the CommitResponse
+///     * push the associated error into the holon's errors vector
+///     * do NOT add the holon to the saved_holons vector in the CommitResponse
 ///
 /// If ANY staged_holon commit fails:
 /// * The 2nd pass (to commit the staged_holon's relationships) is SKIPPED
@@ -42,8 +50,7 @@ use std::rc::Rc;
 ///
 /// Otherwise, the 2nd pass is performed.
 /// * If ANY attempt to add a relationship generates an Error, the error is pushed into the
-/// source holon's `errors` vector and processing continues
-///
+/// source holon's `errors` vector and processing continues.
 ///
 /// If relationship commits succeed for ALL staged_holons,
 ///     * The space_manager's staged_holons are cleared
@@ -62,13 +69,12 @@ pub fn commit(
     // If any commit errors are encountered, reset request_status to `Incomplete`
     let mut response = CommitResponse {
         status: CommitRequestStatus::Complete,
-        commits_attempted: MapInteger(0), // staged_holons.len() as i64),
+        commits_attempted: MapInteger(0), // staged_holons.len() as i64,
         saved_holons: Vec::new(),
         abandoned_holons: Vec::new(),
     };
 
     // Get the staged holons from the Nursery
-
     let stage_count = MapInteger(staged_holons.len() as i64);
     if stage_count.0 < 1 {
         info!("Stage empty, nothing to commit!");
@@ -79,26 +85,46 @@ pub fn commit(
     // FIRST PASS: Commit Staged Holons
     {
         info!("\n\nStarting FIRST PASS... commit staged_holons...");
-        for rc_holon in staged_holons {
-            trace!(" In commit_service... getting ready to call commit()");
-            let outcome = commit_holon(rc_holon);
-            match outcome {
-                Ok(holon) => match holon.state {
-                    HolonState::Abandoned => {
-                        // should these be indexed?
-                        //if !response.abandoned_holons.contains(&holon) {
-                        response.abandoned_holons.push(holon);
-                        //}
+        for rc_holon in staged_holons.iter().cloned() {
+            {
+                rc_holon.borrow().is_accessible(AccessType::Commit)?;
+            }
+
+            let should_commit = {
+                let borrowed = rc_holon.borrow();
+                matches!(&*borrowed, Holon::Staged(_))
+            };
+
+            if should_commit {
+                trace!(" In commit_service... getting ready to call commit()");
+                let outcome = commit_holon(rc_holon);
+                match outcome {
+                    Ok(holon) => match holon {
+                        Holon::Staged(ref staged_holon) => {
+                            match staged_holon.get_staged_state() {
+                                StagedState::Abandoned => {
+                                    // should these be indexed?
+                                    //if !response.abandoned_holons.contains(&holon) {
+                                    response.abandoned_holons.push(holon);
+                                    //}
+                                }
+                                StagedState::Committed(_saved_id) => {
+                                    response.saved_holons.push(holon);
+                                }
+                                _ => {}
+                            }
+                        }
+                        _ => unreachable!(),
+                    },
+                    Err(error) => {
+                        response.status = CommitRequestStatus::Incomplete;
+                        warn!("Attempt to commit holon returned error: {:?}", error.to_string());
                     }
-                    HolonState::Saved => {
-                        response.saved_holons.push(holon);
-                    }
-                    _ => {}
-                },
-                Err(error) => {
-                    response.status = CommitRequestStatus::Incomplete;
-                    warn!("Attempt to commit holon returned error: {:?}", error.to_string());
-                }
+                };
+            } else {
+                return Err(HolonError::InvalidHolonReference(
+                    "All holons in staged_holons must be of type Holon::Staged".to_string(),
+                ));
             }
         }
     }
@@ -112,160 +138,151 @@ pub fn commit(
         info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
         //let commit_manager = context.commit_manager.borrow();
         for rc_holon in staged_holons {
-            //commit_manager.staged_holons.clone
-            let outcome = commit_relationships(context, rc_holon);
-            if let Err(error) = outcome {
-                rc_holon.borrow_mut().errors.push(error.clone());
-                response.status = CommitRequestStatus::Incomplete;
-                warn!("Attempt to commit relationship returned error: {:?}", error.to_string());
+            let mut holon_write = rc_holon.borrow_mut();
+
+            if let Holon::Staged(staged_holon) = &mut *holon_write {
+                let outcome = commit_relationships(context, &staged_holon);
+                if let Err(error) = outcome {
+                    staged_holon.add_error(error.clone())?;
+                    response.status = CommitRequestStatus::Incomplete;
+                    warn!("Attempt to commit relationship returned error: {:?}", error.to_string());
+                }
             }
         }
     }
 
     info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
-    for saved_holon in &response.saved_holons {
-        debug!("{}", as_json(saved_holon));
-    }
+    // for saved_holon in &response.saved_holons {
+    //     debug!("{}", as_json(saved_holon));
+    // }
     Ok(response)
 }
 
 /// `commit_holon` saves a staged holon to the persistent store.
 ///
-/// If the staged holon is already  `Fetched`, `Saved`, or `Abandoned`, commit does nothing.
+/// If the staged_state is `Abandoned`, 'Committed', or 'ForUpdate' then commit does nothing.
 ///
-/// If the staged holon is `New`, commit attempts to create a HolonNode.
+/// If the staged holon is `ForCreate`, commit attempts to create a HolonNode.
 ///
-/// If the staged holon is `Changed`, commit persists a new version of the HolonNode
+/// If the staged holon is `ForUpdateChanged`, commit persists a new version of the HolonNode.
 ///
-/// If the create or update is successful, the holon's `saved_node` is set from the record
-/// returned, its `state` is changed to `Saved`, so that commits are idempotent, and the
-/// function returns a clone of self.
+/// If the create or update is successful, the holon's `LocalId` is set from the action_address of the Record
+/// returned, its `staged_state` is changed to `Committed`, so that commits are idempotent, and the
+/// function returns a clone of the holon_write.
 ///
 /// If an error is encountered, it is pushed into the holons `errors` vector, the holon's state
 /// is left unchanged and an Err is returned.
 ///
+fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
+    let mut holon_write =
+        rc_holon.try_borrow_mut().map_err(|e| HolonError::WasmError(e.to_string()))?;
+    if let Holon::Staged(staged_holon) = &mut *holon_write {
+        let staged_state = staged_holon.get_staged_state();
 
-fn commit_holon(rc_holon: &Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
-    let mut holon_write = rc_holon.borrow_mut();
-    debug!(
-        "Entered Holon::commit for holon with key {:#?} in {:#?} state",
-        holon_write.get_key()?.unwrap_or_else(|| MapString("<None>".to_string())).0,
-        holon_write.state
-    );
-    match holon_write.state {
-        HolonState::New => {
-            // Create a new HolonNode from this Holon and request it be created
-            trace!("HolonState is New... requesting new HolonNode be created in the DHT");
-            let result = create_holon_node(holon_write.clone().into_node());
+        match staged_state {
+            StagedState::ForCreate => {
+                // Create a new HolonNode from this Holon and request it be created
+                trace!("StagedState is New... requesting new HolonNode be created in the DHT");
+                let node = staged_holon.into_node();
+                let result = create_holon_node(node);
 
-            match result {
-                Ok(record) => {
-                    holon_write.state = HolonState::Saved;
-                    holon_write.saved_node = Option::from(record);
-
-                    Ok(holon_write.clone())
-                }
-                Err(error) => {
-                    let holon_error = HolonError::from(error);
-                    holon_write.errors.push(holon_error.clone());
-                    Err(holon_error)
-                }
-            }
-        }
-
-        HolonState::Changed => {
-            // Changed holons MUST have an original_id
-            if let Some(ref node) = holon_write.saved_node {
-                let original_holon_node_hash = match holon_write.get_original_id()? {
-                    Some(id) => Ok(id.0),
-                    None => Err(HolonError::InvalidUpdate("original_id".to_string())),
-                }?;
-                let input = UpdateHolonNodeInput {
-                    original_holon_node_hash,
-                    previous_holon_node_hash: node.action_address().clone(),
-                    updated_holon_node: holon_write.clone().into_node(),
-                };
-                debug!("Requesting HolonNode be updated in the DHT");
-                let result = update_holon_node(input);
                 match result {
                     Ok(record) => {
-                        holon_write.state = HolonState::Saved;
-                        holon_write.saved_node = Option::from(record);
-                        Ok(holon_write.clone())
+                        staged_holon.to_committed(LocalId(record.action_address().clone()))?;
+
+                        return Ok(holon_write.clone());
                     }
                     Err(error) => {
                         let holon_error = HolonError::from(error);
-                        holon_write.errors.push(holon_error.clone());
-                        Err(holon_error)
+                        staged_holon.add_error(holon_error.clone())?;
+
+                        return Err(holon_error);
                     }
                 }
-            } else {
-                let holon_error = HolonError::HolonNotFound(
-                    "Holon marked Changed, but has no saved_node".to_string(),
-                );
-                holon_write.errors.push(holon_error.clone());
-                Err(holon_error)
+            }
+            StagedState::ForUpdateChanged => {
+                // Changed holons MUST have an original_id
+                let original_id = staged_holon.get_original_id();
+                if let Some(id) = original_id {
+                    let original_holon_node_hash = id.0;
+                    let previous_holon_node_hash = staged_holon.get_local_id()?.0;
+
+                    let input = UpdateHolonNodeInput {
+                        original_holon_node_hash,
+                        previous_holon_node_hash,
+                        updated_holon_node: staged_holon.clone().into_node(),
+                    };
+                    debug!("Requesting HolonNode be updated in the DHT"); //
+
+                    let result = update_holon_node(input);
+                    match result {
+                        Ok(record) => {
+                            staged_holon.to_committed(LocalId(record.action_address().clone()))?;
+
+                            return Ok(holon_write.clone());
+                        }
+                        Err(error) => {
+                            let holon_error = HolonError::from(error);
+                            staged_holon.add_error(holon_error.clone())?;
+
+                            return Err(holon_error);
+                        }
+                    }
+                } else {
+                    let holon_error = HolonError::HolonNotFound(
+                        "Holon marked Changed, but has no record".to_string(),
+                    );
+                    staged_holon.add_error(holon_error.clone())?;
+
+                    return Err(holon_error);
+                }
+            }
+            _ => {
+                // No save needed for Abandoned, Committed, or ForUpdate, just return Holon
+                debug!("Skipping commit for holon in {:#?} state", staged_state);
+
+                Ok(holon_write.clone())
             }
         }
-
-        _ => {
-            // No save needed for Fetched, Saved, Abandoned, or Transient, just return Holon
-            debug!("Skipping commit for holon in {:#?} state", holon_write.state);
-
-            Ok(holon_write.clone())
-        }
+    } else {
+        Err(HolonError::InvalidParameter(format!(
+            "Can only commit staged holons, attempted to commit: {:?} ",
+            holon_write
+        )))
     }
 }
+
 /// commit_relationship() saves a `Saved` holon's relationships as SmartLinks. It should only be invoked
-/// AFTER staged_holons have been successfully committed.
+/// AFTER staged_holons have been successfully committed, thus only accepts a StagedHolon object.
 ///
-/// If the staged holon is `Fetched`, `New`, or `Changed` commit does nothing.
-///
-/// If the staged holon is `Saved`, commit_relationship iterates through the holon's
+/// If the staged_state is `Committed`, commit_relationship iterates through the holon's
 /// `relationship_map` and calls commit on each member's HolonCollection.
+/// Any other states are ignored.
 ///
-/// If all commits are successful, the function returns a clone a self. Otherwise, the
-/// function returns an error.
-///
+/// The function only returns OK if ALL commits are successfull.
 fn commit_relationships(
     context: &dyn HolonsContextBehavior,
-    rc_holon: &Rc<RefCell<Holon>>,
-) -> Result<Holon, HolonError> {
-    let holon = rc_holon.borrow();
+    holon: &StagedHolon,
+) -> Result<(), HolonError> {
     debug!("Entered Holon::commit_relationships");
 
-    match holon.state {
-        HolonState::Saved => {
-            match holon.saved_node.clone() {
-                Some(record) => {
-                    let source_local_id = LocalId(record.action_address().clone());
-                    // Use the public `iter()` method to access the map
-                    for (name, holon_collection_rc) in holon.staged_relationship_map.iter() {
-                        debug!("COMMITTING {:#?} relationship", name.0.clone());
-                        // Borrow the `RefCell` to access the `HolonCollection`
-                        let holon_collection = holon_collection_rc.borrow();
-                        commit_relationship(
-                            context,
-                            source_local_id.clone(),
-                            name.clone(),
-                            &holon_collection,
-                        )?;
-                    }
-
-                    Ok(holon.clone())
-                }
-                None => Err(HolonError::HolonNotFound(
-                    "Holon marked Saved, but has no saved_node".to_string(),
-                )),
+    match holon.get_staged_state() {
+        StagedState::Committed(local_id) => {
+            for (name, holon_collection_rc) in holon.get_staged_relationship_map()?.map.iter() {
+                debug!("COMMITTING {:#?} relationship", name.0.clone());
+                let holon_collection = holon_collection_rc.borrow();
+                commit_relationship(context, local_id.clone(), name.clone(), &holon_collection)?;
             }
-        }
 
+            Ok(())
+        }
         _ => {
-            // Ignore all other states, just return self
-            Ok(holon.clone())
+            // Ignore all other states, just return Ok
+            Ok(())
         }
     }
 }
+
 /// The method
 fn commit_relationship(
     context: &dyn HolonsContextBehavior,

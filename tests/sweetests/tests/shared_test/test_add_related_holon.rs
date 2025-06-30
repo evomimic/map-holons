@@ -1,23 +1,28 @@
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase, TestReference};
-use crate::shared_test::*;
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::info;
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dance_request;
-use holons_core::core_shared_objects::{Holon, RelationshipName};
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::reference_layer::StagedReference;
-use holons_core::{HolonReadable, HolonReference};
-use pretty_assertions::assert_eq;
-use rstest::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DancesTestCase, TestReference},
+};
+
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use holons_core::{
+    core_shared_objects::{Holon, HolonBehavior},
+    dances::{ResponseBody, ResponseStatusCode},
+    HolonReadable, HolonReference, RelationshipName, StagedReference,
+};
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-use std::collections::BTreeMap;
-use tracing::info;
+
+use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dance_request;
 
 /// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
 /// and holon references. Accepting holons_to_add as TestReferences allows the target holons to

@@ -1,10 +1,14 @@
 use crate::core_shared_objects::HolonCollection;
-use hdk::prelude::*;
 use base_types::MapString;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt;
-use std::rc::Rc;
+use hdk::prelude::*;
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    fmt,
+    rc::Rc,
+};
+
+use super::{HolonError, ReadableRelationship, TransientRelationshipMap};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct RelationshipName(pub MapString);
@@ -14,13 +18,13 @@ impl fmt::Display for RelationshipName {
     }
 }
 /// Custom RelationshipMap is only used for caching and will never be serialized
-#[derive(SerializedBytes, Clone, Debug)]
+#[derive(Clone, Debug, SerializedBytes, Eq, PartialEq)]
 pub struct RelationshipMap {
     map: RefCell<HashMap<RelationshipName, Rc<HolonCollection>>>,
 }
 impl RelationshipMap {
     /// Creates a new, empty `RelationshipMap`.
-    pub fn new() -> Self {
+    pub fn new_empty() -> Self {
         Self { map: RefCell::new(HashMap::new()) }
     }
 
@@ -45,6 +49,38 @@ impl RelationshipMap {
         self.map.borrow().iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 }
+
+impl ReadableRelationship for RelationshipMap {
+    // =====================
+    //     CONSTRUCTORS
+    // =====================
+
+    fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
+        let mut cloned_relationship_map = BTreeMap::new();
+
+        for (name, collection) in self.map.borrow().iter() {
+            let cloned_collection = collection.clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
+            cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
+        }
+
+        Ok(TransientRelationshipMap::new(cloned_relationship_map))
+    }
+
+    // ====================
+    //    DATA ACCESSORS
+    // ====================
+
+    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
+        if let Some(rc_collection) = self.map.borrow().get(relationship_name) {
+            // Clone the inner HolonCollection
+            Rc::clone(rc_collection)
+        } else {
+            // Return a new Rc<HolonCollection> if the entry doesn't exist
+            Rc::new(HolonCollection::new_staged())
+        }
+    }
+}
+
 // Implement Serialize for RelationshipMap
 impl Serialize for RelationshipMap {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

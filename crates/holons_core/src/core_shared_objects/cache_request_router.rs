@@ -1,6 +1,5 @@
-use crate::core_shared_objects::{
-    Holon, HolonCacheAccess, HolonCacheManager, HolonCollection, HolonError, RelationshipName,
-};
+use super::Holon;
+use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection, HolonError, RelationshipName};
 use core_types::HolonId;
 use std::cell::RefCell;
 use std::rc::Rc;
