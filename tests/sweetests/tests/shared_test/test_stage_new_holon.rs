@@ -1,32 +1,36 @@
-use std::collections::BTreeMap;
-
-use crate::shared_test::test_data_types::{
-    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-};
-use crate::shared_test::*;
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use holon_dance_builders::stage_new_holon_dance::build_stage_new_holon_dance_request;
-use holons_client::init_client_context;
-use holons_core::core_shared_objects::Holon;
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::{HolonReadable, HolonsContextBehavior, StagedReference};
-use rstest::*;
+use crate::shared_test::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{
+        DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    },
+};
+
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use holon_dance_builders::stage_new_holon_dance::build_stage_new_holon_dance_request;
+use holons_client::init_client_context;
+use holons_core::core_shared_objects::{Holon, HolonBehavior, TransientHolon};
+use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::{HolonReadable, HolonsContextBehavior, StagedReference};
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-use tracing::{debug, info};
 
 /// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
 /// supplied Holon and confirms a Success response
 ///
 pub async fn execute_stage_new_holon(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    expected_holon: Holon,
+    transient_holon: TransientHolon,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
@@ -34,7 +38,7 @@ pub async fn execute_stage_new_holon(
     let context = test_state.context();
 
     // 2. Build the DanceRequest
-    let request = build_stage_new_holon_dance_request(expected_holon.clone())
+    let request = build_stage_new_holon_dance_request(transient_holon.clone())
         .expect("Failed to build stage_new_holon request");
 
     debug!("Dance Request: {:#?}", request);
@@ -53,10 +57,10 @@ pub async fn execute_stage_new_holon(
 
     // 5. Verify the staged Holon
     if let ResponseBody::StagedRef(staged_holon) = response.body {
-        debug!("Staged holon reference returned: {:?}", staged_holon);
+        debug!("Staged holon reference returned: {:#?}", staged_holon);
 
         assert_eq!(
-            expected_holon.essential_content(),
+            transient_holon.essential_content(),
             staged_holon.essential_content(context),
             "Staged Holon content did not match expected"
         );

@@ -1,12 +1,14 @@
 use hdk::prelude::*;
 use std::rc::Rc;
 
+use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::{
     HolonReadable, HolonWritable, HolonsContextBehavior, SmartReference, StagedReference,
 };
 
 use crate::core_shared_objects::{
-    AccessType, EssentialHolonContent, Holon, HolonCollection, HolonError, RelationshipName,
+    holon::{state::AccessType, EssentialHolonContent},
+    HolonCollection, HolonError, RelationshipName,
 };
 
 use base_types::MapString;
@@ -25,7 +27,10 @@ pub enum HolonReference {
 }
 
 impl HolonReadable for HolonReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<Holon, HolonError> {
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
         match self {
             HolonReference::Smart(smart_reference) => smart_reference.clone_holon(context),
             HolonReference::Staged(staged_reference) => staged_reference.clone_holon(context),
@@ -59,6 +64,16 @@ impl HolonReadable for HolonReference {
         }
     }
 
+    fn get_predecessor(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        match self {
+            HolonReference::Smart(smart_reference) => smart_reference.get_predecessor(context),
+            HolonReference::Staged(staged_reference) => staged_reference.get_predecessor(context),
+        }
+    }
+
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -89,14 +104,13 @@ impl HolonReadable for HolonReference {
         }
     }
 
-    fn get_versioned_key(&self, context: &dyn HolonsContextBehavior,) -> Result<MapString, HolonError> {
+    fn get_versioned_key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<MapString, HolonError> {
         match self {
-            HolonReference::Smart(reference) => {
-                reference.get_versioned_key(context)
-            }
-            HolonReference::Staged(reference) => {
-                reference.get_versioned_key(context)
-            }
+            HolonReference::Smart(reference) => reference.get_versioned_key(context),
+            HolonReference::Staged(reference) => reference.get_versioned_key(context),
         }
     }
 

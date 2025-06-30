@@ -1,21 +1,24 @@
-use std::collections::BTreeMap;
-
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::info;
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
-use crate::shared_test::*;
-use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
-use holons_client::init_client_context;
-use holons_core::dances::ResponseBody;
-use rstest::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DancesTestCase},
+};
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use holons_core::{core_shared_objects::HolonBehavior, dances::ResponseBody};
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-use tracing::info;
+
+use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
+use holons_client::init_client_context;
 
 /// This function iterates through the expected_holons vector supplied as a parameter
 /// and for each holon: builds and dances a `get_holon_by_id` DanceRequest,

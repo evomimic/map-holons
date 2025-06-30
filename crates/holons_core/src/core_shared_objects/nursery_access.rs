@@ -1,4 +1,5 @@
-use crate::core_shared_objects::{Holon, HolonError};
+use crate::HolonError;
+use super::Holon;
 use core_types::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};

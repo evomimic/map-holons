@@ -1,7 +1,6 @@
+use super::holon::state::AccessType;
 use crate::reference_layer::{HolonReadable, HolonReference, HolonsContextBehavior};
-
-use crate::core_shared_objects::{AccessType, HolonError};
-use crate::HolonCollectionApi;
+use crate::{HolonCollectionApi, HolonError};
 use core::fmt;
 use hdk::prelude::*;
 use base_types::{MapInteger, MapString};
@@ -10,6 +9,7 @@ use std::collections::BTreeMap;
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {
     Fetched,   // links have been fetched from the persistent store for this collection
+    Transient, // this is the target of a transient relationship and no links should be created
     Staged,    // the links for this collection have not been persisted
     Saved,     // a staged collection for which SmartLinks have been successfully committed
     Abandoned, // a previously staged collection that was abandoned prior to being committed
@@ -19,6 +19,7 @@ impl fmt::Display for CollectionState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             CollectionState::Fetched => write!(f, "Fetched"),
+            CollectionState::Transient => write!(f, "Transient"),
             CollectionState::Staged => write!(f, "Staged"),
             CollectionState::Saved => write!(f, "Saved"),
             CollectionState::Abandoned => write!(f, "Abandoned"),
@@ -36,13 +37,6 @@ pub struct HolonCollection {
 impl HolonCollection {
     // CONSTRUCTORS //
 
-    pub fn new_staged() -> Self {
-        HolonCollection {
-            state: CollectionState::Staged,
-            members: Vec::new(),
-            keyed_index: BTreeMap::new(),
-        }
-    }
     pub fn new_existing() -> Self {
         HolonCollection {
             state: CollectionState::Fetched,
@@ -51,10 +45,26 @@ impl HolonCollection {
         }
     }
 
+    pub fn new_staged() -> Self {
+        HolonCollection {
+            state: CollectionState::Staged,
+            members: Vec::new(),
+            keyed_index: BTreeMap::new(),
+        }
+    }
+
+    pub fn new_transient() -> Self {
+        HolonCollection {
+            state: CollectionState::Transient,
+            members: Vec::new(),
+            keyed_index: BTreeMap::new(),
+        }
+    }
+
     pub fn clone_for_new_source(&self) -> Result<Self, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let mut collection = self.clone();
-        collection.state = CollectionState::Staged;
+        collection.state = CollectionState::Transient;
 
         Ok(collection)
     }
@@ -78,12 +88,17 @@ impl HolonCollection {
         match self.state {
             CollectionState::Fetched => match access_type {
                 AccessType::Read | AccessType::Write | AccessType::Commit => Ok(()), // Write access to cached Holons are ok, Commit is a no op
-                AccessType::Abandon | AccessType::Clone => {
-                    Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        format!("{:?}", self.state),
-                    ))
-                }
+                AccessType::Abandon | AccessType::Clone => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
+            },
+            CollectionState::Transient => match access_type {
+                AccessType::Read | AccessType::Write | AccessType::Clone => Ok(()), // Write access to cached Holons are ok, Commit is a no op
+                AccessType::Abandon | AccessType::Commit => Err(HolonError::NotAccessible(
+                    format!("{:?}", access_type),
+                    format!("{:?}", self.state),
+                )),
             },
             CollectionState::Staged => match access_type {
                 AccessType::Abandon

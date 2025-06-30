@@ -86,7 +86,7 @@ impl CoreEnumVariantTypeName {
     /// This function returns the variant definition for a given variant type
     fn get_variant_loader(&self) -> EnumVariantLoader {
         // use CoreEnumVariantTypeName::*;
-        // use shared_types_holon::MapInteger;
+        // use integrity_core_types::MapInteger;
         // use crate::enum_variant_loader::CoreEnumVariantTypeName::{TypeKindCollection, TypeKindEnumVariant, TypeKindHolon, TypeKindProperty, TypeKindRelationship, TypeKindValueBoolean, TypeKindValueBooleanArray, TypeKindValueEnum, TypeKindValueEnumArray, TypeKindValueInteger, TypeKindValueIntegerArray, TypeKindValueString, TypeKindValueStringArray, DeletionSemanticAllow, DeletionSemanticBlock, DeletionSemanticCascade};
         // use crate::enum_variant_loader::EnumVariantLoader;
         match self {

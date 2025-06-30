@@ -1,24 +1,30 @@
-use crate::shared_test::test_data_types::{
-    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-};
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
-use holons_core::core_shared_objects::{HolonCollection, RelationshipName};
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::{
-    HolonCollectionApi, HolonError, HolonReadable, HolonReference, SmartReference, StagedReference,
+    core_shared_objects::{Holon, HolonBehavior},
+    dances::{ResponseBody, ResponseStatusCode},
+    HolonCollection, HolonCollectionApi, HolonError, HolonReadable, HolonReference,
+    RelationshipName, SmartReference, StagedReference,
 };
-use rstest::*;
+
 use base_types::MapString;
 use core_types::HolonId;
 use integrity_core_types::PropertyName;
-use std::collections::BTreeMap;
-use tracing::{debug, info};
+
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{
+        DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    },
+};
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -29,8 +35,6 @@ pub async fn execute_stage_new_version(
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a New Version of a Holon ---");
-
-    let predecessor_relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
 
     // 1. Get context from test_state
     let context = test_state.context();
@@ -81,19 +85,11 @@ pub async fn execute_stage_new_version(
     );
 
     // 7. Verify the new version as the original holon as its predecessor
-    let related_holons =
-        version_1.get_related_holons(context, &predecessor_relationship_name).expect(&format!(
-            "{:?} relationship should exist in the returned holon",
-            predecessor_relationship_name
-        ));
-
-    let predecessor = related_holons
-        .get_by_index(0)
-        .expect("Predecessor relationship should contain at least one member");
+    let predecessor = version_1.get_predecessor(context).unwrap();
 
     assert_eq!(
         predecessor,
-        HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None)),
+        Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
         "Predecessor relationship did not match expected"
     );
 

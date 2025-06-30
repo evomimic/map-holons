@@ -16,9 +16,9 @@
 // use shared_test::holon_fixtures::*;
 // use shared_test::test_data_types::{HolonCreatesTestCase, HolonTestCase};
 // use shared_test::*;
-// use shared_types_holon::holon_node::{HolonNode, PropertyMap, PropertyName};
-// use shared_types_holon::value_types::BaseValue;
-// use shared_types_holon::{HolonId, LocalId};
+// use integrity_core_types::holon_node::{HolonNode, PropertyMap, PropertyName};
+// use integrity_core_types::value_types::BaseValue;
+// use integrity_core_types::{HolonId, LocalId};
 //
 // /// This function iterates through the Vec of Holons provided by the test fixture
 // ///
@@ -68,7 +68,7 @@
 //         let _p_count = test_holon.property_map.len();
 //
 //         println!("\n****** Starting create/get test for the following Holon:");
-//         // print_holon_without_saved_node(&test_holon);
+//         // print_holon_without_record(&test_holon);
 //
 //         let _builder_holon = Holon::new();
 //
@@ -132,7 +132,7 @@
 //     println!("To re-run just this test with output, use: 'cargo test -p holons --test holon_tests  -- --show-output'");
 // }
 // #[allow(dead_code)]
-// fn print_holon_without_saved_node(holon: &Holon) {
+// fn print_holon_without_record(holon: &Holon) {
 //     println!("{:#?} Holon: with property map: ", holon.state.clone());
 //     println!("{:#?}", holon.property_map.clone());
 // }

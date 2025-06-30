@@ -1,8 +1,8 @@
 // Bootstrap EnumDescriptor
 /// This file creates an EnumDescriptor Holon and its Associated EnumVariant Holon
 use holons::holon_types::Holon;
-use shared_types_holon::holon_node::PropertyName;
-use shared_types_holon::value_types::{
+use integrity_core_types::holon_node::PropertyName;
+use integrity_core_types::value_types::{
     TypeKind, BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString,
 };
 

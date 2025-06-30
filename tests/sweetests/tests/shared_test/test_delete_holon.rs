@@ -1,21 +1,25 @@
-use std::collections::BTreeMap;
-
 use async_std::task;
+use pretty_assertions::assert_eq;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
-use crate::shared_test::test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase};
 use crate::shared_test::*;
-use holon_dance_builders::delete_holon_dance::build_delete_holon_dance_request;
-use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
-use holons_core::dances::ResponseStatusCode;
-use rstest::*;
+use crate::shared_test::{
+    mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
+};
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
-use integrity_core_types::{LocalId, HolonNode, PropertyMap, PropertyName};
-use tracing::{debug, info};
+use holon_dance_builders::delete_holon_dance::build_delete_holon_dance_request;
+use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
+use holons_core::core_shared_objects::HolonBehavior;
+use holons_core::dances::ResponseStatusCode;
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 
 /// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
 /// and matches the expected response
