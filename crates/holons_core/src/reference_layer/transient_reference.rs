@@ -84,10 +84,6 @@ impl TransientReference {
         // Get the nursery access
         space_manager.get_transient_manager_access()
     }
-
-    fn get_temporary_id(&self) -> &TemporaryId {
-        &self.id
-    }
 }
 
 impl fmt::Display for TransientReference {

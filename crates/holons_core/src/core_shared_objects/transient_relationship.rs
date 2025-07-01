@@ -4,10 +4,7 @@ use derive_new::new;
 use hdk::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    CollectionState, HolonCollectionApi, HolonReference, HolonsContextBehavior,
-    StagedRelationshipMap,
-};
+use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
 
 use super::{
     HolonCollection, HolonError, ReadableRelationship, RelationshipName, WritableRelationship,

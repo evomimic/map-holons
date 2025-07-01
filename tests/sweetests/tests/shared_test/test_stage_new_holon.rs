@@ -15,10 +15,7 @@ use crate::shared_test::{
         DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
     },
 };
-
 use base_types::{MapInteger, MapString};
-use base_types::{MapInteger, MapString};
-use core_types::HolonId;
 use core_types::HolonId;
 use holon_dance_builders::stage_new_holon_dance::build_stage_new_holon_dance_request;
 use holons_client::init_client_context;
@@ -34,7 +31,7 @@ use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 ///
 pub async fn execute_stage_new_holon(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    expected_holon: TransientHolon,
+    transient_holon: TransientHolon,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 

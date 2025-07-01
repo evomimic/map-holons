@@ -3,7 +3,8 @@ use std::rc::Rc;
 
 use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::{
-    HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference };
+    HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference,
+};
 
 use crate::core_shared_objects::{
     holon::{holon_utils::EssentialHolonContent, state::AccessType},
@@ -32,7 +33,9 @@ impl ReadableHolon for HolonReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientHolon, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.clone_holon(context),
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.clone_holon(context)
+            }
             HolonReference::Staged(staged_reference) => staged_reference.clone_holon(context),
             HolonReference::Smart(smart_reference) => smart_reference.clone_holon(context),
         }
@@ -43,7 +46,9 @@ impl ReadableHolon for HolonReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<EssentialHolonContent, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.essential_content(context),
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.essential_content(context)
+            }
             HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
             HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
         }
@@ -51,7 +56,9 @@ impl ReadableHolon for HolonReference {
 
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.get_holon_id(context),
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.get_holon_id(context)
+            }
             HolonReference::Staged(staged_reference) => staged_reference.get_holon_id(context),
             HolonReference::Smart(smart_reference) => smart_reference.get_holon_id(context),
         }
@@ -73,7 +80,9 @@ impl ReadableHolon for HolonReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.get_predecessor(context),
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.get_predecessor(context)
+            }
             HolonReference::Staged(staged_reference) => staged_reference.get_predecessor(context),
             HolonReference::Smart(smart_reference) => smart_reference.get_predecessor(context),
         }
@@ -85,7 +94,7 @@ impl ReadableHolon for HolonReference {
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
         match self {
-             HolonReference::Transient(transient_reference) => {
+            HolonReference::Transient(transient_reference) => {
                 transient_reference.get_property_value(context, property_name)
             }
             HolonReference::Staged(staged_reference) => {
@@ -119,12 +128,10 @@ impl ReadableHolon for HolonReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<MapString, HolonError> {
-    fn get_versioned_key(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<MapString, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.get_versioned_key(context),
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.get_versioned_key(context)
+            }
             HolonReference::Staged(staged_reference) => staged_reference.get_versioned_key(context),
             HolonReference::Smart(smart_reference) => smart_reference.get_versioned_key(context),
         }
@@ -263,7 +270,9 @@ impl HolonReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.get_predecessor(context),
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.get_predecessor(context)
+            }
             HolonReference::Staged(staged_reference) => staged_reference.get_predecessor(context),
             HolonReference::Smart(smart_reference) => smart_reference.get_predecessor(context),
         }

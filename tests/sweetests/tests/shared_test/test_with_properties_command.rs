@@ -1,6 +1,5 @@
 use async_std::task;
 use pretty_assertions::assert_eq;
-use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
 
@@ -23,8 +22,6 @@ use holons_core::{
     ReadableHolon, StagedReference,
 };
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-
-use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

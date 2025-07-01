@@ -1,7 +1,5 @@
 use async_std::task;
-use async_std::task;
 use pretty_assertions::assert_eq;
-use std::collections::BTreeMap;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
 
@@ -20,6 +18,7 @@ use core_types::HolonId;
 use holons_core::dances::descriptors_dance_adapter::build_load_core_schema_dance_request;
 use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+
 /// This function builds and dances a `load_core_schema` DanceRequest
 /// and confirms a Success response
 ///

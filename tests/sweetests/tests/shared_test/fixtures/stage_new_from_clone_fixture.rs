@@ -179,7 +179,6 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         holons_to_add,
         ResponseStatusCode::OK,
         Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon
-        Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon
     )?;
 
     //  COMMIT  // the cloned & modified Book Holon

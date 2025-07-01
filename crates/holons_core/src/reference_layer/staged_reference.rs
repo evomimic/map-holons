@@ -5,17 +5,14 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::core_shared_objects::holon::{HolonBehavior, StagedHolon, TransientHolon};
-use crate::core_shared_objects::WritableRelationship;
+use crate::core_shared_objects::{
+    holon::{holon_utils::EssentialHolonContent, state::AccessType},
+    Holon, HolonBehavior, HolonCollection, HolonError, NurseryAccess, ReadableRelationship,
+    RelationshipName, TransientHolon, WritableRelationship,
+};
 use crate::reference_layer::{
     HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon,
 };
-
-use crate::core_shared_objects::{
-    holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon},
-    HolonCollection, HolonError, NurseryAccess, RelationshipName,
-};
-use crate::reference_layer::{HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior};
 
 use base_types::{BaseValue, MapString};
 use core_types::{HolonId, TemporaryId};
@@ -28,7 +25,7 @@ pub struct StagedReference {
 
 impl StagedReference {
     /// Marks the underlying StagedHolon that is referenced as 'Abandoned'
-    /// 
+    ///
     /// Prevents a commit from taking place and restricts Holon to read-only access.
     ///
     /// # Arguments
@@ -38,15 +35,24 @@ impl StagedReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
         debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-        // Get mutable access to the source holon
-        let holon_refcell = self.get_rc_holon(context)?;
+        // Get access to the source holon
+        let rc_holon = self.get_rc_holon(context)?;
 
-        // Borrow the holon from the RefCell
-        let mut staged_holon = holon_refcell.borrow_mut();
+        // Borrow the holon mutably
+        let mut holon_mut = rc_holon.borrow_mut();
 
-        debug!("borrowed mut for holon: {:#?}", self.id);
-
-        staged_holon.abandon_staged_changes()?;
+        match &mut *holon_mut {
+            Holon::Staged(staged_holon) => {
+                debug!("Mutably borrowing Holon::Staged for staged_id: {:#?}", self.id);
+                staged_holon.abandon_staged_changes()?;
+            }
+            other => {
+                return Err(HolonError::UnexpectedValueType(
+                    "Staged Holon".into(),
+                    format!("{:?}", other),
+                ));
+            }
+        }
 
         Ok(())
     }
@@ -101,10 +107,6 @@ impl StagedReference {
 
         // Get the nursery access
         space_manager.get_nursery_access()
-    }
-
-    fn get_temporary_id(&self) -> &TemporaryId {
-        &self.id
     }
 }
 
@@ -230,32 +232,6 @@ impl ReadableHolon for StagedReference {
 }
 
 impl WriteableHolon for StagedReference {
-    fn abandon_staged_changes(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-
-        let rc_holon = self.get_rc_holon(context)?;
-
-        // Mutably borrow the inner Holon and match it
-        let mut holon_mut = rc_holon.borrow_mut();
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                debug!("Mutably borrowing Holon::Staged for staged_id: {:#?}", self.id);
-                staged_holon.abandon_staged_changes()?;
-            }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
     fn add_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,

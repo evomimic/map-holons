@@ -1,5 +1,6 @@
 // #![allow(dead_code)]
 
+use pretty_assertions::assert_eq;
 use tracing::{error, info};
 
 use rstest::*;
@@ -13,18 +14,11 @@ use crate::shared_test::{
 
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::{BaseTypeKind, HolonId};
-use holons_core::holon_operations_api::*;
-use holons_core::query_layer::QueryExpression;
-use holons_core::{HolonCollectionApi, ReadableHolon, WriteableHolon, HolonsContextBehavior};
-use pretty_assertions::assert_eq;
-use rstest::*;
-use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{BaseTypeKind, HolonId};
 use holons_core::{
     core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression, reference_layer::get_staged_holon_by_base_key,
-    stage_new_holon_api, HolonCollection, HolonCollectionApi, HolonError, HolonReadable,
-    HolonWritable, HolonsContextBehavior, RelationshipName,
+    stage_new_holon_api, HolonCollection, HolonCollectionApi, HolonError, HolonsContextBehavior,
+    ReadableHolon, RelationshipName, WriteableHolon,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 

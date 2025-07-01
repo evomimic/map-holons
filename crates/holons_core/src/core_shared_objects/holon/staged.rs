@@ -6,10 +6,8 @@ use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, Proper
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core_shared_objects::{
-        ReadableRelationship,
-    },
-    HolonCollection, HolonError, RelationshipName, StagedRelationshipMap,
+    core_shared_objects::ReadableRelationship, HolonCollection, HolonError, RelationshipName,
+    StagedRelationshipMap,
 };
 
 use super::{

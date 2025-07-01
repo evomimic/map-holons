@@ -12,13 +12,7 @@ use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, Proper
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core_shared_objects::{
-        holon::{
-            holon_utils::{key_info, local_id_info},
-            StagedHolon,
-        },
-        TransientRelationshipMap,
-    },
+    core_shared_objects::{holon::StagedHolon, TransientRelationshipMap},
     HolonCollection, HolonError, RelationshipName,
 };
 
@@ -96,7 +90,7 @@ impl TransientHolon {
         let mut staged_holon = StagedHolon::new_for_create();
         staged_holon.update_original_id(self.original_id.clone())?;
         staged_holon.update_property_map(self.property_map.clone())?;
-        let map = self.get_transient_relationship_map();
+        let map = self.get_transient_relationship_map()?;
         let staged_map = map.to_staged()?;
         staged_holon.init_relationships(staged_map)?;
 
