@@ -289,6 +289,21 @@ impl HolonServiceApi for GuestHolonService {
 
         // Step 4: Return the commit response
         Ok(commit_response)
+
+        // let nursery_read = internal_nursery.borrow();
+
+        // // Get holons to commit
+        // let staged_holons = nursery_read.get_holons_to_commit().clone();
+        // warn!("STAGED_HOLONS :: {:#?}", staged_holons.clone());
+
+        // // Commit the staged holons
+        // let commit_response = commit_functions::commit(context, &staged_holons)?;
+
+        // // Clear the stage
+        // internal_nursery.borrow_mut().clear_stage();
+
+        // // Return the commit response
+        // Ok(commit_response)
     }
 
     fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {

@@ -1,6 +1,6 @@
 use async_std::task;
 use std::collections::BTreeMap;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use rstest::*;
 
@@ -65,4 +65,5 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
         }
         _ => panic!("Invalid ResponseBody: {:?}", response.body),
     }
+    warn!("Created holons: {:#?}", test_state.created_holons);
 }

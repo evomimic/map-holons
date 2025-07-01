@@ -8,6 +8,7 @@ use crate::shared_test::{
 };
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::HolonId;
+use holons_core::reference_layer::stage_new_holon_api;
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,

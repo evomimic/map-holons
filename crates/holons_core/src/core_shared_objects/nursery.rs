@@ -9,6 +9,7 @@ use base_types::MapString;
 use core_types::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
+use tracing::warn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Nursery {
@@ -128,6 +129,7 @@ impl NurseryAccessInternal for Nursery {
     /// ensuring that commit functions can access the actual Holon instances.
     // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
     fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>> {
+        warn!("NURSERY ::: {:#?}", self.clone());
         self.staged_holons.borrow().get_all_holons()
     }
 
