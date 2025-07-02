@@ -35,7 +35,8 @@ impl Nursery {
     /// The TemporaryId, which is used a unique identifier.
     fn stage_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
         let staged_holon = holon.to_staged()?;
-        self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))
+        let id = self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))?;
+        Ok(id)
     }
 
     /// This function converts a TemporaryId into a StagedReference.
@@ -129,7 +130,6 @@ impl NurseryAccessInternal for Nursery {
     /// ensuring that commit functions can access the actual Holon instances.
     // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
     fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>> {
-        warn!("NURSERY ::: {:#?}", self.clone());
         self.staged_holons.borrow().get_all_holons()
     }
 

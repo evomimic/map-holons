@@ -63,7 +63,7 @@ pub fn commit(
     context: &dyn HolonsContextBehavior,
     staged_holons: &Vec<Rc<RefCell<Holon>>>,
 ) -> Result<CommitResponse, HolonError> {
-    debug!("Entering commit...");
+    info!("Entering commit...");
 
     // Initialize the request_status to Complete, assuming all commits will succeed
     // If any commit errors are encountered, reset request_status to `Incomplete`
@@ -77,14 +77,14 @@ pub fn commit(
     // Get the staged holons from the Nursery
     let stage_count = MapInteger(staged_holons.len() as i64);
     if stage_count.0 < 1 {
-        info!("Stage empty, nothing to commit!");
+        warn!("Stage empty, nothing to commit!");
         return Ok(response);
     }
     response.commits_attempted = stage_count;
 
     // FIRST PASS: Commit Staged Holons
     {
-        info!("\n\nStarting FIRST PASS... commit staged_holons...");
+        info!("\n\nStarting FIRST PASS... commit staged_holons..."); 
         for rc_holon in staged_holons.iter().cloned() {
             {
                 rc_holon.borrow().is_accessible(AccessType::Commit)?;

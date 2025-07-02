@@ -7,7 +7,7 @@ use holons_core::HolonsContextBehavior;
 use tracing::{
     debug,
     // info,
-    // warn
+    warn,
 };
 
 /// A service that executes dance calls while managing session state.
@@ -52,11 +52,10 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         self.load_session_state(context, &mut session_state);
         request.state = Some(session_state);
 
-        debug!("\n\ndance call: request state {:?}", request.state);
+        debug!("\n\n DANCE_CALL_REQUEST :: {:#?}", request.summarize());
 
         // 2. Execute the dance call
         let response = self.conductor.conductor_dance_call(request).await;
-        // warn!("#### GOT RESPONSE :: {:?}", response.clone());
         // 3. Ensure the response includes a valid session state
         assert!(
             response.state.is_some(),
@@ -65,7 +64,6 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
 
         // 4. Restore session state from the response
         let response_session_state = response.state.as_ref().unwrap();
-        // warn!("## GOT SESSION STATE :: {:?}"response_session_state);
         self.load_nursery(context, response_session_state);
         self.load_transient_manager(context, response_session_state);
 
@@ -115,7 +113,6 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     fn load_nursery(&self, context: &dyn HolonsContextBehavior, session_state: &SessionState) {
         let space_manager = context.get_space_manager();
         let staged_holons = session_state.get_staged_holons().clone();
-        // let transient_holons =
         space_manager.import_staged_holons(staged_holons);
     }
 
@@ -138,7 +135,6 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     ) {
         let space_manager = context.get_space_manager();
         let transient_holons = session_state.get_transient_holons().clone();
-        // let transient_holons =
         space_manager.import_transient_holons(transient_holons);
     }
 }

@@ -31,7 +31,6 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
 
     // 2. Build commit DanceRequest (state is handled inside dance_call)
     let request = build_commit_dance_request().expect("Failed to build commit DanceRequest");
-
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
@@ -65,5 +64,4 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
         }
         _ => panic!("Invalid ResponseBody: {:?}", response.body),
     }
-    warn!("Created holons: {:#?}", test_state.created_holons);
 }

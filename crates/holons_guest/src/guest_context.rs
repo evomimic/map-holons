@@ -74,20 +74,20 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - There are issues retrieving holons from persistent storage.
 /// - The creation of a new HolonSpace Holon encounters a failure.
 pub fn init_guest_context(
-    staged_holons: SerializableHolonPool,
     transient_holons: SerializableHolonPool,
+    staged_holons: SerializableHolonPool,
     local_space_holon: Option<HolonReference>,
 ) -> Result<Arc<dyn HolonsContextBehavior>, HolonError> {
     // Step 1: Create the GuestHolonService
-    let mut guest_holon_service = Arc::new(GuestHolonService::new()); // ✅ Freshly created
+    let mut guest_holon_service = Arc::new(GuestHolonService::new()); // Freshly created
 
     // Step 2: Create and initialize the Nursery
     let mut nursery = Nursery::new();
-    nursery.import_staged_holons(staged_holons); // ✅ Load staged holons
+    nursery.import_staged_holons(staged_holons); // Load staged holons
 
     // Step 3: Create and initialize the Nursery
     let mut transient_manager = TransientHolonManager::new();
-    transient_manager.import_transient_holons(transient_holons); // ✅ Load transient holons
+    transient_manager.import_transient_holons(transient_holons); // Load transient holons
 
     // Step 4: Register internal access
     let service: &mut GuestHolonService =
