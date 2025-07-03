@@ -2,11 +2,10 @@ use derive_new::new;
 
 use hdk::prelude::*;
 
-use holons_core::core_shared_objects::holon::TransientHolon;
-use holons_core::core_shared_objects::{Holon, HolonError};
+use holons_core::core_shared_objects::{Holon, TransientHolon};
 use integrity_core_types::PropertyName;
 use base_types::{BaseValue, MapInteger, MapString};
-
+use core_types::HolonError;
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SemanticVersion {

@@ -1,15 +1,14 @@
+use std::{cell::RefCell, any::Any, rc::Rc};
+
 use super::{
     holon_pool::{HolonPool, SerializableHolonPool},
     nursery_access_internal::NurseryAccessInternal,
     Holon, TransientHolon,
 };
+use crate::NurseryAccess;
 use crate::reference_layer::{HolonStagingBehavior, StagedReference};
-use crate::{HolonError, NurseryAccess};
 use base_types::MapString;
-use core_types::TemporaryId;
-use std::any::Any;
-use std::{cell::RefCell, rc::Rc};
-use tracing::warn;
+use core_types::{HolonError, TemporaryId};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Nursery {

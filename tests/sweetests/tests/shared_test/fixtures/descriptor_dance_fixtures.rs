@@ -18,7 +18,7 @@ use rstest::*;
 use crate::shared_test::test_data_types::DancesTestCase;
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use holons_core::HolonError;
+use core_types::HolonError;
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
 /// This function creates a set of simple (undescribed) holons

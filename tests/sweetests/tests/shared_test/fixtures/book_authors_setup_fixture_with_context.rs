@@ -8,9 +8,10 @@ use crate::shared_test::test_data_types::{
 };
 
 use base_types::{BaseValue, MapString};
+use core_types::HolonError;
 use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
-    core_shared_objects::{Holon, HolonError, RelationshipName, TransientHolon},
+    core_shared_objects::{Holon, RelationshipName, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon},
 };

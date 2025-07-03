@@ -9,7 +9,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use holons_core::{
-    core_shared_objects::{Holon, HolonBehavior, HolonError},
+    core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{
         HolonCollectionApi, HolonReference, ReadableHolon, SmartReference, StagedReference,
@@ -17,7 +17,7 @@ use holons_core::{
 };
 
 use base_types::MapString;
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use integrity_core_types::PropertyName;
 
 use crate::shared_test::{

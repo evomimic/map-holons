@@ -57,10 +57,10 @@ use crate::shared_test::test_print_database::execute_database_print;
 use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
+use core_types::HolonError;
 use core_types::HolonId;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
-use holons_core::core_shared_objects::HolonError;
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
 use shared_test::*;
 

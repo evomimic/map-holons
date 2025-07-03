@@ -1,7 +1,6 @@
 mod commit_response;
 mod holon_cache_manager;
 mod holon_collection;
-mod holon_error;
 mod relationship;
 
 pub mod cache_access;
@@ -31,7 +30,6 @@ pub use holon::{Holon, HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
 pub use holon_cache::HolonCache;
 pub use holon_cache_manager::HolonCacheManager;
 pub use holon_collection::{CollectionState, HolonCollection};
-pub use holon_error::HolonError;
 pub use holon_pool::HolonPool;
 pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;

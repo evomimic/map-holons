@@ -1,7 +1,5 @@
 use hdk::prelude::*;
 
-use holons_core::{HolonReference, HolonsContextBehavior};
-
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::{CoreSchemaTypeName, SchemaNamesTrait};
 use crate::enum_type_loader::CoreEnumTypeName;
@@ -11,10 +9,13 @@ use crate::property_type_loader::CorePropertyTypeName;
 use crate::relationship_type_loader::CoreRelationshipTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
 use crate::value_type_loader::CoreValueTypeName;
-use descriptors::descriptor_types::{CoreSchemaName, Schema};
-use holons_core::core_shared_objects::stage_new_holon_api;
-use holons_core::core_shared_objects::{CommitResponse, HolonError};
 use base_types::MapString;
+use core_types::HolonError;
+use descriptors::descriptor_types::{CoreSchemaName, Schema};
+use holons_core::{
+    core_shared_objects::{stage_new_holon_api, CommitResponse},
+    HolonReference, HolonsContextBehavior,
+};
 use strum::IntoEnumIterator;
 
 /// The load_core_schema function creates a new Schema Holon and populates it descriptors for all the
@@ -44,7 +45,8 @@ pub fn load_core_schema(context: &dyn HolonsContextBehavior) -> Result<CommitRes
     )?;
 
     info!("Staging Schema...");
-    let staged_schema_ref = HolonReference::Staged(stage_new_holon_api(context, schema.0.into_transient()?)?);
+    let staged_schema_ref =
+        HolonReference::Staged(stage_new_holon_api(context, schema.0.into_transient()?)?);
 
     context
         .get_space_manager()

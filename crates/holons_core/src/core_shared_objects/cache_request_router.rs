@@ -1,8 +1,8 @@
+use std::{cell::RefCell, rc::Rc};
+
 use super::Holon;
-use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection, HolonError, RelationshipName};
-use core_types::HolonId;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection, RelationshipName};
+use core_types::{HolonError,HolonId};
 
 #[derive(Debug)]
 pub struct CacheRequestRouter {

@@ -1,13 +1,12 @@
-use holons_core::core_shared_objects::HolonError;
-use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-
-use base_types::MapString;
-
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::enum_type_loader::CoreEnumTypeName;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName;
 use crate::string_value_type_loader::CoreStringValueTypeName;
+
+use base_types::MapString;
+use core_types::HolonError;
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
 // This file defines and stages (but does not commit) type definitions for all the MAP Core
 // ValueTypes.

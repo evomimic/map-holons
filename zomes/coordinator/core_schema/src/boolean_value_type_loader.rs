@@ -1,10 +1,9 @@
-use descriptors::boolean_descriptor::{define_boolean_type, BooleanTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
 
-use holons_core::core_shared_objects::HolonError;
+use descriptors::{boolean_descriptor::{define_boolean_type, BooleanTypeDefinition}, type_descriptor::TypeDescriptorDefinition};
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use base_types::{MapBoolean, MapString};
+use core_types::HolonError;
 use strum_macros::EnumIter;
 // use crate::boolean_value_type_loader;
 // use crate::boolean_value_type_loader::CoreBooleanValueTypeName::MapBooleanType;

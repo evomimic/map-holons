@@ -8,12 +8,13 @@ use crate::shared_test::{
     test_data_types::{DancesTestCase, TestReference, BOOK_KEY, PERSON_1_KEY},
 };
 use base_types::{BaseValue, MapInteger, MapString};
+use core_types::HolonError;
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    stage_new_holon_api, HolonError, HolonReference, HolonsContextBehavior, ReadableHolon,
-    RelationshipName, StagedReference,
+    stage_new_holon_api, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName,
+    StagedReference,
 };
 use integrity_core_types::PropertyName;
 use rstest::*;

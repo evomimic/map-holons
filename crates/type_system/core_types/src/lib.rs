@@ -15,12 +15,12 @@
 //! and are shared across guest and client implementations.
 
 pub mod ids;
-// pub mod names;
+pub mod holon_error;
 pub mod type_kinds;
 
 
 pub use ids::*;
-// pub use names::*;
+pub use holon_error::*;
 pub use type_kinds::*;
 
 pub fn add(left: usize, right: usize) -> usize {

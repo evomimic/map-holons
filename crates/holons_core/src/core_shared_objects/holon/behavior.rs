@@ -1,5 +1,5 @@
-use crate::HolonError;
 use base_types::MapString;
+use core_types::HolonError;
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::{state::AccessType, EssentialHolonContent, TransientHolon};

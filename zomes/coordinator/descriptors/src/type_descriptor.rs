@@ -1,15 +1,11 @@
 // This file defines the TypeDescriptor struct and the dance functions it supports
-
-use crate::descriptor_types::CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy};
-use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
-use crate::semantic_version::SemanticVersion;
 use hdk::prelude::{debug, info};
-use holons_core::core_shared_objects::holon::TransientHolon;
-use holons_core::core_shared_objects::stage_new_holon_api;
-use holons_core::core_shared_objects::HolonError;
-use holons_core::{HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference};
+
+use crate::descriptor_types::{CoreSchemaRelationshipTypeName::{DescribedBy, OwnedBy}, CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use crate::semantic_version::SemanticVersion;
+use holons_core::{core_shared_objects::{TransientHolon, stage_new_holon_api}, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapBoolean, MapEnumValue, MapString};
-use core_types::TypeKind;
+use core_types::{HolonError, TypeKind};
 use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::*;
 

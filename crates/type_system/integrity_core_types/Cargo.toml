@@ -1,7 +1,7 @@
 [package]
 name = "integrity_core_types"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 base_types = { workspace = true }

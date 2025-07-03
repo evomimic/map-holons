@@ -1,11 +1,14 @@
 #![allow(unused_variables)]
-use holons_core::core_shared_objects::{
-    CommitResponse, Holon, HolonCollection, HolonError, RelationshipName,
+
+use holons_core::{
+    core_shared_objects::{CommitResponse, Holon, HolonCollection, RelationshipName},
+    {
+        reference_layer::{HolonServiceApi, HolonsContextBehavior},
+        HolonReference, SmartReference, StagedReference,
+    },
 };
-use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
-use holons_core::{HolonReference, SmartReference, StagedReference};
 use base_types::MapString;
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use integrity_core_types::LocalId;
 
 #[derive(Debug, Clone)]

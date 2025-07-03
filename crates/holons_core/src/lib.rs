@@ -9,7 +9,7 @@ pub mod utils;
 // pub use core_shared_objects::*;
 pub use core_shared_objects::{
     CollectionState, CommitRequestStatus, CommitResponse, HolonCache, HolonCacheAccess,
-    HolonCacheManager, HolonCollection, HolonError, HolonPool, Nursery, NurseryAccess,
+    HolonCacheManager, HolonCollection, HolonPool, Nursery, NurseryAccess,
     RelationshipCache, RelationshipMap, RelationshipName, ServiceRoutingPolicy,
     StagedRelationshipMap, TransientCollection,
 };

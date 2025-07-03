@@ -1,6 +1,6 @@
-use holons_core::core_shared_objects::HolonError;
 use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 use base_types::MapString;
+use core_types::HolonError;
 
 ///
 /// Builds a DanceRequest for staging a new holon. Properties, if supplied, they will be included

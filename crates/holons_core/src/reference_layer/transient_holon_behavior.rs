@@ -1,8 +1,7 @@
 use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::{TransientReference};
-
-use crate::core_shared_objects::HolonError;
 use base_types::MapString;
+use core_types::HolonError;
 
 /// Defines **high-level transient behavior**, abstracting away direct transient_manager operations.
 ///

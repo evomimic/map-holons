@@ -5,15 +5,15 @@
 // use crate::identifier::TemporaryId;
 
 use std::rc::Rc;
+use serde::{Deserialize, Serialize};
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::TemporaryId;
+use core_types::{HolonError,TemporaryId};
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
-use serde::{Deserialize, Serialize};
 
 use crate::{
     core_shared_objects::{holon::StagedHolon, TransientRelationshipMap},
-    HolonCollection, HolonError, RelationshipName,
+    HolonCollection, RelationshipName,
 };
 
 use super::{

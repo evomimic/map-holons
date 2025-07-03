@@ -1,14 +1,13 @@
 use std::{any::Any, cell::RefCell, rc::Rc};
 
 use base_types::MapString;
-use core_types::TemporaryId;
+use core_types::{HolonError, TemporaryId};
 
 use crate::{
     core_shared_objects::{
         holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess,
     },
-    reference_layer::TransientHolonBehavior,
-    HolonError,
+    reference_layer::TransientHolonBehavior
 };
 
 /// Provides **internal management** of transient holons in the TransientHolonManager.

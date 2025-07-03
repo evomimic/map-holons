@@ -1,10 +1,8 @@
-use base_types::{MapInteger, MapString};
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
-use crate::core_shared_objects::{
-    HolonError,
-};
+use base_types::{MapInteger, MapString};
+use core_types::HolonError;
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::{
     state::{AccessType, HolonState, SavedState, ValidationState},

@@ -1,7 +1,6 @@
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
-
-use crate::core_shared_objects::HolonError;
 use base_types::MapString;
+use core_types::HolonError;
 
 pub trait TransientCollectionBehavior {
     fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError>;

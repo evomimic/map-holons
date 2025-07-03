@@ -1,16 +1,14 @@
 use hdi::prelude::debug;
-use holons_core::core_shared_objects::holon::TransientHolon;
-use holons_core::core_shared_objects::HolonError;
-use holons_core::{
-    ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference,
-};
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
-use holons_core::core_shared_objects::stage_new_holon_api;
-
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::TypeKind;
+use core_types::{HolonError, TypeKind};
+use holons_core::core_shared_objects::stage_new_holon_api;
+use holons_core::{
+    core_shared_objects::holon::TransientHolon, HolonReference, HolonsContextBehavior,
+    ReadableHolon, StagedReference, WriteableHolon,
+};
 use integrity_core_types::PropertyName;
 
 pub struct CollectionTypeDefinition {

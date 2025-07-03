@@ -1,11 +1,10 @@
 use std::fmt;
+use serde::{Deserialize, Serialize};
+use derive_new::new;
 
 use base_types::MapString;
-use derive_new::new;
+use core_types::HolonError;
 use integrity_core_types::PropertyMap;
-use serde::{Deserialize, Serialize};
-
-use crate::HolonError;
 
 use super::state::{HolonState, ValidationState};
 

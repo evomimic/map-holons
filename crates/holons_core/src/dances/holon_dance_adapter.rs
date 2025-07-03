@@ -14,19 +14,18 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
-use crate::core_shared_objects::holon::TransientHolon;
+use tracing::{debug, info};
+
+use crate::{HolonsContextBehavior, SmartReference, WriteableHolon};
 use crate::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, HolonError,
+    stage_new_version_api, CommitRequestStatus, TransientHolon
 };
-use crate::dances::dance_request::{DanceType, RequestBody};
-use crate::dances::dance_response::ResponseBody;
-use crate::dances::DanceRequest;
+use crate::dances::{DanceRequest, dance_request::{DanceType, RequestBody}, dance_response::ResponseBody};
 use crate::query_layer::evaluate_query;
 use crate::reference_layer::get_all_holons;
-use crate::{HolonsContextBehavior, SmartReference, WriteableHolon};
 use base_types::MapString;
-use hdk::prelude::*;
+use core_types::HolonError;
 use integrity_core_types::PropertyName;
 
 /// *DanceRequest:*

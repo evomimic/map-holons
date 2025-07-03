@@ -1,10 +1,10 @@
-use crate::core_schema_types::SchemaNamesTrait;
-use descriptors::enum_variant_descriptor::{define_enum_variant_type, EnumVariantTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons_core::core_shared_objects::HolonError;
+
+use crate::core_schema_types::SchemaNamesTrait;
+use descriptors::{enum_variant_descriptor::{define_enum_variant_type, EnumVariantTypeDefinition}, type_descriptor::TypeDescriptorDefinition};
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use base_types::{MapBoolean, MapInteger, MapString};
+use core_types::HolonError;
 use strum_macros::EnumIter;
 // use crate::enum_variant_loader;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::{

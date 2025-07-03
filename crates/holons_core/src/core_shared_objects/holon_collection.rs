@@ -1,10 +1,14 @@
-use super::holon::state::AccessType;
-use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
-use crate::{HolonCollectionApi, HolonError};
 use core::fmt;
-use hdk::prelude::*;
-use base_types::{MapInteger, MapString};
 use std::collections::BTreeMap;
+use serde::{Deserialize, Serialize};
+use tracing::{debug, warn};
+
+use super::holon::state::AccessType;
+use crate::HolonCollectionApi;
+use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
+use base_types::{MapInteger, MapString};
+use core_types::HolonError;
+
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {
@@ -234,7 +238,7 @@ impl HolonCollectionApi for HolonCollection {
 
     fn get_by_key(&self, key: &MapString) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let index = self.keyed_index.get(key);
+        let index: Option<&usize> = self.keyed_index.get(key);
         debug!("Found {:?} at index: {:?}", key, index);
         if let Some(index) = index {
             Ok(Some(self.members[*index].clone()))

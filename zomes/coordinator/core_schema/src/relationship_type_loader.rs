@@ -3,14 +3,16 @@ use hdi::prelude::info;
 use crate::collection_type_loader::CollectionTypeSpec;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::holon_type_loader::CoreHolonTypeName;
-use descriptors::collection_descriptor::CollectionSemantic;
-use descriptors::descriptor_types::DeletionSemantic;
-use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
-use holons_core::core_shared_objects::{HolonError, RelationshipName};
-use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-use inflector::cases::screamingsnakecase::to_screaming_snake_case;
+use descriptors::{
+    collection_descriptor::CollectionSemantic,
+    descriptor_types::DeletionSemantic,
+    holon_descriptor::{define_holon_type, HolonTypeDefinition},
+    type_descriptor::TypeDescriptorDefinition,
+};
+use holons_core::{HolonReference, HolonsContextBehavior, RelationshipName, StagedReference};
 use base_types::{MapBoolean, MapString};
+use core_types::HolonError;
+use inflector::cases::screamingsnakecase::to_screaming_snake_case;
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Default, EnumIter)]

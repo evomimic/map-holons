@@ -1,15 +1,16 @@
+use hdi::prelude::info;
+
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::enum_type_loader::CoreEnumTypeName::{DeletionSemanticType, MapTypeKind};
 use crate::enum_variant_loader::CoreEnumVariantTypeName;
 use crate::enum_variant_loader::CoreEnumVariantTypeName::*;
-use descriptors::enum_descriptor::{define_enum_type, EnumTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
-use hdi::prelude::info;
-use holons_core::core_shared_objects::HolonError;
+
+use descriptors::{enum_descriptor::{define_enum_type, EnumTypeDefinition}, type_descriptor::TypeDescriptorDefinition};
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use base_types::{MapBoolean, MapString};
+use core_types::HolonError;
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Default, EnumIter)]

@@ -1,7 +1,7 @@
-use crate::core_shared_objects::HolonError;
 
 use base_types::MapString;
-use hdk::prelude::*;
+use core_types::HolonError;
+use serde::{Serialize, Deserialize};
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::state::AccessType;

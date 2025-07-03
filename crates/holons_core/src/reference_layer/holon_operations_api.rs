@@ -21,17 +21,19 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{
-    CommitResponse, Holon, HolonBehavior, HolonError, TransientHolon,
-};
+use std::{cell::RefCell, sync::Arc};
+
 use crate::{
     HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
     SmartReference, StagedReference,
 };
+use crate::core_shared_objects::{
+    CommitResponse, Holon, HolonBehavior, TransientHolon,
+};
 use base_types::MapString;
+use core_types::HolonError;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};
-use std::cell::RefCell;
-use std::sync::Arc;
+
 
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 

@@ -1,12 +1,12 @@
 use std::rc::Rc;
-
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::TemporaryId;
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{TemporaryId, HolonError};
+use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
+
 use crate::{
-    core_shared_objects::ReadableRelationship, HolonCollection, HolonError, RelationshipName,
+    core_shared_objects::ReadableRelationship, HolonCollection, RelationshipName,
     StagedRelationshipMap,
 };
 

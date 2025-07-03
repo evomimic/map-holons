@@ -1,8 +1,7 @@
 use crate::descriptor_types::CoreValueTypeName;
-use holons_core::core_shared_objects::HolonError;
 use holons_core::{HolonReference, HolonsContextBehavior};
-
 use base_types::MapString;
+use core_types::HolonError;
 
 // TODO: Enhance to do a get from cache if not in dance_state
 pub fn get_core_value_type_descriptor_reference(
