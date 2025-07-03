@@ -1,15 +1,18 @@
 //
-use crate::{try_from_record, persistence_layer::{
-    create_path_to_holon_node, delete_holon_node, get_all_holon_nodes, get_holon_node_by_path,
-    CreatePathInput, GetPathInput,
-}};
+use crate::{
+    persistence_layer::{
+        create_path_to_holon_node, delete_holon_node, get_all_holon_nodes, get_holon_node_by_path,
+        CreatePathInput, GetPathInput,
+    },
+    try_from_record,
+};
+use core_types::HolonError;
 use hdi::prelude::{ActionHash, Path};
 use hdk::entry::get;
 use hdk::prelude::GetOptions;
 use holons_core::core_shared_objects::Holon;
-use core_types::HolonError;
 use holons_integrity::LinkTypes;
-use integrity_core_types::LocalId;
+use integrity_core_types::{LocalId, WasmErrorWrapper};
 //Stateless HDI service to bridge Holon and HolonNode
 //Holochain API logic and calls should all done from the HolonNode module (separation of concerns)
 //Holon should be mostly self-referential methods and data
@@ -24,17 +27,17 @@ pub fn create_local_path(
     let path = Path::from(path_name);
     let link_type = linktype; //LinkTypes::LocalHolonSpace;
     let input = CreatePathInput { path, link_type, target_holon_node_hash: target_holon_hash.0 };
-    create_path_to_holon_node(input).map_err(|e| HolonError::from(e))
+    create_path_to_holon_node(input).map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))
 }
 
 /// Marks the holon_node identified by the specified LocalId as deleted in the persistent store.
 pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
     let record = get(id.0.clone(), GetOptions::default())
-        .map_err(|e| HolonError::from(e))?
+        .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?
         .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
     let mut holon = try_from_record(record)?;
     // holon.is_deletable()?;
-    delete_holon_node(id.0).map_err(|e| HolonError::from(e))
+    delete_holon_node(id.0).map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))
 }
 ///  ------ QUERIES ------
 
@@ -60,7 +63,7 @@ pub fn get_holon_by_path(
     let path = Path::from(path_name);
     let link_type = linktype;
     let input = GetPathInput { path: path.clone(), link_type };
-    let result = get_holon_node_by_path(input).map_err(|e| HolonError::from(e));
+    let result = get_holon_node_by_path(input).map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)));
     match result {
         Ok(result) => {
             if let Some(record) = result {

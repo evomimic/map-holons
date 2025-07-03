@@ -24,7 +24,7 @@ use holons_core::{
 };
 use holons_integrity::LinkTypes;
 use integrity_core_types::{
-    LocalId, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME,
+    LocalId, PropertyName, WasmErrorWrapper, LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME,
     LOCAL_HOLON_SPACE_PATH,
 };
 
@@ -178,8 +178,8 @@ impl GuestHolonService {
         let space_holon_node = space_holon.clone().into_node();
 
         // Try to create the holon node in the DHT
-        let holon_record =
-            create_holon_node(space_holon_node.clone()).map_err(|e| HolonError::from(e))?;
+        let holon_record = create_holon_node(space_holon_node.clone())
+            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?;
         let saved_holon = try_from_record(holon_record)?;
 
         // Retrieve the local ID for the holon
@@ -288,13 +288,13 @@ impl HolonServiceApi for GuestHolonService {
 
     fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
         let record = get(local_id.0.clone(), GetOptions::default())
-            .map_err(HolonError::from)?
+            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
         let mut holon = try_from_record(record)?;
         // holon.is_deletable()?;
         delete_holon_node(local_id.0.clone())
             .map(|_| ()) // Convert ActionHash to ()
-            .map_err(HolonError::from)
+            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))
     }
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
@@ -305,7 +305,8 @@ impl HolonServiceApi for GuestHolonService {
         // Retrieve the exact HolonNode for the specific ActionHash.
         // DISCLAIMER: The name of this scaffolded function is misleading... it does not 'walk the tree' to get the original record.
         // keeping the terminology per policy not to change scaffolded code.
-        let holon_node_record = get_original_holon_node(local_id.0.clone())?;
+        let holon_node_record = get_original_holon_node(local_id.0.clone())
+            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?;
         if let Some(record) = holon_node_record {
             let holon = try_from_record(record)?;
             Ok(holon)

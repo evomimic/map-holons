@@ -8,10 +8,10 @@ use crate::shared_test::{
     test_data_types::DancesTestCase,
 };
 use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression, HolonCollection, HolonError, HolonsContextBehavior,
+    query_layer::QueryExpression, HolonCollection, HolonsContextBehavior,
     RelationshipName, StagedReference,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};

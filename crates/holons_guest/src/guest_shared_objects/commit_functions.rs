@@ -19,7 +19,7 @@ use holons_core::{
 // use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
-use integrity_core_types::{LocalId, PropertyMap, PropertyName};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName, WasmErrorWrapper};
 
 /// `commit`
 ///
@@ -194,7 +194,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                         return Ok(holon_write.clone());
                     }
                     Err(error) => {
-                        let holon_error = HolonError::from(error);
+                        let holon_error = HolonError::from_wasm_error(WasmErrorWrapper(error));
                         staged_holon.add_error(holon_error.clone())?;
 
                         return Err(holon_error);
@@ -223,7 +223,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                             return Ok(holon_write.clone());
                         }
                         Err(error) => {
-                            let holon_error = HolonError::from(error);
+                            let holon_error = HolonError::from_wasm_error(WasmErrorWrapper(error));
                             staged_holon.add_error(holon_error.clone())?;
 
                             return Err(holon_error);

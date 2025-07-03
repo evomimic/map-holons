@@ -7,7 +7,8 @@ use crate::shared_test::{
     TestContextConfigOption::TestFixture,
 };
 use base_types::{BaseValue, MapInteger, MapString};
-use holons_core::{dances::dance_response::ResponseStatusCode, HolonError, HolonReference};
+use core_types::HolonError;
+use holons_core::{dances::dance_response::ResponseStatusCode, HolonReference};
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]

@@ -12,10 +12,10 @@ use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use holon_dance_builders::abandon_staged_changes_dance::build_abandon_staged_changes_dance_request;
 use holons_core::{
-    core_shared_objects::{holon::state::AccessType, HolonError},
+    core_shared_objects::holon::state::AccessType,
     dances::{
         dance_response::{ResponseBody, ResponseStatusCode},
         DanceResponse,

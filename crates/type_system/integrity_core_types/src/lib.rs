@@ -6,3 +6,4 @@ pub mod wasm_error;
 pub use property::*;
 pub use id::LocalId;
 pub use holon_node::*;
+pub use wasm_error::WasmErrorWrapper;
