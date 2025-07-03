@@ -1,14 +1,16 @@
+use std::{collections::BTreeMap, str};
+
 use hdi::prelude::*;
 use hdk::prelude::*;
+use holons_core::{
+    core_shared_objects::{get_key_from_property_map, RelationshipName},
+    reference_layer::{HolonReference, SmartReference},
+};
+use base_types::{BaseValue, MapString};
+use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId};
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use base_types::{BaseValue, MapString};
-use core_types::{ExternalId, HolonId, OutboundProxyId};
-use integrity_core_types::{LocalId, PropertyName, PropertyMap};
-
-use holons_core::core_shared_objects::{get_key_from_property_map, HolonError, RelationshipName};
-use holons_core::reference_layer::{HolonReference, SmartReference};
-use std::{collections::BTreeMap, str};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 
 // const fn smartlink_tag_header_length() -> usize {
 //     // leaving this nomenclature for now

@@ -1,14 +1,12 @@
 use serde::{Deserialize, Serialize};
-
 use std::fmt;
 
-use crate::core_shared_objects::HolonBehavior;
-use crate::core_shared_objects::{summarize_holons, Holon, HolonError};
-use crate::query_layer::NodeCollection;
-
-use crate::dances::SessionState;
 use crate::{HolonCollection, HolonReference, StagedReference};
+use crate::core_shared_objects::{summarize_holons, Holon, HolonBehavior};
+use crate::query_layer::NodeCollection;
+use crate::dances::SessionState;
 use base_types::MapString;
+use core_types::HolonError;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceResponse {

@@ -61,20 +61,20 @@
 //! By following these principles, `StagedRelationshipMap` and `RelationshipMap` provide
 //! a consistent and extensible foundation for managing holon relationships, balancing the
 //! need for flexibility (via interior mutability) with clear, immutable APIs where appropriate.
-use crate::core_shared_objects::{HolonCollection, HolonError, RelationshipName};
-use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
+
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use serde::{Deserialize, Serialize};
 use derive_new::new;
-use hdk::prelude::*;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
 
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
+use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
+use crate::core_shared_objects::{HolonCollection, RelationshipName};
+use core_types::HolonError;
 
 /// Represents a map of staged relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates
 /// that the relationship has no associated holons.
-#[derive(new, SerializedBytes, Clone, Debug, Eq, PartialEq)]
+#[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct StagedRelationshipMap {
     pub map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>>,
 }

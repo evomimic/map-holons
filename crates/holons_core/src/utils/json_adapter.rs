@@ -1,17 +1,15 @@
-use base_types::BaseValue;
-use core_types::HolonId;
-use integrity_core_types::PropertyMap;
+#![allow(dead_code)]
 
-use crate::core_shared_objects::holon::state::{HolonState, ValidationState};
-use crate::core_shared_objects::Holon;
-use crate::reference_layer::SmartReference;
-use hdk::prelude::*;
-
-use crate::core_shared_objects::{
-    CollectionState, HolonCollection, HolonError, StagedRelationshipMap,
-};
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Serialize, Serializer};
+
+use base_types::BaseValue;
+use core_types::{HolonError, HolonId};
+use integrity_core_types::{LocalId, PropertyMap};
+
+use crate::core_shared_objects::holon::state::{HolonState, ValidationState};
+use crate::core_shared_objects::{CollectionState, HolonCollection, StagedRelationshipMap};
+use crate::reference_layer::SmartReference;
 
 // Wrapper for HolonState
 struct HolonStateWrapper<'a>(&'a HolonState);
@@ -205,18 +203,15 @@ impl<'a> Serialize for HolonErrorWrapper<'a> {
     }
 }
 
-// Wrapper for Option<Record>
-struct SavedNodeWrapper<'a>(&'a Option<Record>);
+// Wrapper for ActionHash
+struct SavedNodeWrapper<'a>(&'a LocalId);
 
 impl<'a> Serialize for SavedNodeWrapper<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match self.0 {
-            Some(_) => serializer.serialize_str("Some"),
-            None => serializer.serialize_str("None"),
-        }
+        serializer.serialize_str(&self.0.to_string())
     }
 }
 
@@ -242,7 +237,7 @@ impl<'a> Serialize for SmartReferenceOptionWrapper<'a> {
 struct SerializableHolon<'a> {
     state: HolonStateWrapper<'a>,
     validation_state: ValidationStateWrapper<'a>,
-    record: SavedNodeWrapper<'a>,
+    local_id: SavedNodeWrapper<'a>,
     property_map: PropertyMapWrapper<'a>,
     staged_relationship_map: StagedRelationshipMapWrapper<'a>,
     errors: Vec<HolonErrorWrapper<'a>>,

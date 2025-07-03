@@ -1,37 +1,32 @@
+use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
+
+use hdk::prelude::*;
+
+use super::{fetch_links_to_all_holons, get_all_relationship_links};
 use crate::guest_shared_objects::{
     commit_functions, create_local_path, get_holon_by_path, get_relationship_links,
 };
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
 use crate::try_from_record;
-use hdk::prelude::*;
-
-use holons_core::core_shared_objects::TransientRelationshipMap;
+use base_types::{BaseValue, MapString};
+use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
         holon::state::AccessType, nursery_access_internal::NurseryAccessInternal, CommitResponse,
-        Holon, HolonBehavior, HolonCollection, HolonError, NurseryAccess, RelationshipName,
-        TransientHolon,
+        Holon, HolonBehavior, HolonCollection, NurseryAccess, RelationshipName, TransientHolon,
+        TransientRelationshipMap,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, ReadableHolon,
-        SmartReference, StagedReference, WriteableHolon,
+        SmartReference, StagedReference,
     },
+    WriteableHolon,
 };
-
-use base_types::{BaseValue, MapString};
-use core_types::HolonId;
 use holons_integrity::LinkTypes;
-use integrity_core_types::{LocalId, PropertyName};
 use integrity_core_types::{
-    LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
+    LocalId, PropertyName, LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME,
+    LOCAL_HOLON_SPACE_PATH,
 };
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::fmt;
-use std::rc::Rc;
-use std::sync::Arc;
-
-use super::{fetch_links_to_all_holons, get_all_relationship_links};
 
 #[derive(Clone)]
 pub struct GuestHolonService {

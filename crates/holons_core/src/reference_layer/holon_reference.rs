@@ -1,18 +1,16 @@
-use hdk::prelude::*;
 use std::rc::Rc;
+use serde::{Serialize, Deserialize};
 
-use crate::core_shared_objects::holon::TransientHolon;
-use crate::reference_layer::{
-    HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference,
-};
 
 use crate::core_shared_objects::{
     holon::{holon_utils::EssentialHolonContent, state::AccessType},
-    HolonCollection, HolonError, RelationshipName,
+    HolonCollection, RelationshipName, TransientHolon
 };
-
+use crate::reference_layer::{
+    HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference,
+};
 use base_types::MapString;
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use integrity_core_types::{PropertyName, PropertyValue};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

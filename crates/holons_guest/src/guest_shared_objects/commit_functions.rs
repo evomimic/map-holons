@@ -1,3 +1,5 @@
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+
 use hdk::prelude::*;
 
 // use crate::{
@@ -6,19 +8,18 @@ use hdk::prelude::*;
 use crate::guest_shared_objects::{save_smartlink, SmartLink};
 use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolonNodeInput};
 
-use holons_core::core_shared_objects::{
-    holon::state::{AccessType, StagedState},
-    CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, HolonError,
-    RelationshipName, StagedHolon,
+use holons_core::{
+    core_shared_objects::{
+        holon::state::{AccessType, StagedState},
+        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection,
+        RelationshipName, StagedHolon,
+    },
+    reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
-use holons_core::reference_layer::{HolonsContextBehavior, ReadableHolon};
 // use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
+use core_types::HolonError;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-// use std::fmt::format;
-use std::rc::Rc;
 
 /// `commit`
 ///
@@ -84,7 +85,7 @@ pub fn commit(
 
     // FIRST PASS: Commit Staged Holons
     {
-        info!("\n\nStarting FIRST PASS... commit staged_holons..."); 
+        info!("\n\nStarting FIRST PASS... commit staged_holons...");
         for rc_holon in staged_holons.iter().cloned() {
             {
                 rc_holon.borrow().is_accessible(AccessType::Commit)?;

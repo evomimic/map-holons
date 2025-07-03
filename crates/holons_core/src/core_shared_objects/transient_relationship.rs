@@ -1,19 +1,17 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use derive_new::new;
-use hdk::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::{HolonCollection, ReadableRelationship, RelationshipName, WritableRelationship};
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
+use core_types::HolonError;
 
-use super::{
-    HolonCollection, HolonError, ReadableRelationship, RelationshipName, WritableRelationship,
-};
 
 /// Represents a map of transient relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates
 /// that the relationship has no associated holons.
-#[derive(new, SerializedBytes, Clone, Debug, Eq, PartialEq)]
+#[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct TransientRelationshipMap {
     pub map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>>,
 }

@@ -1,8 +1,8 @@
-use crate::HolonError;
+use std::{cell::RefCell, any::Any, rc::Rc};
+
 use super::Holon;
-use core_types::TemporaryId;
-use std::any::Any;
-use std::{cell::RefCell, rc::Rc};
+use core_types::{HolonError, TemporaryId};
+
 
 /// Provides access to staged holons by resolving a `StagedReference`
 /// to retrieve the corresponding `Holon`.

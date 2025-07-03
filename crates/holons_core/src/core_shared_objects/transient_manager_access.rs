@@ -1,10 +1,7 @@
+use std::{cell::RefCell, any::Any, rc::Rc};
 
-
-use crate::HolonError;
 use super::holon::Holon;
-use core_types::TemporaryId;
-use std::any::Any;
-use std::{cell::RefCell, rc::Rc};
+use core_types::{HolonError, TemporaryId};
 
 /// Provides access to transients holons by resolving a `TransientReference`
 /// to retrieve the corresponding `Holon`.

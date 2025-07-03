@@ -1,18 +1,22 @@
 use hdi::prelude::info;
+
 use strum_macros::EnumIter;
 // use descriptors::descriptor_types::CoreSchemaRelationshipTypeName::TargetCollectionType;
-use crate::core_schema_types::SchemaNamesTrait;
-use descriptors::holon_descriptor::{define_holon_type, HolonTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
-use holons_core::core_shared_objects::HolonError;
-use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
-use base_types::{MapBoolean, MapString};
+
 // use crate::holon_type_loader::CoreHolonTypeName::{DanceRequestType, DanceResponseType, HolonSpaceType, HolonType, PropertyType, RelationshipType, SchemaType};
+use crate::core_schema_types::SchemaNamesTrait;
 use crate::property_type_loader::CorePropertyTypeName;
 use crate::property_type_loader::CorePropertyTypeName::{
     Description, DescriptorName, Name, TypeName,
 };
 use crate::relationship_type_loader::CoreRelationshipTypeName;
+use base_types::{MapBoolean, MapString};
+use core_types::HolonError;
+use descriptors::{
+    holon_descriptor::{define_holon_type, HolonTypeDefinition},
+    type_descriptor::TypeDescriptorDefinition,
+};
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 
 #[derive(Debug, Clone, Default, EnumIter)]
 pub enum CoreHolonTypeName {
