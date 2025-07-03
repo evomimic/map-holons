@@ -9,6 +9,7 @@ use base_types::MapString;
 use core_types::TemporaryId;
 use std::any::Any;
 use std::{cell::RefCell, rc::Rc};
+use tracing::warn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Nursery {
@@ -34,7 +35,8 @@ impl Nursery {
     /// The TemporaryId, which is used a unique identifier.
     fn stage_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
         let staged_holon = holon.to_staged()?;
-        self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))
+        let id = self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))?;
+        Ok(id)
     }
 
     /// This function converts a TemporaryId into a StagedReference.

@@ -4,13 +4,16 @@
 // use crate::state::AccessType;
 // use crate::identifier::TemporaryId;
 
+use std::rc::Rc;
+
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::TemporaryId;
 use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
-use crate::core_shared_objects::{
-    HolonError, ReadableRelationship, StagedHolon, TransientRelationshipMap,
+use crate::{
+    core_shared_objects::{holon::StagedHolon, TransientRelationshipMap},
+    HolonCollection, HolonError, RelationshipName,
 };
 
 use super::{
@@ -87,7 +90,7 @@ impl TransientHolon {
         let mut staged_holon = StagedHolon::new_for_create();
         staged_holon.update_original_id(self.original_id.clone())?;
         staged_holon.update_property_map(self.property_map.clone())?;
-        let map = self.get_transient_relationship_map();
+        let map = self.get_transient_relationship_map()?;
         let staged_map = map.to_staged()?;
         staged_holon.init_relationships(staged_map)?;
 
@@ -118,8 +121,27 @@ impl TransientHolon {
     //    DATA ACCESSORS
     // =====================
 
-    pub fn get_transient_relationship_map(&self) -> TransientRelationshipMap {
-        self.transient_relationships.clone()
+    pub fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        // Use the public `get_related_holons` method on the `TransientRelationshipMap`
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
+    }
+
+    pub fn get_transient_relationship(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
+    }
+
+    pub fn get_transient_relationship_map(&self) -> Result<TransientRelationshipMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+
+        Ok(self.transient_relationships.clone())
     }
 }
 

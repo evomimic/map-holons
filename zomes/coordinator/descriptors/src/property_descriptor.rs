@@ -3,10 +3,8 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use base_types::{BaseValue, MapString};
 use core_types::TypeKind;
 use hdi::prelude::debug;
-use holons_core::{
-    core_shared_objects::holon::TransientHolon, stage_new_holon_api, HolonError, HolonReference,
-    HolonWritable, HolonsContextBehavior, StagedReference,
-};
+use holons_core::core_shared_objects::{stage_new_holon_api, HolonError, TransientHolon};
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon};
 use integrity_core_types::PropertyName;
 
 pub struct PropertyTypeDefinition {

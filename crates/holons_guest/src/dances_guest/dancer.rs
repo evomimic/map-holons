@@ -5,12 +5,12 @@ use holons_core::core_shared_objects::HolonError;
 
 use crate::init_guest_context;
 
+use base_types::MapString;
 use holons_core::dances::descriptors_dance_adapter::load_core_schema_dance;
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::dances::{
     DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState,
 };
-use base_types::MapString;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -67,7 +67,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     // assert_eq!(result.staging_area.staged_holons.len(), context.get_space_manager().staged_holons.len());
 
-    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
+    warn!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
     Ok(result)
 }
@@ -174,10 +174,11 @@ fn initialize_context_from_request(
     let session_state = request.state.as_ref().expect("Valid request should have a state");
 
     let staged_holons = session_state.get_staged_holons().clone();
+    let transient_holons = session_state.get_transient_holons().clone();
     let local_space_holon = session_state.get_local_holon_space();
 
     // Initialize context from session state
-    init_guest_context(staged_holons, local_space_holon)
+    init_guest_context(transient_holons, staged_holons, local_space_holon)
         .map_err(|error| create_error_response(error, request))
 }
 
@@ -201,13 +202,20 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
     let space_manager = context.get_space_manager();
 
     // Export staged holons as a single SerializableHolonPool
-    let serializable_pool = space_manager.export_staged_holons();
+    let serializable_staged_pool = space_manager.export_staged_holons();
+
+    // Export transient holons as a single SerializableHolonPool
+    let serializable_transient_pool = space_manager.export_transient_holons();
 
     // Get the local space holon
     let local_space_holon = space_manager.get_space_holon();
 
     // Construct SessionState with SerializableHolonPool replacing StagingArea
-    Some(SessionState::new(serializable_pool, local_space_holon))
+    Some(SessionState::new(
+        serializable_transient_pool,
+        serializable_staged_pool,
+        local_space_holon,
+    ))
 }
 // fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
 //     let space_manager = &context.get_space_manager();

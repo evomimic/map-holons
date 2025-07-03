@@ -11,23 +11,26 @@ use serde::{Deserialize, Serialize};
 /// create a unique temporary id for each Holon in the session specific Nursery.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SessionState {
+    transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReference>,
     pub key_suffix_count: usize, // default beginning count is 0
 }
 
 impl SessionState {
-    /// Creates a new session state with the provided staged holons and local holon space.
+    /// Creates a new session state with the provided staged and transient holons and local holon space.
     pub fn new(
+        transient_holons: SerializableHolonPool,
         staged_holons: SerializableHolonPool,
         local_holon_space: Option<HolonReference>,
     ) -> Self {
-        Self { staged_holons, local_holon_space, key_suffix_count: 1 }
+        Self { transient_holons, staged_holons, local_holon_space, key_suffix_count: 1 }
     }
 
     pub fn get_local_holon_space(&self) -> Option<HolonReference> {
         self.local_holon_space.clone()
     }
+
     /// Sets a new local holon space reference.
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {
         self.local_holon_space = local_holon_space;
@@ -43,9 +46,24 @@ impl SessionState {
         &mut self.staged_holons
     }
 
+    /// Retrieves the transient holon pool.
+    pub fn get_transient_holons(&self) -> &SerializableHolonPool {
+        &self.transient_holons
+    }
+
+    /// Retrieves a mutable reference to the transient holon pool.
+    pub fn get_transient_holons_mut(&mut self) -> &mut SerializableHolonPool {
+        &mut self.transient_holons
+    }
+
     /// Sets a new staged holon pool.
     pub fn set_staged_holons(&mut self, staged_holons: SerializableHolonPool) {
         self.staged_holons = staged_holons;
+    }
+
+    /// Sets a new staged holon pool.
+    pub fn set_transient_holons(&mut self, transient_holons: SerializableHolonPool) {
+        self.transient_holons = transient_holons;
     }
 
     /// Summarizes the session state.

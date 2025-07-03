@@ -2,7 +2,7 @@ use hdi::prelude::debug;
 use holons_core::core_shared_objects::holon::TransientHolon;
 use holons_core::core_shared_objects::HolonError;
 use holons_core::{
-    HolonReadable, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+    ReadableHolon, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference,
 };
 
 use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};

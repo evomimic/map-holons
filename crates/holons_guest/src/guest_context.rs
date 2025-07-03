@@ -4,7 +4,10 @@ use std::cell::RefCell;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
-use holons_core::core_shared_objects::{HolonError, Nursery, ServiceRoutingPolicy};
+use holons_core::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
+use holons_core::core_shared_objects::{
+    HolonError, Nursery, ServiceRoutingPolicy, TransientHolonManager,
+};
 use holons_core::reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior};
 use std::sync::Arc;
 
@@ -71,38 +74,45 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - There are issues retrieving holons from persistent storage.
 /// - The creation of a new HolonSpace Holon encounters a failure.
 pub fn init_guest_context(
+    transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_space_holon: Option<HolonReference>,
 ) -> Result<Arc<dyn HolonsContextBehavior>, HolonError> {
     // Step 1: Create the GuestHolonService
-    let mut guest_holon_service = Arc::new(GuestHolonService::new()); // ✅ Freshly created
+    let mut guest_holon_service = Arc::new(GuestHolonService::new()); // Freshly created
 
     // Step 2: Create and initialize the Nursery
     let mut nursery = Nursery::new();
-    nursery.import_staged_holons(staged_holons); // ✅ Load staged holons
+    nursery.import_staged_holons(staged_holons); // Load staged holons
 
-    // Step 3: Register internal access
-    let service:&mut GuestHolonService = Arc::get_mut(&mut guest_holon_service).ok_or_else(|| {
-        HolonError::FailedToBorrow(
-            "Failed to get mutable reference to GuestHolonService".to_string(),
-        )
-    })?;
+    // Step 3: Create and initialize the Nursery
+    let mut transient_manager = TransientHolonManager::new();
+    transient_manager.import_transient_holons(transient_holons); // Load transient holons
+
+    // Step 4: Register internal access
+    let service: &mut GuestHolonService =
+        Arc::get_mut(&mut guest_holon_service).ok_or_else(|| {
+            HolonError::FailedToBorrow(
+                "Failed to get mutable reference to GuestHolonService".to_string(),
+            )
+        })?;
     service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
 
-    // Step 4: Ensure HolonSpace Holon exists
+    // Step 5: Ensure HolonSpace Holon exists
     let ensured_local_space_holon = match local_space_holon {
         Some(space_holon) => space_holon, // space holon already in session state
         None => service.ensure_local_holon_space()?, // get space_holon from DHT, creating it if necessary
     };
 
-    // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
-    let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
-        guest_holon_service, // ✅ No need to clone, safe ownership transfer
+    // Step 6: Create the HolonSpaceManager with injected Nursery & HolonService
+    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+        guest_holon_service,
         Some(ensured_local_space_holon),
         ServiceRoutingPolicy::Combined,
-        nursery, // ✅ Injected
+        nursery,
+        transient_manager,
     ));
 
-    // Step 6: Wrap in `GuestHolonsContext` and return as a trait object
+    // Step 7: Wrap in `GuestHolonsContext` and return as a trait object
     Ok(Arc::new(GuestHolonsContext::new(space_manager)))
 }

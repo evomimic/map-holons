@@ -1,8 +1,10 @@
 use holochain::prelude::DbKind::Test;
 use holons_client::client_context::ClientHolonsContext;
 use holons_client::ClientHolonService;
-use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
-use holons_core::core_shared_objects::{HolonError, Nursery, ServiceRoutingPolicy};
+use holons_core::core_shared_objects::{
+    space_manager::HolonSpaceManager, HolonError, Nursery, ServiceRoutingPolicy,
+    TransientHolonManager,
+};
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -44,12 +46,16 @@ pub fn init_test_context(
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
 
+    // Step 2: Create an empty TransientHolonManager for the client
+    let transient_manager = TransientHolonManager::new();
+
     // Create a new `HolonSpaceManager` wrapped in `Arc`
-    let space_manager = Arc::new(HolonSpaceManager::new_with_nursery(
+    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
         nursery,
+        transient_manager,
     ));
 
     // Wrap in `TestHolonsContext` and return as trait object

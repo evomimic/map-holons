@@ -24,7 +24,7 @@ use crate::dances::dance_response::ResponseBody;
 use crate::dances::DanceRequest;
 use crate::query_layer::evaluate_query;
 use crate::reference_layer::get_all_holons;
-use crate::{HolonWritable, HolonsContextBehavior, SmartReference};
+use crate::{HolonsContextBehavior, SmartReference, WriteableHolon};
 use base_types::MapString;
 use hdk::prelude::*;
 use integrity_core_types::PropertyName;

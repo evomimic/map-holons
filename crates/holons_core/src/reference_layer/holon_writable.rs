@@ -1,15 +1,11 @@
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, StagedReference};
+use crate::reference_layer::{HolonReference, HolonsContextBehavior};
 
 use crate::core_shared_objects::{Holon, HolonError, RelationshipName};
 
 use base_types::BaseValue;
 use integrity_core_types::PropertyName;
 
-pub trait HolonWritable {
-    fn abandon_staged_changes(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError>;
+pub trait WriteableHolon {
 
     fn add_related_holons(
         &self,
@@ -17,8 +13,6 @@ pub trait HolonWritable {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
-
-    fn clone_reference(&self) -> StagedReference;
 
     fn remove_related_holons(
         &self,

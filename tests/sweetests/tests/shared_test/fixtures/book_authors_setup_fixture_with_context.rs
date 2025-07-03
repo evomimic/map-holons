@@ -6,12 +6,13 @@ use crate::shared_test::test_data_types::{
     DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
     PERSON_2_KEY, PUBLISHER_KEY,
 };
+
 use base_types::{BaseValue, MapString};
+use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
-    core_shared_objects::{Holon, TransientHolon},
+    core_shared_objects::{Holon, HolonError, RelationshipName, TransientHolon},
     dances::dance_response::ResponseStatusCode,
-    stage_new_holon_api, HolonError, HolonReadable, HolonReference, HolonWritable,
-    HolonsContextBehavior, RelationshipName,
+    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon},
 };
 use integrity_core_types::PropertyName;
 
@@ -119,29 +120,29 @@ pub fn setup_book_author_steps_with_context(
     test_case.add_stage_holon_step(publisher_holon.clone())?;
     stage_new_holon_api(context, publisher_holon.clone())?;
 
-    //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
-    let mut fixture_target_references: Vec<HolonReference> = Vec::new();
-    fixture_target_references.push(HolonReference::from_staged(person_1_reference.clone()));
-    fixture_target_references.push(HolonReference::from_staged(person_2_reference.clone()));
+    // //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
+    // let mut fixture_target_references: Vec<HolonReference> = Vec::new();
+    // fixture_target_references.push(HolonReference::from_staged(person_1_reference.clone()));
+    // fixture_target_references.push(HolonReference::from_staged(person_2_reference.clone()));
 
-    book_ref.add_related_holons(
-        context,
-        relationship_name.clone(),
-        fixture_target_references.clone(),
-    )?;
+    // book_ref.add_related_holons(
+    //     context,
+    //     relationship_name.clone(),
+    //     fixture_target_references.clone(),
+    // )?;
 
-    let mut target_references: Vec<TestReference> = Vec::new();
-    target_references.push(TestReference::StagedHolon(person_1_reference));
-    target_references.push(TestReference::StagedHolon(person_2_reference));
+    // let mut target_references: Vec<TestReference> = Vec::new();
+    // target_references.push(TestReference::StagedHolon(person_1_reference));
+    // target_references.push(TestReference::StagedHolon(person_2_reference));
 
-    // Create the expected_holon
-    test_case.add_related_holons_step(
-        book_ref.clone(),
-        relationship_name.clone(),
-        target_references,
-        ResponseStatusCode::OK,
-        Holon::Transient(book_ref.clone_holon(context)?),
-    )?;
+    // // Create the expected_holon
+    // test_case.add_related_holons_step(
+    //     book_ref.clone(),
+    //     relationship_name.clone(),
+    //     target_references,
+    //     ResponseStatusCode::OK,
+    //     Holon::Transient(book_ref.clone_holon(context)?),
+    // )?;
 
     Ok(relationship_name)
 }

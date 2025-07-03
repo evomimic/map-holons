@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::core_shared_objects::{HolonBehavior as _, TransientHolon};
 use crate::reference_layer::{
-    HolonReadable, HolonReference, HolonsContextBehavior, StagedReference,
+    ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference,
 };
 
 use crate::core_shared_objects::{
@@ -32,13 +32,6 @@ impl SmartReference {
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
     pub fn new_from_id(holon_id: HolonId) -> Self {
         SmartReference { holon_id, smart_property_values: None }
-    }
-
-    pub fn clone_reference(&self) -> SmartReference {
-        SmartReference {
-            holon_id: self.holon_id.clone(),
-            smart_property_values: self.smart_property_values.clone(),
-        }
     }
 
     // *************** ACCESSORS ***************
@@ -143,6 +136,7 @@ impl SmartReference {
         // Get CacheAccess
         space_manager.get_cache_access()
     }
+
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -199,11 +193,8 @@ impl fmt::Display for SmartReference {
     }
 }
 
-impl HolonReadable for SmartReference {
-    fn clone_holon(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientHolon, HolonError> {
+impl ReadableHolon for SmartReference {
+    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_borrow = holon.borrow();
         holon_borrow.clone_holon()

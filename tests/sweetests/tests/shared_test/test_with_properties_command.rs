@@ -15,14 +15,13 @@ use crate::shared_test::{
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
 use holons_core::{
-    core_shared_objects::HolonBehavior,
+    core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
-    HolonReadable, StagedReference,
+    ReadableHolon, StagedReference,
 };
 use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
-
-use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

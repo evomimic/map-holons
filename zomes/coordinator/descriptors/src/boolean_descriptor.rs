@@ -7,7 +7,7 @@ use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 use base_types::{BaseValue, MapString};
 use core_types::{BaseTypeKind, TypeKind};
 use holons_core::{
-    HolonError, HolonReference, HolonWritable, HolonsContextBehavior, StagedReference,
+    HolonError, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference,
 };
 use integrity_core_types::PropertyName;
 use CoreSchemaPropertyTypeName::TypeName;
