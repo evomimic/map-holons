@@ -240,13 +240,13 @@ types:
         space: https://space.map/schema
     spec:
       header:
-        descriptor_name: MetaTypeHeader
+        descriptor_name: MetaTypeHeaderDescriptor
         description: Describes the built-in TypeHeader type. This type specifies values for the common characteristics shared by all types.
-        label: MetaType
+        label: MetaTypeHeaderDescriptor
         is_dependent: true
         is_value_type: false
         described_by: null
-        is_subtype_of: null
+        extends: null
         owned_by: null
       properties:
         - DescriptorName
