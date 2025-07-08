@@ -1,7 +1,10 @@
-use base_types::MapInteger;
 use hdi::prelude::{Record, RecordEntry};
-use holons_core::core_shared_objects::{Holon, HolonError, SavedHolon};
-use integrity_core_types::{HolonNode, LocalId};
+
+use base_types::MapInteger;
+use core_types::HolonError;
+use holons_core::core_shared_objects::{Holon, SavedHolon};
+use integrity_core_types::LocalId;
+use holons_guest_integrity::HolonNode;
 
 // #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 // pub struct HolonRecord {
@@ -24,7 +27,7 @@ pub fn try_from_record(record: Record) -> Result<Holon, HolonError> {
     let holon_node = get_holon_node_from_record(record.clone())?;
 
     let holon = SavedHolon::new(
-        LocalId(record.action_address().clone()),
+        LocalId::from_bytes(record.action_address().clone().into_inner()),
         holon_node.property_map,
         holon_node.original_id,
         MapInteger(1),

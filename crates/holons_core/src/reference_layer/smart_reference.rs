@@ -1,23 +1,18 @@
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use serde::{Serialize, Deserialize};
+use tracing::trace;
 use derive_new::new;
-use hdk::prelude::*;
-use std::cell::RefCell;
-use std::fmt;
-use std::rc::Rc;
-use std::sync::Arc;
-
-use crate::core_shared_objects::{HolonBehavior as _, TransientHolon};
-use crate::reference_layer::{
-    ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference,
-};
 
 use crate::core_shared_objects::{
     cache_access::HolonCacheAccess,
     holon::{state::AccessType, EssentialHolonContent},
-    Holon, HolonCollection, HolonError, RelationshipName,
+    Holon, HolonCollection, RelationshipName, TransientHolon, HolonBehavior
 };
-
+use crate::reference_layer::{
+    ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference,
+};
 use base_types::MapString;
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

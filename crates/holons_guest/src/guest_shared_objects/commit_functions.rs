@@ -1,4 +1,8 @@
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+
 use hdk::prelude::*;
+use holons_guest_integrity::type_conversions::*;
+use holons_guest_integrity::HolonNode;
 
 // use crate::{
 //     create_holon_node, save_smartlink, update_holon_node, SmartLink, UpdateHolonNodeInput,
@@ -6,19 +10,18 @@ use hdk::prelude::*;
 use crate::guest_shared_objects::{save_smartlink, SmartLink};
 use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolonNodeInput};
 
-use holons_core::core_shared_objects::{
-    holon::state::{AccessType, StagedState},
-    CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, HolonError,
-    RelationshipName, StagedHolon,
+use holons_core::{
+    core_shared_objects::{
+        holon::state::{AccessType, StagedState},
+        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection,
+        RelationshipName, StagedHolon,
+    },
+    reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
-use holons_core::reference_layer::{HolonsContextBehavior, ReadableHolon};
 // use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
+use core_types::HolonError;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName};
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-// use std::fmt::format;
-use std::rc::Rc;
 
 /// `commit`
 ///
@@ -84,7 +87,7 @@ pub fn commit(
 
     // FIRST PASS: Commit Staged Holons
     {
-        info!("\n\nStarting FIRST PASS... commit staged_holons..."); 
+        info!("\n\nStarting FIRST PASS... commit staged_holons...");
         for rc_holon in staged_holons.iter().cloned() {
             {
                 rc_holon.borrow().is_accessible(AccessType::Commit)?;
@@ -184,16 +187,17 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("StagedState is New... requesting new HolonNode be created in the DHT");
                 let node = staged_holon.into_node();
-                let result = create_holon_node(node);
+                let result = create_holon_node(HolonNode::from(node));
 
                 match result {
                     Ok(record) => {
-                        staged_holon.to_committed(LocalId(record.action_address().clone()))?;
+                        staged_holon
+                            .to_committed(LocalId(record.action_address().clone().into_inner()))?;
 
                         return Ok(holon_write.clone());
                     }
                     Err(error) => {
-                        let holon_error = HolonError::from(error);
+                        let holon_error = holon_error_from_wasm_error(error);
                         staged_holon.add_error(holon_error.clone())?;
 
                         return Err(holon_error);
@@ -204,25 +208,25 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                 // Changed holons MUST have an original_id
                 let original_id = staged_holon.get_original_id();
                 if let Some(id) = original_id {
-                    let original_holon_node_hash = id.0;
-                    let previous_holon_node_hash = staged_holon.get_local_id()?.0;
+                    let original_holon_node_hash = try_action_hash_from_local_id(&id)?;
+                    let previous_holon_node_hash = try_action_hash_from_local_id(&staged_holon.get_local_id()?)?;
 
                     let input = UpdateHolonNodeInput {
                         original_holon_node_hash,
                         previous_holon_node_hash,
-                        updated_holon_node: staged_holon.clone().into_node(),
+                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node()),
                     };
                     debug!("Requesting HolonNode be updated in the DHT"); //
 
                     let result = update_holon_node(input);
                     match result {
                         Ok(record) => {
-                            staged_holon.to_committed(LocalId(record.action_address().clone()))?;
+                            staged_holon.to_committed(local_id_from_action_hash(record.action_address().clone()))?;
 
                             return Ok(holon_write.clone());
                         }
                         Err(error) => {
-                            let holon_error = HolonError::from(error);
+                            let holon_error = holon_error_from_wasm_error(error);
                             staged_holon.add_error(holon_error.clone())?;
 
                             return Err(holon_error);

@@ -1,10 +1,10 @@
-use crate::core_schema_types::SchemaNamesTrait;
-use descriptors::integer_descriptor::{define_integer_type, IntegerTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
 use hdi::prelude::info;
-use holons_core::core_shared_objects::HolonError;
+
+use crate::core_schema_types::SchemaNamesTrait;
+use descriptors::{integer_descriptor::{define_integer_type, IntegerTypeDefinition}, type_descriptor::TypeDescriptorDefinition};
 use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use base_types::{MapBoolean, MapInteger, MapString};
+use core_types::HolonError;
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Default, EnumIter)]

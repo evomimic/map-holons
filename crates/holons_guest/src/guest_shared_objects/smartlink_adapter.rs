@@ -1,14 +1,17 @@
+use std::{collections::BTreeMap, str};
+
+use base_types::{BaseValue, MapString};
+use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId};
 use hdi::prelude::*;
 use hdk::prelude::*;
+use holons_core::{
+    core_shared_objects::{get_key_from_property_map, RelationshipName},
+    reference_layer::{HolonReference, SmartReference},
+};
+use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use base_types::{BaseValue, MapString};
-use core_types::{ExternalId, HolonId, OutboundProxyId};
-use integrity_core_types::{LocalId, PropertyName, PropertyMap};
-
-use holons_core::core_shared_objects::{get_key_from_property_map, HolonError, RelationshipName};
-use holons_core::reference_layer::{HolonReference, SmartReference};
-use std::{collections::BTreeMap, str};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 
 // const fn smartlink_tag_header_length() -> usize {
 //     // leaving this nomenclature for now
@@ -55,8 +58,14 @@ impl SmartLink {
 pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
     let path = Path::from("all_holon_nodes");
     let links = get_links(
-        GetLinksInputBuilder::try_new(path.path_entry_hash()?, LinkTypes::AllHolonNodes)?.build(),
-    )?;
+        GetLinksInputBuilder::try_new(
+            path.path_entry_hash().map_err(|e| holon_error_from_wasm_error(e))?,
+            LinkTypes::AllHolonNodes,
+        )
+        .map_err(|e| holon_error_from_wasm_error(e))?
+        .build(),
+    )
+    .map_err(|e| holon_error_from_wasm_error(e))?;
     let mut holon_ids = Vec::new();
     info!(
         "Retrieved {:?} links for 'all_holon_nodes' path, converting to SmartLinks..",
@@ -64,10 +73,12 @@ pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
     );
     debug!("Links: {:?}", links);
     for link in links {
-        let holon_id =
-            HolonId::Local(LocalId::from(link.target.clone().into_action_hash().ok_or(
-                HolonError::HashConversion("Source/Base".to_string(), "ActionHash".to_string()),
-            )?));
+        let holon_id = HolonId::Local(local_id_from_action_hash(
+            link.target.clone().into_action_hash().ok_or(HolonError::HashConversion(
+                "Source/Base".to_string(),
+                "ActionHash".to_string(),
+            ))?,
+        ));
         holon_ids.push(holon_id);
     }
 
@@ -81,13 +92,19 @@ pub fn get_all_relationship_links(local_source_id: &LocalId) -> Result<Vec<Smart
     let mut smartlinks: Vec<SmartLink> = Vec::new();
 
     let links = get_links(
-        GetLinksInputBuilder::try_new(local_source_id.0.clone(), LinkTypes::SmartLink)?.build(),
+        GetLinksInputBuilder::try_new(
+            try_action_hash_from_local_id(local_source_id)?,
+            LinkTypes::SmartLink,
+        )
+        .map_err(|e| holon_error_from_wasm_error(e))?
+        .build(),
     )
-    .map_err(|e| HolonError::from(e))?;
+    .map_err(|e| holon_error_from_wasm_error(e))?;
     debug!("Got {:?} links", links.len());
 
     for link in links {
-        let smartlink = get_smartlink_from_link(local_source_id.0.clone(), link)?;
+        let smartlink =
+            get_smartlink_from_link(try_action_hash_from_local_id(local_source_id)?, link)?;
         smartlinks.push(smartlink);
     }
 
@@ -110,11 +127,12 @@ pub fn get_relationship_links(
 
     // Retrieve links using the specified link tag filter
     let links = get_links(
-        GetLinksInputBuilder::try_new(source_action_hash.clone(), LinkTypes::SmartLink)?
+        GetLinksInputBuilder::try_new(source_action_hash.clone(), LinkTypes::SmartLink)
+            .map_err(|e| holon_error_from_wasm_error(e))?
             .tag_prefix(link_tag_filter)
             .build(),
     )
-    .map_err(|e| HolonError::from(e))?;
+    .map_err(|e| holon_error_from_wasm_error(e))?;
 
     debug!("Got {:?} # links", links.len());
     // Process each link to convert it into a SmartLink
@@ -131,21 +149,26 @@ fn get_smartlink_from_link(
     source_local_hash: ActionHash,
     link: Link,
 ) -> Result<SmartLink, HolonError> {
-    let local_target = link.target.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(
-        String::from("No action hash associated with link")
-    )))?;
+    let local_target = link
+        .target
+        .into_action_hash()
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "No action hash associated with link"
+        ))))
+        .map_err(|e| holon_error_from_wasm_error(e))?;
 
     let link_tag_obj = decode_link_tag(link.tag.clone())?;
 
     let to_address = match link_tag_obj.proxy_id {
-        Some(proxy_id) => {
-            HolonId::External(ExternalId { space_id: proxy_id, local_id: LocalId(local_target) })
-        }
-        None => HolonId::Local(LocalId(local_target)),
+        Some(proxy_id) => HolonId::External(ExternalId {
+            space_id: proxy_id,
+            local_id: local_id_from_action_hash(local_target),
+        }),
+        None => HolonId::Local(local_id_from_action_hash(local_target)),
     };
 
     let smartlink = SmartLink {
-        from_address: LocalId(source_local_hash.clone()),
+        from_address: local_id_from_action_hash(source_local_hash.clone()),
         to_address,
         relationship_name: RelationshipName(MapString(link_tag_obj.relationship_name)),
         smart_property_values: link_tag_obj.smart_property_values,
@@ -163,11 +186,12 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
         input.smart_property_values,
     )?;
     create_link(
-        input.from_address.0.clone(),
-        input.to_address.local_id().0.clone(),
+        try_action_hash_from_local_id(&input.from_address)?,
+        try_action_hash_from_local_id(&input.to_address.local_id())?,
         LinkTypes::SmartLink,
         link_tag,
-    )?;
+    )
+    .map_err(|e| holon_error_from_wasm_error(e))?;
 
     Ok(())
 }
@@ -225,14 +249,15 @@ fn decode_link_tag(link_tag: LinkTag) -> Result<LinkTagObject, HolonError> {
             cursor.iter().position(|&b| b == PROXY_ID_SEPARATOR.as_bytes()[0]);
 
         if let Some(proxy_id_end) = proxy_id_end_option {
-            link_tag_object.proxy_id = Some(OutboundProxyId(
-                ActionHash::try_from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
-                    HolonError::HashConversion(
-                        "LinkTag proxy_id bytes".to_string(),
-                        "ActionHash".to_string(),
-                    )
-                })?,
-            ));
+            link_tag_object.proxy_id = Some(OutboundProxyId(LocalId(
+                cursor[..proxy_id_end].to_vec(),
+                // ActionHash::try_from_raw_39(cursor[..proxy_id_end].to_vec()).map_err(|_| {
+                //     HolonError::HashConversion(
+                //         "LinkTag proxy_id bytes".to_string(),
+                //         "ActionHash".to_string(),
+                //     )
+                // })?,
+            )));
             debug!("DECODED proxy_id: {:#?}", link_tag_object.proxy_id.clone());
             cursor = &cursor[proxy_id_end + UNICODE_NUL_STR.len()..];
         } else {
@@ -328,7 +353,7 @@ fn encode_link_tag(
 
     if let HolonId::External(external_id) = to_address {
         bytes.extend_from_slice(&EXTERNAL_REFERENCE_TYPE);
-        bytes.extend_from_slice(&external_id.space_id.0.into_inner());
+        bytes.extend_from_slice(&external_id.space_id.0 .0);
         bytes.extend_from_slice(UNICODE_NUL_STR.as_bytes());
     } else {
         bytes.extend_from_slice(&LOCAL_REFERENCE_TYPE);
@@ -435,12 +460,11 @@ mod tests {
 
     #[test]
     fn test_encode_and_decode_link_tag() {
-        let space_id = OutboundProxyId(
-            ActionHash::try_from("uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC").unwrap(),
-        );
-        let local_id = LocalId(
-            ActionHash::try_from("uhCkkLQ8hxxrt27W8TtkpcX1XAqbUyfD5_Rv5Us0X_-YeCT6RtMxU").unwrap(),
-        );
+        let space_id = OutboundProxyId(LocalId(
+            "uhCkkRCrWQQJ95dvwNDgGeRHwJQVjcrvKrmuDf6T0iylizE2gWyHC".as_bytes().to_vec(),
+        ));
+        let local_id =
+            LocalId("uhCkkLQ8hxxrt27W8TtkpcX1XAqbUyfD5_Rv5Us0X_-YeCT6RtMxU".as_bytes().to_vec());
 
         let holon_id = HolonId::External(ExternalId { space_id: space_id.clone(), local_id });
 

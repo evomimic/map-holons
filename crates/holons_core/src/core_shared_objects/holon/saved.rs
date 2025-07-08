@@ -1,10 +1,8 @@
-use base_types::{MapInteger, MapString};
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
-use crate::core_shared_objects::{
-    HolonError,
-};
+use base_types::{MapInteger, MapString};
+use core_types::HolonError;
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::{
     state::{AccessType, HolonState, SavedState, ValidationState},
@@ -127,8 +125,8 @@ impl HolonBehavior for SavedHolon {
 
     /// Extracts HolonNode data.
     /// Converts 'original_id' and 'property_map' fields into a HolonNode object.
-    fn into_node(&self) -> HolonNode {
-        HolonNode::new(self.original_id.clone(), self.property_map.clone())
+    fn into_node(&self) -> HolonNodeModel {
+        HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
     }
 
     // =======================
@@ -184,7 +182,7 @@ impl HolonBehavior for SavedHolon {
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available
         let local_id = match self.get_local_id() {
-            Ok(local_id) => local_id.0.to_string(), // Convert LocalId to String
+            Ok(local_id) => local_id.to_string(), // Convert LocalId to String
             Err(e) => format!("<Error: {:?}>", e),  // If local_id is not found or error occurred
         };
 

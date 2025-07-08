@@ -7,12 +7,12 @@ use crate::shared_test::{
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    stage_new_holon_api, HolonCollection, HolonError, HolonsContextBehavior, RelationshipName,
+    stage_new_holon_api, HolonCollection, HolonsContextBehavior, RelationshipName,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
 

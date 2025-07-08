@@ -24,7 +24,8 @@ use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
     HolonsContextBehavior, ReadableHolon, StagedReference,
 };
-use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName};
+use holons_guest_integrity::HolonNode;
 
 /// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
 /// supplied Holon and confirms a Success response

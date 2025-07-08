@@ -23,7 +23,8 @@ use holons_core::{
     query_layer::{Node, NodeCollection, QueryExpression},
     HolonReference, SmartReference,
 };
-use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName};
+use holons_guest_integrity::HolonNode;
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(

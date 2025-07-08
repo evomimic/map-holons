@@ -21,7 +21,8 @@ use holons_core::{
     dances::ResponseBody,
     // utils::as_json
 };
-use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName};
+use holons_guest_integrity::HolonNode;
 
 /// This function retrieves all holons and then writes log messages for each holon:
 /// `info!` -- writes only the "key" for each holon

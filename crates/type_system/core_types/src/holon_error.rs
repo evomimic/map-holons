@@ -1,4 +1,4 @@
-use hdk::prelude::*;
+use serde::{Deserialize, Serialize};
 use shared_validation::ValidationError;
 use thiserror::Error;
 
@@ -58,23 +58,6 @@ pub enum HolonError {
     ValidationError(ValidationError),
     #[error("WasmError {0}")]
     WasmError(String),
-}
-
-impl From<WasmError> for HolonError {
-    fn from(e: WasmError) -> Self {
-        HolonError::WasmError(e.to_string())
-    }
-}
-
-// impl Into<WasmError> for HolonError {
-//     fn into(self) -> WasmError {
-//         wasm_error!("HolonError {:?}", self.to_string())
-//     }
-// }
-impl Into<WasmError> for HolonError {
-    fn into(self) -> WasmError {
-        wasm_error!(WasmErrorInner::Guest(self.to_string())) // Correct usage of the `wasm_error!` macro
-    }
 }
 
 use std::cell::BorrowError;

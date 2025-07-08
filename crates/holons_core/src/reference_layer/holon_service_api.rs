@@ -1,13 +1,14 @@
-use crate::core_shared_objects::{
-    Holon, CommitResponse, HolonCollection, HolonError, RelationshipName,
-};
-use crate::reference_layer::HolonsContextBehavior;
-use core_types::HolonId;
-use integrity_core_types::LocalId;
-use base_types::MapString;
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
+use crate::core_shared_objects::{
+    Holon, CommitResponse, HolonCollection, RelationshipName,
+};
+use crate::reference_layer::HolonsContextBehavior;
+use base_types::MapString;
+use core_types::{HolonError, HolonId};
+use integrity_core_types::LocalId;
+
 
 pub trait HolonServiceApi: Debug {
     ///

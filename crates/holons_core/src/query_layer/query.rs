@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
-use std::rc::Rc;
-
-use crate::core_shared_objects::{HolonError, RelationshipName};
-use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
+use std::{collections::BTreeMap, rc::Rc};
+use serde::{Serialize, Deserialize};
 use derive_new::new;
-use hdk::prelude::*;
+
+use crate::HolonCollection;
+use crate::core_shared_objects::RelationshipName;
+use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
+use core_types::HolonError;
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Node {
@@ -43,7 +44,7 @@ pub fn evaluate_query(
         let related_holons_rc =
             node.source_holon.get_related_holons(context, &relationship_name)?;
 
-        let related_holons = Rc::clone(&related_holons_rc);
+        let related_holons: Rc<HolonCollection> = Rc::clone(&related_holons_rc);
 
         let mut query_path_map = QueryPathMap::new(BTreeMap::new());
 

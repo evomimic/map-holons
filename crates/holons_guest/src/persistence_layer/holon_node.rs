@@ -1,8 +1,6 @@
 use hdk::prelude::*;
+use holons_guest_integrity::HolonNode;
 use holons_integrity::*;
-use integrity_core_types::HolonNode;
-
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreatePathInput {

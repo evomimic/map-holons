@@ -2,11 +2,10 @@
 /// They support  lazy creation of descriptors by offering "get_the_<type_name>" functions
 /// that return the descriptor whose type_name is <xxx>, creating it first, if necessary.
 use crate::descriptor_types::Schema;
-use holons_core::core_shared_objects::holon::TransientHolon;
-use holons_core::core_shared_objects::{Holon, HolonError};
-
-use integrity_core_types::PropertyName;
 use base_types::{BaseValue, MapString};
+use core_types::HolonError;
+use holons_core::core_shared_objects::{Holon, TransientHolon};
+use integrity_core_types::PropertyName;
 
 impl Schema {
     /// creates an empty (in-memory) Schema Holon

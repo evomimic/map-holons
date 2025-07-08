@@ -1,9 +1,8 @@
-use crate::core_shared_objects::HolonError;
-use base_types::{MapInteger, MapString};
 use std::fmt::Debug;
 
 use super::{HolonReference, HolonsContextBehavior};
-// use crate::HolonReference;
+use base_types::{MapInteger, MapString};
+use core_types::HolonError;
 
 pub trait HolonCollectionApi: Debug {
     fn add_references(

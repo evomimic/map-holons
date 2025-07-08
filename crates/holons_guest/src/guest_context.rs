@@ -1,15 +1,16 @@
-use crate::guest_shared_objects::GuestHolonService;
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::Arc};
 
-use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
-use holons_core::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
-use holons_core::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
-use holons_core::core_shared_objects::{
-    HolonError, Nursery, ServiceRoutingPolicy, TransientHolonManager,
+use crate::guest_shared_objects::GuestHolonService;
+use holons_core::{
+    core_shared_objects::{
+        holon_pool::SerializableHolonPool, nursery_access_internal::NurseryAccessInternal,
+        space_manager::HolonSpaceManager,
+        transient_manager_access_internal::TransientManagerAccessInternal, Nursery,
+        ServiceRoutingPolicy, TransientHolonManager,
+    },
+    reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior},
 };
-use holons_core::reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior};
-use std::sync::Arc;
+use core_types::HolonError;
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations **within the Holochain guest environment**.

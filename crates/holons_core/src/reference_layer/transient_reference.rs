@@ -1,10 +1,11 @@
-use base_types::{BaseValue, MapString};
-use core_types::{HolonId, TemporaryId};
 use derive_new::new;
-use integrity_core_types::{PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use tracing::debug;
+
+use base_types::{BaseValue, MapString};
+use core_types::{HolonError, HolonId, TemporaryId};
+use integrity_core_types::{PropertyName, PropertyValue};
 
 use crate::{
     core_shared_objects::{
@@ -14,8 +15,8 @@ use crate::{
         },
         TransientManagerAccess,
     },
-    HolonCollection, HolonError, HolonReference, HolonsContextBehavior, ReadableHolon,
-    RelationshipName, WriteableHolon,
+    HolonCollection, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName,
+    WriteableHolon,
 };
 
 #[derive(new, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

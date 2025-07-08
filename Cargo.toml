@@ -19,6 +19,7 @@ members = [
     "crates/holons_core",
     "crates/holon_dance_builders",
     "crates/holons_guest",
+    "crates/holons_guest_integrity",
 ]
 resolver = "2"
 
@@ -57,6 +58,9 @@ path = "crates/holons_core"
 
 [workspace.dependencies.holons_guest]
 path = "crates/holons_guest"
+
+[workspace.dependencies.holons_guest_integrity]
+path = "crates/holons_guest_integrity"
 
 [workspace.dependencies.holon_dance_builders]
 path = "crates/holon_dance_builders"

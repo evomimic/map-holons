@@ -18,7 +18,8 @@ use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_request;
 use holons_core::dances::ResponseBody;
-use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName};
+use holons_guest_integrity::HolonNode;
 
 /// This function builds and dances a `get_all_holons` DanceRequest and confirms that the number
 /// of holons returned matches the expected_count of holons provided.

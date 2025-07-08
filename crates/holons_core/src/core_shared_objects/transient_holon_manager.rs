@@ -1,7 +1,7 @@
 use std::{any::Any, cell::RefCell, rc::Rc};
 
 use base_types::MapString;
-use core_types::TemporaryId;
+use core_types::{HolonError, TemporaryId};
 
 use crate::{
     core_shared_objects::{
@@ -10,9 +10,7 @@ use crate::{
         transient_manager_access_internal::TransientManagerAccessInternal,
         TransientManagerAccess,
     },
-    reference_layer::{TransientHolonBehavior, TransientReference},
-    HolonError, HolonPool,
-};
+    reference_layer::{TransientHolonBehavior, TransientReference}, HolonPool};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransientHolonManager {

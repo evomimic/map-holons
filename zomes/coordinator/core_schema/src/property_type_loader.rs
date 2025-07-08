@@ -1,18 +1,18 @@
+use hdi::prelude::info;
+
 use crate::boolean_value_type_loader::CoreBooleanValueTypeName::*;
 use crate::core_schema_types::SchemaNamesTrait;
 use crate::enum_type_loader::CoreEnumTypeName::*;
 use crate::integer_value_type_loader::CoreIntegerValueTypeName::*;
 use crate::string_value_type_loader::CoreStringValueTypeName::*;
 use crate::value_type_loader::CoreValueTypeName::*;
-use descriptors::property_descriptor::{define_property_type, PropertyTypeDefinition};
-use descriptors::type_descriptor::TypeDescriptorDefinition;
-use hdi::prelude::info;
-use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use crate::value_type_loader::CoreValueTypeName;
-use holons_core::core_shared_objects::HolonError;
+use descriptors::{property_descriptor::{define_property_type, PropertyTypeDefinition}, type_descriptor::TypeDescriptorDefinition};
+use holons_core::{HolonReference, HolonsContextBehavior, StagedReference};
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
 use base_types::{MapBoolean, MapString};
+use core_types::HolonError;
 use integrity_core_types::PropertyName;
 use strum_macros::EnumIter;
 use CorePropertyTypeName::*;

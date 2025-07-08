@@ -1,12 +1,11 @@
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use serde::{Deserialize, Serialize};
+
 use super::{Holon, HolonBehavior};
 use crate::utils::uuid::create_temporary_id_from_key;
-use crate::HolonError;
 use base_types::MapString;
-use core_types::TemporaryId;
-use hdi::prelude::{Deserialize, Serialize};
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
+use core_types::{HolonError, TemporaryId};
+
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
 

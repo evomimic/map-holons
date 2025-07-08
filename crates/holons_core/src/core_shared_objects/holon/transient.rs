@@ -4,16 +4,16 @@
 // use crate::state::AccessType;
 // use crate::identifier::TemporaryId;
 
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::TemporaryId;
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
-use serde::{Deserialize, Serialize};
+use core_types::{HolonError, TemporaryId};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use crate::{
     core_shared_objects::{holon::StagedHolon, TransientRelationshipMap},
-    HolonCollection, HolonError, RelationshipName,
+    HolonCollection, RelationshipName,
 };
 
 use super::{
@@ -212,8 +212,8 @@ impl HolonBehavior for TransientHolon {
         Ok(self.property_map.get(property_name).cloned().flatten())
     }
 
-    fn into_node(&self) -> HolonNode {
-        HolonNode::new(self.original_id.clone(), self.property_map.clone())
+    fn into_node(&self) -> HolonNodeModel {
+        HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
     }
 
     // =========================
@@ -278,8 +278,8 @@ impl HolonBehavior for TransientHolon {
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available
         let local_id = match self.get_local_id() {
-            Ok(local_id) => local_id.0.to_string(), // Convert LocalId to String
-            Err(_) => "<None>".to_string(),         // If local_id is not found or error occurred
+            Ok(local_id) => local_id.to_string(), // Convert LocalId to String
+            Err(_) => "<None>".to_string(),       // If local_id is not found or error occurred
         };
 
         // Format the summary string

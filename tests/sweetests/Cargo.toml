@@ -1,14 +1,14 @@
 [package]
 name = "holons_test"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [lib]
 crate-type = ["rlib"]
 name = "holons_test"
 
 [dependencies]
-# General dev-dependencies (platform-agnostic)
+# General dev-dependencies (platform-agnostic)ß
 derive-new = "0.7.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.109"
@@ -27,6 +27,7 @@ holons_client = { path = "../../crates/holons_client" }
 base_types = { path = "../../crates/type_system/base_types" }
 core_types = { path = "../../crates/type_system/core_types" }
 integrity_core_types = { path = "../../crates/type_system/integrity_core_types" }
+holons_guest_integrity = { path = "../../crates/holons_guest_integrity" }
 
 [dev-dependencies]
 futures = { version = "0.3.1", default-features = false }

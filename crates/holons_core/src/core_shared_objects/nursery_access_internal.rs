@@ -1,11 +1,9 @@
+use std::{any::Any, cell::RefCell, rc::Rc};
+
 use super::{holon_pool::SerializableHolonPool, Holon};
-use crate::{HolonError, NurseryAccess};
-use crate::HolonStagingBehavior;
-use core_types::TemporaryId;
+use crate::{HolonStagingBehavior, NurseryAccess};
 use base_types::MapString;
-use std::any::Any;
-use std::cell::RefCell;
-use std::rc::Rc;
+use core_types::{HolonError, TemporaryId};
 
 /// Provides **internal management** of staged holons in the nursery.
 ///

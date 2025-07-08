@@ -1,8 +1,8 @@
 use crate::core_shared_objects::holon::TransientHolon;
 use crate::reference_layer::StagedReference;
 
-use crate::core_shared_objects::HolonError;
 use base_types::MapString;
+use core_types::HolonError;
 
 /// Defines **high-level staging behavior**, abstracting away direct nursery operations.
 ///

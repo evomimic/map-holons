@@ -1,8 +1,8 @@
-use integrity_core_types::LocalId;
-use serde::{Deserialize, Serialize};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
-use crate::HolonError;
+use integrity_core_types::LocalId;
+use core_types::HolonError;
 
 #[derive(Debug)]
 pub enum AccessType {

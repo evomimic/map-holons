@@ -15,9 +15,10 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
+use crate::HolonsContextBehavior;
 use crate::dances::{DanceRequest, DanceType, RequestBody, ResponseBody};
-use crate::{HolonError, HolonsContextBehavior};
 use base_types::MapString;
+use core_types::HolonError;
 
 /// *DanceRequest:*
 /// - dance_name: "load_core_schema"

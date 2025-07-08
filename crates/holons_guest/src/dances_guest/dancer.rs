@@ -1,18 +1,17 @@
-use hdk::prelude::*;
-use holons_core::HolonsContextBehavior;
+use std::{collections::HashMap, sync::Arc};
 
-use holons_core::core_shared_objects::HolonError;
+use hdk::prelude::*;
 
 use crate::init_guest_context;
 
-use base_types::MapString;
-use holons_core::dances::descriptors_dance_adapter::load_core_schema_dance;
 use holons_core::dances::holon_dance_adapter::*;
-use holons_core::dances::{
+use holons_core::{HolonsContextBehavior, dances::{descriptors_dance_adapter::load_core_schema_dance, 
     DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState,
-};
-use std::collections::HashMap;
-use std::sync::Arc;
+}};
+use base_types::MapString;
+use core_types::HolonError;
+
+
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for

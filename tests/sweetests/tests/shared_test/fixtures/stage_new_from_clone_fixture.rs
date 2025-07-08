@@ -9,8 +9,9 @@ use crate::shared_test::{
 };
 
 use base_types::{BaseValue, MapInteger, MapString};
+use core_types::HolonError;
 use holons_core::{
-    core_shared_objects::{holon::Holon, HolonError},
+    core_shared_objects::Holon,
     dances::ResponseStatusCode,
     reference_layer::{HolonReference, ReadableHolon, StagedReference, WriteableHolon},
     RelationshipName,

@@ -1,20 +1,23 @@
+use integrity_core_types::{short_hash, LocalId};
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use hdi::prelude::*;
 use uuid::Uuid;
-use integrity_core_types::LocalId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct OutboundProxyId(pub ActionHash);
+pub struct OutboundProxyId(pub LocalId);
 
-impl From<ActionHash> for OutboundProxyId {
-    fn from(action_hash: ActionHash) -> Self {
+impl From<LocalId> for OutboundProxyId {
+    fn from(action_hash: LocalId) -> Self {
         OutboundProxyId(action_hash)
     }
 }
 
 impl fmt::Display for OutboundProxyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", short_hash(&self.0, 6))
+        match short_hash(&self.0, 6) {
+            Ok(s) => write!(f, "{}", s),
+            Err(_) => write!(f, "<invalid utf-8>"),
+        }
     }
 }
 
@@ -95,11 +98,4 @@ impl fmt::Display for HolonId {
             HolonId::External(e) => write!(f, "External({})", e),
         }
     }
-}
-
-/// Helper for truncating an ActionHash for display.
-fn short_hash(hash: &ActionHash, length: usize) -> String {
-    let s = hash.to_string();
-    let start = s.len().saturating_sub(length);
-    format!("…{}", &s[start..])
 }
