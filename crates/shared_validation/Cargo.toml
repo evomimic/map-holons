@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hdi = { workspace = true }
-hdk = { workspace = true }
+
 serde = { workspace = true }
 thiserror = { workspace = true }
 

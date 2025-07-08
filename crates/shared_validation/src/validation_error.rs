@@ -1,4 +1,3 @@
-use hdk::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -17,14 +16,3 @@ pub enum ValidationError {
     WasmError(String),
 }
 
-impl From<WasmError> for ValidationError {
-    fn from(error: WasmError) -> Self {
-        ValidationError::WasmError(error.to_string())
-    }
-}
-
-impl Into<WasmError> for ValidationError {
-    fn into(self) -> WasmError {
-        wasm_error!("ValidationError {:?}", self.to_string())
-    }
-}

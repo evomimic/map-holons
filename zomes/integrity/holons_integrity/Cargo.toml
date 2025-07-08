@@ -9,10 +9,13 @@ crate-type = ["cdylib", "rlib"]
 name = "holons_integrity"
 
 [dependencies]
-hdi = { workspace = true }
-holochain_integrity_types = { workspace = true }
+
 
 serde = { workspace = true }
 
-shared_validation = {workspace = true}
-integrity_core_types = {workspace = true}
+shared_validation = { workspace = true }
+
+# Holochain dependencies
+hdi = { workspace = true }
+holochain_integrity_types = { workspace = true }
+holons_guest_integrity = { workspace = true }

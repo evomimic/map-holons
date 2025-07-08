@@ -2,7 +2,7 @@
 use base_types::MapString;
 use core_types::HolonError;
 use serde::{Serialize, Deserialize};
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::state::AccessType;
 use super::{HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
@@ -120,7 +120,7 @@ impl HolonBehavior for Holon {
         }
     }
 
-    fn into_node(&self) -> HolonNode {
+    fn into_node(&self) -> HolonNodeModel {
         match self {
             Holon::Transient(h) => h.into_node(),
             Holon::Staged(h) => h.into_node(),

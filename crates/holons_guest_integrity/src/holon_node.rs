@@ -1,4 +1,4 @@
-use crate::{PropertyMap, LocalId};
+use integrity_core_types::{LocalId, PropertyMap};
 use derive_new::new;
 use hdi::prelude::*;
 
@@ -19,4 +19,3 @@ pub struct HolonNode {
     pub original_id: Option<LocalId>,
     pub property_map: PropertyMap,
 }
- 

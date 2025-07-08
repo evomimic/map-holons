@@ -1,4 +1,3 @@
-use integrity_core_types::wasm_error::WasmErrorWrapper;
 use serde::{Deserialize, Serialize};
 use shared_validation::ValidationError;
 use thiserror::Error;
@@ -61,18 +60,6 @@ pub enum HolonError {
     WasmError(String),
 }
 
-// impl From<WasmError> for HolonError {
-//     fn from(e: WasmError) -> Self {
-//         HolonError::WasmError(e.to_string())
-//     }
-// }
-
-// impl Into<WasmError> for HolonError {
-//     fn into(self) -> WasmError {
-//         wasm_error!(WasmErrorInner::Guest(self.to_string()))
-//     }
-// }
-
 use std::cell::BorrowError;
 
 impl From<BorrowError> for HolonError {
@@ -91,9 +78,5 @@ impl HolonError {
             combined.push_str(&error.to_string());
         }
         combined
-    }
-
-    pub fn from_wasm_error(error: WasmErrorWrapper) -> HolonError {
-        HolonError::WasmError(error.0.to_string())
     }
 }

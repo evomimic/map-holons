@@ -1,6 +1,6 @@
 use base_types::MapString;
 use core_types::HolonError;
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use super::{state::AccessType, EssentialHolonContent, TransientHolon};
 
@@ -80,7 +80,7 @@ pub trait HolonBehavior {
     ///
     ///  # Semantics
     ///  -Extracts property_map and original_id fields
-    fn into_node(&self) -> HolonNode;
+    fn into_node(&self) -> HolonNodeModel;
 
     // =========================
     //      ACCESS CONTROL

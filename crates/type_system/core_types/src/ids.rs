@@ -1,4 +1,4 @@
-use integrity_core_types::LocalId;
+use integrity_core_types::{short_hash, LocalId};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
@@ -14,7 +14,10 @@ impl From<LocalId> for OutboundProxyId {
 
 impl fmt::Display for OutboundProxyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", short_hash(&self.0, 6))
+        match short_hash(&self.0, 6) {
+            Ok(s) => write!(f, "{}", s),
+            Err(_) => write!(f, "<invalid utf-8>"),
+        }
     }
 }
 
@@ -95,11 +98,4 @@ impl fmt::Display for HolonId {
             HolonId::External(e) => write!(f, "External({})", e),
         }
     }
-}
-
-/// Helper for truncating an LocalId for display.
-fn short_hash(hash: &LocalId, length: usize) -> String {
-    let s = hash.to_string();
-    let start = s.len().saturating_sub(length);
-    format!("…{}", &s[start..])
 }

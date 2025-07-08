@@ -1,6 +1,12 @@
 use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
 use hdk::prelude::*;
+use holons_guest_integrity::type_conversions::{
+    holon_error_from_wasm_error, try_action_hash_from_local_id,
+};
+use holons_guest_integrity::{
+    HolonNode, LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
+};
 
 use super::{fetch_links_to_all_holons, get_all_relationship_links};
 use crate::guest_shared_objects::{
@@ -23,10 +29,7 @@ use holons_core::{
     WriteableHolon,
 };
 use holons_integrity::LinkTypes;
-use integrity_core_types::{
-    LocalId, PropertyName, WasmErrorWrapper, LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME,
-    LOCAL_HOLON_SPACE_PATH,
-};
+use integrity_core_types::{LocalId, PropertyName};
 
 #[derive(Clone)]
 pub struct GuestHolonService {
@@ -178,8 +181,8 @@ impl GuestHolonService {
         let space_holon_node = space_holon.clone().into_node();
 
         // Try to create the holon node in the DHT
-        let holon_record = create_holon_node(space_holon_node.clone())
-            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?;
+        let holon_record = create_holon_node(HolonNode::from(space_holon_node.clone()))
+            .map_err(|e| holon_error_from_wasm_error(e))?;
         let saved_holon = try_from_record(holon_record)?;
 
         // Retrieve the local ID for the holon
@@ -287,14 +290,14 @@ impl HolonServiceApi for GuestHolonService {
     }
 
     fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
-        let record = get(local_id.0.clone(), GetOptions::default())
-            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?
+        let record = get(try_action_hash_from_local_id(&local_id)?, GetOptions::default())
+            .map_err(|e| holon_error_from_wasm_error(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
         let mut holon = try_from_record(record)?;
         // holon.is_deletable()?;
-        delete_holon_node(local_id.0.clone())
+        delete_holon_node(try_action_hash_from_local_id(&local_id)?)
             .map(|_| ()) // Convert ActionHash to ()
-            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))
+            .map_err(|e| holon_error_from_wasm_error(e))
     }
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
@@ -305,14 +308,14 @@ impl HolonServiceApi for GuestHolonService {
         // Retrieve the exact HolonNode for the specific ActionHash.
         // DISCLAIMER: The name of this scaffolded function is misleading... it does not 'walk the tree' to get the original record.
         // keeping the terminology per policy not to change scaffolded code.
-        let holon_node_record = get_original_holon_node(local_id.0.clone())
-            .map_err(|e| HolonError::from_wasm_error(WasmErrorWrapper(e)))?;
+        let holon_node_record = get_original_holon_node(try_action_hash_from_local_id(&local_id)?)
+            .map_err(|e| holon_error_from_wasm_error(e))?;
         if let Some(record) = holon_node_record {
             let holon = try_from_record(record)?;
             Ok(holon)
         } else {
             // No holon_node fetched for the specified holon_id
-            Err(HolonError::HolonNotFound(local_id.0.to_string()))
+            Err(HolonError::HolonNotFound(local_id.to_string()))
         }
     }
 
@@ -326,7 +329,7 @@ impl HolonServiceApi for GuestHolonService {
         let mut collection = HolonCollection::new_existing();
 
         // fetch the smartlinks for this relationship (if any)
-        let smartlinks = get_relationship_links(local_id.0, relationship_name)?;
+        let smartlinks = get_relationship_links(try_action_hash_from_local_id(&local_id)?, relationship_name)?;
         debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
         for smartlink in smartlinks {

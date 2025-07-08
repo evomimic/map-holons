@@ -110,13 +110,11 @@ impl<'a> Serialize for HolonIdWrapper<'a> {
         S: Serializer,
     {
         match self.0 {
-            HolonId::Local(local_id) => {
-                serializer.serialize_str(&format!("Local({})", local_id.0.to_string()))
-            }
+            HolonId::Local(local_id) => serializer.serialize_str(&format!("Local({})", local_id)),
             HolonId::External(external_id) => serializer.serialize_str(&format!(
                 "External(Space: {}, Local: {})",
                 external_id.space_id.0.to_string(),
-                external_id.local_id.0.to_string()
+                external_id.local_id
             )),
         }
     }

@@ -61,7 +61,8 @@ use core_types::HolonError;
 use core_types::HolonId;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
-use integrity_core_types::{HolonNode, PropertyMap, PropertyName};
+use holons_guest_integrity::HolonNode;
+use integrity_core_types::{PropertyMap, PropertyName};
 use shared_test::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.

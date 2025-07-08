@@ -1,9 +1,9 @@
-use std::rc::Rc;
 use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{TemporaryId, HolonError};
-use integrity_core_types::{HolonNode, LocalId, PropertyMap, PropertyName, PropertyValue};
+use core_types::{HolonError, TemporaryId};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use crate::{
     core_shared_objects::ReadableRelationship, HolonCollection, RelationshipName,
@@ -251,8 +251,11 @@ impl HolonBehavior for StagedHolon {
         Ok(MapString(key.0 + &self.version.0.to_string()))
     }
 
-    fn into_node(&self) -> HolonNode {
-        HolonNode { original_id: self.original_id.clone(), property_map: self.property_map.clone() }
+    fn into_node(&self) -> HolonNodeModel {
+        HolonNodeModel {
+            original_id: self.original_id.clone(),
+            property_map: self.property_map.clone(),
+        }
     }
 
     // =======================
@@ -324,8 +327,8 @@ impl HolonBehavior for StagedHolon {
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available
         let local_id = match self.get_local_id() {
-            Ok(local_id) => local_id.0.to_string(), // Convert LocalId to String
-            Err(_) => "<None>".to_string(),         // If local_id is not found or error occurred
+            Ok(local_id) => local_id.to_string(), // Convert LocalId to String
+            Err(_) => "<None>".to_string(),       // If local_id is not found or error occurred
         };
 
         // Format the summary string
