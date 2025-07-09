@@ -209,7 +209,8 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                 let original_id = staged_holon.get_original_id();
                 if let Some(id) = original_id {
                     let original_holon_node_hash = try_action_hash_from_local_id(&id)?;
-                    let previous_holon_node_hash = try_action_hash_from_local_id(&staged_holon.get_local_id()?)?;
+                    let previous_holon_node_hash =
+                        try_action_hash_from_local_id(&staged_holon.get_local_id()?)?;
 
                     let input = UpdateHolonNodeInput {
                         original_holon_node_hash,
@@ -221,7 +222,9 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                     let result = update_holon_node(input);
                     match result {
                         Ok(record) => {
-                            staged_holon.to_committed(local_id_from_action_hash(record.action_address().clone()))?;
+                            staged_holon.to_committed(local_id_from_action_hash(
+                                record.action_address().clone(),
+                            ))?;
 
                             return Ok(holon_write.clone());
                         }

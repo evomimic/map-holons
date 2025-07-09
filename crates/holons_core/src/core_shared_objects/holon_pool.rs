@@ -1,14 +1,69 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 use serde::{Deserialize, Serialize};
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+    rc::Rc,
+};
 
 use super::{Holon, HolonBehavior};
 use crate::utils::uuid::create_temporary_id_from_key;
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct TransientSerializableHolonPool(pub SerializableHolonPool);
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct StagedSerializableHolonPool(pub SerializableHolonPool);
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TransientHolonPool(pub HolonPool);
+
+impl From<HolonPool> for TransientHolonPool {
+    fn from(pool: HolonPool) -> Self {
+        TransientHolonPool(pool)
+    }
+}
+
+impl Deref for TransientSerializableHolonPool {
+    type Target = SerializableHolonPool;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for TransientSerializableHolonPool {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct StagedHolonPool(pub HolonPool);
+
+impl From<HolonPool> for StagedHolonPool {
+    fn from(pool: HolonPool) -> Self {
+        StagedHolonPool(pool)
+    }
+}
+
+impl Deref for StagedSerializableHolonPool {
+    type Target = SerializableHolonPool;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for StagedSerializableHolonPool {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HolonPool {
     holons: BTreeMap<TemporaryId, Rc<RefCell<Holon>>>, // Stores Holons with shared ownership
