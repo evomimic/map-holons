@@ -66,7 +66,7 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
 
     // assert_eq!(result.staging_area.staged_holons.len(), context.get_space_manager().staged_holons.len());
 
-    warn!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
+    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
     Ok(result)
 }
