@@ -66,6 +66,9 @@ path = "crates/holons_guest_integrity"
 [workspace.dependencies.holon_dance_builders]
 path = "crates/holon_dance_builders"
 
+[workspace.dependencies.json_schema_validation]
+path = "crates/json_schema_validation"
+
 # External dependencies
 [workspace.dependencies]
 async-trait = "0.1.51"
