@@ -9,4 +9,4 @@ serde_json = "1.0.140"
 jsonschema = {  version = "0.30.0", default-features = false }
 
 # MAP Dependencies
-shared_validation = {workspace = true}
+integrity_core_types = {workspace = true}
