@@ -14,6 +14,7 @@ members = [
     "crates/type_system/descriptor_types",
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
+    "crates/json_schema_validation",
     # Shared Core & Guest Libraries
     "crates/holons_client",
     "crates/holons_core",
