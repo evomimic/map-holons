@@ -1,0 +1,6 @@
+{
+  "type_name": "BookType",
+  "properties": {
+    "title": { "type": "MapString", "value": "Future Primal" }
+  }
+}
