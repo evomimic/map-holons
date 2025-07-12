@@ -6,20 +6,22 @@ use core_types::{HolonError, TemporaryId};
 use crate::{
     core_shared_objects::{
         holon::{Holon, TransientHolon},
-        holon_pool::SerializableHolonPool,
+        holon_pool::{SerializableHolonPool, TransientHolonPool},
         transient_manager_access_internal::TransientManagerAccessInternal,
         TransientManagerAccess,
     },
-    reference_layer::{TransientHolonBehavior, TransientReference}, HolonPool};
+    reference_layer::{TransientHolonBehavior, TransientReference},
+    HolonPool,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransientHolonManager {
-    transient_holons: Rc<RefCell<HolonPool>>, // Uses Rc<RefCell<HolonPool>> for interior mutability
+    transient_holons: Rc<RefCell<TransientHolonPool>>, // Uses Rc<RefCell<HolonPool>> for interior mutability
 }
 
 impl TransientHolonManager {
     pub fn new() -> Self {
-        Self { transient_holons: Rc::new(RefCell::new(HolonPool::new())) }
+        Self { transient_holons: Rc::new(RefCell::new(TransientHolonPool(HolonPool::new()))) }
     }
 
     /// Inserts a new holon.
