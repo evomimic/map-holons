@@ -3,6 +3,14 @@ MAP Holons provides the foundational layer of the _Memetic Activation Platform_ 
 
 MAP Holons is still in early proof-of-concept prototype stages. The prototype architecture and design is specified in the [MAP Holons wiki](https://github.com/evomimic/map-holons/wiki). The prototype development sequence is described in [MAP Prototype Development Plan](https://github.com/evomimic/map-holons/wiki/MAP-Holons-Prototype-Development-Plan).
 
+## License
+
+This project is licensed under the [Cryptographic Autonomy License v1.0 (CAL-1.0)](https://opensource.org/licenses/CAL-1.0). This license ensures that users of this software retain full control over their data and access to the underlying source code. 
+
+Note: This project uses the CAL-1.0 license with the Combined Work Exception to enable broader integration with larger projects, while still protecting user autonomy and data access.
+
+SPDX-License-Identifier: CAL-1.0
+
 ## Environment Setup
 
 > PREREQUISITE: set up the [holochain development environment](https://developer.holochain.org/docs/install/).
