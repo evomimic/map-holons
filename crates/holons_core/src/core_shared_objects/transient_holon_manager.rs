@@ -32,7 +32,7 @@ impl TransientHolonManager {
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
     fn add_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
-        self.transient_holons.borrow_mut().0.insert_holon(Holon::Transient(holon))
+        self.transient_holons.borrow_mut().insert_holon(Holon::Transient(holon))
     }
 
     /// This function converts a TemporaryId into a TransientReference.
@@ -51,7 +51,7 @@ impl TransientHolonManager {
 impl TransientManagerAccess for TransientHolonManager {
     /// Retrieves a transient holon by index.
     fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        self.transient_holons.borrow().0.get_holon_by_id(id)
+        self.transient_holons.borrow().get_holon_by_id(id)
     }
 }
 
@@ -66,7 +66,7 @@ impl TransientHolonBehavior for TransientHolonManager {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
-        let id = self.transient_holons.borrow().0.get_id_by_base_key(key)?;
+        let id = self.transient_holons.borrow().get_id_by_base_key(key)?;
         self.to_validated_transient_reference(&id)
     }
 
@@ -76,7 +76,7 @@ impl TransientHolonBehavior for TransientHolonManager {
     ) -> Result<Vec<TransientReference>, HolonError> {
         let mut transient_references = Vec::new();
         let transient_manager = self.transient_holons.borrow();
-        let ids = transient_manager.0.get_ids_by_base_key(key)?;
+        let ids = transient_manager.get_ids_by_base_key(key)?;
         for id in ids {
             let validated_transient_reference = self.to_validated_transient_reference(&id)?;
             transient_references.push(validated_transient_reference);
@@ -90,12 +90,12 @@ impl TransientHolonBehavior for TransientHolonManager {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
-        let id = self.transient_holons.borrow().0.get_id_by_versioned_key(key)?;
+        let id = self.transient_holons.borrow().get_id_by_versioned_key(key)?;
         self.to_validated_transient_reference(&id)
     }
 
     fn transient_count(&self) -> i64 {
-        self.transient_holons.borrow().0.len() as i64
+        self.transient_holons.borrow().len() as i64
     }
 }
 
@@ -105,22 +105,22 @@ impl TransientManagerAccessInternal for TransientHolonManager {
     }
 
     fn clear_pool(&mut self) {
-        self.transient_holons.borrow_mut().0.clear();
+        self.transient_holons.borrow_mut().clear();
     }
 
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
-        self.transient_holons.borrow().0.get_id_by_versioned_key(key)
+        self.transient_holons.borrow().get_id_by_versioned_key(key)
     }
 
     fn get_transient_holons_pool(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.transient_holons.borrow().0.get_all_holons()
+        self.transient_holons.borrow().get_all_holons()
     }
 
     fn export_transient_holons(&self) -> SerializableHolonPool {
-        self.transient_holons.borrow().0.export_pool()
+        self.transient_holons.borrow().export_pool()
     }
 
     fn import_transient_holons(&mut self, pool: SerializableHolonPool) -> () {
-        self.transient_holons.borrow_mut().0.import_pool(pool); // Mutates existing HolonPool
+        self.transient_holons.borrow_mut().import_pool(pool); // Mutates existing HolonPool
     }
 }

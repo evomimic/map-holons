@@ -34,7 +34,7 @@ impl Nursery {
     /// The TemporaryId, which is used a unique identifier.
     fn stage_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
         let staged_holon = holon.to_staged()?;
-        let id = self.staged_holons.borrow_mut().0.insert_holon(Holon::Staged(staged_holon))?;
+        let id = self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))?;
         Ok(id)
     }
 
@@ -54,14 +54,14 @@ impl Nursery {
 impl NurseryAccess for Nursery {
     /// Retrieves a staged holon by index.
     fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        self.staged_holons.borrow().0.get_holon_by_id(id)
+        self.staged_holons.borrow().get_holon_by_id(id)
     }
 }
 
 impl HolonStagingBehavior for Nursery {
     // Caller is assuming there is only one, returns duplicate error if multiple.
     fn get_staged_holon_by_base_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
-        let id = self.staged_holons.borrow().0.get_id_by_base_key(key)?;
+        let id = self.staged_holons.borrow().get_id_by_base_key(key)?;
         self.to_validated_staged_reference(&id)
     }
 
@@ -71,7 +71,7 @@ impl HolonStagingBehavior for Nursery {
     ) -> Result<Vec<StagedReference>, HolonError> {
         let mut staged_references = Vec::new();
         let nursery = self.staged_holons.borrow();
-        let ids = nursery.0.get_ids_by_base_key(key)?;
+        let ids = nursery.get_ids_by_base_key(key)?;
         for id in ids {
             let validated_staged_reference = self.to_validated_staged_reference(&id)?;
             staged_references.push(validated_staged_reference);
@@ -85,12 +85,12 @@ impl HolonStagingBehavior for Nursery {
         &self,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
-        let id = self.staged_holons.borrow().0.get_id_by_versioned_key(key)?;
+        let id = self.staged_holons.borrow().get_id_by_versioned_key(key)?;
         self.to_validated_staged_reference(&id)
     }
 
     fn staged_count(&self) -> i64 {
-        self.staged_holons.borrow().0.len() as i64
+        self.staged_holons.borrow().len() as i64
     }
 
     fn stage_new_holon(&self, holon: TransientHolon) -> Result<StagedReference, HolonError> {
@@ -105,7 +105,7 @@ impl NurseryAccessInternal for Nursery {
     }
 
     fn clear_stage(&mut self) {
-        self.staged_holons.borrow_mut().0.clear();
+        self.staged_holons.borrow_mut().clear();
     }
 
     // fn get_keyed_index(&self) -> BTreeMap<MapString, usize> {
@@ -113,23 +113,23 @@ impl NurseryAccessInternal for Nursery {
     // }
 
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
-        self.staged_holons.borrow().0.get_id_by_versioned_key(key)
+        self.staged_holons.borrow().get_id_by_versioned_key(key)
     }
 
     /// Exports the staged holons using `SerializableHolonPool`
     fn export_staged_holons(&self) -> SerializableHolonPool {
-        self.staged_holons.borrow().0.export_pool()
+        self.staged_holons.borrow().export_pool()
     }
 
     fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> () {
-        self.staged_holons.borrow_mut().0.import_pool(pool); // Mutates existing HolonPool
+        self.staged_holons.borrow_mut().import_pool(pool); // Mutates existing HolonPool
     }
 
     /// Returns the staged Holons in the `HolonPool`,
     /// ensuring that commit functions can access the actual Holon instances.
     // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
     fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.staged_holons.borrow().0.get_all_holons()
+        self.staged_holons.borrow().get_all_holons()
     }
 
     // fn stage_holon(&self, holon: Holon) -> usize {
