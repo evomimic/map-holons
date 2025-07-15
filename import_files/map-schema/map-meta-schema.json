@@ -1,0 +1,334 @@
+{
+  "meta": {
+    "map_schema_version": "0.0.1",
+    "description": "MAP Meta-Schema for bootstrap import \u2014 using shared KeyRule instances",
+    "generator": "MAP Types and Schema Refactor \u2014 2025-07-14 shared KeyRules pattern"
+  },
+  "holons": [
+    {
+      "type": "#MapSchemaType",
+      "key": "MAP Meta-Schema",
+      "properties": {
+        "type_name": "MAP Meta-Schema",
+        "type_name_plural": "MAP Meta-Schemas",
+        "display_name": "MAP Meta-Schema",
+        "display_name_plural": "MAP Meta-Schemas",
+        "description": "Defines the set of MetaTypes used to describe all MAP type descriptors."
+      },
+      "relationships": [
+        {
+          "name": "Components",
+          "target": [
+            {
+              "key": "MetaTypeDescriptor",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MetaTypeDescriptor",
+                "type_name_plural": "MetaTypeDescriptors",
+                "display_name": "Meta Type Descriptor",
+                "display_name_plural": "Meta Type Descriptors",
+                "description": "Describes the properties and relationships common to all type descriptors."
+              },
+              "relationships": [
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                },
+                {
+                  "name": "InstanceProperties",
+                  "target": [
+                    {
+                      "$ref": "#MapTypeNamePropertyType"
+                    },
+                    {
+                      "$ref": "#MapTypeNamePluralPropertyType"
+                    },
+                    {
+                      "$ref": "#MapDisplayNamePropertyType"
+                    },
+                    {
+                      "$ref": "#MapDisplayNamePluralPropertyType"
+                    },
+                    {
+                      "$ref": "#MapDescriptionPropertyType"
+                    },
+                    {
+                      "$ref": "#MapTypeKindPropertyType"
+                    }
+                  ]
+                },
+                {
+                  "name": "InstanceRelationships",
+                  "target": [
+                    {
+                      "$ref": "#(TypeDescriptor)-[ComponentOf]->(Schema)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "MetaHolonType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MetaHolonType",
+                "type_name_plural": "MetaHolonTypes",
+                "display_name": "Meta Holon Type",
+                "display_name_plural": "Meta Holon Types",
+                "description": "Describes HolonType descriptors \u2014 categories of holons like BookType or PersonType."
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaTypeDescriptor"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                },
+                {
+                  "name": "InstanceRelationships",
+                  "target": [
+                    {
+                      "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor)"
+                    },
+                    {
+                      "$ref": "#(HolonType)-[UsesKeyRule]->(KeyRule)"
+                    },
+                    {
+                      "$ref": "#(HolonType)-[OwnedBy]->(HolonSpace)"
+                    },
+                    {
+                      "$ref": "#(HolonType)-[InstanceProperties]->(PropertyType)"
+                    },
+                    {
+                      "$ref": "#(HolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "MetaPropertyType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MetaPropertyType",
+                "type_name_plural": "MetaPropertyTypes",
+                "display_name": "Meta Property Type",
+                "display_name_plural": "Meta Property Types",
+                "description": "Describes the types of scalar properties that holons can possess."
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaTypeDescriptor"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                },
+                {
+                  "name": "InstanceRelationships",
+                  "target": [
+                    {
+                      "$ref": "#(PropertyType)-[ValueType]->(ValueType)"
+                    },
+                    {
+                      "$ref": "#(PropertyType)-[ComponentOf]->(Schema)"
+                    },
+                    {
+                      "$ref": "#(PropertyType)-[DescribedBy]->(TypeDescriptor)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "MetaDeclaredRelationshipType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MetaDeclaredRelationshipType",
+                "type_name_plural": "MetaDeclaredRelationshipTypes",
+                "display_name": "Meta Declared Relationship Type",
+                "display_name_plural": "Meta Declared Relationship Types",
+                "description": "Describes declared relationship types between holons."
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaTypeDescriptor"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#Relationship.KeyRule"
+                  }
+                },
+                {
+                  "name": "InstanceProperties",
+                  "target": [
+                    {
+                      "$ref": "#MapDeletionSemanticPropertyType"
+                    },
+                    {
+                      "$ref": "#MapIsDefinitionalPropertyType"
+                    },
+                    {
+                      "$ref": "#MapIsOrderedPropertyType"
+                    },
+                    {
+                      "$ref": "#MapAllowsDuplicatesPropertyType"
+                    },
+                    {
+                      "$ref": "#MapMinCardinalityPropertyType"
+                    },
+                    {
+                      "$ref": "#MapMaxCardinalityPropertyType"
+                    }
+                  ]
+                },
+                {
+                  "name": "InstanceRelationships",
+                  "target": [
+                    {
+                      "$ref": "#(RelationshipType)-[SourceType]->(HolonType)"
+                    },
+                    {
+                      "$ref": "#(RelationshipType)-[TargetType]->(HolonType)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "MetaInverseRelationshipType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MetaInverseRelationshipType",
+                "type_name_plural": "MetaInverseRelationshipTypes",
+                "display_name": "Meta Inverse Relationship Type",
+                "display_name_plural": "Meta Inverse Relationship Types",
+                "description": "Describes inverse relationship types derived from declared relationships."
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaTypeDescriptor"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#Relationship.KeyRule"
+                  }
+                },
+                {
+                  "name": "InstanceProperties",
+                  "target": [
+                    {
+                      "$ref": "#MapDeletionSemanticPropertyType"
+                    },
+                    {
+                      "$ref": "#MapIsDefinitionalPropertyType"
+                    },
+                    {
+                      "$ref": "#MapIsOrderedPropertyType"
+                    },
+                    {
+                      "$ref": "#MapAllowsDuplicatesPropertyType"
+                    },
+                    {
+                      "$ref": "#MapMinCardinalityPropertyType"
+                    },
+                    {
+                      "$ref": "#MapMaxCardinalityPropertyType"
+                    }
+                  ]
+                },
+                {
+                  "name": "InstanceRelationships",
+                  "target": [
+                    {
+                      "$ref": "#(RelationshipType)-[SourceType]->(HolonType)"
+                    },
+                    {
+                      "$ref": "#(RelationshipType)-[TargetType]->(HolonType)"
+                    },
+                    {
+                      "$ref": "#(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "MetaSchemaType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MetaSchemaType",
+                "type_name_plural": "MetaSchemaTypes",
+                "display_name": "Meta Schema Type",
+                "display_name_plural": "Meta Schema Types",
+                "description": "Describes schemas \u2014 groupings of type descriptors used in imports and validation."
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaTypeDescriptor"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "TypeName.KeyRule",
+              "type": "#KeyRuleType",
+              "properties": {
+                "type_name": "TypeName.KeyRule",
+                "display_name": "Key by type_name",
+                "description": "Derives the key from the holon's `type_name` property. Format: `$0` using property_name `type_name`."
+              }
+            },
+            {
+              "key": "Relationship.KeyRule",
+              "type": "#KeyRuleType",
+              "properties": {
+                "type_name": "Relationship.KeyRule",
+                "display_name": "Key by Relationship Triple",
+                "description": "Derives the key from a relationship triple using format: `($0)-[$1]->($2)` or inverse. Uses `source_type`, `type_name`, `target_type`."
+              }
+            },
+            {
+              "key": "None.KeyRule",
+              "type": "#KeyRuleType",
+              "properties": {
+                "type_name": "None.KeyRule",
+                "display_name": "No Key Rule",
+                "description": "Indicates the holon has no key and must be embedded."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

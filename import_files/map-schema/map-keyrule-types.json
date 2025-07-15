@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "map_schema_version": "0.0.1",
+    "description": "Refined MAP Key Rule Types \u2014 single-level representation with explicit parameterization",
+    "generator": "MAP Types and Schema Refactor \u2014 2025-07-14 refined key rule structure"
+  },
+  "holons": [
+    {
+      "key": "Format.KeyRuleType",
+      "type": "#MetaHolonType",
+      "properties": {
+        "type_name": "Format.KeyRuleType",
+        "type_name_plural": "Format.KeyRuleTypes",
+        "display_name": "Format Key Rule Type",
+        "display_name_plural": "Format Key Rule Types",
+        "description": "Derives a key from a format string and a list of properties. Each instance of this type defines a concrete rule used by a HolonType."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaTypeDescriptor"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#None.KeyRule"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#MapFormatStringPropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "#(FormatKeyRuleType)-[PropertyList]->(PropertyType)"
+            }
+          ]
+        },
+        {
+          "name": "Instances",
+          "target": [
+            {
+              "key": "TypeName.KeyRule",
+              "type": "#Format.KeyRuleType",
+              "properties": {
+                "format": "$0"
+              },
+              "relationships": [
+                {
+                  "name": "PropertyList",
+                  "target": [
+                    {
+                      "$ref": "#MapTypeNamePropertyType"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Relationship.KeyRuleType",
+      "type": "#KeyRuleType",
+      "properties": {
+        "type_name": "Relationship.KeyRuleType",
+        "type_name_plural": "Relationship.KeyRuleTypes",
+        "display_name": "Relationship Key Rule Type",
+        "display_name_plural": "Relationship Key Rule Types",
+        "description": "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ExtendedType.KeyRuleType",
+      "type": "#KeyRuleType",
+      "properties": {
+        "type_name": "ExtendedType.KeyRuleType",
+        "type_name_plural": "ExtendedType.KeyRuleTypes",
+        "display_name": "Extended Type Key Rule Type",
+        "display_name_plural": "Extended Type Key Rule Types",
+        "description": "Hardcoded rule: <type_name>.<extends.key>"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "None.KeyRuleType",
+      "type": "#KeyRuleType",
+      "properties": {
+        "type_name": "None.KeyRuleType",
+        "type_name_plural": "None.KeyRuleTypes",
+        "display_name": "None Key Rule Type",
+        "display_name_plural": "None Key Rule Types",
+        "description": "Indicates a keyless holon. Must be embedded and never referenced."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "TypeName.KeyRule",
+      "type": "#FormatKeyRuleType",
+      "properties": {
+        "template_string": "$0"
+      },
+      "relationships": [
+        {
+          "name": "PropertyList",
+          "target": [
+            {
+              "$ref": "#MapTypeNamePropertyType"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
