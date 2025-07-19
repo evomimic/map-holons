@@ -1,0 +1,157 @@
+{
+  "rules": [
+    {
+      "id": "type-kind-required",
+      "title": "TypeDescriptors Must Declare type_kind",
+      "description": "All TypeDescriptors (i.e., instances of MetaTypeDescriptor) must include a `type_kind` property.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "Holon has type = #TypeDescriptor but does not include a type_kind property",
+      "validation_severity": "error"
+    },
+    {
+      "id": "required-type-and-key-order",
+      "title": "Field Order: key Before type",
+      "description": "All holon definitions must list the `key` field before the `type` field for human readability.",
+      "authoring_level": "convention",
+      "applies_to": "structure",
+      "violation_condition": "\"key\" does not appear before \"type\" in holon definition",
+      "validation_severity": "warning"
+    },
+    {
+      "id": "type-name-class-case",
+      "title": "type_name Format: ClassCase",
+      "description": "`type_name` values must be written in ClassCase (e.g., MapStringValueType, MetaSchemaType).",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "`type_name` is not formatted in ClassCase (e.g., contains underscores or starts with lowercase)",
+      "validation_severity": "error"
+    },
+    {
+      "id": "type-name-key-matching",
+      "title": "Key Matches Type Name",
+      "description": "The `key` for any type descriptor must match its `type_name`.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "`key` does not match `type_name`, in violation of `TypeName.KeyRule`",
+      "validation_severity": "error"
+    },
+    {
+      "id": "type-name-keyrule-consistency",
+      "title": "UsesKeyRule for Named Types",
+      "description": "All named types must declare `UsesKeyRule: TypeName.KeyRule` unless they are keyless.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "Holon with `type` = `TypeDescriptor` is missing a `UsesKeyRule` relationship",
+      "validation_severity": "error"
+    },
+    {
+      "id": "types-extend-meta",
+      "title": "Types Must Extend MetaTypeDescriptor",
+      "description": "Every type descriptor must include an `Extends` relationship pointing to `#MetaTypeDescriptor`.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "Holon with `type` = `TypeDescriptor` is missing an `Extends` relationship to `MetaTypeDescriptor`",
+      "validation_severity": "error"
+    },
+    {
+      "id": "type-kind-uses-enum",
+      "title": "type_kind Uses Enum Type",
+      "description": "`type_kind` must reference `TypeKind.EnumType` and its value must be a valid variant.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "error"
+    },
+    {
+      "id": "embedded-instance-uses-inverse",
+      "title": "Embedded Instances via Inverse",
+      "description": "Use the `Instances` inverse relationship when embedding holon instances within their type descriptors.",
+      "authoring_level": "convention",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "warning"
+    },
+    {
+      "id": "only-root-can-use-components",
+      "title": "Schema is the Only Component Root",
+      "description": "Only a `SchemaType` holon may populate the `Components` relationship; types and instances may not.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "error"
+    },
+    {
+      "id": "format-rule-uses-property-list",
+      "title": "Format Rules Must Include PropertyList",
+      "description": "Any instance of `Format.KeyRuleType` must declare a `PropertyList` referencing PropertyTypes.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "error"
+    },
+    {
+      "id": "none-keyrule-for-keyless",
+      "title": "Keyless Types Must Use None.KeyRule",
+      "description": "Types that define keyless holons must declare `UsesKeyRule: None.KeyRule`.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "error"
+    },
+    {
+      "id": "relationship-hardcoded-no-params",
+      "title": "Hardcoded KeyRuleTypes Must Have No Parameters",
+      "description": "Types like `Relationship.KeyRuleType` must not declare format strings or parameter relationships.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "error"
+    },
+    {
+      "id": "keyless-holons-must-not-declare-key",
+      "title": "Keyless Holons Must Not Declare a Key",
+      "description": "Holons whose type uses `None.KeyRule` must not include a `key` field. These holons must be embedded and cannot be referenced.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "Holon is keyless but includes a \"key\" field",
+      "validation_severity": "error"
+    },
+    {
+      "id": "foundational_rule",
+      "title": "Foundational rule",
+      "description": "Every MetaHolonType instance must be DescribedBy MetaHolonType and Extend MetaTypeDescriptor",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "TODO: Describe when this rule is violated",
+      "validation_severity": "error"
+    },
+    {
+      "id": "undeclared_property_violation",
+      "title": "Undeclared property violation",
+      "description": "Reject any property not declared by InstanceProperties of the holon type",
+      "authoring_level": "error",
+      "applies_to": "property_scope",
+      "violation_condition": "Holon includes a property not declared by its type descriptor",
+      "validation_severity": "error"
+    },
+    {
+      "id": "undeclared_relationship_violation",
+      "title": "Undeclared relationship violation",
+      "description": "Reject any relationship not declared by InstanceRelationships of the holon type",
+      "authoring_level": "error",
+      "applies_to": "relationship_scope",
+      "violation_condition": "Holon includes a relationship not declared by its type descriptor",
+      "validation_severity": "error"
+    },
+    {
+      "id": "unresolved_ref",
+      "title": "Unresolved ref",
+      "description": "$ref cannot be resolved to a known holon key",
+      "authoring_level": "error",
+      "applies_to": "reference_check",
+      "violation_condition": "\"$ref\" target does not resolve to any known key in the import set",
+      "validation_severity": "warning"
+    }
+  ]
+}
