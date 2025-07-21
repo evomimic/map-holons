@@ -69,3 +69,25 @@ fn validate_core_and_meta_files() {
     result = validate_json_against_schema(&schema, &data);
     assert!(result.is_ok(), "Validation failed for map-base-schema.json: {:?}", result);
 }
+
+// Edge case tests for MAP core schema validation
+
+#[test]
+fn edge_cases_all_fail() {
+    let schema = PathBuf::from("tests/fixtures/map_core_schema/bootstrap-import.schema.json");
+    assert_all_fail(&schema, "tests/fixtures/map_core_schema/edge_cases");
+}
+
+// Helper function to assert all files in a directory fail validation
+fn assert_all_fail(schema: &PathBuf, dir: &str) {
+    for file in std::fs::read_dir(dir).unwrap() {
+        let path = file.unwrap().path();
+        if path.extension().unwrap() == "json" {
+            assert!(
+                validate_json_against_schema(schema, &path).is_err(),
+                "{} was expected to fail but passed",
+                path.display()
+            );
+        }
+    }
+}

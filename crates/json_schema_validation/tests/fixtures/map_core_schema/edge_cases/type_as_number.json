@@ -1,0 +1,10 @@
+{
+  "holons": [
+    {
+      "type": 123,
+      "properties": {
+        "type_name": "BadTypeField"
+      }
+    }
+  ]
+}
