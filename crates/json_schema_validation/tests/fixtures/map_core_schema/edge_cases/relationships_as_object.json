@@ -1,0 +1,14 @@
+{
+  "holons": [
+    {
+      "type": "#ObjectInsteadOfArray",
+      "properties": {
+        "type_name": "BadRel"
+      },
+      "relationships": {
+        "name": "HasChild",
+        "target": { "$ref": "#child" }
+      }
+    }
+  ]
+}
