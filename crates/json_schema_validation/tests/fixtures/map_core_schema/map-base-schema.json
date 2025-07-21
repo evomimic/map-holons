@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "map_schema_version": "0.0.1",
+    "description": "MAP Base Schema containing foundational scalar value types.",
+    "generator": "MAP Types and Schema Refactor \u2014 base value types export"
+  },
+  "holons": [
+    {
+      "type": "Schema",
+      "key": "MAP Base Schema",
+      "properties": {
+        "type_name": "MAP Base Schema",
+        "type_name_plural": "MAP Base Schemas",
+        "display_name": "MAP Base Schema",
+        "display_name_plural": "MAP Base Schemas",
+        "description": "Defines the core scalar value types used throughout the MAP type system."
+      },
+      "relationships": [
+        {
+          "name": "Components",
+          "target": [
+            {
+              "key": "MapValueType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MapValueType",
+                "type_name_plural": "MapValueTypes",
+                "display_name": "Value Type",
+                "display_name_plural": "Value Types",
+                "description": "Abstract base type that classifies all scalar value types in MAP.",
+                "type_kind": "Value"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaTypeDescriptor"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "MapStringValueType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MapStringValueType",
+                "type_name_plural": "MapStringValueTypes",
+                "display_name": "String Value Type",
+                "display_name_plural": "String Value Types",
+                "description": "Represents string values with optional constraints.",
+                "type_kind": "ValueString"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MapValueType"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "MapIntegerValueType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MapIntegerValueType",
+                "type_name_plural": "MapIntegerValueTypes",
+                "display_name": "Integer Value Type",
+                "display_name_plural": "Integer Value Types",
+                "description": "Represents integer values with optional constraints.",
+                "type_kind": "ValueInteger"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MapValueType"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "MapBooleanValueType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MapBooleanValueType",
+                "type_name_plural": "MapBooleanValueTypes",
+                "display_name": "Boolean Value Type",
+                "display_name_plural": "Boolean Value Types",
+                "description": "Represents boolean values (true/false).",
+                "type_kind": "ValueBoolean"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MapValueType"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "MapEnumValueType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MapEnumValueType",
+                "type_name_plural": "MapEnumValueTypes",
+                "display_name": "Enum Value Type",
+                "display_name_plural": "Enum Value Types",
+                "description": "Represents a symbolic string drawn from a predefined set of enum values.",
+                "type_kind": "ValueEnum"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MapValueType"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "MapBytesValueType",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "MapBytesValueType",
+                "type_name_plural": "MapBytesValueTypes",
+                "display_name": "Bytes Value Type",
+                "display_name_plural": "Bytes Value Types",
+                "description": "Represents raw bytes, typically base64-encoded in JSON representations.",
+                "type_kind": "ValueBytes"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MapValueType"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
