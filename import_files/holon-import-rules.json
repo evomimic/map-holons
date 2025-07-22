@@ -2,8 +2,8 @@
   "rules": [
     {
       "id": "type-kind-required",
-      "title": "TypeDescriptors Must Declare type_kind",
-      "description": "All TypeDescriptors (i.e., instances of MetaTypeDescriptor) must include a `type_kind` property.",
+      "title": "TypeDescriptors Must Declare instance_type_kind",
+      "description": "All TypeDescriptors (i.e., instances of MetaTypeDescriptor) must include an `instance_type_kind` property.",
       "authoring_level": "error",
       "applies_to": "structure",
       "violation_condition": "Holon has type = #TypeDescriptor but does not include a type_kind property",

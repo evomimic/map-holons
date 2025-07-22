@@ -25,6 +25,55 @@
           "name": "Components",
           "target": [
             {
+              "key": "TypeDescriptor",
+              "type": "#TypeDescriptor",
+              "properties": {
+                "type_name": "TypeDescriptor",
+                "type_name_plural": "TypeDescriptors",
+                "display_name": "Type Descriptor",
+                "display_name_plural": "Type Descriptors",
+                "description": "Describes all types in MAP, including itself.",
+                "instance_type_kind": "Holon"
+              },
+              "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaHolonType"
+                  }
+                },
+                {
+                  "name": "UsesKeyRule",
+                  "target": {
+                    "$ref": "#TypeName.KeyRule"
+                  }
+                },
+                {
+                  "name": "InstanceProperties",
+                  "target": [
+                    {
+                      "$ref": "#MapTypeNamePropertyType"
+                    },
+                    {
+                      "$ref": "#MapTypeNamePluralPropertyType"
+                    },
+                    {
+                      "$ref": "#MapDisplayNamePropertyType"
+                    },
+                    {
+                      "$ref": "#MapDisplayNamePluralPropertyType"
+                    },
+                    {
+                      "$ref": "#MapDescriptionPropertyType"
+                    },
+                    {
+                      "$ref": "#MapInstanceTypeKindPropertyType"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "key": "SchemaHolonType",
               "type": "#TypeDescriptor",
               "properties": {
@@ -32,7 +81,8 @@
                 "type_name_plural": "SchemaHolonTypes",
                 "display_name": "Schema Holon Type",
                 "display_name_plural": "Schema Holon Types",
-                "description": "Describes schema holons — groupings of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies."
+                "description": "Describes schema holons — groupings of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {
@@ -70,17 +120,24 @@
                 "type_name_plural": "HolonTypes",
                 "display_name": "Abstract Holon Type",
                 "display_name_plural": "Abstract Holon Types",
-                "description": "Abstract base for all holon types. Declares required holon-level relationships."
+                "description": "Abstract base for all holon types. Declares required holon-level relationships.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
+                {
+                  "name": "Extends",
+                  "target": {
+                    "$ref": "#MetaHolonType"
+                  }
+                },
                 {
                   "name": "InstanceRelationships",
                   "target": [
                     {
-                      "$ref": "#(Holon)-[DescribedBy]->(TypeDescriptor)"
+                      "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor)"
                     },
                     {
-                      "$ref": "#(Holon)-[OwnedBy]->(HolonSpace)"
+                      "$ref": "#(HolonType)-[OwnedBy]->(HolonSpaceType)"
                     }
                   ]
                 }
@@ -94,7 +151,8 @@
                 "type_name_plural": "RelationshipTypes",
                 "display_name": "Abstract Relationship Type",
                 "display_name_plural": "Abstract Relationship Types",
-                "description": "Abstract base for declared and inverse relationship types."
+                "description": "Abstract base for declared and inverse relationship types.",
+                "instance_type_kind": "Relationship"
               },
               "relationships": [
                 {
@@ -147,7 +205,8 @@
                 "type_name_plural": "MetaTypeDescriptors",
                 "display_name": "Meta Type Descriptor",
                 "display_name_plural": "Meta Type Descriptors",
-                "description": "Describes TypeDescriptors — the types used to describe all other types in MAP."
+                "description": "Describes TypeDescriptors — the types used to describe all other types in MAP.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {
@@ -175,7 +234,7 @@
                       "$ref": "#MapDescriptionPropertyType"
                     },
                     {
-                      "$ref": "#MapTypeKindPropertyType"
+                      "$ref": "#MapInstanceTypeKindPropertyType"
                     }
                   ]
                 },
@@ -184,12 +243,6 @@
                   "target": [
                     {
                       "$ref": "#(TypeDescriptor)-[ComponentOf]->(Schema)"
-                    },
-                    {
-                      "$ref": "#(TypeDescriptor)-[DescribedBy]->(TypeDescriptor)"
-                    },
-                    {
-                      "$ref": "#(TypeDescriptor)-[OwnedBy]->(HolonSpace)"
                     },
                     {
                       "$ref": "#(TypeDescriptor)-[Extends]->(TypeDescriptor)"
@@ -212,7 +265,8 @@
                 "type_name_plural": "MetaHolonTypes",
                 "display_name": "Meta Holon Type",
                 "display_name_plural": "Meta Holon Types",
-                "description": "Describes types whose instances are holons."
+                "description": "Describes types whose instances are holons.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {
@@ -242,7 +296,8 @@
                 "type_name_plural": "MetaPropertyTypes",
                 "display_name": "Meta Property Type",
                 "display_name_plural": "Meta Property Types",
-                "description": "Describes PropertyTypes used to define scalar properties of holons."
+                "description": "Describes PropertyTypes used to define scalar properties of holons.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {
@@ -281,7 +336,8 @@
                 "type_name_plural": "MetaDeclaredRelationshipTypes",
                 "display_name": "Meta Declared Relationship Type",
                 "display_name_plural": "Meta Declared Relationship Types",
-                "description": "Describes explicitly declared relationship types between holons."
+                "description": "Describes explicitly declared relationship types between holons.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {
@@ -300,7 +356,8 @@
                 "type_name_plural": "MetaInverseRelationshipTypes",
                 "display_name": "Meta Inverse Relationship Type",
                 "display_name_plural": "Meta Inverse Relationship Types",
-                "description": "Describes inverse relationship types derived from declared ones."
+                "description": "Describes inverse relationship types derived from declared ones.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {
@@ -327,7 +384,8 @@
                 "type_name_plural": "SchemaHolonTypes",
                 "display_name": "Schema Holon Type",
                 "display_name_plural": "Schema Holon Types",
-                "description": "Describes schema holons that group together type descriptors."
+                "description": "Describes schema holons that group together type descriptors.",
+                "instance_type_kind": "Holon"
               },
               "relationships": [
                 {

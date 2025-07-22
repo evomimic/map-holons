@@ -133,7 +133,8 @@
       ],
       "properties": {
         "$ref": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(#|id:|@|ext:).+$"
         }
       },
       "additionalProperties": false
