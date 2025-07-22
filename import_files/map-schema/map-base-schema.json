@@ -28,8 +28,7 @@
                 "display_name": "Value Type",
                 "display_name_plural": "Value Types",
                 "description": "Abstract base type that classifies all scalar value types in MAP.",
-                "instance_type_kind"
-                "Value"
+                "instance_type_kind": "Value"
               },
               "relationships": [
                 {
@@ -55,8 +54,7 @@
                 "display_name": "String Value Type",
                 "display_name_plural": "String Value Types",
                 "description": "Represents string values with optional constraints.",
-                "instance_type_kind"
-                "ValueString"
+                "instance_type_kind": "ValueString"
               },
               "relationships": [
                 {
@@ -82,8 +80,7 @@
                 "display_name": "Integer Value Type",
                 "display_name_plural": "Integer Value Types",
                 "description": "Represents integer values with optional constraints.",
-                "instance_type_kind"
-                "ValueInteger"
+                "instance_type_kind": "ValueInteger"
               },
               "relationships": [
                 {
@@ -109,8 +106,7 @@
                 "display_name": "Boolean Value Type",
                 "display_name_plural": "Boolean Value Types",
                 "description": "Represents boolean values (true/false).",
-                "instance_type_kind"
-                "ValueBoolean"
+                "instance_type_kind": "ValueBoolean"
               },
               "relationships": [
                 {
@@ -136,8 +132,7 @@
                 "display_name": "Enum Value Type",
                 "display_name_plural": "Enum Value Types",
                 "description": "Represents a symbolic string drawn from a predefined set of enum values.",
-                "instance_type_kind"
-                "ValueEnum"
+                "instance_type_kind": "ValueEnum"
               },
               "relationships": [
                 {
@@ -163,8 +158,7 @@
                 "display_name": "Bytes Value Type",
                 "display_name_plural": "Bytes Value Types",
                 "description": "Represents raw bytes, typically base64-encoded in JSON representations.",
-                "instance_type_kind"
-                "ValueBytes"
+                "instance_type_kind": "ValueBytes"
               },
               "relationships": [
                 {

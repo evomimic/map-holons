@@ -25,8 +25,7 @@
         "display_name": "Abstract Key Rule Type",
         "display_name_plural": "Abstract Key Rule Types",
         "description": "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes.",
-        "instance_type_kind"
-        "Holon"
+        "instance_type_kind": "Holon"
       },
       "relationships": [
         {
@@ -52,8 +51,7 @@
         "display_name": "Format Key Rule Type",
         "display_name_plural": "Format Key Rule Types",
         "description": "Derives a key from a format string and a list of properties. Each instance of this type defines a concrete rule used by a HolonType.",
-        "instance_type_kind"
-        "Holon"
+        "instance_type_kind": "Holon"
       },
       "relationships": [
         {
@@ -123,8 +121,7 @@
         "display_name": "Relationship Key Rule Type",
         "display_name_plural": "Relationship Key Rule Types",
         "description": "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type.",
-        "instance_type_kind"
-        "Holon"
+        "instance_type_kind": "Holon"
       },
       "relationships": [
         {
@@ -156,8 +153,7 @@
         "display_name": "Extended Type Key Rule Type",
         "display_name_plural": "Extended Type Key Rule Types",
         "description": "Hardcoded rule: <type_name>.<extends.key>",
-        "instance_type_kind"
-        "Holon"
+        "instance_type_kind": "Holon"
       },
       "relationships": [
         {
@@ -189,8 +185,7 @@
         "display_name": "None Key Rule Type",
         "display_name_plural": "None Key Rule Types",
         "description": "Indicates a keyless holon. Must be embedded and never referenced.",
-        "instance_type_kind"
-        "Holon"
+        "instance_type_kind": "Holon"
       },
       "relationships": [
         {
