@@ -118,12 +118,12 @@
       "validation_severity": "error"
     },
     {
-      "id": "foundational_rule",
-      "title": "Foundational rule",
-      "description": "Every MetaHolonType instance must be DescribedBy MetaHolonType and Extend MetaTypeDescriptor",
+      "id": "no-instance-of-abstract-type",
+      "title": "No Instance of Abstract Type",
+      "description": "No holon may declare a `DescribedBy` relationship to a type for which `is_abstract_type = true`.",
       "authoring_level": "error",
-      "applies_to": "structure",
-      "violation_condition": "TODO: Describe when this rule is violated",
+      "applies_to": "relationship_scope",
+      "violation_condition": "Holon declares `DescribedBy` to a target whose `is_abstract_type` property is true",
       "validation_severity": "error"
     },
     {
@@ -145,13 +145,40 @@
       "validation_severity": "error"
     },
     {
-      "id": "unresolved_ref",
-      "title": "Unresolved ref",
-      "description": "$ref cannot be resolved to a known holon key",
+      "id": "load-with-paths-must-resolve",
+      "title": "`load_with` Files Must Be Resolvable",
+      "description": "Every file listed in `meta.load_with` must be present and readable within the current import context. Missing or invalid files will result in an import failure.",
+      "authoring_level": "error",
+      "applies_to": "meta",
+      "violation_condition": "A `meta.load_with` entry cannot be resolved to a valid file in the import context",
+      "validation_severity": "error"
+    },
+    {
+      "id": "resolve-refs-across-load-group",
+      "title": "Resolve `$ref`s Across `load_with` Group",
+      "description": "`$ref` targets must resolve to a valid holon key defined in the current file or in one of the files listed in `meta.load_with`. All `load_with` file names must be valid and resolvable.",
       "authoring_level": "error",
       "applies_to": "reference_check",
-      "violation_condition": "\"$ref\" target does not resolve to any known key in the import set",
-      "validation_severity": "warning"
+      "violation_condition": "`$ref` target does not match any holon key in this file or any file listed in `meta.load_with`",
+      "validation_severity": "error"
+    },
+    {
+      "id": "instance-type-kind-matches-extended-meta-type-name",
+      "title": "instance_type_kind must match Extends meta-type",
+      "description": "All TypeDescriptor holons must declare an instance_type_kind that matches the TypeKind implied by the type_name of the holon they extend. This is inferred by parsing 'Meta<TypeKind>Type'.",
+      "authoring_level": "required",
+      "applies_to": "TypeDescriptor",
+      "violation_condition": "`instance_type_kind` does not match the captured TypeKind from the type_name of the extended meta-type",
+      "match_condition": {
+        "relationship": "Extends",
+        "target_property": "type_name",
+        "matches_regex": "^Meta([A-Z][a-zA-Z0-9]*)Type$"
+      },
+      "validation_severity": "error",
+      "expected": {
+        "property": "instance_type_kind",
+        "must_equal_group": 1
+      }
     }
   ]
 }

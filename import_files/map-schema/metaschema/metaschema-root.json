@@ -2,12 +2,17 @@
   "meta": {
     "map_schema_version": "0.0.1",
     "description": "MAP Meta Schema defines the MetaTypeDescriptor and other type descriptors used to describe all MAP types.",
-    "generator": "MAP Types and Schema Refactor — July 2025"
+    "generator": "MAP Types and Schema Refactor — July 2025",
+    "load_with": [
+      "metaschema-value-types.json",
+      "metaschema-keyrules-schema.json",
+      "map-base-schema.json"
+    ]
   },
   "holons": [
     {
       "key": "MAP Meta Schema",
-      "type": "#SchemaHolonType",
+      "type": "#Schema",
       "properties": {
         "schema_name": "MAP Meta Schema",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself."
@@ -32,15 +37,21 @@
                 "type_name_plural": "TypeDescriptors",
                 "display_name": "Type Descriptor",
                 "display_name_plural": "Type Descriptors",
-                "description": "Describes all types in MAP, including itself.",
-                "instance_type_kind": "Holon"
+                "description": "The TypeDescriptor is a concrete, self-describing type in the MAP Type System that defines the structure, metadata, and behavioral obligations of all other types—including itself. It plays a dual role: as a descriptor, it declares the properties and relationships that instances of a given type must populate (via InstanceProperties and InstanceRelationships); as a holon, it is an instantiable entity that belongs to a schema, is owned by a holon space, and participates in MAP’s introspectable type graph. All concrete type definitions in MAP—such as property types, relationship types, and holon types—are instances of TypeDescriptor, making it the cornerstone of MAP’s fully self-describing architecture..",
+                "instance_type_kind": "Holon",
+                "is_abstract_type": false
               },
               "relationships": [
                 {
                   "name": "Extends",
-                  "target": {
-                    "$ref": "#MetaHolonType"
-                  }
+                  "target": [
+                    {
+                      "$ref": "#MetaHolonType"
+                    },
+                    {
+                      "$ref": "#MetaTypeDescriptor"
+                    }
+                  ]
                 },
                 {
                   "name": "UsesKeyRule",
@@ -52,22 +63,25 @@
                   "name": "InstanceProperties",
                   "target": [
                     {
-                      "$ref": "#MapTypeNamePropertyType"
+                      "$ref": "#TypeName.Property"
                     },
                     {
-                      "$ref": "#MapTypeNamePluralPropertyType"
+                      "$ref": "#TypeNamePlural.Property"
                     },
                     {
-                      "$ref": "#MapDisplayNamePropertyType"
+                      "$ref": "#DisplayName.Property"
                     },
                     {
-                      "$ref": "#MapDisplayNamePluralPropertyType"
+                      "$ref": "#DisplayNamePlural.Property"
                     },
                     {
-                      "$ref": "#MapDescriptionPropertyType"
+                      "$ref": "#Description.Property"
                     },
                     {
-                      "$ref": "#MapInstanceTypeKindPropertyType"
+                      "$ref": "#InstanceTypeKind.Property"
+                    },
+                    {
+                      "ref:": "IsAbstractType.Property"
                     }
                   ]
                 }
@@ -98,7 +112,7 @@
                       "$ref": "#MapStringPropertyType"
                     },
                     {
-                      "$ref": "#MapDescriptionPropertyType"
+                      "$ref": "#Description.Property"
                     }
                   ]
                 },
@@ -120,7 +134,7 @@
                 "type_name_plural": "HolonTypes",
                 "display_name": "Abstract Holon Type",
                 "display_name_plural": "Abstract Holon Types",
-                "description": "Abstract base for all holon types. Declares required holon-level relationships.",
+                "description": "HolonType is an abstract type descriptor that defines the structural role of all types used to describe holons in the MAP system. It serves as an anchor for concrete type descriptors—such as BookType, PersonType, or SchemaHolonType—which extend it to define specific categories of holons. By extending HolonType, these concrete types inherit a common set of structural obligations that govern how holons relate to their type and to the holon space in which they reside. This type is not intended to be instantiated directly.",
                 "instance_type_kind": "Holon"
               },
               "relationships": [
@@ -138,6 +152,12 @@
                     },
                     {
                       "$ref": "#(HolonType)-[OwnedBy]->(HolonSpaceType)"
+                    },
+                    {
+                      "$ref": "#(Holon)-[Properties]->(Property)"
+                    },
+                    {
+                      "$ref": "#(Holon)-[DeclaredRelationships]->(Relationship)"
                     }
                   ]
                 }
@@ -205,7 +225,7 @@
                 "type_name_plural": "MetaTypeDescriptors",
                 "display_name": "Meta Type Descriptor",
                 "display_name_plural": "Meta Type Descriptors",
-                "description": "Describes TypeDescriptors — the types used to describe all other types in MAP.",
+                "description": "Specifies the properties and relationships that all TypeDescriptors populate.",
                 "instance_type_kind": "Holon"
               },
               "relationships": [
@@ -219,22 +239,25 @@
                   "name": "InstanceProperties",
                   "target": [
                     {
-                      "$ref": "#MapTypeNamePropertyType"
+                      "$ref": "#TypeName.Property"
                     },
                     {
-                      "$ref": "#MapTypeNamePluralPropertyType"
+                      "$ref": "#TypeNamePlural.Property"
                     },
                     {
-                      "$ref": "#MapDisplayNamePropertyType"
+                      "$ref": "#DisplayName.Property"
                     },
                     {
-                      "$ref": "#MapDisplayNamePluralPropertyType"
+                      "$ref": "#DisplayNamePlural.Property"
                     },
                     {
-                      "$ref": "#MapDescriptionPropertyType"
+                      "$ref": "#Description.Property"
                     },
                     {
-                      "$ref": "#MapInstanceTypeKindPropertyType"
+                      "$ref": "#InstanceTypeKind.Property"
+                    },
+                    {
+                      "$ref": "#MapIsAbstractTypePropertyType"
                     }
                   ]
                 },
@@ -243,15 +266,6 @@
                   "target": [
                     {
                       "$ref": "#(TypeDescriptor)-[ComponentOf]->(Schema)"
-                    },
-                    {
-                      "$ref": "#(TypeDescriptor)-[Extends]->(TypeDescriptor)"
-                    },
-                    {
-                      "$ref": "#(TypeDescriptor)-[InstanceProperties]->(PropertyType)"
-                    },
-                    {
-                      "$ref": "#(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)"
                     }
                   ]
                 }
@@ -303,7 +317,7 @@
                 {
                   "name": "Extends",
                   "target": {
-                    "$ref": "#MetaTypeDescriptor"
+                    "$ref": "#MetaHolonType"
                   }
                 },
                 {
@@ -311,18 +325,6 @@
                   "target": [
                     {
                       "$ref": "#(PropertyType)-[ValueType]->(ValueType)"
-                    },
-                    {
-                      "$ref": "#(PropertyType)-[DescribedBy]->(TypeDescriptor)"
-                    },
-                    {
-                      "$ref": "#(PropertyType)-[OwnedBy]->(HolonSpace)"
-                    },
-                    {
-                      "$ref": "#(PropertyType)-[ComponentOf]->(Schema)"
-                    },
-                    {
-                      "$ref": "#(PropertyType)-[PropertyName]->(PropertyNameValueType)"
                     }
                   ]
                 }

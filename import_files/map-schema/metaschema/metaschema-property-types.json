@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "description": "Defines concrete property types required by the MAP Metaschema including those that use enum value types like TypeKind and DeletionSemantic.",
+    "generator": "MAP Types and Schema Refactor \u2014 July 2025",
+    "load_with": [
+      "map-base-schema.json",
+      "metaschema-concrete-value-types.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "type_kind.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "type_kind",
+        "type_name_plural": "type_kinds",
+        "display_name": "type_kind",
+        "display_name_plural": "type_kinds",
+        "description": "Specifies the kind of type this descriptor represents.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#TypeKind"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "deletion_semantic.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "deletion_semantic",
+        "type_name_plural": "deletion_semantics",
+        "display_name": "deletion_semantic",
+        "display_name_plural": "deletion_semantics",
+        "description": "Controls what happens to target holons when the source holon is deleted.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#DeletionSemantic"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    }
+  ]
+}

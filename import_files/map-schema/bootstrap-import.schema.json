@@ -17,6 +17,13 @@
         },
         "generator": {
           "type": "string"
+        },
+        "depends_on_files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Relative or symbolic path to another import file this one depends on."
+          }
         }
       },
       "additionalProperties": true

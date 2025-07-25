@@ -92,19 +92,29 @@
           "name": "Instances",
           "target": [
             {
-              "key": "TypeName.KeyRule",
+              "key": "TypeKind.KeyRule",
               "type": "#Format.KeyRuleType",
               "properties": {
-                "format": "$0"
+                "format": "{$0}.{$1}",
+                "description": "Generates a key from the holon's type_name and type_kind properties."
               },
               "relationships": [
                 {
-                  "name": "PropertyList",
+                  "name": "PropertyNames",
                   "target": [
                     {
-                      "$ref": "#MapTypeNamePropertyType"
+                      "$ref": "#TypeName"
+                    },
+                    {
+                      "$ref": "#TypeKind"
                     }
                   ]
+                },
+                {
+                  "name": "ComponentOf",
+                  "target": {
+                    "$ref": "#MAP Metaschema-v0.0.1"
+                  }
                 }
               ]
             }
@@ -219,7 +229,7 @@
           "name": "PropertyList",
           "target": [
             {
-              "$ref": "#MapTypeNamePropertyType"
+              "$ref": "#TypeName.Property"
             }
           ]
         }

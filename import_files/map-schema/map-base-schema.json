@@ -2,18 +2,18 @@
   "meta": {
     "map_schema_version": "0.0.1",
     "description": "MAP Base Schema containing foundational scalar value types.",
-    "generator": "MAP Types and Schema Refactor \u2014 base value types export"
+    "generator": "MAP Types and Schema Refactor -- base value types export"
   },
   "holons": [
     {
-      "type": "Schema",
+      "type": "SchemaHolonType",
       "key": "MAP Base Schema",
       "properties": {
         "type_name": "MAP Base Schema",
         "type_name_plural": "MAP Base Schemas",
         "display_name": "MAP Base Schema",
         "display_name_plural": "MAP Base Schemas",
-        "description": "Defines the core scalar value types used throughout the MAP type system."
+        "description": "**BaseTypes** are the foundational, portable types in the MAP system.  The Base Type determines how a given value will actually be represented in different programming language environments. (i.e., TypeScript and JSON on the client and Rust on the server-side)."
       },
       "relationships": [
         {
@@ -34,7 +34,7 @@
                 {
                   "name": "Extends",
                   "target": {
-                    "$ref": "#MetaTypeDescriptor"
+                    "$ref": "#MetaHolonType"
                   }
                 },
                 {
