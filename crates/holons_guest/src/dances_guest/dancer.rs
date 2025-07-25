@@ -4,14 +4,16 @@ use hdk::prelude::*;
 
 use crate::init_guest_context;
 
-use holons_core::dances::holon_dance_adapter::*;
-use holons_core::{HolonsContextBehavior, dances::{descriptors_dance_adapter::load_core_schema_dance, 
-    DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState,
-}};
 use base_types::MapString;
 use core_types::HolonError;
-
-
+use holons_core::dances::holon_dance_adapter::*;
+use holons_core::{
+    dances::{
+        descriptors_dance_adapter::load_core_schema_dance, DanceRequest, DanceResponse,
+        ResponseBody, ResponseStatusCode, SessionState,
+    },
+    HolonsContextBehavior,
+};
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
 /// associated with that Dance using its dispatch_table. dance() is also responsible for
@@ -296,7 +298,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::UnexpectedValueType(_, _)
         | HolonError::Utf8Conversion(_, _)
         | HolonError::WasmError(_) => error.to_string(),
-        HolonError::ValidationError(validation_error) => validation_error.to_string(),
+        // HolonError::ValidationError(validation_error) => validation_error.to_string(),
     }
 }
 fn validate_request(request: &DanceRequest) -> Result<(), ResponseStatusCode> {

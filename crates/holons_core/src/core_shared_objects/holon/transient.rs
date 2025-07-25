@@ -55,6 +55,19 @@ impl TransientHolon {
         }
     }
 
+    /// Creates a new, mutable `TransientHolon` from a HolonNodeModel.
+    pub fn new_from_holon_node_model(holon_node_model: HolonNodeModel) -> Self {
+        Self {
+            version: MapInteger(1),
+            holon_state: HolonState::Mutable,
+            validation_state: ValidationState::ValidationRequired,
+            temporary_id: None,
+            property_map: holon_node_model.property_map,
+            transient_relationships: TransientRelationshipMap::new_empty(),
+            original_id: None,
+        }
+    }
+
     /// Creates a new, immutable `TransientHolon`.
     ///
     /// This is used when deserializing TransientHolons outside their originating environment.

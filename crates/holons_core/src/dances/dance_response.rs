@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use crate::{HolonCollection, HolonReference, StagedReference};
 use crate::core_shared_objects::{summarize_holons, Holon, HolonBehavior};
-use crate::query_layer::NodeCollection;
 use crate::dances::SessionState;
+use crate::query_layer::NodeCollection;
+use crate::{HolonCollection, HolonReference, StagedReference};
 use base_types::MapString;
 use core_types::HolonError;
 
@@ -55,7 +55,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
             HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
-            HolonError::DuplicateError(_,_) => ResponseStatusCode::Conflict,
+            HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
@@ -75,7 +75,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
             HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
             HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
-            HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
+            // HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
             HolonError::WasmError(_) => ResponseStatusCode::ServerError,
         }
     }
