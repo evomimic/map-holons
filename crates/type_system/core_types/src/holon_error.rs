@@ -56,8 +56,8 @@ pub enum HolonError {
     UnexpectedValueType(String, String),
     #[error("Invalid UTF8: Couldn't convert {0} into {1}")]
     Utf8Conversion(String, String),
-    #[error("Validation error: {0}")]
-    ValidationError(ValidationError),
+    // #[error("Validation error: {0}")]
+    // ValidationError(ValidationError),
     #[error("WasmError {0}")]
     WasmError(String),
 }
