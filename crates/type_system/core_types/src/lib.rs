@@ -17,23 +17,25 @@
 pub mod ids;
 pub mod holon_error;
 pub mod type_kinds;
+pub mod validation_error;
 
 
 pub use ids::*;
 pub use holon_error::*;
 pub use type_kinds::*;
+pub use validation_error::*;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn it_works() {
+//         let result = add(2, 2);
+//         assert_eq!(result, 4);
+//     }
+// }

@@ -19,3 +19,4 @@ shared_validation = { workspace = true }
 hdi = { workspace = true }
 holochain_integrity_types = { workspace = true }
 holons_guest_integrity = { workspace = true }
+integrity_core_types = { workspace = true }

@@ -1,4 +1,8 @@
 use hdi::prelude::*;
+use integrity_core_types::{
+    LocalId, PersistenceCreateLink, PersistenceDeleteLink, PersistenceLinkTag,
+};
+use shared_validation::*;
 //use integrity_core_types::holon_node::{HolonNode};
 
 pub const EXTERNAL_REFERENCE_TYPE: [u8; 3] = [226, 147, 141]; // Unicode 'Ⓧ' // hex bytes: [0xE2] [0x93] [0x8D]
@@ -13,35 +17,40 @@ pub const SMARTLINK_HEADER_BYTES: [u8; 3] = [226, 130, 183]; // Unicode '₷' //
 pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
 
 pub fn validate_create_smartlink(
-    _action: CreateLink,
-    base_address: AnyLinkableHash,
-    target_address: AnyLinkableHash,
-    _tag: LinkTag,
+    action: PersistenceCreateLink,
+    base_address: LocalId,
+    target_address: LocalId,
+    tag: PersistenceLinkTag,
 ) -> ExternResult<ValidateCallbackResult> {
-    let action_hash = base_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(
-        String::from("No action hash associated with link")
-    )))?;
-    let record = must_get_valid_record(action_hash)?;
-    let _holon_node: crate::HolonNode =
-        record.entry().to_app_option().map_err(|e| wasm_error!(e))?.ok_or(wasm_error!(
-            WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
-        ))?;
-    let action_hash = target_address.into_action_hash().ok_or(wasm_error!(
-        WasmErrorInner::Guest(String::from("No action hash associated with link"))
-    ))?;
-    let record = must_get_valid_record(action_hash)?;
-    let _holon_node: crate::HolonNode =
-        record.entry().to_app_option().map_err(|e| wasm_error!(e))?.ok_or(wasm_error!(
-            WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
-        ))?;
+    // let action_hash = base_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(
+    //     String::from("No action hash associated with link")
+    // )))?;
+    // let record = must_get_valid_record(action_hash)?;
+    // let _holon_node: crate::HolonNode =
+    //     record.entry().to_app_option().map_err(|e| wasm_error!(e))?.ok_or(wasm_error!(
+    //         WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
+    //     ))?;
+    // let action_hash = target_address.into_action_hash().ok_or(wasm_error!(
+    //     WasmErrorInner::Guest(String::from("No action hash associated with link"))
+    // ))?;
+    // let record = must_get_valid_record(action_hash)?;
+    // let _holon_node: crate::HolonNode =
+    //     record.entry().to_app_option().map_err(|e| wasm_error!(e))?.ok_or(wasm_error!(
+    //         WasmErrorInner::Guest(String::from("Linked action must reference an entry"))
+    //     ))?;
+    validate_create_smartlink_helper(base_address, target_address, tag)
+        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
     Ok(ValidateCallbackResult::Valid)
 }
 pub fn validate_delete_smartlink(
-    _action: DeleteLink,
-    _original_action: CreateLink,
-    _base: AnyLinkableHash,
-    _target: AnyLinkableHash,
-    _tag: LinkTag,
+    action: PersistenceDeleteLink,
+    _original_action: PersistenceCreateLink,
+    base: LocalId,
+    target: LocalId,
+    _tag: PersistenceLinkTag,
 ) -> ExternResult<ValidateCallbackResult> {
+    validate_delete_smartlink_helper(base, target)
+        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+
     Ok(ValidateCallbackResult::Valid)
 }

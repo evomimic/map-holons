@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_validation::ValidationError;
+// use shared_validation::ValidationError;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
@@ -54,8 +54,8 @@ pub enum HolonError {
     UnexpectedValueType(String, String),
     #[error("Invalid UTF8: Couldn't convert {0} into {1}")]
     Utf8Conversion(String, String),
-    #[error("Validation error: {0}")]
-    ValidationError(ValidationError),
+    // #[error("Validation error: {0}")]
+    // ValidationError(ValidationError),
     #[error("WasmError {0}")]
     WasmError(String),
 }

@@ -1,21 +1,33 @@
 use hdi::prelude::*;
-use holons_guest_integrity::HolonNode;
+use integrity_core_types::{HolonNodeModel, PersistenceAction, PersistenceDelete, PersistenceUpdate};
+use shared_validation::*;
 
 pub fn validate_create_holon_node(
-    _action: EntryCreationAction,
-    _holon_node: HolonNode,
+    action: PersistenceAction,
+    holon_node_model: HolonNodeModel,
 ) -> ExternResult<ValidateCallbackResult> {
+    validate_create_holon(holon_node_model)
+        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+
     Ok(ValidateCallbackResult::Valid)
 }
 
 pub fn validate_update_holon_node(
-    _action: Update,
-    _holon_node: HolonNode,
+    action: PersistenceUpdate,
+    holon_node_model: HolonNodeModel,
 ) -> ExternResult<ValidateCallbackResult> {
+    validate_update_holon(holon_node_model)
+        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+
     Ok(ValidateCallbackResult::Valid)
 }
 
-pub fn validate_delete_holon_node(_action: Delete) -> ExternResult<ValidateCallbackResult> {
+pub fn validate_delete_holon_node(
+    action: PersistenceDelete,
+) -> ExternResult<ValidateCallbackResult> {
+    validate_delete_holon()
+        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+
     Ok(ValidateCallbackResult::Valid)
 }
 

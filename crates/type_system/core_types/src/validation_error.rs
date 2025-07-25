@@ -15,4 +15,3 @@ pub enum ValidationError {
     #[error("Wasm error: {0}")]
     WasmError(String),
 }
-
