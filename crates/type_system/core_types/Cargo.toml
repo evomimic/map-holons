@@ -9,6 +9,5 @@ edition = "2021"
 base_types = { workspace = true }
 integrity_core_types = { workspace = true }
 serde = { workspace = true }
-shared_validation = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true}
