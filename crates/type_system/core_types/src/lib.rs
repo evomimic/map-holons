@@ -17,7 +17,6 @@
 pub mod holon_error;
 pub mod ids;
 pub mod type_kinds;
-pub mod validation_error;
 
 pub use holon_error::*;
 pub use ids::*;
