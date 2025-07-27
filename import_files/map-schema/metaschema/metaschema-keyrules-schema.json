@@ -2,12 +2,15 @@
   "meta": {
     "map_schema_version": "0.0.1",
     "description": "Refined MAP Key Rule Types — single-level representation with explicit parameterization and schema grouping",
-    "generator": "MAP Types and Schema Refactor — 2025-07-19"
+    "generator": "MAP Types and Schema Refactor — 2025-07-19",
+    "load_with": [
+      "metaschema-property-types.json"
+    ]
   },
   "holons": [
     {
       "key": "MAP Key Rule Schema",
-      "type": "#Schema",
+      "type": "#SchemaHolonType",
       "properties": {
         "type_name": "MAP Key Rule Schema",
         "type_name_plural": "MAP Key Rule Schemas",
@@ -87,38 +90,50 @@
           "target": {
             "$ref": "#MAP Key Rule Schema"
           }
-        },
+        }
+      ]
+    },
+    {
+      "key": "TypeName.KeyRule",
+      "type": "#Format.KeyRuleType",
+      "properties": {
+        "template_string": "$0"
+      },
+      "relationships": [
         {
-          "name": "Instances",
+          "name": "PropertyList",
           "target": [
             {
-              "key": "TypeKind.KeyRule",
-              "type": "#Format.KeyRuleType",
-              "properties": {
-                "format": "{$0}.{$1}",
-                "description": "Generates a key from the holon's type_name and type_kind properties."
-              },
-              "relationships": [
-                {
-                  "name": "PropertyNames",
-                  "target": [
-                    {
-                      "$ref": "#TypeName"
-                    },
-                    {
-                      "$ref": "#TypeKind"
-                    }
-                  ]
-                },
-                {
-                  "name": "ComponentOf",
-                  "target": {
-                    "$ref": "#MAP Metaschema-v0.0.1"
-                  }
-                }
-              ]
+              "$ref": "#TypeName.Property"
             }
           ]
+        }
+      ]
+    },
+    {
+      "key": "TypeKind.KeyRule",
+      "type": "#Format.KeyRuleType",
+      "properties": {
+        "format": "{$0}.{$1}",
+        "description": "Generates a key from the holon's type_name and type_kind properties."
+      },
+      "relationships": [
+        {
+          "name": "PropertyNames",
+          "target": [
+            {
+              "$ref": "#TypeName"
+            },
+            {
+              "$ref": "#TypeKind"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
         }
       ]
     },
@@ -215,23 +230,6 @@
           "target": {
             "$ref": "#MAP Key Rule Schema"
           }
-        }
-      ]
-    },
-    {
-      "key": "TypeName.KeyRule",
-      "type": "#Format.KeyRuleType",
-      "properties": {
-        "template_string": "$0"
-      },
-      "relationships": [
-        {
-          "name": "PropertyList",
-          "target": [
-            {
-              "$ref": "#TypeName.Property"
-            }
-          ]
         }
       ]
     }

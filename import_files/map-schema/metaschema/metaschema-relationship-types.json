@@ -3,9 +3,11 @@
     "description": "Defines all declared and inverse relationship types required by the MAP Metaschema, in interleaved form for clarity.",
     "generator": "MAP Types and Schema Refactor \u2014 July 2025",
     "load_with": [
+      "metaschema-abstract-value-types.json",
+      "metaschema-concrete-value-types.json",
       "metaschema-property-types.json",
-      "metaschema-keyrules-schema.json",
-      "map-base-schema.json"
+      "metaschema-root.json",
+      "metaschema-keyrules-schema.json"
     ]
   },
   "holons": [
@@ -250,9 +252,9 @@
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "InstanceRelationships",
-        "type_name_plural": "InstanceRelationshipsRelationships",
-        "display_name": "InstanceRelationships",
-        "display_name_plural": "InstanceRelationships Relationships",
+        "type_name_plural": "InstanceRelationships",
+        "display_name": "Instance Relationships",
+        "display_name_plural": "Instance Relationships",
         "description": "Connects a type descriptor to its expected relationship types.",
         "type_kind": "Relationship",
         "is_abstract_type": false,
@@ -850,8 +852,8 @@
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
-        "min_cardinality": 0,
-        "max_cardinality": 32767
+        "min_cardinality": 1,
+        "max_cardinality": 1
       },
       "relationships": [
         {
@@ -906,8 +908,8 @@
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
-        "min_cardinality": 0,
-        "max_cardinality": 32767
+        "min_cardinality": 1,
+        "max_cardinality": 1
       },
       "relationships": [
         {
@@ -1297,6 +1299,124 @@
           "name": "InverseOf",
           "target": {
             "$ref": "#(EnumValueType)-[Variants]->(EnumVariantType)"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(SchemaHolonType)-[DependsOn]->(SchemaHolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DependsOn",
+        "type_name_plural": "DependsOnRelationships",
+        "display_name": "DependsOn",
+        "display_name_plural": "DependsOn Relationships",
+        "description": "Indicates that one schema holon depends on another.",
+        "type_kind": "Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#DeclaredRelationshipType"
+            },
+            {
+              "$ref": "#TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#Relationship.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#SchemaHolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#SchemaHolonType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(SchemaHolonType)-[Dependents]->(SchemaHolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Dependents",
+        "type_name_plural": "DependentsRelationships",
+        "display_name": "Dependents",
+        "display_name_plural": "Dependents Relationships",
+        "description": "Inverse of DependsOn, indicating which schemas depend on this one.",
+        "type_kind": "Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#InverseRelationshipType"
+            },
+            {
+              "$ref": "#TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#Relationship.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#SchemaHolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#SchemaHolonType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(SchemaHolonType)-[DependsOn]->(SchemaHolonType)"
           }
         },
         {
