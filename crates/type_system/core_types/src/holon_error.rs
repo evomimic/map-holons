@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
-// use shared_validation::ValidationError;
 use thiserror::Error;
+
+use integrity_core_types::validation_error::ValidationError;
+use std::cell::BorrowError;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
@@ -54,13 +56,11 @@ pub enum HolonError {
     UnexpectedValueType(String, String),
     #[error("Invalid UTF8: Couldn't convert {0} into {1}")]
     Utf8Conversion(String, String),
-    // #[error("Validation error: {0}")]
-    // ValidationError(ValidationError),
+    #[error("Validation error: {0}")]
+    ValidationError(ValidationError),
     #[error("WasmError {0}")]
     WasmError(String),
 }
-
-use std::cell::BorrowError;
 
 impl From<BorrowError> for HolonError {
     fn from(error: BorrowError) -> Self {

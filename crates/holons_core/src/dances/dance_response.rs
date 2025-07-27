@@ -21,13 +21,14 @@ pub struct DanceResponse {
 /// They are patterned after and should align, as much as reasonable, with [HTTP Status Codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResponseStatusCode {
-    OK,                 // 200
-    Accepted,           // 202
-    BadRequest,         // 400
-    Unauthorized,       // 401
-    Forbidden,          // 403 -- use this for authorization / permission errors
-    NotFound,           // 404
+    OK,                  // 200
+    Accepted,            // 202
+    BadRequest,          // 400
+    Unauthorized,        // 401
+    Forbidden,           // 403 -- use this for authorization / permission errors
+    NotFound,            // 404
     Conflict, // 409 -- use this when request denied due to a conflict with the current state of the resource
+    UnprocessableEntity, // 422 -- use this for semantic validation errors
     ServerError, // 500
     NotImplemented, // 501
     ServiceUnavailable, // 503
@@ -75,7 +76,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
             HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
             HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
-            // HolonError::ValidationError(_) => ResponseStatusCode::BadRequest,
+            HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,
             HolonError::WasmError(_) => ResponseStatusCode::ServerError,
         }
     }
@@ -93,6 +94,7 @@ impl fmt::Display for ResponseStatusCode {
             ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"),
             ResponseStatusCode::NotImplemented => write!(f, "501 -- Not Implemented"),
             ResponseStatusCode::ServiceUnavailable => write!(f, "503 -- Service Unavailable"),
+            ResponseStatusCode::UnprocessableEntity => write!(f, "422 -- Unprocessable Entity"),
         }
     }
 }

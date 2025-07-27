@@ -7,3 +7,4 @@ edition = "2021"
 base_types = { workspace = true }
 serde = { workspace = true }
 derive-new = { workspace = true }
+thiserror = { workspace = true }
