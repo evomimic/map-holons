@@ -1,19 +1,676 @@
 {
   "meta": {
-    "description": "Defines concrete property types required by the MAP Metaschema including those that use enum value types like TypeKind and DeletionSemantic.",
-    "generator": "MAP Types and Schema Refactor \u2014 July 2025",
-    "load_with": [
-      "map-base-schema.json",
-      "metaschema-concrete-value-types.json"
-    ]
+    "map_schema_version": "0.0.1",
+    "description": "Defines concrete property types required by the MAP Metaschema, including descriptor and relationship semantics.",
+    "generator": "MAP Types and Schema Refactor \u2014 July 2025"
   },
   "holons": [
     {
-      "key": "type_kind.PropertyType",
+      "key": "AllowsDuplicates.Property",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "type_kind",
-        "type_name_plural": "type_kinds",
+        "type_name": "AllowsDuplicates",
+        "type_name_plural": "AllowsDuplicates",
+        "display_name": "allowsDuplicates",
+        "display_name_plural": "allowsDuplicates",
+        "description": "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DeletionSemantic.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DeletionSemantic",
+        "type_name_plural": "DeletionSemantics",
+        "display_name": "deletion_semantic",
+        "display_name_plural": "deletion_semantics",
+        "description": "Specifies behavior for how to handle requests to delete the source holon from this relationship.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#DeletionSemantic"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Description.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Description",
+        "type_name_plural": "Descriptions",
+        "display_name": "description",
+        "display_name_plural": "descriptions",
+        "description": "A human-readable explanation of the purpose or role of this type.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DisplayName.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DisplayName",
+        "type_name_plural": "DisplayNames",
+        "display_name": "displayName",
+        "display_name_plural": "displayNames",
+        "description": "The human-readable label used for this property",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DisplayNamePlural.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DisplayNamePlural",
+        "type_name_plural": "DisplayNamePlurals",
+        "display_name": "displayNamePlural",
+        "display_name_plural": "displayNamePlurals",
+        "description": "The plural form of the label for use in lists or summaries.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "InstanceTypeKind.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "InstanceTypeKind",
+        "type_name_plural": "InstanceTypeKinds",
+        "display_name": "instanceTypeKind",
+        "display_name_plural": "instanceTypeKinds",
+        "description": "Specifies the type kind (e.g., Holon, Property, Relationship, etc.) for instances.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#TypeKind"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IsAbstractType.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "IsAbstractType",
+        "type_name_plural": "IsAbstractTypes",
+        "display_name": "isAbstractType",
+        "display_name_plural": "isAbstractTypes",
+        "description": "Indicates whether the type is abstract (cannot be instantiated).",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IsDefinitional.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "IsDefinitional",
+        "type_name_plural": "IsDefinitional",
+        "display_name": "isDefinitional",
+        "display_name_plural": "isDefinitional",
+        "description": "Indicates whether the relationship contributes to the identity of the target holon. ",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IsOrdered.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "IsOrdered",
+        "type_name_plural": "IsOrdered",
+        "display_name": "isOrdered",
+        "display_name_plural": "isOrdered",
+        "description": "True if the order of related holons is significant.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapBoolean.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapBoolean",
+        "type_name_plural": "MapBooleans",
+        "display_name": "mapBoolean",
+        "display_name_plural": "mapBooleans",
+        "description": "Boolean scalar value (true/false).",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapBytes.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapBytes",
+        "type_name_plural": "MapBytes",
+        "display_name": "mapBytes",
+        "display_name_plural": "mapBytes",
+        "description": "Binary data (blob of bytes).",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBytesValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapInteger.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapInteger",
+        "type_name_plural": "MapIntegers",
+        "display_name": "mapInteger",
+        "display_name_plural": "mapIntegers",
+        "description": "Integer scalar value.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapString.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapString",
+        "type_name_plural": "MapStrings",
+        "display_name": "mapString",
+        "display_name_plural": "mapStrings",
+        "description": "Textual scalar value.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MaxCardinality.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MaxCardinality",
+        "type_name_plural": "MaxCardinalities",
+        "display_name": "max_cardinality",
+        "display_name_plural": "max_cardinalities",
+        "description": "Maximum number of target holons allowed for the relationship.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MinCardinality.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MinCardinality",
+        "type_name_plural": "MinCardinalities",
+        "display_name": "min_cardinality",
+        "display_name_plural": "min_cardinalities",
+        "description": "Minimum number of target holons allowed for the relationship.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "TypeKind.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TypeKind",
+        "type_name_plural": "TypeKinds",
         "display_name": "type_kind",
         "display_name_plural": "type_kinds",
         "description": "Specifies the kind of type this descriptor represents.",
@@ -53,14 +710,14 @@
       ]
     },
     {
-      "key": "deletion_semantic.PropertyType",
+      "key": "TypeName.Property",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "deletion_semantic",
-        "type_name_plural": "deletion_semantics",
-        "display_name": "deletion_semantic",
-        "display_name_plural": "deletion_semantics",
-        "description": "Controls what happens to target holons when the source holon is deleted.",
+        "type_name": "TypeName",
+        "type_name_plural": "TypeNames",
+        "display_name": "typeName",
+        "display_name_plural": "typeNames",
+        "description": "The unique identifier for a type, typically in ClassCase.",
         "type_kind": "Property",
         "is_abstract_type": false
       },
@@ -85,7 +742,51 @@
         {
           "name": "ValueType",
           "target": {
-            "$ref": "#DeletionSemantic"
+            "$ref": "#MapStringValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "TypeNamePlural.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TypeNamePlural",
+        "type_name_plural": "TypeNamePlurals",
+        "display_name": "typeNamePlural",
+        "display_name_plural": "typeNamePlurals",
+        "description": "The plural form of the type's identifier used for display or grouping.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
           }
         },
         {

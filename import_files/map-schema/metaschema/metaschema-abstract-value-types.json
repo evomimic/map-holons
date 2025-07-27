@@ -3,9 +3,10 @@
     "description": "Defines all abstract value types used in the MAP system. These types extend the MetaValueTypes and are not instantiable.",
     "generator": "MAP Types and Schema Refactor \u2014 July 2025",
     "load_with": [
-      "map-base-schema.json",
+      "metaschema-concrete-value-types.json",
       "metaschema-keyrules-schema.json",
-      "metaschema-value-type-hierarchy.json"
+      "metaschema-root.json",
+      "metaschema-property-types.json"
     ]
   },
   "holons": [

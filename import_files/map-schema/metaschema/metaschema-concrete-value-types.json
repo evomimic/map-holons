@@ -3,9 +3,10 @@
     "description": "Defines all concrete value types used in the MAP system, including scalar base types and enriched enum value types with annotated variants.",
     "generator": "MAP Types and Schema Refactor \u2014 July 2025",
     "load_with": [
-      "map-base-schema.json",
-      "metaschema-value-type-hierarchy.json",
-      "metaschema-keyrules-schema.json"
+      "metaschema-abstract-value-types.json",
+      "metaschema-keyrules-schema.json",
+      "metaschema-root.json",
+      "metaschema-property-types.json"
     ]
   },
   "holons": [
@@ -264,7 +265,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
