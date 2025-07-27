@@ -298,7 +298,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::UnexpectedValueType(_, _)
         | HolonError::Utf8Conversion(_, _)
         | HolonError::WasmError(_) => error.to_string(),
-        // HolonError::ValidationError(validation_error) => validation_error.to_string(),
+        HolonError::ValidationError(validation_error) => validation_error.to_string(),
     }
 }
 fn validate_request(request: &DanceRequest) -> Result<(), ResponseStatusCode> {

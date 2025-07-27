@@ -1,3 +1,18 @@
+//! # Integrity Zome Validation Logic
+//!
+//! This file implements the integrity zome interface functions expected by the Holochain Conductor.
+//!
+//! Specifically, it:
+//! - Initiates the per-event validation process by responding to Holochain's `validate` extern call.
+//! - Handles all inbound validation requests and dispatches them to holochain-independent validation functions,
+//!   primarily located in the `shared_validations` crate.
+//! - Translates all Holochain-specific types (e.g., `Op`, `Action`, `EntryTypes`, `LinkTypes`) and validation events
+//!   into persistence-layer abstractions used throughout the Memetic Activation Platform.
+//!
+//! The purpose of this layer is to isolate Holochain's runtime environment from the domain validation logic,
+//! providing a clean separation of concerns and enabling testing and reuse of validation logic outside of the
+//! Holochain execution context.
+
 use hdi::prelude::*;
 
 use holons_guest_integrity::*;

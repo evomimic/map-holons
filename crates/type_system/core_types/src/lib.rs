@@ -14,20 +14,14 @@
 //! These types define the shape and meaning of data in MAP holons and descriptors,
 //! and are shared across guest and client implementations.
 
-pub mod ids;
 pub mod holon_error;
+pub mod ids;
 pub mod type_kinds;
-pub mod validation_error;
 
-
-pub use ids::*;
 pub use holon_error::*;
+pub use ids::*;
+pub use integrity_core_types::validation_error::*;
 pub use type_kinds::*;
-pub use validation_error::*;
-
-
-
-
 
 // #[cfg(test)]
 // mod tests {
