@@ -2,7 +2,10 @@
   "meta": {
     "map_schema_version": "0.0.1",
     "description": "Defines concrete property types required by the MAP Metaschema, including descriptor and relationship semantics.",
-    "generator": "MAP Types and Schema Refactor \u2014 July 2025"
+    "generator": "MAP Types and Schema Refactor \u2014 July 2025",
+    "load_with": [
+      "metaschema-concrete-value-types.json"
+    ]
   },
   "holons": [
     {
@@ -32,7 +35,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -44,7 +47,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -76,7 +79,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -88,7 +91,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -120,7 +123,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -132,7 +135,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -164,7 +167,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -176,7 +179,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -208,7 +211,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -220,7 +223,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -252,7 +255,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -264,7 +267,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -296,7 +299,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -308,7 +311,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -340,7 +343,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -352,7 +355,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -384,7 +387,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -396,7 +399,51 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IsRequired.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "IsRequired",
+        "type_name_plural": "IsRequired",
+        "display_name": "IsRequired",
+        "display_name_plural": "IsRequired",
+        "description": "True if a value for this property type is required for the holon having this property.",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -428,7 +475,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -440,7 +487,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -472,7 +519,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -484,7 +531,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -516,7 +563,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -528,7 +575,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -560,7 +607,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -572,7 +619,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -604,7 +651,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -616,7 +663,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -648,7 +695,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -660,7 +707,51 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
+          }
+        }
+      ]
+    },
+    {
+      "key": "SpaceName.Property",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SpaceName",
+        "type_name_plural": "SpaceNames",
+        "display_name": "SpaceName",
+        "display_name_plural": "SpaceNames",
+        "description": "The type used for names of HolonSpaces",
+        "type_kind": "Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -692,7 +783,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -704,7 +795,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -736,7 +827,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -748,7 +839,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -780,7 +871,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeName.KeyRule"
+            "$ref": "#TypeKind.KeyRule"
           }
         },
         {
@@ -792,7 +883,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]

@@ -39,7 +39,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -73,7 +73,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -107,7 +107,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -141,7 +141,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -175,7 +175,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]
@@ -209,7 +209,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         }
       ]

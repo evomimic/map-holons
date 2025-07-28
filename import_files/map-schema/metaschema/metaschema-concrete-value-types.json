@@ -19,7 +19,7 @@
         "display_name": "MapStringValueType",
         "display_name_plural": "MapStringValueTypes",
         "description": "Concrete value type representing strings.",
-        "type_kind": "Value",
+        "type_kind": "Value.String",
         "is_abstract_type": false
       },
       "relationships": [
@@ -57,7 +57,7 @@
         "display_name": "MapIntegerValueType",
         "display_name_plural": "MapIntegerValueTypes",
         "description": "Concrete value type representing integers.",
-        "type_kind": "Value",
+        "type_kind": "Value.Integer",
         "is_abstract_type": false
       },
       "relationships": [
@@ -95,7 +95,7 @@
         "display_name": "MapBooleanValueType",
         "display_name_plural": "MapBooleanValueTypes",
         "description": "Concrete value type representing booleans.",
-        "type_kind": "Value",
+        "type_kind": "Value.Boolean",
         "is_abstract_type": false
       },
       "relationships": [
@@ -133,7 +133,7 @@
         "display_name": "MapBytesValueType",
         "display_name_plural": "MapBytesValueTypes",
         "description": "Concrete value type representing byte sequences.",
-        "type_kind": "Value",
+        "type_kind": "Value.Bytes",
         "is_abstract_type": false
       },
       "relationships": [
@@ -171,7 +171,7 @@
         "display_name": "MapEnumValueType",
         "display_name_plural": "MapEnumValueTypes",
         "description": "Concrete value type representing enums.",
-        "type_kind": "Value",
+        "type_kind": "Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -209,7 +209,7 @@
         "display_name": "MapValueArrayType",
         "display_name_plural": "MapValueArrayTypes",
         "description": "Concrete value type representing arrays of values.",
-        "type_kind": "Value",
+        "type_kind": "Value.Array",
         "is_abstract_type": false
       },
       "relationships": [
@@ -239,7 +239,7 @@
       ]
     },
     {
-      "key": "DeletionSemantic",
+      "key": "DeletionSemantic.EnumValue",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "DeletionSemantic",
@@ -273,46 +273,137 @@
           "target": {
             "$ref": "#MAP Base Schema-v0.0.1"
           }
-        },
-        {
-          "name": "Variants",
-          "target": [
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Allow",
-                "display_name": "Allow",
-                "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Block",
-                "display_name": "Block",
-                "description": "Prevent deletion of the source holon if any target holons are related through this relationship.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Cascade",
-                "display_name": "Cascade",
-                "description": "If the source holon is deleted, also delete any related target holons.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            }
-          ]
         }
       ]
     },
     {
-      "key": "TypeKind",
+      "key": "Allow.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Allow",
+        "display_name": "Allow",
+        "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#DeletionSemantic"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Block.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Block",
+        "display_name": "Block",
+        "description": "Prevent deletion of the source holon if any target holons are related through this relationship.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#DeletionSemantic"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Cascade.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Cascade",
+        "display_name": "Cascade",
+        "description": "If the source holon is deleted, also delete any related target holons.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#DeletionSemantic"
+          }
+        }
+      ]
+    },
+    {
+      "key": "TypeKind.EnumValue",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "TypeKind",
@@ -338,6 +429,42 @@
         {
           "name": "UsesKeyRule",
           "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Property.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Property",
+        "display_name": "Property",
+        "description": "Represents a property type.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
             "$ref": "#TypeName.KeyRule"
           }
         },
@@ -348,169 +475,598 @@
           }
         },
         {
-          "name": "Variants",
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Relationship.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Relationship",
+        "display_name": "Relationship",
+        "description": "Represents a relationship type.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
           "target": [
             {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Property",
-                "display_name": "Property",
-                "description": "Represents a property type.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
+              "$ref": "#TypeDescriptor"
             },
             {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Relationship",
-                "display_name": "Relationship",
-                "description": "Represents a relationship type.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "EnumVariant",
-                "display_name": "EnumVariant",
-                "description": "Represents an enum variant type.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Holon",
-                "display_name": "Holon",
-                "description": "Represents a holon type.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Collection",
-                "display_name": "Collection",
-                "description": "Represents a collection type.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Dance",
-                "display_name": "Dance",
-                "description": "Represents a dance service type.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Value.String",
-                "display_name": "Value.String",
-                "description": "Value type wrapping base type representing strings.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "ValueArray.String",
-                "display_name": "ValueArray.String",
-                "description": "ValueArray type wrapping base type representing strings.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Value.Integer",
-                "display_name": "Value.Integer",
-                "description": "Value type wrapping base type representing integers.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "ValueArray.Integer",
-                "display_name": "ValueArray.Integer",
-                "description": "ValueArray type wrapping base type representing integers.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Value.Boolean",
-                "display_name": "Value.Boolean",
-                "description": "Value type wrapping base type representing booleans.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "ValueArray.Boolean",
-                "display_name": "ValueArray.Boolean",
-                "description": "ValueArray type wrapping base type representing booleans.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Value.Enum",
-                "display_name": "Value.Enum",
-                "description": "Value type wrapping base type representing enumerations.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "ValueArray.Enum",
-                "display_name": "ValueArray.Enum",
-                "description": "ValueArray type wrapping base type representing enumerations.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "Value.Bytes",
-                "display_name": "Value.Bytes",
-                "description": "Value type wrapping base type representing byte sequences.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
-            },
-            {
-              "type": "#EnumVariantType",
-              "properties": {
-                "type_name": "ValueArray.Bytes",
-                "display_name": "ValueArray.Bytes",
-                "description": "ValueArray type wrapping base type representing byte sequences.",
-                "is_abstract_type": false,
-                "type_kind": "EnumVariant"
-              }
+              "$ref": "#EnumVariantType"
             }
           ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "EnumVariant.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "EnumVariant",
+        "display_name": "EnumVariant",
+        "description": "Represents an enum variant type.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Holon.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Holon",
+        "display_name": "Holon",
+        "description": "Represents a holon type.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Collection.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Collection",
+        "display_name": "Collection",
+        "description": "Represents a collection type.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Dance.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Dance",
+        "display_name": "Dance",
+        "description": "Represents a dance service type.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Value.String.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Value.String",
+        "display_name": "Value.String",
+        "description": "Value type wrapping base type representing strings.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueArray.String.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "ValueArray.String",
+        "display_name": "ValueArray.String",
+        "description": "ValueArray type wrapping base type representing strings.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Value.Integer.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Value.Integer",
+        "display_name": "Value.Integer",
+        "description": "Value type wrapping base type representing integers.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueArray.Integer.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "ValueArray.Integer",
+        "display_name": "ValueArray.Integer",
+        "description": "ValueArray type wrapping base type representing integers.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Value.Boolean.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Value.Boolean",
+        "display_name": "Value.Boolean",
+        "description": "Value type wrapping base type representing booleans.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueArray.Boolean.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "ValueArray.Boolean",
+        "display_name": "ValueArray.Boolean",
+        "description": "ValueArray type wrapping base type representing booleans.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Value.Enum.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Value.Enum",
+        "display_name": "Value.Enum",
+        "description": "Value type wrapping base type representing enumerations.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Value.Bytes.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "Value.Bytes",
+        "display_name": "Value.Bytes",
+        "description": "Value type wrapping base type representing byte sequences.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueArray.Bytes.EnumVariant",
+      "type": "#EnumVariantType",
+      "properties": {
+        "type_name": "ValueArray.Bytes",
+        "display_name": "ValueArray.Bytes",
+        "description": "ValueArray type wrapping base type representing byte sequences.",
+        "is_abstract_type": false,
+        "type_kind": "EnumVariant"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumVariantType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#TypeKind.EnumValue"
+          }
         }
       ]
     }
