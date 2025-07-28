@@ -1,6 +1,5 @@
 {
   "meta": {
-    "map_schema_version": "0.0.1",
     "description": "MAP Meta Schema defines the MetaTypeDescriptor and other type descriptors used to describe all MAP types.",
     "generator": "MAP Types and Schema Refactor — July 2025",
     "load_with": [
@@ -13,10 +12,10 @@
   },
   "holons": [
     {
-      "key": "MAP Metaschema-v0.0.1",
+      "key": "MAP Metaschema-v0.0.2",
       "type": "#SchemaHolonType",
       "properties": {
-        "schema_name": "MAP Metaschema-v0.0.1",
+        "schema_name": "MAP Metaschema-v0.0.2",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself."
       },
       "relationships": [
@@ -46,7 +45,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -109,7 +108,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -140,6 +139,43 @@
       ]
     },
     {
+      "key": "HolonSpace.HolonType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonSpace",
+        "type_name_plural": "HolonSpaces",
+        "display_name": "Holon Space Holon Type",
+        "display_name_plural": "Holon Space Holon Type",
+        "description": "Describes HolonSpace holons. A HolonSpace is a holon that, itself, is a container for holons. It maps 1:1 with a DHT. It also proxies inbound and outbound calls to other HolonSpaces of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies. With minimal InstanceProperties and no InstanceRelationships, a HolonSpace is very stable = i.e., owned holons and space proxies can be added to a space without requiring a new version of the HolonSpace.",
+        "instance_type_kind": "Holon"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.2"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaHolonType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#SpaceName.Property"
+            },
+            {
+              "$ref": "#Description.Property"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "HolonType",
       "type": "#TypeDescriptor",
       "properties": {
@@ -154,7 +190,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -197,7 +233,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -257,7 +293,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -317,7 +353,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -354,7 +390,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -362,6 +398,14 @@
           "target": {
             "$ref": "#MetaHolonType"
           }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#IsRequired.Property"
+            }
+          ]
         },
         {
           "name": "InstanceRelationships",
@@ -388,7 +432,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
@@ -414,7 +458,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.1"
+            "$ref": "#MAP Metaschema-v0.0.2"
           }
         },
         {
