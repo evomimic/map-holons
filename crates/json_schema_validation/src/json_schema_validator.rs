@@ -1,7 +1,7 @@
-use std::{fs::File, io::BufReader, path::Path};
+use integrity_core_types::validation_error::ValidationError;
 use jsonschema::validator_for;
 use serde_json::Value;
-use shared_validation::ValidationError;
+use std::{fs::File, io::BufReader, path::Path};
 
 /// Validate `json_path` against the JSON Schema at `schema_path`.
 /// - Uses draft autodetection + `$ref` support
@@ -28,9 +28,7 @@ pub fn validate_json_against_schema(
         .map_err(|e| ValidationError::JsonSchemaError(format!("Invalid input JSON: {e}")))?;
 
     // Collect *all* validation errors
-    let errors: Vec<String> = validator.iter_errors(&instance)
-        .map(|e| e.to_string())
-        .collect();
+    let errors: Vec<String> = validator.iter_errors(&instance).map(|e| e.to_string()).collect();
 
     if errors.is_empty() {
         Ok(())
