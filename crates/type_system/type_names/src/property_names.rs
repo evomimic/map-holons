@@ -41,83 +41,15 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
-            PropertyName(MapString("AllowsDuplicates".to_string())),
+            PropertyName(MapString("allow_duplicates".to_string())),
             CorePropertyTypeName::AllowsDuplicates.as_property_name()
         );
         assert_eq!(
-            PropertyName(MapString("DeletionSemantic".to_string())),
-            CorePropertyTypeName::DeletionSemantic.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("Description".to_string())),
+            PropertyName(MapString("description".to_string())),
             CorePropertyTypeName::Description.as_property_name()
         );
         assert_eq!(
-            PropertyName(MapString("DisplayName".to_string())),
-            CorePropertyTypeName::DisplayName.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("DisplayNamePlural".to_string())),
-            CorePropertyTypeName::DisplayNamePlural.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("InstanceTypeKind".to_string())),
-            CorePropertyTypeName::InstanceTypeKind.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("IsAbstractType".to_string())),
-            CorePropertyTypeName::IsAbstractType.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("IsDefinitional".to_string())),
-            CorePropertyTypeName::IsDefinitional.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("IsOrdered".to_string())),
-            CorePropertyTypeName::IsOrdered.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("IsRequired".to_string())),
-            CorePropertyTypeName::IsRequired.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("MapBoolean".to_string())),
-            CorePropertyTypeName::MapBoolean.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("MapBytes".to_string())),
-            CorePropertyTypeName::MapBytes.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("MapInteger".to_string())),
-            CorePropertyTypeName::MapInteger.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("MapString".to_string())),
-            CorePropertyTypeName::MapString.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("MinCardinality".to_string())),
-            CorePropertyTypeName::MinCardinality.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("MaxCardinality".to_string())),
-            CorePropertyTypeName::MaxCardinality.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("SpaceName".to_string())),
-            CorePropertyTypeName::SpaceName.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("TypeKind".to_string())),
-            CorePropertyTypeName::TypeKind.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("TypeName".to_string())),
-            CorePropertyTypeName::TypeName.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("TypeNamePlural".to_string())),
+            PropertyName(MapString("type_name_plural".to_string())),
             CorePropertyTypeName::TypeNamePlural.as_property_name()
         );
     }

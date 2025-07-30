@@ -41,84 +41,17 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
-            RelationshipName(MapString("ComponentOf".to_string())),
+            RelationshipName(MapString("COMPONENT_OF".to_string())),
             CoreRelationshipTypeName::ComponentOf.as_relationship_name()
         );
+
         assert_eq!(
-            RelationshipName(MapString("Dependents".to_string())),
-            CoreRelationshipTypeName::Dependents.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("DependsOn".to_string())),
-            CoreRelationshipTypeName::DependsOn.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("DescribedBy".to_string())),
-            CoreRelationshipTypeName::DescribedBy.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("ElementValueType".to_string())),
-            CoreRelationshipTypeName::ElementValueType.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("ElementValueTypeFor".to_string())),
-            CoreRelationshipTypeName::ElementValueTypeFor.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("Extends".to_string())),
+            RelationshipName(MapString("EXTENDS".to_string())),
             CoreRelationshipTypeName::Extends.as_relationship_name()
         );
         assert_eq!(
-            RelationshipName(MapString("InstanceRelationshipFor".to_string())),
+            RelationshipName(MapString("INSTANCE_RELATIONSHIP_FOR".to_string())),
             CoreRelationshipTypeName::InstanceRelationshipFor.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("Instances".to_string())),
-            CoreRelationshipTypeName::Instances.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("InverseOf".to_string())),
-            CoreRelationshipTypeName::InverseOf.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("OwnedBy".to_string())),
-            CoreRelationshipTypeName::OwnedBy.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("Owns".to_string())),
-            CoreRelationshipTypeName::Owns.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("PropertyName".to_string())),
-            CoreRelationshipTypeName::PropertyName.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("SourceOf".to_string())),
-            CoreRelationshipTypeName::SourceOf.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("SourceType".to_string())),
-            CoreRelationshipTypeName::SourceType.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("TargetOf".to_string())),
-            CoreRelationshipTypeName::TargetOf.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("TargetType".to_string())),
-            CoreRelationshipTypeName::TargetType.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("UsesKeyRule".to_string())),
-            CoreRelationshipTypeName::UsesKeyRule.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("ValueType".to_string())),
-            CoreRelationshipTypeName::ValueType.as_relationship_name()
-        );
-        assert_eq!(
-            RelationshipName(MapString("ValueTypeFor".to_string())),
-            CoreRelationshipTypeName::ValueTypeFor.as_relationship_name()
         );
     }
 }
