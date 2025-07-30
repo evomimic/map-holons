@@ -1,0 +1,11 @@
+{
+  "holons": [
+    {
+      "type": "#SomeType",
+      "properties": {
+        "type_name": "SomeType"
+      },
+      "banana": "🍌"
+    }
+  ]
+}

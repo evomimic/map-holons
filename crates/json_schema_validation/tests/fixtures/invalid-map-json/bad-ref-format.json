@@ -1,0 +1,18 @@
+{
+  "holons": [
+    {
+      "type": "#SomeType",
+      "properties": {
+        "type_name": "SomeType"
+      },
+      "relationships": [
+        {
+          "name": "InvalidRef",
+          "target": {
+            "$ref": "foo-bar-baz"  // <- not #, id:, @, or ext:
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,518 @@
+{
+  "meta": {
+    "description": "Defines all concrete value types used in the MAP system, including scalar base types and enriched enum value types with annotated variants.",
+    "generator": "MAP Types and Schema Refactor \u2014 July 2025",
+    "load_with": [
+      "metaschema-abstract-value-types.json",
+      "metaschema-keyrules-schema.json",
+      "metaschema-root.json",
+      "metaschema-property-types.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MapStringValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapStringValueType",
+        "type_name_plural": "MapStringValueTypes",
+        "display_name": "MapStringValueType",
+        "display_name_plural": "MapStringValueTypes",
+        "description": "Concrete value type representing strings.",
+        "type_kind": "Value",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapIntegerValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapIntegerValueType",
+        "type_name_plural": "MapIntegerValueTypes",
+        "display_name": "MapIntegerValueType",
+        "display_name_plural": "MapIntegerValueTypes",
+        "description": "Concrete value type representing integers.",
+        "type_kind": "Value",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#IntegerValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapBooleanValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapBooleanValueType",
+        "type_name_plural": "MapBooleanValueTypes",
+        "display_name": "MapBooleanValueType",
+        "display_name_plural": "MapBooleanValueTypes",
+        "description": "Concrete value type representing booleans.",
+        "type_kind": "Value",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#BooleanValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapBytesValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapBytesValueType",
+        "type_name_plural": "MapBytesValueTypes",
+        "display_name": "MapBytesValueType",
+        "display_name_plural": "MapBytesValueTypes",
+        "description": "Concrete value type representing byte sequences.",
+        "type_kind": "Value",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#BytesValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapEnumValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapEnumValueType",
+        "type_name_plural": "MapEnumValueTypes",
+        "display_name": "MapEnumValueType",
+        "display_name_plural": "MapEnumValueTypes",
+        "description": "Concrete value type representing enums.",
+        "type_kind": "Value",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MapValueArrayType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MapValueArrayType",
+        "type_name_plural": "MapValueArrayTypes",
+        "display_name": "MapValueArrayType",
+        "display_name_plural": "MapValueArrayTypes",
+        "description": "Concrete value type representing arrays of values.",
+        "type_kind": "Value",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#ValueArrayType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DeletionSemantic",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DeletionSemantic",
+        "type_name_plural": "DeletionSemantics",
+        "display_name": "DeletionSemantic",
+        "display_name_plural": "DeletionSemantics",
+        "description": "Enum value type for deletion semantics.",
+        "type_kind": "EnumValue",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeKind.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Allow",
+                "display_name": "Allow",
+                "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Block",
+                "display_name": "Block",
+                "description": "Prevent deletion of the source holon if any target holons are related through this relationship.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Cascade",
+                "display_name": "Cascade",
+                "description": "If the source holon is deleted, also delete any related target holons.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TypeKind",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TypeKind",
+        "type_name_plural": "TypeKinds",
+        "display_name": "TypeKind",
+        "display_name_plural": "TypeKinds",
+        "description": "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship).",
+        "type_kind": "EnumValue",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "#TypeDescriptor"
+            },
+            {
+              "$ref": "#EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeName.KeyRule"
+          }
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Base Schema-v0.0.1"
+          }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Property",
+                "display_name": "Property",
+                "description": "Represents a property type.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Relationship",
+                "display_name": "Relationship",
+                "description": "Represents a relationship type.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "EnumVariant",
+                "display_name": "EnumVariant",
+                "description": "Represents an enum variant type.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Holon",
+                "display_name": "Holon",
+                "description": "Represents a holon type.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Collection",
+                "display_name": "Collection",
+                "description": "Represents a collection type.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Dance",
+                "display_name": "Dance",
+                "description": "Represents a dance service type.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Value.String",
+                "display_name": "Value.String",
+                "description": "Value type wrapping base type representing strings.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "ValueArray.String",
+                "display_name": "ValueArray.String",
+                "description": "ValueArray type wrapping base type representing strings.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Value.Integer",
+                "display_name": "Value.Integer",
+                "description": "Value type wrapping base type representing integers.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "ValueArray.Integer",
+                "display_name": "ValueArray.Integer",
+                "description": "ValueArray type wrapping base type representing integers.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Value.Boolean",
+                "display_name": "Value.Boolean",
+                "description": "Value type wrapping base type representing booleans.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "ValueArray.Boolean",
+                "display_name": "ValueArray.Boolean",
+                "description": "ValueArray type wrapping base type representing booleans.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Value.Enum",
+                "display_name": "Value.Enum",
+                "description": "Value type wrapping base type representing enumerations.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "ValueArray.Enum",
+                "display_name": "ValueArray.Enum",
+                "description": "ValueArray type wrapping base type representing enumerations.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "Value.Bytes",
+                "display_name": "Value.Bytes",
+                "description": "Value type wrapping base type representing byte sequences.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            },
+            {
+              "type": "#EnumVariantType",
+              "properties": {
+                "type_name": "ValueArray.Bytes",
+                "display_name": "ValueArray.Bytes",
+                "description": "ValueArray type wrapping base type representing byte sequences.",
+                "is_abstract_type": false,
+                "type_kind": "EnumVariant"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

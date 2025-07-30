@@ -1,0 +1,10 @@
+{
+  "holons": [
+    {
+      "type": "#WrongType",
+      "properties": [
+        { "type_name": "OopsArray" }
+      ]
+    }
+  ]
+}

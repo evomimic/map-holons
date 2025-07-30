@@ -14,6 +14,8 @@ members = [
     "crates/type_system/descriptor_types",
     "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
+    "crates/json_schema_validation",
+    "crates/json_schema_validate_cli",
     # Shared Core & Guest Libraries
     "crates/holons_client",
     "crates/holons_core",
@@ -64,6 +66,9 @@ path = "crates/holons_guest_integrity"
 
 [workspace.dependencies.holon_dance_builders]
 path = "crates/holon_dance_builders"
+
+[workspace.dependencies.json_schema_validation]
+path = "crates/json_schema_validation"
 
 # External dependencies
 [workspace.dependencies]

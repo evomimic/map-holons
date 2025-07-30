@@ -1,0 +1,12 @@
+[package]
+name = "json_schema_validation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# General
+serde_json = "1.0.140"
+jsonschema = { version = "0.30.0", default-features = false }
+
+# MAP Dependencies
+integrity_core_types = {workspace = true}

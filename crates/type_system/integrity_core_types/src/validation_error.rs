@@ -14,4 +14,8 @@ pub enum ValidationError {
 
     #[error("Wasm error: {0}")]
     WasmError(String),
+
+    #[error("JSON Schema validation error: {0}")]
+    JsonSchemaError(String),
+
 }

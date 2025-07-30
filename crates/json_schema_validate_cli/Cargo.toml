@@ -1,0 +1,15 @@
+[package]
+name = "json_schema_validate_cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI wrapper around json_schema_validation utility"
+
+[dependencies]
+# Argument parsing
+clap = {  version = "4.5.0", features = ["derive"] }
+# JSON Schema validation
+json_schema_validation = {workspace = true}
+
+[[bin]]
+name = "jsv"
+path = "src/main.rs"
