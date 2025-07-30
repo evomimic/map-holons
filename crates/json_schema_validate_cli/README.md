@@ -31,10 +31,10 @@ Simple JSON-Schema validator.
 Usage: jsv --schema <SCHEMA> --file <JSON>
 
 Options:
-  -s, --schema <SCHEMA>   Path to the JSON-Schema file
-  -f, --file <JSON>       Path to the JSON instance file
-  -h, --help              Print help
-  -V, --version           Print version
+  --schema <SCHEMA>   Path to the JSON-Schema file
+  --file <JSON>       Path to the JSON instance file
+  --help              Print help
+  --version           Print version
 ```
 - Returns ✅ Validation succeeded. on success.
 - Returns ❌ Validation failed: and lists errors on failure.

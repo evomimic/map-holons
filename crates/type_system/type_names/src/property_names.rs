@@ -41,7 +41,7 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
-            PropertyName(MapString("allow_duplicates".to_string())),
+            PropertyName(MapString("allows_duplicates".to_string())),
             CorePropertyTypeName::AllowsDuplicates.as_property_name()
         );
         assert_eq!(
