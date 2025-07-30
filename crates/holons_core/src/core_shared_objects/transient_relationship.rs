@@ -3,9 +3,10 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
-use super::{HolonCollection, ReadableRelationship, RelationshipName, WritableRelationship};
+use super::{HolonCollection, ReadableRelationship, WritableRelationship};
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
 use core_types::HolonError;
+use integrity_core_types::RelationshipName;
 
 
 /// Represents a map of transient relationships, where the keys are relationship names and the values

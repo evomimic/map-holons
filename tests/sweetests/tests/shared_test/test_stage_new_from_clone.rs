@@ -17,10 +17,9 @@ use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    HolonReference, ReadableHolon, RelationshipName, SmartReference,
+    HolonReference, ReadableHolon, SmartReference,
 };
-use integrity_core_types::PropertyName;
-
+use integrity_core_types::{PropertyName, RelationshipName};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.

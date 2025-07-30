@@ -6,14 +6,14 @@ use derive_new::new;
 use crate::core_shared_objects::{
     cache_access::HolonCacheAccess,
     holon::{state::AccessType, EssentialHolonContent},
-    Holon, HolonCollection, RelationshipName, TransientHolon, HolonBehavior
+    Holon, HolonCollection, TransientHolon, HolonBehavior
 };
 use crate::reference_layer::{
     ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference,
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SmartReference {

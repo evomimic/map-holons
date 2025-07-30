@@ -1,4 +1,4 @@
-use crate::core_shared_objects::{Holon, HolonBehavior, RelationshipName, TransientHolon};
+use crate::core_shared_objects::{Holon, HolonBehavior, TransientHolon};
 use serde::{Deserialize, Serialize};
 
 use crate::dances::SessionState;
@@ -6,7 +6,7 @@ use crate::query_layer::{NodeCollection, QueryExpression};
 use crate::{HolonReference, StagedReference};
 use base_types::MapString;
 use core_types::HolonId;
-use integrity_core_types::{LocalId, PropertyMap};
+use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceRequest {

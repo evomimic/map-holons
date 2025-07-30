@@ -19,7 +19,7 @@ use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
         holon::state::AccessType, nursery_access_internal::NurseryAccessInternal, CommitResponse,
-        Holon, HolonBehavior, HolonCollection, NurseryAccess, RelationshipName, TransientHolon,
+        Holon, HolonBehavior, HolonCollection, NurseryAccess, TransientHolon,
         TransientRelationshipMap,
     },
     reference_layer::{
@@ -29,7 +29,7 @@ use holons_core::{
     WriteableHolon,
 };
 use holons_integrity::LinkTypes;
-use integrity_core_types::{LocalId, PropertyName};
+use integrity_core_types::{LocalId, PropertyName, RelationshipName};
 
 #[derive(Clone)]
 pub struct GuestHolonService {

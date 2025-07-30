@@ -5,13 +5,13 @@ use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId};
 use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_core::{
-    core_shared_objects::{get_key_from_property_map, RelationshipName},
+    core_shared_objects::get_key_from_property_map,
     reference_layer::{HolonReference, SmartReference},
 };
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;
-use integrity_core_types::{LocalId, PropertyMap, PropertyName};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
 
 // const fn smartlink_tag_header_length() -> usize {
 //     // leaving this nomenclature for now

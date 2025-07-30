@@ -15,12 +15,12 @@ use crate::shared_test::{
 use base_types::{MapInteger, MapString};
 use holon_dance_builders::remove_related_holons_dance::build_remove_related_holons_dance_request;
 use holons_core::{
-    core_shared_objects::{holon::Holon, RelationshipName},
+    core_shared_objects::holon::Holon,
     dances::{ResponseBody, ResponseStatusCode},
     HolonReference, StagedReference,
 };
-use integrity_core_types::{PropertyMap, PropertyName};
 use holons_guest_integrity::HolonNode;
+use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 
 /// This function is intended to test the ability to remove holons from a specified relationship
 /// originating at a source_holon.

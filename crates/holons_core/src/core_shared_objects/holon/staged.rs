@@ -3,10 +3,10 @@ use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, TemporaryId};
-use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 use crate::{
-    core_shared_objects::ReadableRelationship, HolonCollection, RelationshipName,
+    core_shared_objects::ReadableRelationship, HolonCollection,
     StagedRelationshipMap,
 };
 

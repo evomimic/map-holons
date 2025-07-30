@@ -2,12 +2,12 @@ use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
 use crate::core_shared_objects::{
-    Holon, CommitResponse, HolonCollection, RelationshipName,
+    Holon, CommitResponse, HolonCollection,
 };
 use crate::reference_layer::HolonsContextBehavior;
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::LocalId;
+use integrity_core_types::{LocalId, RelationshipName};
 
 
 pub trait HolonServiceApi: Debug {

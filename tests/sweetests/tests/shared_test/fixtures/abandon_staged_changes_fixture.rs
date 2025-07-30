@@ -13,10 +13,10 @@ use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    stage_new_holon_api, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName,
+    stage_new_holon_api, HolonReference, HolonsContextBehavior, ReadableHolon,
     StagedReference,
 };
-use integrity_core_types::PropertyName;
+use integrity_core_types::{PropertyName, RelationshipName};
 use rstest::*;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase

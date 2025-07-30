@@ -11,12 +11,12 @@ use crate::property_descriptor::PropertyTypeDefinition;
 use crate::relationship_descriptor::RelationshipTypeDefinition;
 use crate::semantic_version::SemanticVersion;
 use crate::string_descriptor::StringTypeDefinition;
-use holons_core::core_shared_objects::{Holon, HolonCollection, RelationshipName};
+use holons_core::core_shared_objects::{Holon, HolonCollection};
 use holons_core::HolonReference;
 use inflector::Inflector;
 use base_types::{MapBoolean, MapEnumValue, MapInteger, MapString};
 use core_types::TypeKind;
-use integrity_core_types::PropertyName;
+use integrity_core_types::{PropertyName, RelationshipName};
 
 /// All MAP Descriptors are stored as Holons. This file defines structs for each kind of Core Type
 /// in order to allow type-safe references and to provide a higher-level representation. Conversion

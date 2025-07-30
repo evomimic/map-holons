@@ -1,10 +1,10 @@
+use base_types::MapString;
+use core_types::HolonError;
 use holons_core::{
-    core_shared_objects::RelationshipName,
     dances::{DanceRequest, DanceType, RequestBody},
     HolonReference, StagedReference,
 };
-use base_types::MapString;
-use core_types::HolonError;
+use integrity_core_types::RelationshipName;
 
 /// Builds a DanceRequest for removing related holons to a source_holon.
 pub fn build_remove_related_holons_dance_request(

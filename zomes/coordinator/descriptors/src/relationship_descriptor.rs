@@ -6,10 +6,10 @@ use crate::descriptor_types::{
 use base_types::{BaseValue, MapBoolean, MapString};
 use core_types::{HolonError, TypeKind};
 use holons_core::{
-    core_shared_objects::{stage_new_holon_api, RelationshipName, TransientHolon},
+    core_shared_objects::{stage_new_holon_api, TransientHolon},
     reference_layer::{HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon},
 };
-use integrity_core_types::PropertyName;
+use integrity_core_types::{PropertyName, RelationshipName};
 
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 

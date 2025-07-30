@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 
 use holons_core::{
-    core_shared_objects::{CommitResponse, Holon, HolonCollection, RelationshipName},
+    core_shared_objects::{CommitResponse, Holon, HolonCollection},
     {
         reference_layer::{HolonServiceApi, HolonsContextBehavior},
         HolonReference, SmartReference, StagedReference,
@@ -9,7 +9,7 @@ use holons_core::{
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::LocalId;
+use integrity_core_types::{LocalId, RelationshipName};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;

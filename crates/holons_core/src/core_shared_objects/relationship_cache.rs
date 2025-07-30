@@ -1,9 +1,10 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::debug;
 
-use crate::core_shared_objects::{HolonCollection, RelationshipMap, RelationshipName};
+use crate::core_shared_objects::{HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
 use core_types::{HolonError, HolonId};
+use integrity_core_types::RelationshipName;
 
 
 #[derive(Clone, Debug)]

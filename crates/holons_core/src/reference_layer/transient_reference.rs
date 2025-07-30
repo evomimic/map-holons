@@ -5,7 +5,7 @@ use tracing::debug;
 
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{PropertyName, PropertyValue};
+use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
 
 use crate::{
     core_shared_objects::{
@@ -15,8 +15,7 @@ use crate::{
         },
         TransientManagerAccess,
     },
-    HolonCollection, HolonReference, HolonsContextBehavior, ReadableHolon, RelationshipName,
-    WriteableHolon,
+    HolonCollection, HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon,
 };
 
 #[derive(new, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

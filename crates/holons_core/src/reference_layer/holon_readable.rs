@@ -3,12 +3,12 @@ use std::rc::Rc;
 use super::HolonReference;
 use crate::core_shared_objects::{
     holon::{state::AccessType, EssentialHolonContent},
-    TransientHolon, HolonCollection, RelationshipName
+    TransientHolon, HolonCollection
 };
 use crate::reference_layer::HolonsContextBehavior;
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyName, PropertyValue};
+use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
 
 pub trait ReadableHolon {
     fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError>;

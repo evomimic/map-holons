@@ -12,9 +12,9 @@ use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    stage_new_holon_api, HolonCollection, HolonsContextBehavior, RelationshipName,
+    stage_new_holon_api, HolonCollection, HolonsContextBehavior,
 };
-use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
