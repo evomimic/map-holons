@@ -6,3 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+base_types = { workspace = true }
+convert_case = { workspace = true }
+integrity_core_types = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }

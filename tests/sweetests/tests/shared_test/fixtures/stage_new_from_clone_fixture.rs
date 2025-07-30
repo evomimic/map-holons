@@ -14,9 +14,8 @@ use holons_core::{
     core_shared_objects::Holon,
     dances::ResponseStatusCode,
     reference_layer::{HolonReference, ReadableHolon, StagedReference, WriteableHolon},
-    RelationshipName,
 };
-use integrity_core_types::{PropertyMap, PropertyName};
+use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]

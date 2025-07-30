@@ -1,8 +1,9 @@
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
-use crate::{HolonCollection, RelationshipName};
+use crate::HolonCollection;
 use crate::core_shared_objects::Holon;
 use core_types::{HolonError, HolonId};
+use integrity_core_types::RelationshipName;
 
 
 pub trait HolonCacheAccess: Debug {

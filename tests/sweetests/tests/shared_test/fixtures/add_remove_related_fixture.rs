@@ -18,9 +18,9 @@ use holons_core::{
     core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression, reference_layer::get_staged_holon_by_base_key,
     stage_new_holon_api, HolonCollection, HolonCollectionApi, HolonsContextBehavior,
-    ReadableHolon, RelationshipName, WriteableHolon,
+    ReadableHolon, WriteableHolon,
 };
-use integrity_core_types::{PropertyMap, PropertyName, PropertyValue};
+use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {

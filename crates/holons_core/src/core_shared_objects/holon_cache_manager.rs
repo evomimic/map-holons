@@ -2,9 +2,10 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::debug;
 
 use super::{holon_cache::HolonCache, Holon};
-use crate::{HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipName};
+use crate::{HolonCacheAccess, HolonCollection, RelationshipCache};
 use crate::reference_layer::HolonServiceApi;
 use core_types::{HolonError, HolonId};
+use integrity_core_types::RelationshipName;
 
 
 #[derive(Debug)]

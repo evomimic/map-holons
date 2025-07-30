@@ -4,14 +4,14 @@ use serde::{Serialize, Deserialize};
 
 use crate::core_shared_objects::{
     holon::{holon_utils::EssentialHolonContent, state::AccessType},
-    HolonCollection, RelationshipName, TransientHolon
+    HolonCollection, TransientHolon
 };
 use crate::reference_layer::{
     HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference,
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyName, PropertyValue};
+use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only

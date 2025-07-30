@@ -1,6 +1,7 @@
-use holons_core::{core_shared_objects::RelationshipName, dances::{DanceRequest, DanceType, RequestBody}, HolonReference, StagedReference};
+use holons_core::{dances::{DanceRequest, DanceType, RequestBody}, HolonReference, StagedReference};
 use base_types::MapString;
 use core_types::HolonError;
+use integrity_core_types::RelationshipName;
 
 ///
 /// Builds a DanceRequest for adding related holons to a source_holon.

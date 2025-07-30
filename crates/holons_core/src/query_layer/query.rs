@@ -3,9 +3,9 @@ use serde::{Serialize, Deserialize};
 use derive_new::new;
 
 use crate::HolonCollection;
-use crate::core_shared_objects::RelationshipName;
 use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
 use core_types::HolonError;
+use integrity_core_types::RelationshipName;
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Node {

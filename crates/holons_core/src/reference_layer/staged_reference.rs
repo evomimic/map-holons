@@ -5,7 +5,7 @@ use tracing::debug;
 
 use crate::core_shared_objects::{
     holon::{holon_utils::EssentialHolonContent, state::AccessType},
-    Holon, HolonBehavior, HolonCollection, NurseryAccess, ReadableRelationship, RelationshipName,
+    Holon, HolonBehavior, HolonCollection, NurseryAccess, ReadableRelationship,
     TransientHolon, WritableRelationship,
 };
 use crate::reference_layer::{
@@ -13,7 +13,7 @@ use crate::reference_layer::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{PropertyName, PropertyValue};
+use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StagedReference {

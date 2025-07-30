@@ -68,8 +68,9 @@ use derive_new::new;
 
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
-use crate::core_shared_objects::{HolonCollection, RelationshipName};
+use crate::core_shared_objects::HolonCollection;
 use core_types::HolonError;
+use integrity_core_types::RelationshipName;
 
 /// Represents a map of staged relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates

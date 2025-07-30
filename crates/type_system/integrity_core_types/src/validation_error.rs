@@ -17,5 +17,4 @@ pub enum ValidationError {
 
     #[error("JSON Schema validation error: {0}")]
     JsonSchemaError(String),
-
 }

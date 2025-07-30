@@ -1,9 +1,9 @@
 
-use crate::core_shared_objects::{Holon, RelationshipName};
+use crate::core_shared_objects::Holon;
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
 use base_types::BaseValue;
 use core_types::HolonError;
-use integrity_core_types::PropertyName;
+use integrity_core_types::{PropertyName, RelationshipName};
 
 pub trait WriteableHolon {
 
