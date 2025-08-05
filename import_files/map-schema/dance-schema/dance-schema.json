@@ -1,0 +1,901 @@
+{
+  "meta": {
+    "description": "This file defines the abstract and concrete Holon Types comprising the Core Dance Schema for the MAP. This schema is bundled as part of the MAP Metaschema-v0.0.3",
+    "generator": "MAP Types and Schema Refactor — July 2025",
+    "load_with": [
+      "metaschema-abstract-value-types.json",
+      "metaschema-root.json",
+      "metaschema-concrete-value-types.json",
+      "metaschema-property-types.json",
+      "metaschema-relationship-types.json",
+      "metaschema-keyrules-schema.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MAP Dance Schema-v0.0.1",
+      "type": "#SchemaHolonType",
+      "properties": {
+        "schema_name": "MAP Dance Schema-v0.0.1",
+        "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "#MAP Metaschema-v0.0.3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "description": "Abstract holon types and supporting relationships/properties for DanceType and DanceResponseType in the MAP Type System.",
+        "map_schema_version": "0.0.1",
+        "generator": "MAP Types and Schema Refactor — 2025-08-05"
+      },
+      "holons": [
+        {
+          "key": "DanceType",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "DanceType",
+            "type_name_plural": "DanceTypes",
+            "display_name": "Dance Type",
+            "display_name_plural": "Dance Types",
+            "description": "Abstract holon type for descriptors of executable dances, linking to a specific request and response holon type.",
+            "is_abstract_type": true,
+            "instance_type_kind": "Holon"
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": {
+                "$ref": "#HolonType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeName.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            },
+            {
+              "name": "InstanceProperties",
+              "target": [
+                {
+                  "$ref": "#DanceName.Property"
+                },
+                {
+                  "$ref": "#DanceDescription.Property"
+                }
+              ]
+            },
+            {
+              "name": "InstanceRelationships",
+              "target": [
+                {
+                  "$ref": "#(DanceType)-[Request]->(HolonType)"
+                },
+                {
+                  "$ref": "#(DanceType)-[Response]->(DanceResponseType)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "DanceResponseType",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "DanceResponseType",
+            "type_name_plural": "DanceResponseTypes",
+            "display_name": "Dance Response Type",
+            "display_name_plural": "Dance Response Types",
+            "description": "Abstract holon type for response objects returned from dances. Includes response body and status code.",
+            "is_abstract_type": true,
+            "instance_type_kind": "Holon"
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": {
+                "$ref": "#HolonType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeName.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            },
+            {
+              "name": "InstanceProperties",
+              "target": [
+                {
+                  "$ref": "#ResponseStatusCode.Property"
+                }
+              ]
+            },
+            {
+              "name": "InstanceRelationships",
+              "target": [
+                {
+                  "$ref": "#(DanceResponseType)-[ResponseBody]->(HolonType)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "(DanceType)-[Request]->(HolonType)",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "Request",
+            "type_name_plural": "Requests",
+            "display_name": "Request",
+            "display_name_plural": "Requests",
+            "description": "Links a DanceType to the HolonType used as its request body.",
+            "type_kind": "Relationship",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": {
+                "$ref": "#DeclaredRelationshipType"
+              }
+            },
+            {
+              "name": "SourceType",
+              "target": {
+                "$ref": "#DanceType"
+              }
+            },
+            {
+              "name": "TargetType",
+              "target": {
+                "$ref": "#HolonType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#Relationship.KeyRuleType"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "(DanceType)-[Response]->(DanceResponseType)",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "Response",
+            "type_name_plural": "Responses",
+            "display_name": "Response",
+            "display_name_plural": "Responses",
+            "description": "Links a DanceType to the DanceResponseType used to structure its response.",
+            "type_kind": "Relationship",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": {
+                "$ref": "#DeclaredRelationshipType"
+              }
+            },
+            {
+              "name": "SourceType",
+              "target": {
+                "$ref": "#DanceType"
+              }
+            },
+            {
+              "name": "TargetType",
+              "target": {
+                "$ref": "#DanceResponseType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#Relationship.KeyRuleType"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "(DanceResponseType)-[ResponseBody]->(HolonType)",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "ResponseBody",
+            "type_name_plural": "ResponseBodies",
+            "display_name": "Response Body",
+            "display_name_plural": "Response Bodies",
+            "description": "Links a DanceResponseType to the HolonType that will serve as the response body.",
+            "type_kind": "Relationship",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": {
+                "$ref": "#DeclaredRelationshipType"
+              }
+            },
+            {
+              "name": "SourceType",
+              "target": {
+                "$ref": "#DanceResponseType"
+              }
+            },
+            {
+              "name": "TargetType",
+              "target": {
+                "$ref": "#HolonType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#Relationship.KeyRuleType"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "DanceName.Property",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "DanceName",
+            "type_name_plural": "DanceNames",
+            "display_name": "dance_name",
+            "display_name_plural": "dance_names",
+            "description": "The unique string identifier for the dance descriptor, used in dispatch tables.",
+            "type_kind": "Property",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#PropertyType"
+                }
+              ]
+            },
+            {
+              "name": "ValueType",
+              "target": {
+                "$ref": "#MapStringValueType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "DanceDescription.Property",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "DanceDescription",
+            "type_name_plural": "DanceDescriptions",
+            "display_name": "dance_description",
+            "display_name_plural": "dance_descriptions",
+            "description": "Human-readable explanation of what the dance does or when it should be invoked.",
+            "type_kind": "Property",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#PropertyType"
+                }
+              ]
+            },
+            {
+              "name": "ValueType",
+              "target": {
+                "$ref": "#MapStringValueType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "ResponseStatusCode.Property",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "ResponseStatusCode",
+            "type_name_plural": "ResponseStatusCodes",
+            "display_name": "response_status_code",
+            "display_name_plural": "response_status_codes",
+            "description": "Machine-readable status code indicating the result of the dance.",
+            "type_kind": "Property",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#PropertyType"
+                }
+              ]
+            },
+            {
+              "name": "ValueType",
+              "target": {
+                "$ref": "#MapStringValueType"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "description": "Enum definition for ResponseStatusCode, aligned with standard HTTP status codes.",
+        "map_schema_version": "0.0.1",
+        "generator": "MAP Types and Schema Refactor — 2025-08-05"
+      },
+      "holons": [
+        {
+          "key": "ResponseStatusCode.EnumValue",
+          "type": "#TypeDescriptor",
+          "properties": {
+            "type_name": "ResponseStatusCode",
+            "type_name_plural": "ResponseStatusCodes",
+            "display_name": "Response Status Code",
+            "display_name_plural": "Response Status Codes",
+            "description": "Standard set of status codes returned by dances, aligned with HTTP semantics.",
+            "type_kind": "EnumValue",
+            "is_abstract_type": false
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumValueType"
+                }
+              ]
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "OK.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "OK",
+            "display_name": "OK",
+            "description": "200 — Request succeeded."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "Accepted.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "Accepted",
+            "display_name": "Accepted",
+            "description": "202 — Request accepted but not yet processed."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "BadRequest.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "BadRequest",
+            "display_name": "Bad Request",
+            "description": "400 — The request was malformed or invalid."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "Unauthorized.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "Unauthorized",
+            "display_name": "Unauthorized",
+            "description": "401 — The requester is not authenticated."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "Forbidden.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "Forbidden",
+            "display_name": "Forbidden",
+            "description": "403 — The requester lacks permission."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "NotFound.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "NotFound",
+            "display_name": "Not Found",
+            "description": "404 — The target resource was not found."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "Conflict.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "Conflict",
+            "display_name": "Conflict",
+            "description": "409 — Conflict with the current state of the resource."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "UnprocessableEntity.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "UnprocessableEntity",
+            "display_name": "Unprocessable Entity",
+            "description": "422 — Semantic validation failed."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "ServerError.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "ServerError",
+            "display_name": "Server Error",
+            "description": "500 — Unexpected internal error."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "NotImplemented.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "NotImplemented",
+            "display_name": "Not Implemented",
+            "description": "501 — The server does not support the functionality required to fulfill the request."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        },
+        {
+          "key": "ServiceUnavailable.EnumVariant",
+          "type": "#EnumVariantType",
+          "properties": {
+            "type_name": "ServiceUnavailable",
+            "display_name": "Service Unavailable",
+            "description": "503 — The server is currently unable to handle the request due to overload or maintenance."
+          },
+          "relationships": [
+            {
+              "name": "Extends",
+              "target": [
+                {
+                  "$ref": "#TypeDescriptor"
+                },
+                {
+                  "$ref": "#EnumVariantType"
+                }
+              ]
+            },
+            {
+              "name": "VariantOf",
+              "target": {
+                "$ref": "#ResponseStatusCode.EnumValue"
+              }
+            },
+            {
+              "name": "UsesKeyRule",
+              "target": {
+                "$ref": "#TypeKind.KeyRule"
+              }
+            },
+            {
+              "name": "ComponentOf",
+              "target": {
+                "$ref": "MAP Dance Schema-v0.0.1"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

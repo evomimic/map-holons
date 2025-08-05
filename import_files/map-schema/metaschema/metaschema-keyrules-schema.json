@@ -132,7 +132,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.2"
+            "$ref": "#MAP Metaschema-v0.0.3"
           }
         }
       ]
