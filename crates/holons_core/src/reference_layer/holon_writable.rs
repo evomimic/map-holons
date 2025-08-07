@@ -1,31 +1,24 @@
-
-use crate::core_shared_objects::Holon;
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
 use base_types::BaseValue;
 use core_types::HolonError;
 use integrity_core_types::{PropertyName, RelationshipName};
+use type_names::relationship_names::ToRelationshipName;
 
-pub trait WriteableHolon {
+pub trait WriteableHolonReferenceLayer {
 
-    fn add_related_holons(
+    fn add_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
 
-    fn remove_related_holons(
+    fn remove_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
-
-    #[deprecated]
-    fn stage_new_from_clone_deprecated(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Holon, HolonError>;
 
     fn with_descriptor(
         &self,
@@ -45,4 +38,20 @@ pub trait WriteableHolon {
         property: PropertyName,
         value: Option<BaseValue>,
     ) -> Result<&Self, HolonError>;
+}
+
+pub trait WriteableHolon: WriteableHolonReferenceLayer {
+    fn add_related_holons<T: ToRelationshipName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError>;
+
+    fn remove_related_holons<T: ToRelationshipName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError>;
 }

@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use derive_new::new;
 
 use crate::HolonCollection;
-use crate::reference_layer::{ReadableHolon, HolonReference, HolonsContextBehavior};
+use crate::reference_layer::{ReadableHolonReferenceLayer, HolonReference, HolonsContextBehavior};
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 
@@ -42,7 +42,7 @@ pub fn evaluate_query(
 
     for node in node_collection.members {
         let related_holons_rc =
-            node.source_holon.get_related_holons(context, &relationship_name)?;
+            node.source_holon.get_related_holons_ref_layer(context, &relationship_name)?;
 
         let related_holons: Rc<HolonCollection> = Rc::clone(&related_holons_rc);
 

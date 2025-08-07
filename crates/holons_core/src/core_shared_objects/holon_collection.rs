@@ -5,7 +5,7 @@ use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
 use crate::HolonCollectionApi;
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
+use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer};
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
 

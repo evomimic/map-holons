@@ -13,7 +13,10 @@ use core_types::HolonError;
 use holons_core::{
     core_shared_objects::Holon,
     dances::ResponseStatusCode,
-    reference_layer::{HolonReference, ReadableHolon, StagedReference, WriteableHolon},
+    reference_layer::{
+        HolonReference, ReadableHolon, ReadableHolonReferenceLayer, StagedReference,
+        WriteableHolon, WriteableHolonReferenceLayer,
+    },
 };
 use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 
@@ -169,13 +172,13 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // Update the fixture's expected holon
     expected_fixture_holon_ref.add_related_holons(
         &*fixture_context,
-        publisher_relationship_name.clone(),
+        publisher_relationship_name.0.clone(),
         fixture_holons_to_add.clone(),
     )?;
 
     test_case.add_related_holons_step(
         expected_executor_holon_ref.clone(), // source holon
-        publisher_relationship_name.clone(),
+        publisher_relationship_name.0.clone(),
         holons_to_add,
         ResponseStatusCode::OK,
         Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon

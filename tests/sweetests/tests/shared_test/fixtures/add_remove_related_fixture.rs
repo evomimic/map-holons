@@ -13,12 +13,16 @@ use crate::shared_test::{
 };
 
 use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{BaseTypeKind, HolonId, HolonError};
+use core_types::{BaseTypeKind, HolonError, HolonId};
 use holons_core::{
-    core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression, reference_layer::get_staged_holon_by_base_key,
+    core_shared_objects::Holon,
+    dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression,
+    reference_layer::{
+        get_staged_holon_by_base_key, ReadableHolon, ReadableHolonReferenceLayer, WriteableHolon,
+        WriteableHolonReferenceLayer,
+    },
     stage_new_holon_api, HolonCollection, HolonCollectionApi, HolonsContextBehavior,
-    ReadableHolon, WriteableHolon,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
@@ -68,7 +72,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // Get its current authors
 
     let authors_ref =
-        staged_book_holon_ref.get_related_holons(&*fixture_context, &relationship_name)?;
+        staged_book_holon_ref.get_related_holons(&*fixture_context, &relationship_name.0)?;
 
     info!("authors retrieved for book: {:?}", authors_ref);
 
@@ -83,7 +87,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         remove_vector.push(author_to_remove);
         test_case.remove_related_holons_step(
             staged_book_holon_ref,
-            relationship_name.clone(),
+            relationship_name.0.clone(),
             remove_vector,
             ResponseStatusCode::OK,
         )?;

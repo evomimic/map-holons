@@ -23,3 +23,4 @@ holons_core = { workspace = true }
 base_types = { workspace = true }
 core_types = { workspace = true }
 integrity_core_types = { workspace = true }
+type_names = { workspace = true }

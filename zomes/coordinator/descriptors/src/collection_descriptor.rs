@@ -6,8 +6,11 @@ use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::{HolonError, TypeKind};
 use holons_core::core_shared_objects::stage_new_holon_api;
 use holons_core::{
-    core_shared_objects::holon::TransientHolon, HolonReference, HolonsContextBehavior,
-    ReadableHolon, StagedReference, WriteableHolon,
+    core_shared_objects::holon::TransientHolon,
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference,
+        WriteableHolon,
+    },
 };
 use integrity_core_types::PropertyName;
 
@@ -112,12 +115,12 @@ pub fn define_collection_type(
 
     collection_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
     collection_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TargetHolonType.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TargetHolonType,
         vec![definition.target_holon_type],
     )?;
 

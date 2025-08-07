@@ -22,10 +22,10 @@ use holons_client::init_client_context;
 use holons_core::{
     core_shared_objects::holon::{Holon, HolonBehavior, TransientHolon},
     dances::{ResponseBody, ResponseStatusCode},
-    HolonsContextBehavior, ReadableHolon, StagedReference,
+    reference_layer::{HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference},
 };
-use integrity_core_types::{PropertyMap, PropertyName};
 use holons_guest_integrity::HolonNode;
+use integrity_core_types::{PropertyMap, PropertyName};
 
 /// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
 /// supplied Holon and confirms a Success response

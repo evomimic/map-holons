@@ -1,10 +1,15 @@
 use hdi::prelude::debug;
 
-use crate::descriptor_types::{CoreSchemaPropertyTypeName::TypeName, CoreSchemaRelationshipTypeName};
+use crate::descriptor_types::{
+    CoreSchemaPropertyTypeName::TypeName, CoreSchemaRelationshipTypeName,
+};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
-use holons_core::{core_shared_objects::{TransientHolon, stage_new_holon_api}, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapString};
-use core_types::{TypeKind, BaseTypeKind, HolonError};
+use core_types::{BaseTypeKind, HolonError, TypeKind};
+use holons_core::{
+    core_shared_objects::{stage_new_holon_api, TransientHolon},
+    HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon,
+};
 use integrity_core_types::PropertyName;
 
 pub struct EnumTypeDefinition {
@@ -69,14 +74,14 @@ pub fn define_enum_type(
 
     enum_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(enum_type_descriptor_ref)],
     )?;
 
     // Add the variants to the EnumType
     enum_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::Variants.as_rel_name(),
+        CoreSchemaRelationshipTypeName::Variants,
         definition.variants,
     )?;
 

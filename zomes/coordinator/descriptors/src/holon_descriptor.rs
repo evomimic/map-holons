@@ -1,10 +1,16 @@
 use hdi::prelude::debug;
 
-use crate::descriptor_types::{CoreSchemaRelationshipTypeName::KeyProperties,CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
+use crate::descriptor_types::{
+    CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName,
+    CoreSchemaRelationshipTypeName::KeyProperties,
+};
 use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
-use holons_core::{core_shared_objects::{TransientHolon, stage_new_holon_api}, HolonReference, WriteableHolon, HolonsContextBehavior, StagedReference};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, TypeKind};
+use holons_core::{
+    core_shared_objects::{stage_new_holon_api, TransientHolon},
+    HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon,
+};
 use integrity_core_types::PropertyName;
 
 #[derive(Clone, Debug)]
@@ -69,20 +75,24 @@ pub fn define_holon_type(
 
     holon_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
 
     if definition.properties.len() > 0 {
         holon_type_ref.add_related_holons(
             context,
-            CoreSchemaRelationshipTypeName::Properties.as_rel_name(),
+            CoreSchemaRelationshipTypeName::Properties,
             definition.properties,
         )?;
     }
 
     if let Some(key_properties) = definition.key_properties {
-        holon_type_ref.add_related_holons(context, KeyProperties.as_rel_name(), key_properties)?
+        holon_type_ref.add_related_holons(
+            context,
+            KeyProperties,
+            key_properties,
+        )?
     };
 
     Ok(holon_type_ref)

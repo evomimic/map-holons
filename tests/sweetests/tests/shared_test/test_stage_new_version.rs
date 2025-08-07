@@ -12,7 +12,7 @@ use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{
-        HolonCollectionApi, HolonReference, ReadableHolon, SmartReference, StagedReference,
+        HolonCollectionApi, HolonReference, ReadableHolonReferenceLayer, SmartReference, StagedReference,
     },
 };
 

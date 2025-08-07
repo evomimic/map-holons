@@ -13,9 +13,13 @@ use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
-    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, WriteableHolon},
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
+        WriteableHolon, WriteableHolonReferenceLayer,
+    },
 };
 use integrity_core_types::{PropertyName, RelationshipName};
+use type_names::relationship_names::ToRelationshipName;
 
 // pub struct TestHolon {
 //     pub key: MapString,
@@ -35,7 +39,7 @@ pub fn setup_book_author_steps_with_context(
     context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
 ) -> Result<RelationshipName, HolonError> {
-    let relationship_name = RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())); // ✅ Convert to MapString
+    let relationship_name = MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string());
 
     //  STAGE:  Book Holon  //
     let mut book_holon = TransientHolon::new();
@@ -145,5 +149,5 @@ pub fn setup_book_author_steps_with_context(
         Holon::Transient(book_ref.clone_holon(context)?),
     )?;
 
-    Ok(relationship_name)
+    Ok(relationship_name.to_relationship_name())
 }

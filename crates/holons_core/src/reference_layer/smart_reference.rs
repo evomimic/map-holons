@@ -3,14 +3,11 @@ use serde::{Serialize, Deserialize};
 use tracing::trace;
 use derive_new::new;
 
-use crate::core_shared_objects::{
-    cache_access::HolonCacheAccess,
-    holon::{state::AccessType, EssentialHolonContent},
-    Holon, HolonCollection, TransientHolon, HolonBehavior
-};
-use crate::reference_layer::{
-    ReadableHolon, HolonReference, HolonsContextBehavior, StagedReference,
-};
+use crate::{core_shared_objects::{
+    cache_access::HolonCacheAccess, holon::{state::AccessType, EssentialHolonContent}, Holon, HolonBehavior, HolonCollection, TransientHolon
+}, reference_layer::{ReadableHolonReferenceLayer,
+    ReadableHolon, HolonReference, HolonsContextBehavior,
+}};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
@@ -79,49 +76,6 @@ impl SmartReference {
     //     Ok(relationship_map)
     // }
 
-    /// Stages a new version of an existing holon for update, retaining the linkage to the holon
-    /// version it is derived from by creating a PREDECESSOR relationship.
-    #[deprecated]
-    pub fn stage_new_version_deprecated(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-    ) -> Result<StagedReference, HolonError> {
-        // let rc_holon = self.get_rc_holon(context)?;
-        //
-        // let mut cloned_holon = rc_holon.borrow().new_version()?;
-        // cloned_holon.fetch_all_populated(context)?;
-        //
-        // trace!(
-        //     "Entering SmartReference::stage_new_version, here is the Cloned Holon: {:#?}",
-        //     cloned_holon
-        // );
-        //
-        // let new_version_staged_reference =
-        //     { context.get_space_manager().stage_new_holon(cloned_holon)? };
-        //
-        // // Set PREDECESSOR
-        // new_version_staged_reference
-        //     .with_predecessor(context, Some(HolonReference::Smart(self.clone())))?;
-        //
-        // Ok(new_version_staged_reference)
-        todo!()
-    }
-
-    /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
-    /// lineage to the Holon its cloned from.
-    #[deprecated]
-    pub fn stage_new_from_clone_deprecated(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-    ) -> Result<Holon, HolonError> {
-        // let rc_holon = self.get_rc_holon(context)?;
-        // let cloned_holon = rc_holon.borrow().clone_holon()?;
-        // cloned_holon.load_all_relationships(context)?;
-        //
-        // Ok(cloned_holon)
-        todo!()
-    }
-
     // *************** UTILITY METHODS ***************
 
     fn get_cache_access(&self, context: &dyn HolonsContextBehavior) -> Arc<dyn HolonCacheAccess> {
@@ -188,7 +142,7 @@ impl fmt::Display for SmartReference {
     }
 }
 
-impl ReadableHolon for SmartReference {
+impl ReadableHolonReferenceLayer for SmartReference {
     fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
         let holon = self.get_rc_holon(context)?;
         let holon_borrow = holon.borrow();
@@ -203,8 +157,7 @@ impl ReadableHolon for SmartReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
-        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
-        let collection = self.get_related_holons(context, &relationship_name)?;
+        let collection = self.get_related_holons(context, "PREDECESSOR")?;
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
         if members.len() > 1 {
@@ -283,7 +236,7 @@ impl ReadableHolon for SmartReference {
         }
     }
 
-    fn get_related_holons(
+    fn get_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,

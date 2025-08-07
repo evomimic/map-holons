@@ -39,7 +39,7 @@ impl fmt::Display for ExternalId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TemporaryId(pub Uuid);
 
 impl fmt::Display for TemporaryId {

@@ -1,5 +1,6 @@
 use inflector::cases::snakecase::to_snake_case;
 use inflector::cases::titlecase::to_title_case;
+use type_names::relationship_names::ToRelationshipName;
 
 use crate::boolean_descriptor::BooleanTypeDefinition;
 use crate::collection_descriptor::CollectionTypeDefinition;
@@ -489,7 +490,19 @@ impl CoreSchemaRelationshipTypeName {
         MapString(self.as_str().to_string())
     }
 
-    pub fn as_rel_name(&self) -> RelationshipName {
+    pub fn as_relationship_name(&self) -> RelationshipName {
         RelationshipName(MapString(self.as_str().to_string()))
+    }
+}
+
+impl ToRelationshipName for CoreSchemaRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for &CoreSchemaRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
     }
 }

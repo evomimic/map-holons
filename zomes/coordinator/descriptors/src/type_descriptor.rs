@@ -95,26 +95,26 @@ pub fn define_type_descriptor(
 
     staged_reference.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::ComponentOf.as_rel_name(),
+        CoreSchemaRelationshipTypeName::ComponentOf,
         vec![schema.clone()],
     )?;
 
     if let Some(descriptor_ref) = definition.described_by {
         staged_reference.add_related_holons(
             context,
-            DescribedBy.as_rel_name(),
+            DescribedBy,
             vec![descriptor_ref],
         )?
     };
     if let Some(is_subtype_of_ref) = definition.is_subtype_of {
         staged_reference.add_related_holons(
             context,
-            CoreSchemaRelationshipTypeName::IsA.as_rel_name(),
+            CoreSchemaRelationshipTypeName::IsA,
             vec![is_subtype_of_ref],
         )?
     };
     if let Some(owned_by_ref) = definition.owned_by {
-        staged_reference.add_related_holons(context, OwnedBy.as_rel_name(), vec![owned_by_ref])?
+        staged_reference.add_related_holons(context, OwnedBy, vec![owned_by_ref])?
     };
 
     // if header.descriptor_properties.len()>0 {

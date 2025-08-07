@@ -20,7 +20,7 @@ use core_types::HolonId;
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    HolonReference, ReadableHolon, StagedReference,
+    reference_layer::{HolonReference, ReadableHolonReferenceLayer, StagedReference},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
@@ -34,7 +34,7 @@ use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 pub async fn execute_add_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     source_holon: StagedReference,
-    relationship_name: RelationshipName,
+    relationship_name: MapString,
     holons_to_add: Vec<TestReference>,
     expected_response: ResponseStatusCode,
     expected_holon: Holon,

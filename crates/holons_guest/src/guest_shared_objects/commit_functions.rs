@@ -16,7 +16,7 @@ use holons_core::{
         CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection,
         StagedHolon,
     },
-    reference_layer::{HolonsContextBehavior, ReadableHolon},
+    reference_layer::{HolonsContextBehavior, ReadableHolonReferenceLayer},
 };
 // use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};

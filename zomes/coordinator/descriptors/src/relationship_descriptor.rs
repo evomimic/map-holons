@@ -111,19 +111,19 @@ pub fn define_relationship_type(
 
     relationship_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
     relationship_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TargetCollectionType.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TargetCollectionType,
         vec![definition.target_collection_type],
     )?;
 
     if let Some(inverse) = definition.has_inverse {
         relationship_type_ref.add_related_holons(
             context,
-            CoreSchemaRelationshipTypeName::HasInverse.as_rel_name(),
+            CoreSchemaRelationshipTypeName::HasInverse,
             vec![inverse],
         )?
     };

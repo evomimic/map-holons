@@ -16,14 +16,19 @@
 
 use tracing::{debug, info};
 
-use crate::{HolonsContextBehavior, SmartReference, WriteableHolon};
 use crate::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, TransientHolon
+    stage_new_version_api, CommitRequestStatus, TransientHolon,
 };
-use crate::dances::{DanceRequest, dance_request::{DanceType, RequestBody}, dance_response::ResponseBody};
+use crate::dances::{
+    dance_request::{DanceType, RequestBody},
+    dance_response::ResponseBody,
+    DanceRequest,
+};
 use crate::query_layer::evaluate_query;
 use crate::reference_layer::get_all_holons;
+use crate::reference_layer::holon_writable::{WriteableHolon, WriteableHolonReferenceLayer};
+use crate::{HolonsContextBehavior, SmartReference};
 use base_types::MapString;
 use core_types::HolonError;
 use integrity_core_types::PropertyName;

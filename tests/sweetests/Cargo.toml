@@ -26,6 +26,7 @@ holon_dance_builders = { path = "../../crates/holon_dance_builders" }
 holons_client = { path = "../../crates/holons_client" }
 base_types = { path = "../../crates/type_system/base_types" }
 core_types = { path = "../../crates/type_system/core_types" }
+type_names = { path = "../../crates/type_system/type_names" }
 integrity_core_types = { path = "../../crates/type_system/integrity_core_types" }
 holons_guest_integrity = { path = "../../crates/holons_guest_integrity" }
 

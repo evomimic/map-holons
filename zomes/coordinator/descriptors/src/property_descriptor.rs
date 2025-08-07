@@ -61,12 +61,12 @@ pub fn define_property_type(
 
     property_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
     property_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::ValueType.as_rel_name(),
+        CoreSchemaRelationshipTypeName::ValueType,
         vec![definition.value_type.clone()],
     )?;
 

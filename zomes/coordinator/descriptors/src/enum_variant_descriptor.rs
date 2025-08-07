@@ -73,7 +73,7 @@ pub fn define_enum_variant_type(
 
     enum_variant_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(enum_variant_type_descriptor_ref)],
     )?;
 

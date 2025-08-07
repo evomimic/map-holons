@@ -19,10 +19,10 @@ use holon_dance_builders::with_properties_dance::build_with_properties_dance_req
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
-    ReadableHolon, StagedReference,
+    reference_layer::{ReadableHolonReferenceLayer, StagedReference},
 };
-use integrity_core_types::{PropertyMap, PropertyName};
 use holons_guest_integrity::HolonNode;
+use integrity_core_types::{PropertyMap, PropertyName};
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

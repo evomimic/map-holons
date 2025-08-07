@@ -61,7 +61,7 @@ pub fn define_integer_type(
 
     integer_type_ref.add_related_holons(
         context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor.as_rel_name(),
+        CoreSchemaRelationshipTypeName::TypeDescriptor,
         vec![HolonReference::Staged(type_descriptor_ref)],
     )?;
 
