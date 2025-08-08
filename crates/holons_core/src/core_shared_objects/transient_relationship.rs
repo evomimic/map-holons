@@ -8,7 +8,6 @@ use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRel
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 
-
 /// Represents a map of transient relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates
 /// that the relationship has no associated holons.

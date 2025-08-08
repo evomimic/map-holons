@@ -80,20 +80,16 @@ pub trait ReadableHolonReferenceLayer {
 }
 
 pub trait ReadableHolon: ReadableHolonReferenceLayer {
+    #[inline]
     fn get_related_holons<T: ToRelationshipName>(
         &self,
         context: &dyn HolonsContextBehavior,
         name: T,
-    ) -> Result<Rc<HolonCollection>, HolonError>;
-}
-
-impl<T: ReadableHolonReferenceLayer + ?Sized> ReadableHolon for T {
-    fn get_related_holons<U: ToRelationshipName>(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: U,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let relationship_name = name.to_relationship_name();
         self.get_related_holons_ref_layer(context, &relationship_name)
     }
 }
+
+// Empty blanket impl: all logic is in the trait’s default body
+impl<T: ReadableHolonReferenceLayer + ?Sized> ReadableHolon for T {}

@@ -62,13 +62,13 @@
 //! a consistent and extensible foundation for managing holon relationships, balancing the
 //! need for flexibility (via interior mutability) with clear, immutable APIs where appropriate.
 
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
-use serde::{Deserialize, Serialize};
 use derive_new::new;
+use serde::{Deserialize, Serialize};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
-use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 use crate::core_shared_objects::HolonCollection;
+use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 

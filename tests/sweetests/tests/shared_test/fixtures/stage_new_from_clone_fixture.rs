@@ -178,7 +178,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     test_case.add_related_holons_step(
         expected_executor_holon_ref.clone(), // source holon
-        publisher_relationship_name.0.clone(),
+        publisher_relationship_name.clone(),
         holons_to_add,
         ResponseStatusCode::OK,
         Holon::Transient(expected_fixture_holon_ref.clone_holon(&*fixture_context).unwrap()), // expected holon

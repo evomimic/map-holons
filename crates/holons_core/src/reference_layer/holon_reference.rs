@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use type_names::relationship_names::CoreRelationshipTypeName;
 use std::rc::Rc;
 
 use crate::{
@@ -206,7 +207,7 @@ impl HolonReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                let collection = transient_reference.get_related_holons(context, "DESCRIBED_BY")?;
+                let collection = transient_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -222,7 +223,7 @@ impl HolonReference {
                 }
             }
             HolonReference::Staged(staged_reference) => {
-                let collection = staged_reference.get_related_holons(context, "DESCRIBED_BY")?;
+                let collection = staged_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -238,7 +239,7 @@ impl HolonReference {
                 }
             }
             HolonReference::Smart(smart_reference) => {
-                let collection = smart_reference.get_related_holons(context, "DESCRIBED_BY")?;
+                let collection = smart_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy.as_relationship_name())?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {

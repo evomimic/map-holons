@@ -5,7 +5,6 @@ use integrity_core_types::{PropertyName, RelationshipName};
 use type_names::relationship_names::ToRelationshipName;
 
 pub trait WriteableHolonReferenceLayer {
-
     fn add_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -16,7 +15,7 @@ pub trait WriteableHolonReferenceLayer {
     fn remove_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
-        relationship_name: &RelationshipName,
+        relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
 

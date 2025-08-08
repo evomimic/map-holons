@@ -34,7 +34,7 @@ use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 pub async fn execute_add_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     source_holon: StagedReference,
-    relationship_name: MapString,
+    relationship_name: RelationshipName,
     holons_to_add: Vec<TestReference>,
     expected_response: ResponseStatusCode,
     expected_holon: Holon,

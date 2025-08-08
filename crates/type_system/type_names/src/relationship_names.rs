@@ -44,6 +44,20 @@ impl ToRelationshipName for &CoreRelationshipTypeName {
     }
 }
 
+impl ToRelationshipName for RelationshipName {
+    #[inline]
+    fn to_relationship_name(self) -> RelationshipName {
+        self
+    }
+}
+
+impl ToRelationshipName for &RelationshipName {
+    #[inline]
+    fn to_relationship_name(self) -> RelationshipName {
+        self.clone()
+    }
+}
+
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
     ComponentOf,

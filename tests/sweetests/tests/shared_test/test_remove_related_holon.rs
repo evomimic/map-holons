@@ -42,7 +42,7 @@ use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 pub async fn execute_remove_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     source_holon: StagedReference,
-    relationship_name: MapString,
+    relationship_name: RelationshipName,
     holons_to_remove: Vec<HolonReference>,
     expected_response: ResponseStatusCode,
 ) {

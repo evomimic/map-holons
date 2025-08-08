@@ -76,15 +76,21 @@ pub struct DancesTestCase {
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
     AbandonStagedChanges(StagedReference, ResponseStatusCode), // Marks a staged Holon as 'abandoned'
-    AddRelatedHolons(StagedReference, MapString, Vec<TestReference>, ResponseStatusCode, Holon), // Adds relationship between two Holons
-    Commit,                                     // Attempts to commit
+    AddRelatedHolons(
+        StagedReference,
+        RelationshipName,
+        Vec<TestReference>,
+        ResponseStatusCode,
+        Holon,
+    ), // Adds relationship between two Holons
+    Commit,                                                    // Attempts to commit
     DatabasePrint, // Writes log messages for each holon in the persistent store
     DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     // LoadCoreSchema,
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
-    RemoveRelatedHolons(StagedReference, MapString, Vec<HolonReference>, ResponseStatusCode),
+    RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
     StageHolon(TransientHolon), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
     StageNewFromClone(TestReference, MapString, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
@@ -408,7 +414,7 @@ impl DancesTestCase {
     pub fn add_related_holons_step(
         &mut self,
         staged_holon: StagedReference, // "owning" source Holon, which owns the Relationship
-        relationship_name: MapString,
+        relationship_name: RelationshipName,
         related_holons: Vec<TestReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
         expected_holon: Holon,
@@ -426,7 +432,7 @@ impl DancesTestCase {
     pub fn remove_related_holons_step(
         &mut self,
         staged_holon: StagedReference, // "owning" source Holon, which owns the Relationship
-        relationship_name: MapString,
+        relationship_name: RelationshipName,
         related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {

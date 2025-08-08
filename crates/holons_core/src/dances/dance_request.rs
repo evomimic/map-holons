@@ -31,7 +31,7 @@ pub enum DanceType {
 pub enum RequestBody {
     None,
     Holon(Holon),
-    TargetHolons(MapString, Vec<HolonReference>),
+    TargetHolons(RelationshipName, Vec<HolonReference>),
     TransientHolon(TransientHolon),
     HolonId(HolonId),
     ParameterValues(PropertyMap),
@@ -53,7 +53,7 @@ impl RequestBody {
     }
 
     pub fn new_target_holons(
-        relationship_name: MapString,
+        relationship_name: RelationshipName,
         holons_to_add: Vec<HolonReference>,
     ) -> Self {
         Self::TargetHolons(relationship_name, holons_to_add)

@@ -2,11 +2,11 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use tracing::debug;
-use type_names::relationship_names::ToRelationshipName;
+use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
+use integrity_core_types::{relationship, PropertyName, PropertyValue, RelationshipName};
 
 use crate::{
     core_shared_objects::{
@@ -17,8 +17,8 @@ use crate::{
         TransientManagerAccess,
     },
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer, WriteableHolon,
-        WriteableHolonReferenceLayer,
+        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
+        WriteableHolon, WriteableHolonReferenceLayer,
     },
     HolonCollection,
 };
@@ -132,7 +132,7 @@ impl ReadableHolonReferenceLayer for TransientReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
-        let collection = self.get_related_holons(context, "PREDECESSOR")?;
+        let collection = self.get_related_holons(context, CoreRelationshipTypeName::Predecessor)?;
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
         if members.len() > 1 {
@@ -237,7 +237,7 @@ impl WriteableHolonReferenceLayer for TransientReference {
     fn remove_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
-        relationship_name: &RelationshipName,
+        relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         debug!("Entered TransientReference::remove_related_holons");
@@ -256,7 +256,7 @@ impl WriteableHolonReferenceLayer for TransientReference {
         );
 
         // Delegate the removal of holons to the `StagedRelationshipMap`
-        staged_relationship_map.remove_related_holons(context, relationship_name, holons)?;
+        staged_relationship_map.remove_related_holons(context, &relationship_name, holons)?;
 
         debug!(
             "Here is the RelationshipMap after removing related Holons: {:#?}",
@@ -274,18 +274,16 @@ impl WriteableHolonReferenceLayer for TransientReference {
         let holon = self.get_rc_holon(context)?;
         holon.borrow().is_accessible(AccessType::Write)?;
         let existing_descriptor_option = descriptor_reference.get_descriptor(context)?;
-        let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
-        // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
         if let Some(descriptor) = existing_descriptor_option {
             self.remove_related_holons_ref_layer(
                 context,
-                &relationship_name,
+                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor.clone()],
             )?;
             debug!("removed existing descriptor: {:#?}", descriptor);
             self.add_related_holons_ref_layer(
                 context,
-                relationship_name,
+                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference],
             )?;
             debug!("added descriptor: {:#?}", descriptor);
@@ -294,7 +292,7 @@ impl WriteableHolonReferenceLayer for TransientReference {
         } else {
             self.add_related_holons_ref_layer(
                 context,
-                relationship_name,
+                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference.clone()],
             )?;
             debug!("added descriptor: {:#?}", descriptor_reference);
@@ -309,22 +307,19 @@ impl WriteableHolonReferenceLayer for TransientReference {
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-        let relationship_name = RelationshipName(MapString("PREDECESSOR".to_string()));
         let existing_predecessor_option = self.clone().get_predecessor(context)?;
         if let Some(predecessor) = existing_predecessor_option {
             self.remove_related_holons_ref_layer(
                 context,
-                &relationship_name,
+                CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor.clone()],
             )?;
             debug!("removed existing predecessor: {:#?}", predecessor);
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
-            // let relationship_name = CoreSchemaRelationshipTypeName::Predecessor.to_string();
-
             self.add_related_holons_ref_layer(
                 context,
-                relationship_name,
+                CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor_reference.clone()],
             )?;
             debug!("added predecessor: {:#?}", predecessor_reference);
@@ -366,7 +361,6 @@ impl WriteableHolon for TransientReference {
         name: T,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        let relationship_name = name.to_relationship_name();
-        self.remove_related_holons_ref_layer(context, &relationship_name, holons)
+        self.remove_related_holons_ref_layer(context, name.to_relationship_name(), holons)
     }
 }

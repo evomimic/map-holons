@@ -39,7 +39,8 @@ pub fn setup_book_author_steps_with_context(
     context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
 ) -> Result<RelationshipName, HolonError> {
-    let relationship_name = MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string());
+    let relationship_name =
+        MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string()).to_relationship_name();
 
     //  STAGE:  Book Holon  //
     let mut book_holon = TransientHolon::new();
@@ -132,7 +133,7 @@ pub fn setup_book_author_steps_with_context(
 
     book_ref.add_related_holons(
         context,
-        relationship_name.clone(),
+        BOOK_TO_PERSON_RELATIONSHIP,
         fixture_target_references.clone(),
     )?;
 
@@ -149,5 +150,5 @@ pub fn setup_book_author_steps_with_context(
         Holon::Transient(book_ref.clone_holon(context)?),
     )?;
 
-    Ok(relationship_name.to_relationship_name())
+    Ok(relationship_name)
 }

@@ -72,7 +72,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // Get its current authors
 
     let authors_ref =
-        staged_book_holon_ref.get_related_holons(&*fixture_context, &relationship_name.0)?;
+        staged_book_holon_ref.get_related_holons(&*fixture_context, &relationship_name)?;
 
     info!("authors retrieved for book: {:?}", authors_ref);
 
@@ -87,7 +87,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         remove_vector.push(author_to_remove);
         test_case.remove_related_holons_step(
             staged_book_holon_ref,
-            relationship_name.0.clone(),
+            relationship_name.clone(),
             remove_vector,
             ResponseStatusCode::OK,
         )?;

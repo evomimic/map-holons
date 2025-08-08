@@ -2,6 +2,7 @@ use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use serde::{Serialize, Deserialize};
 use tracing::trace;
 use derive_new::new;
+use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::{core_shared_objects::{
     cache_access::HolonCacheAccess, holon::{state::AccessType, EssentialHolonContent}, Holon, HolonBehavior, HolonCollection, TransientHolon
@@ -157,7 +158,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
-        let collection = self.get_related_holons(context, "PREDECESSOR")?;
+        let collection = self.get_related_holons(context, CoreRelationshipTypeName::Predecessor)?;
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
         if members.len() > 1 {
