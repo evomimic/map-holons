@@ -66,7 +66,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     test_case.add_related_holons_step(
         person_1_ref, // source holons
-        MapString("FRIENDS".to_string()).to_relationship_name(),
+        "FRIENDS".to_relationship_name(),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
         Holon::Transient(book_ref.clone_holon(&*fixture_context)?),

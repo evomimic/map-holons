@@ -39,8 +39,7 @@ pub fn setup_book_author_steps_with_context(
     context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
 ) -> Result<RelationshipName, HolonError> {
-    let relationship_name =
-        MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string()).to_relationship_name();
+    let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
 
     //  STAGE:  Book Holon  //
     let mut book_holon = TransientHolon::new();
