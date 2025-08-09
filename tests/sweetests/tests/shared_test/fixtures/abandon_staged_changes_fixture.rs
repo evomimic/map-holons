@@ -13,11 +13,13 @@ use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    stage_new_holon_api, HolonReference, HolonsContextBehavior, ReadableHolon,
-    StagedReference,
+    reference_layer::{
+        stage_new_holon_api, HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer,
+        StagedReference,
+    },
 };
 use integrity_core_types::{PropertyName, RelationshipName};
-use rstest::*;
+use type_names::relationship_names::ToRelationshipName;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
@@ -64,7 +66,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     test_case.add_related_holons_step(
         person_1_ref, // source holons
-        RelationshipName(MapString("FRIENDS".to_string())),
+        "FRIENDS".to_relationship_name(),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
         Holon::Transient(book_ref.clone_holon(&*fixture_context)?),

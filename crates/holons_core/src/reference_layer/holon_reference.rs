@@ -1,13 +1,15 @@
+use serde::{Deserialize, Serialize};
+use type_names::relationship_names::CoreRelationshipTypeName;
 use std::rc::Rc;
-use serde::{Serialize, Deserialize};
 
-
-use crate::core_shared_objects::{
-    holon::{holon_utils::EssentialHolonContent, state::AccessType},
-    HolonCollection, TransientHolon
-};
-use crate::reference_layer::{
-    HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference,
+use crate::{
+    core_shared_objects::{
+        holon::{holon_utils::EssentialHolonContent, state::AccessType},
+        HolonCollection, TransientHolon,
+    },
+    reference_layer::{
+        HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer, SmartReference, StagedReference, TransientReference
+    },
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -25,7 +27,7 @@ pub enum HolonReference {
     Smart(SmartReference),
 }
 
-impl ReadableHolon for HolonReference {
+impl ReadableHolonReferenceLayer for HolonReference {
     fn clone_holon(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -104,20 +106,20 @@ impl ReadableHolon for HolonReference {
         }
     }
 
-    fn get_related_holons(
+    fn get_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.get_related_holons(context, relationship_name)
+                transient_reference.get_related_holons_ref_layer(context, relationship_name)
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.get_related_holons(context, relationship_name)
+                staged_reference.get_related_holons_ref_layer(context, relationship_name)
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.get_related_holons(context, relationship_name)
+                smart_reference.get_related_holons_ref_layer(context, relationship_name)
             }
         }
     }
@@ -205,10 +207,7 @@ impl HolonReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
-                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection =
-                    transient_reference.get_related_holons(context, &relationship_name)?;
+                let collection = transient_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -224,10 +223,7 @@ impl HolonReference {
                 }
             }
             HolonReference::Staged(staged_reference) => {
-                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
-                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection =
-                    staged_reference.get_related_holons(context, &relationship_name)?;
+                let collection = staged_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -243,9 +239,7 @@ impl HolonReference {
                 }
             }
             HolonReference::Smart(smart_reference) => {
-                let relationship_name = RelationshipName(MapString("DESCRIBED_BY".to_string()));
-                // let relationship_name = CoreSchemaRelationshipTypeName::DescribedBy.to_string();
-                let collection = smart_reference.get_related_holons(context, &relationship_name)?;
+                let collection = smart_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy.as_relationship_name())?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {

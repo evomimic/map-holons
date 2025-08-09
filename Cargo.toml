@@ -40,6 +40,9 @@ path = "zomes/coordinator/core_schema"
 [workspace.dependencies.holons_integrity]
 path = "zomes/integrity/holons_integrity"
 
+[workspace.dependencies.shared_validation]
+path = "crates/shared_validation"
+
 [workspace.dependencies.base_types]
 path = "crates/type_system/base_types"
 
@@ -49,8 +52,20 @@ path = "crates/type_system/core_types"
 [workspace.dependencies.integrity_core_types]
 path = "crates/type_system/integrity_core_types"
 
-[workspace.dependencies.shared_validation]
-path = "crates/shared_validation"
+# [workspace.dependencies.descriptor_types]
+# path = "crates/type_system/descriptor_types"
+
+# [workspace.dependencies.core_descriptor_types]
+# path = "crates/type_system/core_descriptor_types"
+
+[workspace.dependencies.type_names]
+path = "crates/type_system/type_names"
+
+[workspace.dependencies.json_schema_validation]
+path = "crates/json_schema_validation"
+
+# [workspace.dependencies.json_schema_validation_cli]
+# path = "crates/json_schema_validation_cli"
 
 [workspace.dependencies.holons_client]
 path = "crates/holons_client"
@@ -58,17 +73,18 @@ path = "crates/holons_client"
 [workspace.dependencies.holons_core]
 path = "crates/holons_core"
 
+[workspace.dependencies.holon_dance_builders]
+path = "crates/holon_dance_builders"
+
 [workspace.dependencies.holons_guest]
 path = "crates/holons_guest"
 
 [workspace.dependencies.holons_guest_integrity]
 path = "crates/holons_guest_integrity"
 
-[workspace.dependencies.holon_dance_builders]
-path = "crates/holon_dance_builders"
 
-[workspace.dependencies.json_schema_validation]
-path = "crates/json_schema_validation"
+
+
 
 # External dependencies
 [workspace.dependencies]

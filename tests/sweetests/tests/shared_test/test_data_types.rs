@@ -19,7 +19,8 @@ use holons_core::{
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
+        HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference,
+        TransientReference,
     },
 };
 

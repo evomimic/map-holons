@@ -13,9 +13,13 @@ use core_types::HolonError;
 use holons_core::{
     core_shared_objects::Holon,
     dances::ResponseStatusCode,
-    reference_layer::{HolonReference, ReadableHolon, StagedReference, WriteableHolon},
+    reference_layer::{
+        HolonReference, ReadableHolon, ReadableHolonReferenceLayer, StagedReference,
+        WriteableHolon, WriteableHolonReferenceLayer,
+    },
 };
 use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
+use type_names::*;
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]
@@ -156,7 +160,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     }
 
     // Step 3: add_related_holons step to stage an additional relationship for the clone
-    let publisher_relationship_name = RelationshipName(MapString(EDITOR_FOR.to_string()));
+    let publisher_relationship_name = EDITOR_FOR.to_relationship_name();
 
     let mut fixture_holons_to_add: Vec<HolonReference> = Vec::new();
     let mut holons_to_add: Vec<TestReference> = Vec::new();
@@ -169,7 +173,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // Update the fixture's expected holon
     expected_fixture_holon_ref.add_related_holons(
         &*fixture_context,
-        publisher_relationship_name.clone(),
+        &publisher_relationship_name,
         fixture_holons_to_add.clone(),
     )?;
 

@@ -20,10 +20,10 @@ use holons_core::{
         dance_response::{ResponseBody, ResponseStatusCode},
         DanceResponse,
     },
+    reference_layer::{StagedReference, WriteableHolonReferenceLayer},
 };
-use holons_core::{StagedReference, WriteableHolon};
-use integrity_core_types::{PropertyMap, PropertyName};
 use holons_guest_integrity::HolonNode;
+use integrity_core_types::{PropertyMap, PropertyName};
 use rstest::*;
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,

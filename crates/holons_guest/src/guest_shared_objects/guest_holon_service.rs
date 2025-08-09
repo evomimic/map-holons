@@ -23,10 +23,9 @@ use holons_core::{
         TransientRelationshipMap,
     },
     reference_layer::{
-        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, ReadableHolon,
-        SmartReference, StagedReference,
+        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior,
+        SmartReference, StagedReference, ReadableHolonReferenceLayer, WriteableHolonReferenceLayer,
     },
-    WriteableHolon,
 };
 use holons_integrity::LinkTypes;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
@@ -329,7 +328,8 @@ impl HolonServiceApi for GuestHolonService {
         let mut collection = HolonCollection::new_existing();
 
         // fetch the smartlinks for this relationship (if any)
-        let smartlinks = get_relationship_links(try_action_hash_from_local_id(&local_id)?, relationship_name)?;
+        let smartlinks =
+            get_relationship_links(try_action_hash_from_local_id(&local_id)?, relationship_name)?;
         debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
         for smartlink in smartlinks {

@@ -9,8 +9,9 @@ use crate::reference_layer::HolonsContextBehavior;
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
+use type_names::relationship_names::ToRelationshipName;
 
-pub trait ReadableHolon {
+pub trait ReadableHolonReferenceLayer {
     fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError>;
 
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
@@ -55,7 +56,7 @@ pub trait ReadableHolon {
     /// # Notes
     /// - The method ensures that the returned `HolonCollection` is never `None`; it is guaranteed to
     ///   contain either related holons or be empty.
-    fn get_related_holons(
+    fn get_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
@@ -77,3 +78,18 @@ pub trait ReadableHolon {
         access_type: AccessType,
     ) -> Result<(), HolonError>;
 }
+
+pub trait ReadableHolon: ReadableHolonReferenceLayer {
+    #[inline]
+    fn get_related_holons<T: ToRelationshipName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        let relationship_name = name.to_relationship_name();
+        self.get_related_holons_ref_layer(context, &relationship_name)
+    }
+}
+
+// Empty blanket impl: all logic is in the trait’s default body
+impl<T: ReadableHolonReferenceLayer + ?Sized> ReadableHolon for T {}

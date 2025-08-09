@@ -13,12 +13,16 @@ use crate::shared_test::{
 };
 
 use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{BaseTypeKind, HolonId, HolonError};
+use core_types::{BaseTypeKind, HolonError, HolonId};
 use holons_core::{
-    core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression, reference_layer::get_staged_holon_by_base_key,
+    core_shared_objects::Holon,
+    dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression,
+    reference_layer::{
+        get_staged_holon_by_base_key, ReadableHolon, ReadableHolonReferenceLayer, WriteableHolon,
+        WriteableHolonReferenceLayer,
+    },
     stage_new_holon_api, HolonCollection, HolonCollectionApi, HolonsContextBehavior,
-    ReadableHolon, WriteableHolon,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
