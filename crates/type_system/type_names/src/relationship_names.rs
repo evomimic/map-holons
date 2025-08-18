@@ -21,7 +21,8 @@ impl ToRelationshipName for String {
 
 impl ToRelationshipName for MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        RelationshipName(self)
+        let upper_case = format!("{self:?}").to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper_case))
     }
 }
 

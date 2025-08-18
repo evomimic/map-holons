@@ -94,6 +94,12 @@ impl TransientHolon {
         self.holon_state = HolonState::Immutable;
     }
 
+    pub fn remove_property_value(&mut self, name: &PropertyName) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.remove(name);
+        Ok(self)
+    }
+
     /// Converts the `TransientHolon` into a 'StagedHolon,
     ///
     /// This lifecycle transition takes place during the staging process when stage_holon is called by the nursery to update its staged pool.
@@ -122,7 +128,7 @@ impl TransientHolon {
     pub fn with_property_value(
         &mut self,
         property: PropertyName,
-        value: Option<BaseValue>,
+        value: BaseValue,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
@@ -187,7 +193,7 @@ impl HolonBehavior for TransientHolon {
     }
 
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
-        if let Some(Some(inner_value)) =
+        if let Some(inner_value) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
         {
             let string_value: String = inner_value.try_into().map_err(|_| {
@@ -222,7 +228,7 @@ impl HolonBehavior for TransientHolon {
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
-        Ok(self.property_map.get(property_name).cloned().flatten())
+        Ok(self.property_map.get(property_name).cloned())
     }
 
     fn into_node(&self) -> HolonNodeModel {
@@ -331,17 +337,17 @@ mod tests {
         // Create example PropertyMap and modify Holon with its update
         let mut property_map = BTreeMap::new();
         let string_property_name = PropertyName(MapString("string property".to_string()));
-        let string_value = Some(BaseValue::StringValue(MapString("string_value".to_string())));
+        let string_value = BaseValue::StringValue(MapString("string_value".to_string()));
         property_map.insert(string_property_name, string_value);
         let boolean_property_name = PropertyName(MapString("boolean property".to_string()));
-        let boolean_value = Some(BaseValue::BooleanValue(MapBoolean(true)));
+        let boolean_value = BaseValue::BooleanValue(MapBoolean(true));
         property_map.insert(boolean_property_name, boolean_value);
         let integer_property_name = PropertyName(MapString("integer property".to_string()));
-        let integer_value = Some(BaseValue::IntegerValue(MapInteger(1000)));
+        let integer_value = BaseValue::IntegerValue(MapInteger(1000));
         property_map.insert(integer_property_name, integer_value);
         let enum_property_name = PropertyName(MapString("enum property".to_string()));
         let enum_value =
-            Some(BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string()))));
+            BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string())));
         property_map.insert(enum_property_name, enum_value);
 
         initial_holon.update_property_map(property_map.clone()).unwrap();
@@ -355,14 +361,14 @@ mod tests {
         let property_name = PropertyName(MapString("first property".to_string()));
         // Add a value to the property map
         let initial_value = BaseValue::IntegerValue(MapInteger(1));
-        holon.with_property_value(property_name.clone(), Some(initial_value.clone())).unwrap();
+        holon.with_property_value(property_name.clone(), initial_value.clone()).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(initial_value));
         // Update value with the same property name
         let changed_value = BaseValue::StringValue(MapString("changed value".to_string()));
-        holon.with_property_value(property_name.clone(), Some(changed_value.clone())).unwrap();
+        holon.with_property_value(property_name.clone(), changed_value.clone()).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(changed_value));
         // Remove value by updating to None
-        holon.with_property_value(property_name.clone(), None).unwrap();
+        holon.remove_property_value(&property_name).unwrap();
         assert_eq!(holon.get_property_value(&property_name).unwrap(), None);
     }
 

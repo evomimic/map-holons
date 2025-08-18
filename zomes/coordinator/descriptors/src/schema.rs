@@ -18,15 +18,15 @@ impl Schema {
         schema_holon
             .with_property_value(
                 PropertyName(key_property_name),
-                Some(BaseValue::StringValue(name.clone())),
+                BaseValue::StringValue(name.clone()),
             )?
             .with_property_value(
                 PropertyName(name_property_name),
-                Some(BaseValue::StringValue(name.clone())),
+                BaseValue::StringValue(name.clone()),
             )?
             .with_property_value(
                 PropertyName(description_property_name),
-                Some(BaseValue::StringValue(description)),
+                BaseValue::StringValue(description),
             )?;
 
         Ok(Schema(Holon::Transient(schema_holon)))

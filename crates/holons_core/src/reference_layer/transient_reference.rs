@@ -2,11 +2,14 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use tracing::debug;
-use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
+use type_names::{
+    relationship_names::{CoreRelationshipTypeName, ToRelationshipName},
+    ToPropertyName,
+};
 
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{relationship, PropertyName, PropertyValue, RelationshipName};
+use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
 
 use crate::{
     core_shared_objects::{
@@ -234,6 +237,19 @@ impl WriteableHolonReferenceLayer for TransientReference {
         Ok(())
     }
 
+    fn remove_property_value_ref_layer(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: PropertyName,
+    ) -> Result<&Self, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let mut holon_refcell = rc_holon.borrow_mut();
+
+        holon_refcell.remove_property_value(&name)?;
+
+        Ok(self)
+    }
+
     fn remove_related_holons_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -332,7 +348,7 @@ impl WriteableHolonReferenceLayer for TransientReference {
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
-        value: Option<BaseValue>,
+        value: BaseValue,
     ) -> Result<&Self, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.borrow_mut();
@@ -353,6 +369,14 @@ impl WriteableHolon for TransientReference {
     ) -> Result<(), HolonError> {
         let relationship_name = name.to_relationship_name();
         self.add_related_holons_ref_layer(context, relationship_name, holons)
+    }
+
+    fn remove_property_value<T: ToPropertyName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+    ) -> Result<&Self, HolonError> {
+        self.remove_property_value_ref_layer(context, name.to_property_name())
     }
 
     fn remove_related_holons<T: ToRelationshipName>(

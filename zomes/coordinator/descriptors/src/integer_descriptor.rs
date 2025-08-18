@@ -37,21 +37,21 @@ pub fn define_integer_type(
     integer_type
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(definition.type_name.clone())),
+            BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
             PropertyName(MapString(
                 CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string(),
             )),
-            Some(BaseValue::StringValue(definition.type_name.clone())),
+            BaseValue::StringValue(definition.type_name.clone()),
         )?
         .with_property_value(
             CoreSchemaPropertyTypeName::MinValue.as_property_name(),
-            Some(BaseValue::IntegerValue(definition.min_value)),
+            BaseValue::IntegerValue(definition.min_value),
         )?
         .with_property_value(
             CoreSchemaPropertyTypeName::MaxValue.as_property_name(),
-            Some(BaseValue::IntegerValue(definition.max_value)),
+            BaseValue::IntegerValue(definition.max_value),
         )?;
 
     // Stage new holon type

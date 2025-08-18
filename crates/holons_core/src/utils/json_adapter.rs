@@ -132,22 +132,10 @@ impl<'a> Serialize for PropertyMapWrapper<'a> {
         let mut map = serializer.serialize_map(Some(self.0.len()))?;
         for (k, v) in self.0 {
             match v {
-                Some(BaseValue::StringValue(s)) => map.serialize_entry(&k.0, &s.0)?,
-                Some(BaseValue::BooleanValue(b)) => map.serialize_entry(&k.0, &b.0)?,
-                Some(BaseValue::IntegerValue(i)) => map.serialize_entry(&k.0, &i.0)?,
-                Some(BaseValue::EnumValue(e)) => map.serialize_entry(&k.0, &e.0)?,
-                None => {
-                    // Handle None entries:
-                    // Option 1: Skip the entry entirely
-                    // Option 2: Serialize as null
-                    // Option 3: Custom logic (e.g., default value)
-
-                    // Option 1 (Skipping the entry):
-                    // Simply omit None values by doing nothing here.
-
-                    // Option 2 (Serialize None as null):
-                    // map.serialize_entry(&k.0, &serde_json::Value::Null)?;
-                }
+                BaseValue::StringValue(s) => map.serialize_entry(&k.0, &s.0)?,
+                BaseValue::BooleanValue(b) => map.serialize_entry(&k.0, &b.0)?,
+                BaseValue::IntegerValue(i) => map.serialize_entry(&k.0, &i.0)?,
+                BaseValue::EnumValue(e) => map.serialize_entry(&k.0, &e.0)?,
             }
         }
         map.end()

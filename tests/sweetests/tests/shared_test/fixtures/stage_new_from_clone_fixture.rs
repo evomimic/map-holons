@@ -138,12 +138,11 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     changed_properties.insert(
         PropertyName(MapString("title".to_string())),
-        Some(BaseValue::StringValue(publisher_key)),
+        BaseValue::StringValue(publisher_key),
     );
     changed_properties.insert(
         PropertyName(MapString("description".to_string())),
-        Some(BaseValue::StringValue(MapString("this is testing a clone from a saved Holon, changing it, modifying relationships, then committing".to_string()))),
-    );
+        BaseValue::StringValue(MapString("this is testing a clone from a saved Holon, changing it, modifying relationships, then committing".to_string())));
 
     test_case.add_with_properties_step(
         expected_executor_holon_ref.clone(),

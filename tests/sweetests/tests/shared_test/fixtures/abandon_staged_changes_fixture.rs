@@ -85,11 +85,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let mut abandoned_holon_1 = TransientHolon::new();
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
-        Some(BaseValue::StringValue(MapString("Abandon1".to_string()))),
+        BaseValue::StringValue(MapString("Abandon1".to_string())),
     )?;
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("example abandon1".to_string())),
-        Some(BaseValue::StringValue(MapString("test1".to_string()))),
+        BaseValue::StringValue(MapString("test1".to_string())),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1.clone())?;
     let abandoned_holon_1_ref = stage_new_holon_api(&*fixture_context, abandoned_holon_1.clone())?;
@@ -99,11 +99,11 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let mut abandoned_holon_2 = TransientHolon::new();
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("key".to_string())),
-        Some(BaseValue::StringValue(MapString("Abandon2".to_string()))),
+        BaseValue::StringValue(MapString("Abandon2".to_string())),
     )?;
     abandoned_holon_2.with_property_value(
         PropertyName(MapString("example abandon2".to_string())),
-        Some(BaseValue::StringValue(MapString("test2".to_string()))),
+        BaseValue::StringValue(MapString("test2".to_string())),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2.clone())?;
     let abandoned_holon_2_ref = stage_new_holon_api(&*fixture_context, abandoned_holon_2.clone())?;

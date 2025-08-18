@@ -352,8 +352,7 @@ pub fn stage_new_from_clone_dance(
         .ok_or(HolonError::InvalidParameter(
             "ParameterValues PropertyMap must have a key".to_string(),
         ))?
-        .clone()
-        .ok_or(HolonError::InvalidParameter("'key' property must have a value".to_string()))?;
+        .clone();
 
     let staged_reference = stage_new_from_clone_api(
         context,

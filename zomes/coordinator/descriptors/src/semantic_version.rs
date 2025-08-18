@@ -34,15 +34,15 @@ pub fn set_semantic_version(major: i64, minor: i64, patch: i64) -> Result<Holon,
     version
         .with_property_value(
             PropertyName(MapString("major".to_string())),
-            Some(BaseValue::IntegerValue(MapInteger(major))),
+            BaseValue::IntegerValue(MapInteger(major)),
         )?
         .with_property_value(
             PropertyName(MapString("minor".to_string())),
-            Some(BaseValue::IntegerValue(MapInteger(minor))),
+            BaseValue::IntegerValue(MapInteger(minor)),
         )?
         .with_property_value(
             PropertyName(MapString("patch".to_string())),
-            Some(BaseValue::IntegerValue(MapInteger(patch))),
+            BaseValue::IntegerValue(MapInteger(patch)),
         )?;
 
     Ok(Holon::Transient(version))

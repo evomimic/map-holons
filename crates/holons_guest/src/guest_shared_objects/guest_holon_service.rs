@@ -167,15 +167,15 @@ impl GuestHolonService {
         space_holon
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
-                Some(name.clone().into_base_value()),
+                name.clone().into_base_value(),
             )?
             .with_property_value(
                 PropertyName(MapString("key".to_string())),
-                Some(name.clone().into_base_value()),
+                name.clone().into_base_value(),
             )?
             .with_property_value(
                 PropertyName(MapString("description".to_string())),
-                Some(description.into_base_value()),
+                description.into_base_value(),
             )?;
         let space_holon_node = space_holon.clone().into_node();
 
@@ -369,7 +369,7 @@ impl HolonServiceApi for GuestHolonService {
         // update key
         cloned_holon.with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(new_key)),
+            BaseValue::StringValue(new_key),
         )?;
 
         // Reset the OriginalId to None
