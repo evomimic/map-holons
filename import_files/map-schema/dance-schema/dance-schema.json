@@ -293,9 +293,6 @@
               "name": "Extends",
               "target": [
                 {
-                  "$ref": "#TypeDescriptor"
-                },
-                {
                   "$ref": "#PropertyType"
                 }
               ]
@@ -336,9 +333,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#PropertyType"
                 }
@@ -381,9 +375,6 @@
               "name": "Extends",
               "target": [
                 {
-                  "$ref": "#TypeDescriptor"
-                },
-                {
                   "$ref": "#PropertyType"
                 }
               ]
@@ -391,7 +382,7 @@
             {
               "name": "ValueType",
               "target": {
-                "$ref": "#MapStringValueType"
+                "$ref": "#ResponseStatusCode.EnumValue"
               }
             },
             {
@@ -434,9 +425,6 @@
               "name": "Extends",
               "target": [
                 {
-                  "$ref": "#TypeDescriptor"
-                },
-                {
                   "$ref": "#EnumValueType"
                 }
               ]
@@ -457,7 +445,7 @@
         },
         {
           "key": "OK.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "OK",
             "display_name": "OK",
@@ -467,9 +455,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -497,7 +482,7 @@
         },
         {
           "key": "Accepted.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "Accepted",
             "display_name": "Accepted",
@@ -507,9 +492,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -537,7 +519,7 @@
         },
         {
           "key": "BadRequest.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "BadRequest",
             "display_name": "Bad Request",
@@ -547,9 +529,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -577,7 +556,7 @@
         },
         {
           "key": "Unauthorized.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "Unauthorized",
             "display_name": "Unauthorized",
@@ -587,9 +566,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -617,7 +593,7 @@
         },
         {
           "key": "Forbidden.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "Forbidden",
             "display_name": "Forbidden",
@@ -627,9 +603,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -657,7 +630,7 @@
         },
         {
           "key": "NotFound.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "NotFound",
             "display_name": "Not Found",
@@ -667,9 +640,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -697,7 +667,7 @@
         },
         {
           "key": "Conflict.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "Conflict",
             "display_name": "Conflict",
@@ -707,9 +677,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -737,7 +704,7 @@
         },
         {
           "key": "UnprocessableEntity.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "UnprocessableEntity",
             "display_name": "Unprocessable Entity",
@@ -747,9 +714,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -777,7 +741,7 @@
         },
         {
           "key": "ServerError.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "ServerError",
             "display_name": "Server Error",
@@ -787,9 +751,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -817,7 +778,7 @@
         },
         {
           "key": "NotImplemented.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "NotImplemented",
             "display_name": "Not Implemented",
@@ -827,9 +788,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }
@@ -857,7 +815,7 @@
         },
         {
           "key": "ServiceUnavailable.EnumVariant",
-          "type": "#EnumVariantType",
+          "type": "#TypeDescriptor",
           "properties": {
             "type_name": "ServiceUnavailable",
             "display_name": "Service Unavailable",
@@ -867,9 +825,6 @@
             {
               "name": "Extends",
               "target": [
-                {
-                  "$ref": "#TypeDescriptor"
-                },
                 {
                   "$ref": "#EnumVariantType"
                 }

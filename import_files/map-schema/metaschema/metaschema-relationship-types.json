@@ -35,9 +35,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -91,9 +88,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -153,9 +147,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -209,9 +200,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -271,9 +259,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -327,9 +312,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -389,9 +371,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -445,9 +424,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -507,9 +483,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -563,9 +536,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -625,9 +595,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -681,9 +648,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -743,9 +707,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -799,9 +760,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -861,9 +819,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -917,9 +872,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -979,9 +931,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1035,9 +984,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1097,9 +1043,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1153,9 +1096,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1215,9 +1155,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1271,9 +1208,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1333,9 +1267,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1389,9 +1320,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1451,9 +1379,6 @@
           "target": [
             {
               "$ref": "#DeclaredRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
@@ -1507,9 +1432,6 @@
           "target": [
             {
               "$ref": "#InverseRelationshipType"
-            },
-            {
-              "$ref": "#TypeDescriptor"
             }
           ]
         },
