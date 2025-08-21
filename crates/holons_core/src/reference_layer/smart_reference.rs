@@ -178,10 +178,8 @@ impl ReadableHolonReferenceLayer for SmartReference {
     /// It will attempt to get it from the smart_property_values map first to avoid having to
     /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache
     /// manager in the context.
-    ///
-    /// Possible Errors:
-    /// This function returns an EmptyFiled error if no value is found for the specified property
-    /// Or (less likely) an InvalidHolonReference
+    /// 
+    /// Returns: Option, None if property for given name does not exist in its PropertyMap. 
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -190,7 +188,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         // Check if the property value is available in smart_property_values
         if let Some(smart_map) = &self.smart_property_values {
             if let Some(value) = smart_map.get(property_name) {
-                return Ok(value.clone());
+                return Ok(Some(value.clone()));
             }
         }
 
@@ -210,7 +208,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         // Since smart_property_values is an optional PropertyMap, first check to see if one exists..
         if let Some(smart_property_values) = self.smart_property_values.clone() {
             // If found, do a get on the PropertyMap to see if it contains a value.
-            if let Some(Some(inner_value)) =
+            if let Some(inner_value) =
                 smart_property_values.get(&PropertyName(MapString("key".to_string())))
             {
                 // Try to convert a Some value to String, throws an error on failure because all values for the Key 'key' should be MapString.

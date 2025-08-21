@@ -64,7 +64,7 @@ pub async fn execute_abandon_staged_changes(
                 abandoned_holon.with_property_value(
                     context, // Pass context for proper behavior
                     PropertyName(MapString("some_name".to_string())),
-                    Some(BaseValue::BooleanValue(MapBoolean(true)))
+                    BaseValue::BooleanValue(MapBoolean(true))
                 ),
                 Err(HolonError::NotAccessible(
                     format!("{:?}", AccessType::Write),

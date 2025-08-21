@@ -48,18 +48,17 @@ pub fn setup_book_author_steps_with_context(
     book_holon
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(book_holon_key.clone())),
+            BaseValue::StringValue(book_holon_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("title".to_string())),
-            Some(BaseValue::StringValue(book_holon_key.clone())),
+            BaseValue::StringValue(book_holon_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            Some(BaseValue::StringValue(MapString(
+            BaseValue::StringValue(MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
-            ))),
-        )?;
+            )))?;
     test_case.add_stage_holon_step(book_holon.clone())?;
     let book_ref = stage_new_holon_api(context, book_holon)?;
 
@@ -70,15 +69,15 @@ pub fn setup_book_author_steps_with_context(
     person_1_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
-            Some(BaseValue::StringValue(MapString("Roger".to_string()))),
+            BaseValue::StringValue(MapString("Roger".to_string())),
         )?
         .with_property_value(
             PropertyName(MapString("last name".to_string())),
-            Some(BaseValue::StringValue(MapString("Briggs".to_string()))),
+            BaseValue::StringValue(MapString("Briggs".to_string())),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(person_1_key.clone())),
+            BaseValue::StringValue(person_1_key.clone()),
         )?;
     test_case.add_stage_holon_step(person_1_holon.clone())?;
     let person_1_reference = stage_new_holon_api(context, person_1_holon.clone())?;
@@ -90,15 +89,15 @@ pub fn setup_book_author_steps_with_context(
     person_2_holon
         .with_property_value(
             PropertyName(MapString("first name".to_string())),
-            Some(BaseValue::StringValue(MapString("George".to_string()))),
+            BaseValue::StringValue(MapString("George".to_string())),
         )?
         .with_property_value(
             PropertyName(MapString("last name".to_string())),
-            Some(BaseValue::StringValue(MapString("Smith".to_string()))),
+            BaseValue::StringValue(MapString("Smith".to_string())),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(person_2_key.clone())),
+            BaseValue::StringValue(person_2_key.clone()),
         )?;
     test_case.add_stage_holon_step(person_2_holon.clone())?;
     let person_2_reference = stage_new_holon_api(context, person_2_holon.clone())?;
@@ -110,17 +109,15 @@ pub fn setup_book_author_steps_with_context(
     publisher_holon
         .with_property_value(
             PropertyName(MapString("name".to_string())),
-            Some(BaseValue::StringValue(publisher_key.clone())),
+            BaseValue::StringValue(publisher_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(publisher_key.clone())),
+            BaseValue::StringValue(publisher_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            Some(BaseValue::StringValue(MapString(
-                "We publish Holons for testing purposes".to_string(),
-            ))),
+            BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
         )?;
     test_case.add_stage_holon_step(publisher_holon.clone())?;
     stage_new_holon_api(context, publisher_holon.clone())?;

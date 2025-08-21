@@ -13,10 +13,11 @@ derive-new = "0.7.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.109"
 tracing = "0.1"
+
 async-trait = "0.1.51"
 
 # Holochain Dependencies
-holochain_trace = "0.5"
+
 # ovveride the latest to avoid conflicts with rust version 1.83 (currrently used by holochain 0.5) 
 #base64ct = "=1.7.3"
 
@@ -36,7 +37,8 @@ pretty_assertions = "1.4.0"
 rstest = "0.25.0"
 holochain = { version = "0.5", default-features = false, features = [
     "sweettest",
-    "wasmer_sys"
+    "wasmer_sys",
+    "datachannel-vendored"
 ] }
 tokio = { version = "1.35", features = ["full"] }
 async-std = "1"

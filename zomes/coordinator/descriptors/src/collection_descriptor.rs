@@ -72,37 +72,37 @@ pub fn define_collection_type(
     collection_type
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(collection_type_name.clone())),
+            BaseValue::StringValue(collection_type_name.clone()),
         )?
         .with_property_value(
             PropertyName(MapString(
                 CoreSchemaPropertyTypeName::MaxCardinality.as_snake_case().to_string(),
             )),
-            Some(BaseValue::IntegerValue(definition.max_cardinality)),
+            BaseValue::IntegerValue(definition.max_cardinality),
         )?
         .with_property_value(
             PropertyName(MapString(
                 CoreSchemaPropertyTypeName::MinCardinality.as_snake_case().to_string(),
             )),
-            Some(BaseValue::IntegerValue(definition.min_cardinality)),
+            BaseValue::IntegerValue(definition.min_cardinality),
         )?
         .with_property_value(
             PropertyName(MapString(
                 CoreSchemaPropertyTypeName::AllowsDuplicates.as_snake_case().to_string(),
             )),
-            Some(BaseValue::BooleanValue(definition.allows_duplicates)),
+            BaseValue::BooleanValue(definition.allows_duplicates),
         )?
         .with_property_value(
             PropertyName(MapString(
                 CoreSchemaPropertyTypeName::IsOrdered.as_snake_case().to_string(),
             )),
-            Some(BaseValue::BooleanValue(definition.is_ordered)),
+            BaseValue::BooleanValue(definition.is_ordered),
         )?
         .with_property_value(
             PropertyName(MapString(
                 CoreSchemaPropertyTypeName::TypeName.as_snake_case().to_string(),
             )),
-            Some(BaseValue::StringValue(collection_type_name)),
+            BaseValue::StringValue(collection_type_name),
         )?;
 
     // Stage the type

@@ -41,7 +41,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
          9) QueryRelationships.\n".to_string(),
     );
 
-    let _ = holochain_trace::test_run();
+    // let _ = holochain_trace::test_run();
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key

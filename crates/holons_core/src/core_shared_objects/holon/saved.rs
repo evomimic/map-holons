@@ -74,7 +74,7 @@ impl HolonBehavior for SavedHolon {
 
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
-        if let Some(Some(inner_value)) =
+        if let Some(inner_value) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
         {
             let string_value: String = inner_value.try_into().map_err(|_| {
@@ -120,7 +120,7 @@ impl HolonBehavior for SavedHolon {
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
-        Ok(self.property_map.get(property_name).cloned().flatten())
+        Ok(self.property_map.get(property_name).cloned())
     }
 
     /// Extracts HolonNode data.

@@ -2,7 +2,7 @@ use crate::reference_layer::{HolonReference, HolonsContextBehavior};
 use base_types::BaseValue;
 use core_types::HolonError;
 use integrity_core_types::{PropertyName, RelationshipName};
-use type_names::relationship_names::ToRelationshipName;
+use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
 
 pub trait WriteableHolonReferenceLayer {
     fn add_related_holons_ref_layer(
@@ -11,6 +11,8 @@ pub trait WriteableHolonReferenceLayer {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
+
+    fn remove_property_value_ref_layer(&self, context: &dyn HolonsContextBehavior, name: PropertyName) -> Result<&Self, HolonError>;
 
     fn remove_related_holons_ref_layer(
         &self,
@@ -35,7 +37,7 @@ pub trait WriteableHolonReferenceLayer {
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
-        value: Option<BaseValue>,
+        value: BaseValue,
     ) -> Result<&Self, HolonError>;
 }
 
@@ -46,6 +48,8 @@ pub trait WriteableHolon: WriteableHolonReferenceLayer {
         name: T,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
+
+    fn remove_property_value<T: ToPropertyName>(&self, context: &dyn HolonsContextBehavior, name: T) -> Result<&Self, HolonError>;
 
     fn remove_related_holons<T: ToRelationshipName>(
         &self,

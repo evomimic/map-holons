@@ -29,7 +29,6 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 // use holons_client::init_client_context;
 
-use holochain_trace;
 use rstest::*;
 use serde::de::Expected;
 use shared_test::mock_conductor::MockConductorConfig;
@@ -104,7 +103,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     use test_delete_holon::execute_delete_holon;
 
-    let _ = holochain_trace::test_run();
+    // let _ = holochain_trace::test_run();
 
     // 1. Set up the mock conductor
     let conductor_config = setup_conductor().await;

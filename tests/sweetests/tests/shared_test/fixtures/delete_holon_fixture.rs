@@ -33,18 +33,17 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     book_holon
         .with_property_value(
             PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(book_holon_key.clone())),
+            BaseValue::StringValue(book_holon_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("title".to_string())),
-            Some(BaseValue::StringValue(book_holon_key.clone())),
+            BaseValue::StringValue(book_holon_key.clone()),
         )?
         .with_property_value(
             PropertyName(MapString("description".to_string())),
-            Some(BaseValue::StringValue(MapString(
+            BaseValue::StringValue(MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
-            ))),
-        )?;
+            )))?;
     test_case.add_stage_holon_step(book_holon.clone())?;
     let book_ref = stage_new_holon_api(&*fixture_context, book_holon)?;
 

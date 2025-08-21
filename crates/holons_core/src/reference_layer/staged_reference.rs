@@ -2,7 +2,10 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use tracing::debug;
-use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
+use type_names::{
+    relationship_names::{CoreRelationshipTypeName, ToRelationshipName},
+    ToPropertyName,
+};
 
 use crate::core_shared_objects::{
     holon::{holon_utils::EssentialHolonContent, state::AccessType},
@@ -45,11 +48,8 @@ impl StagedReference {
                 debug!("Mutably borrowing Holon::Staged for staged_id: {:#?}", self.id);
                 staged_holon.abandon_staged_changes()?;
             }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
+            _ => {
+                unreachable!()
             }
         }
 
@@ -86,6 +86,20 @@ impl StagedReference {
 
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_read.get_holon_by_id(&self.id)?;
+
+        match &*rc_holon.borrow() {
+            Holon::Staged(_) => {}
+            Holon::Saved(_) => {
+                return Err(HolonError::InvalidHolonReference(
+                    "Expected Staged, got: Saved".to_string(),
+                ))
+            }
+            Holon::Transient(_) => {
+                return Err(HolonError::InvalidHolonReference(
+                    "Expected Staged, got: Transient".to_string(),
+                ))
+            }
+        }
 
         Ok(rc_holon.clone())
     }
@@ -197,11 +211,8 @@ impl ReadableHolonReferenceLayer for StagedReference {
                 let collection = staged_relationship_map.get_related_holons(relationship_name);
                 Ok(collection)
             }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
+            _ => {
+                unreachable!()
             }
         }
     }
@@ -253,15 +264,32 @@ impl WriteableHolonReferenceLayer for StagedReference {
                 staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
                 staged_holon.init_relationships(staged_relationship_map)?;
             }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
+            _ => {
+                unreachable!()
             }
         }
 
         Ok(())
+    }
+
+    fn remove_property_value_ref_layer(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: PropertyName,
+    ) -> Result<&Self, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let mut holon_refcell = rc_holon.borrow_mut();
+
+        match &mut *holon_refcell {
+            Holon::Staged(staged_holon) => {
+                staged_holon.remove_property_value(&name)?;
+            }
+            _ => {
+                unreachable!()
+            }
+        }
+
+        Ok(self)
     }
 
     fn remove_related_holons_ref_layer(
@@ -292,11 +320,8 @@ impl WriteableHolonReferenceLayer for StagedReference {
                 )?;
                 staged_holon.init_relationships(staged_relationship_map)?;
             }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
+            _ => {
+                unreachable!()
             }
         }
 
@@ -369,7 +394,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
-        value: Option<BaseValue>,
+        value: BaseValue,
     ) -> Result<&Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
@@ -381,11 +406,8 @@ impl WriteableHolonReferenceLayer for StagedReference {
             Holon::Staged(staged_holon) => {
                 staged_holon.with_property_value(property, value)?;
             }
-            other => {
-                return Err(HolonError::UnexpectedValueType(
-                    "Staged Holon".into(),
-                    format!("{:?}", other),
-                ));
+            _ => {
+                unreachable!()
             }
         }
 
@@ -401,6 +423,14 @@ impl WriteableHolon for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         self.add_related_holons_ref_layer(context, name.to_relationship_name(), holons)
+    }
+
+    fn remove_property_value<T: ToPropertyName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+    ) -> Result<&Self, HolonError> {
+        self.remove_property_value_ref_layer(context, name.to_property_name())
     }
 
     fn remove_related_holons<T: ToRelationshipName>(

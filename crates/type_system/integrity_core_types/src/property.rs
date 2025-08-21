@@ -26,4 +26,4 @@ impl fmt::Display for PropertyName {
 pub type PropertyValue = BaseValue;
 
 /// The map from property names to optional property values.
-pub type PropertyMap = BTreeMap<PropertyName, Option<PropertyValue>>;
+pub type PropertyMap = BTreeMap<PropertyName, PropertyValue>;
