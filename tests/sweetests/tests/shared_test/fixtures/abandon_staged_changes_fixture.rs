@@ -83,6 +83,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  STAGE:  Abandoned Holon1 (H4)  //
     let mut abandoned_holon_1 = TransientHolon::new();
+    // abandoned_holon_1
+    //     .with_property_value("key", "Abandon1")?
+    //     .with_property_value("example abandon1", "test1")?;
+
     abandoned_holon_1.with_property_value(
         PropertyName(MapString("key".to_string())),
         BaseValue::StringValue(MapString("Abandon1".to_string())),
