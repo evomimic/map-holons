@@ -18,7 +18,7 @@ use tracing::{debug, info};
 
 use crate::core_shared_objects::{
     commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, TransientHolon,
+    stage_new_version_api, CommitRequestStatus,
 };
 use crate::dances::{
     dance_request::{DanceType, RequestBody},
@@ -363,12 +363,15 @@ pub fn stage_new_from_clone_dance(
     Ok(ResponseBody::StagedRef(staged_reference))
 }
 
-/// This dance creates a new version of an existing holon by cloning the existing holon, adding
-/// the clone to the StagingArea and resetting its PREDECESSOR relationship to reference the
-/// holon it was cloned from. The cloned holon can then be incrementally built up prior to commit.
+/// This dance stages a new holon in the holon space.
+///
+/// This function creates a new holon in the staging area without any lineage
+/// relationship to an existing holon. Use this function for creating entirely
+/// new holons that are not tied to any predecessor.
+///
 ///
 /// *DanceRequest:*
-/// - dance_name: "stage_new_version"
+/// - dance_name: "stage_new_holon"
 /// - dance_type: Standalone
 /// - request_body:
 ///     ParameterValues: specifying the initial set of properties to set in the staged_holon (if any)
@@ -381,32 +384,17 @@ pub fn stage_new_holon_dance(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage new holon dance");
-    // Create and stage new Holon
-    let mut new_holon = TransientHolon::new();
 
-    // Populate parameters if available
-    match request.body {
-        RequestBody::None => {
-            // No parameters to populate, continue
+    let staged_reference = {
+        if let RequestBody::TransientHolon(holon) = request.body {
+            // Stage the new holon
+            stage_new_holon_api(context, holon)?
+            // This operation will have added the staged_holon to the CommitManager's vector and returned a
+            // StagedReference to it.
+        } else {
+            return Err(HolonError::InvalidParameter("request.body".to_string()));
         }
-        // RequestBody::ParameterValues(parameters) => {
-        //     // Populate parameters into the new Holon
-        //     for (property_name, base_value) in parameters.iter() {
-        //         new_holon.with_property_value(property_name.clone(), base_value.clone())?;
-        //     }
-        // }
-        RequestBody::TransientHolon(holon) => {
-            new_holon = holon;
-            debug!("Request body matched holon variant");
-        }
-        _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
-    }
-    debug!("Response body matched successfully for holon:{:#?}", new_holon);
-
-    // Stage the new holon
-    let staged_reference = stage_new_holon_api(context, new_holon)?;
-    // This operation will have added the staged_holon to the CommitManager's vector and returned a
-    // StagedReference to it.
+    };
 
     Ok(ResponseBody::StagedRef(staged_reference))
 }

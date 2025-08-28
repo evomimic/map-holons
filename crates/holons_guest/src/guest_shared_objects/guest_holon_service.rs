@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
 use hdk::prelude::*;
+use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
     holon_error_from_wasm_error, try_action_hash_from_local_id,
 };
@@ -24,7 +26,7 @@ use holons_core::{
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior,
-        SmartReference, StagedReference, ReadableHolonReferenceLayer, WriteableHolonReferenceLayer,
+        ReadableHolonReferenceLayer, SmartReference, StagedReference, WriteableHolonReferenceLayer,
     },
 };
 use holons_integrity::LinkTypes;
@@ -162,9 +164,13 @@ impl GuestHolonService {
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
-        // Create a new Holon and set its name and description
-        let mut space_holon = TransientHolon::new();
-        space_holon
+        // Get access for space_manager.transient_manager via HolonSpaceBehavior, TransientHolonBehavior
+        let transient_manager_access = context.get_space_manager().get_transient_behavior_service();
+        let transient_manager = transient_manager_access.borrow();
+
+        // Create new (empty) TransientHolon
+        let space_holon_reference = transient_manager.create_empty()?;
+        space_holon_reference
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
                 name.clone().into_base_value(),
@@ -177,7 +183,7 @@ impl GuestHolonService {
                 PropertyName(MapString("description".to_string())),
                 description.into_base_value(),
             )?;
-        let space_holon_node = space_holon.clone().into_node();
+        let space_holon_node = space_holon_reference.into_model()?;
 
         // Try to create the holon node in the DHT
         let holon_record = create_holon_node(HolonNode::from(space_holon_node.clone()))
@@ -297,6 +303,52 @@ impl HolonServiceApi for GuestHolonService {
         delete_holon_node(try_action_hash_from_local_id(&local_id)?)
             .map(|_| ()) // Convert ActionHash to ()
             .map_err(|e| holon_error_from_wasm_error(e))
+    }
+
+    fn fetch_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        source_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
+        if !source_id.is_local() {
+            return Err(HolonError::InvalidHolonReference("Source id must be Local".to_string()));
+        }
+
+        let mut relationship_map: HashMap<RelationshipName, Rc<HolonCollection>> = HashMap::new();
+
+        let mut reference_map: HashMap<RelationshipName, Vec<HolonReference>> = HashMap::new();
+
+        let smartlinks = get_all_relationship_links(source_id.local_id())?;
+        debug!("Retrieved {:?} smartlinks", smartlinks.len());
+
+        for smartlink in smartlinks {
+            let reference = smartlink.to_holon_reference();
+
+            // The following:
+            // 1) adds an entry for relationship name if not already present (via `entry` API)
+            // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
+            // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+
+            reference_map
+                .entry(smartlink.relationship_name)
+                .or_insert_with(Vec::new)
+                .push(reference);
+        }
+
+        for (map_name, holon_references) in reference_map {
+            let mut collection = HolonCollection::new_existing();
+            for reference in holon_references {
+                let key = reference.get_key(context)?.ok_or_else(|| {
+                    HolonError::Misc(
+                        "Expected Smartlink to have a key, didn't get one.".to_string(),
+                    )
+                })?; // At least for now, all SmartLinks should be encoded with a key
+                collection.add_reference_with_key(Some(&key), &reference)?;
+            }
+            relationship_map.insert(map_name, Rc::new(collection));
+        }
+
+        Ok(RelationshipMap::new(RefCell::new(relationship_map)))
     }
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,

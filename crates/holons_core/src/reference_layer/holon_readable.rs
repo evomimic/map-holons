@@ -1,18 +1,37 @@
 use std::rc::Rc;
 
 use super::HolonReference;
-use crate::core_shared_objects::{
-    holon::{state::AccessType, EssentialHolonContent},
-    TransientHolon, HolonCollection
-};
 use crate::reference_layer::HolonsContextBehavior;
+use crate::{
+    core_shared_objects::{
+        holon::{state::AccessType, EssentialHolonContent},
+        HolonCollection, TransientHolon,
+    },
+    RelationshipMap,
+};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
+use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
 use type_names::relationship_names::ToRelationshipName;
 
 pub trait ReadableHolonReferenceLayer {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError>;
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError>;
+
+    /// Populates a full RelationshipMap by retrieving all related Holons for the source HolonReference. 
+    /// The map returned will ONLY contain entries for relationships that have at least
+    /// one related holon (i.e., none of the holon collections returned via the result map will have
+    /// zero members).
+    /// 
+    /// For Transient & Staged Holons, it fetches and converts their relationship map to the CollectionState agnostic RelationshipMap type. 
+    /// For a Saved Holon (SmartReference), it calls the GuestHolonService to fetch all Smartlinks.
+    /// 
+    fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<RelationshipMap, HolonError>;
 
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError>;
@@ -71,6 +90,9 @@ pub trait ReadableHolonReferenceLayer {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<EssentialHolonContent, HolonError>;
+
+    fn into_model(&self, context: &dyn HolonsContextBehavior)
+        -> Result<HolonNodeModel, HolonError>;
 
     fn is_accessible(
         &self,

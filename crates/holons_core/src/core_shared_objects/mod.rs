@@ -33,7 +33,7 @@ pub use holon_collection::{CollectionState, HolonCollection};
 pub use holon_pool::HolonPool;
 pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;
-pub use relationship::RelationshipMap;
+pub use relationship::*;
 pub use relationship_behavior::{ReadableRelationship, WritableRelationship};
 pub use relationship_cache::RelationshipCache;
 pub use staged_relationship::StagedRelationshipMap;

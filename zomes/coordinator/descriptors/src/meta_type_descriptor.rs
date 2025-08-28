@@ -1,12 +1,12 @@
-use crate::property_descriptor::PropertyTypeDefinition;
-use crate::relationship_descriptor::RelationshipTypeDefinition;
-use crate::type_descriptor::TypeDescriptorDefinition;
+// use crate::property_descriptor::PropertyTypeDefinition;
+// use crate::relationship_descriptor::RelationshipTypeDefinition;
+// use crate::type_descriptor::TypeDescriptorDefinition;
 
-pub struct MetaTypeDefinition {
-    pub header: TypeDescriptorDefinition,
-    pub properties: Vec<PropertyTypeDefinition>,
-    pub relationships: Vec<RelationshipTypeDefinition>,
-}
+// pub struct MetaTypeDefinition {
+//     pub header: TypeDescriptorDefinition,
+//     pub properties: Vec<PropertyTypeDefinition>,
+//     pub relationships: Vec<RelationshipTypeDefinition>,
+// }
 //
 // /// This function defines the MetaTypeDescriptor that specifies the properties and relationships
 // /// shared by all TypeDescriptors

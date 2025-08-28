@@ -1,3 +1,4 @@
+use derive_new::new;
 use serde::{Serialize, Deserialize};
 use std::{
     cell::RefCell,
@@ -7,13 +8,13 @@ use std::{
 };
 
 use super::{ReadableRelationship, TransientRelationshipMap};
-use crate::core_shared_objects::HolonCollection;
+use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 
 
 /// Custom RelationshipMap is only used for caching and will never be serialized
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct RelationshipMap {
     map: RefCell<HashMap<RelationshipName, Rc<HolonCollection>>>,
 }
@@ -102,5 +103,32 @@ impl<'de> Deserialize<'de> for RelationshipMap {
         let wrapped_map: HashMap<_, _> =
             deserialized_map.into_iter().map(|(key, value)| (key, Rc::new(value))).collect();
         Ok(RelationshipMap { map: RefCell::new(wrapped_map) })
+    }
+}
+
+impl From<StagedRelationshipMap> for RelationshipMap {
+    fn from(staged: StagedRelationshipMap) -> Self {
+        let mut new_map = HashMap::new();
+
+        for (name, rc_refcell_collection) in staged.map {
+            let cloned_collection = rc_refcell_collection.borrow().clone();
+            new_map.insert(name, Rc::new(cloned_collection));
+        }
+
+        RelationshipMap::new(RefCell::new(new_map))
+    }
+
+}
+
+impl From<TransientRelationshipMap> for RelationshipMap {
+    fn from(transient: TransientRelationshipMap) -> Self {
+        let mut new_map = HashMap::new();
+
+        for (name, rc_refcell_collection) in transient.map {
+            let cloned_collection = rc_refcell_collection.borrow().clone();
+            new_map.insert(name, Rc::new(cloned_collection));
+        }
+
+        RelationshipMap::new(RefCell::new(new_map))
     }
 }

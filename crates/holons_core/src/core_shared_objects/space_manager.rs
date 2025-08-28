@@ -7,13 +7,14 @@ use crate::core_shared_objects::{
     TransientHolonManager, TransientManagerAccess,
 };
 use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
+    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior, TransientHolonBehavior,
 };
 use crate::{HolonCollectionApi, TransientCollection};
 use std::cell::RefCell;
 use std::sync::Arc;
 
 use std::fmt::{Debug, Formatter, Result};
+
 
 pub struct HolonSpaceManager {
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
@@ -108,6 +109,11 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
     fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>> {
         Arc::clone(&self.nursery) as Arc<RefCell<dyn HolonStagingBehavior>>
+    }
+
+    /// Provides access to a component that supports the `HolonStagingBehavior` API.
+    fn get_transient_behavior_service(&self) -> Arc<RefCell<dyn TransientHolonBehavior>> {
+        Arc::clone(&self.transient_manager) as Arc<RefCell<dyn TransientHolonBehavior>>
     }
 
     /// Provides access to the TransientHolonManager.

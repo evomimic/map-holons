@@ -1,18 +1,26 @@
 use std::{any::Any, cell::RefCell, rc::Rc};
 
-use base_types::MapString;
+use base_types::{MapInteger, MapString};
 use core_types::{HolonError, TemporaryId};
+use integrity_core_types::{HolonNodeModel, PropertyMap};
 
 use crate::{
     core_shared_objects::{
-        holon::{Holon, TransientHolon},
+        holon::{state::{HolonState, ValidationState}, Holon, TransientHolon},
         holon_pool::{SerializableHolonPool, TransientHolonPool},
         transient_manager_access_internal::TransientManagerAccessInternal,
-        TransientManagerAccess,
+        TransientManagerAccess, TransientRelationshipMap,
     },
     reference_layer::{TransientHolonBehavior, TransientReference},
-    HolonPool,
+    HolonPool, HolonsContextBehavior,
 };
+
+/// Holon variant-agnostic interface for cloning.
+///
+/// Regardless of the source phase, cloned Holons always begin their lifecycle as `TransientHolon`.
+pub trait ToTransientHolon {
+    fn clone_into_transient(&self, context: &dyn HolonsContextBehavior,) -> Result<TransientHolon, HolonError>;
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransientHolonManager {
@@ -33,6 +41,15 @@ impl TransientHolonManager {
     /// The TemporaryId, which is used a unique identifier.
     fn add_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
         self.transient_holons.borrow_mut().insert_holon(Holon::Transient(holon))
+    }
+
+    /// Generic clone for all Holon variants. Resulting clone is always a TrasnsientHolon, regardless of
+    /// source phase.
+    pub fn clone_holon<T: ToTransientHolon>(&mut self, context: &dyn HolonsContextBehavior, source_holon: &T) -> Result<TransientReference, HolonError> {
+        let cloned_holon = source_holon.clone_into_transient(context)?;
+        let transient_reference = self.add_new_holon(cloned_holon)?;
+
+        Ok(transient_reference)
     }
 
     /// This function converts a TemporaryId into a TransientReference.
@@ -56,6 +73,56 @@ impl TransientManagerAccess for TransientHolonManager {
 }
 
 impl TransientHolonBehavior for TransientHolonManager {
+
+    fn create_empty(&self) -> Result<TransientReference, HolonError> {
+        let holon = TransientHolon::with_fields(
+            MapInteger(1),
+            HolonState::Mutable,
+            ValidationState::ValidationRequired,
+            None,
+            PropertyMap::new(),
+            TransientRelationshipMap::new_empty(),
+            None,
+        );
+        let transient_reference = self.add_new_holon(holon)?;
+
+        Ok(transient_reference)
+    }
+
+    fn create_from_model(
+        &self,
+        model: HolonNodeModel,
+    ) -> Result<TransientReference, HolonError> {
+        let holon = TransientHolon::with_fields(
+            MapInteger(1),
+            HolonState::Mutable,
+            ValidationState::ValidationRequired,
+            None,
+            model.property_map,
+            TransientRelationshipMap::new_empty(),
+            model.original_id,
+        );
+
+        let transient_reference = self.add_new_holon(holon)?;
+
+        Ok(transient_reference)
+    }
+
+    fn create_immutable(&self) -> Result<TransientReference, HolonError> {
+        let holon = TransientHolon::with_fields(
+            MapInteger(1),
+            HolonState::Immutable,
+            ValidationState::ValidationRequired,
+            None,
+            PropertyMap::new(),
+            TransientRelationshipMap::new_empty(),
+            None,
+        );
+        let transient_reference = self.add_new_holon(holon)?;
+
+        Ok(transient_reference)
+    }
+    
     fn add_new_holon(&self, holon: TransientHolon) -> Result<TransientReference, HolonError> {
         let new_id = self.add_holon(holon)?;
         self.to_validated_transient_reference(&new_id)

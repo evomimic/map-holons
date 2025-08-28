@@ -2,19 +2,11 @@ use base_types::MapString;
 use core_types::HolonError;
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
-use super::{state::AccessType, EssentialHolonContent, TransientHolon};
+use super::{state::AccessType, EssentialHolonContent};
 
 /// The `HolonBehavior` trait defines the core interface for interacting with Holon instances,
 /// including data access, lifecycle control, and diagnostic capabilities.
 pub trait HolonBehavior {
-    // =====================
-    //     CONSTRUCTORS
-    // =====================
-
-    /// Clones the Holon as a new `TransientHolon`.
-    ///
-    /// Regardless of the source phase, cloned Holons are always `TransientHolons`.
-    fn clone_holon(&self) -> Result<TransientHolon, HolonError>;
 
     // =======================
     //     DATA ACCESSORS

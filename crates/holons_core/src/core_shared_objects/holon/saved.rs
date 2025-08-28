@@ -6,7 +6,7 @@ use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, P
 
 use super::{
     state::{AccessType, HolonState, SavedState, ValidationState},
-    EssentialHolonContent, HolonBehavior, TransientHolon,
+    EssentialHolonContent, HolonBehavior,
 };
 
 /// Represents a Holon that has been persisted in the DHT.
@@ -54,18 +54,6 @@ impl HolonBehavior for SavedHolon {
     // =====================
     //    DATA ACCESSORS
     // =====================
-
-    fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
-        let mut holon = TransientHolon::new();
-
-        // Retains the predecessor node, referenced by LocalId
-        holon.update_original_id(Some(self.get_local_id()?))?;
-
-        // Copy the existing holon's PropertyMap into the new Holon
-        holon.update_property_map(self.property_map.clone())?;
-
-        Ok(holon)
-    }
 
     /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
@@ -193,3 +181,5 @@ impl HolonBehavior for SavedHolon {
         )
     }
 }
+
+

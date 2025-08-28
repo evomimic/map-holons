@@ -6,13 +6,12 @@ use core_types::{HolonError, TemporaryId};
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 use crate::{
-    core_shared_objects::ReadableRelationship, HolonCollection,
-    StagedRelationshipMap,
+    core_shared_objects::{ReadableRelationship},HolonCollection, StagedRelationshipMap
 };
 
 use super::{
     state::{AccessType, HolonState, StagedState, ValidationState},
-    EssentialHolonContent, HolonBehavior, TransientHolon,
+    EssentialHolonContent, HolonBehavior,
 };
 
 /// Represents a Holon that has been staged for persistence or updates.
@@ -190,21 +189,6 @@ impl HolonBehavior for StagedHolon {
     //    DATA ACCESSORS
     // =====================
 
-    fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
-        let mut holon = TransientHolon::new();
-
-        // Retains the predecessor, reference as a LocalId
-        holon.update_original_id(self.original_id.clone())?;
-
-        // Copy the existing holon's PropertyMap into the new Holon
-        holon.update_property_map(self.property_map.clone())?;
-
-        // Update in place each relationship's HolonCollection State to Staged
-        holon.update_relationship_map(self.staged_relationships.clone_for_new_source()?)?;
-
-        Ok(holon)
-    }
-
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(
             self.property_map.clone(),
@@ -303,6 +287,7 @@ impl HolonBehavior for StagedHolon {
     // =================
 
     fn increment_version(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
         self.version.0 += 1;
         Ok(())
     }
@@ -344,6 +329,8 @@ impl HolonBehavior for StagedHolon {
         )
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {

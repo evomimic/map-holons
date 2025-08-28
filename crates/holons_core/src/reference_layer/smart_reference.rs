@@ -1,17 +1,20 @@
-use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
-use serde::{Serialize, Deserialize};
-use tracing::trace;
 use derive_new::new;
+use serde::{Deserialize, Serialize};
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use tracing::trace;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::{core_shared_objects::{
-    cache_access::HolonCacheAccess, holon::{state::AccessType, EssentialHolonContent}, Holon, HolonBehavior, HolonCollection, TransientHolon
-}, reference_layer::{ReadableHolonReferenceLayer,
-    ReadableHolon, HolonReference, HolonsContextBehavior,
-}};
+use crate::{
+    core_shared_objects::{
+        cache_access::HolonCacheAccess, holon::{state::AccessType, EssentialHolonContent}, transient_holon_manager::ToTransientHolon, Holon, HolonBehavior, HolonCollection, TransientHolon
+    },
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer, TransientReference,
+    }, RelationshipMap,
+};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
+use integrity_core_types::{HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SmartReference {
@@ -38,44 +41,6 @@ impl SmartReference {
         self.smart_property_values.clone()
     }
 
-    // /// Populates a full RelationshipMap by retrieving all SmartLinks for which this SmartReference is the
-    // /// source. The map returned will ONLY contain entries for relationships that have at least
-    // /// one related holon (i.e., none of the holon collections returned via the result map will have
-    // /// zero members).
-    // pub fn get_all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
-    //     let mut relationship_map: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::new();
-
-    //     let mut reference_map: BTreeMap<RelationshipName, Vec<HolonReference>> = BTreeMap::new();
-    //     let smartlinks = get_all_relationship_links(self.get_local_id()?)?;
-    //     debug!("Retrieved {:?} smartlinks", smartlinks.len());
-
-    //     for smartlink in smartlinks {
-    //         let reference = smartlink.to_holon_reference();
-
-    //         // The following:
-    //         // 1) adds an entry for relationship name if not already present (via `entry` API)
-    //         // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
-    //         // 3) pushes the new HolonReference into the vector -- without having to clone the vector
-
-    //         reference_map
-    //             .entry(smartlink.relationship_name)
-    //             .or_insert_with(Vec::new)
-    //             .push(reference);
-    //     }
-
-    //     // Now create the result
-
-    //     for (map_name, holon_reference) in reference_map {
-    //         let mut collection = HolonCollection::new_existing();
-    //         let key = holon_reference.get_key()?.ok_or_else(|| {
-    //             HolonError::Misc("Expected Smartlink to have a key, didn't get one.".to_string())
-    //         })?; // At least for now, all SmartLinks should be encoded with a key
-    //         collection.add_reference_with_key(key, holon_reference)?;
-    //         relationship_map.insert(map_name, collection);
-    //     }
-
-    //     Ok(relationship_map)
-    // }
 
     // *************** UTILITY METHODS ***************
 
@@ -144,10 +109,21 @@ impl fmt::Display for SmartReference {
 }
 
 impl ReadableHolonReferenceLayer for SmartReference {
-    fn clone_holon(&self, context: &dyn HolonsContextBehavior) -> Result<TransientHolon, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let holon_borrow = holon.borrow();
-        holon_borrow.clone_holon()
+    fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
+        self.clone_into_transient(context)
+    }
+
+    fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<RelationshipMap, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+
+        Ok(RelationshipMap::from(borrowed_holon.into_staged()?.get_staged_relationship_map()?))
     }
 
     fn get_holon_id(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
@@ -178,8 +154,8 @@ impl ReadableHolonReferenceLayer for SmartReference {
     /// It will attempt to get it from the smart_property_values map first to avoid having to
     /// retrieve the underlying holon. But, failing that, it will do a get_rc_holon from the cache
     /// manager in the context.
-    /// 
-    /// Returns: Option, None if property for given name does not exist in its PropertyMap. 
+    ///
+    /// Returns: Option, None if property for given name does not exist in its PropertyMap.
     fn get_property_value(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -264,6 +240,13 @@ impl ReadableHolonReferenceLayer for SmartReference {
         borrowed_holon.essential_content()
     }
 
+    fn into_model(&self, context: &dyn HolonsContextBehavior) -> Result<HolonNodeModel, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+
+        Ok(borrowed_holon.into_node())
+    }
+
     fn is_accessible(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -274,5 +257,45 @@ impl ReadableHolonReferenceLayer for SmartReference {
         holon.is_accessible(access_type)?;
 
         Ok(())
+    }
+}
+
+
+impl ToTransientHolon for SmartReference {
+    fn clone_into_transient(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
+        // Get access for space_manager.transient_manager via HolonSpaceBehavior, TransientHolonBehavior
+        let transient_manager_access = context.get_space_manager().get_transient_behavior_service();
+        let transient_manager = transient_manager_access.borrow();
+
+        // Create TransientHolon from Node data and add to transient manager
+        let transient_reference = transient_manager.create_from_model(self.into_model(context)?)?;
+
+        // Retrieve rc_holon by temporary id
+        let transient_manager_access = TransientReference::get_transient_manager_access(context);
+        let transient_manager = transient_manager_access.borrow();
+        let transient_holon =
+            transient_manager.get_holon_by_id(&transient_reference.get_temporary_id())?;
+        let mut rc_holon = transient_holon.borrow_mut();
+
+        // Bump version for tracking un-persisted holons, does an is_accessible check
+        rc_holon.increment_version()?;
+
+        // Clone relationships
+        match &mut *rc_holon {
+            Holon::Transient(transient_holon) => {
+                // TODO: fetch relationships
+            }
+            _ => {
+                return Err(HolonError::InvalidHolonReference(format!(
+                    "Expected TransientHolon, got: {:#?}",
+                    rc_holon
+                )))
+            }
+        }
+
+        Ok(rc_holon.clone().into_transient()?)
     }
 }

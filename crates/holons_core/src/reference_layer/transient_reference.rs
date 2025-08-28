@@ -9,7 +9,7 @@ use type_names::{
 
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
+use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
 
 use crate::{
     core_shared_objects::{
@@ -17,13 +17,14 @@ use crate::{
             holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior,
             TransientHolon,
         },
+        transient_holon_manager::ToTransientHolon,
         TransientManagerAccess,
     },
     reference_layer::{
         HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
         WriteableHolon, WriteableHolonReferenceLayer,
     },
-    HolonCollection,
+    HolonCollection, RelationshipMap,
 };
 
 #[derive(new, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +74,10 @@ impl TransientReference {
         }
     }
 
+    pub fn get_temporary_id(&self) -> TemporaryId {
+        self.id.clone()
+    }
+
     /// Retrieves access to the TransientHolonManager via the provided context.
     ///
     /// # Arguments
@@ -83,7 +88,7 @@ impl TransientReference {
     ///
     /// # Panics
     /// This function assumes that the context and space manager will always return valid references.
-    fn get_transient_manager_access(
+    pub fn get_transient_manager_access(
         context: &dyn HolonsContextBehavior,
     ) -> Arc<RefCell<dyn TransientManagerAccess>> {
         // Retrieve the space manager from the context
@@ -109,9 +114,7 @@ impl ReadableHolonReferenceLayer for TransientReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientHolon, HolonError> {
-        let holon = self.get_rc_holon(context)?;
-        let holon_read = holon.borrow();
-        holon_read.clone_holon()
+        self.clone_into_transient(context)
     }
 
     fn essential_content(
@@ -121,6 +124,16 @@ impl ReadableHolonReferenceLayer for TransientReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
         borrowed_holon.essential_content()
+    }
+
+    fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<RelationshipMap, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+
+        Ok(RelationshipMap::from(borrowed_holon.get_transient_relationship_map()?))
     }
 
     fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
@@ -190,6 +203,16 @@ impl ReadableHolonReferenceLayer for TransientReference {
         let key = holon.borrow().get_versioned_key()?;
 
         Ok(key)
+    }
+
+    fn into_model(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<HolonNodeModel, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+
+        Ok(borrowed_holon.into_node())
     }
 
     fn is_accessible(
@@ -386,5 +409,44 @@ impl WriteableHolon for TransientReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         self.remove_related_holons_ref_layer(context, name.to_relationship_name(), holons)
+    }
+}
+
+impl ToTransientHolon for TransientReference {
+    fn clone_into_transient(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientHolon, HolonError> {
+        // Get access for space_manager.transient_manager via HolonSpaceBehavior, TransientHolonBehavior
+        let transient_manager_access = context.get_space_manager().get_transient_behavior_service();
+        let transient_manager = transient_manager_access.borrow();
+
+        // Create TransientHolon from Node data and add to transient manager
+        let transient_reference = transient_manager.create_from_model(self.into_model(context)?)?;
+
+        // Retrieve rc_holon by temporary id
+        let transient_manager_access = TransientReference::get_transient_manager_access(context);
+        let transient_manager = transient_manager_access.borrow();
+        let transient_holon =
+            transient_manager.get_holon_by_id(&transient_reference.get_temporary_id())?;
+        let mut rc_holon = transient_holon.borrow_mut();
+
+        // Bump version for tracking un-persisted holons, does an is_accessible check
+        rc_holon.increment_version()?;
+
+        // Clone relationships
+        match &mut *rc_holon {
+            Holon::Transient(transient_holon) => {
+                // TODO relationships
+            }
+            _ => {
+                return Err(HolonError::InvalidHolonReference(format!(
+                    "Expected TransientHolon, got: {:#?}",
+                    rc_holon
+                )))
+            }
+        }
+
+        Ok(rc_holon.clone().into_transient()?)
     }
 }

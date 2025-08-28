@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use type_names::relationship_names::CoreRelationshipTypeName;
 use std::rc::Rc;
+use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::{
     core_shared_objects::{
@@ -8,12 +8,13 @@ use crate::{
         HolonCollection, TransientHolon,
     },
     reference_layer::{
-        HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer, SmartReference, StagedReference, TransientReference
-    },
+        HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer, SmartReference,
+        StagedReference, TransientReference,
+    }, RelationshipMap,
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyName, PropertyValue, RelationshipName};
+use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
@@ -51,6 +52,19 @@ impl ReadableHolonReferenceLayer for HolonReference {
             }
             HolonReference::Staged(staged_reference) => staged_reference.essential_content(context),
             HolonReference::Smart(smart_reference) => smart_reference.essential_content(context),
+        }
+    }
+
+    fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<RelationshipMap, HolonError> {
+        match self {
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.get_all_related_holons(context)
+            }
+            HolonReference::Staged(staged_reference) => staged_reference.get_all_related_holons(context),
+            HolonReference::Smart(smart_reference) => smart_reference.get_all_related_holons(context),
         }
     }
 
@@ -137,6 +151,17 @@ impl ReadableHolonReferenceLayer for HolonReference {
         }
     }
 
+    fn into_model(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<HolonNodeModel, HolonError> {
+        match self {
+            Self::Transient(reference) => reference.into_model(context),
+            Self::Staged(reference) => reference.into_model(context),
+            Self::Smart(reference) => reference.into_model(context),
+        }
+    }
+
     fn is_accessible(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -207,7 +232,8 @@ impl HolonReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                let collection = transient_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                let collection = transient_reference
+                    .get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -223,7 +249,8 @@ impl HolonReference {
                 }
             }
             HolonReference::Staged(staged_reference) => {
-                let collection = staged_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                let collection = staged_reference
+                    .get_related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -239,7 +266,10 @@ impl HolonReference {
                 }
             }
             HolonReference::Smart(smart_reference) => {
-                let collection = smart_reference.get_related_holons(context, CoreRelationshipTypeName::DescribedBy.as_relationship_name())?;
+                let collection = smart_reference.get_related_holons(
+                    context,
+                    CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+                )?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {

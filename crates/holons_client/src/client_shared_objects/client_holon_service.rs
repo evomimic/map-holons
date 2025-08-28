@@ -1,11 +1,7 @@
 #![allow(unused_variables)]
 
 use holons_core::{
-    core_shared_objects::{CommitResponse, Holon, HolonCollection},
-    {
-        reference_layer::{HolonServiceApi, HolonsContextBehavior},
-        HolonReference, SmartReference, StagedReference,
-    },
+    core_shared_objects::{CommitResponse, Holon, HolonCollection}, reference_layer::{HolonServiceApi, HolonsContextBehavior}, HolonReference, RelationshipMap, SmartReference, StagedReference
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -27,6 +23,14 @@ impl HolonServiceApi for ClientHolonService {
     }
 
     fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
+        todo!()
+    }
+
+    fn fetch_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        source_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
         todo!()
     }
 
