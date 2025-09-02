@@ -17,7 +17,9 @@ use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonReference, ReadableHolonReferenceLayer, SmartReference},
+    reference_layer::{
+        HolonReference, ReadableHolonReferenceLayer, SmartReference, TransientReference,
+    },
 };
 use integrity_core_types::{PropertyName, RelationshipName};
 
@@ -81,22 +83,25 @@ pub async fn execute_stage_new_from_clone(
     // Get the original holon (for comparison purposes)
     let original_holon: Holon = match original_test_ref {
         TestReference::TransientHolon(transient_reference) => {
-            match transient_reference.clone_holon(context) {
-                Ok(holon) => Holon::Transient(holon),
-                Err(err) => {
-                    error!("Failed to clone holon: {:?}", err);
-                    return; // or continue/fallback logic as appropriate
-                }
-            }
+            let transient_manager_access =
+                TransientReference::get_transient_manager_access(&*context);
+            let transient_manager = transient_manager_access.borrow();
+            transient_manager
+                .get_holon_by_id(&transient_reference.get_temporary_id())
+                .unwrap()
+                .borrow()
+                .clone()
+            // transient_reference.get_rc_holon().expect("Failed to get rc_holon")
         }
         TestReference::StagedHolon(staged_reference) => {
-            match staged_reference.clone_holon(context) {
-                Ok(holon) => Holon::Transient(holon),
-                Err(err) => {
-                    error!("Failed to clone holon: {:?}", err);
-                    return; // or continue/fallback logic as appropriate
-                }
-            }
+            let nursery_access = context.get_space_manager().get_nursery_access();
+            let nursery_read = nursery_access.borrow();
+            nursery_read
+                .get_holon_by_id(&staged_reference.get_temporary_id())
+                .unwrap()
+                .borrow()
+                .clone()
+            // staged_reference.get_rc_holon().expect("Failed to get rc_holon")
         }
         TestReference::SavedHolon(key) => match test_state.get_created_holon_by_key(&key) {
             Some(holon) => holon,

@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
@@ -11,7 +12,10 @@ use core_types::{HolonError, HolonId};
 use integrity_core_types::{LocalId, RelationshipName};
 
 
-pub trait HolonServiceApi: Debug {
+pub trait HolonServiceApi: Debug + Any {
+
+    fn as_any(&self) -> &dyn Any;
+    
     ///
     //fn install_app(&self) -> Result<AppInstallation, HolonError>;
     /// This function commits the staged holons to the persistent store

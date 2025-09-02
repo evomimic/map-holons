@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
 use super::HolonReference;
-use crate::reference_layer::HolonsContextBehavior;
+use crate::reference_layer::{HolonsContextBehavior, TransientReference};
 use crate::{
     core_shared_objects::{
         holon::{state::AccessType, EssentialHolonContent},
-        HolonCollection, TransientHolon,
+        HolonCollection,
     },
     RelationshipMap,
 };
@@ -15,19 +15,20 @@ use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, Relation
 use type_names::relationship_names::ToRelationshipName;
 
 pub trait ReadableHolonReferenceLayer {
+    /// Generic clone for all Holon variants. Resulting clone is always a TransientReference, regardless of source phase.
     fn clone_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientHolon, HolonError>;
+    ) -> Result<TransientReference, HolonError>;
 
-    /// Populates a full RelationshipMap by retrieving all related Holons for the source HolonReference. 
+    /// Populates a full RelationshipMap by retrieving all related Holons for the source HolonReference.
     /// The map returned will ONLY contain entries for relationships that have at least
     /// one related holon (i.e., none of the holon collections returned via the result map will have
     /// zero members).
-    /// 
-    /// For Transient & Staged Holons, it fetches and converts their relationship map to the CollectionState agnostic RelationshipMap type. 
+    ///
+    /// For Transient & Staged Holons, it fetches and converts their relationship map to the CollectionState agnostic RelationshipMap type.
     /// For a Saved Holon (SmartReference), it calls the GuestHolonService to fetch all Smartlinks.
-    /// 
+    ///
     fn get_all_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,

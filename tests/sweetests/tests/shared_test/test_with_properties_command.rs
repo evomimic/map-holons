@@ -19,7 +19,7 @@ use holon_dance_builders::with_properties_dance::build_with_properties_dance_req
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{ReadableHolonReferenceLayer, StagedReference},
+    reference_layer::{ReadableHolonReferenceLayer, WriteableHolonReferenceLayer, StagedReference},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};
@@ -50,7 +50,7 @@ pub async fn execute_with_properties(
 
     for (property_name, base_value) in properties.clone() {
         expected_holon
-            .with_property_value(property_name.clone(), base_value.clone())
+            .with_property_value(context, property_name.clone(), base_value.clone())
             .expect("Failed to add property value to expected holon");
     }
 
@@ -77,7 +77,7 @@ pub async fn execute_with_properties(
             debug!("Updated holon reference returned: {:?}", updated_holon);
 
             assert_eq!(
-                expected_holon.essential_content(),
+                expected_holon.essential_content(context),
                 updated_holon.essential_content(context),
                 "Updated Holon content did not match expected"
             );

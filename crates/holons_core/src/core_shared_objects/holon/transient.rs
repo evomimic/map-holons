@@ -14,11 +14,8 @@ use integrity_core_types::{
 };
 
 use crate::{
-    core_shared_objects::{
-        holon::StagedHolon,
-        TransientRelationshipMap,
-    },
-    HolonCollection,
+    core_shared_objects::{holon::HolonCloneModel, TransientRelationshipMap},
+    HolonCollection, RelationshipMap,
 };
 
 use super::{
@@ -91,22 +88,6 @@ impl TransientHolon {
         Ok(self)
     }
 
-    /// Converts the `TransientHolon` into a 'StagedHolon,
-    ///
-    /// This lifecycle transition takes place during the staging process when stage_holon is called by the nursery to update its staged pool.
-    ///
-    pub fn to_staged(self) -> Result<StagedHolon, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        let mut staged_holon = StagedHolon::new_for_create();
-        staged_holon.update_original_id(self.original_id.clone())?;
-        staged_holon.update_property_map(self.property_map.clone())?;
-        let map = self.get_transient_relationship_map()?;
-        let staged_map = map.to_staged()?;
-        staged_holon.init_relationships(staged_map)?;
-
-        Ok(staged_holon)
-    }
-
     pub fn update_relationship_map(
         &mut self,
         map: TransientRelationshipMap,
@@ -169,6 +150,15 @@ impl HolonBehavior for TransientHolon {
             self.get_key()?,
             Vec::new(), // defaulting to empty
         ))
+    }
+
+    fn get_holon_clone_model(&self) -> HolonCloneModel {
+        HolonCloneModel::new(
+            self.version.clone(),
+            self.original_id.clone(),
+            self.property_map.clone(),
+            Some(RelationshipMap::from(self.transient_relationships.clone())),
+        )
     }
 
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
@@ -287,7 +277,6 @@ impl HolonBehavior for TransientHolon {
         )
     }
 }
-
 
 // TODO: fix or delete
 // #[cfg(test)]

@@ -7,14 +7,14 @@ use crate::core_shared_objects::{
     TransientHolonManager, TransientManagerAccess,
 };
 use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior, TransientHolonBehavior,
+    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
+    TransientHolonBehavior,
 };
 use crate::{HolonCollectionApi, TransientCollection};
 use std::cell::RefCell;
 use std::sync::Arc;
 
 use std::fmt::{Debug, Formatter, Result};
-
 
 pub struct HolonSpaceManager {
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
@@ -83,6 +83,7 @@ impl HolonSpaceManager {
             transient_state: Arc::new(RefCell::new(TransientCollection::new())),
         }
     }
+
 }
 
 impl HolonSpaceBehavior for HolonSpaceManager {

@@ -386,9 +386,9 @@ pub fn stage_new_holon_dance(
     info!("----- Entered stage new holon dance");
 
     let staged_reference = {
-        if let RequestBody::TransientHolon(holon) = request.body {
+        if let RequestBody::TransientReference(reference) = request.body {
             // Stage the new holon
-            stage_new_holon_api(context, holon)?
+            stage_new_holon_api(context, reference)?
             // This operation will have added the staged_holon to the CommitManager's vector and returned a
             // StagedReference to it.
         } else {

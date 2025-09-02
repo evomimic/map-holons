@@ -23,12 +23,13 @@
 
 use std::{cell::RefCell, sync::Arc};
 
+use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
     SmartReference, StagedReference,
 };
 use crate::core_shared_objects::{
-    CommitResponse, Holon, HolonBehavior, TransientHolon,
+    CommitResponse, Holon, HolonBehavior,
 };
 use base_types::MapString;
 use core_types::HolonError;
@@ -224,10 +225,10 @@ pub fn stage_new_from_clone_api(
 ///
 pub fn stage_new_holon_api(
     context: &dyn HolonsContextBehavior,
-    holon: TransientHolon,
+    transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = get_staging_service(context);
-    let staged_reference = staging_service.borrow().stage_new_holon(holon)?;
+    let staged_reference = staging_service.borrow().stage_new_holon(context,transient_reference)?;
 
     Ok(staged_reference)
 }

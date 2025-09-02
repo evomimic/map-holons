@@ -1,9 +1,8 @@
 use derive_new::new;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashMap},
-    fmt,
     rc::Rc,
 };
 
@@ -12,16 +11,15 @@ use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 
-
 /// Custom RelationshipMap is only used for caching and will never be serialized
 #[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct RelationshipMap {
-    map: RefCell<HashMap<RelationshipName, Rc<HolonCollection>>>,
+    pub map: HashMap<RelationshipName, Rc<HolonCollection>>,
 }
 impl RelationshipMap {
     /// Creates a new, empty `RelationshipMap`.
     pub fn new_empty() -> Self {
-        Self { map: RefCell::new(HashMap::new()) }
+        Self { map: HashMap::new() }
     }
 
     /// Returns a shared reference (`Rc<HolonCollection>`) for the given `relationship_name`.
@@ -31,18 +29,18 @@ impl RelationshipMap {
         relationship_name: &RelationshipName,
     ) -> Option<Rc<HolonCollection>> {
         // Borrow the map immutably and clone the Rc for the requested relationship
-        self.map.borrow().get(relationship_name).cloned()
+        self.map.get(relationship_name).cloned()
     }
     /// Inserts a `HolonCollection` into the `RelationshipMap` for the given `relationship_name`.
-    pub fn insert(&self, relationship_name: RelationshipName, collection: Rc<HolonCollection>) {
+    pub fn insert(&mut self, relationship_name: RelationshipName, collection: Rc<HolonCollection>) {
         // Borrow the map mutably and insert the new collection
-        self.map.borrow_mut().insert(relationship_name, collection);
+        self.map.insert(relationship_name, collection);
     }
 
     /// Iterates over all relationships in the `RelationshipMap`.
     /// Returns a vector of `(RelationshipName, Rc<HolonCollection>)` pairs for read-only access.
     pub fn iter(&self) -> Vec<(RelationshipName, Rc<HolonCollection>)> {
-        self.map.borrow().iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+        self.map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 }
 
@@ -54,7 +52,7 @@ impl ReadableRelationship for RelationshipMap {
     fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
         let mut cloned_relationship_map = BTreeMap::new();
 
-        for (name, collection) in self.map.borrow().iter() {
+        for (name, collection) in self.map.iter() {
             let cloned_collection = collection.clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
             cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
         }
@@ -67,7 +65,7 @@ impl ReadableRelationship for RelationshipMap {
     // ====================
 
     fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
-        if let Some(rc_collection) = self.map.borrow().get(relationship_name) {
+        if let Some(rc_collection) = self.map.get(relationship_name) {
             // Clone the inner HolonCollection
             Rc::clone(rc_collection)
         } else {
@@ -83,8 +81,8 @@ impl Serialize for RelationshipMap {
     where
         S: serde::Serializer,
     {
-        let borrowed_map = self.map.borrow();
-        let serializable_map: HashMap<_, _> = borrowed_map
+        let serializable_map: HashMap<_, _> = self
+            .map
             .iter()
             .map(|(key, value)| (key.clone(), &**value)) // Deref Rc
             .collect();
@@ -102,7 +100,8 @@ impl<'de> Deserialize<'de> for RelationshipMap {
             HashMap::deserialize(deserializer)?;
         let wrapped_map: HashMap<_, _> =
             deserialized_map.into_iter().map(|(key, value)| (key, Rc::new(value))).collect();
-        Ok(RelationshipMap { map: RefCell::new(wrapped_map) })
+
+        Ok(RelationshipMap { map: wrapped_map })
     }
 }
 
@@ -115,9 +114,8 @@ impl From<StagedRelationshipMap> for RelationshipMap {
             new_map.insert(name, Rc::new(cloned_collection));
         }
 
-        RelationshipMap::new(RefCell::new(new_map))
+        RelationshipMap::new(new_map)
     }
-
 }
 
 impl From<TransientRelationshipMap> for RelationshipMap {
@@ -129,6 +127,6 @@ impl From<TransientRelationshipMap> for RelationshipMap {
             new_map.insert(name, Rc::new(cloned_collection));
         }
 
-        RelationshipMap::new(RefCell::new(new_map))
+        RelationshipMap::new(new_map)
     }
 }

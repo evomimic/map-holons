@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
@@ -21,8 +22,7 @@ use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
         holon::state::AccessType, nursery_access_internal::NurseryAccessInternal, CommitResponse,
-        Holon, HolonBehavior, HolonCollection, NurseryAccess, TransientHolon,
-        TransientRelationshipMap,
+        Holon, HolonBehavior, HolonCollection, NurseryAccess, TransientRelationshipMap,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior,
@@ -159,7 +159,10 @@ impl GuestHolonService {
     ///
     /// `Ok(Holon)` containing the newly created Local Space Holon if successful.
     /// `Err(HolonError)` if any errors occur during the process.
-    fn create_local_space_holon(&self) -> Result<Holon, HolonError> {
+    fn create_local_space_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Holon, HolonError> {
         // Define the name and description for the local space holon
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
@@ -172,18 +175,21 @@ impl GuestHolonService {
         let space_holon_reference = transient_manager.create_empty()?;
         space_holon_reference
             .with_property_value(
+                context,
                 PropertyName(MapString("name".to_string())),
                 name.clone().into_base_value(),
             )?
             .with_property_value(
+                context,
                 PropertyName(MapString("key".to_string())),
                 name.clone().into_base_value(),
             )?
             .with_property_value(
+                context,
                 PropertyName(MapString("description".to_string())),
                 description.into_base_value(),
             )?;
-        let space_holon_node = space_holon_reference.into_model()?;
+        let space_holon_node = space_holon_reference.into_model(context)?;
 
         // Try to create the holon node in the DHT
         let holon_record = create_holon_node(HolonNode::from(space_holon_node.clone()))
@@ -217,6 +223,7 @@ impl GuestHolonService {
             }
         }
     }
+
     /// Ensures that a Local Space Holon exists in the DHT. If not, it creates one.
     ///
     /// This function attempts to fetch the SpaceHolon from persistent storage.
@@ -227,7 +234,10 @@ impl GuestHolonService {
     ///
     /// * `Ok(HolonReference::Smart)` – The Local Space Holon reference if successful.
     /// * `Err(HolonError)` – If any errors occur during retrieval or creation.
-    pub fn ensure_local_holon_space(&self) -> Result<HolonReference, HolonError> {
+    pub fn ensure_local_holon_space(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<HolonReference, HolonError> {
         let space_holon_result =
             get_holon_by_path(LOCAL_HOLON_SPACE_PATH.to_string(), LinkTypes::LocalHolonSpace)?;
 
@@ -235,7 +245,7 @@ impl GuestHolonService {
             Some(holon) => holon,
             None => {
                 info!("Local Space Holon not found in storage, creating a new one.");
-                self.create_local_space_holon()?
+                self.create_local_space_holon(context)?
             }
         };
 
@@ -273,6 +283,10 @@ impl GuestHolonService {
 }
 
 impl HolonServiceApi for GuestHolonService {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn commit(&self, context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
@@ -348,7 +362,7 @@ impl HolonServiceApi for GuestHolonService {
             relationship_map.insert(map_name, Rc::new(collection));
         }
 
-        Ok(RelationshipMap::new(RefCell::new(relationship_map)))
+        Ok(RelationshipMap::new(relationship_map))
     }
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
@@ -416,21 +430,23 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<StagedReference, HolonError> {
         original_holon.is_accessible(context, AccessType::Clone)?;
 
-        let mut cloned_holon = original_holon.clone_holon(context)?;
+        let cloned_transient_reference = original_holon.clone_holon(context)?;
 
         // update key
-        cloned_holon.with_property_value(
+        cloned_transient_reference.with_property_value(
+            context,
             PropertyName(MapString("key".to_string())),
             BaseValue::StringValue(new_key),
         )?;
 
         // Reset the OriginalId to None
-        cloned_holon.update_original_id(None)?;
+        cloned_transient_reference.reset_original_id(context)?;
 
         match original_holon {
             HolonReference::Transient(_) => {}
             HolonReference::Staged(_) => {}
-            HolonReference::Smart(_) => cloned_holon.update_relationship_map(
+            HolonReference::Smart(_) => cloned_transient_reference.update_relationship_map(
+                context,
                 self.clone_existing_relationships_into_transient_map(
                     context,
                     original_holon.get_holon_id(context)?,
@@ -438,8 +454,10 @@ impl HolonServiceApi for GuestHolonService {
             )?,
         }
 
-        let cloned_staged_reference =
-            self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;
+        let cloned_staged_reference = self
+            .get_internal_nursery_access()?
+            .borrow()
+            .stage_new_holon(context, cloned_transient_reference)?;
 
         // Reset the PREDECESSOR to None
         cloned_staged_reference.with_predecessor(context, None)?;
@@ -457,9 +475,10 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<StagedReference, HolonError> {
         original_holon.is_accessible(context, AccessType::Clone)?;
 
-        let mut cloned_holon = original_holon.clone_holon(context)?;
+        let cloned_holon_transient_reference = original_holon.clone_holon(context)?;
 
-        cloned_holon.update_relationship_map(
+        cloned_holon_transient_reference.update_relationship_map(
+            context,
             self.clone_existing_relationships_into_transient_map(
                 context,
                 original_holon.get_holon_id(context)?,
@@ -467,7 +486,7 @@ impl HolonServiceApi for GuestHolonService {
         )?;
 
         let cloned_staged_reference =
-            self.get_internal_nursery_access()?.borrow().stage_new_holon(cloned_holon)?;
+            self.get_internal_nursery_access()?.borrow().stage_new_holon(context, cloned_holon_transient_reference)?;
 
         // Reset the PREDECESSOR to the original Holon being cloned from.
         cloned_staged_reference

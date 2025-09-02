@@ -2,6 +2,8 @@ use base_types::MapString;
 use core_types::HolonError;
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
+use crate::core_shared_objects::holon::HolonCloneModel;
+
 use super::{state::AccessType, EssentialHolonContent};
 
 /// The `HolonBehavior` trait defines the core interface for interacting with Holon instances,
@@ -17,6 +19,14 @@ pub trait HolonBehavior {
     /// Includes property data and key information, but excludes phase-specific metadata like
     /// `StagedState`, `HolonState`, or `SavedState`.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError>;
+
+    /// Retrieves from the Holon all of the fields necessary for cloning
+    ///
+    /// # Semantics
+    /// - HolonCloneModel {version, original_id, properties, relationships}
+    fn get_holon_clone_model(
+        &self
+    ) -> HolonCloneModel;
 
     /// Retrieves the Holon's primary key value (if present).
     ///

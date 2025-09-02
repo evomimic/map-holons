@@ -22,7 +22,9 @@ use holons_client::init_client_context;
 use holons_core::{
     core_shared_objects::holon::{Holon, HolonBehavior, TransientHolon},
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference},
+    reference_layer::{
+        HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference, TransientReference,
+    },
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};
@@ -32,7 +34,7 @@ use integrity_core_types::{PropertyMap, PropertyName};
 ///
 pub async fn execute_stage_new_holon(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    transient_holon: TransientHolon,
+    transient_holon: TransientReference,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
@@ -62,7 +64,7 @@ pub async fn execute_stage_new_holon(
         debug!("Staged holon reference returned: {:#?}", staged_holon);
 
         assert_eq!(
-            transient_holon.essential_content(),
+            transient_holon.essential_content(context),
             staged_holon.essential_content(context),
             "Staged Holon content did not match expected"
         );

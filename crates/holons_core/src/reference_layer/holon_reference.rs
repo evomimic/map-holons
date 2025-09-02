@@ -5,12 +5,13 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 use crate::{
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
-        HolonCollection, TransientHolon,
+        HolonCollection,
     },
     reference_layer::{
         HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer, SmartReference,
         StagedReference, TransientReference,
-    }, RelationshipMap,
+    },
+    RelationshipMap,
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -32,7 +33,7 @@ impl ReadableHolonReferenceLayer for HolonReference {
     fn clone_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientHolon, HolonError> {
+    ) -> Result<TransientReference, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
                 transient_reference.clone_holon(context)
@@ -63,8 +64,12 @@ impl ReadableHolonReferenceLayer for HolonReference {
             HolonReference::Transient(transient_reference) => {
                 transient_reference.get_all_related_holons(context)
             }
-            HolonReference::Staged(staged_reference) => staged_reference.get_all_related_holons(context),
-            HolonReference::Smart(smart_reference) => smart_reference.get_all_related_holons(context),
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.get_all_related_holons(context)
+            }
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.get_all_related_holons(context)
+            }
         }
     }
 
@@ -183,35 +188,24 @@ impl ReadableHolonReferenceLayer for HolonReference {
 
 /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
 impl HolonReference {
-    // pub fn stage_new_from_clone(
-    //     &self,
-    //     context: &dyn HolonsContextBehavior,
-    // ) -> Result<StagedReference, HolonError> {
-    //     let cloned_holon = match self {
-    //         HolonReference::Staged(staged_reference) => {
-    //             // Get a clone from the rc_holon in the commit_manager
-    //             staged_reference.stage_new_from_clone_deprecated(context)?
-    //         }
-    //         HolonReference::Smart(smart_reference) => {
-    //             // Get a clone from the rc_holon in the cache_manager
-    //             smart_reference.stage_new_from_clone_deprecated(context)?
-    //         }
-    //     };
-    //
-    //     let cloned_staged_reference = {
-    //         // Mutably borrow the commit_manager
-    //         let space_manager = context.get_space_manager();
-    //         // Stage the clone
-    //         space_manager.stage_new_holon(cloned_holon)?
-    //     };
-    //
-    //     // Reset the PREDECESSOR to None
-    //     cloned_staged_reference.with_predecessor(context, None)?;
-    //
-    //     Ok(cloned_staged_reference)
-    // }
+    pub fn clone_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<TransientReference, HolonError> {
+        self.is_accessible(context, AccessType::Clone)?;
+        match self {
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.clone_holon(context)
+            }
+            HolonReference::Staged(staged_reference) => {
+                staged_reference.clone_holon(context)
+            }
+            HolonReference::Smart(smart_reference) => {
+                smart_reference.clone_holon(context)
+            }
+        }
+    }
 
-    //
     /// Creates a `HolonReference` wrapping a `SmartReference` for the given `HolonId`.
     pub fn from_id(holon_id: HolonId) -> HolonReference {
         HolonReference::Smart(SmartReference::new_from_id(holon_id))
@@ -230,6 +224,7 @@ impl HolonReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
         match self {
             HolonReference::Transient(transient_reference) => {
                 let collection = transient_reference
@@ -291,6 +286,7 @@ impl HolonReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
         match self {
             HolonReference::Transient(transient_reference) => {
                 transient_reference.get_predecessor(context)
@@ -300,3 +296,5 @@ impl HolonReference {
         }
     }
 }
+
+// let relationships = self.get_all_related_holons(context)?;

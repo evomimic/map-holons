@@ -15,10 +15,10 @@ use crate::{
     core_shared_objects::{
         holon::{
             holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior,
-            TransientHolon,
+            HolonCloneModel, TransientHolon,
         },
-        transient_holon_manager::ToTransientHolon,
-        TransientManagerAccess,
+        transient_holon_manager::ToHolonCloneModel,
+        TransientManagerAccess, TransientRelationshipMap,
     },
     reference_layer::{
         HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
@@ -97,6 +97,18 @@ impl TransientReference {
         // Get the nursery access
         space_manager.get_transient_manager_access()
     }
+
+    pub fn reset_original_id(&self, context: &dyn HolonsContextBehavior) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let mut borrow = rc_holon.borrow_mut();
+        borrow.update_original_id(None)
+    }
+
+    pub fn update_relationship_map(&self, context: &dyn HolonsContextBehavior, map: TransientRelationshipMap) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let mut borrow = rc_holon.borrow_mut();
+        borrow.update_relationship_map(map)
+    }
 }
 
 impl fmt::Display for TransientReference {
@@ -113,8 +125,18 @@ impl ReadableHolonReferenceLayer for TransientReference {
     fn clone_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientHolon, HolonError> {
-        self.clone_into_transient(context)
+    ) -> Result<TransientReference, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon_clone_model = rc_holon.borrow().get_holon_clone_model();
+
+        let transient_behavior_service =
+            context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior = transient_behavior_service.borrow();
+
+        let cloned_holon_transient_reference =
+            transient_behavior.new_from_clone_model(holon_clone_model)?;
+
+        Ok(cloned_holon_transient_reference)
     }
 
     fn essential_content(
@@ -412,41 +434,14 @@ impl WriteableHolon for TransientReference {
     }
 }
 
-impl ToTransientHolon for TransientReference {
-    fn clone_into_transient(
+impl ToHolonCloneModel for TransientReference {
+    fn get_holon_clone_model(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientHolon, HolonError> {
-        // Get access for space_manager.transient_manager via HolonSpaceBehavior, TransientHolonBehavior
-        let transient_manager_access = context.get_space_manager().get_transient_behavior_service();
-        let transient_manager = transient_manager_access.borrow();
+    ) -> Result<HolonCloneModel, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon_clone_model = rc_holon.borrow().get_holon_clone_model();
 
-        // Create TransientHolon from Node data and add to transient manager
-        let transient_reference = transient_manager.create_from_model(self.into_model(context)?)?;
-
-        // Retrieve rc_holon by temporary id
-        let transient_manager_access = TransientReference::get_transient_manager_access(context);
-        let transient_manager = transient_manager_access.borrow();
-        let transient_holon =
-            transient_manager.get_holon_by_id(&transient_reference.get_temporary_id())?;
-        let mut rc_holon = transient_holon.borrow_mut();
-
-        // Bump version for tracking un-persisted holons, does an is_accessible check
-        rc_holon.increment_version()?;
-
-        // Clone relationships
-        match &mut *rc_holon {
-            Holon::Transient(transient_holon) => {
-                // TODO relationships
-            }
-            _ => {
-                return Err(HolonError::InvalidHolonReference(format!(
-                    "Expected TransientHolon, got: {:#?}",
-                    rc_holon
-                )))
-            }
-        }
-
-        Ok(rc_holon.clone().into_transient()?)
+        Ok(holon_clone_model)
     }
 }

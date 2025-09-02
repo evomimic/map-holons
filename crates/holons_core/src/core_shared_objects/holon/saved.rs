@@ -4,6 +4,8 @@ use base_types::{MapInteger, MapString};
 use core_types::HolonError;
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
+use crate::core_shared_objects::holon::HolonCloneModel;
+
 use super::{
     state::{AccessType, HolonState, SavedState, ValidationState},
     EssentialHolonContent, HolonBehavior,
@@ -58,6 +60,15 @@ impl HolonBehavior for SavedHolon {
     /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(self.property_map.clone(), self.get_key()?, Vec::new()))
+    }
+
+    fn get_holon_clone_model(&self) -> HolonCloneModel {
+        HolonCloneModel::new(
+            self.version.clone(),
+            self.original_id.clone(),
+            self.property_map.clone(),
+            None,
+        )
     }
 
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
@@ -171,7 +182,7 @@ impl HolonBehavior for SavedHolon {
         // Attempt to extract local_id using get_local_id method, default to "None" if not available
         let local_id = match self.get_local_id() {
             Ok(local_id) => local_id.to_string(), // Convert LocalId to String
-            Err(e) => format!("<Error: {:?}>", e),  // If local_id is not found or error occurred
+            Err(e) => format!("<Error: {:?}>", e), // If local_id is not found or error occurred
         };
 
         // Format the summary string
@@ -181,5 +192,3 @@ impl HolonBehavior for SavedHolon {
         )
     }
 }
-
-

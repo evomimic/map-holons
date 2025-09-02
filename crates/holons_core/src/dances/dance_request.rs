@@ -1,4 +1,5 @@
-use crate::core_shared_objects::{Holon, HolonBehavior, TransientHolon};
+use crate::core_shared_objects::{Holon, HolonBehavior};
+use crate::reference_layer::TransientReference;
 use serde::{Deserialize, Serialize};
 
 use crate::dances::SessionState;
@@ -32,7 +33,7 @@ pub enum RequestBody {
     None,
     Holon(Holon),
     TargetHolons(RelationshipName, Vec<HolonReference>),
-    TransientHolon(TransientHolon),
+    TransientReference(TransientReference),
     HolonId(HolonId),
     ParameterValues(PropertyMap),
     StagedRef(StagedReference),

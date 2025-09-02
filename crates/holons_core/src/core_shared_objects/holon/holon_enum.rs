@@ -1,5 +1,6 @@
-use base_types::MapString;
+use base_types::{MapInteger, MapString};
 use core_types::HolonError;
+use derive_new::new;
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +9,7 @@ use super::{HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
 use crate::core_shared_objects::{
     holon::EssentialHolonContent
 };
+use crate::RelationshipMap;
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -15,6 +17,14 @@ pub enum Holon {
     Transient(TransientHolon),
     Staged(StagedHolon),
     Saved(SavedHolon),
+}
+
+#[derive(new, Debug, Clone, Serialize, Deserialize)]
+pub struct HolonCloneModel {
+    pub version: MapInteger,
+    pub original_id: Option<LocalId>,
+    pub properties: PropertyMap,
+    pub relationships: Option<RelationshipMap>
 }
 
 // ==================================
@@ -51,6 +61,16 @@ impl HolonBehavior for Holon {
             Holon::Transient(h) => h.essential_content(),
             Holon::Staged(h) => h.essential_content(),
             Holon::Saved(h) => h.essential_content(),
+        }
+    }
+
+    fn get_holon_clone_model(
+        &self,
+    ) -> HolonCloneModel {
+        match self {
+            Holon::Transient(h) => h.get_holon_clone_model(),
+            Holon::Staged(h) => h.get_holon_clone_model(),
+            Holon::Saved(h) => h.get_holon_clone_model(),
         }
     }
 

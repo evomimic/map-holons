@@ -1,13 +1,11 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::debug;
-use uuid::timestamp::context;
 
 use crate::core_shared_objects::{HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
 use crate::HolonsContextBehavior;
 use core_types::{HolonError, HolonId};
 use integrity_core_types::RelationshipName;
-
 
 #[derive(Clone, Debug)]
 pub struct RelationshipCache {
@@ -21,13 +19,15 @@ impl RelationshipCache {
     }
 
     /// Retrieves a RelationshipMap for the source HolonReference by calling the HolonService to fetch all related Holons.
-    pub fn get_all_related_holons(&self, context: &dyn HolonsContextBehavior,
-        source_holon_id: &HolonId) -> Result<RelationshipMap, HolonError> {
+    pub fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        source_holon_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
         let space_manager = context.get_space_manager();
         let holon_service = space_manager.get_holon_service();
 
         holon_service.fetch_all_related_holons(context, source_holon_id)
-        
     }
 
     /// Retrieves the `HolonCollection` containing references to all holons that are related

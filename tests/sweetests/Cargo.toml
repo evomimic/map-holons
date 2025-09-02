@@ -38,7 +38,7 @@ rstest = "0.25.0"
 holochain = { version = "0.5", default-features = false, features = [
     "sweettest",
     "wasmer_sys",
-    "datachannel-vendored"
+    # "datachannel-vendored"
 ] }
 tokio = { version = "1.35", features = ["full"] }
 async-std = "1"
