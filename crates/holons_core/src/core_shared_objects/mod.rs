@@ -30,7 +30,7 @@ pub use holon::{Holon, HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
 pub use holon_cache::HolonCache;
 pub use holon_cache_manager::HolonCacheManager;
 pub use holon_collection::{CollectionState, HolonCollection};
-pub use holon_pool::HolonPool;
+pub use holon_pool::*;
 pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;
 pub use relationship::*;

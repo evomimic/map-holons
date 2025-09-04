@@ -3,8 +3,7 @@
 use rstest::*;
 
 use crate::shared_test::{
-    setup_book_author_steps_with_context,
-    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    setup_book_author_steps_with_context, test_context::init_fixture_context,
     test_data_types::DancesTestCase,
 };
 use base_types::{MapBoolean, MapInteger, MapString};
@@ -21,7 +20,7 @@ use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, Relationshi
 pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture);
+    let fixture_context = init_fixture_context();
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     let mut test_case = DancesTestCase::new(

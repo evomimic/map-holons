@@ -3,7 +3,7 @@
 use rstest::*;
 
 use crate::shared_test::{
-    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_context::init_fixture_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
@@ -21,12 +21,12 @@ use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, Relationshi
 #[fixture]
 pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let fixture_context = init_test_context(TestFixture);
-
     let mut test_case = DancesTestCase::new(
         "DeleteHolon Testcase".to_string(),
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.".to_string(),
     );
+
+    let fixture_context = init_fixture_context();
 
     // Get transient manager behavior
     let transient_manager_behavior_service =
@@ -34,16 +34,11 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     let transient_manager_behavior = transient_manager_behavior_service.borrow();
 
     //  ADD STEP:  STAGE:  Book Holon  //
-    let book_transient_reference = transient_manager_behavior.create_empty()?;
-
     let book_holon_key = MapString(BOOK_KEY.to_string());
+    let book_transient_reference =
+        transient_manager_behavior.create_empty(book_holon_key.clone())?;
 
     book_transient_reference
-        .with_property_value(
-            &*fixture_context,
-            PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(book_holon_key.clone()),
-        )?
         .with_property_value(
             &*fixture_context,
             PropertyName(MapString("title".to_string())),

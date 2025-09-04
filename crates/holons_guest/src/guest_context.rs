@@ -1,6 +1,7 @@
 use std::{cell::RefCell, sync::Arc};
 
 use crate::guest_shared_objects::GuestHolonService;
+use core_types::HolonError;
 use holons_core::{
     core_shared_objects::{
         holon_pool::SerializableHolonPool, nursery_access_internal::NurseryAccessInternal,
@@ -10,7 +11,6 @@ use holons_core::{
     },
     reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior},
 };
-use core_types::HolonError;
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations **within the Holochain guest environment**.
@@ -87,7 +87,7 @@ pub fn init_guest_context(
     nursery.import_staged_holons(staged_holons); // Load staged holons
 
     // Step 3: Create and initialize the Nursery
-    let mut transient_manager = TransientHolonManager::new();
+    let mut transient_manager = TransientHolonManager::new_empty();
     transient_manager.import_transient_holons(transient_holons); // Load transient holons
 
     // Step 4: Register internal access

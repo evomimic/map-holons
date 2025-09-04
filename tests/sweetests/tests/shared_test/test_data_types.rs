@@ -15,7 +15,7 @@ use core_types::{HolonError, HolonId};
 use integrity_core_types::{PropertyMap, RelationshipName};
 
 use holons_core::{
-    core_shared_objects::{Holon, HolonBehavior, TransientHolon},
+    core_shared_objects::{Holon, HolonBehavior, SerializableHolonPool, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{
@@ -71,6 +71,7 @@ pub struct DancesTestCase {
     pub name: String,
     pub description: String,
     pub steps: VecDeque<DanceTestStep>,
+    pub test_session_state: SerializableHolonPool,
 }
 
 #[derive(Clone, Debug)]
@@ -91,7 +92,7 @@ pub enum DanceTestStep {
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveRelatedHolons(StagedReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
-    StageHolon(TransientReference), // Associated data is expected Holon, it could be an empty Holon (i.e., with no internal state)
+    StageHolon(TransientReference),
     StageNewFromClone(TestReference, MapString, ResponseStatusCode),
     StageNewVersion(MapString, ResponseStatusCode),
     WithProperties(StagedReference, PropertyMap, ResponseStatusCode), // Update properties for Holon at StagedReference with PropertyMap
@@ -324,7 +325,12 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
 
 impl DancesTestCase {
     pub fn new(name: String, description: String) -> Self {
-        Self { name, description, steps: VecDeque::new() }
+        Self {
+            name,
+            description,
+            steps: VecDeque::new(),
+            test_session_state: SerializableHolonPool::default(),
+        }
     }
 
     pub fn add_abandon_staged_changes_step(

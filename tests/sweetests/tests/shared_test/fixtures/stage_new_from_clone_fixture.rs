@@ -2,7 +2,7 @@ use rstest::*;
 
 use crate::shared_test::{
     setup_book_author_steps_with_context,
-    test_context::{init_test_context, TestContextConfigOption::TestFixture},
+    test_context::init_fixture_context,
     test_data_types::{
         DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
     },
@@ -15,7 +15,7 @@ use holons_core::{
     dances::ResponseStatusCode,
     reference_layer::{
         HolonReference, ReadableHolon, ReadableHolonReferenceLayer, StagedReference,
-        WriteableHolon, WriteableHolonReferenceLayer, TransientReference
+        TransientReference, WriteableHolon, WriteableHolonReferenceLayer,
     },
 };
 use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
@@ -27,7 +27,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // The fixture has its own Nursery which is used as a scratch pad during the test setup phase.
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture);
+    let fixture_context = init_fixture_context();
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     let mut test_case = DancesTestCase::new(

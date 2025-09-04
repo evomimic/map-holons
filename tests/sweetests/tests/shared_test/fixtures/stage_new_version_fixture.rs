@@ -2,9 +2,8 @@ use rstest::*;
 
 use crate::shared_test::{
     setup_book_author_steps_with_context,
-    test_context::init_test_context,
+    test_context::init_fixture_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
-    TestContextConfigOption::TestFixture,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
@@ -26,7 +25,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     // NOTE: This context will NOT be shared by test executors. The fixture's client context
     // will go away once Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture);
+    let fixture_context = init_fixture_context();
     let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)

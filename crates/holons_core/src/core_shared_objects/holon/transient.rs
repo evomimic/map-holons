@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, TemporaryId};
+use core_types::HolonError;
 use integrity_core_types::{
     HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
@@ -39,7 +39,7 @@ pub struct TransientHolon {
     version: MapInteger,     // Used to add to hash content for creating TemporaryID
     holon_state: HolonState, // Mutable or Immutable
     validation_state: ValidationState,
-    temporary_id: Option<TemporaryId>, // Ephemeral identifier for TransientHolons
+    // temporary_id: Option<TemporaryId>, // Ephemeral identifier for TransientHolons
     property_map: PropertyMap,         // Self-describing property data
     transient_relationships: TransientRelationshipMap, // Tracks ephemeral relationships
     original_id: Option<LocalId>,      // Tracks the predecessor, if cloned from a SavedHolon
@@ -55,7 +55,7 @@ impl TransientHolon {
         version: MapInteger,
         holon_state: HolonState,
         validation_state: ValidationState,
-        temporary_id: Option<TemporaryId>,
+        // temporary_id: Option<TemporaryId>,
         property_map: PropertyMap,
         transient_relationships: TransientRelationshipMap,
         original_id: Option<LocalId>,
@@ -64,12 +64,17 @@ impl TransientHolon {
             version,
             holon_state,
             validation_state,
-            temporary_id,
+            // temporary_id,
             property_map,
             transient_relationships,
             original_id,
         }
     }
+
+    // // Used to assign a unique id for Staged and Transient Holons, called during holon_pool.insert_holon
+    // pub(crate) fn init_temporary_id(&mut self, id: TemporaryId) {
+    //     self.temporary_id = Some(id);
+    // }
 
     // ==============
     //    MUTATORS

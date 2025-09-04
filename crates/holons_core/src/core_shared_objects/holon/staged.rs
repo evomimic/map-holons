@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, TemporaryId};
+use core_types::HolonError;
 use integrity_core_types::{
     HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
@@ -24,8 +24,7 @@ pub struct StagedHolon {
     holon_state: HolonState,   // Mutable or Immutable
     staged_state: StagedState, // ForCreate, ForUpdate, Abandoned, or Committed
     validation_state: ValidationState,
-    temporary_id: Option<TemporaryId>, // Ephemeral identifier for staged Holons // RFC4122 UUID
-    property_map: PropertyMap,         // Self-describing property data
+    property_map: PropertyMap, // Self-describing property data
     staged_relationships: StagedRelationshipMap,
     original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
     errors: Vec<HolonError>,      // Populated during the commit process
@@ -43,7 +42,6 @@ impl StagedHolon {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
-            temporary_id: None,
             property_map: PropertyMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
@@ -65,7 +63,6 @@ impl StagedHolon {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
-            temporary_id: None,
             property_map: model.properties,
             staged_relationships,
             original_id: model.original_id,
@@ -82,13 +79,17 @@ impl StagedHolon {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForUpdate,
             validation_state: ValidationState::ValidationRequired,
-            temporary_id: None,
             property_map: PropertyMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: Some(original_id),
             errors: Vec::new(),
         }
     }
+
+    // // Used to assign the unique id generated during holon_pool.insert_holon, only applicable for Staged and Transient Holons.
+    // pub(crate) fn init_temporary_id(&mut self, id: TemporaryId) {
+    //     self.temporary_id = Some(id);
+    // }
 
     // ====================
     //    DATA ACCESSORS
@@ -153,7 +154,10 @@ impl StagedHolon {
         Ok(())
     }
 
-    pub fn update_relationship_map(&mut self, map: StagedRelationshipMap) -> Result<(), HolonError> {
+    pub fn update_relationship_map(
+        &mut self,
+        map: StagedRelationshipMap,
+    ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.staged_relationships = map;
 
@@ -383,7 +387,6 @@ mod tests {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
-            temporary_id: None,
             property_map: BTreeMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
@@ -455,7 +458,6 @@ mod tests {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
-            temporary_id: None,
             property_map: BTreeMap::new(),
             staged_relationships: StagedRelationshipMap { map: BTreeMap::new() },
             original_id: None,

@@ -122,6 +122,16 @@ pub struct HolonPool {
     keyed_index: BTreeMap<MapString, TemporaryId>,
 }
 
+impl From<SerializableHolonPool> for HolonPool {
+    fn from(pool: SerializableHolonPool) -> Self {
+        let mut holons = BTreeMap::new();
+        for (id, holon) in pool.holons {
+            holons.insert(id, Rc::new(RefCell::new(holon)));
+        }
+        Self { holons, keyed_index: pool.keyed_index.clone() }
+    }
+}
+
 impl HolonPool {
     /// Creates an empty HolonPool
     pub fn new() -> Self {

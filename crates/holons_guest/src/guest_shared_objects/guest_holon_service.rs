@@ -172,16 +172,11 @@ impl GuestHolonService {
         let transient_manager = transient_manager_access.borrow();
 
         // Create new (empty) TransientHolon
-        let space_holon_reference = transient_manager.create_empty()?;
+        let space_holon_reference = transient_manager.create_empty(name.clone())?;
         space_holon_reference
             .with_property_value(
                 context,
                 PropertyName(MapString("name".to_string())),
-                name.clone().into_base_value(),
-            )?
-            .with_property_value(
-                context,
-                PropertyName(MapString("key".to_string())),
                 name.clone().into_base_value(),
             )?
             .with_property_value(

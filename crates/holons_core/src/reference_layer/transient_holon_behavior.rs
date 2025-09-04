@@ -1,4 +1,4 @@
-use crate::core_shared_objects::holon::{HolonCloneModel, TransientHolon};
+use crate::core_shared_objects::holon::HolonCloneModel;
 use crate::reference_layer::TransientReference;
 use base_types::MapString;
 use core_types::HolonError;
@@ -19,23 +19,12 @@ pub trait TransientHolonBehavior {
     // TransientHolon Constructors
     // ===========================
 
-    fn create_empty(&self) -> Result<TransientReference, HolonError>;
-
-    fn create_immutable(&self) -> Result<TransientReference, HolonError>;
+    fn create_empty(&self, key: MapString) -> Result<TransientReference, HolonError>;
 
     fn new_from_clone_model(
         &self,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError>;
-
-    // =======
-    //  WRITE
-    // =======
-
-    /// Adds the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the keyed_index to allow the transient holon
-    /// to be retrieved by key.
-    fn add_new_holon(&self, holon: TransientHolon) -> Result<TransientReference, HolonError>;
 
     // ======
     //  READ

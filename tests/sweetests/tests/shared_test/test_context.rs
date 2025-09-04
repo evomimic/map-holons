@@ -1,11 +1,12 @@
+use crate::test_data_types::DancesTestCase;
+use core_types::HolonError;
 use holochain::prelude::DbKind::Test;
 use holons_client::client_context::ClientHolonsContext;
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::{
-    space_manager::HolonSpaceManager, Nursery, ServiceRoutingPolicy,
-    TransientHolonManager,
+    space_manager::HolonSpaceManager, HolonPool, Nursery, ServiceRoutingPolicy,
+    TransientHolonManager, TransientHolonPool,
 };
-use core_types::HolonError;
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -22,35 +23,58 @@ pub struct TestHolonsContext {
     space_manager: Arc<HolonSpaceManager>,
 }
 
-/// The TestHolonsContext can be configured for `TestFixture` usage (running in the Holochain Test
-/// Orchestrator) or for `TestExecution` usage (running in the Holochain Mock Conductor)
-pub enum TestContextConfigOption {
-    TestFixture,
-    TestExecution,
-}
-
-/// Initializes a new test context with a fresh `HolonSpaceManager`.
-///
-/// Under the TestFixture configuration option, this function sets up a `TestHolonsContext` with:
-/// - An **empty nursery** (no staged holons).
+/// Initializes a new fixture context with a fresh `HolonSpaceManager` with parameters:
 /// - A default `HolonServiceApi` implementation (`ClientHolonService`).
+/// - An **empty nursery** (no staged holons).
+/// - An **empty transient_manager**.
 /// - A space manager configured with guest-specific routing policies.
 ///
 /// # Returns
 /// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
-pub fn init_test_context(
-    _config_option: TestContextConfigOption,
-) -> Arc<dyn HolonsContextBehavior> {
+pub fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
 
-    // Step 2: Create an empty TransientHolonManager for the client
-    let transient_manager = TransientHolonManager::new();
+    // Step 3: Create an empty TransientHolonManager for the client
+    let transient_manager = TransientHolonManager::new_empty();
 
-    // Create a new `HolonSpaceManager` wrapped in `Arc`
+    // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
+    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+        holon_service, // Service for holons
+        None,          // No local space holon initially
+        ServiceRoutingPolicy::Combined,
+        nursery,
+        transient_manager,
+    ));
+
+    // Wrap in `TestHolonsContext` and return as trait object
+    Arc::new(TestHolonsContext::new(space_manager))
+}
+
+/// Initializes a new test context with a fresh `HolonSpaceManager` with parameters:
+/// - A default `HolonServiceApi` implementation (`ClientHolonService`).
+/// - An **empty nursery** (no staged holons).
+/// - A populated transient_manager from the test_session_state.
+/// - A space manager configured with guest-specific routing policies.
+///
+/// # Returns
+/// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
+pub fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn HolonsContextBehavior> {
+    // Step 1: Create the ClientHolonService
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+
+    // Step 2: Create an empty Nursery for the client
+    let nursery = Nursery::new();
+
+    /// Step 3: Set transient holons in client TransientManager
+    let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
+        HolonPool::from(test_case.test_session_state.clone()),
+    ));
+
+    // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         holon_service, // Service for holons
         None,          // No local space holon initially
