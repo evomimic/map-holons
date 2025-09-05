@@ -14,6 +14,8 @@ pub mod prelude;
 pub mod query_layer;
 pub mod utils;
 
+mod holon_loader;
+
 // pub use core_shared_objects::*;
 pub use core_shared_objects::{
     CollectionState, CommitRequestStatus, CommitResponse, HolonCache, HolonCacheAccess,
