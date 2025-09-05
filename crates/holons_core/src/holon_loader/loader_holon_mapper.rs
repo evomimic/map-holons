@@ -12,9 +12,9 @@
 
 use tracing::{debug, instrument};
 
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::HolonError;
-
+use integrity_core_types::PropertyMap;
 use crate::{
     // Re-exported in holons_core::lib
     HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference,
@@ -55,10 +55,10 @@ impl LoaderHolonMapper {
             debug!("Pass1: staging target from LoaderHolon #{i}");
 
             // Build and stage target holon
-            let staged: StagedReference = Self::build_target_staged(context, loader_ref)?;
+            let (staged, key_opt) = Self::build_target_staged(context, loader_ref)?;
 
-            // Index by key if present
-            if let Some(key) = staged.get_key(context)? {
+            // Index by the loader holon's key if present
+            if let Some(key) = key_opt {
                 out.keyed_staged.push((key, staged.clone()));
             }
 
@@ -70,23 +70,45 @@ impl LoaderHolonMapper {
         Ok(out)
     }
 
+
     /// Build and immediately stage a *properties-only* target holon from a LoaderHolon.
-    /// Relationships (including DescribedBy) are *not* applied here.
+    ///
+    /// RETURNS:
+    ///   (staged_target, loader_key) where loader_key is *not* committed.
+    ///
+    /// IMPORTANT:
+    /// - We copy *all instance properties except* the loader-only `key` and `type`.
+    /// - `key` is derivable (per key rules) and must *not* be committed as a property.
+    /// - `type` is converted to a DescribedBy relationship in Pass 2 (resolver), so it
+    ///   must *not* be committed as a property here.
     pub fn build_target_staged(
         context: &dyn HolonsContextBehavior,
         loader: &HolonReference,
-    ) -> Result<StagedReference, HolonError> {
+    ) -> Result<(StagedReference, Option<MapString>), HolonError> {
         // Read the LoaderHolon's current property map
         let holon_content = loader.essential_content(context)?;
-        let property_map = holon_content.property_map;
+        let mut property_map: PropertyMap = holon_content.property_map;
 
-        // Make a fresh transient target and copy the property map
+        // Capture the loader key (if any) before stripping
+        let key_opt: Option<MapString> = property_map
+            .get(&N::prop(N::PROP_KEY))
+            .and_then(|opt| opt.as_ref())
+            .and_then(|bv| match bv {
+                BaseValue::StringValue(ms) => Some(ms.clone()),
+                _ => None,
+            });
+
+        // Strip loader-only fields: `key`, `type`
+        property_map.remove(&N::prop(N::PROP_KEY));
+        property_map.remove(&N::prop(N::PROP_TYPE));
+
+        // Build a fresh transient and set the filtered property map
         let mut target = TransientHolon::new();
         target.update_property_map(property_map)?;
 
-        // Stage it
+        // Stage it to obtain a writable staged reference
         let staged = stage_new_holon_api(context, target)?;
-        Ok(staged)
+        Ok((staged, key_opt))
     }
 
 

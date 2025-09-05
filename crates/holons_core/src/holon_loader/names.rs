@@ -33,6 +33,7 @@ pub const REL_INSTANCE_RELATIONSHIPS:       &str = "INSTANCE_RELATIONSHIPS";
 
 // Common / LoaderHolon
 pub const PROP_KEY:                         &str = "key";
+pub const PROP_TYPE:                        &str = "type";
 
 // HolonLoaderSegment instance properties
 pub const PROP_FIRST:                       &str = "first";
