@@ -17,7 +17,7 @@ impl LoaderRefResolver {
         key_index: &HashMap<MapString, StagedReference>,
         queued_rel_refs: Vec<crate::core_shared_objects::holon::TransientHolon>,
     ) -> Result<ResolverOutcome, HolonError> {
-        // resolve LoaderRelationshipReference holons and add declared links (incl. DescribedBy & inverse)
+        // resolve LoaderRelationshipReference holons and add declared links (incl. DescribedBy)
         unimplemented!()
     }
 }
