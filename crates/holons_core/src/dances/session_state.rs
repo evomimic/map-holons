@@ -61,7 +61,7 @@ impl SessionState {
         self.staged_holons = staged_holons;
     }
 
-    /// Sets a new staged holon pool.
+    /// Sets a new transient holon pool.
     pub fn set_transient_holons(&mut self, transient_holons: SerializableHolonPool) {
         self.transient_holons = transient_holons;
     }

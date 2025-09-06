@@ -71,7 +71,40 @@ pub struct DancesTestCase {
     pub name: String,
     pub description: String,
     pub steps: VecDeque<DanceTestStep>,
-    pub test_session_state: SerializableHolonPool,
+    pub test_session_state: TestSessionState,
+}
+
+impl DancesTestCase {
+    /// Loads the current test_session_state from the fixture_context the given `TestSessionState` instance.
+    ///
+    /// This function exports transient holons from the HolonSpaceManager and injects them into
+    /// the provided `session_state`, ensuring that the outgoing `TestCase` includes
+    /// the latest state from the local context.
+    ///
+    /// # Arguments
+    /// * `fixture_context` - A reference to the `HolonsContextBehavior`, which provides access to the space manager.
+    /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
+    ///
+    /// This function is called automatically within `rs_test` and should not be used directly.
+    pub fn load_test_session_state(&mut self, fixture_context: &dyn HolonsContextBehavior) {
+        let space_manager = fixture_context.get_space_manager();
+        let transient_holons = space_manager.export_transient_holons();
+        self.test_session_state.set_transient_holons(transient_holons);
+    }
+}
+#[derive(Clone, Debug, Default)]
+pub struct TestSessionState {
+    transient_holons: SerializableHolonPool,
+}
+
+impl TestSessionState {
+    pub fn set_transient_holons(&mut self, transient_holons: SerializableHolonPool) {
+        self.transient_holons = transient_holons;
+    }
+
+    pub fn get_transient_holons(&self) -> &SerializableHolonPool {
+        &self.transient_holons
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -329,7 +362,7 @@ impl DancesTestCase {
             name,
             description,
             steps: VecDeque::new(),
-            test_session_state: SerializableHolonPool::default(),
+            test_session_state: TestSessionState::default(),
         }
     }
 

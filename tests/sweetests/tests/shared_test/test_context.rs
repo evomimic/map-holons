@@ -69,9 +69,9 @@ pub fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn HolonsContex
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();
 
-    /// Step 3: Set transient holons in client TransientManager
+    // Step 3: Set transient holons in client TransientManager
     let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
-        HolonPool::from(test_case.test_session_state.clone()),
+        HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
     ));
 
     // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`

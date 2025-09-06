@@ -77,8 +77,6 @@ pub fn setup_book_author_steps_with_context(
             BaseValue::StringValue(MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
             )))?;
-    test_case.test_session_state.holons.insert(book_id.clone(), rc_book_holon.borrow().clone());
-    test_case.test_session_state.keyed_index.insert(book_holon_key, book_id);
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     let book_staged_reference = stage_new_holon_api(context, book_transient_reference)?;
@@ -102,8 +100,6 @@ pub fn setup_book_author_steps_with_context(
             PropertyName(MapString("last name".to_string())),
             BaseValue::StringValue(MapString("Briggs".to_string())),
         )?;
-    test_case.test_session_state.holons.insert(person_1_id.clone(), rc_person_1.borrow().clone());
-    test_case.test_session_state.keyed_index.insert(person_1_key.clone(), person_1_id);
     test_case.add_stage_holon_step(person_1_transient_reference.clone())?;
 
     let person_1_staged_reference =
@@ -128,8 +124,6 @@ pub fn setup_book_author_steps_with_context(
             PropertyName(MapString("last name".to_string())),
             BaseValue::StringValue(MapString("Smith".to_string())),
         )?;
-    test_case.test_session_state.holons.insert(person_2_id.clone(), rc_person_2.borrow().clone());
-    test_case.test_session_state.keyed_index.insert(person_2_key.clone(), person_2_id);
     test_case.add_stage_holon_step(person_2_transient_reference.clone())?;
 
     let person_2_staged_reference = stage_new_holon_api(context, person_2_transient_reference)?;
@@ -153,8 +147,6 @@ pub fn setup_book_author_steps_with_context(
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
         )?;
-    test_case.test_session_state.holons.insert(publisher_id.clone(), rc_publisher.borrow().clone());
-    test_case.test_session_state.keyed_index.insert(publisher_key, publisher_id);
     test_case.add_stage_holon_step(publisher_transient_reference.clone())?;
 
     stage_new_holon_api(context, publisher_transient_reference)?;
@@ -182,6 +174,9 @@ pub fn setup_book_author_steps_with_context(
         ResponseStatusCode::OK,
         Holon::Transient(rc_book_holon.borrow().clone().into_transient()?),
     )?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
 
     Ok(relationship_name)
 }
