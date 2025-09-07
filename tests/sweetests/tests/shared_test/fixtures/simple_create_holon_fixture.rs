@@ -18,10 +18,8 @@ use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, Relationshi
 ///
 #[fixture]
 pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
-    // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    // Init
     let fixture_context = init_fixture_context();
-    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     let mut test_case = DancesTestCase::new(
         "Simple Create/Get Holon Testcase".to_string(),
@@ -34,12 +32,16 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
-    // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
-    // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
+    // // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
+    // // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
+    // // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let _author_relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+
+    // // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
