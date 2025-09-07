@@ -1,7 +1,5 @@
 // #![allow(dead_code)]
 
-use rstest::*;
-
 use crate::shared_test::{
     setup_book_author_steps_with_context, test_context::init_fixture_context,
     test_data_types::DancesTestCase,
@@ -13,6 +11,7 @@ use holons_core::{
     query_layer::QueryExpression, HolonCollection, HolonsContextBehavior, StagedReference,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
+use rstest::*;
 
 /// This function creates a set of simple (undescribed) holons
 ///

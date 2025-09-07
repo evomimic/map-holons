@@ -38,14 +38,11 @@ use type_names::relationship_names::ToRelationshipName;
 /// *BOOK_TO_PERSON_RELATIONSHIP from Book Holon to person 1 and person 2
 /// The Nursery within the supplied context is used as the test data setup area
 pub fn setup_book_author_steps_with_context(
-    context: &dyn HolonsContextBehavior,
+    fixture_context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
 ) -> Result<RelationshipName, HolonError> {
     // Set relationship
     let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
-
-    // Init test context
-    let fixture_context = init_fixture_context();
 
     // Get transient manager behavior
     let transient_manager_behavior_service =
