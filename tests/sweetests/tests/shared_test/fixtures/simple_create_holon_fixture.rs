@@ -52,5 +52,8 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
+
     Ok(test_case.clone())
 }

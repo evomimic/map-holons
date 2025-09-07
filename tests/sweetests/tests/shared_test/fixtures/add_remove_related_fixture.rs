@@ -28,6 +28,7 @@ use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, Relationshi
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
+    // Init
     let mut test_case = DancesTestCase::new(
         "Simple Add / Remove Related Holon Testcase".to_string(),
         "1) Ensure DB starts empty,\n\
@@ -43,10 +44,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // let _ = holochain_trace::test_run();
 
-    // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
     let fixture_context = init_fixture_context();
-    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -58,6 +56,10 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // from the book to the two persons
     let relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+
+    // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     info!("fixture: book and author setup complete.");
 
@@ -129,6 +131,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         query_expression,
         ResponseStatusCode::OK,
     )?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
 
     Ok(test_case.clone())
 }

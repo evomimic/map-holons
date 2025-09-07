@@ -84,7 +84,7 @@ pub fn setup_book_author_steps_with_context(
         transient_manager_behavior.create_empty(person_1_key.clone())?;
     let person_1_id = person_1_transient_reference.get_temporary_id();
 
-    let rc_person_1 = transient_manager.get_holon_by_id(&person_1_id)?;
+    let _rc_person_1 = transient_manager.get_holon_by_id(&person_1_id)?;
 
     person_1_transient_reference
         .with_property_value(
@@ -108,7 +108,7 @@ pub fn setup_book_author_steps_with_context(
         transient_manager_behavior.create_empty(person_2_key.clone())?;
     let person_2_id = person_2_transient_reference.get_temporary_id();
 
-    let rc_person_2 = transient_manager.get_holon_by_id(&person_2_id)?;
+    let _rc_person_2 = transient_manager.get_holon_by_id(&person_2_id)?;
 
     person_2_transient_reference
         .with_property_value(
@@ -132,7 +132,7 @@ pub fn setup_book_author_steps_with_context(
         transient_manager_behavior.create_empty(publisher_key.clone())?;
     let publisher_id = publisher_transient_reference.get_temporary_id();
 
-    let rc_publisher = transient_manager.get_holon_by_id(&publisher_id)?;
+    let _rc_publisher = transient_manager.get_holon_by_id(&publisher_id)?;
 
     publisher_transient_reference
         .with_property_value(

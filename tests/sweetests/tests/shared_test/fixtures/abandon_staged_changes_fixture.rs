@@ -34,15 +34,19 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
 
+    // // Ensure DB count //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either key
     let fixture_context = init_fixture_context();
-    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     let relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+
+    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
     expected_count += staging_service.borrow().staged_count();
 
     let person_1_staged_reference = staging_service
@@ -52,10 +56,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let book_staged_reference =
         staging_service.borrow().get_staged_holon_by_base_key(&MapString(BOOK_KEY.to_string()))?;
 
-    //====//
-
-    // Ensure DB count //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    //====//``
 
     // Get transient manager behavior
     let transient_manager_behavior_service =
@@ -102,11 +103,9 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  STAGE:  Abandoned Holon1 (H4)  //
     let abandoned_holon_1_transient_reference =
         transient_manager_behavior.create_empty(MapString("Abandon1".to_string()))?;
+    let _rc_abandoned_holon_1 = transient_manager
+        .get_holon_by_id(&abandoned_holon_1_transient_reference.get_temporary_id())?;
 
-    // let rc_abandoned_holon_1 = transient_manager
-    //     .get_holon_by_id(&abandoned_holon_1_transient_reference.get_temporary_id())?;
-
-    // let mut abandoned_holon_1 = rc_abandoned_holon_1.borrow().into_transient()?;
     abandoned_holon_1_transient_reference.with_property_value(
         &*fixture_context,
         PropertyName(MapString("example abandon1".to_string())),
@@ -121,10 +120,9 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  STAGE:  Abandoned Holon2 (H5)  //
     let abandoned_holon_2_transient_reference =
         transient_manager_behavior.create_empty(MapString("Abandon2".to_string()))?;
-    // let rc_abandoned_holon_2 = transient_manager
-    //     .get_holon_by_id(&abandoned_holon_2_transient_reference.get_temporary_id())?;
+    let _rc_abandoned_holon_2 = transient_manager
+        .get_holon_by_id(&abandoned_holon_2_transient_reference.get_temporary_id())?;
 
-    // let mut abandoned_holon_2 = rc_abandoned_holon_2.borrow().into_transient()?;
     abandoned_holon_2_transient_reference.with_property_value(
         &*fixture_context,
         PropertyName(MapString("example abandon2".to_string())),
@@ -166,6 +164,9 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         query_expression,
         ResponseStatusCode::OK,
     )?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
 
     Ok(test_case.clone())
 }
