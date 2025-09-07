@@ -64,5 +64,8 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(book_holon_key.clone(), ResponseStatusCode::NotFound)?;
 
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
+
     Ok(test_case.clone())
 }
