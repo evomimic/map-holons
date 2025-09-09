@@ -97,7 +97,7 @@ impl TransientHolonBehavior for TransientHolonManager {
             if let Some(relationship_map) = holon_clone_model.relationships {
                 relationship_map.clone_for_new_source()?
             } else {
-                return Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()));
+                TransientRelationshipMap::new_empty()
             }
         };
         let holon = TransientHolon::with_fields(

@@ -22,10 +22,9 @@ impl RelationshipCache {
     pub fn get_all_related_holons(
         &self,
         context: &dyn HolonsContextBehavior,
+        holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        let space_manager = context.get_space_manager();
-        let holon_service = space_manager.get_holon_service();
 
         holon_service.fetch_all_related_holons(context, source_holon_id)
     }

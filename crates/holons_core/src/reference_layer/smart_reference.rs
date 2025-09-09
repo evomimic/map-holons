@@ -8,12 +8,13 @@ use crate::{
     core_shared_objects::{
         cache_access::HolonCacheAccess,
         holon::{state::AccessType, EssentialHolonContent, HolonCloneModel},
+        relationship_behavior::ReadableRelationship,
         transient_holon_manager::ToHolonCloneModel,
         Holon, HolonBehavior, HolonCollection,
     },
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
-        TransientReference,
+        holon_collection_api::HolonCollectionApi, HolonReference, HolonsContextBehavior,
+        ReadableHolon, ReadableHolonReferenceLayer, TransientReference,
     },
     RelationshipMap,
 };
@@ -123,8 +124,18 @@ impl ReadableHolonReferenceLayer for SmartReference {
             context.get_space_manager().get_transient_behavior_service();
         let transient_behavior = transient_behavior_service.borrow();
 
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+
+        // HolonCloneModel for SavedHolon will have 'None' for relationships, as populating its RelationshipMap
+        // is deferred to the reference layer, because context is needed that is only available in reference layer.
         let cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(self.get_holon_clone_model(context)?)?;
+            transient_behavior.new_from_clone_model(borrowed_holon.get_holon_clone_model())?;
+
+        let relationships = self.get_all_related_holons(context)?;
+
+        cloned_holon_transient_reference
+            .update_relationship_map(context, relationships.clone_for_new_source()?);
 
         Ok(cloned_holon_transient_reference)
     }
@@ -133,10 +144,10 @@ impl ReadableHolonReferenceLayer for SmartReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<RelationshipMap, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
+        let cache_access = self.get_cache_access(context);
+        let relationship_map = cache_access.get_all_related_holons(context, &self.get_id()?)?;
 
-        Ok(RelationshipMap::from(borrowed_holon.into_staged()?.get_staged_relationship_map()?))
+        Ok(relationship_map)
     }
 
     fn get_holon_id(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
@@ -283,7 +294,6 @@ impl ToHolonCloneModel for SmartReference {
     ) -> Result<HolonCloneModel, HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let mut model = rc_holon.borrow().get_holon_clone_model();
-        model.relationships = Some(self.get_all_related_holons(context)?);
 
         Ok(model)
     }

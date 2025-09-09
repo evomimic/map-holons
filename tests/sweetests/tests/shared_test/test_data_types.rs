@@ -77,6 +77,7 @@ pub struct DancesTestCase {
 #[derive(Clone, Debug, Default)]
 pub struct TestSessionState {
     transient_holons: SerializableHolonPool,
+    pub key_suffix_count: usize,
 }
 
 impl TestSessionState {
