@@ -145,6 +145,4 @@ pub async fn execute_stage_new_from_clone(
         }
     }
 
-    // 8. Update the key_suffix_count
-    test_state.key_suffix_count += 1;
 }
