@@ -40,9 +40,9 @@ pub struct TransientHolon {
     holon_state: HolonState, // Mutable or Immutable
     validation_state: ValidationState,
     // temporary_id: Option<TemporaryId>, // Ephemeral identifier for TransientHolons
-    property_map: PropertyMap,         // Self-describing property data
+    property_map: PropertyMap, // Self-describing property data
     transient_relationships: TransientRelationshipMap, // Tracks ephemeral relationships
-    original_id: Option<LocalId>,      // Tracks the predecessor, if cloned from a SavedHolon
+    original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
 }
 
 // ==================================
@@ -70,11 +70,6 @@ impl TransientHolon {
             original_id,
         }
     }
-
-    // // Used to assign a unique id for Staged and Transient Holons, called during holon_pool.insert_holon
-    // pub(crate) fn init_temporary_id(&mut self, id: TemporaryId) {
-    //     self.temporary_id = Some(id);
-    // }
 
     // ==============
     //    MUTATORS

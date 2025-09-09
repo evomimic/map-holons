@@ -145,6 +145,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientReference, HolonError> {
+        self.is_accessible(context, AccessType::Clone)?;
         let rc_holon = self.get_rc_holon(context)?;
         let holon_clone_model = rc_holon.borrow().get_holon_clone_model();
 

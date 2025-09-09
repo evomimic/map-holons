@@ -53,7 +53,7 @@ impl StagedHolon {
     pub fn new_from_clone_model(model: HolonCloneModel) -> Result<Self, HolonError> {
         let staged_relationships: StagedRelationshipMap = {
             if let Some(relationship_map) = model.relationships {
-                StagedRelationshipMap::from(relationship_map)
+                relationship_map.clone_for_staged()?
             } else {
                 return Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()));
             }
@@ -85,11 +85,6 @@ impl StagedHolon {
             errors: Vec::new(),
         }
     }
-
-    // // Used to assign the unique id generated during holon_pool.insert_holon, only applicable for Staged and Transient Holons.
-    // pub(crate) fn init_temporary_id(&mut self, id: TemporaryId) {
-    //     self.temporary_id = Some(id);
-    // }
 
     // ====================
     //    DATA ACCESSORS

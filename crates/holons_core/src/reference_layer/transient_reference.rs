@@ -104,7 +104,11 @@ impl TransientReference {
         borrow.update_original_id(None)
     }
 
-    pub fn update_relationship_map(&self, context: &dyn HolonsContextBehavior, map: TransientRelationshipMap) -> Result<(), HolonError> {
+    pub fn update_relationship_map(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        map: TransientRelationshipMap,
+    ) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
         let mut borrow = rc_holon.borrow_mut();
         borrow.update_relationship_map(map)
@@ -126,6 +130,7 @@ impl ReadableHolonReferenceLayer for TransientReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientReference, HolonError> {
+        self.is_accessible(context, AccessType::Clone)?;
         let rc_holon = self.get_rc_holon(context)?;
         let holon_clone_model = rc_holon.borrow().get_holon_clone_model();
 

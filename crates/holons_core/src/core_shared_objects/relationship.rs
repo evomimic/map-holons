@@ -22,6 +22,18 @@ impl RelationshipMap {
         Self { map: HashMap::new() }
     }
 
+    /// Converts to a StagedRelationshipMap.
+    pub fn clone_for_staged(&self) -> Result<StagedRelationshipMap, HolonError> {
+        let mut cloned_map = BTreeMap::new();
+
+        for (name, rc_collection) in self.map.iter() {
+            let mut cloned_collection = rc_collection.clone_for_staged()?;
+            cloned_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection.clone())));
+        }
+
+        Ok(StagedRelationshipMap::new(cloned_map))
+    }
+
     /// Returns a shared reference (`Rc<HolonCollection>`) for the given `relationship_name`.
     /// Returns `None` if the relationship is not found.
     pub fn get_collection_for_relationship(
@@ -49,15 +61,17 @@ impl ReadableRelationship for RelationshipMap {
     //     CONSTRUCTORS
     // =====================
 
+    /// Since all Holons begin their lifecylce as Transient, so too does their relationship_map.
     fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
-        let mut cloned_relationship_map = BTreeMap::new();
+        let mut cloned_map = BTreeMap::new();
 
-        for (name, collection) in self.map.iter() {
-            let cloned_collection = collection.clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
-            cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
+        for (name, rc_collection) in self.map.iter() {
+            // Sets CollectionState::Transient
+            let cloned_collection = rc_collection.clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
+            cloned_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
         }
 
-        Ok(TransientRelationshipMap::new(cloned_relationship_map))
+        Ok(TransientRelationshipMap::new(cloned_map))
     }
 
     // ====================

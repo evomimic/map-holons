@@ -120,6 +120,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientReference, HolonError> {
+        self.is_accessible(context, AccessType::Clone)?;
         let transient_behavior_service =
             context.get_space_manager().get_transient_behavior_service();
         let transient_behavior = transient_behavior_service.borrow();

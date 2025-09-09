@@ -423,8 +423,6 @@ impl HolonServiceApi for GuestHolonService {
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
-        original_holon.is_accessible(context, AccessType::Clone)?;
-
         let cloned_transient_reference = original_holon.clone_holon(context)?;
 
         // update key
@@ -437,17 +435,17 @@ impl HolonServiceApi for GuestHolonService {
         // Reset the OriginalId to None
         cloned_transient_reference.reset_original_id(context)?;
 
-        match original_holon {
-            HolonReference::Transient(_) => {}
-            HolonReference::Staged(_) => {}
-            HolonReference::Smart(_) => cloned_transient_reference.update_relationship_map(
-                context,
-                self.clone_existing_relationships_into_transient_map(
-                    context,
-                    original_holon.get_holon_id(context)?,
-                )?,
-            )?,
-        }
+        // match original_holon {
+        //     HolonReference::Transient(_) => {}
+        //     HolonReference::Staged(_) => {}
+        //     HolonReference::Smart(_) => cloned_transient_reference.update_relationship_map(
+        //         context,
+        //         self.clone_existing_relationships_into_transient_map(
+        //             context,
+        //             original_holon.get_holon_id(context)?,ß
+        //         )?,
+        //     )?,
+        // }
 
         let cloned_staged_reference = self
             .get_internal_nursery_access()?
@@ -468,20 +466,12 @@ impl HolonServiceApi for GuestHolonService {
         context: &dyn HolonsContextBehavior,
         original_holon: SmartReference,
     ) -> Result<StagedReference, HolonError> {
-        original_holon.is_accessible(context, AccessType::Clone)?;
-
         let cloned_holon_transient_reference = original_holon.clone_holon(context)?;
 
-        cloned_holon_transient_reference.update_relationship_map(
-            context,
-            self.clone_existing_relationships_into_transient_map(
-                context,
-                original_holon.get_holon_id(context)?,
-            )?,
-        )?;
-
-        let cloned_staged_reference =
-            self.get_internal_nursery_access()?.borrow().stage_new_holon(context, cloned_holon_transient_reference)?;
+        let cloned_staged_reference = self
+            .get_internal_nursery_access()?
+            .borrow()
+            .stage_new_holon(context, cloned_holon_transient_reference)?;
 
         // Reset the PREDECESSOR to the original Holon being cloned from.
         cloned_staged_reference

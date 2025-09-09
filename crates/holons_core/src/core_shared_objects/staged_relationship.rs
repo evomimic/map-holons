@@ -203,16 +203,3 @@ impl<'de> Deserialize<'de> for StagedRelationshipMap {
         Ok(Self { map: wrapped_map })
     }
 }
-
-impl From<RelationshipMap> for StagedRelationshipMap {
-    fn from(map: RelationshipMap) -> Self {
-        let mut new_map = BTreeMap::new();
-
-        for (name, rc_collection) in map.map {
-            let collection = rc_collection.as_ref();
-            new_map.insert(name, Rc::new(RefCell::new(collection.clone())));
-        }
-
-        StagedRelationshipMap::new(new_map)
-    }
-}
