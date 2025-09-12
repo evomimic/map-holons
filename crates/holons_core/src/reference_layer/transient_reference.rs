@@ -277,21 +277,12 @@ impl WriteableHolonReferenceLayer for TransientReference {
 
         // Get access to the source holon and its relationshp map
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow_mut();
+        let mut holon = rc_holon.borrow_mut();
         let mut transient_relationship_map = holon.get_transient_relationship_map()?;
-
-        debug!(
-            "Here is the RelationshipMap before adding related Holons: {:#?}",
-            transient_relationship_map
-        );
 
         // Delegate adding holons to the `TransientRelationshipMap`
         transient_relationship_map.add_related_holons(context, relationship_name, holons)?;
-
-        debug!(
-            "Here is the RelationshipMap after adding related Holons: {:#?}",
-            transient_relationship_map
-        );
+        holon.update_relationship_map(transient_relationship_map)?;
 
         Ok(())
     }
