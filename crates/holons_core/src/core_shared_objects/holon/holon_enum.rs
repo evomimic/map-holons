@@ -45,23 +45,6 @@ impl Holon {
         }
     }
 
-    // Used by create_temporary_id to know which string to add to hash function //
-
-    pub fn is_staged(&self) -> bool {
-        match self {
-            Holon::Staged(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_transient(&self) -> bool {
-        match self {
-            Holon::Transient(_) => true,
-            _ => false,
-        }
-    }
-    //
-
     // Helps to distinguish from non-persisted Holons and shortcut to error throws
     pub fn is_saved(&self) -> bool {
         match self {

@@ -246,12 +246,6 @@ impl HolonPool {
                 holon.increment_version()?;
                 versioned_key = holon.get_versioned_key()?;
             }
-            if holon.is_staged() {
-                versioned_key.0 += "staged"
-            }
-            if holon.is_transient() {
-                versioned_key.0 += "transient"
-            }
 
             let id = create_temporary_id_from_key(&versioned_key);
 
