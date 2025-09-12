@@ -182,7 +182,7 @@ impl HolonBehavior for TransientHolon {
             .get_key()?
             .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
-        Ok(MapString(key.0 + &self.version.0.to_string()))
+        Ok(MapString(format!("{}__{}_transient", key.0, &self.version.0.to_string())))
     }
 
     fn get_local_id(&self) -> Result<LocalId, HolonError> {

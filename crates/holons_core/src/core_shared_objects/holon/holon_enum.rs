@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::state::AccessType;
 use super::{HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
-use crate::core_shared_objects::{
-    holon::EssentialHolonContent
-};
+use crate::core_shared_objects::holon::EssentialHolonContent;
 use crate::RelationshipMap;
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
@@ -24,7 +22,7 @@ pub struct HolonCloneModel {
     pub version: MapInteger,
     pub original_id: Option<LocalId>,
     pub properties: PropertyMap,
-    pub relationships: Option<RelationshipMap>
+    pub relationships: Option<RelationshipMap>,
 }
 
 // ==================================
@@ -46,6 +44,31 @@ impl Holon {
             _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
         }
     }
+
+    // Used by create_temporary_id to know which string to add to hash function //
+
+    pub fn is_staged(&self) -> bool {
+        match self {
+            Holon::Staged(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Holon::Transient(_) => true,
+            _ => false,
+        }
+    }
+    //
+
+    // Helps to distinguish from non-persisted Holons and shortcut to error throws
+    pub fn is_saved(&self) -> bool {
+        match self {
+            Holon::Saved(_) => true,
+            _ => false,
+        }
+    }
 }
 
 // ================================
@@ -64,9 +87,7 @@ impl HolonBehavior for Holon {
         }
     }
 
-    fn get_holon_clone_model(
-        &self,
-    ) -> HolonCloneModel {
+    fn get_holon_clone_model(&self) -> HolonCloneModel {
         match self {
             Holon::Transient(h) => h.get_holon_clone_model(),
             Holon::Staged(h) => h.get_holon_clone_model(),

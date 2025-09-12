@@ -12,7 +12,7 @@ pub trait WriteableHolonReferenceLayer {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
 
-    fn remove_property_value_ref_layer(&self, context: &dyn HolonsContextBehavior, name: PropertyName) -> Result<&Self, HolonError>;
+    fn remove_property_value_ref_layer(&self, context: &dyn HolonsContextBehavior, name: PropertyName) -> Result<(), HolonError>;
 
     fn remove_related_holons_ref_layer(
         &self,
@@ -25,7 +25,7 @@ pub trait WriteableHolonReferenceLayer {
         &self,
         context: &dyn HolonsContextBehavior,
         descriptor_reference: HolonReference,
-    ) -> Result<&Self, HolonError>;
+    ) -> Result<(), HolonError>;
 
     fn with_predecessor(
         &self,
@@ -33,12 +33,12 @@ pub trait WriteableHolonReferenceLayer {
         predecessor_reference_option: Option<HolonReference>,
     ) -> Result<(), HolonError>;
 
-    fn with_property_value(
+    fn with_property_value_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
         value: BaseValue,
-    ) -> Result<&Self, HolonError>;
+    ) -> Result<(), HolonError>;
 }
 
 pub trait WriteableHolon: WriteableHolonReferenceLayer {
@@ -49,7 +49,14 @@ pub trait WriteableHolon: WriteableHolonReferenceLayer {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
 
-    fn remove_property_value<T: ToPropertyName>(&self, context: &dyn HolonsContextBehavior, name: T) -> Result<&Self, HolonError>;
+    fn with_property_value<T: ToPropertyName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+        value: BaseValue,
+    ) -> Result<(), HolonError>;
+
+    fn remove_property_value<T: ToPropertyName>(&self, context: &dyn HolonsContextBehavior, name: T) -> Result<(), HolonError>;
 
     fn remove_related_holons<T: ToRelationshipName>(
         &self,

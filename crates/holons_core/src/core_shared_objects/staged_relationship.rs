@@ -68,7 +68,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
 use crate::core_shared_objects::HolonCollection;
-use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, RelationshipMap};
+use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 

@@ -50,7 +50,7 @@ use integrity_core_types::{PropertyName, RelationshipName};
 ///  in a `HolonReference`
 pub async fn execute_stage_new_from_clone(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    original_test_ref: TestReference,
+    original_test_reference: TestReference,
     new_key: MapString,
     expected_response: ResponseStatusCode,
 ) {
@@ -62,7 +62,7 @@ pub async fn execute_stage_new_from_clone(
     info!("Got context from test_state");
 
     // 2. Construct the HolonReference to the original holon
-    let original_holon_ref: HolonReference = match original_test_ref.clone() {
+    let original_holon_reference: HolonReference = match original_test_reference.clone() {
         TestReference::TransientHolon(transient_reference) => {
             HolonReference::Transient(transient_reference)
         }
@@ -80,40 +80,10 @@ pub async fn execute_stage_new_from_clone(
         }
     };
 
-    // Get the original holon (for comparison purposes)
-    let original_holon: Holon = match original_test_ref {
-        TestReference::TransientHolon(transient_reference) => {
-            let transient_manager_access =
-                TransientReference::get_transient_manager_access(&*context);
-            let transient_manager = transient_manager_access.borrow();
-            transient_manager
-                .get_holon_by_id(&transient_reference.get_temporary_id())
-                .unwrap()
-                .borrow()
-                .clone()
-            // transient_reference.get_rc_holon().expect("Failed to get rc_holon")
-        }
-        TestReference::StagedHolon(staged_reference) => {
-            let nursery_access = context.get_space_manager().get_nursery_access();
-            let nursery_read = nursery_access.borrow();
-            nursery_read
-                .get_holon_by_id(&staged_reference.get_temporary_id())
-                .unwrap()
-                .borrow()
-                .clone()
-            // staged_reference.get_rc_holon().expect("Failed to get rc_holon")
-        }
-        TestReference::SavedHolon(key) => match test_state.get_created_holon_by_key(&key) {
-            Some(holon) => holon,
-            None => {
-                panic!("Holon with key {key} not found in created_holons");
-            }
-        },
-    };
-
     // 3. Build the DanceRequest
-    let request = build_stage_new_from_clone_dance_request(original_holon_ref, new_key)
-        .expect("Failed to build stage_new_from_clone request");
+    let request =
+        build_stage_new_from_clone_dance_request(original_holon_reference.clone(), new_key)
+            .expect("Failed to build stage_new_from_clone request");
 
     debug!("Dance Request: {:#?}", request);
 
@@ -130,11 +100,11 @@ pub async fn execute_stage_new_from_clone(
 
     // 6. If successful, verify the cloned Holon
     if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::StagedRef(cloned_holon) = response.body {
+        if let ResponseBody::HolonReference(cloned_holon) = response.body {
             info!("Cloned holon reference returned: {:?}", cloned_holon);
 
             assert_eq!(
-                original_holon.essential_content(),
+                original_holon_reference.essential_content(context),
                 cloned_holon.essential_content(context),
                 "Cloned Holon content did not match original"
             );
@@ -144,5 +114,4 @@ pub async fn execute_stage_new_from_clone(
             panic!("Expected StagedRef in response body, but got {:?}", response.body);
         }
     }
-
 }

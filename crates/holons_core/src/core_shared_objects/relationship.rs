@@ -27,7 +27,7 @@ impl RelationshipMap {
         let mut cloned_map = BTreeMap::new();
 
         for (name, rc_collection) in self.map.iter() {
-            let mut cloned_collection = rc_collection.clone_for_staged()?;
+            let cloned_collection = rc_collection.clone_for_staged()?;
             cloned_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection.clone())));
         }
 

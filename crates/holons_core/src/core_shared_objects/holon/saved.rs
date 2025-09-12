@@ -88,6 +88,9 @@ impl HolonBehavior for SavedHolon {
         }
     }
 
+    // ?TODO:  What should this be for SavedHolon ? Return error ?
+    // not sure why we need a version for this type
+    //
     /// Retrieves the unique versioned key (key property value + semantic version)
     ///
     /// # Semantics

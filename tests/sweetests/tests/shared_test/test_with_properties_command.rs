@@ -19,7 +19,9 @@ use holon_dance_builders::with_properties_dance::build_with_properties_dance_req
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{ReadableHolonReferenceLayer, WriteableHolonReferenceLayer, StagedReference},
+    reference_layer::{
+        ReadableHolonReferenceLayer, StagedReference, WriteableHolon, WriteableHolonReferenceLayer, HolonReference
+    },
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};
@@ -32,7 +34,7 @@ use integrity_core_types::{PropertyMap, PropertyName};
 
 pub async fn execute_with_properties(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    original_holon: StagedReference,
+    original_holon: HolonReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
 ) {
@@ -44,7 +46,7 @@ pub async fn execute_with_properties(
     info!("Original Holon: {:?}", original_holon);
 
     // 3. Create the expected holon by applying the property updates
-    let mut expected_holon = original_holon
+    let expected_holon = original_holon
         .clone_holon(context)
         .expect("Failed to clone original holon into expected holon");
 
@@ -73,7 +75,7 @@ pub async fn execute_with_properties(
 
     // 7. If successful, verify the updated holon
     if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::StagedRef(updated_holon) = response.body {
+        if let ResponseBody::HolonReference(updated_holon) = response.body {
             debug!("Updated holon reference returned: {:?}", updated_holon);
 
             assert_eq!(

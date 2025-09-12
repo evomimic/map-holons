@@ -8,12 +8,13 @@ use crate::shared_test::{
 };
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
 use core_types::{HolonError, HolonId};
+use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{TransientReference, WriteableHolonReferenceLayer},
-    stage_new_holon_api, HolonCollection, HolonsContextBehavior,
+    reference_layer::{TransientReference, WriteableHolon},
+    HolonCollection, HolonsContextBehavior,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
@@ -28,29 +29,21 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     let fixture_context = init_fixture_context();
 
-    // Get transient manager behavior
-    let transient_manager_behavior_service =
-        fixture_context.get_space_manager().get_transient_behavior_service();
-    let transient_manager_behavior = transient_manager_behavior_service.borrow();
-
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
     let book_transient_reference =
-        transient_manager_behavior.create_empty(book_holon_key.clone())?;
-
-    book_transient_reference
-        .with_property_value(
-            &*fixture_context,
-            PropertyName(MapString("title".to_string())),
-            BaseValue::StringValue(book_holon_key.clone()),
-        )?
-        .with_property_value(
+        create_empty_transient_holon(&*fixture_context, book_holon_key.clone())?;
+    book_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("title".to_string())),
+        BaseValue::StringValue(book_holon_key.clone()),
+    )?;
+    book_transient_reference.with_property_value(
             &*fixture_context,
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
             )))?;
-
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     stage_new_holon_api(&*fixture_context, book_transient_reference)?;

@@ -20,7 +20,7 @@ use holons_core::{
         dance_response::{ResponseBody, ResponseStatusCode},
         DanceResponse,
     },
-    reference_layer::{StagedReference, WriteableHolonReferenceLayer},
+    reference_layer::{HolonReference, StagedReference, WriteableHolon},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};
@@ -36,7 +36,7 @@ use rstest::*;
 ///
 pub async fn execute_abandon_staged_changes(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    staged_reference: StagedReference,
+    staged_reference: HolonReference,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Abandon Staged Changes ---");
@@ -59,7 +59,7 @@ pub async fn execute_abandon_staged_changes(
 
     // 5. If successful, validate that operations on the abandoned Holon fail as expected
     if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::StagedRef(abandoned_holon) = &response.body {
+        if let ResponseBody::HolonReference(abandoned_holon) = &response.body {
             assert_eq!(
                 abandoned_holon.with_property_value(
                     context, // Pass context for proper behavior

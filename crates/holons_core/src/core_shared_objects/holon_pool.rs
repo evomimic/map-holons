@@ -184,7 +184,7 @@ impl HolonPool {
         Ok(ids[0].clone())
     }
 
-    /// Returns TemporaryIds for all Holons with the same base key. Called when there may be multiple Holons for 
+    /// Returns TemporaryIds for all Holons with the same base key. Called when there may be multiple Holons for
     /// a base key.
     pub fn get_ids_by_base_key(&self, key: &MapString) -> Result<Vec<&TemporaryId>, HolonError> {
         let ids: Vec<&TemporaryId> = self
@@ -232,19 +232,34 @@ impl HolonPool {
 
     /// Inserts a new Holon into the pool.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
-        let mut versioned_key = holon.get_versioned_key()?;
+        // Assuming that Holon Pools are only used in the Nursery or TransientManager
+        // Discussion topic: maybe this could change in the future.. what would be the use case?
+        if holon.is_saved() {
+            return Err(HolonError::InvalidType(
+                "Saved Holons are not allowed to be added to Holon Pools (at least for now)"
+                    .to_string(),
+            ));
+        } else {
+            let mut versioned_key = holon.get_versioned_key()?;
 
-        while self.keyed_index.get(&versioned_key).is_some() {
-            holon.increment_version()?;
-            versioned_key = holon.get_versioned_key()?;
+            while self.keyed_index.get(&versioned_key).is_some() {
+                holon.increment_version()?;
+                versioned_key = holon.get_versioned_key()?;
+            }
+            if holon.is_staged() {
+                versioned_key.0 += "staged"
+            }
+            if holon.is_transient() {
+                versioned_key.0 += "transient"
+            }
+
+            let id = create_temporary_id_from_key(&versioned_key);
+
+            self.keyed_index.insert(versioned_key, id.clone());
+            self.holons.insert(id.clone(), Rc::new(RefCell::new(holon)));
+
+            Ok(id)
         }
-
-        let id = create_temporary_id_from_key(&versioned_key);
-
-        self.keyed_index.insert(versioned_key, id.clone());
-        self.holons.insert(id.clone(), Rc::new(RefCell::new(holon)));
-
-        Ok(id)
     }
 
     /// Returns the number of Holons in the pool.

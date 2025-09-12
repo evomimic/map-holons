@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
 use hdk::prelude::*;
+use holons_core::reference_layer::{ReadableHolonReferenceLayer, WriteableHolonReferenceLayer};
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
     holon_error_from_wasm_error, try_action_hash_from_local_id,
@@ -21,12 +22,12 @@ use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        holon::state::AccessType, nursery_access_internal::NurseryAccessInternal, CommitResponse,
-        Holon, HolonBehavior, HolonCollection, NurseryAccess, TransientRelationshipMap,
+        nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonBehavior,
+        HolonCollection, NurseryAccess, TransientRelationshipMap,
     },
     reference_layer::{
-        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior,
-        ReadableHolonReferenceLayer, SmartReference, StagedReference, WriteableHolonReferenceLayer,
+        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
+        StagedReference, WriteableHolon,
     },
 };
 use holons_integrity::LinkTypes;
@@ -103,6 +104,8 @@ impl GuestHolonService {
     //     Ok(StagedRelationshipMap { map: relationship_map })
     // }
 
+    // ?TODO: remove this function?
+    //
     /// A private helper method for populating a TransientRelationshipMap for a TransientHolon by cloning all existing relationships from a persisted Holon.
     ///
     /// Populates a full TransientRelationshipMap by retrieving all SmartLinks for which this holon is the
@@ -173,17 +176,16 @@ impl GuestHolonService {
 
         // Create new (empty) TransientHolon
         let space_holon_reference = transient_manager.create_empty(name.clone())?;
-        space_holon_reference
-            .with_property_value(
-                context,
-                PropertyName(MapString("name".to_string())),
-                name.clone().into_base_value(),
-            )?
-            .with_property_value(
-                context,
-                PropertyName(MapString("description".to_string())),
-                description.into_base_value(),
-            )?;
+        space_holon_reference.with_property_value(
+            context,
+            PropertyName(MapString("name".to_string())),
+            name.clone().into_base_value(),
+        )?;
+        space_holon_reference.with_property_value(
+            context,
+            PropertyName(MapString("description".to_string())),
+            description.into_base_value(),
+        )?;
         let space_holon_node = space_holon_reference.into_model(context)?;
 
         // Try to create the holon node in the DHT

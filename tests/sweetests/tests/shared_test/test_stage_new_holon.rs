@@ -34,7 +34,7 @@ use integrity_core_types::{PropertyMap, PropertyName};
 ///
 pub async fn execute_stage_new_holon(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    transient_holon: TransientReference,
+    transient_reference: TransientReference,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
@@ -42,7 +42,7 @@ pub async fn execute_stage_new_holon(
     let context = test_state.context();
 
     // 2. Build the DanceRequest
-    let request = build_stage_new_holon_dance_request(transient_holon.clone())
+    let request = build_stage_new_holon_dance_request(transient_reference.clone())
         .expect("Failed to build stage_new_holon request");
 
     debug!("Dance Request: {:#?}", request);
@@ -60,12 +60,12 @@ pub async fn execute_stage_new_holon(
     );
 
     // 5. Verify the staged Holon
-    if let ResponseBody::StagedRef(staged_holon) = response.body {
-        debug!("Staged holon reference returned: {:#?}", staged_holon);
+    if let ResponseBody::HolonReference(staged_reference) = response.body {
+        debug!("Staged holon reference returned: {:#?}", staged_reference);
 
         assert_eq!(
-            transient_holon.essential_content(context),
-            staged_holon.essential_content(context),
+            transient_reference.essential_content(context),
+            staged_reference.essential_content(context),
             "Staged Holon content did not match expected"
         );
 
