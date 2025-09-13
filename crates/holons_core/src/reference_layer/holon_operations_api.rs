@@ -21,13 +21,10 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use std::{cell::RefCell, sync::Arc};
-
 use crate::core_shared_objects::{CommitResponse, Holon, HolonBehavior};
-use crate::reference_layer::{TransientHolonBehavior, TransientReference};
+use crate::reference_layer::TransientReference;
 use crate::{
-    HolonCollection, HolonReference, HolonServiceApi, HolonStagingBehavior, HolonsContextBehavior,
-    SmartReference, StagedReference,
+    HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
 };
 use base_types::MapString;
 use core_types::HolonError;
@@ -94,8 +91,9 @@ use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 ///
 
 pub fn commit_api(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
-    let commit_service = get_holon_service(context);
-    let commit_response = commit_service.commit(context)?;
+    let holon_service = context.get_space_manager().get_holon_service();
+    let commit_response = holon_service.commit(context)?;
+
     Ok(commit_response)
 }
 
@@ -104,8 +102,8 @@ pub fn create_empty_transient_holon(
     context: &dyn HolonsContextBehavior,
     key: MapString,
 ) -> Result<TransientReference, HolonError> {
-    let transient_behavior_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_reference = transient_behavior_service.borrow().create_empty(key)?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
+    let transient_reference = transient_service.borrow().create_empty(key)?;
 
     Ok(transient_reference)
 }
@@ -135,22 +133,15 @@ pub fn delete_holon_api(
     context: &dyn HolonsContextBehavior,
     local_id: LocalId,
 ) -> Result<(), HolonError> {
-    let delete_service = get_holon_service(context);
-    delete_service.delete_holon(&local_id)
+    let holon_service = context.get_space_manager().get_holon_service();
+    holon_service.delete_holon(&local_id)
 }
 
 // == GETTERS == //
 
 pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
-    let holon_service = get_holon_service(context);
+    let holon_service = context.get_space_manager().get_holon_service();
     holon_service.get_all_holons(context)
-}
-
-fn get_holon_service(context: &dyn HolonsContextBehavior) -> Arc<dyn HolonServiceApi> {
-    let space_manager = context.get_space_manager();
-    let holon_service = space_manager.get_holon_service();
-
-    Arc::clone(&holon_service)
 }
 
 pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
@@ -169,34 +160,40 @@ pub fn get_staged_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = get_staging_service(context);
+    let staging_service = context.get_space_manager().get_staging_behavior_access();
     let staging_service_borrow = staging_service.borrow();
+
     staging_service_borrow.get_staged_holon_by_base_key(key)
+}
+
+pub fn get_staged_holon_by_versioned_key(
+    context: &dyn HolonsContextBehavior,
+    key: &MapString,
+) -> Result<StagedReference, HolonError> {
+    let staging_service = context.get_space_manager().get_staging_behavior_access();
+    let staging_service_borrow = staging_service.borrow();
+
+    staging_service_borrow.get_staged_holon_by_versioned_key(key)
 }
 
 pub fn get_transient_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
-    let transient_service = get_transient_service(context);
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
     let transient_service_borrow = transient_service.borrow();
+
     transient_service_borrow.get_transient_holon_by_base_key(key)
 }
 
-fn get_staging_service(
+pub fn get_transient_holon_by_versioned_key(
     context: &dyn HolonsContextBehavior,
-) -> Arc<RefCell<dyn HolonStagingBehavior>> {
-    let space_manager = context.get_space_manager();
+    key: &MapString,
+) -> Result<TransientReference, HolonError> {
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
+    let transient_service_borrow = transient_service.borrow();
 
-    space_manager.get_staging_behavior_access()
-}
-
-fn get_transient_service(
-    context: &dyn HolonsContextBehavior,
-) -> Arc<RefCell<dyn TransientHolonBehavior>> {
-    let space_manager = context.get_space_manager();
-
-    space_manager.get_transient_behavior_service()
+    transient_service_borrow.get_transient_holon_by_versioned_key(key)
 }
 
 // == //
@@ -235,7 +232,6 @@ pub fn stage_new_from_clone_api(
 
     Ok(staged_reference)
 }
-// Deprecated? //
 
 /// Stages a new holon in the holon space.
 ///
@@ -258,7 +254,7 @@ pub fn stage_new_holon_api(
     context: &dyn HolonsContextBehavior,
     transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = get_staging_service(context);
+    let staging_service = context.get_space_manager().get_staging_behavior_access();
     let staged_reference =
         staging_service.borrow().stage_new_holon(context, transient_reference)?;
 
@@ -288,8 +284,8 @@ pub fn stage_new_version_api(
     context: &dyn HolonsContextBehavior,
     current_version: SmartReference,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_holon_service();
-    let staged_reference = staging_service.stage_new_version(context, current_version)?;
+    let holon_service = context.get_space_manager().get_holon_service();
+    let staged_reference = holon_service.stage_new_version(context, current_version)?;
 
     Ok(staged_reference)
 }
@@ -304,16 +300,16 @@ pub fn summarize_holons(holons: &Vec<Holon>) -> String {
 
 // Gets total count of Staged Holons present in the Nursery
 pub fn staged_count(context: &dyn HolonsContextBehavior) -> i64 {
-    let staging_behavior_service = context.get_space_manager().get_staging_behavior_access();
-    let staging_behavior = staging_behavior_service.borrow();
+    let staging_service = context.get_space_manager().get_staging_behavior_access();
+    let staging_service_borrow = staging_service.borrow();
 
-    staging_behavior.staged_count()
+    staging_service_borrow.staged_count()
 }
 
 // Gets total count of Transient Holons present in the TransientHolonManager
 pub fn transient_count(context: &dyn HolonsContextBehavior) -> i64 {
-    let transient_behavior_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_behavior = transient_behavior_service.borrow();
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
+    let transient_service_borrow = transient_service.borrow();
 
-    transient_behavior.transient_count()
+    transient_service_borrow.transient_count()
 }

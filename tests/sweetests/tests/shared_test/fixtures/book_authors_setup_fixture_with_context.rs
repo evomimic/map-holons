@@ -136,8 +136,7 @@ pub fn setup_book_author_steps_with_context(
     target_references.push(TestReference::StagedHolon(person_1_staged_reference));
     target_references.push(TestReference::StagedHolon(person_2_staged_reference));
 
-    let expected_holon =
-        HolonReference::Transient(book_staged_reference.clone_holon(&*fixture_context)?);
+    let expected_holon = HolonReference::Staged(book_staged_reference.clone());
 
     // Create the expected_holon
     test_case.add_related_holons_step(
