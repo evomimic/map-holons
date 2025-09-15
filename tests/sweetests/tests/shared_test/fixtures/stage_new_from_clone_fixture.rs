@@ -108,11 +108,6 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // //
     // // NOTE: In each step we need to mirror the actions being added via test steps in the
     // // fixture's nursery in order to build the expected holon.
-    // //
-    // // NOTE: Since Phase I concludes with a `commit` step, the test executor's Nursery will be reset.
-    // // But the fixture's nursery never commits, so it will continue to grow. This means we will need
-    // // to track index position separately in Phase 2 of the fixture and synthetically create
-    // // the StagedReference passed to its test step constructors
 
     // // Step 1: stage_new_from_clone for the publisher holon committed in Phase I.
     // // This will create an exact copy of the publisher holon.

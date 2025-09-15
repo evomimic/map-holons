@@ -29,7 +29,6 @@ use super::{
 /// Default fields:
 /// holon_state: HolonState::Mutable,
 /// validation_state: ValidationState::ValidationRequired,
-/// temporary_id: None,
 /// property_map: PropertyMap::
 /// transient_relationships: TransientRelationshipMap::new_empty(),
 /// original_id: None,
@@ -39,7 +38,6 @@ pub struct TransientHolon {
     version: MapInteger,     // Used to add to hash content for creating TemporaryID
     holon_state: HolonState, // Mutable or Immutable
     validation_state: ValidationState,
-    // temporary_id: Option<TemporaryId>, // Ephemeral identifier for TransientHolons
     property_map: PropertyMap, // Self-describing property data
     transient_relationships: TransientRelationshipMap, // Tracks ephemeral relationships
     original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
@@ -55,7 +53,6 @@ impl TransientHolon {
         version: MapInteger,
         holon_state: HolonState,
         validation_state: ValidationState,
-        // temporary_id: Option<TemporaryId>,
         property_map: PropertyMap,
         transient_relationships: TransientRelationshipMap,
         original_id: Option<LocalId>,
@@ -64,7 +61,6 @@ impl TransientHolon {
             version,
             holon_state,
             validation_state,
-            // temporary_id,
             property_map,
             transient_relationships,
             original_id,
@@ -301,7 +297,6 @@ impl HolonBehavior for TransientHolon {
 //             version: MapInteger(1),
 //             holon_state: HolonState::Mutable,
 //             validation_state: ValidationState::ValidationRequired,
-//             temporary_id: None,
 //             property_map: BTreeMap::new(),
 //             transient_relationships: TransientRelationshipMap { map: BTreeMap::new() },
 //             original_id: None,
@@ -402,7 +397,6 @@ impl HolonBehavior for TransientHolon {
 //             version: MapInteger(1),
 //             holon_state: HolonState::Mutable,
 //             validation_state: ValidationState::ValidationRequired,
-//             temporary_id: None,
 //             property_map: BTreeMap::new(),
 //             transient_relationships: TransientRelationshipMap::new_empty(),
 //             original_id: None,

@@ -80,6 +80,37 @@ pub async fn execute_stage_new_from_clone(
         }
     };
 
+    // TODO: fix in future issue for being able to clone from a Saved Holon
+    // where the plan is to drop test execution state and change TestReference to HolonReference
+    //
+    // // Get the original holon (for comparison purposes)
+    // let original_holon: Holon = match original_test_ref {
+    //     TestReference::TransientHolon(transient_reference) => {
+    //         match transient_reference.clone_holon(context) {
+    //             Ok(holon) => Holon::Transient(holon),
+    //             Err(err) => {
+    //                 error!("Failed to clone holon: {:?}", err);
+    //                 return; // or continue/fallback logic as appropriate
+    //             }
+    //         }
+    //     }
+    //     TestReference::StagedHolon(staged_reference) => {
+    //         match staged_reference.clone_holon(context) {
+    //             Ok(holon) => Holon::Transient(holon),
+    //             Err(err) => {
+    //                 error!("Failed to clone holon: {:?}", err);
+    //                 return; // or continue/fallback logic as appropriate
+    //             }
+    //         }
+    //     }
+    //     TestReference::SavedHolon(key) => match test_state.get_created_holon_by_key(&key) {
+    //         Some(holon) => holon,
+    //         None => {
+    //             panic!("Holon with key {key} not found in created_holons");
+    //         }
+    //     },
+    // };
+
     // 3. Build the DanceRequest
     let request =
         build_stage_new_from_clone_dance_request(original_holon_reference.clone(), new_key)
@@ -104,7 +135,7 @@ pub async fn execute_stage_new_from_clone(
             info!("Cloned holon reference returned: {:?}", cloned_holon);
 
             assert_eq!(
-                original_holon_reference.essential_content(context),
+                original_holon_reference.essential_content(context), // Phase 2 failing here
                 cloned_holon.essential_content(context),
                 "Cloned Holon content did not match original"
             );
