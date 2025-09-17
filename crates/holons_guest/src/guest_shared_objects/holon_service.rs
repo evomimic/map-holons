@@ -27,7 +27,11 @@ pub fn create_local_path(
 ) -> Result<ActionHash, HolonError> {
     let path = Path::from(path_name);
     let link_type = linktype; //LinkTypes::LocalHolonSpace;
-    let input = CreatePathInput { path, link_type, target_holon_node_hash: try_action_hash_from_local_id(&target_holon_hash)? };
+    let input = CreatePathInput {
+        path,
+        link_type,
+        target_holon_node_hash: try_action_hash_from_local_id(&target_holon_hash)?,
+    };
     create_path_to_holon_node(input).map_err(|e| holon_error_from_wasm_error(e))
 }
 
@@ -38,7 +42,8 @@ pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
         .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
     let mut holon = try_from_record(record)?;
     // holon.is_deletable()?;
-    delete_holon_node(try_action_hash_from_local_id(&id)?).map_err(|e| holon_error_from_wasm_error(e))
+    delete_holon_node(try_action_hash_from_local_id(&id)?)
+        .map_err(|e| holon_error_from_wasm_error(e))
 }
 ///  ------ QUERIES ------
 

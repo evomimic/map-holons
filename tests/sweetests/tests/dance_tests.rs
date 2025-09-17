@@ -47,17 +47,16 @@ use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 
 use crate::descriptor_dance_fixtures::*;
-use crate::shared_test::mock_conductor::setup_conductor;
-use crate::shared_test::test_context::{init_test_context, TestContextConfigOption};
-use crate::shared_test::test_data_types::{
-    DanceTestExecutionState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX,
+use crate::shared_test::{
+    mock_conductor::setup_conductor,
+    test_context::init_test_context,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX},
+    test_print_database::execute_database_print,
+    test_stage_new_holon::execute_stage_new_holon,
 };
-use crate::shared_test::test_print_database::execute_database_print;
-use crate::shared_test::test_stage_new_holon::execute_stage_new_holon;
 use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
-use core_types::HolonError;
-use core_types::HolonId;
+use core_types::{HolonError, HolonId};
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
 use holons_guest_integrity::HolonNode;
@@ -105,25 +104,26 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     // let _ = holochain_trace::test_run();
 
+    // The heavy lifting for this test is in the test data set creation.
+
+    let mut test_case: DancesTestCase = input.unwrap();
+    let steps = test_case.clone().steps;
+    let name = test_case.clone().name.clone();
+    let description = test_case.clone().description;
+
+    let steps_count = steps.len();
+
     // 1. Set up the mock conductor
     let conductor_config = setup_conductor().await;
 
     // 2. Create the DanceCallService with the mock conductor
     let dance_service = Arc::new(DanceCallService::new(conductor_config));
 
-    let test_context = init_test_context(TestContextConfigOption::TestExecution); // Already returns Arc
+    // Initialize TestHolonsContext from test_session_state
+    let test_context = init_test_context(&mut test_case); // Already returns Arc
 
     // Initialize the DanceTestState
     let mut test_state = DanceTestExecutionState::new(test_context, dance_service);
-
-    // The heavy lifting for this test is in the test data set creation.
-
-    let test_case: DancesTestCase = input.unwrap();
-    let steps = test_case.clone().steps;
-    let name = test_case.clone().name.clone();
-    let description = test_case.clone().description;
-
-    let steps_count = steps.len();
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");

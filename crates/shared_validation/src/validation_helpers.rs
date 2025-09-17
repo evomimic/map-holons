@@ -8,16 +8,12 @@ use integrity_core_types::{HolonNodeModel, LocalId, PersistenceLinkTag, Property
 // ==== Entry CUD ====
 
 pub fn validate_create_holon(holon_node_model: HolonNodeModel) -> Result<(), ValidationError> {
-    let saved_holon = Holon::Transient(TransientHolon::new_from_holon_node_model(holon_node_model));
-
     // Deferring logic until Descriptors
 
     Ok(())
 }
 
 pub fn validate_update_holon(holon_node_model: HolonNodeModel) -> Result<(), ValidationError> {
-    let saved_holon = Holon::Transient(TransientHolon::new_from_holon_node_model(holon_node_model));
-
     Ok(())
 }
 

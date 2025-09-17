@@ -39,7 +39,7 @@ pub fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
     let nursery = Nursery::new();
 
     // Step 3: Create an empty TransientHolonManager for the client
-    let transient_manager = TransientHolonManager::new();
+    let transient_manager = TransientHolonManager::new_empty();
 
     // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(

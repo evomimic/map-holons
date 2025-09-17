@@ -1,14 +1,14 @@
 #![allow(unused_variables)]
 
-use holons_core::{
-    core_shared_objects::{CommitResponse, Holon, HolonCollection},
-    {
-        reference_layer::{HolonServiceApi, HolonsContextBehavior},
-        HolonReference, SmartReference, StagedReference,
-    },
-};
+use std::any::Any;
+
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
+use holons_core::{
+    core_shared_objects::{CommitResponse, Holon, HolonCollection},
+    reference_layer::{HolonServiceApi, HolonsContextBehavior},
+    HolonReference, RelationshipMap, SmartReference, StagedReference,
+};
 use integrity_core_types::{LocalId, RelationshipName};
 
 #[derive(Debug, Clone)]
@@ -19,6 +19,10 @@ impl HolonServiceApi for ClientHolonService {
     ///   ZomeClient::install_app()
     //}
 
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn commit(&self, _context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
         //let request = build_commit_dance_request(&SessionState::default())?;
         // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
@@ -27,6 +31,14 @@ impl HolonServiceApi for ClientHolonService {
     }
 
     fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
+        todo!()
+    }
+
+    fn fetch_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        source_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
         todo!()
     }
 

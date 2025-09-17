@@ -1,5 +1,7 @@
 use hdi::prelude::*;
-use integrity_core_types::{HolonNodeModel, PersistenceAction, PersistenceDelete, PersistenceUpdate};
+use integrity_core_types::{
+    HolonNodeModel, PersistenceAction, PersistenceDelete, PersistenceUpdate,
+};
 use shared_validation::*;
 
 pub fn validate_create_holon_node(
@@ -25,8 +27,7 @@ pub fn validate_update_holon_node(
 pub fn validate_delete_holon_node(
     action: PersistenceDelete,
 ) -> ExternResult<ValidateCallbackResult> {
-    validate_delete_holon()
-        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+    validate_delete_holon().map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
 
     Ok(ValidateCallbackResult::Valid)
 }

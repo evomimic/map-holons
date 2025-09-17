@@ -18,4 +18,3 @@ pub struct HolonNodeModel {
     pub original_id: Option<LocalId>,
     pub property_map: PropertyMap,
 }
-

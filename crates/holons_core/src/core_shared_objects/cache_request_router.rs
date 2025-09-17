@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::Holon;
-use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection};
-use core_types::{HolonError,HolonId};
+use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection, HolonsContextBehavior, RelationshipMap};
+use core_types::{HolonError, HolonId};
 use integrity_core_types::RelationshipName;
 
 #[derive(Debug)]
@@ -112,6 +112,20 @@ impl HolonCacheAccess for CacheRequestRouter {
               //         "Proxy-based related holon access is not yet implemented.",
               //     ))
               // }
+        }
+    }
+
+    fn get_all_related_holons(
+        &self,
+        context: & dyn HolonsContextBehavior,
+        source_holon_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
+        // Determine the routing policy for the request
+        match CacheRequestRouter::get_request_route(source_holon_id, &self.cache_routing_policy)? {
+            ServiceRoute::Local => {
+                // Delegate to the local cache manager
+                self.local_cache_manager.get_all_related_holons(context, source_holon_id)
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 use std::{cell::RefCell, sync::Arc};
 
 use crate::guest_shared_objects::GuestHolonService;
+use core_types::HolonError;
 use holons_core::{
     core_shared_objects::{
         holon_pool::SerializableHolonPool, nursery_access_internal::NurseryAccessInternal,
@@ -10,7 +11,6 @@ use holons_core::{
     },
     reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior},
 };
-use core_types::HolonError;
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations **within the Holochain guest environment**.
@@ -87,7 +87,7 @@ pub fn init_guest_context(
     nursery.import_staged_holons(staged_holons); // Load staged holons
 
     // Step 3: Create and initialize the Nursery
-    let mut transient_manager = TransientHolonManager::new();
+    let mut transient_manager = TransientHolonManager::new_empty();
     transient_manager.import_transient_holons(transient_holons); // Load transient holons
 
     // Step 4: Register internal access
@@ -99,21 +99,15 @@ pub fn init_guest_context(
         })?;
     service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
 
-    // Step 5: Ensure HolonSpace Holon exists
-    let ensured_local_space_holon = match local_space_holon {
-        Some(space_holon) => space_holon, // space holon already in session state
-        None => service.ensure_local_holon_space()?, // get space_holon from DHT, creating it if necessary
-    };
-
-    // Step 6: Create the HolonSpaceManager with injected Nursery & HolonService
+    // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         guest_holon_service,
-        Some(ensured_local_space_holon),
+        local_space_holon,
         ServiceRoutingPolicy::Combined,
         nursery,
         transient_manager,
     ));
 
-    // Step 7: Wrap in `GuestHolonsContext` and return as a trait object
+    // Step 6: Wrap in `GuestHolonsContext` and return as a trait object
     Ok(Arc::new(GuestHolonsContext::new(space_manager)))
 }

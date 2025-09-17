@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 
-use std::string::ToString; // Import the test-only extension
-
-use crate::shared_test::test_data_types::{
-    DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
-    PERSON_2_KEY, PUBLISHER_KEY,
+use crate::shared_test::{
+    test_context::init_fixture_context,
+    test_data_types::{
+        DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
+        PERSON_2_KEY, PUBLISHER_KEY,
+    },
 };
-
+use crate::warn;
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use holons_core::reference_layer::holon_operations_api::*;
@@ -15,10 +16,11 @@ use holons_core::{
     dances::dance_response::ResponseStatusCode,
     reference_layer::{
         HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
-        WriteableHolon, WriteableHolonReferenceLayer,
+        TransientReference, WriteableHolon, WriteableHolonReferenceLayer,
     },
 };
 use integrity_core_types::{PropertyName, RelationshipName};
+use std::string::ToString; // Import the test-only extension
 use type_names::relationship_names::ToRelationshipName;
 
 // pub struct TestHolon {
@@ -36,115 +38,117 @@ use type_names::relationship_names::ToRelationshipName;
 /// *BOOK_TO_PERSON_RELATIONSHIP from Book Holon to person 1 and person 2
 /// The Nursery within the supplied context is used as the test data setup area
 pub fn setup_book_author_steps_with_context(
-    context: &dyn HolonsContextBehavior,
+    fixture_context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
 ) -> Result<RelationshipName, HolonError> {
+    // Set relationship
     let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
 
     //  STAGE:  Book Holon  //
-    let mut book_holon = TransientHolon::new();
-    let book_holon_key = MapString(BOOK_KEY.to_string()); // ✅ Convert to MapString
+    let book_holon_key = MapString(BOOK_KEY.to_string());
 
-    book_holon
-        .with_property_value(
-            PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(book_holon_key.clone()),
-        )?
-        .with_property_value(
-            PropertyName(MapString("title".to_string())),
-            BaseValue::StringValue(book_holon_key.clone()),
-        )?
-        .with_property_value(
+    let book_transient_reference =
+        create_empty_transient_holon(&*fixture_context, book_holon_key.clone())?;
+    book_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("title".to_string())),
+        BaseValue::StringValue(book_holon_key.clone()),
+    )?;
+    book_transient_reference.with_property_value(
+            &*fixture_context,
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
             )))?;
-    test_case.add_stage_holon_step(book_holon.clone())?;
-    let book_ref = stage_new_holon_api(context, book_holon)?;
+    test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
-    //  STAGE:  Person 1 //
-    let mut person_1_holon = TransientHolon::new();
-    let person_1_key = MapString(PERSON_1_KEY.to_string()); // ✅ Convert to MapString
+    let book_staged_reference = stage_new_holon_api(&*fixture_context, book_transient_reference)?;
 
-    person_1_holon
-        .with_property_value(
-            PropertyName(MapString("first name".to_string())),
-            BaseValue::StringValue(MapString("Roger".to_string())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("last name".to_string())),
-            BaseValue::StringValue(MapString("Briggs".to_string())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(person_1_key.clone()),
-        )?;
-    test_case.add_stage_holon_step(person_1_holon.clone())?;
-    let person_1_reference = stage_new_holon_api(context, person_1_holon.clone())?;
+    // //  STAGE:  Person 1 //
+    let person_1_key = MapString(PERSON_1_KEY.to_string());
+    let person_1_transient_reference =
+        create_empty_transient_holon(&*fixture_context, person_1_key.clone())?;
+    person_1_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("first name".to_string())),
+        BaseValue::StringValue(MapString("Roger".to_string())),
+    )?;
+    person_1_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("last name".to_string())),
+        BaseValue::StringValue(MapString("Briggs".to_string())),
+    )?;
+    test_case.add_stage_holon_step(person_1_transient_reference.clone())?;
+
+    let person_1_staged_reference =
+        stage_new_holon_api(&*fixture_context, person_1_transient_reference.clone())?;
 
     //  STAGE:  Person 2 //
-    let mut person_2_holon = TransientHolon::new();
-    let person_2_key = MapString(PERSON_2_KEY.to_string()); // ✅ Convert to MapString
+    let person_2_key = MapString(PERSON_2_KEY.to_string());
+    let person_2_transient_reference =
+        create_empty_transient_holon(&*fixture_context, person_2_key.clone())?;
+    person_2_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("first name".to_string())),
+        BaseValue::StringValue(MapString("George".to_string())),
+    )?;
+    person_2_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("last name".to_string())),
+        BaseValue::StringValue(MapString("Smith".to_string())),
+    )?;
+    test_case.add_stage_holon_step(person_2_transient_reference.clone())?;
 
-    person_2_holon
-        .with_property_value(
-            PropertyName(MapString("first name".to_string())),
-            BaseValue::StringValue(MapString("George".to_string())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("last name".to_string())),
-            BaseValue::StringValue(MapString("Smith".to_string())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(person_2_key.clone()),
-        )?;
-    test_case.add_stage_holon_step(person_2_holon.clone())?;
-    let person_2_reference = stage_new_holon_api(context, person_2_holon.clone())?;
+    let person_2_staged_reference =
+        stage_new_holon_api(&*fixture_context, person_2_transient_reference)?;
 
     //  STAGE:  Publisher //
-    let mut publisher_holon = TransientHolon::new();
-    let publisher_key = MapString(PUBLISHER_KEY.to_string()); // ✅ Convert to MapString
+    let publisher_key = MapString(PUBLISHER_KEY.to_string());
+    let publisher_transient_reference =
+        create_empty_transient_holon(&*fixture_context, publisher_key.clone())?;
+    publisher_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("name".to_string())),
+        BaseValue::StringValue(publisher_key.clone()),
+    )?;
+    publisher_transient_reference.with_property_value(
+        &*fixture_context,
+        PropertyName(MapString("description".to_string())),
+        BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
+    )?;
+    test_case.add_stage_holon_step(publisher_transient_reference.clone())?;
 
-    publisher_holon
-        .with_property_value(
-            PropertyName(MapString("name".to_string())),
-            BaseValue::StringValue(publisher_key.clone()),
-        )?
-        .with_property_value(
-            PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(publisher_key.clone()),
-        )?
-        .with_property_value(
-            PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
-        )?;
-    test_case.add_stage_holon_step(publisher_holon.clone())?;
-    stage_new_holon_api(context, publisher_holon.clone())?;
+    let publisher_staged_reference =
+        stage_new_holon_api(&*fixture_context, publisher_transient_reference)?;
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
     let mut fixture_target_references: Vec<HolonReference> = Vec::new();
-    fixture_target_references.push(HolonReference::from_staged(person_1_reference.clone()));
-    fixture_target_references.push(HolonReference::from_staged(person_2_reference.clone()));
+    fixture_target_references.push(HolonReference::from_staged(person_1_staged_reference.clone()));
+    fixture_target_references.push(HolonReference::from_staged(person_2_staged_reference.clone()));
 
-    book_ref.add_related_holons(
-        context,
+    book_staged_reference.add_related_holons(
+        &*fixture_context,
         BOOK_TO_PERSON_RELATIONSHIP,
         fixture_target_references.clone(),
     )?;
 
     let mut target_references: Vec<TestReference> = Vec::new();
-    target_references.push(TestReference::StagedHolon(person_1_reference));
-    target_references.push(TestReference::StagedHolon(person_2_reference));
+    target_references.push(TestReference::StagedHolon(person_1_staged_reference));
+    target_references.push(TestReference::StagedHolon(person_2_staged_reference));
+
+    let expected_holon = HolonReference::Staged(book_staged_reference.clone());
 
     // Create the expected_holon
     test_case.add_related_holons_step(
-        book_ref.clone(),
+        HolonReference::Staged(book_staged_reference),
         relationship_name.clone(),
         target_references,
         ResponseStatusCode::OK,
-        Holon::Transient(book_ref.clone_holon(context)?),
+        expected_holon,
     )?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
 
     Ok(relationship_name)
 }

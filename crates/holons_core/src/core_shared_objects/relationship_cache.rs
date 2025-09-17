@@ -3,9 +3,9 @@ use tracing::debug;
 
 use crate::core_shared_objects::{HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
+use crate::HolonsContextBehavior;
 use core_types::{HolonError, HolonId};
 use integrity_core_types::RelationshipName;
-
 
 #[derive(Clone, Debug)]
 pub struct RelationshipCache {
@@ -16,6 +16,17 @@ impl RelationshipCache {
     /// Creates a new RelationshipCache with an empty cache.
     pub fn new() -> Self {
         Self { cache: Rc::new(RefCell::new(HashMap::new())) }
+    }
+
+    /// Retrieves a RelationshipMap for the source HolonReference by calling the HolonService to fetch all related Holons.
+    pub fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        holon_service: &dyn HolonServiceApi,
+        source_holon_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
+
+        holon_service.fetch_all_related_holons(context, source_holon_id)
     }
 
     /// Retrieves the `HolonCollection` containing references to all holons that are related
@@ -75,20 +86,5 @@ impl RelationshipCache {
 
         // Return the fetched holons
         Ok(fetched_holons_rc)
-    }
-    /// Returns a RelationshipMap containing entries for all populated relationships from the given
-    /// source_id.
-    ///
-    /// _*NOTE: Without the source_id's HolonDescriptor, there is no way of knowing what
-    /// relationships originate from that source_id. Thus, this request cannot be satisfied from
-    /// the relationship_cache and must always be delegated to the holon service. The results,
-    /// however, ARE added to the cache.*_
-    ///
-    pub fn get_all_populated_relationships(
-        &self,
-        _holon_service: &dyn HolonServiceApi,
-        _source_holon_id: HolonId,
-    ) -> Result<Rc<RelationshipMap>, HolonError> {
-        todo!()
     }
 }

@@ -1,12 +1,13 @@
-
-use base_types::MapString;
+use base_types::{MapInteger, MapString};
 use core_types::HolonError;
-use serde::{Serialize, Deserialize};
+use derive_new::new;
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
+use serde::{Deserialize, Serialize};
 
 use super::state::AccessType;
 use super::{HolonBehavior, SavedHolon, StagedHolon, TransientHolon};
 use crate::core_shared_objects::holon::EssentialHolonContent;
+use crate::RelationshipMap;
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,39 +17,61 @@ pub enum Holon {
     Saved(SavedHolon),
 }
 
+/// A normalized, serializable representation of a `Holon`'s essential state,
+/// used specifically for cloning operations.
+///
+/// `HolonCloneModel` exists to bridge across the internal differences of the
+/// various `Holon` variants (`TransientHolon`, `StagedHolon`, `SavedHolon`)
+/// by capturing just the common fields needed to construct a new
+/// `TransientHolon` clone of any source holon.
+///
+/// This model:
+/// - Records the `version` to preserve lineage and hashing context.
+/// - Optionally tracks the `original_id` of the holon being cloned, if it
+///   originated from a persisted (`SavedHolon`) instance.
+/// - Copies over the holon’s `properties`, which form the self-describing
+///   property data.
+/// - Optionally includes the `relationships` (transient, staged, or saved,
+///   normalized to a common form).
+///
+/// By design, this type is decoupled from the richer state and invariants of
+/// the `Holon` variants (e.g. `HolonState`, `ValidationState`, errors,
+/// commit/staging metadata). That separation allows it to act as a lightweight,
+/// portable container for cloning, serialization, or transport before
+/// reconstructing a new `TransientHolon`.
+#[derive(new, Debug, Clone, Serialize, Deserialize)]
+pub struct HolonCloneModel {
+    pub version: MapInteger,
+    pub original_id: Option<LocalId>,
+    pub properties: PropertyMap,
+    pub relationships: Option<RelationshipMap>,
+}
+
 // ==================================
 //   ASSOCIATED METHODS (IMPL BLOCK)
 // ==================================
 impl Holon {
-    /// Clones the Holon as a new `TransientHolon`.
-    ///
-    /// Regardless of the source phase, cloned Holons are always `TransientHolons`.
-    pub fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
+    /// Gets inner StagedHolon object for Staged variant
+    pub fn into_staged(&self) -> Result<StagedHolon, HolonError> {
         match self {
-            Holon::Transient(transient) => transient.clone_holon(),
-            Holon::Staged(staged) => staged.clone_holon(),
-            Holon::Saved(saved) => saved.clone_holon(),
+            Holon::Staged(staged_holon) => Ok(staged_holon.clone()),
+            _ => Err(HolonError::InvalidTransition("Holon variant must be Staged".to_string())),
         }
     }
 
-    /// Constructs a new `TransientHolon`.
-    pub fn new_transient() -> Self {
-        Holon::Transient(TransientHolon::new())
+    /// Gets inner TransientHolon object for Transient variant
+    pub fn into_transient(&self) -> Result<TransientHolon, HolonError> {
+        match self {
+            Holon::Transient(transient_holon) => Ok(transient_holon.clone()),
+            _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
+        }
     }
 
-    // /// Gets inner StagedHolon object for Staged variant
-    // pub fn into_staged(self) -> Result<StagedHolon, HolonError> {
-    //     match self {
-    //         Holon::Staged(staged_holon) => Ok(staged_holon),
-    //         _ => Err(HolonError::InvalidTransition("Holon variant must be Staged".to_string())),
-    //     }
-    // }
-
-    /// Gets inner TransientHolon object for Transient variant
-    pub fn into_transient(self) -> Result<TransientHolon, HolonError> {
+    // Helps to distinguish from non-persisted Holons and shortcut to error throws
+    pub fn is_saved(&self) -> bool {
         match self {
-            Holon::Transient(transient_holon) => Ok(transient_holon),
-            _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
+            Holon::Saved(_) => true,
+            _ => false,
         }
     }
 }
@@ -61,19 +84,19 @@ impl HolonBehavior for Holon {
     //    DATA ACCESSORS
     // ====================
 
-    fn clone_holon(&self) -> Result<TransientHolon, HolonError> {
-        match self {
-            Holon::Transient(h) => h.clone_holon(),
-            Holon::Staged(h) => h.clone_holon(),
-            Holon::Saved(h) => h.clone_holon(),
-        }
-    }
-
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         match self {
             Holon::Transient(h) => h.essential_content(),
             Holon::Staged(h) => h.essential_content(),
             Holon::Saved(h) => h.essential_content(),
+        }
+    }
+
+    fn get_holon_clone_model(&self) -> HolonCloneModel {
+        match self {
+            Holon::Transient(h) => h.get_holon_clone_model(),
+            Holon::Staged(h) => h.get_holon_clone_model(),
+            Holon::Saved(h) => h.get_holon_clone_model(),
         }
     }
 

@@ -1,14 +1,13 @@
 use core::fmt;
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
-use crate::HolonCollectionApi;
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer};
+use crate::HolonCollectionApi;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
-
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {
@@ -69,6 +68,14 @@ impl HolonCollection {
         self.is_accessible(AccessType::Read)?;
         let mut collection = self.clone();
         collection.state = CollectionState::Transient;
+
+        Ok(collection)
+    }
+
+    pub fn clone_for_staged(&self) -> Result<Self, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let mut collection = self.clone();
+        collection.state = CollectionState::Staged;
 
         Ok(collection)
     }

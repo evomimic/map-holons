@@ -122,6 +122,16 @@ pub struct HolonPool {
     keyed_index: BTreeMap<MapString, TemporaryId>,
 }
 
+impl From<SerializableHolonPool> for HolonPool {
+    fn from(pool: SerializableHolonPool) -> Self {
+        let mut holons = BTreeMap::new();
+        for (id, holon) in pool.holons {
+            holons.insert(id, Rc::new(RefCell::new(holon)));
+        }
+        Self { holons, keyed_index: pool.keyed_index.clone() }
+    }
+}
+
 impl HolonPool {
     /// Creates an empty HolonPool
     pub fn new() -> Self {
@@ -154,7 +164,8 @@ impl HolonPool {
         self.keyed_index.get(key).and_then(|id| self.holons.get(id).cloned())
     }
 
-    /// Retrieves the temporary id of a Holon by its base key.
+    /// Retrieves the temporary id of a Holon by its base key. Called when it is expected that there is only
+    /// one Holon with an associated base key.
     pub fn get_id_by_base_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
         let ids: Vec<&TemporaryId> = self
             .keyed_index
@@ -173,7 +184,8 @@ impl HolonPool {
         Ok(ids[0].clone())
     }
 
-    /// Returns TemporaryIds for all Holons with the same base key.
+    /// Returns TemporaryIds for all Holons with the same base key. Called when there may be multiple Holons for
+    /// a base key.
     pub fn get_ids_by_base_key(&self, key: &MapString) -> Result<Vec<&TemporaryId>, HolonError> {
         let ids: Vec<&TemporaryId> = self
             .keyed_index
@@ -220,19 +232,28 @@ impl HolonPool {
 
     /// Inserts a new Holon into the pool.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
-        let mut versioned_key = holon.get_versioned_key()?;
+        // Assuming that Holon Pools are only used in the Nursery or TransientManager
+        // Discussion topic: maybe this could change in the future.. what would be the use case?
+        if holon.is_saved() {
+            return Err(HolonError::InvalidType(
+                "Saved Holons are not allowed to be added to Holon Pools (at least for now)"
+                    .to_string(),
+            ));
+        } else {
+            let mut versioned_key = holon.get_versioned_key()?;
 
-        while self.keyed_index.get(&versioned_key).is_some() {
-            holon.increment_version()?;
-            versioned_key = holon.get_versioned_key()?;
+            while self.keyed_index.get(&versioned_key).is_some() {
+                holon.increment_version()?;
+                versioned_key = holon.get_versioned_key()?;
+            }
+
+            let id = create_temporary_id_from_key(&versioned_key);
+
+            self.keyed_index.insert(versioned_key, id.clone());
+            self.holons.insert(id.clone(), Rc::new(RefCell::new(holon)));
+
+            Ok(id)
         }
-
-        let id = create_temporary_id_from_key(&versioned_key);
-
-        self.keyed_index.insert(versioned_key, id.clone());
-        self.holons.insert(id.clone(), Rc::new(RefCell::new(holon)));
-
-        Ok(id)
     }
 
     /// Returns the number of Holons in the pool.

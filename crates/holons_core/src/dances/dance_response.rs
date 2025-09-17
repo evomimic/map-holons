@@ -4,7 +4,7 @@ use std::fmt;
 use crate::core_shared_objects::{summarize_holons, Holon, HolonBehavior};
 use crate::dances::SessionState;
 use crate::query_layer::NodeCollection;
-use crate::{HolonCollection, HolonReference, StagedReference};
+use crate::{HolonCollection, HolonReference};
 use base_types::MapString;
 use core_types::HolonError;
 
@@ -46,7 +46,6 @@ pub enum ResponseBody {
     HolonReference(HolonReference),
     NodeCollection(NodeCollection),
     // SmartCollection(SmartCollection),
-    StagedRef(StagedReference),
 }
 
 impl From<HolonError> for ResponseStatusCode {

@@ -1,4 +1,5 @@
-use crate::core_shared_objects::{Holon, HolonBehavior, TransientHolon};
+use crate::core_shared_objects::{Holon, HolonBehavior};
+use crate::reference_layer::TransientReference;
 use serde::{Deserialize, Serialize};
 
 use crate::dances::SessionState;
@@ -19,10 +20,10 @@ pub struct DanceRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum DanceType {
-    Standalone,                     // i.e., a dance not associated with a specific holon
+    Standalone,                    // i.e., a dance not associated with a specific holon
     QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
-    CommandMethod(StagedReference), // a mutating method operating on a specific staged_holon identified by StagedReference
-    CloneMethod(HolonReference),    // a specific method for cloning a Holon
+    CommandMethod(HolonReference), // a mutating method operating on a HolonReference
+    CloneMethod(HolonReference), // a specific method for cloning a Holon
     NewVersionMethod(HolonId), // a SmartReference only method for cloning a Holon as new version by linking to the original Holon it was cloned from via PREDECESSOR relationship
     DeleteMethod(LocalId),
 }
@@ -32,7 +33,7 @@ pub enum RequestBody {
     None,
     Holon(Holon),
     TargetHolons(RelationshipName, Vec<HolonReference>),
-    TransientHolon(TransientHolon),
+    TransientReference(TransientReference),
     HolonId(HolonId),
     ParameterValues(PropertyMap),
     StagedRef(StagedReference),

@@ -39,6 +39,7 @@ impl fmt::Display for ExternalId {
     }
 }
 
+/// Unique identifier for non-persisted Holons, RFC4122 UUID specification.
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TemporaryId(pub Uuid);
 

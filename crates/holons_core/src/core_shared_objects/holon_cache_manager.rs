@@ -2,11 +2,12 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::debug;
 
 use super::{holon_cache::HolonCache, Holon};
-use crate::{HolonCacheAccess, HolonCollection, RelationshipCache};
 use crate::reference_layer::HolonServiceApi;
+use crate::{
+    HolonCacheAccess, HolonCollection, HolonsContextBehavior, RelationshipCache, RelationshipMap,
+};
 use core_types::{HolonError, HolonId};
 use integrity_core_types::RelationshipName;
-
 
 #[derive(Debug)]
 pub struct HolonCacheManager {
@@ -62,6 +63,18 @@ impl HolonCacheAccess for HolonCacheManager {
             self.holon_service.as_ref(),
             source_holon_id,
             relationship_name,
+        )
+    }
+
+    fn get_all_related_holons(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        source_holon_id: &HolonId,
+    ) -> Result<RelationshipMap, HolonError> {
+        self.relationship_cache.borrow().get_all_related_holons(
+            context,
+            self.holon_service.as_ref(),
+            source_holon_id,
         )
     }
 }
