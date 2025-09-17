@@ -88,7 +88,7 @@ impl TransientReference {
     ///
     /// # Panics
     /// This function assumes that the context and space manager will always return valid references.
-    pub fn get_transient_manager_access(
+    fn get_transient_manager_access(
         context: &dyn HolonsContextBehavior,
     ) -> Arc<RefCell<dyn TransientManagerAccess>> {
         // Retrieve the space manager from the context

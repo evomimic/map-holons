@@ -170,12 +170,13 @@ impl GuestHolonService {
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
-        // Get access for space_manager.transient_manager via HolonSpaceBehavior, TransientHolonBehavior
-        let transient_manager_access = context.get_space_manager().get_transient_behavior_service();
-        let transient_manager = transient_manager_access.borrow();
+        // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
+        let transient_behavior_service_cell =
+            context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior_service = transient_behavior_service_cell.borrow();
 
         // Create new (empty) TransientHolon
-        let space_holon_reference = transient_manager.create_empty(name.clone())?;
+        let space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
         space_holon_reference.with_property_value(
             context,
             PropertyName(MapString("name".to_string())),

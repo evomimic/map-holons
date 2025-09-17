@@ -17,6 +17,28 @@ pub enum Holon {
     Saved(SavedHolon),
 }
 
+/// A normalized, serializable representation of a `Holon`'s essential state,
+/// used specifically for cloning operations.
+///
+/// `HolonCloneModel` exists to bridge across the internal differences of the
+/// various `Holon` variants (`TransientHolon`, `StagedHolon`, `SavedHolon`)
+/// by capturing just the common fields needed to construct a new
+/// `TransientHolon` clone of any source holon.
+///
+/// This model:
+/// - Records the `version` to preserve lineage and hashing context.
+/// - Optionally tracks the `original_id` of the holon being cloned, if it
+///   originated from a persisted (`SavedHolon`) instance.
+/// - Copies over the holon’s `properties`, which form the self-describing
+///   property data.
+/// - Optionally includes the `relationships` (transient, staged, or saved,
+///   normalized to a common form).
+///
+/// By design, this type is decoupled from the richer state and invariants of
+/// the `Holon` variants (e.g. `HolonState`, `ValidationState`, errors,
+/// commit/staging metadata). That separation allows it to act as a lightweight,
+/// portable container for cloning, serialization, or transport before
+/// reconstructing a new `TransientHolon`.
 #[derive(new, Debug, Clone, Serialize, Deserialize)]
 pub struct HolonCloneModel {
     pub version: MapInteger,
