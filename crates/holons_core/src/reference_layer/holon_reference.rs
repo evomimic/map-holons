@@ -33,20 +33,6 @@ pub enum HolonReference {
 
 /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
 impl HolonReference {
-    pub fn clone_holon(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientReference, HolonError> {
-        self.is_accessible(context, AccessType::Clone)?;
-        match self {
-            HolonReference::Transient(transient_reference) => {
-                transient_reference.clone_holon(context)
-            }
-            HolonReference::Staged(staged_reference) => staged_reference.clone_holon(context),
-            HolonReference::Smart(smart_reference) => smart_reference.clone_holon(context),
-        }
-    }
-
     /// Creates a `HolonReference` wrapping a `SmartReference` for the given `HolonId`.
     pub fn from_id(holon_id: HolonId) -> HolonReference {
         HolonReference::Smart(SmartReference::new_from_id(holon_id))
@@ -216,20 +202,20 @@ impl ReadableHolonReferenceLayer for HolonReference {
         }
     }
 
-    fn get_property_value(
+    fn get_property_value_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.get_property_value(context, property_name)
+                transient_reference.get_property_value_ref_layer(context, property_name)
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.get_property_value(context, property_name)
+                staged_reference.get_property_value_ref_layer(context, property_name)
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.get_property_value(context, property_name)
+                smart_reference.get_property_value_ref_layer(context, property_name)
             }
         }
     }

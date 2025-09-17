@@ -186,7 +186,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
     /// manager in the context.
     ///
     /// Returns: Option, None if property for given name does not exist in its PropertyMap.
-    fn get_property_value(
+    fn get_property_value_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,

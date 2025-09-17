@@ -13,6 +13,7 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
 use type_names::relationship_names::ToRelationshipName;
+use type_names::ToPropertyName;
 
 pub trait ReadableHolonReferenceLayer {
     /// Generic clone for all Holon variants. Resulting clone is always a TransientReference, regardless of source phase.
@@ -43,7 +44,7 @@ pub trait ReadableHolonReferenceLayer {
     ) -> Result<Option<HolonReference>, HolonError>;
 
     /// Returns the value for the specified property
-    fn get_property_value(
+    fn get_property_value_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
@@ -111,6 +112,15 @@ pub trait ReadableHolon: ReadableHolonReferenceLayer {
     ) -> Result<Rc<HolonCollection>, HolonError> {
         let relationship_name = name.to_relationship_name();
         self.get_related_holons_ref_layer(context, &relationship_name)
+    }
+
+    fn get_property_value<T: ToPropertyName>(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        name: T,
+    ) -> Result<Option<PropertyValue>, HolonError> {
+        let property_name = name.to_property_name();
+        self.get_property_value_ref_layer(context, &property_name)
     }
 }
 

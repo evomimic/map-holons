@@ -211,7 +211,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         }
     }
 
-    fn get_property_value(
+    fn get_property_value_ref_layer(
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
