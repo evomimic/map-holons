@@ -3,9 +3,10 @@ use core_types::HolonError;
 use holochain::prelude::DbKind::Test;
 use holons_client::client_context::ClientHolonsContext;
 use holons_client::ClientHolonService;
+use holons_core::core_shared_objects::holon_pool::TransientHolonPool;
 use holons_core::core_shared_objects::{
     space_manager::HolonSpaceManager, HolonPool, Nursery, ServiceRoutingPolicy,
-    TransientHolonManager, TransientHolonPool,
+    TransientHolonManager,
 };
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
 use std::cell::RefCell;

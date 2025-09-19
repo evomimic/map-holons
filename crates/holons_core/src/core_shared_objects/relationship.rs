@@ -14,7 +14,7 @@ use integrity_core_types::RelationshipName;
 /// Custom RelationshipMap is only used for caching and will never be serialized
 #[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct RelationshipMap {
-    pub map: HashMap<RelationshipName, Rc<HolonCollection>>,
+    map: HashMap<RelationshipName, Rc<HolonCollection>>,
 }
 impl RelationshipMap {
     /// Creates a new, empty `RelationshipMap`.

@@ -124,5 +124,9 @@ pub trait ReadableHolon: ReadableHolonReferenceLayer {
     }
 }
 
-// Empty blanket impl: all logic is in the trait’s default body
+/// Blanket impl: anything that implements [`ReadableHolonReferenceLayer`]
+/// automatically implements [`ReadableHolon`].
+///
+/// This avoids duplicate impls: implement the lower-level trait once, and
+/// use the higher-level `ReadableHolon` at call sites (default methods provide the logic).
 impl<T: ReadableHolonReferenceLayer + ?Sized> ReadableHolon for T {}

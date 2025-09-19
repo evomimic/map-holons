@@ -28,9 +28,8 @@ use crate::{
     },
     query_layer::evaluate_query,
     reference_layer::{
-        holon_operations_api::get_all_holons,
-        holon_writable::{WriteableHolon, WriteableHolonReferenceLayer},
-        HolonReference, HolonsContextBehavior, SmartReference,
+        holon_operations_api::get_all_holons, writable_holon::WriteableHolon, HolonReference,
+        HolonsContextBehavior, SmartReference,
     },
 };
 use base_types::MapString;
@@ -99,14 +98,14 @@ pub fn add_related_holons_dance(
                     match &holon_reference {
                         HolonReference::Transient(transient_reference) => {
                             // Call the add_related_holons method on HolonReference
-                            transient_reference.add_related_holons_ref_layer(
+                            transient_reference.add_related_holons(
                                 context,
                                 relationship_name,
                                 holons_to_add,
                             )?;
                         }
                         HolonReference::Staged(staged_reference) => {
-                            staged_reference.add_related_holons_ref_layer(
+                            staged_reference.add_related_holons(
                                 context,
                                 relationship_name,
                                 holons_to_add,

@@ -24,8 +24,8 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
 
     // Initialize a client context the fixture can use
     // NOTE: This context will NOT be shared by test executors. The fixture's client context
-    // will go away once Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    // includes a TransientHolonManager that is used as a scratch pad while in the fixture.
+    // This allows them to be assigned TransientReferences and also retrieved by either index or key
     let fixture_context = init_fixture_context();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)

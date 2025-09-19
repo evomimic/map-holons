@@ -25,9 +25,8 @@ use type_names::*;
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]
 pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
-    // The fixture has its own Nursery which is used as a scratch pad during the test setup phase.
-    // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
+    // The fixture has its own TransientHolonManager which is used as a scratch pad during the test setup phase.
+    // This allows them to be assigned TransientReferences and also retrieved by either index or key
     let fixture_context = init_fixture_context();
 
     let mut test_case = DancesTestCase::new(

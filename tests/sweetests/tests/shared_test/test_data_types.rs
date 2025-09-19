@@ -15,7 +15,8 @@ use core_types::{HolonError, HolonId};
 use integrity_core_types::{PropertyMap, RelationshipName};
 
 use holons_core::{
-    core_shared_objects::{Holon, HolonBehavior, SerializableHolonPool, TransientHolon},
+    core_shared_objects::holon_pool::SerializableHolonPool,
+    core_shared_objects::{Holon, HolonBehavior, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{
