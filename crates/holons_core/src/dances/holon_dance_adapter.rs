@@ -465,7 +465,7 @@ pub fn stage_new_version_dance(
     info!("----- Entered stage_new_version dance ==");
 
     let smart_reference = match request.dance_type {
-        DanceType::NewVersionMethod(holon_id) => SmartReference::new(holon_id, None), // TODO: handle getting smart_prop_vals
+        DanceType::NewVersionMethod(holon_id) => SmartReference::new_from_id(holon_id), // TODO: handle getting smart_prop_vals
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
