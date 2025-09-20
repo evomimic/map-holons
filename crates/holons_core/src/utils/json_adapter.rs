@@ -4,8 +4,7 @@ use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Serialize, Serializer};
 
 use base_types::BaseValue;
-use core_types::{HolonError, HolonId};
-use integrity_core_types::{LocalId, PropertyMap};
+use core_types::{HolonError, HolonId, LocalId, PropertyMap};
 
 use crate::core_shared_objects::holon::state::{HolonState, ValidationState};
 use crate::core_shared_objects::{CollectionState, HolonCollection, StagedRelationshipMap};

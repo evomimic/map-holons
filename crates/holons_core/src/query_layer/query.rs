@@ -4,8 +4,7 @@ use std::{collections::BTreeMap, rc::Rc};
 
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
 use crate::HolonCollection;
-use core_types::HolonError;
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, RelationshipName};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Node {

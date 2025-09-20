@@ -27,8 +27,7 @@ use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
 };
 use base_types::MapString;
-use core_types::HolonError;
-use integrity_core_types::{LocalId, PropertyMap, PropertyName};
+use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
 
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 

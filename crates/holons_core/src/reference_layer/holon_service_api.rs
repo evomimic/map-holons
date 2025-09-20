@@ -2,20 +2,15 @@ use std::any::Any;
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference};
-use crate::core_shared_objects::{
-    Holon, CommitResponse, HolonCollection,
-};
+use crate::core_shared_objects::{CommitResponse, Holon, HolonCollection};
 use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
 use base_types::MapString;
-use core_types::{HolonError, HolonId};
-use integrity_core_types::{LocalId, RelationshipName};
-
+use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 
 pub trait HolonServiceApi: Debug + Any {
-
     fn as_any(&self) -> &dyn Any;
-    
+
     ///
     //fn install_app(&self) -> Result<AppInstallation, HolonError>;
     /// This function commits the staged holons to the persistent store

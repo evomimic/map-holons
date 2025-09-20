@@ -11,8 +11,7 @@ use crate::{
     RelationshipMap,
 };
 use base_types::MapString;
-use core_types::{HolonError, HolonId};
-use integrity_core_types::{HolonNodeModel, PropertyValue};
+use core_types::{HolonError, HolonId, HolonNodeModel, PropertyValue};
 use type_names::relationship_names::ToRelationshipName;
 use type_names::ToPropertyName;
 

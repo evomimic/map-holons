@@ -8,8 +8,7 @@ use std::{
 
 use super::{ReadableRelationship, TransientRelationshipMap};
 use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
-use core_types::HolonError;
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, RelationshipName};
 
 /// Custom RelationshipMap is only used for caching and will never be serialized
 #[derive(new, Clone, Debug, Eq, PartialEq)]

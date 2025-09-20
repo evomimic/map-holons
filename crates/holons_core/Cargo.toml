@@ -24,7 +24,6 @@ uuid = { workspace = true }
 # MAP Dependencies
 base_types = { workspace = true }
 core_types = { workspace = true }
-integrity_core_types = { workspace = true }
 type_names = { workspace = true }
 
 

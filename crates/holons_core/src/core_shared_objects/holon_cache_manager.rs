@@ -6,8 +6,7 @@ use crate::reference_layer::HolonServiceApi;
 use crate::{
     HolonCacheAccess, HolonCollection, HolonsContextBehavior, RelationshipCache, RelationshipMap,
 };
-use core_types::{HolonError, HolonId};
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Debug)]
 pub struct HolonCacheManager {

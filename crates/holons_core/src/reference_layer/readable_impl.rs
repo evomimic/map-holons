@@ -3,8 +3,9 @@ use crate::core_shared_objects::holon::EssentialHolonContent;
 use crate::reference_layer::TransientReference;
 use crate::{HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap};
 use base_types::MapString;
-use core_types::{HolonError, HolonId};
-use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
+};
 use std::rc::Rc;
 
 pub trait ReadableHolonImpl {

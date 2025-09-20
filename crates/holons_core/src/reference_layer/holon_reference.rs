@@ -15,8 +15,9 @@ use crate::{
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId};
-use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only

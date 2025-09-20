@@ -17,8 +17,8 @@ use integrity_core_types::LocalId;
 //Stateless HDI service to bridge Holon and HolonNode
 //Holochain API logic and calls should all done from the HolonNode module (separation of concerns)
 //Holon should be mostly self-referential methods and data
-
-///  ------ COMMANDS ------
+//
+// ///  ------ COMMANDS ------
 
 pub fn create_local_path(
     target_holon_hash: LocalId,
@@ -35,33 +35,33 @@ pub fn create_local_path(
     create_path_to_holon_node(input).map_err(|e| holon_error_from_wasm_error(e))
 }
 
-/// Marks the holon_node identified by the specified LocalId as deleted in the persistent store.
-pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
-    let record = get(try_action_hash_from_local_id(&id)?, GetOptions::default())
-        .map_err(|e| holon_error_from_wasm_error(e))?
-        .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
-    let mut holon = try_from_record(record)?;
-    // holon.is_deletable()?;
-    delete_holon_node(try_action_hash_from_local_id(&id)?)
-        .map_err(|e| holon_error_from_wasm_error(e))
-}
-///  ------ QUERIES ------
-
-//TODO move this associated (non-self /instance) function to the Holon_service
-pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
-    let records = get_all_holon_nodes(());
-    match records {
-        Ok(records) => {
-            let mut holons = Vec::<Holon>::new();
-            for holon_node_record in records.clone() {
-                let holon = try_from_record(holon_node_record.clone())?;
-                holons.push(holon);
-            }
-            Ok(holons)
-        }
-        Err(error) => Err(HolonError::WasmError(error.to_string())),
-    }
-}
+// /// Marks the holon_node identified by the specified LocalId as deleted in the persistent store.
+// pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
+//     let record = get(try_action_hash_from_local_id(&id)?, GetOptions::default())
+//         .map_err(|e| holon_error_from_wasm_error(e))?
+//         .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;
+//     let _holon = try_from_record(record)?;
+//     // holon.is_deletable()?;
+//     delete_holon_node(try_action_hash_from_local_id(&id)?)
+//         .map_err(|e| holon_error_from_wasm_error(e))
+// }
+// ///  ------ QUERIES ------
+//
+// //TODO move this associated (non-self /instance) function to the Holon_service
+// pub fn get_all_holons() -> Result<Vec<Holon>, HolonError> {
+//     let records = get_all_holon_nodes(());
+//     match records {
+//         Ok(records) => {
+//             let mut holons = Vec::<Holon>::new();
+//             for holon_node_record in records.clone() {
+//                 let holon = try_from_record(holon_node_record.clone())?;
+//                 holons.push(holon);
+//             }
+//             Ok(holons)
+//         }
+//         Err(error) => Err(HolonError::WasmError(error.to_string())),
+//     }
+// }
 pub fn get_holon_by_path(
     path_name: String,
     linktype: LinkTypes,

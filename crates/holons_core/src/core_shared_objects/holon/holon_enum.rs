@@ -1,7 +1,6 @@
 use base_types::{MapInteger, MapString};
-use core_types::HolonError;
+use core_types::{HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 use derive_new::new;
-use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 use serde::{Deserialize, Serialize};
 
 use super::state::AccessType;

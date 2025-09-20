@@ -6,8 +6,7 @@ use crate::dances::SessionState;
 use crate::query_layer::{NodeCollection, QueryExpression};
 use crate::{HolonReference, StagedReference};
 use base_types::MapString;
-use core_types::HolonId;
-use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
+use core_types::{HolonId, LocalId, PropertyMap, RelationshipName};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct DanceRequest {

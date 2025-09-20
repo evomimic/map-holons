@@ -4,8 +4,7 @@ use tracing::debug;
 use crate::core_shared_objects::{HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
 use crate::HolonsContextBehavior;
-use core_types::{HolonError, HolonId};
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Clone, Debug)]
 pub struct RelationshipCache {
@@ -25,7 +24,6 @@ impl RelationshipCache {
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-
         holon_service.fetch_all_related_holons(context, source_holon_id)
     }
 

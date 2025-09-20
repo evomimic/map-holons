@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
-use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 
 use hdk::prelude::*;
 use holons_core::reference_layer::ReadableHolon;
@@ -13,17 +13,15 @@ use holons_guest_integrity::{
 };
 
 use super::{fetch_links_to_all_holons, get_all_relationship_links};
-use crate::guest_shared_objects::{
-    commit_functions, create_local_path, get_holon_by_path, get_relationship_links,
-};
+use crate::guest_shared_objects::{commit_functions, get_relationship_links};
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
-use crate::try_from_record;
+use crate::{create_local_path, get_holon_by_path, try_from_record};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
         nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonBehavior,
-        HolonCollection, NurseryAccess, TransientRelationshipMap,
+        HolonCollection, NurseryAccess,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
@@ -207,7 +205,7 @@ impl HolonServiceApi for GuestHolonService {
         let record = get(try_action_hash_from_local_id(&local_id)?, GetOptions::default())
             .map_err(|e| holon_error_from_wasm_error(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
-        let mut holon = try_from_record(record)?;
+        let mut _holon = try_from_record(record)?;
         // holon.is_deletable()?;
         delete_holon_node(try_action_hash_from_local_id(&local_id)?)
             .map(|_| ()) // Convert ActionHash to ()

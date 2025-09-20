@@ -2,8 +2,7 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 use crate::core_shared_objects::Holon;
 use crate::{HolonCollection, HolonsContextBehavior, RelationshipMap};
-use core_types::{HolonError, HolonId};
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, HolonId, RelationshipName};
 
 pub trait HolonCacheAccess: Debug {
     /// This method returns a mutable reference (Rc<RefCell>) to the Holon identified by holon_id.

@@ -1,8 +1,7 @@
 use std::{any::Any, cell::RefCell, rc::Rc};
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, TemporaryId};
-use integrity_core_types::{PropertyMap, PropertyName};
+use core_types::{HolonError, PropertyMap, PropertyName, TemporaryId};
 
 use crate::{
     core_shared_objects::{

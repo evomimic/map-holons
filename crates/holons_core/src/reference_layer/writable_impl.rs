@@ -1,7 +1,6 @@
 use crate::{HolonReference, HolonsContextBehavior};
 use base_types::BaseValue;
-use core_types::HolonError;
-use integrity_core_types::{PropertyName, RelationshipName};
+use core_types::{HolonError, PropertyName, RelationshipName};
 
 /// Internal implementation surface for write operations (canonical, non-ergonomic).
 #[doc(hidden)] // or `pub(crate)` if possible

@@ -14,14 +14,18 @@
 //! These types define the shape and meaning of data in MAP holons and descriptors,
 //! and are shared across guest and client implementations.
 
-pub mod holon_error;
 pub mod ids;
 pub mod type_kinds;
 
-pub use holon_error::*;
 pub use ids::*;
-pub use integrity_core_types::validation_error::*;
 pub use type_kinds::*;
+
+//Re-export selected integrity_core_types at the root.
+// Prefer explicit lists over globs to keep the API curated and stable.
+pub use integrity_core_types::{
+    HolonError, HolonNodeModel, LocalId, PersistenceAgentId, PersistenceTimestamp, PropertyMap,
+    PropertyName, PropertyValue, RelationshipName, ValidationError,
+};
 
 // #[cfg(test)]
 // mod tests {

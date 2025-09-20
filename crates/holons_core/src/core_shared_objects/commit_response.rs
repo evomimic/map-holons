@@ -1,7 +1,6 @@
-use crate::{core_shared_objects::{Holon, HolonBehavior}};
+use crate::core_shared_objects::{Holon, HolonBehavior};
 use base_types::{MapInteger, MapString};
-use core_types::HolonError;
-use integrity_core_types::LocalId;
+use core_types::{HolonError, LocalId};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {

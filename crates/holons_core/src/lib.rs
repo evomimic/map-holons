@@ -1,8 +1,16 @@
+//! holons_core crate.
+//!
+//! Most users should import the prelude for the curated public API:
+//! ```
+//! use holons_core::prelude::*;
+//! ```
+
 // Top-level modules exposed to external consumers
 pub mod core_shared_objects;
 pub mod reference_layer;
 // Utility modules (if needed outside the crate)
 pub mod dances;
+pub mod prelude;
 pub mod query_layer;
 pub mod utils;
 

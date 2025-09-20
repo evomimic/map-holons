@@ -2,8 +2,7 @@ use std::rc::Rc;
 
 use super::{HolonCollection, TransientRelationshipMap};
 use crate::{HolonReference, HolonsContextBehavior};
-use core_types::HolonError;
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, RelationshipName};
 
 pub trait ReadableRelationship {
     // =====================

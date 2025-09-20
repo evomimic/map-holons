@@ -1,9 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::Holon;
-use crate::{HolonCacheAccess, HolonCacheManager, HolonCollection, HolonsContextBehavior, RelationshipMap};
-use core_types::{HolonError, HolonId};
-use integrity_core_types::RelationshipName;
+use crate::{
+    HolonCacheAccess, HolonCacheManager, HolonCollection, HolonsContextBehavior, RelationshipMap,
+};
+use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Debug)]
 pub struct CacheRequestRouter {
@@ -117,7 +118,7 @@ impl HolonCacheAccess for CacheRequestRouter {
 
     fn get_all_related_holons(
         &self,
-        context: & dyn HolonsContextBehavior,
+        context: &dyn HolonsContextBehavior,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         // Determine the routing policy for the request

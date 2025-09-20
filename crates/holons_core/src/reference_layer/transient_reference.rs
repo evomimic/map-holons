@@ -5,8 +5,9 @@ use tracing::debug;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName, TemporaryId,
+};
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;

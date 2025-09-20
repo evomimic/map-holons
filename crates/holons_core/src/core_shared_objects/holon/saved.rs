@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use base_types::{MapInteger, MapString};
-use core_types::HolonError;
-use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
+use core_types::{HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
 
 use crate::core_shared_objects::holon::HolonCloneModel;
 
@@ -88,6 +87,24 @@ impl HolonBehavior for SavedHolon {
         }
     }
 
+    /// Retrieves the `LocalId`.
+    fn get_local_id(&self) -> Result<LocalId, HolonError> {
+        Ok(self.saved_id.clone())
+    }
+
+    /// Retrieves the `original_id`, if present.
+    fn get_original_id(&self) -> Option<LocalId> {
+        self.original_id.clone()
+    }
+
+    /// Retrieves the specified property value.
+    fn get_property_value(
+        &self,
+        property_name: &PropertyName,
+    ) -> Result<Option<PropertyValue>, HolonError> {
+        Ok(self.property_map.get(property_name).cloned())
+    }
+
     // ?TODO:  What should this be for SavedHolon ? Return error ?
     // not sure why we need a version for this type
     //
@@ -105,24 +122,6 @@ impl HolonBehavior for SavedHolon {
             .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
         Ok(MapString(key.0 + &self.version.0.to_string()))
-    }
-
-    /// Retrieves the `LocalId`.
-    fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        Ok(self.saved_id.clone())
-    }
-
-    /// Retrieves the `original_id`, if present.
-    fn get_original_id(&self) -> Option<LocalId> {
-        self.original_id.clone()
-    }
-
-    /// Retrieves the specified property value.
-    fn get_property_value(
-        &self,
-        property_name: &PropertyName,
-    ) -> Result<Option<PropertyValue>, HolonError> {
-        Ok(self.property_map.get(property_name).cloned())
     }
 
     /// Extracts HolonNode data.

@@ -5,7 +5,7 @@ use integrity_core_types::{
 use shared_validation::*;
 
 pub fn validate_create_holon_node(
-    action: PersistenceAction,
+    _action: PersistenceAction,
     holon_node_model: HolonNodeModel,
 ) -> ExternResult<ValidateCallbackResult> {
     validate_create_holon(holon_node_model)
@@ -15,7 +15,7 @@ pub fn validate_create_holon_node(
 }
 
 pub fn validate_update_holon_node(
-    action: PersistenceUpdate,
+    _action: PersistenceUpdate,
     holon_node_model: HolonNodeModel,
 ) -> ExternResult<ValidateCallbackResult> {
     validate_update_holon(holon_node_model)
@@ -25,7 +25,7 @@ pub fn validate_update_holon_node(
 }
 
 pub fn validate_delete_holon_node(
-    action: PersistenceDelete,
+    _action: PersistenceDelete,
 ) -> ExternResult<ValidateCallbackResult> {
     validate_delete_holon().map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
 

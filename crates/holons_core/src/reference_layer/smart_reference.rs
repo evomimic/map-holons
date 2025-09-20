@@ -18,9 +18,8 @@ use crate::{
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId};
-use integrity_core_types::{
-    HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

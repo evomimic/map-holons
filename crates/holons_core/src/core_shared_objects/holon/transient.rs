@@ -8,9 +8,8 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::HolonError;
-use integrity_core_types::{
-    HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+use core_types::{
+    HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 
 use crate::{

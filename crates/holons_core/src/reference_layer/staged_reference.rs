@@ -20,8 +20,9 @@ use crate::{
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId, TemporaryId};
-use integrity_core_types::{HolonNodeModel, PropertyName, PropertyValue, RelationshipName};
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName, TemporaryId,
+};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StagedReference {

@@ -33,8 +33,7 @@ use crate::{
     },
 };
 use base_types::MapString;
-use core_types::HolonError;
-use integrity_core_types::PropertyName;
+use core_types::{HolonError, PropertyName};
 
 /// Abandon staged changes
 ///
