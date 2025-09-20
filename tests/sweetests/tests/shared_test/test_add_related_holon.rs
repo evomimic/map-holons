@@ -20,7 +20,7 @@ use core_types::HolonId;
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonReference, ReadableHolonReferenceLayer, StagedReference},
+    reference_layer::{HolonReference, ReadableHolon, StagedReference},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};

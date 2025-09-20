@@ -8,7 +8,7 @@
 // use holons_core::{
 //     core_shared_objects::holon::TransientHolon,
 //     reference_layer::{
-//         HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference,
+//         HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference,
 //         WriteableHolon,
 //     },
 // };

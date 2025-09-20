@@ -6,6 +6,7 @@ use type_names::{
     relationship_names::CoreRelationshipTypeName, ToPropertyName, ToRelationshipName,
 };
 
+use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::{
     core_shared_objects::{
         cache_access::HolonCacheAccess,
@@ -15,8 +16,8 @@ use crate::{
         Holon, HolonBehavior, HolonCollection,
     },
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
-        TransientReference, WriteableHolonReferenceLayer,
+        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference,
+        WriteableHolonReferenceLayer,
     },
     RelationshipMap, WriteableHolon,
 };
@@ -117,8 +118,8 @@ impl fmt::Display for SmartReference {
     }
 }
 
-impl ReadableHolonReferenceLayer for SmartReference {
-    fn clone_holon(
+impl ReadableHolonImpl for SmartReference {
+    fn clone_holon_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientReference, HolonError> {
@@ -135,7 +136,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         let cloned_holon_transient_reference =
             transient_behavior.new_from_clone_model(borrowed_holon.get_holon_clone_model())?;
 
-        let relationships = self.get_all_related_holons(context)?;
+        let relationships = self.all_related_holons(context)?;
 
         cloned_holon_transient_reference
             .update_relationship_map(context, relationships.clone_for_new_source()?)?;
@@ -143,7 +144,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         Ok(cloned_holon_transient_reference)
     }
 
-    fn get_all_related_holons(
+    fn all_related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<RelationshipMap, HolonError> {
@@ -154,17 +155,17 @@ impl ReadableHolonReferenceLayer for SmartReference {
         Ok(relationship_map)
     }
 
-    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         Ok(self.holon_id.clone())
     }
 
-    fn get_predecessor(
+    fn predecessor_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let collection = self.get_related_holons(context, CoreRelationshipTypeName::Predecessor)?;
+        let collection = self.related_holons(context, CoreRelationshipTypeName::Predecessor)?;
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
         if members.len() > 1 {
@@ -186,7 +187,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
     /// manager in the context.
     ///
     /// Returns: Option, None if property for given name does not exist in its PropertyMap.
-    fn get_property_value_ref_layer(
+    fn property_value_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
@@ -208,7 +209,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
     /// This function extracts the key from the smart_property_values or, if not found there, from
     /// its referenced holon. Returns an Option -- as even though an entry for 'key' may be present in the BTreeMap, the value could be None.
     ///
-    fn get_key(
+    fn key_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<MapString>, HolonError> {
@@ -243,7 +244,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         }
     }
 
-    fn get_related_holons_ref_layer(
+    fn related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
@@ -254,7 +255,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         cache_access.get_related_holons(&self.holon_id, relationship_name)
     }
 
-    fn get_versioned_key(
+    fn versioned_key_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<MapString, HolonError> {
@@ -265,7 +266,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         Ok(key)
     }
 
-    fn essential_content(
+    fn essential_content_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<EssentialHolonContent, HolonError> {
@@ -275,7 +276,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         borrowed_holon.essential_content()
     }
 
-    fn into_model(
+    fn into_model_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonNodeModel, HolonError> {
@@ -286,7 +287,7 @@ impl ReadableHolonReferenceLayer for SmartReference {
         Ok(borrowed_holon.into_node())
     }
 
-    fn is_accessible(
+    fn is_accessible_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         access_type: AccessType,

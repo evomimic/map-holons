@@ -15,8 +15,8 @@ use holons_core::{
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference,
-        TransientReference, WriteableHolon,
+        HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
+        WriteableHolon,
     },
 };
 use integrity_core_types::{PropertyName, RelationshipName};

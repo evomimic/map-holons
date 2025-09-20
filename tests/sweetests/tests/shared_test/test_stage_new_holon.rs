@@ -22,9 +22,7 @@ use holons_client::init_client_context;
 use holons_core::{
     core_shared_objects::holon::{Holon, HolonBehavior, TransientHolon},
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{
-        HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference, TransientReference,
-    },
+    reference_layer::{HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};

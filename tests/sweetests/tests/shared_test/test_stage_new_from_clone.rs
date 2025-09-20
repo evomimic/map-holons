@@ -17,9 +17,7 @@ use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{
-        HolonReference, ReadableHolonReferenceLayer, SmartReference, TransientReference,
-    },
+    reference_layer::{HolonReference, ReadableHolon, SmartReference, TransientReference},
 };
 use integrity_core_types::{PropertyName, RelationshipName};
 

@@ -1,9 +1,9 @@
-use std::{collections::BTreeMap, rc::Rc};
-use serde::{Serialize, Deserialize};
 use derive_new::new;
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, rc::Rc};
 
+use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
 use crate::HolonCollection;
-use crate::reference_layer::{ReadableHolonReferenceLayer, HolonReference, HolonsContextBehavior};
 use core_types::HolonError;
 use integrity_core_types::RelationshipName;
 
@@ -41,8 +41,7 @@ pub fn evaluate_query(
     let mut result_collection = NodeCollection::new_empty();
 
     for node in node_collection.members {
-        let related_holons_rc =
-            node.source_holon.get_related_holons_ref_layer(context, &relationship_name)?;
+        let related_holons_rc = node.source_holon.related_holons(context, &relationship_name)?;
 
         let related_holons: Rc<HolonCollection> = Rc::clone(&related_holons_rc);
 

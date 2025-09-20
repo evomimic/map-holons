@@ -19,7 +19,7 @@ use holons_core::{
     core_shared_objects::Holon,
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{HolonReference, ReadableHolon, ReadableHolonReferenceLayer, WriteableHolon},
+    reference_layer::{HolonReference, ReadableHolon, WriteableHolon},
     HolonCollection, HolonCollectionApi, HolonsContextBehavior,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
@@ -71,7 +71,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // Get its current authors
 
     let authors_reference =
-        book_holon_staged_reference.get_related_holons(&*fixture_context, &relationship_name)?;
+        book_holon_staged_reference.related_holons(&*fixture_context, &relationship_name)?;
 
     info!("authors retrieved for book: {:?}", authors_reference);
 

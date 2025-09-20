@@ -20,8 +20,7 @@ use holons_core::{
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer, StagedReference,
-        TransientReference,
+        HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
     },
 };
 
@@ -246,7 +245,7 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
                 HolonReference::Staged(staged_ref) => {
                     Ok(TestReference::StagedHolon(staged_ref.clone()))
                 }
-                HolonReference::Smart(smart_ref) => match smart_ref.get_key(context)? {
+                HolonReference::Smart(smart_ref) => match smart_ref.key(context)? {
                     Some(key) => Ok(TestReference::SavedHolon(key)),
                     None => Err(HolonError::InvalidHolonReference(
                         "SmartReference failed to provide a valid key".to_string(),

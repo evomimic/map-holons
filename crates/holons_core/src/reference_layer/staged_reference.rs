@@ -7,11 +7,12 @@ use type_names::{
     ToPropertyName,
 };
 
+use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::{
     core_shared_objects::holon::HolonCloneModel,
     reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, ReadableHolonReferenceLayer,
-        TransientReference, WriteableHolon, WriteableHolonReferenceLayer,
+        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WriteableHolon,
+        WriteableHolonReferenceLayer,
     },
 };
 use crate::{
@@ -130,7 +131,7 @@ impl StagedReference {
         space_manager.get_nursery_access()
     }
 
-    pub fn get_temporary_id(&self) -> TemporaryId {
+    pub fn temporary_id(&self) -> TemporaryId {
         self.id.clone()
     }
 }
@@ -141,8 +142,8 @@ impl fmt::Display for StagedReference {
     }
 }
 
-impl ReadableHolonReferenceLayer for StagedReference {
-    fn clone_holon(
+impl ReadableHolonImpl for StagedReference {
+    fn clone_holon_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientReference, HolonError> {
@@ -160,17 +161,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         Ok(cloned_holon_transient_reference)
     }
 
-    fn essential_content(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        borrowed_holon.essential_content()
-    }
-
-    fn get_all_related_holons(
+    fn all_related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<RelationshipMap, HolonError> {
@@ -181,7 +172,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         Ok(RelationshipMap::from(borrowed_holon.into_staged()?.get_staged_relationship_map()?))
     }
 
-    fn get_holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
@@ -190,12 +181,12 @@ impl ReadableHolonReferenceLayer for StagedReference {
         Ok(HolonId::from(local_id))
     }
 
-    fn get_predecessor(
+    fn predecessor_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let collection = self.get_related_holons(context, CoreRelationshipTypeName::Predecessor)?;
+        let collection = self.related_holons(context, CoreRelationshipTypeName::Predecessor)?;
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
         if members.len() > 1 {
@@ -211,7 +202,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         }
     }
 
-    fn get_property_value_ref_layer(
+    fn property_value_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
@@ -222,7 +213,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         borrowed_holon.get_property_value(property_name)
     }
 
-    fn get_key(
+    fn key_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<MapString>, HolonError> {
@@ -232,7 +223,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         borrowed_holon.get_key().clone()
     }
 
-    fn get_related_holons_ref_layer(
+    fn related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
@@ -255,7 +246,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         }
     }
 
-    fn get_versioned_key(
+    fn versioned_key_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<MapString, HolonError> {
@@ -266,7 +257,17 @@ impl ReadableHolonReferenceLayer for StagedReference {
         Ok(key)
     }
 
-    fn into_model(
+    fn essential_content_impl(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.essential_content()
+    }
+
+    fn into_model_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonNodeModel, HolonError> {
@@ -277,7 +278,7 @@ impl ReadableHolonReferenceLayer for StagedReference {
         Ok(borrowed_holon.into_node())
     }
 
-    fn is_accessible(
+    fn is_accessible_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         access_type: AccessType,
@@ -419,7 +420,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-        let existing_predecessor_option = self.clone().get_predecessor(context)?;
+        let existing_predecessor_option = self.clone().predecessor(context)?;
         if let Some(predecessor) = existing_predecessor_option {
             self.remove_related_holons_ref_layer(
                 context,

@@ -13,10 +13,9 @@ use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolon
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
-        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection,
-        StagedHolon,
+        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, StagedHolon,
     },
-    reference_layer::{HolonsContextBehavior, ReadableHolonReferenceLayer},
+    reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
 // use holons_core::utils::as_json;
 use base_types::{BaseValue, MapInteger, MapString};
@@ -319,8 +318,8 @@ fn save_smartlinks_for_collection(
     );
     for holon_reference in collection.get_members() {
         // Only commit references to holons with id's (i.e., Saved)
-        if let Ok(target_id) = holon_reference.get_holon_id(context) {
-            let key_option = holon_reference.get_key(context)?;
+        if let Ok(target_id) = holon_reference.holon_id(context) {
+            let key_option = holon_reference.key(context)?;
             let smartlink: SmartLink = if let Some(key) = key_option {
                 let mut prop_vals: PropertyMap = BTreeMap::new();
                 prop_vals.insert(

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
 use hdk::prelude::*;
-use holons_core::reference_layer::{ReadableHolonReferenceLayer, WriteableHolonReferenceLayer};
+use holons_core::reference_layer::{ReadableHolon, WriteableHolonReferenceLayer};
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
     holon_error_from_wasm_error, try_action_hash_from_local_id,
@@ -247,7 +247,7 @@ impl HolonServiceApi for GuestHolonService {
         for (map_name, holon_references) in reference_map {
             let mut collection = HolonCollection::new_existing();
             for reference in holon_references {
-                let key = reference.get_key(context)?.ok_or_else(|| {
+                let key = reference.key(context)?.ok_or_else(|| {
                     HolonError::Misc(
                         "Expected Smartlink to have a key, didn't get one.".to_string(),
                     )

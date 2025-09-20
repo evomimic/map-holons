@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tracing::warn;
 
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer};
+use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
 use crate::HolonCollectionApi;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
@@ -52,7 +52,7 @@ impl HolonCollectionApi for TransientCollection {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         for holon_ref in holons {
-            let key = holon_ref.get_key(context)?;
+            let key = holon_ref.key(context)?;
 
             if let Some(key) = key {
                 if let Some(&_index) = self.keyed_index.get(&key) {
@@ -112,14 +112,14 @@ impl HolonCollectionApi for TransientCollection {
     ) -> Result<(), HolonError> {
         for holon in holons {
             self.members.retain(|x| x != &holon);
-            if let Some(key) = holon.get_key(context)? {
+            if let Some(key) = holon.key(context)? {
                 self.keyed_index.remove(&key);
             }
         }
         // adjust new order of members in the keyed_index
         let mut i = 0;
         for member in self.members.clone() {
-            if let Some(key) = member.get_key(context)? {
+            if let Some(key) = member.key(context)? {
                 self.keyed_index.insert(key, i);
                 i += 1;
             }
