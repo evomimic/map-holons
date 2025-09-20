@@ -5,7 +5,7 @@
 //! use holons_core::prelude::*;
 //! ```
 
-// Top-level modules exposed to external consumers
+// Public Modules
 pub mod core_shared_objects;
 pub mod reference_layer;
 // Utility modules (if needed outside the crate)
