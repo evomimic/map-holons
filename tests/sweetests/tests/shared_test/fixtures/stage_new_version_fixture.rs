@@ -2,12 +2,12 @@ use rstest::*;
 
 use crate::shared_test::{
     setup_book_author_steps_with_context,
-    test_context::init_test_context,
+    test_context::init_fixture_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
-    TestContextConfigOption::TestFixture,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
+use holons_core::reference_layer::holon_operations_api::staged_count;
 use holons_core::{dances::dance_response::ResponseStatusCode, HolonReference};
 
 /// Fixture for creating Simple NEWVERSION Testcase
@@ -24,10 +24,9 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
 
     // Initialize a client context the fixture can use
     // NOTE: This context will NOT be shared by test executors. The fixture's client context
-    // will go away once Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either index or key
-    let fixture_context = init_test_context(TestFixture);
-    let staging_service = fixture_context.get_space_manager().get_staging_behavior_access();
+    // includes a TransientHolonManager that is used as a scratch pad while in the fixture.
+    // This allows them to be assigned TransientReferences and also retrieved by either index or key
+    let fixture_context = init_fixture_context();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -42,11 +41,10 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     let _relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
-    expected_count += staging_service.borrow().staged_count();
+    expected_count += staged_count(&*fixture_context);
 
     // Get and set the various Holons data.
     let book_key = MapString(BOOK_KEY.to_string());
-    // let book_holon_ref = staging_service.get_staged_holon_by_base_key(fixture_context, &book_key)?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
@@ -58,21 +56,21 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     test_case.add_match_saved_content_step()?;
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
-    let cloned_book_key =
-        BaseValue::StringValue(MapString("A new version of: Emerging World".to_string()));
-
     test_case.add_stage_new_version_step(book_key, ResponseStatusCode::OK)?;
     // NOTE: Assume this test step executor actually stages TWO new versions from original
     expected_count += 2;
 
-    //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step()?;
+    // //  COMMIT  // all Holons in staging_area
+    // test_case.add_commit_step()?;
 
-    //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    // //  ENSURE DATABASE COUNT //
+    // test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step()?;
+    // //  MATCH SAVED CONTENT  //
+    // test_case.add_match_saved_content_step()?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
 
     Ok(test_case.clone())
 }

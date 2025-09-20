@@ -21,8 +21,8 @@ use holons_core::{
     dances::ResponseBody,
     // utils::as_json
 };
-use integrity_core_types::{PropertyMap, PropertyName};
 use holons_guest_integrity::HolonNode;
+use integrity_core_types::{PropertyMap, PropertyName};
 
 /// This function retrieves all holons and then writes log messages for each holon:
 /// `info!` -- writes only the "key" for each holon
@@ -53,7 +53,7 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
                 .get_key()
                 .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
                 .unwrap_or_else(|err| {
-                    panic!("Attempt to get_key() resulted in error: {:?}", err);
+                    panic!("Attempt to key() resulted in error: {:?}", err);
                 });
 
             info!("Key = {:?}", key.0);

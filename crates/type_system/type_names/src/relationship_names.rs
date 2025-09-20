@@ -9,52 +9,58 @@ pub trait ToRelationshipName {
 
 impl ToRelationshipName for &str {
     fn to_relationship_name(self) -> RelationshipName {
-        RelationshipName(MapString(self.to_string()))
+        let upper = self.to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for String {
     fn to_relationship_name(self) -> RelationshipName {
-        RelationshipName(MapString(self))
+        let upper = self.to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        RelationshipName(self)
+        let upper = format!("{self:?}").to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for &MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper_case = format!("{self:?}").to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper_case))
+        let upper = format!("{self:?}").to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for CoreRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
+        // Assuming as_relationship_name() already gives a canonical MapString,
         self.as_relationship_name()
     }
 }
 
 impl ToRelationshipName for &CoreRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
+        // Assuming as_relationship_name() already gives a canonical MapString,
         self.clone().as_relationship_name()
     }
 }
 
 impl ToRelationshipName for RelationshipName {
-    #[inline]
     fn to_relationship_name(self) -> RelationshipName {
-        self
+        // Normalize in case a RelationshipName was constructed ad hoc
+        let upper = format!("{:?}", self).to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for &RelationshipName {
-    #[inline]
     fn to_relationship_name(self) -> RelationshipName {
-        self.clone()
+        let upper = format!("{:?}", self).to_case(Case::ScreamingSnake);
+        RelationshipName(MapString(upper))
     }
 }
 

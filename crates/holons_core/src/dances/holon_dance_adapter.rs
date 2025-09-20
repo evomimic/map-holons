@@ -16,26 +16,66 @@
 
 use tracing::{debug, info};
 
-use crate::core_shared_objects::{
-    commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
-    stage_new_version_api, CommitRequestStatus, TransientHolon,
+use crate::{
+    core_shared_objects::{
+        commit_api, delete_holon_api, stage_new_from_clone_api, stage_new_holon_api,
+        stage_new_version_api, CommitRequestStatus,
+    },
+    dances::{
+        dance_request::{DanceType, RequestBody},
+        dance_response::ResponseBody,
+        DanceRequest,
+    },
+    query_layer::evaluate_query,
+    reference_layer::{
+        holon_operations_api::get_all_holons, writable_holon::WritableHolon, HolonReference,
+        HolonsContextBehavior, SmartReference,
+    },
 };
-use crate::dances::{
-    dance_request::{DanceType, RequestBody},
-    dance_response::ResponseBody,
-    DanceRequest,
-};
-use crate::query_layer::evaluate_query;
-use crate::reference_layer::get_all_holons;
-use crate::reference_layer::holon_writable::{WriteableHolon, WriteableHolonReferenceLayer};
-use crate::{HolonsContextBehavior, SmartReference};
 use base_types::MapString;
-use core_types::HolonError;
-use integrity_core_types::PropertyName;
+use core_types::{HolonError, PropertyName};
+
+/// Abandon staged changes
+///
+/// *DanceRequest:*
+/// - dance_name: "abandon_staged_changes"
+/// - dance_type: Command(HolonReference) -- references the staged holon whose changes are being abandoned
+/// - request_body: None
+///
+///
+/// *ResponseBody:*
+/// - an Index into staged_holons that references the updated holon.
+///
+pub fn abandon_staged_changes_dance(
+    context: &dyn HolonsContextBehavior,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    // Get the staged holon
+    info!("----- Entered abandon_staged_changes_dance");
+    match request.dance_type {
+        DanceType::CommandMethod(holon_reference) => {
+            match &holon_reference {
+                HolonReference::Staged(staged_reference) => {
+                    staged_reference.abandon_staged_changes(context)?;
+                }
+                _ => {
+                    return Err(HolonError::InvalidHolonReference(
+                        "Can only abandon staged changes on a StagedReference".to_string(),
+                    ))
+                }
+            }
+
+            Ok(ResponseBody::HolonReference(holon_reference))
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Expected Command(StagedReference) DanceType, didn't get one".to_string(),
+        )),
+    }
+}
 
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
-/// - dance_type: CommandMethod(StagedReference) -- references the staged holon that is the `source` of the relationship being extended
+/// - dance_type: CommandMethod(HolonReference) -- references the holon that is the `source` of the relationship being extended
 /// - request_body:
 ///     _TargetHolons_: specifying the RelationshipName and list of PortableReferences to the holons to add
 ///
@@ -50,32 +90,34 @@ pub fn add_related_holons_dance(
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::CommandMethod(staged_reference) => {
-            // // Borrow a read-only reference to the CommitManager
-            // let staged_reference_result = {
-            //     let space_manager = context.get_space_manager();
-            //     debug!("Matched CommandMethod as dance_type.");
-            //     // Convert the staged_index into a StagedReference
-            //     space_manager.to_validated_staged_reference(staged_index)
-            // };
-
-            // Handle the result of to_staged_reference
-            // match staged_reference {
-            //     Ok(source_reference) => {
+        DanceType::CommandMethod(holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_add) => {
-                    // Convert Vec<PortableReference> to Vec<HolonReference> inline
-                    debug!("Matched TargetHolons as RequestBody, building Vec<HolonReference>");
-
                     debug!("Got the Vec<HolonReference>, about to call add_related_holons");
-                    // Call the add_related_holons method on StagedReference
-                    staged_reference.add_related_holons(
-                        context,
-                        relationship_name,
-                        holons_to_add,
-                    )?;
-
-                    Ok(ResponseBody::StagedRef(staged_reference))
+                    match &holon_reference {
+                        HolonReference::Transient(transient_reference) => {
+                            // Call the add_related_holons method on HolonReference
+                            transient_reference.add_related_holons(
+                                context,
+                                relationship_name,
+                                holons_to_add,
+                            )?;
+                        }
+                        HolonReference::Staged(staged_reference) => {
+                            staged_reference.add_related_holons(
+                                context,
+                                relationship_name,
+                                holons_to_add,
+                            )?;
+                        }
+                        HolonReference::Smart(_) => {
+                            return Err(HolonError::InvalidHolonReference(
+                                "Cannot add relationships to a SmartReference, which is immutable"
+                                    .to_string(),
+                            ))
+                        }
+                    }
+                    Ok(ResponseBody::HolonReference(holon_reference))
                 }
                 _ => Err(HolonError::InvalidParameter(
                     "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
@@ -255,12 +297,12 @@ pub fn query_relationships_dance(
 ///
 /// *DanceRequest:*
 /// - dance_name: "remove_related_holons"
-/// - dance_type: CommandMethod(StagedReference) -- identifies the holon that is the `source` of the relationship being navigated
+/// - dance_type: CommandMethod(HolonReference) -- identifies the holon that is the `source` of the relationship being navigated
 /// - request_body:
 ///     TargetHolons(RelationshipName, Vec<HolonReference>),
 ///
 /// *ResponseBody:*
-/// - StagedReference(StagedReference) -- index for the staged_holon for which related holons were removed
+/// - HolonReference(HolonReference) -- index for the staged_holon for which related holons were removed
 ///
 ///
 pub fn remove_related_holons_dance(
@@ -271,31 +313,35 @@ pub fn remove_related_holons_dance(
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::CommandMethod(staged_reference) => {
-            // // Borrow a read-only reference to the CommitManager
-            // let staged_reference_result = {
-            //     let space_manager = context.get_space_manager();
-            //     debug!("Matched CommandMethod as dance_type.");
-            //     // Convert the staged_index into a StagedReference
-            //     space_manager.to_validated_staged_reference(staged_reference)
-            // };
-            //
-            // // Handle the result of to_staged_reference
-            // match staged_reference_result {
-            //     Ok(source_reference) => {
+        DanceType::CommandMethod(holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
                     // Convert Vec<PortableReference> to Vec<HolonReference> inline
                     debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
 
                     debug!("Got the holon_refs_vec, about to call remove_related_holons");
-                    staged_reference.remove_related_holons(
-                        context,
-                        &relationship_name,
-                        holons_to_remove,
-                    )?;
-
-                    Ok(ResponseBody::StagedRef(staged_reference))
+                    match &holon_reference {
+                        HolonReference::Transient(transient_reference) => {
+                            // Call the remove_related_holons method on HolonReference
+                            transient_reference.remove_related_holons(
+                                context,
+                                relationship_name,
+                                holons_to_remove,
+                            )?;
+                        }
+                        HolonReference::Staged(staged_reference) => {
+                            staged_reference.remove_related_holons(
+                                context,
+                                relationship_name,
+                                holons_to_remove,
+                            )?;
+                        }
+                        HolonReference::Smart(_) => return Err(HolonError::InvalidHolonReference(
+                            "Cannot remove relationships from a SmartReference, which is immutable"
+                                .to_string(),
+                        )),
+                    }
+                    Ok(ResponseBody::HolonReference(holon_reference))
                 }
                 _ => Err(HolonError::InvalidParameter(
                     "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
@@ -352,8 +398,7 @@ pub fn stage_new_from_clone_dance(
         .ok_or(HolonError::InvalidParameter(
             "ParameterValues PropertyMap must have a key".to_string(),
         ))?
-        .clone()
-        .ok_or(HolonError::InvalidParameter("'key' property must have a value".to_string()))?;
+        .clone();
 
     let staged_reference = stage_new_from_clone_api(
         context,
@@ -361,15 +406,18 @@ pub fn stage_new_from_clone_dance(
         MapString(Into::<String>::into(&new_key)),
     )?;
 
-    Ok(ResponseBody::StagedRef(staged_reference))
+    Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }
 
-/// This dance creates a new version of an existing holon by cloning the existing holon, adding
-/// the clone to the StagingArea and resetting its PREDECESSOR relationship to reference the
-/// holon it was cloned from. The cloned holon can then be incrementally built up prior to commit.
+/// This dance stages a new holon in the holon space.
+///
+/// This function creates a new holon in the staging area without any lineage
+/// relationship to an existing holon. Use this function for creating entirely
+/// new holons that are not tied to any predecessor.
+///
 ///
 /// *DanceRequest:*
-/// - dance_name: "stage_new_version"
+/// - dance_name: "stage_new_holon"
 /// - dance_type: Standalone
 /// - request_body:
 ///     ParameterValues: specifying the initial set of properties to set in the staged_holon (if any)
@@ -382,34 +430,19 @@ pub fn stage_new_holon_dance(
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage new holon dance");
-    // Create and stage new Holon
-    let mut new_holon = TransientHolon::new();
 
-    // Populate parameters if available
-    match request.body {
-        RequestBody::None => {
-            // No parameters to populate, continue
+    let staged_reference = {
+        if let RequestBody::TransientReference(reference) = request.body {
+            // Stage the new holon
+            stage_new_holon_api(context, reference)?
+            // This operation will have added the staged_holon to the CommitManager's vector and returned a
+            // StagedReference to it.
+        } else {
+            return Err(HolonError::InvalidParameter("request.body".to_string()));
         }
-        // RequestBody::ParameterValues(parameters) => {
-        //     // Populate parameters into the new Holon
-        //     for (property_name, base_value) in parameters.iter() {
-        //         new_holon.with_property_value(property_name.clone(), base_value.clone())?;
-        //     }
-        // }
-        RequestBody::TransientHolon(holon) => {
-            new_holon = holon;
-            debug!("Request body matched holon variant");
-        }
-        _ => return Err(HolonError::InvalidParameter("request.body".to_string())),
-    }
-    debug!("Response body matched successfully for holon:{:#?}", new_holon);
+    };
 
-    // Stage the new holon
-    let staged_reference = stage_new_holon_api(context, new_holon)?;
-    // This operation will have added the staged_holon to the CommitManager's vector and returned a
-    // StagedReference to it.
-
-    Ok(ResponseBody::StagedRef(staged_reference))
+    Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }
 
 /// Stages a new version of a Holon by cloning an existing Holon, retaining lineage to the Holon its cloned from.
@@ -431,7 +464,7 @@ pub fn stage_new_version_dance(
     info!("----- Entered stage_new_version dance ==");
 
     let smart_reference = match request.dance_type {
-        DanceType::NewVersionMethod(holon_id) => SmartReference::new(holon_id, None), // TODO: handle getting smart_prop_vals
+        DanceType::NewVersionMethod(holon_id) => SmartReference::new_from_id(holon_id), // TODO: handle getting smart_prop_vals
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
@@ -441,7 +474,7 @@ pub fn stage_new_version_dance(
 
     let staged_reference = stage_new_version_api(context, smart_reference)?;
 
-    Ok(ResponseBody::StagedRef(staged_reference))
+    Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }
 
 /// Add property values to an already staged holon
@@ -462,49 +495,21 @@ pub fn with_properties_dance(
     // Get the staged holon
     info!("----- Entered with_properties_dance");
     match request.dance_type {
-        DanceType::CommandMethod(staged_reference) => {
+        DanceType::CommandMethod(holon_reference) => {
             match request.body {
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
                     for (property_name, base_value) in parameters {
-                        staged_reference.with_property_value(
+                        holon_reference.with_property_value(
                             context,
                             property_name.clone(),
                             base_value.clone(),
                         )?;
                     }
-                    Ok(ResponseBody::StagedRef(staged_reference))
+                    Ok(ResponseBody::HolonReference(holon_reference))
                 }
                 _ => Err(HolonError::InvalidParameter("request.body".to_string())),
             }
-        }
-        _ => Err(HolonError::InvalidParameter(
-            "Expected Command(StagedReference) DanceType, didn't get one".to_string(),
-        )),
-    }
-}
-
-/// Abandon staged changes
-///
-/// *DanceRequest:*
-/// - dance_name: "abandon_staged_changes"
-/// - dance_type: Command(StagedReference) -- references the staged holon whose changes are being abandoned
-/// - request_body: None
-///
-///
-/// *ResponseBody:*
-/// - an Index into staged_holons that references the updated holon.
-///
-pub fn abandon_staged_changes_dance(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
-    // Get the staged holon
-    info!("----- Entered abandon_staged_changes_dance");
-    match request.dance_type {
-        DanceType::CommandMethod(mut staged_reference) => {
-            staged_reference.abandon_staged_changes(context)?;
-            Ok(ResponseBody::StagedRef(staged_reference))
         }
         _ => Err(HolonError::InvalidParameter(
             "Expected Command(StagedReference) DanceType, didn't get one".to_string(),

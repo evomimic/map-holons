@@ -1,5 +1,7 @@
 use crate::core_shared_objects::TransientManagerAccess;
-use crate::reference_layer::{HolonReference, HolonServiceApi, HolonStagingBehavior};
+use crate::reference_layer::{
+    HolonReference, HolonServiceApi, HolonStagingBehavior, TransientHolonBehavior,
+};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
@@ -60,7 +62,16 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - An `Arc<RefCell<dyn HolonStagingBehavior>>` for interacting with staged holons.
+    // TODO: rename to get_staging_behavior_service
     fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>>;
+
+    /// Provides the service for the **component that implements the `TransientHolonBehavior` API**.
+    ///
+    /// This allows holons to be created and retrieved, within the TransientManager.
+    ///
+    /// # Returns
+    /// - An `Arc<RefCell<dyn TransientHolonBehavior>>` for interacting with transient holons.
+    fn get_transient_behavior_service(&self) -> Arc<RefCell<dyn TransientHolonBehavior>>;
 
     /// Provides access to the **TransientHolonManager**, where transient holons are stored.
     ///

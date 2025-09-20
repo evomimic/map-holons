@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{HolonCollection, ReadableRelationship, WritableRelationship};
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
-use core_types::HolonError;
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, RelationshipName};
 
 /// Represents a map of transient relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates

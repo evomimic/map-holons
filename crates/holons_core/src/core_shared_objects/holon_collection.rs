@@ -1,14 +1,13 @@
 use core::fmt;
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
+use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
 use crate::HolonCollectionApi;
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolonReferenceLayer};
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
-
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum CollectionState {
@@ -69,6 +68,14 @@ impl HolonCollection {
         self.is_accessible(AccessType::Read)?;
         let mut collection = self.clone();
         collection.state = CollectionState::Transient;
+
+        Ok(collection)
+    }
+
+    pub fn clone_for_staged(&self) -> Result<Self, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let mut collection = self.clone();
+        collection.state = CollectionState::Staged;
 
         Ok(collection)
     }
@@ -190,7 +197,7 @@ impl HolonCollectionApi for HolonCollection {
 
             // Add reference to keyed index (unless it is a duplicate key, in which case just
             // issue a warning
-            let key = holon_ref.get_key(context)?;
+            let key = holon_ref.key(context)?;
 
             if let Some(key) = key {
                 if let Some(&_index) = self.keyed_index.get(&key) {
@@ -256,14 +263,14 @@ impl HolonCollectionApi for HolonCollection {
 
         for holon in holons {
             self.members.retain(|x| x != &holon);
-            if let Some(key) = holon.get_key(context)? {
+            if let Some(key) = holon.key(context)? {
                 self.keyed_index.remove(&key);
             }
         }
         // adjust new order of members in the keyed_index
         let mut i = 0;
         for member in self.members.clone() {
-            if let Some(key) = member.get_key(context)? {
+            if let Some(key) = member.key(context)? {
                 self.keyed_index.insert(key, i);
                 i += 1;
             }

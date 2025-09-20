@@ -17,7 +17,7 @@ pub const SMARTLINK_HEADER_BYTES: [u8; 3] = [226, 130, 183]; // Unicode '₷' //
 pub const UNICODE_NUL_STR: &str = "\u{0}"; // Unicode NUL character // hex bytes: [0x00]
 
 pub fn validate_create_smartlink(
-    action: PersistenceCreateLink,
+    _action: PersistenceCreateLink,
     base_address: LocalId,
     target_address: LocalId,
     tag: PersistenceLinkTag,
@@ -43,7 +43,7 @@ pub fn validate_create_smartlink(
     Ok(ValidateCallbackResult::Valid)
 }
 pub fn validate_delete_smartlink(
-    action: PersistenceDeleteLink,
+    _action: PersistenceDeleteLink,
     _original_action: PersistenceCreateLink,
     base: LocalId,
     target: LocalId,

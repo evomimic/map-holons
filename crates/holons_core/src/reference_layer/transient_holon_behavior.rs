@@ -1,5 +1,5 @@
-use crate::core_shared_objects::holon::TransientHolon;
-use crate::reference_layer::{TransientReference};
+use crate::core_shared_objects::holon::HolonCloneModel;
+use crate::reference_layer::TransientReference;
 use base_types::MapString;
 use core_types::HolonError;
 
@@ -15,15 +15,27 @@ use core_types::HolonError;
 ///
 /// Base key represents the Holon's key independent of versioning.
 pub trait TransientHolonBehavior {
+    // ===========================
+    // TransientHolon Constructors
+    // ===========================
 
-    /// Adds the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the keyed_index to allow the transient holon
-    /// to be retrieved by key.
-    fn add_new_holon(&self, holon: TransientHolon) -> Result<TransientReference, HolonError>;
+    fn create_empty(&self, key: MapString) -> Result<TransientReference, HolonError>;
+
+    fn new_from_clone_model(
+        &self,
+        holon_clone_model: HolonCloneModel,
+    ) -> Result<TransientReference, HolonError>;
+
+    // ======
+    //  READ
+    // ======
 
     /// Convenience method for retrieving a single TransientReference for a base key, when the caller expects there to only be one.
     /// Returns a duplicate error if multiple found.
-    fn get_transient_holon_by_base_key(&self, key: &MapString) -> Result<TransientReference, HolonError>;
+    fn get_transient_holon_by_base_key(
+        &self,
+        key: &MapString,
+    ) -> Result<TransientReference, HolonError>;
 
     /// Returns TransientReference's for all Holons that have the same base key.
     /// This can be useful if multiple versions of the same Holon are being transient at the same time.

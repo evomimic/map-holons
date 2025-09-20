@@ -41,7 +41,7 @@ use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 
 pub async fn execute_remove_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    source_holon: StagedReference,
+    source_holon: HolonReference,
     relationship_name: RelationshipName,
     holons_to_remove: Vec<HolonReference>,
     expected_response: ResponseStatusCode,
@@ -71,7 +71,7 @@ pub async fn execute_remove_related_holons(
 
     // 5. If successful, confirm related Holons were removed
     if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::StagedRef(updated_holon) = response.body {
+        if let ResponseBody::HolonReference(updated_holon) = response.body {
             info!("Updated holon returned: {:?}", updated_holon);
             info!("Success! Related Holons have been removed");
         } else {

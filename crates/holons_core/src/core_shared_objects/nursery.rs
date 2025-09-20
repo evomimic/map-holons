@@ -3,10 +3,19 @@ use std::{any::Any, cell::RefCell, rc::Rc};
 use super::{
     holon_pool::{HolonPool, SerializableHolonPool},
     nursery_access_internal::NurseryAccessInternal,
-    Holon, TransientHolon,
+    Holon,
 };
-use crate::reference_layer::{HolonStagingBehavior, StagedReference};
-use crate::{core_shared_objects::holon_pool::StagedHolonPool, NurseryAccess};
+use crate::{
+    core_shared_objects::StagedHolon,
+    reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
+    HolonsContextBehavior,
+};
+use crate::{
+    core_shared_objects::{
+        holon_pool::StagedHolonPool, transient_holon_manager::ToHolonCloneModel,
+    },
+    NurseryAccess,
+};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
@@ -32,9 +41,8 @@ impl Nursery {
     ///
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
-    fn stage_holon(&self, holon: TransientHolon) -> Result<TemporaryId, HolonError> {
-        let staged_holon = holon.to_staged()?;
-        let id = self.staged_holons.borrow_mut().insert_holon(Holon::Staged(staged_holon))?;
+    fn stage_holon(&self, holon: StagedHolon) -> Result<TemporaryId, HolonError> {
+        let id = self.staged_holons.borrow_mut().insert_holon(Holon::Staged(holon))?;
         Ok(id)
     }
 
@@ -93,8 +101,14 @@ impl HolonStagingBehavior for Nursery {
         self.staged_holons.borrow().len() as i64
     }
 
-    fn stage_new_holon(&self, holon: TransientHolon) -> Result<StagedReference, HolonError> {
-        let new_id = self.stage_holon(holon)?;
+    fn stage_new_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        transient_reference: TransientReference,
+    ) -> Result<StagedReference, HolonError> {
+        let staged_holon =
+            StagedHolon::new_from_clone_model(transient_reference.get_holon_clone_model(context)?)?;
+        let new_id = self.stage_holon(staged_holon)?;
         self.to_validated_staged_reference(&new_id)
     }
 }

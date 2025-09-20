@@ -20,7 +20,7 @@ use core_types::HolonId;
 use holons_core::{
     core_shared_objects::{Holon, HolonBehavior},
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonReference, ReadableHolonReferenceLayer, StagedReference},
+    reference_layer::{HolonReference, ReadableHolon, StagedReference},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
@@ -33,11 +33,11 @@ use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 
 pub async fn execute_add_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
-    source_holon: StagedReference,
+    source_holon: HolonReference,
     relationship_name: RelationshipName,
     holons_to_add: Vec<TestReference>,
     expected_response: ResponseStatusCode,
-    expected_holon: Holon,
+    expected_holon: HolonReference,
 ) {
     info!("--- TEST STEP: Add Related Holons ---");
 
@@ -49,9 +49,12 @@ pub async fn execute_add_related_holons(
         .resolve_test_reference_vector(&holons_to_add)
         .expect("Failed to resolve one or more TestReferences in execute_add_related_holons");
 
-    let request =
-        build_add_related_holons_dance_request(source_holon, relationship_name, references_to_add)
-            .expect("Failed to build add_related_holons request");
+    let request = build_add_related_holons_dance_request(
+        source_holon.clone(),
+        relationship_name,
+        references_to_add,
+    )
+    .expect("Failed to build add_related_holons request");
 
     info!("Dance Request: {:#?}", request);
 
@@ -65,15 +68,15 @@ pub async fn execute_add_related_holons(
 
     // 5. If successful, validate that the related Holons were added correctly
     if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::StagedRef(resulting_holon) = response.body {
+        if let ResponseBody::HolonReference(actual_holon) = response.body {
             assert_eq!(
-                resulting_holon.essential_content(context),
-                expected_holon.essential_content(),
+                actual_holon.essential_content(context),
+                expected_holon.essential_content(context),
                 "Expected holon did not match response holon"
             );
             info!("Success! Related Holons have been added");
         } else {
-            panic!("Expected add_related_holons to return a StagedRef response, but it didn't");
+            panic!("Expected add_related_holons to return a None response, but it didn't");
         }
     }
 }

@@ -1,132 +1,132 @@
-use hdi::prelude::debug;
+// use hdi::prelude::debug;
 
-use crate::descriptor_types::{
-    CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
-};
-use base_types::{BaseValue, MapBoolean, MapString};
-use core_types::{HolonError, TypeKind};
-use holons_core::{
-    core_shared_objects::{stage_new_holon_api, TransientHolon},
-    reference_layer::{HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon},
-};
-use integrity_core_types::{PropertyName, RelationshipName};
+// use crate::descriptor_types::{
+//     CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName, DeletionSemantic,
+// };
+// use base_types::{BaseValue, MapBoolean, MapString};
+// use core_types::{HolonError, TypeKind};
+// use holons_core::{
+//     core_shared_objects::{stage_new_holon_api, TransientHolon},
+//     reference_layer::{HolonReference, HolonsContextBehavior, StagedReference, WritableHolon},
+// };
+// use integrity_core_types::{PropertyName, RelationshipName};
 
-use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
+// use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
-pub struct RelationshipTypeDefinition {
-    pub header: TypeDescriptorDefinition, // header.type_name is relationship_name
-    pub relationship_type_name: RelationshipName,
-    pub source_owns_relationship: MapBoolean,
-    // pub min_target_cardinality: MapInteger,  // CollectionDefinition
-    // pub max_target_cardinality: MapInteger, // CollectionDefinition
-    pub deletion_semantic: DeletionSemantic,
-    pub load_links_immediate: MapBoolean,
-    pub load_holons_immediate: MapBoolean,
-    //pub affinity: MapInteger,
-    pub target_collection_type: HolonReference, // CollectionType
-    pub has_inverse: Option<HolonReference>,    // Inverse RelationshipType
-}
+// pub struct RelationshipTypeDefinition {
+//     pub header: TypeDescriptorDefinition, // header.type_name is relationship_name
+//     pub relationship_type_name: RelationshipName,
+//     pub source_owns_relationship: MapBoolean,
+//     // pub min_target_cardinality: MapInteger,  // CollectionDefinition
+//     // pub max_target_cardinality: MapInteger, // CollectionDefinition
+//     pub deletion_semantic: DeletionSemantic,
+//     pub load_links_immediate: MapBoolean,
+//     pub load_holons_immediate: MapBoolean,
+//     //pub affinity: MapInteger,
+//     pub target_collection_type: HolonReference, // CollectionType
+//     pub has_inverse: Option<HolonReference>,    // Inverse RelationshipType
+// }
 
-/// This function defines and stages (but does not persist) a new RelationshipDescriptor.
-/// Values for each of the RelationshipDescriptor properties will be set based on supplied parameters.
-///
-/// *Naming Rules*:
-///     `type_name` := <source_for.type_name>"-"<relationship_name>"->"<target_of.type_name>"
-///     `descriptor_name`:= `<type_name>"Descriptor"`
-///
-/// The function assigns values for the following RelationshipDescriptor properties:
-///
-/// * min_target_cardinality: MapInteger (must be >=0)
-/// * max_target_cardinality: MapInteger (must be >= min_target_cardinality AND <= max_collection_size)
-/// * owned
-/// The function populates the following relationships:
-/// * DESCRIBED_BY->TypeDescriptor (if supplied)
-/// * COMPONENT_OF->Schema (supplied)
-/// * VERSION->SemanticVersion (default)
-/// * HAS_SUPERTYPE-> HolonType (if supplied)
-/// * SOURCE_FOR -> HolonType
-/// * TARGET_HOLON_TYPE -> HolonType (if supplied)
-/// * HAS_INVERSE->RelationshipType
-///
-///
-pub fn define_relationship_type(
-    context: &dyn HolonsContextBehavior,
-    schema: &HolonReference,
-    definition: RelationshipTypeDefinition,
-) -> Result<StagedReference, HolonError> {
-    // Validate the definition
-    // TODO: Move this logic to the shared validation rules layer
-    // Rule: Only the side of the relationship that "owns" the relationship should specify an inverse
-    if !definition.source_owns_relationship.0 && definition.has_inverse.is_some() {
-        return Err(HolonError::InvalidParameter(
-            "Validation Error: since source does not own the \
-        relationship, it should not specify an inverse."
-                .into(),
-        ));
-    }
+// /// This function defines and stages (but does not persist) a new RelationshipDescriptor.
+// /// Values for each of the RelationshipDescriptor properties will be set based on supplied parameters.
+// ///
+// /// *Naming Rules*:
+// ///     `type_name` := <source_for.type_name>"-"<relationship_name>"->"<target_of.type_name>"
+// ///     `descriptor_name`:= `<type_name>"Descriptor"`
+// ///
+// /// The function assigns values for the following RelationshipDescriptor properties:
+// ///
+// /// * min_target_cardinality: MapInteger (must be >=0)
+// /// * max_target_cardinality: MapInteger (must be >= min_target_cardinality AND <= max_collection_size)
+// /// * owned
+// /// The function populates the following relationships:
+// /// * DESCRIBED_BY->TypeDescriptor (if supplied)
+// /// * COMPONENT_OF->Schema (supplied)
+// /// * VERSION->SemanticVersion (default)
+// /// * HAS_SUPERTYPE-> HolonType (if supplied)
+// /// * SOURCE_FOR -> HolonType
+// /// * TARGET_HOLON_TYPE -> HolonType (if supplied)
+// /// * HAS_INVERSE->RelationshipType
+// ///
+// ///
+// pub fn define_relationship_type(
+//     context: &dyn HolonsContextBehavior,
+//     schema: &HolonReference,
+//     definition: RelationshipTypeDefinition,
+// ) -> Result<StagedReference, HolonError> {
+//     // Validate the definition
+//     // TODO: Move this logic to the shared validation rules layer
+//     // Rule: Only the side of the relationship that "owns" the relationship should specify an inverse
+//     if !definition.source_owns_relationship.0 && definition.has_inverse.is_some() {
+//         return Err(HolonError::InvalidParameter(
+//             "Validation Error: since source does not own the \
+//         relationship, it should not specify an inverse."
+//                 .into(),
+//         ));
+//     }
 
-    // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
+//     // ----------------  GET A NEW TYPE DESCRIPTOR -------------------------------
 
-    // Stage the TypeDescriptor
-    let type_descriptor_ref =
-        define_type_descriptor(context, schema, TypeKind::Relationship, definition.header)?;
+//     // Stage the TypeDescriptor
+//     let type_descriptor_ref =
+//         define_type_descriptor(context, schema, TypeKind::Relationship, definition.header)?;
 
-    // Build new Relationship Type
+//     // Build new Relationship Type
 
-    let mut relationship_type = TransientHolon::new();
+//     let mut relationship_type = TransientHolon::new();
 
-    // Add its properties
-    relationship_type
-        .with_property_value(
-            PropertyName(MapString("key".to_string())),
-            Some(BaseValue::StringValue(definition.relationship_type_name.0.clone())),
-        )?
-        .with_property_value(
-            CoreSchemaPropertyTypeName::RelationshipName.as_property_name(),
-            Some(BaseValue::StringValue(definition.relationship_type_name.0.clone())),
-        )?
-        .with_property_value(
-            PropertyName(MapString("source_owns_relationship".to_string())),
-            Some(BaseValue::BooleanValue(definition.source_owns_relationship)),
-        )?
-        .with_property_value(
-            PropertyName(MapString("load_links_immediate".to_string())),
-            Some(BaseValue::BooleanValue(definition.load_links_immediate)),
-        )?
-        .with_property_value(
-            PropertyName(MapString("load_holons_immediate".to_string())),
-            Some(BaseValue::BooleanValue(definition.load_holons_immediate)),
-        )?
-        .with_property_value(
-            PropertyName(MapString("deletion_semantic".to_string())),
-            Some(BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant())),
-        )?;
+//     // Add its properties
+//     relationship_type
+//         .with_property_value(
+//             PropertyName(MapString("key".to_string())),
+//             BaseValue::StringValue(definition.relationship_type_name.0.clone()),
+//         )?
+//         .with_property_value(
+//             CoreSchemaPropertyTypeName::RelationshipName.as_property_name(),
+//             BaseValue::StringValue(definition.relationship_type_name.0.clone()),
+//         )?
+//         .with_property_value(
+//             PropertyName(MapString("source_owns_relationship".to_string())),
+//             BaseValue::BooleanValue(definition.source_owns_relationship),
+//         )?
+//         .with_property_value(
+//             PropertyName(MapString("load_links_immediate".to_string())),
+//             BaseValue::BooleanValue(definition.load_links_immediate),
+//         )?
+//         .with_property_value(
+//             PropertyName(MapString("load_holons_immediate".to_string())),
+//             BaseValue::BooleanValue(definition.load_holons_immediate),
+//         )?
+//         .with_property_value(
+//             PropertyName(MapString("deletion_semantic".to_string())),
+//             BaseValue::EnumValue(definition.deletion_semantic.to_enum_variant()),
+//         )?;
 
-    debug!("Staging new relationship_type {:#?}", relationship_type.clone());
+//     debug!("Staging new relationship_type {:#?}", relationship_type.clone());
 
-    // Stage new holon type
-    let relationship_type_ref = stage_new_holon_api(context, relationship_type.clone())?;
+//     // Stage new holon type
+//     let relationship_type_ref = stage_new_holon_api(context, relationship_type.clone())?;
 
-    // Add its relationships
+//     // Add its relationships
 
-    relationship_type_ref.add_related_holons(
-        context,
-        CoreSchemaRelationshipTypeName::TypeDescriptor,
-        vec![HolonReference::Staged(type_descriptor_ref)],
-    )?;
-    relationship_type_ref.add_related_holons(
-        context,
-        CoreSchemaRelationshipTypeName::TargetCollectionType,
-        vec![definition.target_collection_type],
-    )?;
+//     relationship_type_ref.add_related_holons(
+//         context,
+//         CoreSchemaRelationshipTypeName::TypeDescriptor,
+//         vec![HolonReference::Staged(type_descriptor_ref)],
+//     )?;
+//     relationship_type_ref.add_related_holons(
+//         context,
+//         CoreSchemaRelationshipTypeName::TargetCollectionType,
+//         vec![definition.target_collection_type],
+//     )?;
 
-    if let Some(inverse) = definition.has_inverse {
-        relationship_type_ref.add_related_holons(
-            context,
-            CoreSchemaRelationshipTypeName::HasInverse,
-            vec![inverse],
-        )?
-    };
+//     if let Some(inverse) = definition.has_inverse {
+//         relationship_type_ref.add_related_holons(
+//             context,
+//             CoreSchemaRelationshipTypeName::HasInverse,
+//             vec![inverse],
+//         )?
+//     };
 
-    Ok(relationship_type_ref)
-}
+//     Ok(relationship_type_ref)
+// }

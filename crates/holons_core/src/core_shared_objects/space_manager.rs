@@ -8,6 +8,7 @@ use crate::core_shared_objects::{
 };
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
+    TransientHolonBehavior,
 };
 use crate::{HolonCollectionApi, TransientCollection};
 use std::cell::RefCell;
@@ -82,6 +83,7 @@ impl HolonSpaceManager {
             transient_state: Arc::new(RefCell::new(TransientCollection::new())),
         }
     }
+
 }
 
 impl HolonSpaceBehavior for HolonSpaceManager {
@@ -108,6 +110,11 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
     fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>> {
         Arc::clone(&self.nursery) as Arc<RefCell<dyn HolonStagingBehavior>>
+    }
+
+    /// Provides access to a component that supports the `HolonStagingBehavior` API.
+    fn get_transient_behavior_service(&self) -> Arc<RefCell<dyn TransientHolonBehavior>> {
+        Arc::clone(&self.transient_manager) as Arc<RefCell<dyn TransientHolonBehavior>>
     }
 
     /// Provides access to the TransientHolonManager.

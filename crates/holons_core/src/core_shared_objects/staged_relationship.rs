@@ -69,8 +69,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
 use crate::core_shared_objects::HolonCollection;
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
-use core_types::HolonError;
-use integrity_core_types::RelationshipName;
+use core_types::{HolonError, RelationshipName};
 
 /// Represents a map of staged relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates

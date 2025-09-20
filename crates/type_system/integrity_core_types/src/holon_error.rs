@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use integrity_core_types::validation_error::ValidationError;
+use crate::validation_error::ValidationError;
 use std::cell::BorrowError;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]

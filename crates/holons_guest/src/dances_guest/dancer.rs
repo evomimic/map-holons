@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use hdk::prelude::*;
 
-use crate::init_guest_context;
+use crate::{init_guest_context, GuestHolonService};
 
 use base_types::MapString;
 use core_types::HolonError;
@@ -179,8 +179,30 @@ fn initialize_context_from_request(
     let local_space_holon = session_state.get_local_holon_space();
 
     // Initialize context from session state
-    init_guest_context(transient_holons, staged_holons, local_space_holon)
-        .map_err(|error| create_error_response(error, request))
+    let context = init_guest_context(transient_holons, staged_holons, local_space_holon.clone())
+        .map_err(|error| create_error_response(error, request))?;
+
+    let space_manager = context.get_space_manager();
+    let holon_service = space_manager.get_holon_service();
+    let guest = {
+        if let Some(guest) = holon_service.as_any().downcast_ref::<GuestHolonService>() {
+            Ok(guest)
+        } else {
+            Err(HolonError::DowncastFailure("GuestHolonService".to_string()))
+        }
+    }
+    .map_err(|error| create_error_response(error, request))?;
+    // Ensure HolonSpace Holon exists
+    let ensured_local_space_holon = match local_space_holon {
+        Some(space_holon) => space_holon, // space holon already in session state
+        None => guest
+            .ensure_local_holon_space(context.as_ref())
+            .map_err(|error| create_error_response(error, request))?, // get space_holon from DHT, creating it if necessary
+    };
+    // Update space manager with it
+    space_manager.set_space_holon(ensured_local_space_holon);
+
+    Ok(context)
 }
 
 // fn initialize_context_from_request(
