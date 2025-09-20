@@ -1,15 +1,13 @@
 //
 use crate::{
     persistence_layer::{
-        create_path_to_holon_node, delete_holon_node, get_all_holon_nodes, get_holon_node_by_path,
+        create_path_to_holon_node, get_holon_node_by_path,
         CreatePathInput, GetPathInput,
     },
     try_from_record,
 };
 use core_types::HolonError;
 use hdi::prelude::{ActionHash, Path};
-use hdk::entry::get;
-use hdk::prelude::GetOptions;
 use holons_core::core_shared_objects::Holon;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
