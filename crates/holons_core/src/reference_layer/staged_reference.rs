@@ -2,18 +2,13 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use tracing::debug;
-use type_names::{
-    relationship_names::{CoreRelationshipTypeName, ToRelationshipName},
-    ToPropertyName,
-};
+use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
+use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::holon::HolonCloneModel,
-    reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WriteableHolon,
-        WriteableHolonReferenceLayer,
-    },
+    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference},
 };
 use crate::{
     core_shared_objects::{
@@ -291,8 +286,8 @@ impl ReadableHolonImpl for StagedReference {
     }
 }
 
-impl WriteableHolonReferenceLayer for StagedReference {
-    fn add_related_holons_ref_layer(
+impl WritableHolonImpl for StagedReference {
+    fn add_related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
@@ -302,7 +297,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
 
-        // Get access to the source holon and its relationshp map
+        // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
 
         // Mutably borrow the inner Holon and match it
@@ -323,7 +318,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         Ok(())
     }
 
-    fn remove_property_value_ref_layer(
+    fn remove_property_value_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         name: PropertyName,
@@ -344,7 +339,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         Ok(())
     }
 
-    fn remove_related_holons_ref_layer(
+    fn remove_related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
@@ -380,7 +375,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         Ok(())
     }
 
-    fn with_descriptor(
+    fn with_descriptor_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         descriptor_reference: HolonReference,
@@ -388,13 +383,13 @@ impl WriteableHolonReferenceLayer for StagedReference {
         self.is_accessible(context, AccessType::Write)?;
         let existing_descriptor_option = descriptor_reference.get_descriptor(context)?;
         if let Some(descriptor) = existing_descriptor_option {
-            self.remove_related_holons_ref_layer(
+            self.remove_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor.clone()],
             )?;
             debug!("removed existing descriptor: {:#?}", descriptor);
-            self.add_related_holons_ref_layer(
+            self.add_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference],
@@ -403,7 +398,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
 
             Ok(())
         } else {
-            self.add_related_holons_ref_layer(
+            self.add_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference.clone()],
@@ -414,7 +409,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         }
     }
 
-    fn with_predecessor(
+    fn with_predecessor_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
@@ -422,7 +417,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         self.is_accessible(context, AccessType::Write)?;
         let existing_predecessor_option = self.clone().predecessor(context)?;
         if let Some(predecessor) = existing_predecessor_option {
-            self.remove_related_holons_ref_layer(
+            self.remove_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor.clone()],
@@ -430,7 +425,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
             debug!("removed existing predecessor: {:#?}", predecessor);
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
-            self.add_related_holons_ref_layer(
+            self.add_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor_reference.clone()],
@@ -441,7 +436,7 @@ impl WriteableHolonReferenceLayer for StagedReference {
         Ok(())
     }
 
-    fn with_property_value_ref_layer(
+    fn with_property_value_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
@@ -463,43 +458,6 @@ impl WriteableHolonReferenceLayer for StagedReference {
         }
 
         Ok(())
-    }
-}
-
-impl WriteableHolon for StagedReference {
-    fn add_related_holons<T: ToRelationshipName>(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: T,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        self.add_related_holons_ref_layer(context, name.to_relationship_name(), holons)
-    }
-
-    fn with_property_value<T: ToPropertyName>(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: T,
-        value: BaseValue,
-    ) -> Result<(), HolonError> {
-        self.with_property_value_ref_layer(context, name.to_property_name(), value)
-    }
-
-    fn remove_property_value<T: ToPropertyName>(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: T,
-    ) -> Result<(), HolonError> {
-        self.remove_property_value_ref_layer(context, name.to_property_name())
-    }
-
-    fn remove_related_holons<T: ToRelationshipName>(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: T,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        self.remove_related_holons_ref_layer(context, name.to_relationship_name(), holons)
     }
 }
 

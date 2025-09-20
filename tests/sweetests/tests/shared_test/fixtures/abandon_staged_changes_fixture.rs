@@ -16,7 +16,7 @@ use holons_core::{
     query_layer::QueryExpression,
     reference_layer::{
         HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
-        WriteableHolon,
+        WritableHolon,
     },
 };
 use integrity_core_types::{PropertyName, RelationshipName};

@@ -20,7 +20,7 @@ use holons_core::{
         dance_response::{ResponseBody, ResponseStatusCode},
         DanceResponse,
     },
-    reference_layer::{HolonReference, StagedReference, WriteableHolon},
+    reference_layer::{HolonReference, StagedReference, WritableHolon},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};

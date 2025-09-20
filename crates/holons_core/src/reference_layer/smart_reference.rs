@@ -2,11 +2,10 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 use tracing::trace;
-use type_names::{
-    relationship_names::CoreRelationshipTypeName, ToPropertyName, ToRelationshipName,
-};
+use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
+use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
         cache_access::HolonCacheAccess,
@@ -15,11 +14,8 @@ use crate::{
         transient_holon_manager::ToHolonCloneModel,
         Holon, HolonBehavior, HolonCollection,
     },
-    reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference,
-        WriteableHolonReferenceLayer,
-    },
-    RelationshipMap, WriteableHolon,
+    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference},
+    RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
@@ -214,7 +210,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        // Since smart_property_values is an optional PropertyMap, first check to see if one exists..
+        // Since smart_property_values is an optional PropertyMap, first check to see if one exists.
         if let Some(smart_property_values) = self.smart_property_values.clone() {
             // If found, do a get on the PropertyMap to see if it contains a value.
             if let Some(inner_value) =
@@ -232,7 +228,7 @@ impl ReadableHolonImpl for SmartReference {
                 Ok(None)
             }
         }
-        // Then if not, check the reference..
+        // Then if not, check the reference.
         else {
             let holon = self.get_rc_holon(context)?;
             let key_option = holon.borrow().get_key()?;
@@ -302,8 +298,8 @@ impl ReadableHolonImpl for SmartReference {
 
 // Convenience trait implementation for working with HolonReference wrappers.
 // Functions will always fail since SmartReferences are immutable.
-impl WriteableHolonReferenceLayer for SmartReference {
-    fn add_related_holons_ref_layer(
+impl WritableHolonImpl for SmartReference {
+    fn add_related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         _relationship_name: RelationshipName,
@@ -314,17 +310,7 @@ impl WriteableHolonReferenceLayer for SmartReference {
         Ok(())
     }
 
-    fn remove_property_value_ref_layer(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        _name: PropertyName,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(context, AccessType::Write)?;
-
-        Ok(())
-    }
-
-    fn remove_related_holons_ref_layer(
+    fn remove_related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         _relationship_name: RelationshipName,
@@ -335,27 +321,7 @@ impl WriteableHolonReferenceLayer for SmartReference {
         Ok(())
     }
 
-    fn with_descriptor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        _descriptor_reference: HolonReference,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(context, AccessType::Write)?;
-
-        Ok(())
-    }
-
-    fn with_predecessor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        _predecessor_reference_option: Option<HolonReference>,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(context, AccessType::Write)?;
-
-        Ok(())
-    }
-
-    fn with_property_value_ref_layer(
+    fn with_property_value_impl(
         &self,
         context: &dyn HolonsContextBehavior,
         _property: PropertyName,
@@ -365,42 +331,35 @@ impl WriteableHolonReferenceLayer for SmartReference {
 
         Ok(())
     }
-}
 
-impl WriteableHolon for SmartReference {
-    fn add_related_holons<T: ToRelationshipName>(
+    fn remove_property_value_impl(
         &self,
         context: &dyn HolonsContextBehavior,
-        name: T,
-        holons: Vec<HolonReference>,
+        _name: PropertyName,
     ) -> Result<(), HolonError> {
-        self.add_related_holons_ref_layer(context, name.to_relationship_name(), holons)
+        self.is_accessible(context, AccessType::Write)?;
+
+        Ok(())
     }
 
-    fn with_property_value<T: ToPropertyName>(
+    fn with_descriptor_impl(
         &self,
         context: &dyn HolonsContextBehavior,
-        name: T,
-        value: BaseValue,
+        _descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
-        self.with_property_value_ref_layer(context, name.to_property_name(), value)
+        self.is_accessible(context, AccessType::Write)?;
+
+        Ok(())
     }
 
-    fn remove_property_value<T: ToPropertyName>(
+    fn with_predecessor_impl(
         &self,
         context: &dyn HolonsContextBehavior,
-        name: T,
+        _predecessor_reference_option: Option<HolonReference>,
     ) -> Result<(), HolonError> {
-        self.remove_property_value_ref_layer(context, name.to_property_name())
-    }
+        self.is_accessible(context, AccessType::Write)?;
 
-    fn remove_related_holons<T: ToRelationshipName>(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: T,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        self.remove_related_holons_ref_layer(context, name.to_relationship_name(), holons)
+        Ok(())
     }
 }
 

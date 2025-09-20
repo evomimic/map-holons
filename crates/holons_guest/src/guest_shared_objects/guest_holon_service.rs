@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
 use hdk::prelude::*;
-use holons_core::reference_layer::{ReadableHolon, WriteableHolonReferenceLayer};
+use holons_core::reference_layer::ReadableHolon;
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
     holon_error_from_wasm_error, try_action_hash_from_local_id,
@@ -27,7 +27,7 @@ use holons_core::{
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
-        StagedReference, WriteableHolon,
+        StagedReference, WritableHolon,
     },
 };
 use holons_integrity::LinkTypes;

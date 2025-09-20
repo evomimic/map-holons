@@ -19,7 +19,7 @@ use holons_core::{
     core_shared_objects::Holon,
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{HolonReference, ReadableHolon, WriteableHolon},
+    reference_layer::{HolonReference, ReadableHolon, WritableHolon},
     HolonCollection, HolonCollectionApi, HolonsContextBehavior,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};

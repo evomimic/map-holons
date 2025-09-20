@@ -7,7 +7,7 @@
 // use core_types::{HolonError, TypeKind};
 // use holons_core::{
 //     core_shared_objects::{stage_new_holon_api, TransientHolon},
-//     reference_layer::{HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon},
+//     reference_layer::{HolonReference, HolonsContextBehavior, StagedReference, WritableHolon},
 // };
 // use integrity_core_types::{PropertyName, RelationshipName};
 

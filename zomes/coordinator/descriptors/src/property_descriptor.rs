@@ -3,7 +3,7 @@
 // use crate::descriptor_types::{CoreSchemaPropertyTypeName, CoreSchemaRelationshipTypeName};
 // use crate::type_descriptor::{define_type_descriptor, TypeDescriptorDefinition};
 
-// use holons_core::{core_shared_objects::{stage_new_holon_api, TransientHolon}, HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon};
+// use holons_core::{core_shared_objects::{stage_new_holon_api, TransientHolon}, HolonReference, HolonsContextBehavior, StagedReference, WritableHolon};
 // use base_types::{BaseValue, MapString};
 // use core_types::{HolonError, TypeKind};
 // use integrity_core_types::PropertyName;

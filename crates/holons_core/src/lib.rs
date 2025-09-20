@@ -9,14 +9,13 @@ pub mod utils;
 // pub use core_shared_objects::*;
 pub use core_shared_objects::{
     CollectionState, CommitRequestStatus, CommitResponse, HolonCache, HolonCacheAccess,
-    HolonCacheManager, HolonCollection, HolonPool, Nursery, NurseryAccess,
-    RelationshipCache, RelationshipMap, ServiceRoutingPolicy,
-    StagedRelationshipMap, TransientCollection,
+    HolonCacheManager, HolonCollection, HolonPool, Nursery, NurseryAccess, RelationshipCache,
+    RelationshipMap, ServiceRoutingPolicy, StagedRelationshipMap, TransientCollection,
 };
 pub use reference_layer::holon_operations_api::*;
 pub use reference_layer::{
     HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
     HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference,
-    TransientCollectionBehavior, WriteableHolon,
+    TransientCollectionBehavior, WritableHolon,
 };
 // pub use utils::*;

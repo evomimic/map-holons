@@ -28,7 +28,7 @@ use crate::{
     },
     query_layer::evaluate_query,
     reference_layer::{
-        holon_operations_api::get_all_holons, writable_holon::WriteableHolon, HolonReference,
+        holon_operations_api::get_all_holons, writable_holon::WritableHolon, HolonReference,
         HolonsContextBehavior, SmartReference,
     },
 };

@@ -9,7 +9,7 @@
 //     core_shared_objects::holon::TransientHolon,
 //     reference_layer::{
 //         HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference,
-//         WriteableHolon,
+//         WritableHolon,
 //     },
 // };
 // use integrity_core_types::PropertyName;

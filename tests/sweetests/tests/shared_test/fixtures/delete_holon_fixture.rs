@@ -13,7 +13,7 @@ use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
     dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression,
-    reference_layer::{TransientReference, WriteableHolon},
+    reference_layer::{TransientReference, WritableHolon},
     HolonCollection, HolonsContextBehavior,
 };
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};

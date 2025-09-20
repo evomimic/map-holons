@@ -9,7 +9,7 @@
 // use core_types::{HolonError, TypeKind};
 // use holons_core::{
 //     core_shared_objects::{stage_new_holon_api, TransientHolon},
-//     HolonReference, HolonsContextBehavior, StagedReference, WriteableHolon,
+//     HolonReference, HolonsContextBehavior, StagedReference, WritableHolon,
 // };
 // use integrity_core_types::PropertyName;
 

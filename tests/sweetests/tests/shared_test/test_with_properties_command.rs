@@ -19,10 +19,7 @@ use holon_dance_builders::with_properties_dance::build_with_properties_dance_req
 use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{
-        HolonReference, ReadableHolon, StagedReference, WriteableHolon,
-        WriteableHolonReferenceLayer,
-    },
+    reference_layer::{HolonReference, ReadableHolon, StagedReference, WritableHolon},
 };
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::{PropertyMap, PropertyName};
