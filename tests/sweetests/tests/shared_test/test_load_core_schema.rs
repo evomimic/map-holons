@@ -15,10 +15,10 @@ use crate::shared_test::{
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use core_types::{PropertyMap, PropertyName};
 use holons_core::dances::descriptors_dance_adapter::build_load_core_schema_dance_request;
 use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
-use integrity_core_types::{PropertyMap, PropertyName};
-use holons_guest_integrity::HolonNode;
+// use holons_guest_integrity::HolonNode;
 
 /// This function builds and dances a `load_core_schema` DanceRequest
 /// and confirms a Success response

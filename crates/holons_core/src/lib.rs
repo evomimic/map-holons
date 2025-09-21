@@ -24,6 +24,6 @@ pub use reference_layer::holon_operations_api::*;
 pub use reference_layer::{
     HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
     HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference,
-    TransientCollectionBehavior, WritableHolon,
+    TransientCollectionBehavior, TransientHolonBehavior, WritableHolon,
 };
 // pub use utils::*;

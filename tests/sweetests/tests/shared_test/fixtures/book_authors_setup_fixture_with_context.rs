@@ -10,6 +10,7 @@ use crate::shared_test::{
 use crate::warn;
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
+use core_types::{PropertyName, RelationshipName};
 use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
@@ -18,7 +19,6 @@ use holons_core::{
         HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WritableHolon,
     },
 };
-use integrity_core_types::{PropertyName, RelationshipName};
 use std::string::ToString; // Import the test-only extension
 use type_names::relationship_names::ToRelationshipName;
 

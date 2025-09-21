@@ -19,8 +19,8 @@ use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
     HolonReference, StagedReference,
 };
-use holons_guest_integrity::HolonNode;
-use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
+// use holons_guest_integrity::HolonNode;
+use core_types::{PropertyMap, PropertyName, RelationshipName};
 
 /// This function is intended to test the ability to remove holons from a specified relationship
 /// originating at a source_holon.

@@ -22,8 +22,8 @@ use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{HolonReference, ReadableHolon, StagedReference},
 };
-use holons_guest_integrity::HolonNode;
-use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
+// use holons_guest_integrity::HolonNode;
+use core_types::{PropertyMap, PropertyName, RelationshipName};
 
 /// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
 /// and holon references. Accepting holons_to_add as TestReferences allows the target holons to
