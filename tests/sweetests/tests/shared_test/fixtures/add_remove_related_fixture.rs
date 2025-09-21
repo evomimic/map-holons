@@ -14,6 +14,7 @@ use crate::shared_test::{
 
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::{BaseTypeKind, HolonError, HolonId};
+use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::Holon,
@@ -22,7 +23,6 @@ use holons_core::{
     reference_layer::{HolonReference, ReadableHolon, WritableHolon},
     HolonCollection, HolonCollectionApi, HolonsContextBehavior,
 };
-use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {

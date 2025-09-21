@@ -22,8 +22,8 @@ use holons_core::{
     },
     reference_layer::{HolonReference, StagedReference, WritableHolon},
 };
-use holons_guest_integrity::HolonNode;
-use integrity_core_types::{PropertyMap, PropertyName};
+// use holons_guest_integrity::HolonNode;
+use core_types::{PropertyMap, PropertyName};
 use rstest::*;
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,

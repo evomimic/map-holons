@@ -16,8 +16,8 @@ use holons_core::{
 };
 
 use base_types::MapString;
+use core_types::PropertyName;
 use core_types::{HolonError, HolonId};
-use integrity_core_types::PropertyName;
 
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,

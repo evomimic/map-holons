@@ -1,4 +1,5 @@
 [workspace]
+
 members = [
     # Coordinator Zomes
     "zomes/coordinator/holons",
@@ -22,10 +23,33 @@ members = [
     "crates/holon_dance_builders",
     "crates/holons_guest",
     "crates/holons_guest_integrity",
+    # ✅ Bring sweetests back into the workspace
+    "tests/sweetests",
 ]
 resolver = "2"
 
-exclude = ["tests/sweetests"]
+# ✅ Keep default builds the same (omit sweetests by default)
+default-members = [
+    "zomes/coordinator/holons",
+    "zomes/coordinator/descriptors",
+    "zomes/coordinator/core_schema",
+    "zomes/integrity/holons_integrity",
+    "crates/shared_validation",
+    "crates/type_system/base_types",
+    "crates/type_system/core_types",
+    "crates/type_system/integrity_core_types",
+    "crates/type_system/descriptor_types",
+    "crates/type_system/core_descriptor_types",
+    "crates/type_system/type_names",
+    "crates/json_schema_validation",
+    "crates/json_schema_validate_cli",
+    "crates/holons_client",
+    "crates/holons_core",
+    "crates/holon_dance_builders",
+    "crates/holons_guest",
+    "crates/holons_guest_integrity",
+]
+
 
 # Local workspace dependencies
 [workspace.dependencies.holons]
@@ -109,6 +133,7 @@ thiserror = "2"
 tracing = "0.1"
 rstest = "0.25"
 uuid = { version = "1", features = ["serde"] }
+
 
 
 [profile.dev]

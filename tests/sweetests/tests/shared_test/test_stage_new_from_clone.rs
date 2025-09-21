@@ -13,13 +13,13 @@ use crate::shared_test::test_data_types::{
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
+use core_types::{PropertyName, RelationshipName};
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 use holons_core::{
-    core_shared_objects::{Holon, HolonBehavior},
+    core_shared_objects::HolonBehavior,
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{HolonReference, ReadableHolon, SmartReference, TransientReference},
 };
-use integrity_core_types::{PropertyName, RelationshipName};
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied
 /// TestReference and confirms a Success response.

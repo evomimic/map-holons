@@ -12,7 +12,7 @@ use holons_client::ConductorDanceCaller;
 
 use base_types::{MapInteger, MapString};
 use core_types::{HolonError, HolonId};
-use integrity_core_types::{PropertyMap, RelationshipName};
+use core_types::{PropertyMap, RelationshipName};
 
 use holons_core::{
     core_shared_objects::holon_pool::SerializableHolonPool,

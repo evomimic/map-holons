@@ -8,7 +8,7 @@ use crate::shared_test::{
     test_data_types::{DancesTestCase, TestReference, BOOK_KEY, PERSON_1_KEY},
 };
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::HolonError;
+use core_types::{HolonError, PropertyName};
 use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::{Holon, TransientHolon},
@@ -19,7 +19,8 @@ use holons_core::{
         WritableHolon,
     },
 };
-use integrity_core_types::{PropertyName, RelationshipName};
+
+// use holons_core::prelude::*;
 use type_names::relationship_names::ToRelationshipName;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase

@@ -6,12 +6,12 @@ use crate::shared_test::{
 };
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::{HolonError, HolonId};
+use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 use holons_core::reference_layer::holon_operations_api::staged_count;
 use holons_core::{
     core_shared_objects::Holon, dances::dance_response::ResponseStatusCode,
     query_layer::QueryExpression, HolonCollection, HolonsContextBehavior, StagedReference,
 };
-use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
 use rstest::*;
 
 /// This function creates a set of simple (undescribed) holons

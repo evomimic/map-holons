@@ -10,6 +10,7 @@ use crate::shared_test::{
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
+use core_types::{PropertyMap, PropertyName, RelationshipName};
 use holons_core::reference_layer::holon_operations_api::*;
 use holons_core::{
     core_shared_objects::Holon,
@@ -18,7 +19,6 @@ use holons_core::{
         HolonReference, ReadableHolon, StagedReference, TransientReference, WritableHolon,
     },
 };
-use integrity_core_types::{PropertyMap, PropertyName, RelationshipName};
 use type_names::*;
 
 /// Fixture for creating Simple StageNewFromClone Testcase

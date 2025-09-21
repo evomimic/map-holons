@@ -2,45 +2,39 @@
 name = "holons_test"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
-[lib]
-crate-type = ["rlib"]
-name = "holons_test"
+# (You can omit [lib] entirely unless you need a custom crate-type or name)
 
 [dependencies]
-# General dev-dependencies (platform-agnostic)ß
-derive-new = "0.7.0"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.109"
-tracing = "0.1"
+# Workspace crates (prefer workspace deps over path for consistency)
+holons_core = { workspace = true }
+holon_dance_builders = { workspace = true }
+holons_client = { workspace = true }
+base_types = { workspace = true }
+core_types = { workspace = true }
+type_names = { workspace = true }
+holons_guest_integrity = { workspace = true }
 
-async-trait = "0.1.51"
-
-# Holochain Dependencies
-
-# ovveride the latest to avoid conflicts with rust version 1.83 (currrently used by holochain 0.5) 
-#base64ct = "=1.7.3"
-
-# MAP Dependencies
-holons_core = { path = "../../crates/holons_core" }
-holon_dance_builders = { path = "../../crates/holon_dance_builders" }
-holons_client = { path = "../../crates/holons_client" }
-base_types = { path = "../../crates/type_system/base_types" }
-core_types = { path = "../../crates/type_system/core_types" }
-type_names = { path = "../../crates/type_system/type_names" }
-integrity_core_types = { path = "../../crates/type_system/integrity_core_types" }
-holons_guest_integrity = { path = "../../crates/holons_guest_integrity" }
+# General deps
+base64ct = "=1.7.3"
+derive-new = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
 
 [dev-dependencies]
-futures = { version = "0.3.1", default-features = false }
-pretty_assertions = "1.4.0"
-rstest = "0.25.0"
+futures = { workspace = true, default-features = false }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
+tokio = { version = "1.35", features = ["full"] }
+async-std = "1"
+tracing-subscriber = "0.3"
+
+# Holochain sweettest stack (pin as you already do)
 holochain = { version = "0.5", default-features = false, features = [
     "sweettest",
     "wasmer_sys",
     "datachannel-vendored"
 ] }
-tokio = { version = "1.35", features = ["full"] }
-async-std = "1"
-tracing-subscriber = "0.3"
-
