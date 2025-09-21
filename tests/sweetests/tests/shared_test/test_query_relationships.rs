@@ -22,8 +22,9 @@ use holons_core::{
     core_shared_objects::holon::HolonBehavior,
     dances::ResponseStatusCode,
     query_layer::{Node, NodeCollection, QueryExpression},
-    HolonReference, SmartReference,
+    HolonReference, ReadableHolon, SmartReference, WritableHolon,
 };
+
 // use holons_guest_integrity::HolonNode;
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
@@ -48,7 +49,7 @@ pub async fn execute_query_relationships(
         .expect(&format!("Failed to get local_id for Holon: {:#?}", source_holon));
 
     let holon_reference =
-        HolonReference::Smart(SmartReference::new(HolonId::Local(source_holon_id), None));
+        HolonReference::Smart(SmartReference::new_from_id(HolonId::Local(source_holon_id)));
 
     let node_collection =
         NodeCollection { members: vec![Node::new(holon_reference, None)], query_spec: None };

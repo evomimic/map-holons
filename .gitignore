@@ -2,7 +2,6 @@
 node_modules/
 /dist/
 /target/
-/.cargo/
 .DS_Store
 *.happ
 *.webhapp
@@ -18,3 +17,7 @@ Cargo.lock
 settings.json
 /tests/node_modules/
 /tests/sweetests/target
+
+# Ignore everything in .cargo/ except config.toml
+.cargo/*
+!.cargo/config.toml
