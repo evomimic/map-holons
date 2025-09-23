@@ -38,7 +38,7 @@ pub struct HolonLoaderController {
     /// Fast local resolution: (key → staged holon reference) for this load call.
     key_index: HashMap<MapString, StagedReference>,
     /// The unresolved edge descriptors (LoaderRelationshipReference holons) collected in Pass 1.
-    queued_rel_refs: Vec<TransientHolon>,
+    queued_rel_refs: Vec<TransientHolon>,  // any reason to make this a HashSet to avoid duplicates?
 }
 
 impl HolonLoaderController {

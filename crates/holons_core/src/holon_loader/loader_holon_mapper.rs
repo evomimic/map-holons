@@ -100,7 +100,8 @@ impl LoaderHolonMapper {
 
         // Strip loader-only fields: `key`, `type`
         property_map.remove(&N::prop(N::PROP_KEY));
-        property_map.remove(&N::prop(N::PROP_TYPE));
+        // ToDo: deal with 'type'/DescribedBy relationship if needed
+        //property_map.remove(&N::prop(N::PROP_TYPE));
 
         // Build a fresh transient and set the filtered property map
         let mut target = TransientHolon::new();
