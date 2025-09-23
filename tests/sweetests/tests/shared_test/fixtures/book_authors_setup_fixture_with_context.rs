@@ -20,7 +20,9 @@ use holons_core::{
     },
 };
 use std::string::ToString; // Import the test-only extension
+use type_names::property_names::*;
 use type_names::relationship_names::ToRelationshipName;
+use type_names::CorePropertyTypeName::Description;
 
 // pub struct TestHolon {
 //     pub key: MapString,
@@ -55,10 +57,10 @@ pub fn setup_book_author_steps_with_context(
     )?;
     book_transient_reference.with_property_value(
             &*fixture_context,
-            PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(MapString(
+            Description,
+            MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
-            )))?;
+            ))?;
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     let book_staged_reference = stage_new_holon_api(&*fixture_context, book_transient_reference)?;
@@ -69,13 +71,13 @@ pub fn setup_book_author_steps_with_context(
         create_empty_transient_holon(&*fixture_context, person_1_key.clone())?;
     person_1_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("first name".to_string())),
-        BaseValue::StringValue(MapString("Roger".to_string())),
+        MapString("first name".to_string()),
+        "Roger".to_string(),
     )?;
     person_1_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("last name".to_string())),
-        BaseValue::StringValue(MapString("Briggs".to_string())),
+        "last name".to_string(),
+        "Briggs".to_string(),
     )?;
     test_case.add_stage_holon_step(person_1_transient_reference.clone())?;
 
@@ -112,8 +114,8 @@ pub fn setup_book_author_steps_with_context(
     )?;
     publisher_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("description".to_string())),
-        BaseValue::StringValue(MapString("We publish Holons for testing purposes".to_string())),
+        CorePropertyTypeName::Description,
+        "We publish Holons for testing purposes".to_string(),
     )?;
     test_case.add_stage_holon_step(publisher_transient_reference.clone())?;
 

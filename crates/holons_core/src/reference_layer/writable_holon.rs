@@ -1,6 +1,6 @@
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::reference_layer::{HolonReference, HolonsContextBehavior};
-use base_types::BaseValue;
+use base_types::ToBaseValue;
 use core_types::HolonError;
 use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
 
@@ -80,13 +80,18 @@ pub trait WritableHolon: WritableHolonImpl {
     /// holon.with_property_value(context, "title", BaseValue::from("Hello"))?;
     /// ```
     #[inline]
-    fn with_property_value<T: ToPropertyName>(
+    fn with_property_value<N: ToPropertyName, V: ToBaseValue>(
         &self,
         context: &dyn HolonsContextBehavior,
-        name: T,
-        value: BaseValue,
+        name: N,
+        value: V,
     ) -> Result<(), HolonError> {
-        WritableHolonImpl::with_property_value_impl(self, context, name.to_property_name(), value)
+        WritableHolonImpl::with_property_value_impl(
+            self,
+            context,
+            name.to_property_name(),
+            value.to_base_value(),
+        )
     }
 
     /// Removes a property value from this holon.
