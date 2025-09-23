@@ -30,10 +30,10 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     book_transient_reference.with_property_value(
             &*fixture_context,
-            PropertyName(MapString("description".to_string())),
-            BaseValue::StringValue(MapString(
+            MapString("description".to_string()),
+            MapString(
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
-            )))?;
+            ))?;
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     stage_new_holon(&*fixture_context, book_transient_reference)?;

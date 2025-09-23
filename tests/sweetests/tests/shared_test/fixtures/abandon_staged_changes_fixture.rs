@@ -78,8 +78,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         new_holon(&*fixture_context, MapString("Abandon1".to_string()))?;
     abandoned_holon_1_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("example abandon1".to_string())),
-        BaseValue::StringValue(MapString("test1".to_string())),
+        "example abandon1".to_string(),
+        "test1",
     )?;
     test_case.add_stage_holon_step(abandoned_holon_1_transient_reference.clone())?;
 
@@ -92,8 +92,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         new_holon(&*fixture_context, MapString("Abandon2".to_string()))?;
     abandoned_holon_2_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("example abandon2".to_string())),
-        BaseValue::StringValue(MapString("test2".to_string())),
+        "example abandon2",
+        "test2".to_string(),
     )?;
     test_case.add_stage_holon_step(abandoned_holon_2_transient_reference.clone())?;
 
