@@ -59,8 +59,7 @@ pub const PROP_ERRORS_ENCOUNTERED:          &str = "errors_encountered";
 pub const PROP_SUMMARY:                     &str = "summary";
 
 // HolonLoadError properties
-pub const PROP_ERROR_LINE:                  &str = "error_line";
-pub const PROP_ERROR_CODE:                  &str = "error_code";
+pub const PROP_ERROR_TYPE:                  &str = "error_type";
 pub const PROP_ERROR_MESSAGE:               &str = "error_message";
 
 /// ─────────────────────────────────────────────────────────────────────────────
