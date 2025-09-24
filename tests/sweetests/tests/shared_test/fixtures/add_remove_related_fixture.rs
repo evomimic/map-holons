@@ -1,18 +1,30 @@
-// #![allow(dead_code)]
-
+#[allow(unused_must_use)]
 use pretty_assertions::assert_eq;
-use tracing::{error, info};
-
 use rstest::*;
-
+use tracing::{error, info};
+use type_names::ToRelationshipName;
+use holons_prelude::prelude::*;
 use crate::shared_test::{
     setup_book_author_steps_with_context,
     test_add_related_holon::execute_add_related_holons,
     test_context::init_fixture_context,
-    test_data_types::{DancesTestCase, BOOK_KEY},
+    test_data_types::{
+        DancesTestCase, TestReference, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
+        PERSON_2_KEY, PUBLISHER_KEY,
+    },
+};
+use base_types::{MapBoolean, MapInteger, MapString};
+use core_types::{BaseTypeKind, HolonError, HolonId};
+use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
+use holons_core::reference_layer::holon_operations_api::*;
+use holons_core::{
+    core_shared_objects::Holon,
+    dances::dance_response::ResponseStatusCode,
+    query_layer::QueryExpression,
+    reference_layer::{HolonReference, ReadableHolon, WritableHolon},
+    HolonCollection, HolonCollectionApi, HolonsContextBehavior,
 };
 
-use holons_prelude::prelude::*;
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
@@ -50,60 +62,69 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     info!("fixture: book and author setup complete.");
 
+    //TODO:
     // 4) (disabled) Try to remove related holons using invalid source holon
     // 5) (disabled) Try to remove related holons using invalid relationship name
-    // 6) Remove 1 related holon
 
     // Retrieve the book from the context
     let book_holon_staged_reference =
         get_staged_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
 
     // Get its current authors
-
     let authors_reference =
         book_holon_staged_reference.related_holons(&*fixture_context, &relationship_name)?;
 
-    info!("authors retrieved for book: {:?}", authors_reference);
+    // debug!("authors retrieved for book: {:?}", authors_reference);
+    let person_1_option =
+        authors_reference.read().unwrap().get_by_key(&MapString(PERSON_1_KEY.to_string()))?;
+    let person_2_option =
+        authors_reference.read().unwrap().get_by_key(&MapString(PERSON_2_KEY.to_string()))?;
 
-    let author_name_to_remove = MapString("George Smith".to_string());
+    // REMOVE: both authors //
 
-    let maybe_author_to_remove =
-        authors_reference.read().unwrap().get_by_key(&author_name_to_remove)?;
-
-    info!("result of searching for George Smith authors: {:?}", maybe_author_to_remove);
-
-    if let Some(author_to_remove) = maybe_author_to_remove {
-        let mut remove_vector = Vec::new();
-        remove_vector.push(author_to_remove);
-        test_case.remove_related_holons_step(
-            HolonReference::Staged(book_holon_staged_reference),
-            relationship_name.clone(),
-            remove_vector,
-            ResponseStatusCode::OK,
-        )?;
+    if let Some(person_1) = person_1_option {
+        if let Some(person_2) = person_2_option {
+            let mut remove_vector = Vec::new();
+            remove_vector.push(person_1);
+            remove_vector.push(person_2);
+            // TestFixture
+            &book_holon_staged_reference.remove_related_holons(
+                &*fixture_context,
+                BOOK_TO_PERSON_RELATIONSHIP,
+                remove_vector.clone(),
+            )?;
+            // Executor step
+            test_case.remove_related_holons_step(
+                HolonReference::Staged(book_holon_staged_reference.clone()),
+                relationship_name.clone(),
+                remove_vector,
+                ResponseStatusCode::OK,
+            )?;
+        } else {
+            error!("Could not find {} in related holons for {}", PERSON_2_KEY, relationship_name);
+        }
     } else {
-        error!(
-            "Could not find {} in related holons for {}",
-            author_name_to_remove, relationship_name
-        );
+        error!("Could not find {} in related holons for {}", PERSON_1_KEY, relationship_name);
     }
 
-    // test remove all related holons including ignoring a previous one that was already removed
-    // test_case.remove_related_holons_step(
-    //     staged_book_holon_reference, // source holon
-    //     relationship_name.clone(),
-    //     authors.to_vec(),
-    //     ResponseStatusCode::OK,
-    //     book_holon_with_no_related.clone(), //expected none
-    // )?;
-    //
-    // test_case.add_related_holons_step(
-    //     StagedReference::from_index(book_index), // source holon
-    //     authored_by_relationship_name.clone(),
-    //     related_holons.to_vec(),
-    //     ResponseStatusCode::OK,
-    //     book_holon.clone(),
-    // )?;
+    // ADD: publisher //
+
+    let publisher =
+        get_transient_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;
+
+    &book_holon_staged_reference.add_related_holons(
+        &*fixture_context,
+        "PUBLISHED_BY",
+        vec![HolonReference::Transient(publisher.clone())],
+    )?;
+
+    test_case.add_related_holons_step(
+        HolonReference::Staged(book_holon_staged_reference.clone()),
+        "PUBLISHED_BY".to_relationship_name(),
+        vec![TestReference::TransientHolon(publisher)],
+        ResponseStatusCode::OK,
+        HolonReference::Staged(book_holon_staged_reference),
+    )?;
 
     expected_count += staged_count(&*fixture_context).unwrap();
 
