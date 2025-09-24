@@ -34,7 +34,6 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
     // // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
-    // // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let _author_relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;

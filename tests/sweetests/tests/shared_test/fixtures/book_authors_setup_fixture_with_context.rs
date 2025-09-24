@@ -50,17 +50,12 @@ pub fn setup_book_author_steps_with_context(
 
     let book_transient_reference =
         create_empty_transient_holon(&*fixture_context, book_holon_key.clone())?;
-    book_transient_reference.with_property_value(
-        &*fixture_context,
-        "title",
-        BOOK_KEY,
-    )?;
+    book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?;
     book_transient_reference.with_property_value(
             &*fixture_context,
             Description,
-            MapString(
-                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
-            ))?;
+                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
+            )?;
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     let book_staged_reference = stage_new_holon_api(&*fixture_context, book_transient_reference)?;
@@ -69,16 +64,8 @@ pub fn setup_book_author_steps_with_context(
     let person_1_key = MapString(PERSON_1_KEY.to_string());
     let person_1_transient_reference =
         create_empty_transient_holon(&*fixture_context, person_1_key.clone())?;
-    person_1_transient_reference.with_property_value(
-        &*fixture_context,
-        MapString("first name".to_string()),
-        "Roger".to_string(),
-    )?;
-    person_1_transient_reference.with_property_value(
-        &*fixture_context,
-        "last name".to_string(),
-        "Briggs".to_string(),
-    )?;
+    person_1_transient_reference.with_property_value(&*fixture_context, "first name", "Roger")?;
+    person_1_transient_reference.with_property_value(&*fixture_context, "last name", "Briggs")?;
     test_case.add_stage_holon_step(person_1_transient_reference.clone())?;
 
     let person_1_staged_reference =
@@ -88,16 +75,8 @@ pub fn setup_book_author_steps_with_context(
     let person_2_key = MapString(PERSON_2_KEY.to_string());
     let person_2_transient_reference =
         create_empty_transient_holon(&*fixture_context, person_2_key.clone())?;
-    person_2_transient_reference.with_property_value(
-        &*fixture_context,
-        PropertyName(MapString("first name".to_string())),
-        BaseValue::StringValue(MapString("George".to_string())),
-    )?;
-    person_2_transient_reference.with_property_value(
-        &*fixture_context,
-        PropertyName(MapString("last name".to_string())),
-        BaseValue::StringValue(MapString("Smith".to_string())),
-    )?;
+    person_2_transient_reference.with_property_value(&*fixture_context, "first name", "George")?;
+    person_2_transient_reference.with_property_value(&*fixture_context, "last name", "Smith")?;
     test_case.add_stage_holon_step(person_2_transient_reference.clone())?;
 
     let person_2_staged_reference =
@@ -107,19 +86,15 @@ pub fn setup_book_author_steps_with_context(
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
     let publisher_transient_reference =
         create_empty_transient_holon(&*fixture_context, publisher_key.clone())?;
+    publisher_transient_reference.with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?;
     publisher_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("name".to_string())),
-        BaseValue::StringValue(publisher_key.clone()),
-    )?;
-    publisher_transient_reference.with_property_value(
-        &*fixture_context,
-        CorePropertyTypeName::Description,
-        "We publish Holons for testing purposes".to_string(),
+        Description,
+        "We publish Holons for testing purposes",
     )?;
     test_case.add_stage_holon_step(publisher_transient_reference.clone())?;
 
-    let publisher_staged_reference =
+    let _publisher_staged_reference =
         stage_new_holon_api(&*fixture_context, publisher_transient_reference)?;
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
