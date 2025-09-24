@@ -88,7 +88,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
             remove_vector.push(person_1);
             remove_vector.push(person_2);
             // TestFixture
-            &book_holon_staged_reference.remove_related_holons(
+            book_holon_staged_reference.remove_related_holons(
                 &*fixture_context,
                 BOOK_TO_PERSON_RELATIONSHIP,
                 remove_vector.clone(),
@@ -112,7 +112,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let publisher =
         get_transient_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;
 
-    &book_holon_staged_reference.add_related_holons(
+    book_holon_staged_reference.add_related_holons(
         &*fixture_context,
         "PUBLISHED_BY",
         vec![HolonReference::Transient(publisher.clone())],

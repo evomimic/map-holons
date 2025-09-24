@@ -147,7 +147,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // // Update the fixture's expected holon
     // expected_fixture_holon.add_related_holons(
     //     &*fixture_context,
-    //     &publisher_relationship_name,
+    //     EDITOR_FOR,
     //     fixture_holons_to_add.clone(),
     // )?;
 
