@@ -52,8 +52,8 @@ pub fn setup_book_author_steps_with_context(
         create_empty_transient_holon(&*fixture_context, book_holon_key.clone())?;
     book_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("title".to_string())),
-        BaseValue::StringValue(book_holon_key.clone()),
+        "title",
+        BOOK_KEY,
     )?;
     book_transient_reference.with_property_value(
             &*fixture_context,
