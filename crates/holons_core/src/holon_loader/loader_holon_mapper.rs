@@ -14,7 +14,7 @@ use tracing::{debug, instrument};
 
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
-use integrity_core_types::PropertyMap;
+use core_types::PropertyMap;
 use crate::{
     // Re-exported in holons_core::lib
     HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference,
