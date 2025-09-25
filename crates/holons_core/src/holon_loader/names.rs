@@ -1,7 +1,7 @@
 // crates/holons_core/src/holon_loader/names.rs
 
 use base_types::MapString;
-use integrity_core_types::{PropertyName, RelationshipName};
+use core_types::{PropertyName, RelationshipName};
 use type_names::ToRelationshipName;
 
 /// ─────────────────────────────────────────────────────────────────────────────
@@ -10,15 +10,14 @@ use type_names::ToRelationshipName;
 /// ─────────────────────────────────────────────────────────────────────────────
 
 // Segment structure
-pub const REL_HOLONS_TO_LOAD:               &str = "HOLONS_TO_LOAD";
+pub const REL_BUNDLE_MEMBERS:               &str = "BUNDLE_MEMBERS";
 
 // LoaderHolon wiring
-pub const REL_LOADER_RELATIONSHIPS:         &str = "LOADER_RELATIONSHIPS";
-pub const REL_HAS_LOADER_REL_REF:           &str = "HAS_LOADER_RELATIONSHIP_REFERENCE";
+pub const REL_HAS_REL_REF:                  &str = "HAS_RELATIONSHIP_REFERENCE";
 
 // RelationshipReference endpoints
-pub const REL_LOADER_SOURCE:                &str = "LOADER_SOURCE";
-pub const REL_LOADER_TARGET:                &str = "LOADER_TARGET";
+pub const REL_REFERENCE_SOURCE:             &str = "REFERENCE_SOURCE";
+pub const REL_REFERENCE_TARGET:             &str = "REFERENCE_TARGET";
 
 // Response → Error edge
 pub const REL_HAS_LOAD_ERROR:               &str = "HAS_LOAD_ERROR";
@@ -55,10 +54,10 @@ pub const PROP_PROXY_ID:                    &str = "proxy_id";
 pub const PROP_RESPONSE_STATUS_CODE:        &str = "response_status_code";
 pub const PROP_HOLONS_STAGED:               &str = "holons_staged";
 pub const PROP_HOLONS_COMMITTED:            &str = "holons_committed";
-pub const PROP_ERRORS_ENCOUNTERED:          &str = "errors_encountered";
-pub const PROP_SUMMARY:                     &str = "summary";
+pub const PROP_ERROR_COUNT:                 &str = "error_count";
+pub const PROP_DANCE_SUMMARY:               &str = "dance_summary";
 
-// HolonLoadError properties
+// HolonLoadError properties (optionally used)
 pub const PROP_ERROR_TYPE:                  &str = "error_type";
 pub const PROP_ERROR_MESSAGE:               &str = "error_message";
 
