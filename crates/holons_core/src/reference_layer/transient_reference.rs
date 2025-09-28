@@ -8,7 +8,7 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName, TemporaryId,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName, TemporaryId,
 };
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -78,6 +78,28 @@ impl TransientReference {
             HolonError::FailedToAcquireLock(format!("Failed to acquire write lock on holon: {}", e))
         })?;
         borrow.update_original_id(None)
+    }
+
+    /// ⚠️ Returns a snapshot of the raw property map of this holon.
+    ///
+    /// Intended **only** for the holon loader, specifically for LoaderHolons whose
+    /// property set is unknown at load time. Do **NOT** use outside the loader context.
+    ///
+    /// We return an owned `PropertyMap` rather than `&PropertyMap` because the holon is
+    /// accessed via `Rc<RefCell<...>>`; any reference would be tied to a temporary borrow.
+    pub fn get_raw_property_map(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<PropertyMap, HolonError> {
+        // Enforce read access
+        self.is_accessible(context, AccessType::Read)?;
+
+        // Borrow the underlying transient holon
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow();
+
+        // Return a cloned snapshot
+        Ok(holon.raw_property_map_clone())
     }
 }
 

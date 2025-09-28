@@ -85,6 +85,12 @@ impl TransientHolon {
 
         Ok(self.transient_relationships.clone())
     }
+
+    /// Returns a cloned snapshot of the raw property map.
+    /// Kept crate-visible; caller should enforce appropriate access checks.
+    pub(crate) fn raw_property_map_clone(&self) -> PropertyMap {
+        self.property_map.clone()
+    }
 }
 
 // ======================================

@@ -20,6 +20,7 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
     match err {
         // Likely along the loader path:
         DuplicateError(_, _)         => "duplicate",
+        EmptyField(_)                => "empty_field",
         InvalidRelationship(_, _)    => "invalid_relationship",
         InvalidParameter(_)          => "invalid_parameter",
         ValidationError(_)           => "validation_error",

@@ -5,40 +5,43 @@
 //   Pass 1: Map & stage node holons (properties only); queue relationship references.
 //   Pass 2: Resolve queued edges to concrete declared links (declared, inverse, DescribedBy).
 //   Commit: Persist staged holons in one bulk commit.
-//   Respond: Return a *staged* HolonLoadResponse (with related *staged* HolonLoadError holons).
+//   Respond: Return a *transient* HolonLoadResponse (with related *transient* HolonLoadError holons).
 //
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
-
-use std::collections::HashMap;
 
 use tracing::info;
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
 
-use crate::{commit_api, stage_new_holon_api};
-
 use crate::{
-    // Re-exported from holons_core::lib
-    CommitResponse, HolonReference, HolonsContextBehavior, StagedReference,
-    core_shared_objects::holon::TransientHolon,
-    // Public loader modules (re-exported by holon_loader::mod)
-    holon_loader::loader_holon_mapper::{LoaderHolonMapper, MapperOutput},
-    holon_loader::loader_ref_resolver::{LoaderRefResolver, ResolverOutcome},
-    // Private loader modules (mod.rs pub(crate) re-exports)
-    holon_loader::errors::{build_load_error_holon, map_holon_error},
+    // Reference-layer high-level operations
+    commit_api, create_empty_transient_holon,
+    // Core reference-layer traits/types
+    HolonReference, HolonsContextBehavior, ReadableHolon, WritableHolon,
 };
-use crate::reference_layer::WriteableHolonReferenceLayer;
+use crate::reference_layer::TransientReference;
+
 use super::names as N;
+use super::errors as E;
+
+// Loader modules and helpers
+use crate::holon_loader::errors::make_error_holon; // (context, holon_error_type_desc, &HolonError) -> TransientReference
+use crate::holon_loader::loader_holon_mapper::{LoaderHolonMapper, MapperOutput};
+use crate::holon_loader::loader_ref_resolver::{LoaderRefResolver, ResolverOutcome};
+use crate::holon_loader::names::ERROR_TYPE_KEY;
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
 pub struct HolonLoaderController {
-    /// Fast local resolution: (key → staged holon reference) for this load call.
-    key_index: HashMap<MapString, StagedReference>,
-    /// The unresolved edge descriptors (LoaderRelationshipReference holons) collected in Pass 1.
-    queued_rel_refs: Vec<TransientHolon>,  // any reason to make this a HashSet to avoid duplicates?
+    /// Owned mapper output for this call; holds staged refs & queued rel refs alive.
+    mapper_out: Option<MapperOutput>,
+
+    /// Stats for response construction (purely informational).
+    staged_count: i64,
+    committed_count: i64,
+    error_count: i64,
 }
 
 impl HolonLoaderController {
@@ -47,221 +50,234 @@ impl HolonLoaderController {
         Self::default()
     }
 
-
-    /// Entry point invoked by the dance adapter.
+    /// Entry point called by the Guest-side adapter.
     ///
-    /// `segment` must be a raw `TransientHolon` typed as `HolonLoaderSegmentType`.
+    /// Inputs:
+    /// - `context`: guest-side reference-layer context (Nursery, Cache, managers)
+    /// - `bundle`: a *transient* HolonLoaderBundle with BUNDLE_MEMBERS → LoaderHolons
     ///
-    /// Returns a **staged** `HolonLoadResponse` (with related **staged** `HolonLoadError` holons).
-    /// Caller may inspect as needed.
-    pub fn load_segment(
+    /// Output:
+    /// - `Ok(TransientReference)` to a *transient* HolonLoadResponse (message-only)
+    /// - `Err(HolonError)` for system-level failures preventing any meaningful response
+    pub fn load_bundle(
         &mut self,
         context: &dyn HolonsContextBehavior,
-        segment: TransientHolon,
-    ) -> Result<StagedReference, HolonError> {
-        info!("HolonLoaderController::load_segment - start");
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Extract loader holons (segment --HOLONS_TO_LOAD--> LoaderHolon*)
-        // ─────────────────────────────────────────────────────────────────────
-        let loader_holon_refs = self.extract_loader_holon_refs(&segment)?;
+        bundle: TransientReference, // -> HolonLoaderBundle
+    ) -> Result<TransientReference, HolonError> {
+        info!("HolonLoaderController::load_bundle - start");
 
         // ─────────────────────────────────────────────────────────────────────
         // PASS 1: map & stage node holons (properties only); queue relationship refs
         // ─────────────────────────────────────────────────────────────────────
-        info!("HolonLoaderController::load_segment - pass1_stage");
+        info!("HolonLoaderController::load_bundle - pass1_stage");
 
-        let MapperOutput {
-            keyed_staged,
-            queued_rel_refs,
-        } = LoaderHolonMapper::map_and_stage(context, &loader_holon_refs)?;
+        let mapper_out = LoaderHolonMapper::map_bundle(context, bundle)?;
+        // NOTE: if/when keyless staging is supported, have the mapper return staged_all and use that length.
+        self.staged_count = mapper_out.key_index.len() as i64;
+        self.mapper_out = Some(mapper_out);
 
-        // Populate the fast (key → staged_ref) index for resolver lookups.
-        self.key_index.clear();
-        for (k, r) in keyed_staged {
-            self.key_index.insert(k, r);
-        }
-        // Hand off queued edge descriptors to Pass 2.
-        self.queued_rel_refs = queued_rel_refs;
+        // We will accumulate HolonErrors from all phases first,
+        // then (only if any exist) resolve HolonErrorType and build error holons.
+        let mut pending_errors: Vec<HolonError> = Vec::new();
+
+        // Take ownership exactly once; borrow internals safely thereafter.
+        let mut mo = self.mapper_out.take().expect("mapper_out set");
+
+        // Collect **mapper**-side errors (non-fatal, per-item).
+        pending_errors.extend(std::mem::take(&mut mo.errors));
 
         // ─────────────────────────────────────────────────────────────────────
         // PASS 2: resolve queued references (declared + inverse + DescribedBy)
         //         and write declared links against the staged holons
         // ─────────────────────────────────────────────────────────────────────
-        info!("HolonLoaderController::load_segment - pass2_resolve");
+        info!("HolonLoaderController::load_bundle - pass2_resolve");
 
         let ResolverOutcome {
             links_created,
-            errors: mut_resolve_errs,
+            errors: resolve_errors,
         } = LoaderRefResolver::resolve_all(
             context,
-            &self.key_index,
-            std::mem::take(&mut self.queued_rel_refs),
+            &mo.key_index,
+            std::mem::take(&mut mo.queued_rel_refs),
         )?;
+
+        // Collect **resolver**-side errors.
+        pending_errors.extend(resolve_errors);
 
         // ─────────────────────────────────────────────────────────────────────
         // COMMIT: persist all staged holons (bulk commit)
         // ─────────────────────────────────────────────────────────────────────
-        info!("HolonLoaderController::load_segment - commit");
+        info!("HolonLoaderController::load_bundle - commit");
 
-        // pre-commit count from staging area
+        // Pre-commit count from staging behavior
         let holons_staged = context
             .get_space_manager()
             .get_staging_behavior_access()
             .borrow()
-            .staged_count();
-        let mut holons_committed: i64 = 0;  // authoritative post-commit count comes from CommitResponse
+            .staged_count() as i64;
 
-        // We prefer to *report* errors in the response rather than failing early,
-        // so we collect errors here and continue to build the response.
-        let commit_result: Result<CommitResponse, HolonError> = commit_api(context);
+        let commit_result = commit_api(context);
 
-        // Collect loader-facing error holons built from internal HolonErrors.
-        let mut error_transients: Vec<TransientHolon> = Vec::new();
-
-        // Map *resolver* errors to loader error holons.
-        for e in mut_resolve_errs {
-            error_transients.push(build_load_error_holon(map_holon_error(e)));
-        }
-
+        let mut holons_committed: i64 = 0;
         match commit_result {
             Ok(cr) => {
-                // Count of committed holons for the loader response.
                 holons_committed = cr.saved_holons.len() as i64;
 
-                // If the commit was incomplete, there may be per-holon errors embedded
-                // in staged holons that failed. Surface a generic CommitFailure here;
-                // finer-grained mapping can be added later if desired.
+                // Incomplete commit ⇒ surface as a loader error holon.
                 if !cr.is_complete() {
-                    error_transients.push(build_load_error_holon(map_holon_error(
-                        HolonError::CommitFailure("Commit incomplete; some holons failed validation or persistence.".into())
-                    )));
+                    pending_errors.push(HolonError::CommitFailure(
+                        "Commit incomplete; some holons failed validation or persistence.".into(),
+                    ));
                 }
             }
             Err(e) => {
-                // Commit failed entirely; report the error and provide a staged count.
+                // Entire commit failed
                 holons_committed = 0;
-
-                error_transients.push(build_load_error_holon(map_holon_error(e)));
+                pending_errors.push(e);
             }
         }
 
-        // Do we want to empty the nursery here before staging response/errors?
-
         // ─────────────────────────────────────────────────────────────────────
-        // BUILD RESPONSE: stage a HolonLoadResponse + stage & attach error holons
+        // BUILD RESPONSE: stage a HolonLoadResponse + attach error holons
+        //                (resolve HolonErrorType descriptor only if needed)
         // ─────────────────────────────────────────────────────────────────────
-        info!("HolonLoaderController::load_segment - build_response(staged)");
+        info!("HolonLoaderController::load_bundle - build_response(transient)");
 
-        // Basic status + summary logic. We could get fancier later.
-        let (status, summary) = if error_transients.is_empty() {
-            (
-                MapString("OK".to_string()),
-                format!(
-                    "{} holons staged; {} committed; {} links created.",
-                    holons_staged, holons_committed, links_created
-                ),
+        // If there are errors to emit, we must resolve the HolonErrorType descriptor.
+        let mut error_refs = Vec::new();
+        if !pending_errors.is_empty() {
+            let error_desc = Self::resolve_holon_error_type_descriptor(context, &mo)?;
+            for e in pending_errors {
+                error_refs.push(make_error_holon(context, error_desc.clone(), &e)?);
+            }
+        }
+
+        let status = if error_refs.is_empty() {
+            MapString("OK".to_string())
+        } else {
+            // Align with your dancer’s response codes as needed.
+            MapString("UnprocessableEntity".to_string())
+        };
+
+        let summary = if error_refs.is_empty() {
+            format!(
+                "{} holons staged; {} committed; {} links created.",
+                holons_staged, holons_committed, links_created
             )
         } else {
-            (
-                MapString("UnprocessableEntity".to_string()),
-                format!(
-                    "{} holons staged; {} committed; {} links created; {} error(s) encountered.",
-                    holons_staged,
-                    holons_committed,
-                    links_created,
-                    error_transients.len()
-                ),
+            format!(
+                "{} holons staged; {} committed; {} links created; {} error(s) encountered.",
+                holons_staged,
+                holons_committed,
+                links_created,
+                error_refs.len()
             )
         };
 
-        let response_staged = self.build_response_staged(
+        let response = self.build_response(
             context,
             status,
             holons_staged,
             holons_committed,
-            error_transients.len() as i64,
+            error_refs.len() as i64,
             summary,
-            error_transients,
+            error_refs,
         )?;
 
-        info!("HolonLoaderController::load_segment - done");
-        Ok(response_staged)
+        info!("HolonLoaderController::load_bundle - done");
+        Ok(response)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Pull `LoaderHolon` references off the segment via `HOLONS_TO_LOAD`.
+    /// Resolve the HolonErrorType descriptor `HolonReference` needed to construct error holons.
     ///
-    /// This uses relationship traversal rather than inspecting properties so the
-    /// controller remains schema-driven and decoupled from field details.
-    fn extract_loader_holon_refs(
-        &self,
-        segment: &TransientHolon,
-    ) -> Result<Vec<HolonReference>, HolonError> {
-        // For TransientHolon, relationship traversal is available without a context.
-        let loader_holons = segment.get_related_holons(&N::rel(N::REL_HOLONS_TO_LOAD))?;
-        Ok(loader_holons.get_members().clone())
+    /// Strategy:
+    /// 1) Try in-bundle: look up by well-known key in the mapper's `key_index`.
+    /// 2) (TODO) Try saved lookup via the space/registry if not found in the bundle.
+    ///
+    /// If not found, return a `HolonError` (prefer `HolonNotFound` or `InvalidType`).
+    fn resolve_holon_error_type_descriptor(
+        context: &dyn HolonsContextBehavior,
+        mo: &MapperOutput,
+    ) -> Result<HolonReference, HolonError> {
+        // 1) In-bundle by key (adjust the key if your schema uses a different one).
+        const ERROR_TYPE_KEY: &str = "HolonErrorType";
+        if let Some(staged) = mo.key_index.get(&base_types::MapString(ERROR_TYPE_KEY.to_string())) {
+            return Ok(HolonReference::Staged(staged.clone()));
+        }
+
+        // 2) TODO: Saved lookup by key or type-name (not yet implemented here).
+        //    Example shape once available:
+        //    if let Some(desc) = lookup_descriptor_by_key(context, MapString(ERROR_TYPE_KEY.into()))? {
+        //        return Ok(desc);
+        //    }
+
+        Err(HolonError::HolonNotFound(
+            "HolonErrorType descriptor not found in bundle (saved lookup not implemented)".into(),
+        ))
     }
 
-    /// Construct a **staged** HolonLoadResponse:
+    /// Construct a **transient** HolonLoadResponse:
     ///  - sets properties,
-    ///  - stages each HolonLoadError transient,
-    ///  - attaches them via HAS_LOAD_ERROR (declared),
-    ///  - returns the staged response.
-    fn build_response_staged(
+    ///  - attaches any error holons via HAS_LOAD_ERROR (declared),
+    ///  - returns the *transient* response reference.
+    fn build_response(
         &self,
         context: &dyn HolonsContextBehavior,
         response_status_code: MapString,
         holons_staged: i64,
         holons_committed: i64,
-        errors_encountered: i64,
+        error_count: i64,
         summary: String,
-        error_holons: Vec<TransientHolon>,
-    ) -> Result<StagedReference, HolonError> {
+        mut error_holons: Vec<TransientReference>,
+    ) -> Result<TransientReference, HolonError> {
         // Build response as a transient with properties…
-        let mut resp_t = TransientHolon::new();
+        let rsp = create_empty_transient_holon(
+            context,
+            MapString("CoreLoaderControllerResponse".to_string()),
+        )?;
 
-        let _ = resp_t.with_property_value(
+        rsp.with_property_value(
+            context,
             N::prop(N::PROP_RESPONSE_STATUS_CODE),
-            Some(BaseValue::StringValue(response_status_code)),
-        );
-        let _ = resp_t.with_property_value(
+            BaseValue::StringValue(response_status_code),
+        )?;
+        rsp.with_property_value(
+            context,
             N::prop(N::PROP_HOLONS_STAGED),
-            Some(BaseValue::IntegerValue(MapInteger(holons_staged))),
-        );
-        let _ = resp_t.with_property_value(
+            BaseValue::IntegerValue(MapInteger(holons_staged)),
+        )?;
+        rsp.with_property_value(
+            context,
             N::prop(N::PROP_HOLONS_COMMITTED),
-            Some(BaseValue::IntegerValue(MapInteger(holons_committed))),
-        );
-        let _ = resp_t.with_property_value(
-            N::prop(N::PROP_ERRORS_ENCOUNTERED),
-            Some(BaseValue::IntegerValue(MapInteger(errors_encountered))),
-        );
-        let _ = resp_t.with_property_value(
-            N::prop(N::PROP_SUMMARY),
-            Some(BaseValue::StringValue(MapString(summary))),
-        );
+            BaseValue::IntegerValue(MapInteger(holons_committed)),
+        )?;
+        rsp.with_property_value(
+            context,
+            N::prop(N::PROP_ERROR_COUNT),
+            BaseValue::IntegerValue(MapInteger(error_count)),
+        )?;
+        rsp.with_property_value(
+            context,
+            N::prop(N::PROP_DANCE_SUMMARY),
+            BaseValue::StringValue(MapString(summary)),
+        )?;
 
-        // …then stage it to get a writable staged reference.
-        let response_s = stage_new_holon_api(context, resp_t)?;
-
-        // Stage each error transient and collect as HolonReferences::Staged
+        // Attach errors to the response (declared link), if any.
         if !error_holons.is_empty() {
-            let rel = N::rel(N::REL_HAS_LOAD_ERROR);
-
-            let mut err_refs: Vec<HolonReference> = Vec::with_capacity(error_holons.len());
-            for e in error_holons {
-                let s = stage_new_holon_api(context, e)?;
-                err_refs.push(HolonReference::from_staged(s));
-            }
-
-            // Attach staged errors to the staged response (declared link)
-            response_s.add_related_holons_ref_layer(context, rel, err_refs)?;
+            rsp.add_related_holons(
+                context,
+                N::rel(N::REL_HAS_LOAD_ERROR),
+                error_holons
+                    .drain(..)
+                    .map(|tr| HolonReference::Transient(tr))
+                    .collect::<Vec<_>>(),
+            )?;
         }
 
-        Ok(response_s)
+        Ok(rsp)
     }
 }
