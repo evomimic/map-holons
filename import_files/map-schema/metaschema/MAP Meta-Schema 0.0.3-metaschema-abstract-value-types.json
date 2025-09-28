@@ -1,0 +1,331 @@
+{
+  "meta": {
+    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
+    "generated_at": "2025-09-28T11:08:38",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Meta-Schema 0.0.3-metaschema-abstract-value-types.csv"
+    ],
+    "load_with": [
+      "MAP Meta-Schema 0.0.3-metaschema-root.json",
+      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MetaValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "MetaValueType",
+        "type_name_plural": "MetaValueTypes",
+        "display_name": "Meta Value Type",
+        "display_name_plural": "Meta Value Types",
+        "instance_type_kind": "Holon",
+        "description": "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaHolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "ValueType",
+        "type_name_plural": "ValueTypes",
+        "display_name": "Value Type",
+        "display_name_plural": "Value Types",
+        "instance_type_kind": "Holon",
+        "description": "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "StringValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "StringValueType",
+        "type_name_plural": "StringValueTypes",
+        "display_name": "StringValueType",
+        "display_name_plural": "StringValueTypes",
+        "instance_type_kind": "Value.String",
+        "description": "Abstract type for string-based value types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IntegerValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "IntegerValueType",
+        "type_name_plural": "IntegerValueTypes",
+        "display_name": "IntegerValueType",
+        "display_name_plural": "IntegerValueTypes",
+        "instance_type_kind": "Value.Integer",
+        "description": "Abstract type for integer-based value types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "BooleanValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "BooleanValueType",
+        "type_name_plural": "BooleanValueTypes",
+        "display_name": "BooleanValueType",
+        "display_name_plural": "BooleanValueTypes",
+        "instance_type_kind": "Value.Boolean",
+        "description": "Abstract type for boolean-based value types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "BytesValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "BytesValueType",
+        "type_name_plural": "BytesValueTypes",
+        "display_name": "BytesValueType",
+        "display_name_plural": "BytesValueTypes",
+        "instance_type_kind": "Value.Bytes",
+        "description": "Abstract type for byte sequence value types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "EnumValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "EnumValueType",
+        "type_name_plural": "EnumValueTypes",
+        "display_name": "EnumValueType",
+        "display_name_plural": "EnumValueTypes",
+        "instance_type_kind": "Value.Enum",
+        "description": "Abstract type for enum-based value types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "EnumVariantValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "EnumVariantValueType",
+        "type_name_plural": "EnumVariantValueTypes",
+        "display_name": "EnumVariant Value Type",
+        "display_name_plural": "EnumVariant Value Types",
+        "instance_type_kind": "EnumVariant",
+        "description": "Abstract type for variants of enum-based value types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueArrayValueType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "ValueArrayValueType",
+        "type_name_plural": "ValueArrayValueTypes",
+        "display_name": "ValueArrayType",
+        "display_name_plural": "ValueArrayTypes",
+        "instance_type_kind": "Value.Array",
+        "description": "Abstract type for value array types.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    }
+  ]
+}

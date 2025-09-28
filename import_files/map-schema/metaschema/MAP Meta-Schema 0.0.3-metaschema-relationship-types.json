@@ -1,0 +1,2177 @@
+{
+  "meta": {
+    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
+    "generated_at": "2025-09-28T11:08:38",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Meta-Schema 0.0.3-metaschema-relationship-types.csv"
+    ],
+    "load_with": [
+      "MAP Meta-Schema 0.0.3-metaschema-root.json",
+      "MAP Meta-Schema 0.0.3-metaschema-abstract-value-types.json",
+      "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.json",
+      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "(TypeDescriptor)-[ComponentOf]->(SchemaType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ComponentOf",
+        "type_name_plural": "ComponentOfRelationships",
+        "display_name": "ComponentOf",
+        "display_name_plural": "ComponentOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Links a type descriptor to the schema that contains it.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#SchemaType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(SchemaType)-[Components]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Components",
+        "type_name_plural": "ComponentsRelationships",
+        "display_name": "Components",
+        "display_name_plural": "Components Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ComponentOf, from SchemaType to TypeDescriptor.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(TypeDescriptor)-[ComponentOf]->(SchemaType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#SchemaType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[InstanceProperties]->(PropertyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "InstanceProperties",
+        "type_name_plural": "InstancePropertiesRelationships",
+        "display_name": "InstanceProperties",
+        "display_name_plural": "InstanceProperties Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Connects a type descriptor to its expected property types.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "InstancePropertyFor",
+        "type_name_plural": "InstancePropertyForRelationships",
+        "display_name": "InstancePropertyFor",
+        "display_name_plural": "InstancePropertyFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of InstanceProperties, from PropertyType to TypeDescriptor.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(TypeDescriptor)-[InstanceProperties]->(PropertyType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "InstanceRelationships",
+        "type_name_plural": "InstanceRelationships",
+        "display_name": "Instance Relationships",
+        "display_name_plural": "Instance Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Connects a type descriptor to its expected relationship types.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "InstanceRelationshipFor",
+        "type_name_plural": "InstanceRelationshipForRelationships",
+        "display_name": "InstanceRelationshipFor",
+        "display_name_plural": "InstanceRelationshipFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[DescribedBy]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DescribedBy",
+        "type_name_plural": "DescribedByRelationships",
+        "display_name": "DescribedBy",
+        "display_name_plural": "DescribedBy Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Links a holon to the type descriptor that describes it.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[Instances]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Instances",
+        "type_name_plural": "InstancesRelationships",
+        "display_name": "Instances",
+        "display_name_plural": "Instances Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of DescribedBy, from TypeDescriptor to Holon.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[OwnedBy]->(HolonSpaceType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "OwnedBy",
+        "type_name_plural": "OwnedByRelationships",
+        "display_name": "OwnedBy",
+        "display_name_plural": "OwnedBy Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Indicates which holon space owns the given holon.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonSpaceType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpaceType)-[Owns]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Owns",
+        "type_name_plural": "OwnsRelationships",
+        "display_name": "Owns",
+        "display_name_plural": "Owns Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of OwnedBy, from HolonSpace to Holon.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(HolonType)-[OwnedBy]->(HolonSpaceType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonSpaceType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[Properties]->(PropertyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Properties",
+        "type_name_plural": "PropertiesRelationships",
+        "display_name": "Properties",
+        "display_name_plural": "Properties Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Links a holon to its properties.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[PropertyOf]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "PropertyOf",
+        "type_name_plural": "PropertyOfRelationships",
+        "display_name": "PropertyOf",
+        "display_name_plural": "PropertyOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of Properties, from PropertyType to HolonType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(HolonType)-[Properties]->(PropertyType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[ValueType]->(ValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ValueType",
+        "type_name_plural": "ValueTypeRelationships",
+        "display_name": "ValueType",
+        "display_name_plural": "ValueType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Specifies the value type constraint for a property.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueType)-[ValueTypeFor]->(PropertyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ValueTypeFor",
+        "type_name_plural": "ValueTypeForRelationships",
+        "display_name": "ValueTypeFor",
+        "display_name_plural": "ValueTypeFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ValueType, from ValueType to PropertyType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(PropertyType)-[ValueType]->(ValueType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[PropertyName]->(PropertyNameValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "PropertyName",
+        "type_name_plural": "PropertyNameRelationships",
+        "display_name": "PropertyName",
+        "display_name_plural": "PropertyName Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Associates a property type with its symbolic name.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#PropertyNameValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyNameValueType)-[PropertyNameFor]->(PropertyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "PropertyNameFor",
+        "type_name_plural": "PropertyNameForRelationships",
+        "display_name": "PropertyNameFor",
+        "display_name_plural": "PropertyNameFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of PropertyName, from PropertyNameValueType to PropertyType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(PropertyType)-[PropertyName]->(PropertyNameValueType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#PropertyNameValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(MetaRelationshipType)-[SourceType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SourceType",
+        "type_name_plural": "SourceTypeRelationships",
+        "display_name": "SourceType",
+        "display_name_plural": "SourceType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the source holon type for a meta relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#MetaRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[SourceOf]->(MetaRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SourceOf",
+        "type_name_plural": "SourceOfRelationships",
+        "display_name": "SourceOf",
+        "display_name_plural": "SourceOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the source holon type for a meta relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(MetaRelationshipType)-[SourceType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#MetaRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DeclaredRelationshipType)-[SourceType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SourceType",
+        "type_name_plural": "SourceTypeRelationships",
+        "display_name": "SourceType",
+        "display_name_plural": "SourceType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the source holon type for a declared relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[SourceOf]->(DeclaredRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SourceOf",
+        "type_name_plural": "SourceOfRelationships",
+        "display_name": "SourceOf",
+        "display_name_plural": "SourceOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of SourceType, from HolonType to DeclaredRelationshipType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(DeclaredRelationshipType)-[SourceType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(InverseRelationshipType)-[SourceType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SourceType",
+        "type_name_plural": "SourceTypeRelationships",
+        "display_name": "SourceType",
+        "display_name_plural": "SourceType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the source holon type for a inverse relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[SourceOf]->(InverseRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SourceOf",
+        "type_name_plural": "SourceOfRelationships",
+        "display_name": "SourceOf",
+        "display_name_plural": "SourceOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of SourceType, from HolonType to InverseRelationshipType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(InverseRelationshipType)-[SourceType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(MetaRelationshipType)-[TargetType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetType",
+        "type_name_plural": "TargetTypeRelationships",
+        "display_name": "TargetType",
+        "display_name_plural": "TargetType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the target holon type for a meta relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#MetaRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DeclaredRelationshipType)-[TargetType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetType",
+        "type_name_plural": "TargetTypeRelationships",
+        "display_name": "TargetType",
+        "display_name_plural": "TargetType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the target holon type for a declared relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[TargetOf]->(DeclaredRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetOf",
+        "type_name_plural": "TargetOfRelationships",
+        "display_name": "TargetOf",
+        "display_name_plural": "TargetOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of TargetType, from HolonType to RelationshipType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(DeclaredRelationshipType)-[TargetType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(InverseRelationshipType)-[TargetType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetType",
+        "type_name_plural": "TargetTypeRelationships",
+        "display_name": "TargetType",
+        "display_name_plural": "TargetType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the target holon type for a inverse relationship type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[TargetOf]->(InverseRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetOf",
+        "type_name_plural": "TargetOfRelationships",
+        "display_name": "TargetOf",
+        "display_name_plural": "TargetOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of TargetType, from HolonType to RelationshipType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(InverseRelationshipType)-[TargetType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "InverseOf",
+        "type_name_plural": "InverseOfRelationships",
+        "display_name": "InverseOf",
+        "display_name_plural": "InverseOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Links an inverse relationship type to the declared relationship it reverses.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HasInverse",
+        "type_name_plural": "HasInverseRelationships",
+        "display_name": "HasInverse",
+        "display_name_plural": "HasInverse Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(EnumValueType)-[Variants]->(EnumVariantValueType, MapEnumVariantValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Variants",
+        "type_name_plural": "VariantsRelationships",
+        "display_name": "Variants",
+        "display_name_plural": "Variants Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declares the allowed symbolic variants of an enum value type.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#EnumValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "#EnumVariantValueType"
+            },
+            {
+              "$ref": "#MapEnumVariantValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(EnumVariantValueType, MapEnumVariantValueType)-[VariantOf]->(EnumValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "VariantOf",
+        "type_name_plural": "VariantOfRelationships",
+        "display_name": "VariantOf",
+        "display_name_plural": "VariantOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of Variants, from EnumVariantType to EnumValueType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": [
+            {
+              "$ref": "#\"(EnumValueType)-[Variants]->(EnumVariantValueType"
+            },
+            {
+              "$ref": "#MapEnumVariantValueType)\""
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "#EnumVariantValueType"
+            },
+            {
+              "$ref": "#MapEnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#EnumValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(SchemaType)-[DependsOn]->(SchemaType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "DependsOn",
+        "type_name_plural": "DependsOnRelationships",
+        "display_name": "DependsOn",
+        "display_name_plural": "DependsOn Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Indicates that one schema holon depends on another.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#SchemaType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#SchemaType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(SchemaType)-[Dependents]->(SchemaType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Dependents",
+        "type_name_plural": "DependentsRelationships",
+        "display_name": "Dependents",
+        "display_name_plural": "Dependents Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of DependsOn, indicating which schemas depend on this one.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(SchemaType)-[DependsOn]->(SchemaType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#SchemaType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#SchemaType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueArrayValueType)-[ElementValueType]->(ValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ElementValueType",
+        "type_name_plural": "ElementValueTypeRelationships",
+        "display_name": "ElementValueType",
+        "display_name_plural": "ElementValueType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Specifies the element value type of a value array.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#ValueArrayValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueType)-[ElementValueTypeFor]->(ValueArrayValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ElementValueTypeFor",
+        "type_name_plural": "ElementValueTypeForRelationships",
+        "display_name": "ElementValueTypeFor",
+        "display_name_plural": "ElementValueTypeFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ElementValueType, from ValueType to ValueArrayType.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(ValueArrayValueType)-[ElementValueType]->(ValueType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#ValueArrayValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[Extends]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Extends",
+        "type_name_plural": "ExtendsRelationships",
+        "display_name": "Extends",
+        "display_name_plural": "Extends Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent).",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[ExtendedBy]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ExtendedBy",
+        "type_name_plural": "ExtendedByRelationships",
+        "display_name": "ExtendedBy",
+        "display_name_plural": "ExtendedBy Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of Extends, the parent TypeDescriptor is extended by zero or more children.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(TypeDescriptor)-[Extends]->(TypeDescriptor)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TemplateParameters",
+        "type_name_plural": "TemplateParametersRelationships",
+        "display_name": "TemplateParameters Relationship",
+        "display_name_plural": "TemplateParameters Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Ordered list of PropertyTypes used as positional parameters for template_string ($0, $1, ...).",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": true,
+        "is_ordered": true,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TemplateParameterFor",
+        "type_name_plural": "TemplateParameterForRelationships",
+        "display_name": "TemplateParameterFor Relationship",
+        "display_name_plural": "TemplateParameterFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of TemplateParameters, indicates that this PropertyType is used as a positional parameter in one or more Format.KeyRuleType instances.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Metaschema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
+          }
+        }
+      ]
+    }
+  ]
+}
