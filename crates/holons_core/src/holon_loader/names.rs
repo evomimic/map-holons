@@ -55,9 +55,10 @@ pub const PROP_RESPONSE_STATUS_CODE:        &str = "response_status_code";
 pub const PROP_HOLONS_STAGED:               &str = "holons_staged";
 pub const PROP_HOLONS_COMMITTED:            &str = "holons_committed";
 pub const PROP_ERROR_COUNT:                 &str = "error_count";
-pub const PROP_DANCE_SUMMARY:               &str = "dance_summary";
+pub const PROP_DANCE_SUMMARY:               &str = "dance_summary";  // should this just be "summary"?
 
 // HolonLoadError properties (optionally used)
+pub const ERROR_TYPE_KEY:                   &str = "HolonErrorType";
 pub const PROP_ERROR_TYPE:                  &str = "error_type";
 pub const PROP_ERROR_MESSAGE:               &str = "error_message";
 

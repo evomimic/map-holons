@@ -1,7 +1,8 @@
+
 use std::collections::HashMap;
 use base_types::MapString;
 use core_types::HolonError;
-use crate::reference_layer::{HolonReference, HolonsContextBehavior};
+use crate::reference_layer::{HolonsContextBehavior, TransientReference};
 use crate::StagedReference;
 
 pub struct ResolverOutcome {
@@ -15,7 +16,7 @@ impl LoaderRefResolver {
     pub fn resolve_all(
         context: &dyn HolonsContextBehavior,
         key_index: &HashMap<MapString, StagedReference>,
-        queued_rel_refs: Vec<crate::core_shared_objects::holon::TransientHolon>,
+        queued_rel_refs: Vec<TransientReference>,
     ) -> Result<ResolverOutcome, HolonError> {
         // resolve LoaderRelationshipReference holons and add declared links (incl. DescribedBy)
         unimplemented!()
