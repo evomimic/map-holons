@@ -95,7 +95,7 @@ impl HolonLoaderController {
         let ResolverOutcome {
             links_created,
             errors: resolve_errors,
-        } = LoaderRefResolver::resolve_all(
+        } = LoaderRefResolver::resolve_relationships(
             context,
             &mo.key_index,
             std::mem::take(&mut mo.queued_rel_refs),
@@ -235,32 +235,32 @@ impl HolonLoaderController {
         mut error_holons: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
         // Build response as a transient with properties…
-        let rsp = create_empty_transient_holon(
+        let response = create_empty_transient_holon(
             context,
             MapString("CoreLoaderControllerResponse".to_string()),
         )?;
 
-        rsp.with_property_value(
+        response.with_property_value(
             context,
             N::prop(N::PROP_RESPONSE_STATUS_CODE),
             BaseValue::StringValue(response_status_code),
         )?;
-        rsp.with_property_value(
+        response.with_property_value(
             context,
             N::prop(N::PROP_HOLONS_STAGED),
             BaseValue::IntegerValue(MapInteger(holons_staged)),
         )?;
-        rsp.with_property_value(
+        response.with_property_value(
             context,
             N::prop(N::PROP_HOLONS_COMMITTED),
             BaseValue::IntegerValue(MapInteger(holons_committed)),
         )?;
-        rsp.with_property_value(
+        response.with_property_value(
             context,
             N::prop(N::PROP_ERROR_COUNT),
             BaseValue::IntegerValue(MapInteger(error_count)),
         )?;
-        rsp.with_property_value(
+        response.with_property_value(
             context,
             N::prop(N::PROP_DANCE_SUMMARY),
             BaseValue::StringValue(MapString(summary)),
@@ -268,7 +268,7 @@ impl HolonLoaderController {
 
         // Attach errors to the response (declared link), if any.
         if !error_holons.is_empty() {
-            rsp.add_related_holons(
+            response.add_related_holons(
                 context,
                 N::rel(N::REL_HAS_LOAD_ERROR),
                 error_holons
@@ -278,6 +278,6 @@ impl HolonLoaderController {
             )?;
         }
 
-        Ok(rsp)
+        Ok(response)
     }
 }
