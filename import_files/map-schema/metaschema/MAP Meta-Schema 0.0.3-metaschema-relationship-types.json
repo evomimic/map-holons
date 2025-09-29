@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-28T11:08:38",
+    "generated_at": "2025-09-29T12:19:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Meta-Schema 0.0.3-metaschema-relationship-types.csv"
@@ -9,8 +9,8 @@
     "load_with": [
       "MAP Meta-Schema 0.0.3-metaschema-root.json",
       "MAP Meta-Schema 0.0.3-metaschema-abstract-value-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json"
+      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json",
+      "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.json"
     ]
   },
   "holons": [
@@ -25,8 +25,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links a type descriptor to the schema that contains it.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -77,8 +75,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ComponentOf, from SchemaType to TypeDescriptor.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -136,8 +132,6 @@
         "instance_type_kind": "Relationship",
         "description": "Connects a type descriptor to its expected property types.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -189,8 +183,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of InstanceProperties, from PropertyType to TypeDescriptor.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -247,8 +239,6 @@
         "instance_type_kind": "Relationship",
         "description": "Connects a type descriptor to its expected relationship types.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -299,8 +289,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -357,8 +345,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links a holon to the type descriptor that describes it.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -409,8 +395,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of DescribedBy, from TypeDescriptor to Holon.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -467,8 +451,6 @@
         "instance_type_kind": "Relationship",
         "description": "Indicates which holon space owns the given holon.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -519,8 +501,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of OwnedBy, from HolonSpace to Holon.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -577,8 +557,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links a holon to its properties.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -629,8 +607,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of Properties, from PropertyType to HolonType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -687,8 +663,6 @@
         "instance_type_kind": "Relationship",
         "description": "Specifies the value type constraint for a property.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -739,8 +713,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ValueType, from ValueType to PropertyType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -797,8 +769,6 @@
         "instance_type_kind": "Relationship",
         "description": "Associates a property type with its symbolic name.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -849,8 +819,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of PropertyName, from PropertyNameValueType to PropertyType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -907,8 +875,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the source holon type for a meta relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -959,8 +925,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the source holon type for a meta relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1017,8 +981,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the source holon type for a declared relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1069,8 +1031,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of SourceType, from HolonType to DeclaredRelationshipType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1127,8 +1087,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the source holon type for a inverse relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1179,8 +1137,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of SourceType, from HolonType to InverseRelationshipType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1237,8 +1193,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the target holon type for a meta relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1289,8 +1243,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the target holon type for a declared relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1341,8 +1293,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of TargetType, from HolonType to RelationshipType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1399,8 +1349,6 @@
         "instance_type_kind": "Relationship",
         "description": "Defines the target holon type for a inverse relationship type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1451,8 +1399,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of TargetType, from HolonType to RelationshipType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1509,8 +1455,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links an inverse relationship type to the declared relationship it reverses.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1561,8 +1505,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1609,7 +1551,7 @@
       ]
     },
     {
-      "key": "(EnumValueType)-[Variants]->(EnumVariantValueType, MapEnumVariantValueType)",
+      "key": "(EnumValueType)-[Variants]->(EnumVariantValueType)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "Variants",
@@ -1619,8 +1561,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declares the allowed symbolic variants of an enum value type.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1654,19 +1594,14 @@
         },
         {
           "name": "TargetType",
-          "target": [
-            {
-              "$ref": "#EnumVariantValueType"
-            },
-            {
-              "$ref": "#MapEnumVariantValueType"
-            }
-          ]
+          "target": {
+            "$ref": "#EnumVariantValueType"
+          }
         }
       ]
     },
     {
-      "key": "(EnumVariantValueType, MapEnumVariantValueType)-[VariantOf]->(EnumValueType)",
+      "key": "(EnumVariantValueType)-[VariantOf]->(EnumValueType)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "VariantOf",
@@ -1676,8 +1611,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of Variants, from EnumVariantType to EnumValueType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1705,25 +1638,15 @@
         },
         {
           "name": "InverseOf",
-          "target": [
-            {
-              "$ref": "#\"(EnumValueType)-[Variants]->(EnumVariantValueType"
-            },
-            {
-              "$ref": "#MapEnumVariantValueType)\""
-            }
-          ]
+          "target": {
+            "$ref": "#(EnumValueType)-[Variants]->(EnumVariantValueType)"
+          }
         },
         {
           "name": "SourceType",
-          "target": [
-            {
-              "$ref": "#EnumVariantValueType"
-            },
-            {
-              "$ref": "#MapEnumVariantValueType"
-            }
-          ]
+          "target": {
+            "$ref": "#EnumVariantValueType"
+          }
         },
         {
           "name": "TargetType",
@@ -1744,8 +1667,6 @@
         "instance_type_kind": "Relationship",
         "description": "Indicates that one schema holon depends on another.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1796,8 +1717,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of DependsOn, indicating which schemas depend on this one.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1854,8 +1773,6 @@
         "instance_type_kind": "Relationship",
         "description": "Specifies the element value type of a value array.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1906,8 +1823,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ElementValueType, from ValueType to ValueArrayType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1964,8 +1879,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent).",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -2016,8 +1929,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of Extends, the parent TypeDescriptor is extended by zero or more children.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -2074,8 +1985,6 @@
         "instance_type_kind": "Relationship",
         "description": "Ordered list of PropertyTypes used as positional parameters for template_string ($0, $1, ...).",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": true,
         "is_ordered": true,
         "allows_duplicates": false,
@@ -2126,8 +2035,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of TemplateParameters, indicates that this PropertyType is used as a positional parameter in one or more Format.KeyRuleType instances.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,

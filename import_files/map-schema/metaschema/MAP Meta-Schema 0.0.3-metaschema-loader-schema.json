@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-28T11:08:38",
+    "generated_at": "2025-09-29T12:19:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Meta-Schema 0.0.3-metaschema-loader-schema.csv"
@@ -278,8 +278,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a LoaderHolon to each unresolved relationship reference it contains.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": true,
@@ -331,8 +329,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -390,8 +386,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
         "is_ordered": false,
@@ -443,8 +437,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -502,8 +494,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a LoaderRelationshipReference to the holons that act as relationship targets.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
         "is_ordered": true,
@@ -555,8 +545,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Cascade",
         "is_definitional": false,
         "is_ordered": false,
@@ -614,8 +602,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -667,8 +653,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -726,8 +710,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a HolonLoadResponse to one or more HolonError holons.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -779,8 +761,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
@@ -837,9 +817,7 @@
         "display_name_plural": "keys",
         "instance_type_kind": "Property",
         "description": "Optional key to identify the holon instance within the import set.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -878,9 +856,7 @@
         "display_name_plural": "relationship_names",
         "instance_type_kind": "Property",
         "description": "Name of the relationship as declared in the JSON input.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -919,9 +895,7 @@
         "display_name_plural": "is_declared_flags",
         "instance_type_kind": "Property",
         "description": "Whether the relationship is declared (`true`) or inverse (`false`).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -960,9 +934,7 @@
         "display_name_plural": "holon_keys",
         "instance_type_kind": "Property",
         "description": "Local key for the referenced holon.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1001,9 +973,7 @@
         "display_name_plural": "holon_ids",
         "instance_type_kind": "Property",
         "description": "ActionHash identifier of a referenced holon.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1042,9 +1012,7 @@
         "display_name_plural": "proxy_keys",
         "instance_type_kind": "Property",
         "description": "Key of the ProxySpace through which this external reference is routed.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1083,9 +1051,7 @@
         "display_name_plural": "proxy_ids",
         "instance_type_kind": "Property",
         "description": "ActionHash of the ProxySpace holon, used to route external references.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1124,9 +1090,7 @@
         "display_name_plural": "holons_stageds",
         "instance_type_kind": "Property",
         "description": "Number of holons staged during the load operation.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1165,9 +1129,7 @@
         "display_name_plural": "holons_committeds",
         "instance_type_kind": "Property",
         "description": "Number of holons successfully committed.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {

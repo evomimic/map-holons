@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-28T11:08:38",
+    "generated_at": "2025-09-29T12:19:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.csv"
@@ -23,9 +23,7 @@
         "display_name": "MapStringValueType",
         "display_name_plural": "MapStringValueTypes",
         "instance_type_kind": "Value.String",
-        "description": "Concrete value type representing strings.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing strings."
       },
       "relationships": [
         {
@@ -58,9 +56,7 @@
         "display_name": "MapIntegerValueType",
         "display_name_plural": "MapIntegerValueTypes",
         "instance_type_kind": "Value.Integer",
-        "description": "Concrete value type representing integers.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing integers."
       },
       "relationships": [
         {
@@ -93,9 +89,7 @@
         "display_name": "MapBooleanValueType",
         "display_name_plural": "MapBooleanValueTypes",
         "instance_type_kind": "Value.Boolean",
-        "description": "Concrete value type representing booleans.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing booleans."
       },
       "relationships": [
         {
@@ -128,9 +122,7 @@
         "display_name": "MapBytesValueType",
         "display_name_plural": "MapBytesValueTypes",
         "instance_type_kind": "Value.Bytes",
-        "description": "Concrete value type representing byte sequences.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing byte sequences."
       },
       "relationships": [
         {
@@ -163,9 +155,7 @@
         "display_name": "MapEnumValueType",
         "display_name_plural": "MapEnumValueTypes",
         "instance_type_kind": "Value.Enum",
-        "description": "Concrete value type representing enums.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing enums."
       },
       "relationships": [
         {
@@ -198,9 +188,7 @@
         "display_name": "MapEnumVariant Value Type",
         "display_name_plural": "MapEnumVariant Value Types",
         "instance_type_kind": "EnumVariant",
-        "description": "Abstract type for variants of enum-based value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for variants of enum-based value types."
       },
       "relationships": [
         {
@@ -233,9 +221,7 @@
         "display_name": "PropertyNameValueType",
         "display_name_plural": "PropertyNameValueTypes",
         "instance_type_kind": "Value.String",
-        "description": "Concrete value type representing a property name.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing a property name."
       },
       "relationships": [
         {
@@ -268,9 +254,7 @@
         "display_name": "MapValueArrayType",
         "display_name_plural": "MapValueArrayTypes",
         "instance_type_kind": "Value.Array",
-        "description": "Concrete value type representing arrays of values.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Concrete value type representing arrays of values."
       },
       "relationships": [
         {
@@ -303,9 +287,7 @@
         "display_name": "DeletionSemantic",
         "display_name_plural": "DeletionSemantics",
         "instance_type_kind": "Value.Enum",
-        "description": "Enum value type for deletion semantics.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Enum value type for deletion semantics."
       },
       "relationships": [
         {
@@ -336,9 +318,7 @@
         "type_name": "Allow",
         "display_name": "Allow",
         "instance_type_kind": "EnumVariant",
-        "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets."
       },
       "relationships": [
         {
@@ -375,9 +355,7 @@
         "type_name": "Block",
         "display_name": "Block",
         "instance_type_kind": "EnumVariant",
-        "description": "Prevent deletion of the source holon if any target holons are related through this relationship.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Prevent deletion of the source holon if any target holons are related through this relationship."
       },
       "relationships": [
         {
@@ -414,9 +392,7 @@
         "type_name": "Cascade",
         "display_name": "Cascade",
         "instance_type_kind": "EnumVariant",
-        "description": "If the source holon is deleted, also delete any related target holons.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "If the source holon is deleted, also delete any related target holons."
       },
       "relationships": [
         {
@@ -455,9 +431,7 @@
         "display_name": "TypeKind",
         "display_name_plural": "TypeKinds",
         "instance_type_kind": "Value.Enum",
-        "description": "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship).",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship)."
       },
       "relationships": [
         {
@@ -488,9 +462,7 @@
         "type_name": "Property",
         "display_name": "Property",
         "instance_type_kind": "EnumVariant",
-        "description": "Represents a property type. Variant of the TypeKind enum.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Represents a property type. Variant of the TypeKind enum."
       },
       "relationships": [
         {
@@ -527,9 +499,7 @@
         "type_name": "Relationship",
         "display_name": "Relationship",
         "instance_type_kind": "EnumVariant",
-        "description": "Represents a relationship type. Variant of the TypeKind enum.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Represents a relationship type. Variant of the TypeKind enum."
       },
       "relationships": [
         {
@@ -566,9 +536,7 @@
         "type_name": "EnumVariant",
         "display_name": "EnumVariant",
         "instance_type_kind": "EnumVariant",
-        "description": "Represents an enum variant type. Variant of the TypeKind enum.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Represents an enum variant type. Variant of the TypeKind enum."
       },
       "relationships": [
         {
@@ -605,9 +573,7 @@
         "type_name": "Holon",
         "display_name": "Holon",
         "instance_type_kind": "EnumVariant",
-        "description": "Represents a holon type.  Variant of the TypeKind enum.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Represents a holon type.  Variant of the TypeKind enum."
       },
       "relationships": [
         {
@@ -644,9 +610,7 @@
         "type_name": "Collection",
         "display_name": "Collection",
         "instance_type_kind": "EnumVariant",
-        "description": "Represents a collection type. Variant of the TypeKind enum.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Represents a collection type. Variant of the TypeKind enum."
       },
       "relationships": [
         {
@@ -683,9 +647,7 @@
         "type_name": "Dance",
         "display_name": "Dance",
         "instance_type_kind": "EnumVariant",
-        "description": "Represents a dance service type. Variant of the TypeKind enum.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Represents a dance service type. Variant of the TypeKind enum."
       },
       "relationships": [
         {
@@ -722,9 +684,7 @@
         "type_name": "Value.String",
         "display_name": "Value.String",
         "instance_type_kind": "EnumVariant",
-        "description": "Value type wrapping base type representing strings.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Value type wrapping base type representing strings."
       },
       "relationships": [
         {
@@ -761,9 +721,7 @@
         "type_name": "ValueArray.String",
         "display_name": "ValueArray.String",
         "instance_type_kind": "EnumVariant",
-        "description": "ValueArray type wrapping base type representing strings.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "ValueArray type wrapping base type representing strings."
       },
       "relationships": [
         {
@@ -800,9 +758,7 @@
         "type_name": "Value.Integer",
         "display_name": "Value.Integer",
         "instance_type_kind": "EnumVariant",
-        "description": "Value type wrapping base type representing integers.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Value type wrapping base type representing integers."
       },
       "relationships": [
         {
@@ -839,9 +795,7 @@
         "type_name": "ValueArray.Integer",
         "display_name": "ValueArray.Integer",
         "instance_type_kind": "EnumVariant",
-        "description": "ValueArray type wrapping base type representing integers.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "ValueArray type wrapping base type representing integers."
       },
       "relationships": [
         {
@@ -878,9 +832,7 @@
         "type_name": "Value.Boolean",
         "display_name": "Value.Boolean",
         "instance_type_kind": "EnumVariant",
-        "description": "Value type wrapping base type representing booleans.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Value type wrapping base type representing booleans."
       },
       "relationships": [
         {
@@ -917,9 +869,7 @@
         "type_name": "ValueArray.Boolean",
         "display_name": "ValueArray.Boolean",
         "instance_type_kind": "EnumVariant",
-        "description": "ValueArray type wrapping base type representing booleans.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "ValueArray type wrapping base type representing booleans."
       },
       "relationships": [
         {
@@ -956,9 +906,7 @@
         "type_name": "Value.Enum",
         "display_name": "Value.Enum",
         "instance_type_kind": "EnumVariant",
-        "description": "Value type wrapping base type representing enumerations.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Value type wrapping base type representing enumerations."
       },
       "relationships": [
         {
@@ -995,9 +943,7 @@
         "type_name": "Value.Bytes",
         "display_name": "Value.Bytes",
         "instance_type_kind": "EnumVariant",
-        "description": "Value type wrapping base type representing byte sequences.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Value type wrapping base type representing byte sequences."
       },
       "relationships": [
         {
@@ -1034,9 +980,7 @@
         "type_name": "ValueArray.Bytes",
         "display_name": "ValueArray.Bytes",
         "instance_type_kind": "EnumVariant",
-        "description": "ValueArray type wrapping base type representing byte sequences.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "ValueArray type wrapping base type representing byte sequences."
       },
       "relationships": [
         {

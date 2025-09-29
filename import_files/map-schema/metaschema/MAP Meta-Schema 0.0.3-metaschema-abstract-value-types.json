@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-28T11:08:38",
+    "generated_at": "2025-09-29T12:19:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Meta-Schema 0.0.3-metaschema-abstract-value-types.csv"
@@ -22,9 +22,7 @@
         "display_name": "Meta Value Type",
         "display_name_plural": "Meta Value Types",
         "instance_type_kind": "Holon",
-        "description": "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill."
       },
       "relationships": [
         {
@@ -57,9 +55,7 @@
         "display_name": "Value Type",
         "display_name_plural": "Value Types",
         "instance_type_kind": "Holon",
-        "description": "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas."
       },
       "relationships": [
         {
@@ -92,9 +88,7 @@
         "display_name": "StringValueType",
         "display_name_plural": "StringValueTypes",
         "instance_type_kind": "Value.String",
-        "description": "Abstract type for string-based value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for string-based value types."
       },
       "relationships": [
         {
@@ -127,9 +121,7 @@
         "display_name": "IntegerValueType",
         "display_name_plural": "IntegerValueTypes",
         "instance_type_kind": "Value.Integer",
-        "description": "Abstract type for integer-based value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for integer-based value types."
       },
       "relationships": [
         {
@@ -162,9 +154,7 @@
         "display_name": "BooleanValueType",
         "display_name_plural": "BooleanValueTypes",
         "instance_type_kind": "Value.Boolean",
-        "description": "Abstract type for boolean-based value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for boolean-based value types."
       },
       "relationships": [
         {
@@ -197,9 +187,7 @@
         "display_name": "BytesValueType",
         "display_name_plural": "BytesValueTypes",
         "instance_type_kind": "Value.Bytes",
-        "description": "Abstract type for byte sequence value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for byte sequence value types."
       },
       "relationships": [
         {
@@ -232,9 +220,7 @@
         "display_name": "EnumValueType",
         "display_name_plural": "EnumValueTypes",
         "instance_type_kind": "Value.Enum",
-        "description": "Abstract type for enum-based value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for enum-based value types."
       },
       "relationships": [
         {
@@ -267,9 +253,7 @@
         "display_name": "EnumVariant Value Type",
         "display_name_plural": "EnumVariant Value Types",
         "instance_type_kind": "EnumVariant",
-        "description": "Abstract type for variants of enum-based value types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for variants of enum-based value types."
       },
       "relationships": [
         {
@@ -302,9 +286,7 @@
         "display_name": "ValueArrayType",
         "display_name_plural": "ValueArrayTypes",
         "instance_type_kind": "Value.Array",
-        "description": "Abstract type for value array types.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract type for value array types."
       },
       "relationships": [
         {

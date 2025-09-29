@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-28T11:08:38",
+    "generated_at": "2025-09-29T12:19:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.csv"
@@ -23,7 +23,9 @@
         "display_name": "MAP Key Rule Schema",
         "display_name_plural": "MAP Key Rule Schemas",
         "instance_type_kind": "Holon",
-        "description": "Groups all type descriptors related to holon key derivation strategies in MAP."
+        "description": "Groups all type descriptors related to holon key derivation strategies in MAP.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -56,9 +58,7 @@
         "display_name": "Abstract Key Rule Type",
         "display_name_plural": "Abstract Key Rule Types",
         "instance_type_kind": "Holon",
-        "description": "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes."
       },
       "relationships": [
         {
@@ -91,9 +91,7 @@
         "display_name": "Format Key Rule Type",
         "display_name_plural": "Format Key Rule Types",
         "instance_type_kind": "Holon",
-        "description": "Key rule defined by a template_string plus an ordered list of PropertyTypes used as template parameters.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Key rule defined by a template_string plus an ordered list of PropertyTypes used as template parameters."
       },
       "relationships": [
         {
@@ -224,9 +222,7 @@
         "display_name": "Relationship Key Rule Type",
         "display_name_plural": "Relationship Key Rule Types",
         "instance_type_kind": "Holon",
-        "description": "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type."
       },
       "relationships": [
         {
@@ -259,9 +255,7 @@
         "display_name": "Extended Type Key Rule Type",
         "display_name_plural": "Extended Type Key Rule Types",
         "instance_type_kind": "Holon",
-        "description": "Hardcoded rule: <type_name>.<extends.key>",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Hardcoded rule: <type_name>.<extends.key>"
       },
       "relationships": [
         {
@@ -294,9 +288,7 @@
         "display_name": "None Key Rule Type",
         "display_name_plural": "None Key Rule Types",
         "instance_type_kind": "Holon",
-        "description": "Indicates a keyless holon. Must be embedded and never referenced.",
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "description": "Indicates a keyless holon. Must be embedded and never referenced."
       },
       "relationships": [
         {

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-28T11:08:38",
+    "generated_at": "2025-09-29T12:19:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Meta-Schema 0.0.3-metaschema-dance-schema.csv"
@@ -21,7 +21,9 @@
         "display_name": "MAP Dance Schema-v0.0.2",
         "instance_type_kind": "Holon",
         "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema.",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -226,8 +228,6 @@
         "instance_type_kind": "Relationship",
         "description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
         "is_ordered": false,
@@ -279,8 +279,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of Affords, from DanceType to HolonType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -337,8 +335,6 @@
         "instance_type_kind": "Relationship",
         "description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false
@@ -387,8 +383,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false
@@ -443,8 +437,6 @@
         "instance_type_kind": "Relationship",
         "description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -495,8 +487,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ForDance, from DanceType to DanceImplementation.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -553,8 +543,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links a DanceType to the HolonType used as its request body.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -605,8 +593,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of Request, from HolonType to DanceType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -663,8 +649,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links a DanceType to the DanceResponseType used to structure its response.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -715,8 +699,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of Response, from DanceResponseType to DanceType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -773,8 +755,6 @@
         "instance_type_kind": "Relationship",
         "description": "Links a DanceResponseType to the HolonType that will serve as the response body.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -825,8 +805,6 @@
         "instance_type_kind": "Relationship",
         "description": "Inverse of ResponseBody, from HolonType to ResponseBodyType.",
         "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false,
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -882,9 +860,7 @@
         "display_name_plural": "dance_names",
         "instance_type_kind": "Property",
         "description": "Unique string identifier for a DanceType descriptor, used in dispatch tables.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -923,9 +899,7 @@
         "display_name_plural": "dance_descriptions",
         "instance_type_kind": "Property",
         "description": "Human-readable explanation of what the dance does or when it should be invoked.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -964,9 +938,7 @@
         "display_name_plural": "response_status_codes",
         "instance_type_kind": "Property",
         "description": "Machine-readable status code indicating the result of the dance.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1005,9 +977,7 @@
         "display_name_plural": "engines",
         "instance_type_kind": "Property",
         "description": "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1046,9 +1016,7 @@
         "display_name_plural": "module_refs",
         "instance_type_kind": "Property",
         "description": "Content-address or locator of the executable module (e.g., hash/URL/capability address).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1087,9 +1055,7 @@
         "display_name_plural": "entrypoints",
         "instance_type_kind": "Property",
         "description": "Function/export name to invoke inside the module.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1128,9 +1094,7 @@
         "display_name_plural": "abi_ids",
         "instance_type_kind": "Property",
         "description": "Identifier of the stable smart contract ABI expected by the module/entrypoint.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1169,9 +1133,7 @@
         "display_name_plural": "versions",
         "instance_type_kind": "Property",
         "description": "Semantic version or content hash pin of the implementation.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1210,9 +1172,7 @@
         "display_name_plural": "compats",
         "instance_type_kind": "Property",
         "description": "Compatibility range or constraints (e.g., ABI or schema versions).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1251,9 +1211,7 @@
         "display_name_plural": "dance_summaries",
         "instance_type_kind": "Property",
         "description": "Human-readable summary of a dance outcome.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1292,9 +1250,7 @@
         "display_name_plural": "Response Status Codes",
         "instance_type_kind": "Value.Enum",
         "description": "Standard set of status codes returned by dances, aligned with HTTP semantics.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1327,9 +1283,7 @@
         "display_name_plural": "OKs",
         "instance_type_kind": "EnumVariant",
         "description": "200 — Request succeeded.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1368,9 +1322,7 @@
         "display_name_plural": "Accepteds",
         "instance_type_kind": "EnumVariant",
         "description": "202 — Request accepted but not yet processed.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1409,9 +1361,7 @@
         "display_name_plural": "Bad Requests",
         "instance_type_kind": "EnumVariant",
         "description": "400 — The request was malformed or invalid.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1450,9 +1400,7 @@
         "display_name_plural": "Unauthorized",
         "instance_type_kind": "EnumVariant",
         "description": "401 — The requester is not authenticated.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1491,9 +1439,7 @@
         "display_name_plural": "Forbidden",
         "instance_type_kind": "EnumVariant",
         "description": "403 — The requester lacks permission.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1532,9 +1478,7 @@
         "display_name_plural": "Not Founds",
         "instance_type_kind": "EnumVariant",
         "description": "404 — The target resource was not found.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1573,9 +1517,7 @@
         "display_name_plural": "Conflicts",
         "instance_type_kind": "EnumVariant",
         "description": "409 — Conflict with the current state of the resource.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1614,9 +1556,7 @@
         "display_name_plural": "Unprocessable Entities",
         "instance_type_kind": "EnumVariant",
         "description": "422 — Semantic validation failed.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1655,9 +1595,7 @@
         "display_name_plural": "Server Errors",
         "instance_type_kind": "EnumVariant",
         "description": "500 — Unexpected internal error.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1696,9 +1634,7 @@
         "display_name_plural": "Not Implemented",
         "instance_type_kind": "EnumVariant",
         "description": "501 — Functionality required to fulfill the request is not supported.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1737,9 +1673,7 @@
         "display_name_plural": "Service Unavailable",
         "instance_type_kind": "EnumVariant",
         "description": "503 — The server is currently unable to handle the request (overload/maintenance).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1778,9 +1712,7 @@
         "display_name_plural": "Dance Engines",
         "instance_type_kind": "Value.Enum",
         "description": "Enum value type for execution engines used by DanceImplementations.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1813,9 +1745,7 @@
         "display_name_plural": "WasmWasi",
         "instance_type_kind": "EnumVariant",
         "description": "Execute a WASM module under WASI (preferred).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1854,9 +1784,7 @@
         "display_name_plural": "Processes",
         "instance_type_kind": "EnumVariant",
         "description": "Spawn a separate OS process with protocol pipes.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1895,9 +1823,7 @@
         "display_name_plural": "RustDylibs",
         "instance_type_kind": "EnumVariant",
         "description": "Dynamically load a Rust dylib via FFI (platform-coupled).",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -1936,9 +1862,7 @@
         "display_name_plural": "Builtins",
         "instance_type_kind": "EnumVariant",
         "description": "Call a registered host builtin function.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
