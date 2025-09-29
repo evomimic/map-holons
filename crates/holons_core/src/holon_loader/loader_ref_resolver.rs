@@ -13,7 +13,7 @@ pub struct ResolverOutcome {
 pub struct LoaderRefResolver;
 
 impl LoaderRefResolver {
-    pub fn resolve_all(
+    pub fn resolve_relationships(
         context: &dyn HolonsContextBehavior,
         key_index: &HashMap<MapString, StagedReference>,
         queued_rel_refs: Vec<TransientReference>,
