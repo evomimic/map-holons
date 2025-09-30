@@ -1,7 +1,6 @@
 pub mod controller;
 pub mod loader_holon_mapper;
 pub mod loader_ref_resolver;
-mod names;
 mod errors;
 
 pub use controller::HolonLoaderController;

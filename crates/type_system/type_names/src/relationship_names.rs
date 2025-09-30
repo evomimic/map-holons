@@ -66,6 +66,7 @@ impl ToRelationshipName for &RelationshipName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
+    BundleMembers,
     ComponentOf,
     Dependents,
     DependsOn,
@@ -73,13 +74,19 @@ pub enum CoreRelationshipTypeName {
     ElementValueType,
     ElementValueTypeFor,
     Extends,
+    HasLoadError,
+    HasRelationshipReference,
+    InstanceProperties,
     InstanceRelationshipFor,
+    InstanceRelationships,
     Instances,
     InverseOf,
     OwnedBy,
     Owns,
     Predecessor,
     PropertyName,
+    ReferenceSource,
+    ReferenceTarget,
     SourceOf,
     SourceType,
     Successor,
