@@ -3,13 +3,12 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
-
+use type_names;
+use type_names::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use crate::{
     HolonReference, HolonsContextBehavior,
     reference_layer::{TransientReference, TransientHolonBehavior, WritableHolon},
 };
-
-use super::names as N;
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -38,7 +37,7 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
 
 /// Build a transient HolonError holon with {error_type, error_message}.
 /// Caller should then attach it to the response via REL_HAS_LOAD_ERROR.
-pub fn make_error_holon(
+pub fn make_error_holon_typed(
     context: &dyn HolonsContextBehavior,
     holon_error_type_desc: HolonReference, // resolved HolonErrorType descriptor
     err: &HolonError,
@@ -64,13 +63,13 @@ pub fn make_error_holon(
     let etype = error_type_code(err);
     transient.with_property_value(
         context,
-        N::prop(N::PROP_ERROR_TYPE),
+        ErrorType.as_property_name(),
         BaseValue::StringValue(MapString(etype.to_string())),
     )?;
 
     transient.with_property_value(
         context,
-        N::prop(N::PROP_ERROR_MESSAGE),
+        ErrorMessage.as_property_name(),
         BaseValue::StringValue(MapString(err.to_string())),
     )?;
 
