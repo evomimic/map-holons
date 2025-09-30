@@ -1,6 +1,3 @@
-// #![allow(dead_code)]
-
-use pretty_assertions::assert_eq;
 use tracing::{error, info};
 
 use rstest::*;
