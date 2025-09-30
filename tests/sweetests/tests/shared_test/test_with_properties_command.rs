@@ -1,6 +1,7 @@
 use async_std::task;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+use tracing::warn;
 use tracing::{debug, info};
 
 use holochain::sweettest::*;
@@ -67,7 +68,8 @@ pub async fn execute_with_properties(
     if response.status_code == ResponseStatusCode::OK {
         if let ResponseBody::HolonReference(updated_holon) = response.body {
             debug!("Updated holon reference returned: {:?}", updated_holon);
-
+            warn!("EXPECTED :: {:#?}", expected_holon.essential_content(context));
+            warn!("UPDATED :: {:#?}", updated_holon.essential_content(context));
             assert_eq!(
                 expected_holon.essential_content(context),
                 updated_holon.essential_content(context),
