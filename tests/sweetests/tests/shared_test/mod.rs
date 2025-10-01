@@ -21,11 +21,10 @@ pub mod test_stage_new_from_clone;
 pub mod test_stage_new_holon;
 pub mod test_stage_new_version;
 pub mod test_with_properties_command;
+pub mod tracing_utils;
 
 use base_types::MapString;
 use core_types::HolonId;
-use holochain::sweettest::{SweetCell, SweetConductor};
-use test_context::*;
 use test_data_types::DanceTestExecutionState;
 
 // const DNA_FILEPATH: &str = "../../../workdir/map_holons.dna";

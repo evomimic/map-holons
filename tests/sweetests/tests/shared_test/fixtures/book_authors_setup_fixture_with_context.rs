@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 use crate::shared_test::{
     test_context::init_fixture_context,
     test_data_types::{
@@ -7,10 +6,22 @@ use crate::shared_test::{
         PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-use tracing::warn;
-
-use holons_core::WritableHolon;
 use holons_prelude::prelude::*;
+
+use base_types::{BaseValue, MapString};
+use core_types::HolonError;
+use core_types::{PropertyName, RelationshipName};
+use holons_core::reference_layer::holon_operations_api::*;
+use holons_core::{
+    core_shared_objects::{Holon, TransientHolon},
+    dances::dance_response::ResponseStatusCode,
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WritableHolon,
+    },
+};
+
+use tracing::{debug, info};
+// Import the test-only extension
 use std::string::ToString; // Import the test-only extension
 use type_names::property_names::*;
 use type_names::relationship_names::ToRelationshipName;
@@ -38,26 +49,30 @@ pub fn setup_book_author_steps_with_context(
     let book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
     book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
             &*fixture_context,
-            Description,
-                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-            )?;
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString(
+                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
+            )))?;
+
+    info!(
+        "================= In setup_book_author_steps_with_context. Here's the book: \n{:?}",
+        book_transient_reference.essential_content(fixture_context)?
+    );
+
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     let book_staged_reference = stage_new_holon(&*fixture_context, book_transient_reference)?;
 
     // //  STAGE:  Person 1 //
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let person_1_transient_reference =
-        new_holon(&*fixture_context, person_1_key.clone())?;
-    person_1_transient_reference.with_property_value(
-        &*fixture_context,
-        MapString("first name".to_string()),
-        "Roger".to_string(),
-    )?.with_property_value(
-        &*fixture_context,
-        "last name".to_string(),
-        "Briggs".to_string(),
-    )?;
+    let person_1_transient_reference = new_holon(&*fixture_context, person_1_key.clone())?;
+    person_1_transient_reference
+        .with_property_value(
+            &*fixture_context,
+            MapString("first name".to_string()),
+            "Roger".to_string(),
+        )?
+        .with_property_value(&*fixture_context, "last name".to_string(), "Briggs".to_string())?;
     test_case.add_stage_holon_step(person_1_transient_reference.clone())?;
 
     let person_1_staged_reference =
@@ -65,8 +80,7 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Person 2 //
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let person_2_transient_reference =
-        new_holon(&*fixture_context, person_2_key.clone())?;
+    let person_2_transient_reference = new_holon(&*fixture_context, person_2_key.clone())?;
     person_2_transient_reference.with_property_value(
         &*fixture_context,
         PropertyName(MapString("first name".to_string())),
@@ -84,8 +98,7 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Publisher //
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let publisher_transient_reference =
-        new_holon(&*fixture_context, publisher_key.clone())?;
+    let publisher_transient_reference = new_holon(&*fixture_context, publisher_key.clone())?;
     publisher_transient_reference.with_property_value(
         &*fixture_context,
         Description,

@@ -36,7 +36,6 @@ use shared_test::mock_conductor::MockConductorConfig;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
-use crate::test_utils::init_tracing;
 
 use self::test_abandon_staged_changes::execute_abandon_staged_changes;
 use self::test_add_related_holon::execute_add_related_holons;
@@ -87,11 +86,11 @@ use shared_test::*;
 ///
 #[rstest]
 // #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-#[case::delete_holon(delete_holon_fixture())]
+// #[case::delete_holon(delete_holon_fixture())]
 // #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 // #[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 // #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 #[tokio::test(flavor = "multi_thread")]
@@ -104,12 +103,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     use test_delete_holon::execute_delete_holon;
 
-    // let _ = holochain_trace::test_run();
-    // init_tracing();
-
     // The heavy lifting for this test is in the test data set creation.
 
     let mut test_case: DancesTestCase = input.unwrap();
+    // Initialize TestHolonsContext from test_session_state
+    let test_context = init_test_context(&mut test_case); // Already returns Arc
+                                                          // let _ = holochain_trace::test_run();
+
+    tracing::info!("Hello from the test!");
     warn!("TEST CASE ::: {:#?}", test_case);
     let steps = test_case.clone().steps;
     let name = test_case.clone().name.clone();
@@ -122,9 +123,6 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     // 2. Create the DanceCallService with the mock conductor
     let dance_service = Arc::new(DanceCallService::new(conductor_config));
-
-    // Initialize TestHolonsContext from test_session_state
-    let test_context = init_test_context(&mut test_case); // Already returns Arc
 
     warn!("TEST SESSION STATE {:?}", test_case.test_session_state);
 

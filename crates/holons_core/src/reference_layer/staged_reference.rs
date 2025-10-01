@@ -459,6 +459,7 @@ impl WritableHolonImpl for StagedReference {
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
+        info!("Entered StagedReference::with_property_value_impl");
 
         // Mutably borrow the inner Holon and match it
         let mut holon_mut = rc_holon.write().unwrap();

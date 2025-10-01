@@ -327,11 +327,17 @@ impl WritableHolonImpl for TransientReference {
         value: BaseValue,
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        info!(
+            "Entered TransientReference::with_property_value_impl for {:?} with {:?}",
+            &property, &value
+        );
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.write().unwrap();
 
         // Call the Holon's with_property_value method
         holon_refcell.with_property_value(property, value)?;
+
+        info!("After assigning property value {:#?} ", holon_refcell);
 
         Ok(())
     }

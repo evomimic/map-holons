@@ -360,6 +360,7 @@ impl WritableHolonImpl for HolonReference {
         property: PropertyName,
         value: BaseValue,
     ) -> Result<(), HolonError> {
+        info!("Entered HolonReference::with_property_value_impl");
         match self {
             HolonReference::Transient(transient_reference) => {
                 transient_reference.with_property_value_impl(context, property, value)
