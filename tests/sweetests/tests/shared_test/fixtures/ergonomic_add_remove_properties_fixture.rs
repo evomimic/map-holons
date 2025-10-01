@@ -11,12 +11,12 @@ use crate::shared_test::{
     },
     test_with_properties_command::execute_with_properties,
 };
-use crate::test_utils::init_tracing;
+
 use base_types::{BaseValue, MapString, ToBaseValue};
 use core_types::{HolonError, PropertyName};
 use holons_core::{
     dances::ResponseStatusCode,
-    reference_layer::{get_staged_holon_by_base_key, HolonReference, WritableHolon},
+    reference_layer::{get_transient_holon_by_base_key, HolonReference, WritableHolon},
     ReadableHolon,
 };
 use rstest::*;
@@ -25,7 +25,6 @@ use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 #[fixture]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    init_tracing();
     let mut test_case = DancesTestCase::new(
         "Ergonomic Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),
@@ -39,40 +38,35 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     // TEST FIXTURE //
 
-    let book_staged_reference =
-        get_staged_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
-    // book_staged_reference.with_property_value(
-    //     &*fixture_context,
-    //     "New Property".to_string(),
-    //     "This is another property".to_string(),
-    // )?;
-    book_staged_reference.with_property_value(
+    let book_transient_reference =
+        get_transient_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
+    book_transient_reference.with_property_value(
         &*fixture_context,
-        PropertyName(MapString("New Property".to_string())),
-        BaseValue::StringValue(MapString("This is another property".to_string())),
+        "New Property".to_string(),
+        "This is another property".to_string(),
     )?;
     warn!(
         "Added property to book :: {:#?}",
-        book_staged_reference.essential_content(&*fixture_context)
+        book_transient_reference.essential_content(&*fixture_context)
     );
-    book_staged_reference.with_property_value(
+    book_transient_reference.with_property_value(
         &*fixture_context,
         "Description",
         "Changed Description",
     )?;
     warn!(
         "Changed book description  {:#?}",
-        book_staged_reference.essential_content(&*fixture_context)
+        book_transient_reference.essential_content(&*fixture_context)
     );
 
-    let publisher_staged_reference =
-        get_staged_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;
-    publisher_staged_reference.with_property_value(
-        &*fixture_context,
-        MapString("Publisher Property".to_string()),
-        BaseValue::StringValue(MapString("Adding a property".to_string())),
-    )?;
-    // publisher_staged_reference.with_property_value(
+    // let publisher_transient_reference =
+    //     get_transient_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;
+    // publisher_transient_reference.with_property_value(
+    //     &*fixture_context,
+    //     MapString("Publisher Property".to_string()),
+    //     BaseValue::StringValue(MapString("Adding a property".to_string())),
+    // )?;
+    // publisher_transient_reference.with_property_value(
     //     &*fixture_context,
     //     Description,
     //     MapString("New Publisher Description".to_string()),
@@ -83,17 +77,17 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     // Flexes ToPropertyName and ToBaseValue trait combinations
 
     let mut expected_book_property_map = BTreeMap::new();
-    // expected_book_property_map.insert(
-    //     Description.to_property_name(),
-    //     MapString("Changed Description".to_string()).to_base_value(),
-    // );
-    // expected_book_property_map.insert(
-    //     "New Property".to_property_name(),
-    //     "This is another property".to_string().to_base_value(),
-    // );
+    expected_book_property_map.insert(
+        Description.to_property_name(),
+        MapString("Changed Description".to_string()).to_base_value(),
+    );
+    expected_book_property_map.insert(
+        "New Property".to_property_name(),
+        "This is another property".to_string().to_base_value(),
+    );
 
     test_case.add_with_properties_step(
-        HolonReference::Staged(book_staged_reference.clone()),
+        HolonReference::Transient(book_transient_reference.clone()),
         expected_book_property_map,
         ResponseStatusCode::OK,
     )?;
@@ -109,7 +103,7 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     // );
 
     // test_case.add_with_properties_step(
-    //     HolonReference::Staged(publisher_staged_reference.clone()),
+    //     HolonReference::transient(publisher_transient_reference.clone()),
     //     expected_publisher_property_map,
     //     ResponseStatusCode::OK,
     // )?;
