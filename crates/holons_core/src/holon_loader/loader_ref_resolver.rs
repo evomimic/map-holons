@@ -16,9 +16,10 @@ pub struct LoaderRefResolver;
 impl LoaderRefResolver {
     pub fn resolve_relationships(
         context: &dyn HolonsContextBehavior,
-        queued_rel_refs: Vec<TransientReference>,
+        queued_relationship_references: Vec<TransientReference>,
     ) -> Result<ResolverOutcome, HolonError> {
+
         // resolve LoaderRelationshipReference holons and add declared links (incl. DescribedBy)
-        unimplemented!()
+        unimplemented!();
     }
 }
