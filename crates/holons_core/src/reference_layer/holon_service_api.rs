@@ -8,6 +8,44 @@ use crate::RelationshipMap;
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 
+/// The `HolonServiceApi` defines the uniform service boundary for working with holons
+/// across both client-side and guest-side contexts.
+///
+/// ## Architectural role
+/// This trait is the abstraction layer between higher-level holon logic and the underlying
+/// execution environment. By standardizing the API surface, it allows:
+/// - **Guest implementations** to translate calls into persistence operations
+///   (e.g., commit staged holons, fetch saved holons, delete by id).
+/// - **Client implementations** to translate the same calls into `Dance` requests,
+///   forwarding them to the guest through the in-container boundary.
+///
+/// In both cases, callers interact with a single consistent interface without needing
+/// to know whether they are running in the client process or within the guest zome
+/// and persistence layer.
+///
+/// ## Avoiding circular dependencies
+/// `holons_core` depends only on this trait, not on any specific implementation.
+/// This eliminates circular dependencies between the core type system and the
+/// environment-specific service logic. Concrete implementations are provided in:
+/// - `holons_client` (TypeScript/Rust bridge using `Dance` forwarding)
+/// - `holons_guest` (Rust guest zome backed by the DHT persistence layer)
+///
+/// ## Reference-oriented design
+/// Operations use `HolonReference` (with `TransientReference`, `StagedReference`,
+/// and `SmartReference` variants) rather than directly moving holons across
+/// the boundary. This minimizes serialization overhead and aligns with the
+/// MAP model where the nursery, cache, and transient stores are authoritative
+/// for holon state. Queries return references; property and relationship data
+/// is retrieved or projected lazily.
+///
+/// ## Summary
+/// `HolonServiceApi` is the key extensibility point in the MAP architecture:
+/// - Provides a uniform contract for holon operations.
+/// - Cleanly separates client/guest responsibilities.
+/// - Enables infrastructure services (undo/redo, logging, metrics).
+/// - Avoids circular dependencies in `holons_core`.
+/// - Ensures reference-oriented ergonomics across all environments.
+
 pub trait HolonServiceApi: Debug + Any {
     fn as_any(&self) -> &dyn Any;
 

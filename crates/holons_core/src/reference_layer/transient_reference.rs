@@ -1,7 +1,7 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
-use tracing::debug;
+use tracing::{debug, info};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use base_types::{BaseValue, MapString};
@@ -59,13 +59,12 @@ impl TransientReference {
 
         let transient_read = transient_manager_access.borrow();
 
-        // Retrieve the holon by its TemporaryId
         let rc_holon = transient_read.get_holon_by_id(&self.id)?;
 
         // Confirm it references a TransientHolon and return an Rc<RefCell
         let holon = rc_holon.borrow();
         match holon.clone() {
-            Holon::Transient(transient_holon) => Ok(Rc::new(RefCell::new(transient_holon))),
+            Holon::Transient(transient_holon) => Ok(Rc::new(RefCell::new(transient_holon))), // <=== BUG! Creates a new holon on every get_rc_holon call
             _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a TransientReference must return a TransientHolon!".to_string()))
 
         }
@@ -323,11 +322,17 @@ impl WritableHolonImpl for TransientReference {
         value: BaseValue,
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        info!(
+            "Entered TransientReference::with_property_value_impl for {:?} with {:?}",
+            &property, &value
+        );
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_refcell = rc_holon.borrow_mut();
 
         // Call the Holon's with_property_value method
         holon_refcell.with_property_value(property, value)?;
+
+        info!("After assigning property value {:#?} ", holon_refcell);
 
         Ok(())
     }

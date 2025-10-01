@@ -21,9 +21,7 @@ use core_types::{HolonError, HolonId};
 
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,
-    test_data_types::{
-        DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
-    },
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference},
 };
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon

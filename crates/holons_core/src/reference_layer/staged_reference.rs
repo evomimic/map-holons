@@ -1,7 +1,7 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
-use tracing::debug;
+use tracing::{debug, info};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -445,6 +445,7 @@ impl WritableHolonImpl for StagedReference {
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
+        info!("Entered StagedReference::with_property_value_impl");
 
         // Mutably borrow the inner Holon and match it
         let mut holon_mut = rc_holon.borrow_mut();

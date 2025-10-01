@@ -9,7 +9,7 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{
-    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestHolonData, TestReference,
+    DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference,
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;

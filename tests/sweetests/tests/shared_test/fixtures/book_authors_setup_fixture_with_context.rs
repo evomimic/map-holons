@@ -7,7 +7,7 @@ use crate::shared_test::{
         PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-use crate::warn;
+
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use core_types::{PropertyName, RelationshipName};
@@ -19,6 +19,9 @@ use holons_core::{
         HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WritableHolon,
     },
 };
+
+use tracing::{debug, info};
+// Import the test-only extension
 use std::string::ToString; // Import the test-only extension
 use type_names::property_names::*;
 use type_names::relationship_names::ToRelationshipName;
@@ -53,9 +56,16 @@ pub fn setup_book_author_steps_with_context(
     book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?;
     book_transient_reference.with_property_value(
             &*fixture_context,
-            Description,
-                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-            )?;
+            PropertyName(MapString("description".to_string())),
+            BaseValue::StringValue(MapString(
+                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
+            )))?;
+
+    info!(
+        "================= In setup_book_author_steps_with_context. Here's the book: \n{:?}",
+        book_transient_reference.essential_content(fixture_context)?
+    );
+
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     let book_staged_reference = stage_new_holon_api(&*fixture_context, book_transient_reference)?;
