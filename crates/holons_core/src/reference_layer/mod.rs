@@ -27,7 +27,7 @@ pub use readable_holon::ReadableHolon;
 pub use smart_reference::SmartReference;
 pub use space_manager_behavior::HolonSpaceBehavior;
 pub use staged_reference::StagedReference;
-pub use transient_collection_behavior::TransientCollectionBehavior;
+// pub use transient_collection_behavior::TransientCollectionBehavior;
 pub use transient_holon_behavior::TransientHolonBehavior;
 pub use transient_reference::TransientReference;
 pub use writable_holon::WritableHolon;

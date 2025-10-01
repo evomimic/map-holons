@@ -1,6 +1,8 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::slice::{Iter, IterMut};
+use std::vec::IntoIter;
 use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
@@ -277,5 +279,34 @@ impl HolonCollectionApi for HolonCollection {
         }
 
         Ok(())
+    }
+}
+// Owned iteration
+impl IntoIterator for HolonCollection {
+    type Item = HolonReference;
+    type IntoIter = IntoIter<HolonReference>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.members.into_iter()
+    }
+}
+
+// Iteration by reference
+impl<'a> IntoIterator for &'a HolonCollection {
+    type Item = &'a HolonReference;
+    type IntoIter = Iter<'a, HolonReference>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.members.iter()
+    }
+}
+
+// Iteration by mutable reference
+impl<'a> IntoIterator for &'a mut HolonCollection {
+    type Item = &'a mut HolonReference;
+    type IntoIter = IterMut<'a, HolonReference>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.members.iter_mut()
     }
 }

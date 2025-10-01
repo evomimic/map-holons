@@ -3,7 +3,7 @@
 //! Import this to get the curated public API surface:
 //!
 //! ```
-//! use holons_core::prelude::*;
+//! use holons_prelude::prelude::*;
 //! ```
 
 pub mod v1;

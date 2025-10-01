@@ -33,6 +33,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::essential_content_impl(self, context)
     }
 
+    /// Returns a String summary of the Holon.
+    ///
+    /// -Only used for logging. Provides a more concise message to avoid log bloat.
+    fn summarize(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
+        ReadableHolonImpl::summarize_impl(self, context)
+    }
+
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     #[inline]
     fn holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {

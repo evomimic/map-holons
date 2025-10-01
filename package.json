@@ -24,7 +24,7 @@
     "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
     "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown",
-    "clean": "npx rimraf target Cargo.lock flake.lock tests/sweetests/target tests/sweetests/Cargo.lock && cargo clean",
+    "clean": "npx rimraf 'target/**/build/*/out' target Cargo.lock flake.lock tests/sweetests/target tests/sweetests/Cargo.lock && cargo clean",
     "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/tryorama/node_modules",
     "cb": "clear && npm run build:happ",
     "ct": "clear && npm run sweetest"

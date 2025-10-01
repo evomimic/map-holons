@@ -1,0 +1,12 @@
+[package]
+name = "holons_prelude"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base_types = { workspace = true }
+core_types = { workspace = true }
+holons_core = { workspace = true }
+integrity_core_types = { workspace = true }
+type_names = { workspace = true }
+holon_dance_builders = { workspace = true }
