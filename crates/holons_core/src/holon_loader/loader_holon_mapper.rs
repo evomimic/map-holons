@@ -3,7 +3,6 @@
 // Pass 1 mapper for the Holon Loader:
 //   - For each incoming LoaderHolon (container), build a *target* TransientHolon with
 //     *properties only* (no relationships), and stage it.
-//   - Record a fast (key → staged holon) mapping for Pass 2 resolution.
 //   - Collect all LoaderRelationshipReference holons attached to each LoaderHolon
 //     (via HAS_LOADER_RELATIONSHIP_REFERENCE) into a queue for Pass 2.
 //
@@ -16,7 +15,7 @@ use tracing::{debug, instrument};
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, PropertyMap, PropertyValue, PropertyName};
 use type_names;
-use type_names::CorePropertyTypeName::{Key, Type};
+use type_names::CorePropertyTypeName::Key;
 use type_names::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
 use crate::{
     // Re-exported in holons_core::lib
@@ -62,16 +61,19 @@ impl LoaderHolonMapper {
         let mut out = MapperOutput::default();
 
         // Extract loader holons (bundle --BUNDLE_MEMBERS--> LoaderHolon*)
-        let loader_holon_refs = bundle.related_holons(context, BundleMembers.as_relationship_name())?;
+        let loader_holon_refs =
+            bundle.related_holons(context, BundleMembers.as_relationship_name())?;
 
-        for (i, loader_ref) in loader_holon_refs.get_members().iter().enumerate() {
+        for (i, loader_reference) in loader_holon_refs.get_members().iter().enumerate() {
             debug!("Pass1: staging target from LoaderHolon #{}", i);
 
-            match Self::build_target_staged(context, loader_ref) {
-                Ok((staged, key)) => {
-                    out.key_index.insert(key, staged.clone());
+            match Self::build_target_staged(context, loader_reference) {
+                Ok((_staged, _key)) => {
+                    // Nursery will index by key; we only track counts and queue refs.
+                    out.staged_count += 1;
+
                     // queue rel refs only for successfully staged holons
-                    match Self::collect_loader_rel_refs(context, loader_ref) {
+                    match Self::collect_loader_rel_refs(context, loader_reference) {
                         Ok(rel_refs) => out.queued_relationship_references.extend(rel_refs),
                         Err(e) => out.errors.push(e),
                     }
@@ -90,7 +92,6 @@ impl LoaderHolonMapper {
     ///
     /// Invariants:
     /// - `key` MUST be present on the LoaderHolon (we currently do not support keyless).
-    /// - Reserved props (`key`, `type`) are stripped prior to staging.
     #[instrument(level = "debug", skip_all)]
     pub fn build_target_staged(
         context: &dyn HolonsContextBehavior,
@@ -98,31 +99,26 @@ impl LoaderHolonMapper {
     ) -> Result<(StagedReference, MapString), HolonError> {
         // Produce a detached TransientReference so we can access raw properties
         let loader_transient = loader.clone_holon(context)?;
-
         loader_transient.is_accessible(context, AccessType::Read)?;
 
         // Read the LoaderHolon's current property map (owned snapshot)
-        let mut props: PropertyMap = loader_transient.get_raw_property_map(context)?;
+        let mut properties: PropertyMap = loader_transient.get_raw_property_map(context)?;
 
         // Identify this loader in error messages using its TemporaryId (stable within this call).
-        let loader_id = loader_transient.get_temporary_id(); // cheap cloneable id
+        let loader_id = loader_transient.get_temporary_id();
 
-        // Pull key or error with loader id
+        // Ensure key exists (but do NOT remove it—leave it to be staged).
         let key_prop: PropertyName = Key.as_property_name();
-        let key_val: PropertyValue = props.remove(&key_prop).ok_or_else(|| {
-            HolonError::EmptyField(format!(
-                "LoaderHolon.key for loader transient: {},",
+        let key_value: PropertyValue = properties
+            .get(&key_prop)
+            .cloned()
+            .ok_or_else(|| HolonError::EmptyField(format!(
+                "LoaderHolon.key missing (loader transient: {})",
                 loader_id
-            ))
-        })?;
-
-        let key = MapString((&key_val).into());
-
-        // Strip any other reserved loader properties (if present)
-        let _ = props.remove(&Type.as_property_name());
+            )))?;
 
         // Build a properties-only clone model (no relationships, no predecessor).
-        let clone_model = HolonCloneModel::new(MapInteger(0), None, props, None);
+        let clone_model = HolonCloneModel::new(MapInteger(0), None, properties, None);
 
         // Mint a fresh transient and stage it.
         let transient_behavior_service = context.get_space_manager().get_transient_behavior_service();
@@ -130,6 +126,9 @@ impl LoaderHolonMapper {
         let target_transient: TransientReference =
             transient_behavior.new_from_clone_model(clone_model)?;
         let staged = stage_new_holon_api(context, target_transient)?;
+
+        // Convert key_value -> MapString for the return tuple (for logging/diagnostics if needed).
+        let key = MapString((&key_value).into());
 
         Ok((staged, key))
     }
@@ -147,14 +146,14 @@ impl LoaderHolonMapper {
 
         // Direct traversal from LoaderHolon → LoaderRelationshipReference entries.
         let rel_name = HasRelationshipReference.as_relationship_name();
-        let coll = loader.related_holons(context, &rel_name)?;
+        let collection = loader.related_holons(context, &rel_name)?;
 
-        coll.is_accessible(AccessType::Read)?;
-        let members = coll.get_members();
+        collection.is_accessible(AccessType::Read)?;
+        let members = collection.get_members();
 
-        for h_ref in members {
+        for holon_reference in members {
             // Work on detached copies so Pass-2 can resolve in any order/idempotently.
-            let loader_rel = h_ref.clone_holon(context)?;
+            let loader_rel = holon_reference.clone_holon(context)?;
             out.push(loader_rel);
         }
 
