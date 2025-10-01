@@ -106,7 +106,7 @@ impl StagedReference {
             }
         }
 
-        Ok(rc_holon.clone())
+        Ok(rc_holon)
     }
 
     /// Retrieves access to the nursery via the provided context.
