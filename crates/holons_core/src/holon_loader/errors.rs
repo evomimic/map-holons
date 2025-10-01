@@ -35,11 +35,12 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
     }
 }
 
-/// Build a transient HolonError holon with {error_type, error_message}.
+/// Build a transient HolonError holon with {error_type, error_message} **and**
+/// set its descriptor to `HolonErrorType`.
 /// Caller should then attach it to the response via REL_HAS_LOAD_ERROR.
 pub fn make_error_holon_typed(
     context: &dyn HolonsContextBehavior,
-    holon_error_type_desc: HolonReference, // resolved HolonErrorType descriptor
+    holon_error_type_descriptor: HolonReference, // resolved HolonErrorType descriptor
     err: &HolonError,
 ) -> Result<TransientReference, HolonError> {
     // 1) Create a unique, local-only key
@@ -47,31 +48,69 @@ pub fn make_error_holon_typed(
     let key = MapString(format!("loader-error-{id}"));
 
     // 2) Create empty transient holon via manager
-    let tmgr_rc = context
+    let transient_behavior_service_rc = context
         .get_space_manager()
         .get_transient_behavior_service();
 
-    let transient = {
-        let tmgr_ref = tmgr_rc.borrow();
-        tmgr_ref.create_empty(key)?
+    let transient_reference = {
+        let transient_behavior_service = transient_behavior_service_rc.borrow();
+        transient_behavior_service.create_empty(key)?
     };
 
     // 3) Set its descriptor to HolonErrorType
-    transient.with_descriptor(context, holon_error_type_desc)?;
+    transient_reference.with_descriptor(context, holon_error_type_descriptor)?;
 
     // 4) Populate properties
     let etype = error_type_code(err);
-    transient.with_property_value(
+    transient_reference.with_property_value(
         context,
         ErrorType.as_property_name(),
         BaseValue::StringValue(MapString(etype.to_string())),
     )?;
 
-    transient.with_property_value(
+    transient_reference.with_property_value(
         context,
         ErrorMessage.as_property_name(),
         BaseValue::StringValue(MapString(err.to_string())),
     )?;
 
-    Ok(transient)
+    Ok(transient_reference)
+}
+
+/// Build a transient HolonError holon with {error_type, error_message} **without**
+/// setting any descriptor. Use when `HolonErrorType` is unavailable.
+/// Caller should then attach it to the response via REL_HAS_LOAD_ERROR.
+pub fn make_error_holon_untyped(
+    context: &dyn HolonsContextBehavior,
+    err: &HolonError,
+) -> Result<TransientReference, HolonError> {
+    // 1) Create a unique, local-only key
+    let id = ERROR_SEQ.fetch_add(1, Ordering::Relaxed);
+    let key = MapString(format!("loader-error-{id}"));
+
+    // 2) Create empty transient holon via manager
+    let transient_behavior_service_rc = context
+        .get_space_manager()
+        .get_transient_behavior_service();
+
+    let transient_reference = {
+        let transient_behavior_service = transient_behavior_service_rc.borrow();
+        transient_behavior_service.create_empty(key)?
+    };
+
+    // 3) Populate properties (no descriptor)
+    let etype = error_type_code(err);
+    transient_reference.with_property_value(
+        context,
+        ErrorType.as_property_name(),
+        BaseValue::StringValue(MapString(etype.to_string())),
+    )?;
+
+    transient_reference.with_property_value(
+        context,
+        ErrorMessage.as_property_name(),
+        BaseValue::StringValue(MapString(err.to_string())),
+    )?;
+
+    Ok(transient_reference)
 }

@@ -7,6 +7,7 @@ use crate::StagedReference;
 
 pub struct ResolverOutcome {
     pub links_created: usize,
+    /// Non-fatal errors encountered during Pass-2.
     pub errors: Vec<HolonError>,
 }
 
