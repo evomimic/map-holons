@@ -25,10 +25,8 @@ use crate::{
 };
 use crate::reference_layer::TransientReference;
 
-use super::errors as E;
-
 // Loader modules and helpers
-use crate::holon_loader::errors::make_error_holon_typed;
+use super::errors as E;
 use crate::holon_loader::loader_holon_mapper::{LoaderHolonMapper, MapperOutput};
 use crate::holon_loader::loader_ref_resolver::{LoaderRefResolver, ResolverOutcome};
 
@@ -37,9 +35,6 @@ const ERROR_TYPE_KEY:                   &str = "HolonErrorType";
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
 pub struct HolonLoaderController {
-    /// Owned mapper output for this call; holds staged refs & queued rel refs alive.
-    mapper_out: Option<MapperOutput>,
-
     /// Stats for response construction (purely informational).
     staged_count: i64,
     committed_count: i64,
@@ -73,14 +68,13 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_bundle - pass1_stage");
 
-        let mapper_output = LoaderHolonMapper::map_bundle(context, bundle)?;
+        let mut mapper_output = LoaderHolonMapper::map_bundle(context, bundle)?;
         // For now we approximate staged_count by the number of staged targets created in Pass 1.
         // (If/when keyless or extra targets appear, have the mapper return exact staged_count.)
-        self.staged_count = mapper_output.staged_count;
-        let mut mapper_output = Some(mapper_output);
+        self.staged_count = mapper_output.staged_count as i64;
 
         // If Pass 1 produced any errors, build the response now and return (skip Pass 2 & commit).
-        let mut mapper_errors = mapper_output.unwrap().errors.split_off(0);
+        let mapper_errors = std::mem::take(&mut mapper_output.errors);
         if !mapper_errors.is_empty() {
             info!("HolonLoaderController::load_bundle - pass1 errors, short-circuit before pass2/commit");
 
@@ -93,7 +87,10 @@ impl HolonLoaderController {
                 self.staged_count,
                 0,
                 error_holons.len() as i64,
-                format!("Pass 1 reported {} error(s). Pass 2 and commit were skipped.", error_holons.len()),
+                format!(
+                    "Pass 1 reported {} error(s). Pass 2 and commit were skipped.",
+                    error_holons.len()
+                ),
                 error_holons,
             )?;
 
@@ -106,15 +103,14 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_bundle - pass2_resolve");
 
-        // Take ownership exactly once.
-        let mut mapper_output_taken = mapper_output.take().expect("mapper_output set");
+        // Take ownership of the queued relationship references (drain from mapper_output).
+        let queued_relationship_references =
+            std::mem::take(&mut mapper_output.queued_relationship_references);
+
         let ResolverOutcome {
             links_created,
-            mut errors: resolver_errors,
-        } = LoaderRefResolver::resolve_relationships(
-            context,
-            std::mem::take(&mut mapper_output_taken.queued_relationship_references),
-        )?;
+            errors: mut resolver_errors,
+        } = LoaderRefResolver::resolve_relationships(context, queued_relationship_references)?;
 
         // If Pass 2 produced any errors, build the response now and return (skip commit).
         if !resolver_errors.is_empty() {
@@ -151,7 +147,7 @@ impl HolonLoaderController {
         // - If saved + abandoned != commits_attempted, then errors occurred.
         let holons_committed = commit_response.saved_holons.len() as i64;
         let holons_abandoned = commit_response.abandoned_holons.len() as i64;
-        let commits_attempted = commit_response.commits_attempted;
+        let commits_attempted = commit_response.commits_attempted.into();
 
         let commit_ok = (holons_committed + holons_abandoned) == commits_attempted;
 
@@ -229,7 +225,7 @@ impl HolonLoaderController {
         let response_reference = create_empty_transient_holon(
             context,
             MapString("CoreLoaderControllerResponse".to_string()),
-        );
+        )?;
 
         response_reference.with_property_value(
             context,
@@ -244,7 +240,7 @@ impl HolonLoaderController {
         response_reference.with_property_value(
             context,
             HolonsCommitted.as_property_name(),
-            BaseValue::IntegerValue(MapInteger(holons_committed),
+            BaseValue::IntegerValue(MapInteger(holons_committed)),
         )?;
         response_reference.with_property_value(
             context,
@@ -263,10 +259,11 @@ impl HolonLoaderController {
                 HasLoadError.as_relationship_name(),
                 error_holon_references
                     .drain(..)
-                    .map(HolonReference::from)
-                    .collect::<Vec<_>>(),
+                    .map(|t| HolonReference::Transient(t))
+                    .collect::<Vec<HolonReference>>(),
             )?;
         }
+
 
         Ok(response_reference)
     }
@@ -274,7 +271,7 @@ impl HolonLoaderController {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Descriptor resolution (best-effort): prefer key lookup, fallback to query.
-// Keep tiny and side-effect free; only used when we have errors to emit.
+// Keep tiny and side effect free; only used when we have errors to emit.
 // ─────────────────────────────────────────────────────────────────────────
 
 fn resolve_holon_error_type_descriptor(

@@ -133,3 +133,65 @@ impl Into<String> for &BaseValue {
         }
     }
 }
+
+// --- MapString ---
+impl From<String> for MapString {
+    #[inline]
+    fn from(v: String) -> Self { MapString(v) }
+}
+impl From<&str> for MapString {
+    #[inline]
+    fn from(v: &str) -> Self { MapString(v.to_owned()) }
+}
+
+// --- MapBoolean ---
+impl From<bool> for MapBoolean {
+    #[inline]
+    fn from(v: bool) -> Self { MapBoolean(v) }
+}
+
+// --- MapInteger <-> i64 ---
+impl From<i64> for MapInteger {
+    #[inline]
+    fn from(v: i64) -> Self { MapInteger(v) }
+}
+impl From<MapInteger> for i64 {
+    #[inline]
+    fn from(v: MapInteger) -> Self { v.0 }
+}
+
+// --- BaseValue from wrappers ---
+impl From<MapString> for BaseValue {
+    #[inline]
+    fn from(v: MapString) -> Self { BaseValue::StringValue(v) }
+}
+impl From<MapBoolean> for BaseValue {
+    #[inline]
+    fn from(v: MapBoolean) -> Self { BaseValue::BooleanValue(v) }
+}
+impl From<MapInteger> for BaseValue {
+    #[inline]
+    fn from(v: MapInteger) -> Self { BaseValue::IntegerValue(v) }
+}
+impl From<MapEnumValue> for BaseValue {
+    #[inline]
+    fn from(v: MapEnumValue) -> Self { BaseValue::EnumValue(v) }
+}
+
+// --- BaseValue from primitives via wrappers ---
+impl From<&str> for BaseValue {
+    #[inline]
+    fn from(v: &str) -> Self { BaseValue::StringValue(MapString::from(v)) }
+}
+impl From<String> for BaseValue {
+    #[inline]
+    fn from(v: String) -> Self { BaseValue::StringValue(MapString::from(v)) }
+}
+impl From<bool> for BaseValue {
+    #[inline]
+    fn from(v: bool) -> Self { BaseValue::BooleanValue(MapBoolean::from(v)) }
+}
+impl From<i64> for BaseValue {
+    #[inline]
+    fn from(v: i64) -> Self { BaseValue::IntegerValue(MapInteger::from(v)) }
+}
