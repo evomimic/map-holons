@@ -6,21 +6,8 @@ use tracing::{debug, info};
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons_core::core_shared_objects::HolonBehavior; // TODO: Eliminate this dependency
-                                                     //
-                                                     // use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
-                                                     // use holons_core::{
-                                                     //     core_shared_objects::{Holon, HolonBehavior},
-                                                     //     dances::{ResponseBody, ResponseStatusCode},
-                                                     //     reference_layer::{
-                                                     //         HolonCollectionApi, HolonReference, ReadableHolon, SmartReference, StagedReference,
-                                                     //     },
-                                                     // };
 
 use holons_prelude::prelude::*;
-
-// use base_types::MapString;
-// use core_types::PropertyName;
-// use core_types::{HolonError, HolonId};
 
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,

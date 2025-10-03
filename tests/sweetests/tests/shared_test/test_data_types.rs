@@ -1,6 +1,5 @@
 use derive_new::new;
 
-use core_types::HolonId;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
@@ -12,20 +11,6 @@ use std::{
     fmt::{Debug, Display},
     sync::Arc,
 };
-
-// use base_types::{MapInteger, MapString};
-// use core_types::{HolonError, HolonId};
-// use core_types::{PropertyMap, RelationshipName};
-//
-// use holons_core::{
-//     core_shared_objects::holon_pool::SerializableHolonPool,
-//     core_shared_objects::{Holon, HolonBehavior, TransientHolon},
-//     dances::ResponseStatusCode,
-//     query_layer::QueryExpression,
-//     reference_layer::{
-//         HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
-//     },
-// };
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 
