@@ -71,7 +71,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         book_key,
         ResponseStatusCode::OK,
     )?;
-    stage_new_holon_api(&*fixture_context, book_transient_reference.clone())?;
+    stage_new_holon(&*fixture_context, book_transient_reference.clone())?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;

@@ -3,8 +3,6 @@
 members = [
     # Coordinator Zomes
     "zomes/coordinator/holons",
-    "zomes/coordinator/descriptors",
-    "zomes/coordinator/core_schema",
     # Integrity Zome
     "zomes/integrity/holons_integrity",
     # Shared Types and Validation
@@ -25,15 +23,13 @@ members = [
     "crates/holons_guest_integrity",
     "crates/holons_prelude",
     # ✅ Bring sweetests back into the workspace
-    "tests/sweetests", "crates/holons_prelude",
+    "tests/sweetests",
 ]
 resolver = "2"
 
 # ✅ Keep default builds the same (omit sweetests by default)
 default-members = [
     "zomes/coordinator/holons",
-    "zomes/coordinator/descriptors",
-    "zomes/coordinator/core_schema",
     "zomes/integrity/holons_integrity",
     "crates/shared_validation",
     "crates/type_system/base_types",
@@ -56,12 +52,6 @@ default-members = [
 # Local workspace dependencies
 [workspace.dependencies.holons]
 path = "zomes/coordinator/holons"
-
-[workspace.dependencies.descriptors]
-path = "zomes/coordinator/descriptors"
-
-[workspace.dependencies.core_schema]
-path = "zomes/coordinator/core_schema"
 
 [workspace.dependencies.holons_integrity]
 path = "zomes/integrity/holons_integrity"

@@ -11,7 +11,6 @@ pub mod holon_service_api;
 pub(crate) mod readable_impl;
 pub mod smart_reference;
 pub mod staged_reference;
-pub mod transient_collection_behavior;
 pub mod transient_holon_behavior;
 pub mod transient_reference;
 pub(crate) mod writable_impl;

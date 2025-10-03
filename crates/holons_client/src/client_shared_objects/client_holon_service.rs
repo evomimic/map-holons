@@ -23,18 +23,21 @@ impl HolonServiceApi for ClientHolonService {
         self
     }
 
-    fn commit(&self, _context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
+    fn commit_internal(
+        &self,
+        _context: &dyn HolonsContextBehavior,
+    ) -> Result<CommitResponse, HolonError> {
         //let request = build_commit_dance_request(&SessionState::default())?;
         // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
         // _context.get_space_manager()
         todo!()
     }
 
-    fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
+    fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         todo!()
     }
 
-    fn fetch_all_related_holons(
+    fn fetch_all_related_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         source_id: &HolonId,
@@ -42,11 +45,11 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn fetch_holon(&self, _id: &HolonId) -> Result<Holon, HolonError> {
+    fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
         todo!()
     }
 
-    fn fetch_related_holons(
+    fn fetch_related_holons_internal(
         &self,
         _source_id: &HolonId,
         _relationship_name: &RelationshipName,
@@ -54,14 +57,14 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn get_all_holons(
+    fn get_all_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError> {
         todo!()
     }
 
-    fn stage_new_from_clone(
+    fn stage_new_from_clone_internal(
         &self,
         _context: &dyn HolonsContextBehavior,
         _original_holon: HolonReference,
@@ -70,7 +73,7 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn stage_new_version(
+    fn stage_new_version_internal(
         &self,
         _context: &dyn HolonsContextBehavior,
         _original_holon: SmartReference,

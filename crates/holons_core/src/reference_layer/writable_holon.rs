@@ -21,12 +21,6 @@ pub trait WritableHolon: WritableHolonImpl {
     /// - [`RelationshipName`] or `&RelationshipName`
     /// - [`MapString`] or `&MapString` (normalized to SCREAMING_SNAKE_CASE)
     /// - [`CoreRelationshipTypeName`] or `&CoreRelationshipTypeName`
-    ///
-    /// # Examples
-    /// ```ignore
-    /// holon.add_related_holons(context, "friends", vec![other])?;
-    /// holon.add_related_holons(context, CoreRelationshipTypeName::Friends, vec![other])?;
-    /// ```
     #[inline]
     fn add_related_holons<T: ToRelationshipName>(
         &self,
@@ -74,11 +68,6 @@ pub trait WritableHolon: WritableHolonImpl {
     /// - `&str` / `String` (e.g. `"title"`)
     /// - [`PropertyName`] or `&PropertyName`
     /// - Other types that implement `ToPropertyName`
-    ///
-    /// # Examples
-    /// ```ignore
-    /// holon.with_property_value(context, "title", BaseValue::from("Hello"))?;
-    /// ```
     #[inline]
     fn with_property_value<T: ToPropertyName>(
         &self,
