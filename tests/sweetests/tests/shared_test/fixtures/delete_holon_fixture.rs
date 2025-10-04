@@ -6,17 +6,8 @@ use crate::shared_test::{
     test_context::init_fixture_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
-use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::{HolonError, HolonId};
-use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
-use holons_core::reference_layer::holon_operations_api::*;
-use holons_core::{
-    core_shared_objects::{Holon, TransientHolon},
-    dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression,
-    reference_layer::{TransientReference, WritableHolon},
-    HolonCollection, HolonsContextBehavior,
-};
+
+use holons_prelude::prelude::*;
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
@@ -31,8 +22,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
-    let book_transient_reference =
-        create_empty_transient_holon(&*fixture_context, book_holon_key.clone())?;
+    let book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
     book_transient_reference.with_property_value(
         &*fixture_context,
         PropertyName(MapString("title".to_string())),
@@ -46,7 +36,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
             )))?;
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
-    stage_new_holon_api(&*fixture_context, book_transient_reference)?;
+    stage_new_holon(&*fixture_context, book_transient_reference)?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;

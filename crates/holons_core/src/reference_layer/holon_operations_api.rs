@@ -89,15 +89,16 @@ use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
 /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
 ///
 
-pub fn commit_api(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
+pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
     let holon_service = context.get_space_manager().get_holon_service();
-    let commit_response = holon_service.commit(context)?;
+    let commit_response = holon_service.commit_internal(context)?;
 
     Ok(commit_response)
 }
 
-/// Returns a mutable TransientReference with given 'key' and default constructor values.
-pub fn create_empty_transient_holon(
+/// Creates a new TransientHolon and assigns the specified key
+/// Returns a TransientReference to the newly created holon
+pub fn new_holon(
     context: &dyn HolonsContextBehavior,
     key: MapString,
 ) -> Result<TransientReference, HolonError> {
@@ -128,19 +129,19 @@ pub fn create_empty_transient_holon(
 /// # Errors
 /// - Returns a `HolonError` if the specified holon cannot be found or deleted.
 ///
-pub fn delete_holon_api(
+pub fn delete_holon(
     context: &dyn HolonsContextBehavior,
     local_id: LocalId,
 ) -> Result<(), HolonError> {
     let holon_service = context.get_space_manager().get_holon_service();
-    holon_service.delete_holon(&local_id)
+    holon_service.delete_holon_internal(&local_id)
 }
 
 // == GETTERS == //
 
 pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
     let holon_service = context.get_space_manager().get_holon_service();
-    holon_service.get_all_holons(context)
+    holon_service.get_all_holons_internal(context)
 }
 
 pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
@@ -207,7 +208,7 @@ pub fn get_transient_holon_by_versioned_key(
 /// ancestral link.
 ///
 /// For staging a new version of an existing holon (i.e., where the original is a predecessor),
-/// use [`stage_new_version_api`].
+/// use [`stage_new_version`].
 ///
 /// # Arguments
 /// - `context`: The context to retrieve holon services.
@@ -220,14 +221,14 @@ pub fn get_transient_holon_by_versioned_key(
 /// # Errors
 /// - Returns a `HolonError` if the staging operation cannot complete.
 ///
-pub fn stage_new_from_clone_api(
+pub fn stage_new_from_clone(
     context: &dyn HolonsContextBehavior,
     original_holon: HolonReference,
     new_key: MapString,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_space_manager().get_holon_service();
     let staged_reference =
-        staging_service.stage_new_from_clone(context, original_holon, new_key)?;
+        staging_service.stage_new_from_clone_internal(context, original_holon, new_key)?;
 
     Ok(staged_reference)
 }
@@ -249,7 +250,7 @@ pub fn stage_new_from_clone_api(
 /// # Errors
 /// - Returns a `HolonError` if the staging operation cannot complete.
 ///
-pub fn stage_new_holon_api(
+pub fn stage_new_holon(
     context: &dyn HolonsContextBehavior,
     transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
@@ -266,7 +267,7 @@ pub fn stage_new_holon_api(
 /// and marking it as its predecessor. Use this function when creating a **new version**
 /// of an existing holon with a clear lineage relationship.
 ///
-/// For creating a clone without retaining a lineage relationship, use [`stage_new_from_clone_api`].
+/// For creating a clone without retaining a lineage relationship, use [`stage_new_from_clone`].
 ///
 /// # Arguments
 /// - `context`: The context to retrieve holon services.
@@ -279,12 +280,12 @@ pub fn stage_new_holon_api(
 /// # Errors
 /// - Returns a `HolonError` if the staging operation cannot complete.
 ///
-pub fn stage_new_version_api(
+pub fn stage_new_version(
     context: &dyn HolonsContextBehavior,
     current_version: SmartReference,
 ) -> Result<StagedReference, HolonError> {
     let holon_service = context.get_space_manager().get_holon_service();
-    let staged_reference = holon_service.stage_new_version(context, current_version)?;
+    let staged_reference = holon_service.stage_new_version_internal(context, current_version)?;
 
     Ok(staged_reference)
 }

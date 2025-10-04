@@ -41,7 +41,7 @@ impl HolonCacheAccess for HolonCacheManager {
 
         // If not in cache, resolve the Holon using the resolver
         debug!("Holon with HolonId {:?} not in cache. Fetching using HolonSpace.", holon_id);
-        let holon = self.holon_service.fetch_holon(holon_id)?;
+        let holon = self.holon_service.fetch_holon_internal(holon_id)?;
 
         // Wrap the resolved Holon in a Rc<RefCell> for shared mutability
         let rc_holon = Rc::new(RefCell::new(holon));

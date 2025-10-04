@@ -1,8 +1,7 @@
 //
 use crate::{
     persistence_layer::{
-        create_path_to_holon_node, get_holon_node_by_path,
-        CreatePathInput, GetPathInput,
+        create_path_to_holon_node, get_holon_node_by_path, CreatePathInput, GetPathInput,
     },
     try_from_record,
 };
@@ -34,7 +33,7 @@ pub fn create_local_path(
 }
 
 // /// Marks the holon_node identified by the specified LocalId as deleted in the persistent store.
-// pub fn delete_holon(id: LocalId) -> Result<ActionHash, HolonError> {
+// pub fn delete_holon_internal(id: LocalId) -> Result<ActionHash, HolonError> {
 //     let record = get(try_action_hash_from_local_id(&id)?, GetOptions::default())
 //         .map_err(|e| holon_error_from_wasm_error(e))?
 //         .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", id.0)))?;

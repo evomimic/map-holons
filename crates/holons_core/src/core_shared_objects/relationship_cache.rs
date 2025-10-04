@@ -24,7 +24,7 @@ impl RelationshipCache {
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        holon_service.fetch_all_related_holons(context, source_holon_id)
+        holon_service.fetch_all_related_holons_internal(context, source_holon_id)
     }
 
     /// Retrieves the `HolonCollection` containing references to all holons that are related
@@ -69,7 +69,7 @@ impl RelationshipCache {
         source_holon_id, relationship_name
     );
         let fetched_holons =
-            holon_service.fetch_related_holons(&source_holon_id, relationship_name)?;
+            holon_service.fetch_related_holons_internal(&source_holon_id, relationship_name)?;
 
         // Wrap the fetched holons in an Rc
         let fetched_holons_rc = Rc::new(fetched_holons);

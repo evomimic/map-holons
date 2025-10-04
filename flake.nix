@@ -6,30 +6,57 @@
 
     nixpkgs.follows = "holonix/nixpkgs";
     flake-parts.follows = "holonix/flake-parts";
-
-    
   };
 
-  outputs = inputs@{ flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
-    systems = builtins.attrNames inputs.holonix.devShells;
-    perSystem = { inputs', pkgs, ... }: {
-      formatter = pkgs.nixpkgs-fmt;
+  outputs = inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = builtins.attrNames inputs.holonix.devShells;
 
-      devShells.default = pkgs.mkShell {
-        inputsFrom = [ inputs'.holonix.devShells.default ];
-        #for mac OS
-        nativeBuildInputs = [ pkgs.libsodium pkgs.pkg-config pkgs.llvmPackages.libunwind ];
-        
-        packages = (with pkgs; [
-          nodejs_22
-          binaryen
-          
-        ]);
+      perSystem = { inputs', pkgs, ... }: {
+        formatter = pkgs.nixpkgs-fmt;
 
-        shellHook = ''
-          export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
-        '';
+        devShells = {
+          default = pkgs.mkShell {
+            # Pull in holonix dev shell
+            inputsFrom = [ inputs'.holonix.devShells.default ];
+
+            # Extra native tools (cmake explicit helps the CMake deps)
+            nativeBuildInputs = [
+              pkgs.libsodium
+              pkgs.pkg-config
+              pkgs.llvmPackages.libunwind
+              pkgs.cmake
+            ];
+
+            packages = with pkgs; [
+              nodejs_22
+              binaryen
+            ];
+
+            shellHook =
+              ''
+                export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
+
+                # Cross-platform: modern CMake policy + reduce configure flakiness
+                export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
+                export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+              ''
+              # macOS-only: use Apple's toolchain for native deps
+              + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+                # Requires Xcode CLT: xcode-select --install
+                export CC="$(xcrun -f clang)"
+                export CXX="$(xcrun -f clang++)"
+                export AR="$(xcrun -f ar)"
+                export SDKROOT="$(xcrun --show-sdk-path)"
+                : ''${MACOSX_DEPLOYMENT_TARGET:=12.0}
+
+                export CMAKE_C_COMPILER="$CC"
+                export CMAKE_CXX_COMPILER="$CXX"
+                export CMAKE_GENERATOR="Unix Makefiles"
+                export CMAKE_OSX_ARCHITECTURES="${if pkgs.stdenv.isAarch64 then "arm64" else "x86_64"}"
+              '';
+          };
+        };
       };
     };
-  };
 }

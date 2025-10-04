@@ -257,6 +257,16 @@ impl ReadableHolonImpl for HolonReference {
         }
     }
 
+    fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
+        match self {
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.summarize_impl(context)
+            }
+            HolonReference::Staged(staged_reference) => staged_reference.summarize_impl(context),
+            HolonReference::Smart(smart_reference) => smart_reference.summarize_impl(context),
+        }
+    }
+
     fn into_model_impl(
         &self,
         context: &dyn HolonsContextBehavior,

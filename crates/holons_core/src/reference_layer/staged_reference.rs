@@ -263,6 +263,13 @@ impl ReadableHolonImpl for StagedReference {
         borrowed_holon.essential_content()
     }
 
+    fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        Ok(borrowed_holon.summarize())
+    }
+
     fn into_model_impl(
         &self,
         context: &dyn HolonsContextBehavior,

@@ -180,7 +180,10 @@ impl HolonServiceApi for GuestHolonService {
         self
     }
 
-    fn commit(&self, context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
+    fn commit_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<CommitResponse, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
 
@@ -201,7 +204,7 @@ impl HolonServiceApi for GuestHolonService {
         Ok(commit_response)
     }
 
-    fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
+    fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         let record = get(try_action_hash_from_local_id(&local_id)?, GetOptions::default())
             .map_err(|e| holon_error_from_wasm_error(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
@@ -212,7 +215,7 @@ impl HolonServiceApi for GuestHolonService {
             .map_err(|e| holon_error_from_wasm_error(e))
     }
 
-    fn fetch_all_related_holons(
+    fn fetch_all_related_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         source_id: &HolonId,
@@ -260,7 +263,7 @@ impl HolonServiceApi for GuestHolonService {
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
     /// then "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
+    fn fetch_holon_internal(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
 
         // Retrieve the exact HolonNode for the specific ActionHash.
@@ -277,7 +280,7 @@ impl HolonServiceApi for GuestHolonService {
         }
     }
 
-    fn fetch_related_holons(
+    fn fetch_related_holons_internal(
         &self,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
@@ -298,7 +301,7 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    fn get_all_holons(
+    fn get_all_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError> {
@@ -315,7 +318,7 @@ impl HolonServiceApi for GuestHolonService {
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
-    fn stage_new_from_clone(
+    fn stage_new_from_clone_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         original_holon: HolonReference,
@@ -359,7 +362,7 @@ impl HolonServiceApi for GuestHolonService {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
     /// to be retrieved by key.
-    fn stage_new_version(
+    fn stage_new_version_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         original_holon: SmartReference,
