@@ -7,13 +7,14 @@ use core_types::{
 };
 
 use crate::{
-    core_shared_objects::{holon::HolonCloneModel, ReadableRelationship},
-    HolonCollection, RelationshipMap, StagedRelationshipMap,
-};
-
-use super::{
-    state::{AccessType, HolonState, StagedState, ValidationState},
-    EssentialHolonContent, HolonBehavior,
+    core_shared_objects::{
+        holon::{
+            AccessType, EssentialHolonContent, HolonCloneModel, HolonState, StagedState,
+            ValidationState,
+        },
+        ReadableHolonState, ReadableRelationship, WritableRelationship, WriteableHolonState,
+    },
+    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap, StagedRelationshipMap,
 };
 
 /// Represents a Holon that has been staged for persistence or updates.
@@ -85,18 +86,6 @@ impl StagedHolon {
         }
     }
 
-    // ====================
-    //    DATA ACCESSORS
-    // ====================
-
-    pub fn get_related_holons(
-        &self,
-        relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
-        Ok(self.staged_relationships.get_related_holons(relationship_name))
-    }
-
     pub fn get_staged_relationship(
         &self,
         relationship_name: &RelationshipName,
@@ -148,16 +137,6 @@ impl StagedHolon {
         Ok(())
     }
 
-    pub fn update_relationship_map(
-        &mut self,
-        map: StagedRelationshipMap,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.staged_relationships = map;
-
-        Ok(())
-    }
-
     /// Marks the `StagedHolon` as `Changed`.
     ///
     /// This is used to transition a `ForUpdate` Holon that has been modified.
@@ -168,12 +147,6 @@ impl StagedHolon {
             self.staged_state = StagedState::ForUpdateChanged;
         }
         Ok(())
-    }
-
-    pub fn remove_property_value(&mut self, name: &PropertyName) -> Result<&mut Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map.remove(name);
-        Ok(self)
     }
 
     /// Marks the `StagedHolon` as `Committed` and assigns its saved `LocalId`.
@@ -192,26 +165,17 @@ impl StagedHolon {
         self.staged_state = new_state;
         Ok(())
     }
-
-    pub fn with_property_value(
-        &mut self,
-        property: PropertyName,
-        value: BaseValue,
-    ) -> Result<&mut Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map.insert(property, value);
-
-        Ok(self)
-    }
 }
 
 // ======================================
-//   HOLONBEHAVIOR TRAIT IMPLEMENTATION
+//   HOLONBEHAVIOR TRAIT IMPLEMENTATIONS
 // ======================================
-impl HolonBehavior for StagedHolon {
-    // =====================
-    //    DATA ACCESSORS
-    // =====================
+
+impl ReadableHolonState for StagedHolon {
+    fn all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
+        let relationship_map = RelationshipMap::from(self.get_staged_relationship_map()?);
+        Ok(relationship_map)
+    }
 
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(
@@ -266,6 +230,13 @@ impl HolonBehavior for StagedHolon {
         Ok(self.property_map.get(property_name).cloned())
     }
 
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
+    }
+
     fn get_versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
             .get_key()?
@@ -280,10 +251,6 @@ impl HolonBehavior for StagedHolon {
             property_map: self.property_map.clone(),
         }
     }
-
-    // =======================
-    //     ACCESS CONTROL
-    // =======================
 
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
@@ -300,8 +267,8 @@ impl HolonBehavior for StagedHolon {
                 StagedState::Abandoned | StagedState::Committed(_) => match access_type {
                     AccessType::Read => Ok(()),
                     _ => Err(HolonError::NotAccessible(
-                        format!("{:?}", access_type),
-                        "Immutable StagedHolon".to_string(),
+                        access_type.to_string(),
+                        self.staged_state.to_string(),
                     )),
                 },
             },
@@ -309,37 +276,11 @@ impl HolonBehavior for StagedHolon {
                 AccessType::Read | AccessType::Clone | AccessType::Commit => Ok(()),
                 AccessType::Abandon | AccessType::Write => Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
-                    "Immutable StagedHolon".to_string(),
+                    "Immutable".to_string(),
                 )),
             },
         }
     }
-
-    // =================
-    //     MUTATORS
-    // =================
-
-    fn increment_version(&mut self) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.version.0 += 1;
-        Ok(())
-    }
-
-    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.original_id = id;
-        Ok(())
-    }
-
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map = map;
-        Ok(())
-    }
-
-    // =========================
-    //       HELPERS
-    // =========================
 
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
@@ -360,6 +301,73 @@ impl HolonBehavior for StagedHolon {
             "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
             key, local_id, self.holon_state, self.validation_state
         )
+    }
+}
+
+impl WriteableHolonState for StagedHolon {
+    fn add_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        self.staged_relationships.add_related_holons(context, relationship_name, holons)?;
+
+        Ok(self)
+    }
+
+    fn increment_version(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.version.0 += 1;
+        Ok(())
+    }
+
+    fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
+        self.holon_state = HolonState::Immutable;
+        Ok(())
+    }
+
+    fn remove_property_value(&mut self, name: &PropertyName) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.remove(name);
+        Ok(self)
+    }
+
+    fn remove_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.staged_relationships.add_related_holons(context, relationship_name, holons)?;
+
+        Ok(self)
+    }
+
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.original_id = id;
+        Ok(())
+    }
+
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map = map;
+        Ok(())
+    }
+
+    fn with_property_value(
+        &mut self,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.insert(property, value);
+
+        Ok(self)
     }
 }
 

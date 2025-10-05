@@ -1,16 +1,22 @@
-use base_types::MapString;
-use core_types::{HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
+use std::rc::Rc;
 
-use crate::core_shared_objects::holon::HolonCloneModel;
+use base_types::{BaseValue, MapString};
+use core_types::{
+    HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+};
 
-use super::{state::AccessType, EssentialHolonContent};
+use crate::{
+    core_shared_objects::holon::{state::AccessType, EssentialHolonContent, HolonCloneModel}, HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap
+};
 
-/// The `HolonBehavior` trait defines the core interface for interacting with Holon instances,
-/// including data access, lifecycle control, and diagnostic capabilities.
-pub trait HolonBehavior {
-    // =======================
-    //     DATA ACCESSORS
-    // =======================
+/// The `ReadableHolonState` trait provides all read-only access methods,
+/// including a unified get_relationship_map() returning Option<RelationshipMap> for SavedHolon.
+pub trait ReadableHolonState {
+
+    /// Gets all related Holons.
+    /// 
+    /// Returns a generic RelationshipMap (HashMap)
+    fn all_related_holons(&self) -> Result<RelationshipMap, HolonError>;
 
     /// Extracts the core data content for comparison, validation, or lightweight inspection.
     ///
@@ -64,6 +70,14 @@ pub trait HolonBehavior {
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError>;
 
+    /// Gets a related holons for a given relationship name.
+    /// 
+    /// Returns a HolonCollection where its members are the related HolonReferences.
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError>;
+
     /// Retrieves the unique versioned key (key + versioned_sequence_count suffix)
     ///
     /// # Semantics
@@ -80,10 +94,6 @@ pub trait HolonBehavior {
     ///  -Extracts property_map and original_id fields
     fn into_node(&self) -> HolonNodeModel;
 
-    // =========================
-    //      ACCESS CONTROL
-    // =========================
-
     /// Enforces access control rules for the Holon’s current phase and state.
     ///
     /// # Semantics
@@ -95,18 +105,41 @@ pub trait HolonBehavior {
     /// Returns `Err(HolonError::NotAccessible)` if the requested access type is disallowed.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError>;
 
-    // =================
-    //     MUTATORS
-    // =================
+    /// Returns a String summary of the Holon.
+    ///
+    /// -Only used for logging. Provides a more concise message to avoid log bloat.
+    fn summarize(&self) -> String;
+}
 
-    // Note: these will always fail for Saved Holon variants since they are immutable..
-
-    // ?TODO: should we remove these from the trait and into respective impls for Staged & Transient ?
+/// The `WriteableHolonState` trait provides all mutation methods. Holon must pass is_accessibile check for Write.
+pub trait WriteableHolonState {
+    /// Inserts
+    fn add_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError>;
 
     /// Called by HolonPool::insert_holon() to increment the version.
     ///
     /// Used to track ephemeral versions of Holons with the same key.
     fn increment_version(&mut self) -> Result<(), HolonError>;
+
+    /// Marks the `TransientHolon` as immutable.
+    ///
+    /// Used in scenarios where immutability must be enforced post-creation.
+    fn mark_as_immutable(&mut self) -> Result<(), HolonError>;
+
+    /// Removes a property from the Holon's 'property_map'.
+    fn remove_property_value(&mut self, property: &PropertyName) -> Result<&mut Self, HolonError>;
+
+    fn remove_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError>;
 
     /// Replaces the 'OriginalId' with the provided optional 'LocalId'.
     ///
@@ -114,15 +147,14 @@ pub trait HolonBehavior {
     /// Called by stage_new_from_clone to reset predecessor to None.
     fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError>;
 
-    /// Modifies the Holon's 'property_map'.
+    /// Atomically replaces the Holon's 'property_map'.
     fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError>;
 
-    // ==================
-    //      HELPERS
-    // ==================
-
-    /// Returns a String summary of the Holon.
-    ///
-    /// -Only used for logging. Provides a more concise message to avoid log bloat.
-    fn summarize(&self) -> String;
+    /// Adds a property to the Holon's 'property_map' if one does not exist with the given name,
+    /// otherwise replaces the value of such.
+    fn with_property_value(
+        &mut self,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError>;
 }

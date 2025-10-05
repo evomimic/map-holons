@@ -17,7 +17,7 @@ use core_types::HolonId;
 use core_types::{PropertyMap, PropertyName};
 use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
 use holons_client::init_client_context;
-use holons_core::{core_shared_objects::holon::HolonBehavior, dances::ResponseBody};
+use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody};
 // use holons_guest_integrity::HolonNode;
 
 /// This function iterates through the expected_holons vector supplied as a parameter

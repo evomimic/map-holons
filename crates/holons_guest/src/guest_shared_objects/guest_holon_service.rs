@@ -20,7 +20,7 @@ use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonBehavior,
+        nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, ReadableHolonState,
         HolonCollection, NurseryAccess,
     },
     reference_layer::{

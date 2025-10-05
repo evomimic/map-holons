@@ -13,13 +13,14 @@ use core_types::{
 };
 
 use crate::{
-    core_shared_objects::{holon::HolonCloneModel, TransientRelationshipMap},
-    HolonCollection, RelationshipMap,
+    core_shared_objects::{
+        holon::HolonCloneModel, holon_behavior::ReadableHolonState, TransientRelationshipMap, WriteableHolonState
+    }, HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap
 };
 
 use super::{
     state::{AccessType, HolonState, ValidationState},
-    EssentialHolonContent, HolonBehavior,
+    EssentialHolonContent,
 };
 
 /// Represents a Holon that exists only in-memory and cannot be persisted unless it becomes a StagedHolon.
@@ -66,55 +67,6 @@ impl TransientHolon {
         }
     }
 
-    // ==============
-    //    MUTATORS
-    // ==============
-
-    /// Marks the `TransientHolon` as immutable.
-    ///
-    /// Used in scenarios where immutability must be enforced post-creation.
-    pub fn mark_as_immutable(&mut self) {
-        self.holon_state = HolonState::Immutable;
-    }
-
-    pub fn remove_property_value(&mut self, name: &PropertyName) -> Result<&mut Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map.remove(name);
-        Ok(self)
-    }
-
-    pub fn update_relationship_map(
-        &mut self,
-        map: TransientRelationshipMap,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.transient_relationships = map;
-        Ok(())
-    }
-
-    pub fn with_property_value(
-        &mut self,
-        property: PropertyName,
-        value: BaseValue,
-    ) -> Result<&mut Self, HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map.insert(property, value);
-
-        Ok(self)
-    }
-
-    // =====================
-    //    DATA ACCESSORS
-    // =====================
-
-    pub fn get_related_holons(
-        &self,
-        relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        // Use the public `get_related_holons` method on the `TransientRelationshipMap`
-        Ok(self.transient_relationships.get_related_holons(relationship_name))
-    }
-
     pub fn get_transient_relationship(
         &self,
         relationship_name: &RelationshipName,
@@ -124,7 +76,7 @@ impl TransientHolon {
         Ok(self.transient_relationships.get_related_holons(relationship_name))
     }
 
-    pub fn get_transient_relationship_map(&self) -> Result<TransientRelationshipMap, HolonError> {
+    fn get_transient_relationship_map(&self) -> Result<TransientRelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
         Ok(self.transient_relationships.clone())
@@ -132,12 +84,18 @@ impl TransientHolon {
 }
 
 // ======================================
-//   HOLONBEHAVIOR TRAIT IMPLEMENTATION
+//   HOLONBEHAVIOR TRAIT IMPLEMENTATIONS
 // ======================================
-impl HolonBehavior for TransientHolon {
-    // ====================
-    //    DATA ACCESSORS
-    // ====================
+
+impl ReadableHolonState for TransientHolon {
+    
+    fn all_related_holons(
+        &self,
+        ) -> Result<RelationshipMap, HolonError> {
+        let relationship_map = RelationshipMap::from(self.get_transient_relationship_map()?);
+
+        Ok(relationship_map)
+    }
 
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(
@@ -172,14 +130,6 @@ impl HolonBehavior for TransientHolon {
         }
     }
 
-    fn get_versioned_key(&self) -> Result<MapString, HolonError> {
-        let key = self
-            .get_key()?
-            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
-
-        Ok(MapString(format!("{}__{}_transient", key.0, &self.version.0.to_string())))
-    }
-
     fn get_local_id(&self) -> Result<LocalId, HolonError> {
         Err(HolonError::EmptyField("TransientHolons do not have LocalIds.".to_string()))
     }
@@ -195,13 +145,25 @@ impl HolonBehavior for TransientHolon {
         Ok(self.property_map.get(property_name).cloned())
     }
 
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        // Use the public `get_related_holons` method on the `TransientRelationshipMap`
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
+    }
+
+    fn get_versioned_key(&self) -> Result<MapString, HolonError> {
+        let key = self
+            .get_key()?
+            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+
+        Ok(MapString(format!("{}__{}_transient", key.0, &self.version.0.to_string())))
+    }
+
     fn into_node(&self) -> HolonNodeModel {
         HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
     }
-
-    // =========================
-    //     ACCESS CONTROL
-    // =========================
 
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
@@ -225,32 +187,6 @@ impl HolonBehavior for TransientHolon {
         }
     }
 
-    // =================
-    //     MUTATORS
-    // =================
-
-    fn increment_version(&mut self) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.version.0 += 1;
-        Ok(())
-    }
-
-    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.original_id = id;
-        Ok(())
-    }
-
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map = map;
-        Ok(())
-    }
-
-    // ===================
-    //       HELPERS
-    // ===================
-
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.get_key() {
@@ -270,6 +206,74 @@ impl HolonBehavior for TransientHolon {
             "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
             key, local_id, self.holon_state, self.validation_state
         )
+    }
+}
+
+impl WriteableHolonState for TransientHolon {
+
+    fn add_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        self.transient_relationships.add_related_holons(context, relationship_name, holons)?;
+
+        Ok(self)
+    }
+
+    fn increment_version(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.version.0 += 1;
+        Ok(())
+    }
+
+    fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
+        self.holon_state = HolonState::Immutable;
+        Ok(())
+    }
+
+    fn remove_property_value(&mut self, name: &PropertyName) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.remove(name);
+        Ok(self)
+    }
+
+    fn remove_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.transient_relationships.remove_related_holons(context, &relationship_name, holons)?;
+
+        Ok(self)
+    }
+
+    fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.original_id = id;
+        Ok(())
+    }
+
+    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map = map;
+        Ok(())
+    }
+
+    fn with_property_value(
+        &mut self,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.property_map.insert(property, value);
+
+        Ok(self)
     }
 }
 

@@ -19,7 +19,7 @@ use core_types::HolonId;
 use core_types::{PropertyMap, PropertyName};
 use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
 use holons_core::{
-    core_shared_objects::holon::HolonBehavior,
+    core_shared_objects::ReadableHolonState,
     dances::ResponseStatusCode,
     query_layer::{Node, NodeCollection, QueryExpression},
     HolonReference, ReadableHolon, SmartReference, WritableHolon,

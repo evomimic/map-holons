@@ -15,7 +15,7 @@ use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holon_dance_builders::commit_dance::build_commit_dance_request;
 use holons_core::{
-    core_shared_objects::holon::HolonBehavior,
+    core_shared_objects::ReadableHolonState,
     dances::{ResponseBody, ResponseStatusCode},
 };
 // use holons_guest_integrity::HolonNode;
