@@ -16,7 +16,7 @@ use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolon
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
-        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, StagedHolon,
+        CommitRequestStatus, CommitResponse, Holon, ReadableHolonState, HolonCollection, StagedHolon,
     },
     reference_layer::{HolonsContextBehavior, ReadableHolon},
 };

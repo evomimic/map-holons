@@ -1,4 +1,4 @@
-use crate::core_shared_objects::{Holon, HolonBehavior};
+use crate::core_shared_objects::{Holon, ReadableHolonState};
 use base_types::{MapInteger, MapString};
 use core_types::{HolonError, LocalId};
 

@@ -2,7 +2,7 @@ use async_std::task;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-
+use holons_prelude::prelude::*;
 use rstest::*;
 
 use holochain::sweettest::*;
@@ -13,8 +13,20 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference},
 };
-
-use holons_prelude::prelude::*;
+use base_types::{MapInteger, MapString};
+use core_types::HolonId;
+use holon_dance_builders::stage_new_holon_dance::build_stage_new_holon_dance_request;
+use holons_client::init_client_context;
+use holons_core::{
+    core_shared_objects::{
+        holon::{Holon, TransientHolon},
+        ReadableHolonState,
+    },
+    dances::{ResponseBody, ResponseStatusCode},
+    reference_layer::{HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference},
+};
+// use holons_guest_integrity::HolonNode;
+use core_types::{PropertyMap, PropertyName};
 
 /// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
 /// supplied Holon and confirms a Success response

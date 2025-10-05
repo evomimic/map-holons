@@ -2,12 +2,22 @@ use pretty_assertions::assert_eq;
 use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-
+use holons_prelude::prelude::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons_core::core_shared_objects::HolonBehavior; // TODO: Eliminate this dependency
 
-use holons_prelude::prelude::*;
+use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
+use holons_core::{
+    core_shared_objects::{Holon, ReadableHolonState},
+    dances::{ResponseBody, ResponseStatusCode},
+    reference_layer::{
+        HolonCollectionApi, HolonReference, ReadableHolon, SmartReference, StagedReference,
+    },
+};
+
+use base_types::MapString;
+use core_types::PropertyName;
+use core_types::{HolonError, HolonId};
 
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,

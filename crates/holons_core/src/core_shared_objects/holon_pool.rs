@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::{Holon, HolonBehavior};
+use super::{Holon, ReadableHolonState, WriteableHolonState};
 use crate::utils::uuid::create_temporary_id_from_key;
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};

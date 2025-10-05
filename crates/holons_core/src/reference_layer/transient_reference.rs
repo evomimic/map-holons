@@ -18,11 +18,10 @@ use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
         holon::{
-            holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonBehavior,
-            HolonCloneModel, TransientHolon,
+            holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonCloneModel
         },
         transient_holon_manager::ToHolonCloneModel,
-        TransientManagerAccess, TransientRelationshipMap,
+        ReadableHolonState, WriteableHolonState, TransientManagerAccess,
     },
     reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon},
     HolonCollection, RelationshipMap,
@@ -52,12 +51,12 @@ impl TransientReference {
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     ///
     /// # Returns
-    /// Rc<RefCell<TransientHolon>>>
+    /// Rc<RefCell<Holon>>>
     ///
     fn get_rc_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<Arc<RwLock<TransientHolon>>, HolonError> {
+    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get TransientManagerAccess
         let transient_manager_access = context.get_space_manager().get_transient_manager_access();
         let transient_read = transient_manager_access.read().map_err(|e| {
@@ -70,15 +69,7 @@ impl TransientReference {
         // Retrieve the holon by its TemporaryId
         let rc_holon = transient_read.get_holon_by_id(&self.id)?;
 
-        // Confirm it references a TransientHolon and return an Rc<RefCell
-        let holon = rc_holon.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on holon: {}", e))
-        })?;
-        match holon.clone() {
-            Holon::Transient(transient_holon) => Ok(Arc::new(RwLock::new(transient_holon))),
-            _ => Err(HolonError::InvalidHolonReference("The TemporaryId associated with a TransientReference must return a TransientHolon!".to_string()))
-
-        }
+        Ok(rc_holon)
     }
 
     pub fn get_temporary_id(&self) -> TemporaryId {
@@ -93,17 +84,6 @@ impl TransientReference {
         borrow.update_original_id(None)
     }
 
-    pub fn update_relationship_map(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        map: TransientRelationshipMap,
-    ) -> Result<(), HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let mut borrow = rc_holon.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire write lock on holon: {}", e))
-        })?;
-        borrow.update_relationship_map(map)
-    }
 }
 
 impl fmt::Display for TransientReference {
@@ -143,7 +123,7 @@ impl ReadableHolonImpl for TransientReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        Ok(RelationshipMap::from(borrowed_holon.get_transient_relationship_map()?))
+        Ok(borrowed_holon.all_related_holons()?)
     }
 
     fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
@@ -207,7 +187,6 @@ impl ReadableHolonImpl for TransientReference {
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.read().unwrap();
 
-        // Use the public `get_related_holons` method on the `TransientRelationshipMap`
         Ok(holon.get_related_holons(relationship_name)?)
     }
 
@@ -272,18 +251,10 @@ impl WritableHolonImpl for TransientReference {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        debug!("Entered TransientReference::add_related_holons");
-        // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
-
-        // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon = rc_holon.write().unwrap();
-        let mut transient_relationship_map = holon.get_transient_relationship_map()?;
-
-        // Delegate adding holons to the `TransientRelationshipMap`
-        transient_relationship_map.add_related_holons(context, relationship_name, holons)?;
-        holon.update_relationship_map(transient_relationship_map)?;
+        let mut holon_mut = rc_holon.write().unwrap();
+        holon_mut.add_related_holons(context, relationship_name, holons)?;
 
         Ok(())
     }
@@ -294,28 +265,10 @@ impl WritableHolonImpl for TransientReference {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        debug!("Entered TransientReference::remove_related_holons");
-
-        // Ensure the holon is accessible for write
         self.is_accessible(context, AccessType::Write)?;
-
-        // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.write().unwrap();
-        let mut staged_relationship_map = holon.get_transient_relationship_map()?;
-
-        debug!(
-            "Here is the RelationshipMap before removing related Holons: {:#?}",
-            staged_relationship_map
-        );
-
-        // Delegate the removal of holons to the `StagedRelationshipMap`
-        staged_relationship_map.remove_related_holons(context, &relationship_name, holons)?;
-
-        debug!(
-            "Here is the RelationshipMap after removing related Holons: {:#?}",
-            staged_relationship_map
-        );
+        let mut holon_mut = rc_holon.write().unwrap();
+        holon_mut.remove_related_holons(context, relationship_name, holons)?;
 
         Ok(())
     }

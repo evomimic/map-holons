@@ -16,9 +16,11 @@ use crate::{
         holon::{state::AccessType, EssentialHolonContent, HolonCloneModel},
         relationship_behavior::ReadableRelationship,
         transient_holon_manager::ToHolonCloneModel,
-        Holon, HolonBehavior, HolonCollection,
+        Holon, HolonCollection, ReadableHolonState,
     },
-    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference},
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WritableHolon,
+    },
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
@@ -144,8 +146,15 @@ impl ReadableHolonImpl for SmartReference {
 
         let relationships = self.all_related_holons(context)?;
 
-        cloned_holon_transient_reference
-            .update_relationship_map(context, relationships.clone_for_new_source()?)?;
+        let transient_relationships = relationships.clone_for_new_source()?;
+
+        for (name, collection) in transient_relationships.map {
+            cloned_holon_transient_reference.add_related_holons(
+                context,
+                name,
+                collection.borrow().get_members().to_vec(),
+            )?;
+        }
 
         Ok(cloned_holon_transient_reference)
     }

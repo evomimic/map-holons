@@ -1,13 +1,15 @@
+use std::rc::Rc;
+
 use serde::{Deserialize, Serialize};
 
 use base_types::{MapInteger, MapString};
-use core_types::{HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue};
+use core_types::{HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
-use crate::core_shared_objects::holon::HolonCloneModel;
+use crate::{core_shared_objects::{holon::HolonCloneModel, holon_behavior::ReadableHolonState}, HolonCollection, RelationshipMap};
 
 use super::{
     state::{AccessType, HolonState, SavedState, ValidationState},
-    EssentialHolonContent, HolonBehavior,
+    EssentialHolonContent,
 };
 
 /// Represents a Holon that has been persisted in the DHT.
@@ -48,13 +50,14 @@ impl SavedHolon {
     }
 }
 
-// ==================================
-//    HOLONBEHAVIOR IMPLEMENTATION
-// ==================================
-impl HolonBehavior for SavedHolon {
-    // =====================
-    //    DATA ACCESSORS
-    // =====================
+// ================================================
+//    HOLONBEHAVIOR- READABLE ONLY IMPLEMENTATION
+// ================================================
+impl ReadableHolonState for SavedHolon {
+
+    fn all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
+        Err(HolonError::NotImplemented("Must go through reference layer for getting relationships".to_string()))
+    }
 
     /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
@@ -105,6 +108,13 @@ impl HolonBehavior for SavedHolon {
         Ok(self.property_map.get(property_name).cloned())
     }
 
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Rc<HolonCollection>, HolonError> {
+        Err(HolonError::NotImplemented("Must go through reference layer for getting relationships".to_string()))
+    }
+
     // ?TODO:  What should this be for SavedHolon ? Return error ?
     // not sure why we need a version for this type
     //
@@ -141,37 +151,11 @@ impl HolonBehavior for SavedHolon {
             AccessType::Write | AccessType::Commit | AccessType::Abandon => {
                 Err(HolonError::NotAccessible(
                     format!("{:?}", access_type),
-                    "Immutable SavedHolon".to_string(),
+                    "Saved".to_string(),
                 ))
             }
         }
     }
-
-    // =================
-    //     "MUTATORS"
-    // =================
-
-    // These functions will always fail, since SavedHolons are immmutable.
-    // Implemented in the trait to ensure is_accessible checks on Holon enum.
-
-    fn increment_version(&mut self) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        unreachable!("SavedHolon should never allow write access")
-    }
-
-    fn update_original_id(&mut self, _id: Option<LocalId>) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        unreachable!("SavedHolon should never allow write access")
-    }
-
-    fn update_property_map(&mut self, _map: PropertyMap) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        unreachable!("SavedHolon should never allow write access")
-    }
-
-    // ==============
-    //    HELPERS
-    // ==============
 
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
