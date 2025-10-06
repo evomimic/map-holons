@@ -107,7 +107,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         ResponseStatusCode::OK,
     )?;
     // Mirror the test step in the fixture's Nursery
-    let expected_fixture_holon =
+    let mut expected_fixture_holon =
         stage_new_holon_api(&*fixture_context, publisher_transient_reference.clone())?; // Staged
 
     // Step 2: with_properties step to modify the staged clone's properties

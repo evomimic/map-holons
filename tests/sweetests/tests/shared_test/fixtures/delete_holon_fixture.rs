@@ -33,13 +33,12 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
-    let book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
+    let mut book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
     book_transient_reference.with_property_value(
         &*fixture_context,
         "title".to_string(),
         BOOK_KEY,
-    )?;
-    book_transient_reference.with_property_value(
+    )?.with_property_value(
             &*fixture_context,
             "description",
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",

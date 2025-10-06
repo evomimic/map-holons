@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
-use tracing::warn;
+// use tracing::warn;
 use tracing::{error, info};
 
 use crate::shared_test::{
@@ -38,26 +38,15 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     // TEST FIXTURE //
 
-    let book_transient_reference =
+    let mut book_transient_reference =
         get_transient_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
-    book_transient_reference.with_property_value(
-        &*fixture_context,
-        "New Property".to_string(),
-        "This is another property".to_string(),
-    )?;
-    warn!(
-        "Added property to book :: {:#?}",
-        book_transient_reference.essential_content(&*fixture_context)
-    );
-    book_transient_reference.with_property_value(
-        &*fixture_context,
-        "Description",
-        "Changed Description",
-    )?;
-    warn!(
-        "Changed book description  {:#?}",
-        book_transient_reference.essential_content(&*fixture_context)
-    );
+    book_transient_reference
+        .with_property_value(
+            &*fixture_context,
+            "New Property".to_string(),
+            "This is another property".to_string(),
+        )?
+        .with_property_value(&*fixture_context, "Description", "Changed Description")?;
 
     // let publisher_transient_reference =
     //     get_transient_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;

@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
-    HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName,
 };
 use derive_new::new;
 use serde::{Deserialize, Serialize};
@@ -56,6 +57,14 @@ pub struct HolonCloneModel {
 // ==================================
 impl Holon {
     /// Gets inner StagedHolon object for Staged variant
+    pub fn into_saved(&self) -> Result<StagedHolon, HolonError> {
+        match self {
+            Holon::Staged(staged_holon) => Ok(staged_holon.clone()),
+            _ => Err(HolonError::InvalidTransition("Holon variant must be Saved".to_string())),
+        }
+    }
+
+    /// Gets inner StagedHolon object for Staged variant
     pub fn into_staged(&self) -> Result<StagedHolon, HolonError> {
         match self {
             Holon::Staged(staged_holon) => Ok(staged_holon.clone()),
@@ -89,8 +98,7 @@ impl ReadableHolonState for Holon {
             Holon::Transient(h) => h.all_related_holons(),
             Holon::Staged(h) => h.all_related_holons(),
             Holon::Saved(h) => {
-                //?TODO: should saved holons contain a relationship map ?
-                h.all_related_holons() // Will throw error, as not implemented
+                h.all_related_holons() // Will throw error, as not implemented, call must go through reference layer
             }
         }
     }
@@ -107,7 +115,23 @@ impl ReadableHolonState for Holon {
         match self {
             Holon::Transient(h) => h.get_holon_clone_model(),
             Holon::Staged(h) => h.get_holon_clone_model(),
-            Holon::Saved(h) => h.get_holon_clone_model(),
+            Holon::Saved(h) => h.holon_clone_model(),
+        }
+    }
+
+    fn holon_id(&self) -> Result<HolonId, HolonError> {
+        match self {
+            Holon::Transient(h) => h.holon_id(),
+            Holon::Staged(h) => h.holon_id(),
+            Holon::Saved(h) => h.holon_id(),
+        }
+    }
+
+    fn into_node_model(&self) -> HolonNodeModel {
+        match self {
+            Holon::Transient(h) => h.into_node_model(),
+            Holon::Staged(h) => h.into_node_model(),
+            Holon::Saved(h) => h.into_node_model(),
         }
     }
 
@@ -116,14 +140,6 @@ impl ReadableHolonState for Holon {
             Holon::Transient(h) => h.get_key(),
             Holon::Staged(h) => h.get_key(),
             Holon::Saved(h) => h.get_key(),
-        }
-    }
-
-    fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        match self {
-            Holon::Transient(h) => h.get_local_id(),
-            Holon::Staged(h) => h.get_local_id(),
-            Holon::Saved(h) => h.get_local_id(),
         }
     }
 
@@ -162,14 +178,6 @@ impl ReadableHolonState for Holon {
             Holon::Transient(h) => h.get_versioned_key(),
             Holon::Staged(h) => h.get_versioned_key(),
             Holon::Saved(h) => h.get_versioned_key(),
-        }
-    }
-
-    fn into_node(&self) -> HolonNodeModel {
-        match self {
-            Holon::Transient(h) => h.into_node(),
-            Holon::Staged(h) => h.into_node(),
-            Holon::Saved(h) => h.into_node(),
         }
     }
 
@@ -224,17 +232,9 @@ impl WriteableHolonState for Holon {
 
     fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
         match self {
-            Holon::Transient(h) => {
-                h.mark_as_immutable()?;
-                Ok(())
-            }
-            Holon::Staged(h) => {
-                h.mark_as_immutable()?;
-                Ok(())
-            }
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
+            Holon::Transient(h) => h.mark_as_immutable(),
+            Holon::Staged(h) => h.mark_as_immutable(),
+            Holon::Saved(_) => Ok(()),
         }
     }
 
@@ -279,16 +279,6 @@ impl WriteableHolonState for Holon {
         match self {
             Holon::Transient(h) => h.update_original_id(id),
             Holon::Staged(h) => h.update_original_id(id),
-            Holon::Saved(_) => {
-                Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
-            }
-        }
-    }
-
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
-        match self {
-            Holon::Transient(h) => h.update_property_map(map),
-            Holon::Staged(h) => h.update_property_map(map),
             Holon::Saved(_) => {
                 Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
             }

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 
 use base_types::{MapInteger, MapString};
-use core_types::{HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName};
+use core_types::{HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName};
 
 use crate::{core_shared_objects::{holon::HolonCloneModel, holon_behavior::ReadableHolonState}, HolonCollection, RelationshipMap};
 
@@ -48,6 +48,21 @@ impl SavedHolon {
             original_id,
         }
     }
+
+    pub fn holon_clone_model(&self) -> HolonCloneModel {
+        HolonCloneModel::new(
+            self.version.clone(),
+            self.original_id.clone(),
+            self.property_map.clone(),
+            None,
+        )
+    }
+
+    /// Retrieves the `LocalId`.
+    pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
+        Ok(self.saved_id.clone())
+    }
+
 }
 
 // ================================================
@@ -59,7 +74,6 @@ impl ReadableHolonState for SavedHolon {
         Err(HolonError::NotImplemented("Must go through reference layer for getting relationships".to_string()))
     }
 
-    /// Extracts essential content for comparison or testing.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         Ok(EssentialHolonContent::new(self.property_map.clone(), self.get_key()?, Vec::new()))
     }
@@ -71,6 +85,10 @@ impl ReadableHolonState for SavedHolon {
             self.property_map.clone(),
             None,
         )
+    }
+
+    fn holon_id(&self) -> Result<HolonId, HolonError> {
+        Err(HolonError::NotImplemented("Must go through reference layer for getting HolonId from SmartReference".to_string()))
     }
 
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
@@ -90,11 +108,6 @@ impl ReadableHolonState for SavedHolon {
         }
     }
 
-    /// Retrieves the `LocalId`.
-    fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        Ok(self.saved_id.clone())
-    }
-
     /// Retrieves the `original_id`, if present.
     fn get_original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
@@ -110,7 +123,7 @@ impl ReadableHolonState for SavedHolon {
 
     fn get_related_holons(
         &self,
-        relationship_name: &RelationshipName,
+        _relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         Err(HolonError::NotImplemented("Must go through reference layer for getting relationships".to_string()))
     }
@@ -136,13 +149,9 @@ impl ReadableHolonState for SavedHolon {
 
     /// Extracts HolonNode data.
     /// Converts 'original_id' and 'property_map' fields into a HolonNode object.
-    fn into_node(&self) -> HolonNodeModel {
+    fn into_node_model(&self) -> HolonNodeModel {
         HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
     }
-
-    // =======================
-    //     ACCESS CONTROL
-    // =======================
 
     /// Enforces access control rules for `SavedHolon`.
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {

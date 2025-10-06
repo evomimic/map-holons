@@ -7,6 +7,7 @@ use std::{
 };
 
 use hdk::prelude::*;
+use holons_core::core_shared_objects::SavedHolon;
 use holons_core::reference_layer::ReadableHolon;
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
@@ -24,8 +25,8 @@ use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, ReadableHolonState,
-        HolonCollection, NurseryAccess,
+        nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonCollection,
+        NurseryAccess,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
@@ -64,7 +65,7 @@ impl GuestHolonService {
     fn create_local_space_holon(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<Holon, HolonError> {
+    ) -> Result<SavedHolon, HolonError> {
         // Define the name and description for the local space holon
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
@@ -78,17 +79,18 @@ impl GuestHolonService {
 
 
         // Create new (empty) TransientHolon
-        let space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
-        space_holon_reference.with_property_value(
-            context,
-            PropertyName(MapString("name".to_string())),
-            name.clone().into_base_value(),
-        )?;
-        space_holon_reference.with_property_value(
-            context,
-            PropertyName(MapString("description".to_string())),
-            description.into_base_value(),
-        )?;
+        let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
+        space_holon_reference
+            .with_property_value(
+                context,
+                PropertyName(MapString("name".to_string())),
+                name.clone().into_base_value(),
+            )?
+            .with_property_value(
+                context,
+                PropertyName(MapString("description".to_string())),
+                description.into_base_value(),
+            )?;
         let space_holon_node = space_holon_reference.into_model(context)?;
 
         // Try to create the holon node in the DHT
@@ -281,7 +283,7 @@ impl HolonServiceApi for GuestHolonService {
             .map_err(|e| holon_error_from_wasm_error(e))?;
         if let Some(record) = holon_node_record {
             let holon = try_from_record(record)?;
-            Ok(holon)
+            Ok(Holon::Saved(holon))
         } else {
             // No holon_node fetched for the specified holon_id
             Err(HolonError::HolonNotFound(local_id.to_string()))
@@ -332,7 +334,7 @@ impl HolonServiceApi for GuestHolonService {
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
-        let cloned_transient_reference = original_holon.clone_holon(context)?;
+        let mut cloned_transient_reference = original_holon.clone_holon(context)?;
 
         // update key
         cloned_transient_reference.with_property_value(
@@ -356,7 +358,7 @@ impl HolonServiceApi for GuestHolonService {
         //     )?,
         // }
 
-        let cloned_staged_reference = self
+        let mut cloned_staged_reference = self
             .get_internal_nursery_access()?
             .read()
             .unwrap()
@@ -378,7 +380,7 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<StagedReference, HolonError> {
         let cloned_holon_transient_reference = original_holon.clone_holon(context)?;
 
-        let cloned_staged_reference = self
+        let mut cloned_staged_reference = self
             .get_internal_nursery_access()?
             .read()
             .unwrap()

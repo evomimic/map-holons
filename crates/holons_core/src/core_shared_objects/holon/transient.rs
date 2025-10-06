@@ -9,13 +9,15 @@ use std::sync::{Arc, RwLock};
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
-    HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName
 };
 
 use crate::{
     core_shared_objects::{
-        holon::HolonCloneModel, holon_behavior::ReadableHolonState, TransientRelationshipMap, WriteableHolonState
-    }, HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap
+        holon::HolonCloneModel, holon_behavior::ReadableHolonState, TransientRelationshipMap,
+        WriteableHolonState,
+    },
+    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
 };
 
 use super::{
@@ -88,10 +90,7 @@ impl TransientHolon {
 // ======================================
 
 impl ReadableHolonState for TransientHolon {
-    
-    fn all_related_holons(
-        &self,
-        ) -> Result<RelationshipMap, HolonError> {
+    fn all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
         let relationship_map = RelationshipMap::from(self.get_transient_relationship_map()?);
 
         Ok(relationship_map)
@@ -114,6 +113,10 @@ impl ReadableHolonState for TransientHolon {
         )
     }
 
+    fn holon_id(&self) -> Result<HolonId, HolonError> {
+        Err(HolonError::NotImplemented("TransientHolons do not have a HolonId".to_string()))
+    }
+
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(inner_value) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
@@ -128,10 +131,6 @@ impl ReadableHolonState for TransientHolon {
         } else {
             Ok(None)
         }
-    }
-
-    fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        Err(HolonError::EmptyField("TransientHolons do not have LocalIds.".to_string()))
     }
 
     fn get_original_id(&self) -> Option<LocalId> {
@@ -160,7 +159,7 @@ impl ReadableHolonState for TransientHolon {
         Ok(MapString(format!("{}__{}_transient", key.0, &self.version.0.to_string())))
     }
 
-    fn into_node(&self) -> HolonNodeModel {
+    fn into_node_model(&self) -> HolonNodeModel {
         HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
     }
 
@@ -194,22 +193,15 @@ impl ReadableHolonState for TransientHolon {
             Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
         };
 
-        // Attempt to extract local_id using get_local_id method, default to "None" if not available
-        let local_id = match self.get_local_id() {
-            Ok(local_id) => local_id.to_string(), // Convert LocalId to String
-            Err(_) => "<None>".to_string(),       // If local_id is not found or error occurred
-        };
-
         // Format the summary string
         format!(
-            "Holon {{ key: {}, local_id: {}, state: {}, validation_state: {:?} }}",
-            key, local_id, self.holon_state, self.validation_state
+            "Holon {{ key: {}, state: {}, validation_state: {:?} }}",
+            key, self.holon_state, self.validation_state
         )
     }
 }
 
 impl WriteableHolonState for TransientHolon {
-
     fn add_related_holons(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -255,12 +247,7 @@ impl WriteableHolonState for TransientHolon {
     fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.original_id = id;
-        Ok(())
-    }
 
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map = map;
         Ok(())
     }
 
