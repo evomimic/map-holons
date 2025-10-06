@@ -45,7 +45,10 @@ pub async fn execute_delete_holon(
         .expect("Failed to retrieve holon from test_state's created_holons.");
 
     let local_id =
-        holon_to_delete.get_local_id().expect("Unable to get LocalId from holon_to_delete");
+        match holon_to_delete.holon_id().expect("Unable to get HolonId from holon_to_delete") {
+            HolonId::Local(id) => id,
+            HolonId::External(_) => panic!("Can only delete a Local Holon, found External")
+        };
 
     // 3. Build the delete Holon request
     let request = build_delete_holon_dance_request(local_id.clone())

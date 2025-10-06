@@ -185,7 +185,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
             StagedState::ForCreate => {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("StagedState is New... requesting new HolonNode be created in the DHT");
-                let node = staged_holon.into_node();
+                let node = staged_holon.into_node_model();
                 let result = create_holon_node(HolonNode::from(node));
 
                 match result {
@@ -214,7 +214,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                     let input = UpdateHolonNodeInput {
                         original_holon_node_hash,
                         previous_holon_node_hash,
-                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node()),
+                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node_model()),
                     };
                     debug!("Requesting HolonNode be updated in the DHT"); //
 

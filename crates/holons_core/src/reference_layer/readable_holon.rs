@@ -33,6 +33,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::essential_content_impl(self, context)
     }
 
+    /// Returns a String summary of the Holon.
+    ///
+    /// -Only used for logging. Provides a more concise message to avoid log bloat.
+    fn summarize(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
+        ReadableHolonImpl::summarize_impl(self, context)
+    }
+
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     #[inline]
     fn holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
@@ -108,13 +115,6 @@ pub trait ReadableHolon: ReadableHolonImpl {
     /// - a `&CorePropertyTypeName` -- any variant from the CorePropertyTypeName enum
     /// - or any other type that implements [`ToPropertyName`]
     ///
-    /// # Examples
-    /// ```ignore
-    /// use holons_core::prelude::*;
-    ///
-    /// let value = holon.property_value(context, "title")?;
-    /// let value = holon.property_value(context, PropertyName::new("title"))?;
-    /// ```
     ///
     /// Returns `Ok(Some(value))` if the property is defined, `Ok(None)` if it is absent,
     /// or an error if the context cannot resolve the property.
@@ -147,19 +147,6 @@ pub trait ReadableHolon: ReadableHolonImpl {
     /// `"friends"`, `"Friends"`, and `"FRIENDS"` are treated equivalently.
     ///
     /// # Examples
-    /// ```ignore
-    /// use holons_core::prelude::*;
-    ///
-    /// // String-like inputs
-    /// let friends = holon.related_holons(context, "friends")?;
-    /// let friends = holon.related_holons(context, String::from("friends"))?;
-    ///
-    /// // Strongly-typed names
-    /// let rel = RelationshipName::new("FRIENDS");
-    /// let friends = holon.related_holons(context, &rel)?;
-    ///
-    /// let friends = holon.related_holons(context, CoreRelationshipTypeName::Friends)?;
-    /// ```
     ///
     /// # Returns
     /// - `Ok(Rc<HolonCollection>)`: a collection of related holons (possibly empty).

@@ -3,7 +3,8 @@ use std::rc::Rc;
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
-    HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName,
 };
 
 use crate::{
@@ -86,6 +87,19 @@ impl StagedHolon {
         }
     }
 
+    // ==================
+    //   DATA ACCESSORS
+    // ==================
+
+    pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
+        match &self.staged_state {
+            StagedState::Committed(saved_id) => Ok(saved_id.clone()),
+            _ => Err(HolonError::EmptyField(
+                "Uncommitted StagedHolons do not have LocalIds.".to_string(),
+            )),
+        }
+    }
+
     pub fn get_staged_relationship(
         &self,
         relationship_name: &RelationshipName,
@@ -149,6 +163,11 @@ impl StagedHolon {
         Ok(())
     }
 
+    pub fn mark_as_immutable(&mut self) -> Result<(), HolonError> {
+        self.holon_state = HolonState::Immutable;
+        Ok(())
+    }
+
     /// Marks the `StagedHolon` as `Committed` and assigns its saved `LocalId`.
     ///
     /// This assumes the Holon has already been persisted to the DHT.
@@ -160,11 +179,25 @@ impl StagedHolon {
         Ok(())
     }
 
-    pub fn update_staged_state(&mut self, new_state: StagedState) -> Result<(), HolonError> {
+    /// Replaces the 'OriginalId' with the provided optional 'LocalId'.
+    ///
+    /// Used when cloning a Holon to retain predecessor.
+    /// Called by stage_new_from_clone to reset predecessor to None.
+    pub fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.staged_state = new_state;
+        self.original_id = id;
         Ok(())
     }
+
+    // /// Updates the 'StagedState'
+    // ///
+    // /// Used when
+    // /// Called by
+    // pub fn update_staged_state(&mut self, new_state: StagedState) -> Result<(), HolonError> {
+    //     self.is_accessible(AccessType::Write)?;
+    //     self.staged_state = new_state;
+    //     Ok(())
+    // }
 }
 
 // ======================================
@@ -194,6 +227,28 @@ impl ReadableHolonState for StagedHolon {
         )
     }
 
+    fn holon_id(&self) -> Result<HolonId, HolonError> {
+        match &self.staged_state {
+            StagedState::Abandoned => Err(HolonError::NotImplemented(
+                "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
+                    .to_string(),
+            )),
+            StagedState::Committed(local_id) => Ok(HolonId::Local(local_id.clone())),
+            StagedState::ForCreate => Err(HolonError::NotImplemented(
+                "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
+                    .to_string(),
+            )),
+            StagedState::ForUpdate => Err(HolonError::NotImplemented(
+                "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
+                    .to_string(),
+            )),
+            StagedState::ForUpdateChanged => Err(HolonError::NotImplemented(
+                "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
+                    .to_string(),
+            )),
+        }
+    }
+
     fn get_key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(inner_value) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
@@ -207,15 +262,6 @@ impl ReadableHolonState for StagedHolon {
             Ok(Some(MapString(string_value)))
         } else {
             Ok(None)
-        }
-    }
-
-    fn get_local_id(&self) -> Result<LocalId, HolonError> {
-        match &self.staged_state {
-            StagedState::Committed(saved_id) => Ok(saved_id.clone()),
-            _ => Err(HolonError::EmptyField(
-                "Uncommitted StagedHolons do not have LocalIds.".to_string(),
-            )),
         }
     }
 
@@ -245,7 +291,7 @@ impl ReadableHolonState for StagedHolon {
         Ok(MapString(format!("{}__{}_staged", key.0, &self.version.0.to_string())))
     }
 
-    fn into_node(&self) -> HolonNodeModel {
+    fn into_node_model(&self) -> HolonNodeModel {
         HolonNodeModel {
             original_id: self.original_id.clone(),
             property_map: self.property_map.clone(),
@@ -350,12 +396,7 @@ impl WriteableHolonState for StagedHolon {
     fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.original_id = id;
-        Ok(())
-    }
 
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError> {
-        self.is_accessible(AccessType::Write)?;
-        self.property_map = map;
         Ok(())
     }
 
@@ -394,27 +435,34 @@ mod tests {
             original_id: None,
             errors: Vec::new(),
         };
-
         assert_eq!(initial_holon, expected_holon);
 
-        // Create example PropertyMap and modify Holon with its update
-        let mut property_map = BTreeMap::new();
+        // Create expected PropertyMap
+        let mut expected_property_map = BTreeMap::new();
         let string_property_name = PropertyName(MapString("string property".to_string()));
         let string_value = BaseValue::StringValue(MapString("string_value".to_string()));
-        property_map.insert(string_property_name, string_value);
+        expected_property_map.insert(string_property_name.clone(), string_value.clone());
         let boolean_property_name = PropertyName(MapString("boolean property".to_string()));
         let boolean_value = BaseValue::BooleanValue(MapBoolean(true));
-        property_map.insert(boolean_property_name, boolean_value);
+        expected_property_map.insert(boolean_property_name.clone(), boolean_value.clone());
         let integer_property_name = PropertyName(MapString("integer property".to_string()));
         let integer_value = BaseValue::IntegerValue(MapInteger(1000));
-        property_map.insert(integer_property_name, integer_value);
+        expected_property_map.insert(integer_property_name.clone(), integer_value.clone());
         let enum_property_name = PropertyName(MapString("enum property".to_string()));
         let enum_value = BaseValue::EnumValue(MapEnumValue(MapString("enum_value".to_string())));
-        property_map.insert(enum_property_name, enum_value);
+        expected_property_map.insert(enum_property_name.clone(), enum_value.clone());
 
-        initial_holon.update_property_map(property_map.clone()).unwrap();
+        // Add properties to Holon
+        let _ = initial_holon
+            .with_property_value(string_property_name, string_value)
+            .unwrap()
+            .with_property_value(boolean_property_name, boolean_value)
+            .unwrap()
+            .with_property_value(integer_property_name, integer_value)
+            .unwrap()
+            .with_property_value(enum_property_name, enum_value);
 
-        assert_eq!(initial_holon.property_map, property_map);
+        assert_eq!(initial_holon.property_map, expected_property_map);
     }
 
     #[test]

@@ -1,7 +1,6 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
-use tracing::{debug, info};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use base_types::{BaseValue, MapString};
@@ -13,11 +12,9 @@ use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
-        holon::{
-            holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonCloneModel
-        },
+        holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonCloneModel},
         transient_holon_manager::ToHolonCloneModel,
-        ReadableHolonState, WriteableHolonState, TransientManagerAccess,
+        ReadableHolonState, TransientManagerAccess, WriteableHolonState,
     },
     reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon},
     HolonCollection, RelationshipMap,
@@ -91,7 +88,6 @@ impl TransientReference {
         let mut borrow = rc_holon.borrow_mut();
         borrow.update_original_id(None)
     }
-
 }
 
 impl fmt::Display for TransientReference {
@@ -134,13 +130,51 @@ impl ReadableHolonImpl for TransientReference {
         Ok(borrowed_holon.all_related_holons()?)
     }
 
-    fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn essential_content_impl(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.borrow();
-        let local_id = borrowed_holon.get_local_id()?;
+        borrowed_holon.essential_content()
+    }
 
-        Ok(HolonId::from(local_id))
+    fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+        Err(HolonError::NotImplemented("TransientHolons do not have a HolonId".to_string()))
+    }
+
+    fn into_model_impl(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<HolonNodeModel, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+
+        Ok(borrowed_holon.into_node_model())
+    }
+
+    fn is_accessible_impl(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        access_type: AccessType,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon.borrow();
+        holon.is_accessible(access_type)?;
+
+        Ok(())
+    }
+
+    fn key_impl(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<MapString>, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        borrowed_holon.get_key().clone()
     }
 
     fn predecessor_impl(
@@ -175,16 +209,6 @@ impl ReadableHolonImpl for TransientReference {
         borrowed_holon.get_property_value(property_name)
     }
 
-    fn key_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<MapString>, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        borrowed_holon.get_key().clone()
-    }
-
     fn related_holons_impl(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -197,6 +221,13 @@ impl ReadableHolonImpl for TransientReference {
         Ok(holon.get_related_holons(relationship_name)?)
     }
 
+    fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
+        self.is_accessible(context, AccessType::Read)?;
+        let rc_holon = self.get_rc_holon(context)?;
+        let borrowed_holon = rc_holon.borrow();
+        Ok(borrowed_holon.summarize())
+    }
+
     fn versioned_key_impl(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -207,108 +238,68 @@ impl ReadableHolonImpl for TransientReference {
 
         Ok(key)
     }
-
-    fn essential_content_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-        borrowed_holon.essential_content()
-    }
-
-    fn into_model_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonNodeModel, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.borrow();
-
-        Ok(borrowed_holon.into_node())
-    }
-
-    fn is_accessible_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        access_type: AccessType,
-    ) -> Result<(), HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow();
-        holon.is_accessible(access_type)?;
-
-        Ok(())
-    }
 }
 
 impl WritableHolonImpl for TransientReference {
     fn add_related_holons_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.borrow_mut();
         holon_mut.add_related_holons(context, relationship_name, holons)?;
 
-        Ok(())
+        Ok(self)
     }
 
     fn remove_related_holons_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.borrow_mut();
         holon_mut.remove_related_holons(context, relationship_name, holons)?;
 
-        Ok(())
+        Ok(self)
     }
 
     fn with_property_value_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
         value: BaseValue,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-        info!(
-            "Entered TransientReference::with_property_value_impl for {:?} with {:?}",
-            &property, &value
-        );
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_refcell = rc_holon.borrow_mut();
+        let mut holon_mut = rc_holon.borrow_mut();
 
-        // Call the Holon's with_property_value method
-        holon_refcell.with_property_value(property, value)?;
+        holon_mut.with_property_value(property, value)?;
 
-        info!("After assigning property value {:#?} ", holon_refcell);
-
-        Ok(())
+        Ok(self)
     }
 
     fn remove_property_value_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         name: PropertyName,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_refcell = rc_holon.borrow_mut();
+        let mut holon_mut = rc_holon.borrow_mut();
 
-        holon_refcell.remove_property_value(&name)?;
+        holon_mut.remove_property_value(&name)?;
 
-        Ok(())
+        Ok(self)
     }
 
     fn with_descriptor_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
@@ -320,13 +311,11 @@ impl WritableHolonImpl for TransientReference {
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor.clone()],
             )?;
-            debug!("removed existing descriptor: {:#?}", descriptor);
             self.add_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference],
             )?;
-            debug!("added descriptor: {:#?}", descriptor);
 
             Ok(())
         } else {
@@ -335,14 +324,13 @@ impl WritableHolonImpl for TransientReference {
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference.clone()],
             )?;
-            debug!("added descriptor: {:#?}", descriptor_reference);
 
             Ok(())
         }
     }
 
     fn with_predecessor_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
     ) -> Result<(), HolonError> {
@@ -354,7 +342,6 @@ impl WritableHolonImpl for TransientReference {
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor.clone()],
             )?;
-            debug!("removed existing predecessor: {:#?}", predecessor);
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
             self.add_related_holons_impl(
@@ -362,7 +349,6 @@ impl WritableHolonImpl for TransientReference {
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor_reference.clone()],
             )?;
-            debug!("added predecessor: {:#?}", predecessor_reference);
         }
 
         Ok(())

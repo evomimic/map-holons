@@ -2,19 +2,19 @@ use std::rc::Rc;
 
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonId, HolonNodeModel, LocalId, PropertyName, PropertyValue, RelationshipName,
 };
 
 use crate::{
-    core_shared_objects::holon::{state::AccessType, EssentialHolonContent, HolonCloneModel}, HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap
+    core_shared_objects::holon::{state::AccessType, EssentialHolonContent, HolonCloneModel},
+    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
 };
 
-/// The `ReadableHolonState` trait provides all read-only access methods,
-/// including a unified get_relationship_map() returning Option<RelationshipMap> for SavedHolon.
+/// The `ReadableHolonState` trait mirrors ReadableHolon, so that references can simply delegate without having to match Holon variant.
+/// It also provides methods that are shared internally but not part of the WriteableHolon trait. Holon must pass is_accessibile check for Write.
 pub trait ReadableHolonState {
-
     /// Gets all related Holons.
-    /// 
+    ///
     /// Returns a generic RelationshipMap (HashMap)
     fn all_related_holons(&self) -> Result<RelationshipMap, HolonError>;
 
@@ -24,11 +24,20 @@ pub trait ReadableHolonState {
     /// `StagedState`, `HolonState`, or `SavedState`.
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError>;
 
-    /// Retrieves from the Holon all of the fields necessary for cloning
+    /// Converts a Holon into a HolonCloneModel.
     ///
-    /// # Semantics
-    /// - HolonCloneModel {version, original_id, properties, relationships}
+    ///  # Semantics
+    ///  -Extracts version, original_id, properties, and relationships
     fn get_holon_clone_model(&self) -> HolonCloneModel;
+
+    /// Only applies for StagedHolons in StagedState::Committed, otherwise throws an error.
+    fn holon_id(&self) -> Result<HolonId, HolonError>;
+
+    /// Converts a Holon into a HolonNode.
+    ///
+    ///  # Semantics
+    ///  -Extracts original_id and property_map
+    fn into_node_model(&self) -> HolonNodeModel;
 
     /// Retrieves the Holon's primary key value (if present).
     ///
@@ -36,17 +45,6 @@ pub trait ReadableHolonState {
     /// - Keys are typically defined in the `property_map` as `"key"`.
     /// - Not all Holons have keys; `None` may be returned.
     fn get_key(&self) -> Result<Option<MapString>, HolonError>;
-
-    /// Retrieves the Holon's `LocalId`, which identifies it within the Holochain network.
-    ///
-    /// # Semantics
-    /// - **`SavedHolons`** always have a `LocalId`.  
-    /// - **`StagedHolons`** have a `LocalId` **only if** they have been committed.  
-    /// - **`TransientHolons`** do not have a `LocalId`.  
-    ///
-    /// # Errors
-    /// - Returns `Err(HolonError::EmptyField)` if the Holon phase doesn’t support a `LocalId`.
-    fn get_local_id(&self) -> Result<LocalId, HolonError>;
 
     /// Retrieves the `original_id` of the Holon, representing its predecessor.
     ///
@@ -71,7 +69,7 @@ pub trait ReadableHolonState {
     ) -> Result<Option<PropertyValue>, HolonError>;
 
     /// Gets a related holons for a given relationship name.
-    /// 
+    ///
     /// Returns a HolonCollection where its members are the related HolonReferences.
     fn get_related_holons(
         &self,
@@ -87,12 +85,6 @@ pub trait ReadableHolonState {
     /// # Errors
     /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn get_versioned_key(&self) -> Result<MapString, HolonError>;
-
-    /// Converts a Holon into a HolonNode.
-    ///
-    ///  # Semantics
-    ///  -Extracts property_map and original_id fields
-    fn into_node(&self) -> HolonNodeModel;
 
     /// Enforces access control rules for the Holon’s current phase and state.
     ///
@@ -111,9 +103,15 @@ pub trait ReadableHolonState {
     fn summarize(&self) -> String;
 }
 
-/// The `WriteableHolonState` trait provides all mutation methods. Holon must pass is_accessibile check for Write.
+//todo
+// fn clone_holon(
+// fn holon_id( // only works on Staged
+// fn predecessor(
+
+/// The `WriteableHolonState` trait mirrors WriteableHolon so that references can simply delegate without having to match Holon variant.
+/// It also provides methods that are shared internally but not part of the WriteableHolon trait. Holon must pass is_accessibile check for Write.
 pub trait WriteableHolonState {
-    /// Inserts
+    /// Inserts a HolonCollection of related HolonReferences for the given relationship name.
     fn add_related_holons(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -126,7 +124,7 @@ pub trait WriteableHolonState {
     /// Used to track ephemeral versions of Holons with the same key.
     fn increment_version(&mut self) -> Result<(), HolonError>;
 
-    /// Marks the `TransientHolon` as immutable.
+    /// Marks the Holon as immutable.
     ///
     /// Used in scenarios where immutability must be enforced post-creation.
     fn mark_as_immutable(&mut self) -> Result<(), HolonError>;
@@ -134,6 +132,7 @@ pub trait WriteableHolonState {
     /// Removes a property from the Holon's 'property_map'.
     fn remove_property_value(&mut self, property: &PropertyName) -> Result<&mut Self, HolonError>;
 
+    /// Removes the HolonCollection of related HolonReferences for the given relationship name.
     fn remove_related_holons(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -147,9 +146,6 @@ pub trait WriteableHolonState {
     /// Called by stage_new_from_clone to reset predecessor to None.
     fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError>;
 
-    /// Atomically replaces the Holon's 'property_map'.
-    fn update_property_map(&mut self, map: PropertyMap) -> Result<(), HolonError>;
-
     /// Adds a property to the Holon's 'property_map' if one does not exist with the given name,
     /// otherwise replaces the value of such.
     fn with_property_value(
@@ -158,3 +154,6 @@ pub trait WriteableHolonState {
         value: BaseValue,
     ) -> Result<&mut Self, HolonError>;
 }
+
+// todo
+// with_predecessor , descriptor

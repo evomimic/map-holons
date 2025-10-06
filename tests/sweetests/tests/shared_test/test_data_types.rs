@@ -302,7 +302,7 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
                     ))
                 })?;
 
-                let holon_id = HolonId::from(holon.get_local_id().map_err(|e| {
+                let holon_id = HolonId::from(holon.holon_id().map_err(|e| {
                     HolonError::InvalidHolonReference(format!(
                         "Couldn't resolve TestReference for SavedHolon({}): {}",
                         key, e

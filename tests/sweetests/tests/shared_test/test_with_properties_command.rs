@@ -45,7 +45,7 @@ pub async fn execute_with_properties(
     info!("Original Holon: {:?}", original_holon);
 
     // 3. Create the expected holon by applying the property updates
-    let expected_holon = original_holon
+    let mut expected_holon = original_holon
         .clone_holon(context)
         .expect("Failed to clone original holon into expected holon");
 

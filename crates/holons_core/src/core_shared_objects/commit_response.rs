@@ -1,6 +1,5 @@
-use crate::core_shared_objects::{Holon, ReadableHolonState};
-use base_types::{MapInteger, MapString};
-use core_types::{HolonError, LocalId};
+use crate::core_shared_objects::Holon;
+use base_types::MapInteger;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CommitResponse {
@@ -29,21 +28,5 @@ impl CommitResponse {
             CommitRequestStatus::Complete => true,
             CommitRequestStatus::Incomplete => false,
         }
-    }
-    pub fn find_local_id_by_key(&self, k: &MapString) -> Result<LocalId, HolonError> {
-        for holon in &self.saved_holons {
-            if let Some(key) = holon.get_key()? {
-                // Check if the key matches the given key `k`
-                if &key == k {
-                    // Return the LocalId if a match is found
-                    return holon.get_local_id();
-                }
-            }
-        }
-        // Return an error if no matching Holon is found
-        Err(HolonError::HolonNotFound(format!(
-            "No saved Holon with key {:?} was found in commit response",
-            k.to_string(),
-        )))
     }
 }

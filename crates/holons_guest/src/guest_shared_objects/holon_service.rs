@@ -8,7 +8,7 @@ use crate::{
 };
 use core_types::HolonError;
 use hdi::prelude::{ActionHash, Path};
-use holons_core::core_shared_objects::Holon;
+use holons_core::core_shared_objects::SavedHolon;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use integrity_core_types::LocalId;
@@ -63,7 +63,7 @@ pub fn create_local_path(
 pub fn get_holon_by_path(
     path_name: String,
     linktype: LinkTypes,
-) -> Result<Option<Holon>, HolonError> {
+) -> Result<Option<SavedHolon>, HolonError> {
     let path = Path::from(path_name);
     let link_type = linktype;
     let input = GetPathInput { path: path.clone(), link_type };

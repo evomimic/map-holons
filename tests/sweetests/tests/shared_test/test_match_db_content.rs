@@ -36,7 +36,7 @@ pub async fn execute_match_db_content(
     for (_key, expected_holon) in test_state.created_holons.clone() {
         // Get HolonId
         let holon_id: HolonId =
-            expected_holon.get_local_id().expect("Failed to get local ID").into();
+            expected_holon.holon_id().expect("Failed to get HolonId").into();
 
         // 3. Build the get_holon_by_id DanceRequest
         let request = build_get_holon_by_id_dance_request(holon_id.clone())

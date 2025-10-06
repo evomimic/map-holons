@@ -43,8 +43,7 @@ pub async fn execute_stage_new_version(
             panic!("Holon with key {:?} not found in created_holons", original_holon_key)
         });
 
-    let original_holon_id =
-        HolonId::Local(original_holon.get_local_id().expect("Failed to get LocalId"));
+    let original_holon_id = original_holon.holon_id().expect("Failed to get LocalId");
 
     // 2. Build the DanceRequest
     let request = build_stage_new_version_dance_request(original_holon_id.clone())
