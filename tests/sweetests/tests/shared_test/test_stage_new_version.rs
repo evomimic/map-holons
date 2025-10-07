@@ -1,3 +1,4 @@
+use holons_core::{get_staged_holon_by_base_key, get_staged_holon_by_versioned_key};
 use pretty_assertions::assert_eq;
 use rstest::*;
 use std::collections::BTreeMap;
@@ -81,7 +82,7 @@ pub async fn execute_stage_new_version(
     );
 
     // 7. Verify the new version as the original holon as its predecessor
-    let predecessor = version_1.get_predecessor(context).unwrap();
+    let predecessor = version_1.predecessor(context).unwrap();
 
     assert_eq!(
         predecessor,
@@ -91,8 +92,7 @@ pub async fn execute_stage_new_version(
 
     // // 8. Verify new version's key matches original holon's key and that it is the ONLY staged
     // // holon whose key matches.
-    // let by_base =
-    //     staging_service.borrow().get_staged_holon_by_base_key(&original_holon_key).unwrap();
+    // let by_base = get_staged_holon_by_base_key(context, &original_holon_key).unwrap();
 
     // assert_eq!(
     //     version_1,
@@ -101,10 +101,9 @@ pub async fn execute_stage_new_version(
     // );
 
     // // 9. Verify staged holon retrieval by versioned key
-    // let by_version = staging_service
-    //     .borrow()
-    //     .get_staged_holon_by_versioned_key(&version_1.versioned_key(context).unwrap())
-    //     .unwrap();
+    // let by_version =
+    //     get_staged_holon_by_versioned_key(context, &version_1.versioned_key(context).unwrap())
+    //         .unwrap();
 
     // assert_eq!(
     //     version_1,
@@ -150,10 +149,9 @@ pub async fn execute_stage_new_version(
     // );
 
     // // Confirm that get_staged_holon_by_versioned_key returns the new version
-    // let versioned_lookup = staging_service
-    //     .borrow()
-    //     .get_staged_holon_by_versioned_key(&version_2.versioned_key(context).unwrap())
-    //     .unwrap();
+    // let versioned_lookup =
+    //     get_staged_holon_by_versioned_key(context, &version_2.versioned_key(context).unwrap())
+    //         .unwrap();
 
     // assert_eq!(
     //     version_2,
@@ -164,10 +162,9 @@ pub async fn execute_stage_new_version(
     // info!("Success! Second new version Holon matched expected content and relationships.");
 
     // // Confirm that get_staged_holon_by_base_key returns a duplicate error.
-    // let book_holon_staged_reference_result = staging_service
-    //     .borrow()
-    //     .get_staged_holon_by_base_key(&original_holon_key)
-    //     .expect_err("Expected duplicate error");
+    // let book_holon_staged_reference_result =
+    //     get_staged_holon_by_base_key(context, &original_holon_key)
+    //         .expect_err("Expected duplicate error");
     // assert_eq!(
     //     HolonError::DuplicateError(
     //         "Holons".to_string(),
@@ -179,7 +176,7 @@ pub async fn execute_stage_new_version(
 
     // // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
     // let book_holon_staged_references =
-    //     staging_service.borrow().get_staged_holons_by_base_key(&original_holon_key).unwrap();
+    //     get_staged_holons_by_base_key(context, &original_holon_key).unwrap();
     // let holon_references: Vec<HolonReference> =
     //     book_holon_staged_references.iter().map(|h| HolonReference::Staged(h.clone())).collect();
     // assert_eq!(

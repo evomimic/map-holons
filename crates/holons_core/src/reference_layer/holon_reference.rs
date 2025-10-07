@@ -110,7 +110,7 @@ impl HolonReference {
         }
     }
 
-    pub fn get_predecessor(
+    pub fn predecessor(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
