@@ -87,6 +87,14 @@ impl Holon {
             _ => false,
         }
     }
+
+    // pub fn as_readable(&self) -> &dyn ReadableHolonState {
+    //     self
+    // }
+
+    // pub fn as_mutable(&mut self) -> &dyn WriteableHolonState {
+    //     &mut self
+    // }
 }
 
 // =================================
