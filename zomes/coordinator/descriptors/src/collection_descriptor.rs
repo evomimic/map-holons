@@ -132,14 +132,14 @@
 //     context: &dyn HolonsContextBehavior,
 //     definition: &CollectionTypeDefinition,
 // ) -> Result<MapString, HolonError> {
-//     // let mut name = target_type.get_property_value(context, PropertyName(MapString("type_name".to_string())))?;
+//     // let mut name = target_type.property_value(context, PropertyName(MapString("type_name".to_string())))?;
 //     // append "Collection"
 //     match &definition.collection_type_name {
 //         Some(name) => Ok(MapString(name.0.clone())),
 //         None => {
 //             let holon_type_name = PropertyName(MapString("type_name".to_string()));
 //             let base_name =
-//                 &definition.target_holon_type.get_property_value(context, &holon_type_name)?;
+//                 &definition.target_holon_type.property_value(context, &holon_type_name)?;
 //             if definition.max_cardinality.0 == 1 {
 //                 Ok(MapString(format!("{:?}Collection", base_name)))
 //             } else {

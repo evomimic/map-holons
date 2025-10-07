@@ -16,7 +16,7 @@
 //!
 //! 2. **Encapsulation:**
 //!    - The internal map (`map`) is private, with access provided only through controlled public methods like
-//!      `get_related_holons`, `insert`, and `remove`. This ensures:
+//!      `related_holons`, `insert`, and `remove`. This ensures:
 //!        - Better control over how relationships and holons are accessed or modified.
 //!        - Prevention of unintended direct manipulation of the internal map.
 //!
@@ -25,7 +25,7 @@
 //!        - `Rc` provides shared ownership.
 //!        - `RefCell` enables interior mutability, allowing updates to individual holon collections
 //!          without requiring mutable access to the entire map.
-//!    - The `get_related_holons` method enforces immutability at the API level by returning
+//!    - The `related_holons` method enforces immutability at the API level by returning
 //!      `Rc<HolonCollection>` instead of exposing the underlying `RefCell`.
 //!
 //! 4. **Serialization and Deserialization:**
@@ -43,7 +43,7 @@
 //!
 //! The `StagedRelationshipMap` is intended for use cases where relationships and their associated
 //! holon collections are being actively modified or constructed. Key methods include:
-//! - `get_related_holons`: Retrieves a holon collection for a given relationship as an immutable reference
+//! - `related_holons`: Retrieves a holon collection for a given relationship as an immutable reference
 //!   (`Rc<HolonCollection>`).
 //! - `insert` and `remove`: Add or remove relationships and their associated collections.
 //! - `clone_for_new_source`: Produces a deep clone of the entire map and its holon collections, resetting
@@ -119,7 +119,7 @@ impl ReadableRelationship for StagedRelationshipMap {
     // ====================
 
     // See TODO on trait: clone required here due to current trait return type.
-    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
+    fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection
             Rc::new(rc_refcell.borrow().clone())

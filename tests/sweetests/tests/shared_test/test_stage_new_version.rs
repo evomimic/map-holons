@@ -103,7 +103,7 @@ pub async fn execute_stage_new_version(
     // // 9. Verify staged holon retrieval by versioned key
     // let by_version = staging_service
     //     .borrow()
-    //     .get_staged_holon_by_versioned_key(&version_1.get_versioned_key(context).unwrap())
+    //     .get_staged_holon_by_versioned_key(&version_1.versioned_key(context).unwrap())
     //     .unwrap();
 
     // assert_eq!(
@@ -152,7 +152,7 @@ pub async fn execute_stage_new_version(
     // // Confirm that get_staged_holon_by_versioned_key returns the new version
     // let versioned_lookup = staging_service
     //     .borrow()
-    //     .get_staged_holon_by_versioned_key(&version_2.get_versioned_key(context).unwrap())
+    //     .get_staged_holon_by_versioned_key(&version_2.versioned_key(context).unwrap())
     //     .unwrap();
 
     // assert_eq!(

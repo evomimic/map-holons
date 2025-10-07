@@ -51,13 +51,13 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
     match response.body {
         ResponseBody::Holon(holon) => {
             let key =
-                holon.get_key().expect("Holon should have a key").expect("Key should not be None");
+                holon.key().expect("Holon should have a key").expect("Key should not be None");
             test_state.created_holons.insert(key, holon);
         }
         ResponseBody::Holons(holons) => {
             for holon in holons {
                 let key = holon
-                    .get_key()
+                    .key()
                     .expect("Holon should have a key")
                     .expect("Key should not be None");
                 test_state.created_holons.insert(key, holon);

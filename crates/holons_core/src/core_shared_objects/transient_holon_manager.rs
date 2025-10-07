@@ -21,7 +21,7 @@ use crate::{
 ///
 /// Regardless of the source phase, cloned Holons always begin their lifecycle as `TransientHolon`.
 pub trait ToHolonCloneModel {
-    fn get_holon_clone_model(
+    fn holon_clone_model(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCloneModel, HolonError>;

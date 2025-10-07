@@ -13,7 +13,8 @@ use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolon
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
-        CommitRequestStatus, CommitResponse, Holon, ReadableHolonState, HolonCollection, StagedHolon,
+        CommitRequestStatus, CommitResponse, Holon, HolonCollection, ReadableHolonState,
+        StagedHolon,
     },
     reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
@@ -205,7 +206,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
             }
             StagedState::ForUpdateChanged => {
                 // Changed holons MUST have an original_id
-                let original_id = staged_holon.get_original_id();
+                let original_id = staged_holon.original_id();
                 if let Some(id) = original_id {
                     let original_holon_node_hash = try_action_hash_from_local_id(&id)?;
                     let previous_holon_node_hash =

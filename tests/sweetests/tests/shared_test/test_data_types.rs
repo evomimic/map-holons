@@ -219,8 +219,8 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
 
     /// Converts a vector of [`HolonReference`]s into a vector of [`TestReference`]s.
     ///
-    /// For `HolonReference::Smart` entries, this method calls `get_key` on the `SmartReference`.
-    /// If `get_key` fails or returns `None`, an error is returned.
+    /// For `HolonReference::Smart` entries, this method calls `key` on the `SmartReference`.
+    /// If `key` fails or returns `None`, an error is returned.
     ///
     /// # Arguments
     ///

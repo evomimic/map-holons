@@ -77,7 +77,7 @@ impl ReadableRelationship for RelationshipMap {
     //    DATA ACCESSORS
     // ====================
 
-    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
+    fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_collection) = self.map.get(relationship_name) {
             // Clone the inner HolonCollection
             Rc::clone(rc_collection)

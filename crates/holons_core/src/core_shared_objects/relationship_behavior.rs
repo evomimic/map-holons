@@ -36,7 +36,7 @@ pub trait ReadableRelationship {
     // different implementations to return shared ownership types like `Rc<RefCell<_>>`.
     // For now, we’re preserving this behavior to avoid destabilizing the long-lived feature branch;
     // revisit after merge for a more efficient and idiomatic design.
-    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection>;
+    fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection>;
 }
 
 pub trait WritableRelationship {

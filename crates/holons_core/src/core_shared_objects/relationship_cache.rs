@@ -40,7 +40,7 @@ impl RelationshipCache {
     /// to the cache, along with an entry for the requested `relationship_name`. If there are no
     /// target holons for the requested relationship, an empty `HolonCollection` is cached, avoiding
     /// repeated calls to the `fetch_related_holons` method of the `HolonServiceApi`.
-    pub fn get_related_holons(
+    pub fn related_holons(
         &self,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,

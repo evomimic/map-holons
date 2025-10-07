@@ -106,7 +106,7 @@ impl StagedHolon {
     ) -> Result<Rc<HolonCollection>, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
-        Ok(self.staged_relationships.get_related_holons(relationship_name))
+        Ok(self.staged_relationships.related_holons(relationship_name))
     }
 
     pub fn get_staged_relationship_map(&self) -> Result<StagedRelationshipMap, HolonError> {
@@ -211,14 +211,10 @@ impl ReadableHolonState for StagedHolon {
     }
 
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        Ok(EssentialHolonContent::new(
-            self.property_map.clone(),
-            self.get_key()?,
-            self.errors.clone(),
-        ))
+        Ok(EssentialHolonContent::new(self.property_map.clone(), self.key()?, self.errors.clone()))
     }
 
-    fn get_holon_clone_model(&self) -> HolonCloneModel {
+    fn holon_clone_model(&self) -> HolonCloneModel {
         HolonCloneModel::new(
             self.version.clone(),
             self.original_id.clone(),
@@ -249,7 +245,7 @@ impl ReadableHolonState for StagedHolon {
         }
     }
 
-    fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+    fn key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(inner_value) =
             self.property_map.get(&PropertyName(MapString("key".to_string())))
         {
@@ -265,28 +261,27 @@ impl ReadableHolonState for StagedHolon {
         }
     }
 
-    fn get_original_id(&self) -> Option<LocalId> {
+    fn original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
 
-    fn get_property_value(
+    fn property_value(
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
         Ok(self.property_map.get(property_name).cloned())
     }
 
-    fn get_related_holons(
+    fn related_holons(
         &self,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
-        Ok(self.staged_relationships.get_related_holons(relationship_name))
+        Ok(self.staged_relationships.related_holons(relationship_name))
     }
 
-    fn get_versioned_key(&self) -> Result<MapString, HolonError> {
-        let key = self
-            .get_key()?
-            .ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+    fn versioned_key(&self) -> Result<MapString, HolonError> {
+        let key =
+            self.key()?.ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
 
         Ok(MapString(format!("{}__{}_staged", key.0, &self.version.0.to_string())))
     }
@@ -330,7 +325,7 @@ impl ReadableHolonState for StagedHolon {
 
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
-        let key = match self.get_key() {
+        let key = match self.key() {
             Ok(Some(key)) => key.0,           // Extract the key from MapString
             Ok(None) => "<None>".to_string(), // Key is None
             Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
@@ -472,14 +467,14 @@ mod tests {
         // Add a value to the property map
         let initial_value = BaseValue::IntegerValue(MapInteger(1));
         holon.with_property_value(property_name.clone(), initial_value.clone()).unwrap();
-        assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(initial_value));
+        assert_eq!(holon.property_value(&property_name).unwrap(), Some(initial_value));
         // Update value for the same property name
         let changed_value = BaseValue::StringValue(MapString("changed value".to_string()));
         holon.with_property_value(property_name.clone(), changed_value.clone()).unwrap();
-        assert_eq!(holon.get_property_value(&property_name).unwrap(), Some(changed_value));
+        assert_eq!(holon.property_value(&property_name).unwrap(), Some(changed_value));
         // Remove value by updating to None
         holon.remove_property_value(&property_name).unwrap();
-        assert_eq!(holon.get_property_value(&property_name).unwrap(), None);
+        assert_eq!(holon.property_value(&property_name).unwrap(), None);
     }
 
     // #[test]

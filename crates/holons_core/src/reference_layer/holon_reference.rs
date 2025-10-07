@@ -61,7 +61,7 @@ impl HolonReference {
                 let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
-                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
                         members
                     )));
                 }
@@ -78,7 +78,7 @@ impl HolonReference {
                 let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
-                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
                         members
                     )));
                 }
@@ -97,7 +97,7 @@ impl HolonReference {
                 let members = collection.get_members();
                 if members.len() > 1 {
                     return Err(HolonError::Misc(format!(
-                        "get_related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                        "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
                         members
                     )));
                 }
@@ -296,7 +296,6 @@ impl ReadableHolonImpl for HolonReference {
             HolonReference::Smart(smart_reference) => smart_reference.versioned_key_impl(context),
         }
     }
-
 }
 
 impl WritableHolonImpl for HolonReference {

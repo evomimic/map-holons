@@ -50,7 +50,7 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
 
         for holon in holons {
             let key = holon
-                .get_key()
+                .key()
                 .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
                 .unwrap_or_else(|err| {
                     panic!("Attempt to key() resulted in error: {:?}", err);

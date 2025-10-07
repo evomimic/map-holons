@@ -76,7 +76,7 @@ impl TransientRelationshipMap {
     /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
     /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
     /// `HolonCollection` wrapped in an `Rc` is returned instead.
-    pub fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
+    pub fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection
             Rc::new(rc_refcell.borrow().clone())
@@ -162,7 +162,7 @@ impl ReadableRelationship for TransientRelationshipMap {
     // ====================
 
     // See TODO on trait: clone required here due to current trait return type.
-    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
+    fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
         if let Some(rc_refcell) = self.map.get(relationship_name) {
             // Borrow the RefCell and clone the inner HolonCollection
             Rc::new(rc_refcell.borrow().clone())
