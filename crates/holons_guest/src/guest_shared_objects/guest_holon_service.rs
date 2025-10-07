@@ -306,7 +306,7 @@ impl HolonServiceApi for GuestHolonService {
 
         for smartlink in smartlinks {
             let holon_reference = smartlink.to_holon_reference();
-            collection.add_reference_with_key(smartlink.get_key()?.as_ref(), &holon_reference)?;
+            collection.add_reference_with_key(smartlink.key()?.as_ref(), &holon_reference)?;
         }
         Ok(collection)
     }

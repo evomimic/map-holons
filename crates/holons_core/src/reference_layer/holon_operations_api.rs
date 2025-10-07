@@ -155,7 +155,7 @@ pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollec
     holon_service.get_all_holons_internal(context)
 }
 
-pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
+pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
     let key_option = map.get(&PropertyName(MapString("key".to_string())));
     if let Some(inner_value) = key_option {
         let string_value: String = inner_value.try_into().map_err(|_| {

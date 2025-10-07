@@ -54,7 +54,7 @@ impl HolonCacheAccess for HolonCacheManager {
         Ok(arc_holon)
     }
 
-    fn get_related_holons(
+    fn related_holons(
         &self,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,

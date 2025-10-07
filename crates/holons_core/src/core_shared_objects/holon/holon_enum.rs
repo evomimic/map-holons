@@ -111,10 +111,10 @@ impl ReadableHolonState for Holon {
         }
     }
 
-    fn get_holon_clone_model(&self) -> HolonCloneModel {
+    fn holon_clone_model(&self) -> HolonCloneModel {
         match self {
-            Holon::Transient(h) => h.get_holon_clone_model(),
-            Holon::Staged(h) => h.get_holon_clone_model(),
+            Holon::Transient(h) => h.holon_clone_model(),
+            Holon::Staged(h) => h.holon_clone_model(),
             Holon::Saved(h) => h.holon_clone_model(),
         }
     }
@@ -135,49 +135,49 @@ impl ReadableHolonState for Holon {
         }
     }
 
-    fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+    fn key(&self) -> Result<Option<MapString>, HolonError> {
         match self {
-            Holon::Transient(h) => h.get_key(),
-            Holon::Staged(h) => h.get_key(),
-            Holon::Saved(h) => h.get_key(),
+            Holon::Transient(h) => h.key(),
+            Holon::Staged(h) => h.key(),
+            Holon::Saved(h) => h.key(),
         }
     }
 
-    fn get_original_id(&self) -> Option<LocalId> {
+    fn original_id(&self) -> Option<LocalId> {
         match self {
-            Holon::Transient(h) => h.get_original_id(),
-            Holon::Staged(h) => h.get_original_id(),
-            Holon::Saved(h) => h.get_original_id(),
+            Holon::Transient(h) => h.original_id(),
+            Holon::Staged(h) => h.original_id(),
+            Holon::Saved(h) => h.original_id(),
         }
     }
 
-    fn get_property_value(
+    fn property_value(
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
         match self {
-            Holon::Transient(h) => h.get_property_value(property_name),
-            Holon::Staged(h) => h.get_property_value(property_name),
-            Holon::Saved(h) => h.get_property_value(property_name),
+            Holon::Transient(h) => h.property_value(property_name),
+            Holon::Staged(h) => h.property_value(property_name),
+            Holon::Saved(h) => h.property_value(property_name),
         }
     }
 
-    fn get_related_holons(
+    fn related_holons(
         &self,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
         match self {
-            Holon::Transient(h) => h.get_related_holons(relationship_name),
-            Holon::Staged(h) => h.get_related_holons(relationship_name),
-            Holon::Saved(h) => h.get_related_holons(relationship_name),
+            Holon::Transient(h) => h.related_holons(relationship_name),
+            Holon::Staged(h) => h.related_holons(relationship_name),
+            Holon::Saved(h) => h.related_holons(relationship_name),
         }
     }
 
-    fn get_versioned_key(&self) -> Result<MapString, HolonError> {
+    fn versioned_key(&self) -> Result<MapString, HolonError> {
         match self {
-            Holon::Transient(h) => h.get_versioned_key(),
-            Holon::Staged(h) => h.get_versioned_key(),
-            Holon::Saved(h) => h.get_versioned_key(),
+            Holon::Transient(h) => h.versioned_key(),
+            Holon::Staged(h) => h.versioned_key(),
+            Holon::Saved(h) => h.versioned_key(),
         }
     }
 

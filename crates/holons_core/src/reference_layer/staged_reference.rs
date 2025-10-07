@@ -140,7 +140,7 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<TransientReference, HolonError> {
         self.is_accessible(context, AccessType::Clone)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon_clone_model = rc_holon.read().unwrap().get_holon_clone_model();
+        let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
         let transient_behavior_service =
             context.get_space_manager().get_transient_behavior_service();
@@ -224,7 +224,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        borrowed_holon.get_key().clone()
+        borrowed_holon.key().clone()
     }
 
     fn predecessor_impl(
@@ -238,7 +238,7 @@ impl ReadableHolonImpl for StagedReference {
         let members = collection.get_members();
         if members.len() > 1 {
             return Err(HolonError::Misc(format!(
-                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                "related_holons for PREDECESSOR returned multiple members: {:#?}",
                 members
             )));
         }
@@ -258,7 +258,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        borrowed_holon.get_property_value(property_name)
+        borrowed_holon.property_value(property_name)
     }
 
     fn related_holons_impl(
@@ -270,7 +270,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let holon = rc_holon.read().unwrap();
 
-        holon.get_related_holons(relationship_name)
+        holon.related_holons(relationship_name)
     }
 
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
@@ -286,7 +286,7 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<MapString, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let holon = self.get_rc_holon(context)?;
-        let key = holon.read().unwrap().get_versioned_key()?;
+        let key = holon.read().unwrap().versioned_key()?;
 
         Ok(key)
     }
@@ -407,13 +407,13 @@ impl WritableHolonImpl for StagedReference {
 }
 
 impl ToHolonCloneModel for StagedReference {
-    fn get_holon_clone_model(
+    fn holon_clone_model(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCloneModel, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon_clone_model = rc_holon.read().unwrap().get_holon_clone_model();
+        let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
         Ok(holon_clone_model)
     }
