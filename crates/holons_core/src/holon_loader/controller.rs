@@ -12,25 +12,31 @@
 
 use tracing::info;
 
+use crate::reference_layer::TransientReference;
+use crate::{
+    // Reference-layer high-level operations
+    commit_api,
+    create_empty_transient_holon,
+    // Core reference-layer traits/types
+    HolonReference,
+    HolonsContextBehavior,
+    ReadableHolon,
+    WritableHolon,
+};
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
 use type_names;
-use type_names::CorePropertyTypeName::{DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, ResponseStatusCode};
-use type_names::CoreRelationshipTypeName::HasLoadError;
-use crate::{
-    // Reference-layer high-level operations
-    commit_api, create_empty_transient_holon,
-    // Core reference-layer traits/types
-    HolonReference, HolonsContextBehavior, ReadableHolon, WritableHolon,
+use type_names::CorePropertyTypeName::{
+    DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, ResponseStatusCode,
 };
-use crate::reference_layer::TransientReference;
+use type_names::CoreRelationshipTypeName::HasLoadError;
 
 // Loader modules and helpers
 use super::errors as E;
 use crate::holon_loader::loader_holon_mapper::{LoaderHolonMapper, MapperOutput};
 use crate::holon_loader::loader_ref_resolver::{LoaderRefResolver, ResolverOutcome};
 
-const ERROR_TYPE_KEY:                   &str = "HolonErrorType";
+const ERROR_TYPE_KEY: &str = "HolonErrorType";
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -107,10 +113,8 @@ impl HolonLoaderController {
         let queued_relationship_references =
             std::mem::take(&mut mapper_output.queued_relationship_references);
 
-        let ResolverOutcome {
-            links_created,
-            errors: mut resolver_errors,
-        } = LoaderRefResolver::resolve_relationships(context, queued_relationship_references)?;
+        let ResolverOutcome { links_created, errors: mut resolver_errors } =
+            LoaderRefResolver::resolve_relationships(context, queued_relationship_references)?;
 
         // If Pass 2 produced any errors, build the response now and return (skip commit).
         if !resolver_errors.is_empty() {
@@ -194,7 +198,11 @@ impl HolonLoaderController {
             let mut out = Vec::with_capacity(errors.len());
             for err in errors {
                 // Use your existing helper which sets {error_type, error_message} and the descriptor:
-                out.push(E::make_error_holon_typed(context, holon_error_type_descriptor.clone(), err)?);
+                out.push(E::make_error_holon_typed(
+                    context,
+                    holon_error_type_descriptor.clone(),
+                    err,
+                )?);
             }
             return Ok(out);
         }
@@ -219,7 +227,7 @@ impl HolonLoaderController {
         holons_committed: i64,
         errors_encountered: i64,
         summary: String,
-        mut error_holon_references: Vec<TransientReference>,
+        transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
         // Build response as a transient with properties…
         let response_reference = create_empty_transient_holon(
@@ -253,17 +261,17 @@ impl HolonLoaderController {
             BaseValue::StringValue(MapString(summary)),
         )?;
 
-        if !error_holon_references.is_empty() {
+        // attach any error holons via HAS_LOAD_ERROR
+        if !transient_error_references.is_empty() {
+            let error_holon_references: Vec<HolonReference> =
+                transient_error_references.into_iter().map(HolonReference::Transient).collect();
+
             response_reference.add_related_holons(
                 context,
-                HasLoadError.as_relationship_name(),
-                error_holon_references
-                    .drain(..)
-                    .map(|t| HolonReference::Transient(t))
-                    .collect::<Vec<HolonReference>>(),
+                HasLoadError.as_relationship_name().clone(),
+                error_holon_references,
             )?;
         }
-
 
         Ok(response_reference)
     }
@@ -279,7 +287,5 @@ fn resolve_holon_error_type_descriptor(
 ) -> Result<HolonReference, HolonError> {
     // TODO: real lookup (by known key or by type name).
     // For now, we return an error to exercise the untyped fallback.
-    Err(HolonError::HolonNotFound(
-        "HolonErrorType descriptor not found".into(),
-    ))
+    Err(HolonError::HolonNotFound("HolonErrorType descriptor not found".into()))
 }

@@ -87,7 +87,7 @@ impl fmt::Display for ResponseStatusCode {
             ResponseStatusCode::Accepted => write!(f, "202 -- Accepted"),
             ResponseStatusCode::BadRequest => write!(f, "400 -- Bad Request"),
             ResponseStatusCode::Unauthorized => write!(f, "401 -- Unauthorized"),
-            ResponseStatusCode::Forbidden => write!(f, "403 -- Unauthorized"),
+            ResponseStatusCode::Forbidden => write!(f, "403 -- Forbidden"),
             ResponseStatusCode::NotFound => write!(f, "404 -- Not Found"),
             ResponseStatusCode::Conflict => write!(f, "409 -- Conflict"),
             ResponseStatusCode::ServerError => write!(f, "500 -- ServerError"),

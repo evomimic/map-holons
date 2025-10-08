@@ -12,21 +12,24 @@
 use std::collections::HashMap;
 use tracing::{debug, instrument};
 
+use crate::core_shared_objects::holon::state::AccessType;
+use crate::core_shared_objects::holon::HolonCloneModel;
+use crate::core_shared_objects::HolonBehavior;
+use crate::reference_layer::{TransientReference, WritableHolon};
+use crate::{
+    // High-level staging façade (re-exported from reference_layer::holon_operations_api)
+    stage_new_holon_api,
+    // Re-exported in holons_core::lib
+    HolonReference,
+    HolonsContextBehavior,
+    ReadableHolon,
+    StagedReference,
+};
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, PropertyMap, PropertyValue, PropertyName};
+use core_types::{HolonError, PropertyMap, PropertyName, PropertyValue};
 use type_names;
 use type_names::CorePropertyTypeName::Key;
 use type_names::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
-use crate::{
-    // Re-exported in holons_core::lib
-    HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference,
-    // High-level staging façade (re-exported from reference_layer::holon_operations_api)
-    stage_new_holon_api,
-};
-use crate::reference_layer::{TransientReference, WritableHolon};
-use crate::core_shared_objects::holon::state::AccessType;
-use crate::core_shared_objects::HolonBehavior;
-use crate::core_shared_objects::holon::HolonCloneModel;
 
 /// The mapper's output: staged nodes and queued edge-descriptors, owned
 /// for the duration of the load call.
@@ -102,33 +105,38 @@ impl LoaderHolonMapper {
         loader_transient.is_accessible(context, AccessType::Read)?;
 
         // Read the LoaderHolon's current property map (owned snapshot)
-        let mut properties: PropertyMap = loader_transient.get_raw_property_map(context)?;
+        let properties: PropertyMap = loader_transient.get_raw_property_map(context)?;
 
         // Identify this loader in error messages using its TemporaryId (stable within this call).
         let loader_id = loader_transient.get_temporary_id();
 
         // Ensure key exists (but do NOT remove it—leave it to be staged).
         let key_prop: PropertyName = Key.as_property_name();
-        let key_value: PropertyValue = properties
-            .get(&key_prop)
-            .cloned()
-            .ok_or_else(|| HolonError::EmptyField(format!(
+        let key_value: PropertyValue = properties.get(&key_prop).cloned().ok_or_else(|| {
+            HolonError::EmptyField(format!(
                 "LoaderHolon.key missing (loader transient: {})",
                 loader_id
-            )))?;
+            ))
+        })?;
 
-        // Build a properties-only clone model (no relationships, no predecessor).
-        let clone_model = HolonCloneModel::new(MapInteger(0), None, properties, None);
-
-        // Mint a fresh transient and stage it.
-        let transient_behavior_service = context.get_space_manager().get_transient_behavior_service();
+        // Mint a fresh empty transient, then copy properties one-by-one (no relationships).
+        let transient_behavior_service =
+            context.get_space_manager().get_transient_behavior_service();
         let transient_behavior = transient_behavior_service.borrow();
-        let target_transient: TransientReference =
-            transient_behavior.new_from_clone_model(clone_model)?;
-        let staged = stage_new_holon_api(context, target_transient)?;
 
         // Convert key_value -> MapString for the return tuple (for logging/diagnostics if needed).
         let key = MapString((&key_value).into());
+
+        // start from an empty holon
+        let target_transient: TransientReference = transient_behavior.create_empty(key.clone())?;
+
+        // apply each property explicitly
+        for (prop_name, prop_value) in properties.into_iter() {
+            target_transient.with_property_value(context, &prop_name, prop_value)?;
+        }
+
+        // Stage it
+        let staged = stage_new_holon_api(context, target_transient)?;
 
         Ok((staged, key))
     }

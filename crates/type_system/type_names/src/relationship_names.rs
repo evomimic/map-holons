@@ -74,6 +74,7 @@ pub enum CoreRelationshipTypeName {
     ElementValueType,
     ElementValueTypeFor,
     Extends,
+    HasInverse,
     HasLoadError,
     HasRelationshipReference,
     InstanceProperties,
