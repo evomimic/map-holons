@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "description": "Validation ruleset for MAP Holon Import format — including structure, reference, type, and key conformance.",
+    "generator": "MAP Types and Schema Refactor — July 2025"
+  },
+  "rules": [
+    {
+      "id": "resolve-refs-across-load-group",
+      "description": "Every $ref must resolve within this file or the files listed in `load_with`.",
+      "scope": "import_file",
+      "severity": "error",
+      "test": "all($refs).resolve_in([this_file] + load_with)",
+      "rule_category": "Reference and Load Resolution"
+    },
+    {
+      "id": "no-unnecessary-load_with",
+      "description": "Each file in `load_with` must resolve at least one $ref. Otherwise it is unnecessary.",
+      "scope": "import_file",
+      "severity": "warning",
+      "test": "all(load_with_files).used_by($refs)",
+      "rule_category": "Reference and Load Resolution"
+    },
+    {
+      "id": "required-key-field-if-keyed",
+      "description": "Holons must include a `key` field unless their type uses `#None.KeyRuleType`.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "type.UsesKeyRule != '#None.KeyRuleType' => key != null",
+      "rule_category": "Keying Logic"
+    },
+    {
+      "id": "key-conforms-to-keyrule",
+      "description": "If a holon has a key, the key must match the output of applying the type's key rule.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "if key != null and type.UsesKeyRule != null => key == apply_key_rule(type.UsesKeyRule, properties)",
+      "rule_category": "Keying Logic"
+    },
+    {
+      "id": "keyless-uses-none-keyrule",
+      "description": "If a holon lacks a key, its type must use `#None.KeyRuleType`.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "if key == null => type.UsesKeyRule == '#None.KeyRuleType'",
+      "rule_category": "Keying Logic"
+    },
+    {
+      "id": "none-keyrule-for-keyless",
+      "description": "If a type uses `#None.KeyRuleType`, its instances must not define a key.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "type.UsesKeyRule == '#None.KeyRuleType' => key == null",
+      "rule_category": "Keying Logic"
+    },
+    {
+      "id": "keyless-holons-must-not-declare-key",
+      "description": "Holons must not declare a key if they are keyless by design.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "type.UsesKeyRule == '#None.KeyRuleType' => key == null",
+      "rule_category": "Keying Logic"
+    },
+    {
+      "id": "relationship-hardcoded-no-params",
+      "description": "`Relationship.KeyRuleType` must not specify `format` or `property_names`.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "if type == '#Relationship.KeyRuleType' => format == null and property_names == null",
+      "rule_category": "Keying Logic"
+    },
+    {
+      "id": "required-properties-exist",
+      "description": "If a type declares required InstanceProperties, they must appear in holon’s properties.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "for p in type.InstanceProperties => p.name in properties",
+      "rule_category": "Instance Requirements"
+    },
+    {
+      "id": "required-relationships-exist",
+      "description": "If a type declares required InstanceRelationships, they must appear in holon’s relationships.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "for r in type.InstanceRelationships => r.name in relationships.name",
+      "rule_category": "Instance Requirements"
+    },
+    {
+      "id": "describedby-abstract-type-forbidden",
+      "description": "A holon must not use `DescribedBy` to reference a type where `is_abstract_type = true`.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "if 'DescribedBy' in relationships => not type.is_abstract_type",
+      "rule_category": "Meta/Type Extension"
+    },
+    {
+      "id": "required-type-field",
+      "description": "Every holon must include a `type` field.",
+      "scope": "holon",
+      "severity": "error",
+      "test": "type != null",
+      "rule_category": "Syntactic Structure"
+    },
+    {
+      "id": "key-must-be-top-level",
+      "title": "Keys Must Be Defined at Top Level",
+      "description": "Any holon that declares a `key` must appear as a top-level entry in the `holons` array. Inline or embedded holon definitions must not include a `key` property.",
+      "authoring_level": "error",
+      "applies_to": "structure",
+      "violation_condition": "Holon with a `key` property is not a top-level entry in the `holons` array.",
+      "validation_severity": "error",
+      "rule_category": "Syntactic Structure"
+    }
+  ]
+}

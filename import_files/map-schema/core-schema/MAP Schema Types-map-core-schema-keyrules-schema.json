@@ -1,0 +1,315 @@
+{
+  "meta": {
+    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
+    "generated_at": "2025-10-08T11:06:19",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-core-schema-keyrules-schema.csv"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json",
+      "MAP Schema Types-map-core-schema-property-types.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MAP Key Rule Schema",
+      "type": "#SchemaType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "MAP Key Rule Schema",
+        "type_name_plural": "MAP Key Rule Schemas",
+        "display_name": "MAP Key Rule Schema",
+        "display_name_plural": "MAP Key Rule Schemas",
+        "instance_type_kind": "Holon",
+        "description": "Groups all type descriptors related to holon key derivation strategies in MAP.",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        },
+        {
+          "name": "DependsOn",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        }
+      ]
+    },
+    {
+      "key": "KeyRuleType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": true,
+        "type_name": "KeyRuleType",
+        "type_name_plural": "KeyRuleTypes",
+        "display_name": "Abstract Key Rule Type",
+        "display_name_plural": "Abstract Key Rule Types",
+        "instance_type_kind": "Holon",
+        "description": "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaHolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "FormatRule",
+        "type_name_plural": "FormatRules",
+        "display_name": "Format Key Rule Type",
+        "display_name_plural": "Format Key Rule Types",
+        "instance_type_kind": "Holon",
+        "description": "Key rule defined by a template_string plus an ordered list of PropertyTypes used as template parameters."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#TemplateString.PropertyType"
+          }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "#(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
+            },
+            {
+              "$ref": "#(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumVariantRule",
+      "type": "#FormatRule.KeyRuleType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "EnumVariantRule",
+        "type_name_plural": "EnumVariantRules",
+        "display_name": "Enum Variant Rule",
+        "display_name_plural": "Enum Variant Rules",
+        "instance_type_kind": "Holon",
+        "description": "For enum-variant descriptors, derive keys as {EnumName}.{VariantName} (e.g., DeletionSemantic.Allow, TypeKind.Holon)."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "TypeNameRule",
+      "type": "#FormatRule.KeyRuleType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "TypeNameRule",
+        "type_name_plural": "TypeNameRules",
+        "display_name": "Type Name Rule",
+        "display_name_plural": "Type Name Rules",
+        "instance_type_kind": "Holon",
+        "description": "Generates a key from the holon's type_name property only."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "TypeKindRule",
+      "type": "#FormatRule.KeyRuleType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "TypeKindRule",
+        "type_name_plural": "TypeKindRules",
+        "display_name": "TypeKind Rules",
+        "display_name_plural": "TypeKind Rules",
+        "instance_type_kind": "Holon",
+        "description": "Generates a key from the holon's type_name and type_kind properties."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "RelationshipRule.KeyRuleType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "RelationshipRule",
+        "type_name_plural": "RelationshipRules",
+        "display_name": "Relationship Key Rule Type",
+        "display_name_plural": "Relationship Key Rule Types",
+        "instance_type_kind": "Holon",
+        "description": "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ExtendedTypeRule.KeyRuleType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "ExtendedTypeRule",
+        "type_name_plural": "ExtendedTypeRules",
+        "display_name": "Extended Type Key Rule Type",
+        "display_name_plural": "Extended Type Key Rule Types",
+        "instance_type_kind": "Holon",
+        "description": "Hardcoded rule: <type_name>.<extends.key>"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "NoneRule.KeyRuleType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "NoneRule",
+        "type_name_plural": "NoneRules",
+        "display_name": "None Key Rule Type",
+        "display_name_plural": "None Key Rule Types",
+        "instance_type_kind": "Holon",
+        "description": "Indicates a keyless holon. Must be embedded and never referenced."
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        }
+      ]
+    }
+  ]
+}
