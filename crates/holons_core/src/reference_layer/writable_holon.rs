@@ -29,11 +29,11 @@ pub trait WritableHolon: WritableHolonImpl {
     /// ```
     #[inline]
     fn add_related_holons<T: ToRelationshipName>(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         name: T,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::add_related_holons_impl(
             self,
             context,
@@ -54,11 +54,11 @@ pub trait WritableHolon: WritableHolonImpl {
     /// ```
     #[inline]
     fn remove_related_holons<T: ToRelationshipName>(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         name: T,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::remove_related_holons_impl(
             self,
             context,
@@ -81,11 +81,11 @@ pub trait WritableHolon: WritableHolonImpl {
     /// ```
     #[inline]
     fn with_property_value<N: ToPropertyName, V: ToBaseValue>(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         name: N,
         value: V,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::with_property_value_impl(
             self,
             context,
@@ -105,10 +105,10 @@ pub trait WritableHolon: WritableHolonImpl {
     /// ```
     #[inline]
     fn remove_property_value<T: ToPropertyName>(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         name: T,
-    ) -> Result<(), HolonError> {
+    ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::remove_property_value_impl(self, context, name.to_property_name())
     }
 
@@ -117,7 +117,7 @@ pub trait WritableHolon: WritableHolonImpl {
     /// This is a plain forwarder; no ergonomic conversion is applied.
     #[inline]
     fn with_descriptor(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         descriptor: HolonReference,
     ) -> Result<(), HolonError> {
@@ -129,7 +129,7 @@ pub trait WritableHolon: WritableHolonImpl {
     /// This is a plain forwarder; no ergonomic conversion is applied.
     #[inline]
     fn with_predecessor(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         predecessor: Option<HolonReference>,
     ) -> Result<(), HolonError> {

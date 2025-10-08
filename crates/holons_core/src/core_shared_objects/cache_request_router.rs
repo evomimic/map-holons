@@ -97,7 +97,7 @@ impl HolonCacheAccess for CacheRequestRouter {
     /// Retrieves a collection of `Holon`s related to the `source_holon_id` by a given `relationship_name`.
     /// Delegates to the `local_cache_manager` if the `ServiceRoute` is `Local`.
     /// Returns an error if the route is not `Local` or cannot be resolved.
-    fn get_related_holons(
+    fn related_holons(
         &self,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
@@ -106,7 +106,7 @@ impl HolonCacheAccess for CacheRequestRouter {
         match CacheRequestRouter::get_request_route(source_holon_id, &self.cache_routing_policy)? {
             ServiceRoute::Local => {
                 // Delegate to the local cache manager
-                self.local_cache_manager.get_related_holons(source_holon_id, relationship_name)
+                self.local_cache_manager.related_holons(source_holon_id, relationship_name)
             } // ServiceRoute::Proxy(_) => {
               //     // Handle proxy-based requests (if supported in the future)
               //     Err(HolonError::NotImplemented(

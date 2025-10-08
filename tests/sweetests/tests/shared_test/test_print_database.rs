@@ -17,7 +17,7 @@ use holon_dance_builders::get_all_holons_dance::build_get_all_holons_dance_reque
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
-    core_shared_objects::HolonBehavior,
+    core_shared_objects::ReadableHolonState,
     dances::ResponseBody,
     // utils::as_json
 };
@@ -50,7 +50,7 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
 
         for holon in holons {
             let key = holon
-                .get_key()
+                .key()
                 .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
                 .unwrap_or_else(|err| {
                     panic!("Attempt to key() resulted in error: {:?}", err);

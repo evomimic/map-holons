@@ -96,9 +96,9 @@
 //     // // }
 //     //
 //     // for holon in holons.iter().take(300) {
-//     //     let key_result = holon.get_key();
+//     //     let key_result = holon.key();
 //     //     let property_name = PropertyName(MapString("base_type".to_string()));
-//     //     let base_type = holon.get_property_value(&property_name);
+//     //     let base_type = holon.property_value(&property_name);
 //     //     match key_result {
 //     //         Ok(key) => {
 //     //             info!(
@@ -109,7 +109,7 @@
 //     //             debug!("Holon {}", as_json(&holon));
 //     //         }
 //     //         Err(holon_error) => {
-//     //             panic!("Attempt to get_key() resulted in error {:?}", holon_error,);
+//     //             panic!("Attempt to key() resulted in error {:?}", holon_error,);
 //     //         }
 //     //     }
 //     // }

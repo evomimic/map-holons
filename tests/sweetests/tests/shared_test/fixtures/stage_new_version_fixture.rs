@@ -60,14 +60,14 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     // NOTE: Assume this test step executor actually stages TWO new versions from original
     expected_count += 2;
 
-    // //  COMMIT  // all Holons in staging_area
-    // test_case.add_commit_step()?;
+    //  COMMIT  // all Holons in staging_area
+    test_case.add_commit_step()?;
 
-    // //  ENSURE DATABASE COUNT //
-    // test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    //  ENSURE DATABASE COUNT //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    // //  MATCH SAVED CONTENT  //
-    // test_case.add_match_saved_content_step()?;
+    //  MATCH SAVED CONTENT  //
+    test_case.add_match_saved_content_step()?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

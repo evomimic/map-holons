@@ -15,7 +15,7 @@ use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holon_dance_builders::commit_dance::build_commit_dance_request;
 use holons_core::{
-    core_shared_objects::holon::HolonBehavior,
+    core_shared_objects::ReadableHolonState,
     dances::{ResponseBody, ResponseStatusCode},
 };
 // use holons_guest_integrity::HolonNode;
@@ -51,13 +51,13 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
     match response.body {
         ResponseBody::Holon(holon) => {
             let key =
-                holon.get_key().expect("Holon should have a key").expect("Key should not be None");
+                holon.key().expect("Holon should have a key").expect("Key should not be None");
             test_state.created_holons.insert(key, holon);
         }
         ResponseBody::Holons(holons) => {
             for holon in holons {
                 let key = holon
-                    .get_key()
+                    .key()
                     .expect("Holon should have a key")
                     .expect("Key should not be None");
                 test_state.created_holons.insert(key, holon);

@@ -19,7 +19,7 @@ use core_types::HolonId;
 use core_types::{PropertyMap, PropertyName};
 use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
 use holons_core::{
-    core_shared_objects::holon::HolonBehavior,
+    core_shared_objects::ReadableHolonState,
     dances::ResponseStatusCode,
     query_layer::{Node, NodeCollection, QueryExpression},
     HolonReference, ReadableHolon, SmartReference, WritableHolon,
@@ -45,11 +45,11 @@ pub async fn execute_query_relationships(
         .unwrap_or_else(|| panic!("Holon with key {:?} not found in created_holons", source_key));
 
     let source_holon_id = source_holon
-        .get_local_id()
+        .holon_id()
         .expect(&format!("Failed to get local_id for Holon: {:#?}", source_holon));
 
     let holon_reference =
-        HolonReference::Smart(SmartReference::new_from_id(HolonId::Local(source_holon_id)));
+        HolonReference::Smart(SmartReference::new_from_id(source_holon_id));
 
     let node_collection =
         NodeCollection { members: vec![Node::new(holon_reference, None)], query_spec: None };

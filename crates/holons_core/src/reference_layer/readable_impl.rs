@@ -54,6 +54,8 @@ pub trait ReadableHolonImpl {
         context: &dyn HolonsContextBehavior,
     ) -> Result<EssentialHolonContent, HolonError>;
 
+    fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError>;
+
     fn into_model_impl(
         &self,
         context: &dyn HolonsContextBehavior,

@@ -85,9 +85,9 @@ impl HolonCollection {
     pub fn from_parts(state: CollectionState, members: Vec<HolonReference>) -> Self {
         let keyed_index = BTreeMap::new();
 
-        // TODO: This method should reconstitute the keyed_index from members -- but needs member.get_key to not require context first.
+        // TODO: This method should reconstitute the keyed_index from members -- but needs member.key to not require context first.
         // for (index, member) in members.iter().enumerate() {
-        //     if let Some(key) = member.get_key() {
+        //     if let Some(key) = member.key() {
         //         keyed_index.insert(key, index);
         //     }
         // }
@@ -146,7 +146,7 @@ impl HolonCollection {
         Ok(())
     }
 
-    pub fn get_keyed_index(&self) -> BTreeMap<MapString, usize> {
+    pub fn keyed_index(&self) -> BTreeMap<MapString, usize> {
         self.keyed_index.clone()
     }
 

@@ -17,7 +17,7 @@ use crate::shared_test::{
 use holon_dance_builders::delete_holon_dance::build_delete_holon_dance_request;
 use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
 
-use holons_core::{core_shared_objects::HolonBehavior, dances::ResponseStatusCode};
+use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseStatusCode};
 
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
@@ -45,7 +45,10 @@ pub async fn execute_delete_holon(
         .expect("Failed to retrieve holon from test_state's created_holons.");
 
     let local_id =
-        holon_to_delete.get_local_id().expect("Unable to get LocalId from holon_to_delete");
+        match holon_to_delete.holon_id().expect("Unable to get HolonId from holon_to_delete") {
+            HolonId::Local(id) => id,
+            HolonId::External(_) => panic!("Can only delete a Local Holon, found External")
+        };
 
     // 3. Build the delete Holon request
     let request = build_delete_holon_dance_request(local_id.clone())

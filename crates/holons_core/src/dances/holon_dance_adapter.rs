@@ -90,42 +90,21 @@ pub fn add_related_holons_dance(
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::CommandMethod(holon_reference) => {
+        DanceType::CommandMethod(mut holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_add) => {
-                    debug!("Got the Vec<HolonReference>, about to call add_related_holons");
-                    match &holon_reference {
-                        HolonReference::Transient(transient_reference) => {
-                            // Call the add_related_holons method on HolonReference
-                            transient_reference.add_related_holons(
+                    holon_reference.add_related_holons(
                                 context,
                                 relationship_name,
                                 holons_to_add,
                             )?;
-                        }
-                        HolonReference::Staged(staged_reference) => {
-                            staged_reference.add_related_holons(
-                                context,
-                                relationship_name,
-                                holons_to_add,
-                            )?;
-                        }
-                        HolonReference::Smart(_) => {
-                            return Err(HolonError::InvalidHolonReference(
-                                "Cannot add relationships to a SmartReference, which is immutable"
-                                    .to_string(),
-                            ))
-                        }
-                    }
+            
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
                 _ => Err(HolonError::InvalidParameter(
                     "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
                 )),
             }
-            //     }
-            //     Err(e) => Err(e),
-            // }
         }
         _ => Err(HolonError::InvalidParameter(
             "Invalid DanceType: expected CommandMethod(StagedReference), didn't get one"
@@ -313,34 +292,11 @@ pub fn remove_related_holons_dance(
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::CommandMethod(holon_reference) => {
+        DanceType::CommandMethod(mut holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
-                    // Convert Vec<PortableReference> to Vec<HolonReference> inline
-                    debug!("Matched TargetHolons as RequestBody, building holon_refs_vec");
+                    holon_reference.remove_related_holons(context, relationship_name, holons_to_remove)?;
 
-                    debug!("Got the holon_refs_vec, about to call remove_related_holons");
-                    match &holon_reference {
-                        HolonReference::Transient(transient_reference) => {
-                            // Call the remove_related_holons method on HolonReference
-                            transient_reference.remove_related_holons(
-                                context,
-                                relationship_name,
-                                holons_to_remove,
-                            )?;
-                        }
-                        HolonReference::Staged(staged_reference) => {
-                            staged_reference.remove_related_holons(
-                                context,
-                                relationship_name,
-                                holons_to_remove,
-                            )?;
-                        }
-                        HolonReference::Smart(_) => return Err(HolonError::InvalidHolonReference(
-                            "Cannot remove relationships from a SmartReference, which is immutable"
-                                .to_string(),
-                        )),
-                    }
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
                 _ => Err(HolonError::InvalidParameter(
@@ -495,7 +451,7 @@ pub fn with_properties_dance(
     // Get the staged holon
     info!("----- Entered with_properties_dance");
     match request.dance_type {
-        DanceType::CommandMethod(holon_reference) => {
+        DanceType::CommandMethod(mut holon_reference) => {
             match request.body {
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon

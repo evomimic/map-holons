@@ -51,10 +51,9 @@ pub fn setup_book_author_steps_with_context(
     //  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
 
-    let book_transient_reference =
+    let mut book_transient_reference =
         create_empty_transient_holon(&*fixture_context, book_holon_key.clone())?;
-    book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?;
-    book_transient_reference.with_property_value(
+    book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
             &*fixture_context,
             PropertyName(MapString("description".to_string())),
             BaseValue::StringValue(MapString(
@@ -68,14 +67,16 @@ pub fn setup_book_author_steps_with_context(
 
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
-    let book_staged_reference = stage_new_holon_api(&*fixture_context, book_transient_reference)?;
+    let mut book_staged_reference =
+        stage_new_holon_api(&*fixture_context, book_transient_reference)?;
 
     // //  STAGE:  Person 1 //
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let person_1_transient_reference =
+    let mut person_1_transient_reference =
         create_empty_transient_holon(&*fixture_context, person_1_key.clone())?;
-    person_1_transient_reference.with_property_value(&*fixture_context, "first name", "Roger")?;
-    person_1_transient_reference.with_property_value(&*fixture_context, "last name", "Briggs")?;
+    person_1_transient_reference
+        .with_property_value(&*fixture_context, "first name", "Roger")?
+        .with_property_value(&*fixture_context, "last name", "Briggs")?;
     test_case.add_stage_holon_step(person_1_transient_reference.clone())?;
 
     let person_1_staged_reference =
@@ -83,10 +84,11 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Person 2 //
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let person_2_transient_reference =
+    let mut person_2_transient_reference =
         create_empty_transient_holon(&*fixture_context, person_2_key.clone())?;
-    person_2_transient_reference.with_property_value(&*fixture_context, "first name", "George")?;
-    person_2_transient_reference.with_property_value(&*fixture_context, "last name", "Smith")?;
+    person_2_transient_reference
+        .with_property_value(&*fixture_context, "first name", "George")?
+        .with_property_value(&*fixture_context, "last name", "Smith")?;
     test_case.add_stage_holon_step(person_2_transient_reference.clone())?;
 
     let person_2_staged_reference =
@@ -94,14 +96,15 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Publisher //
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let publisher_transient_reference =
+    let mut publisher_transient_reference =
         create_empty_transient_holon(&*fixture_context, publisher_key.clone())?;
-    publisher_transient_reference.with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?;
-    publisher_transient_reference.with_property_value(
-        &*fixture_context,
-        Description,
-        "We publish Holons for testing purposes",
-    )?;
+    publisher_transient_reference
+        .with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?
+        .with_property_value(
+            &*fixture_context,
+            Description,
+            "We publish Holons for testing purposes",
+        )?;
     test_case.add_stage_holon_step(publisher_transient_reference.clone())?;
 
     let _publisher_staged_reference =

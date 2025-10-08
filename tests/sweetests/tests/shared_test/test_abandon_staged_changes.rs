@@ -59,7 +59,7 @@ pub async fn execute_abandon_staged_changes(
 
     // 5. If successful, validate that operations on the abandoned Holon fail as expected
     if response.status_code == ResponseStatusCode::OK {
-        if let ResponseBody::HolonReference(abandoned_holon) = &response.body {
+        if let ResponseBody::HolonReference(mut abandoned_holon) = response.body {
             assert_eq!(
                 abandoned_holon.with_property_value(
                     context, // Pass context for proper behavior
@@ -68,7 +68,7 @@ pub async fn execute_abandon_staged_changes(
                 ),
                 Err(HolonError::NotAccessible(
                     format!("{:?}", AccessType::Write),
-                    "Immutable StagedHolon".to_string()
+                    "Immutable".to_string()
                 ))
             );
             debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");

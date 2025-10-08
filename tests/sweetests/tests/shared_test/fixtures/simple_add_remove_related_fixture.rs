@@ -66,7 +66,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // 5) (disabled) Try to remove related holons using invalid relationship name
 
     // Retrieve the book from the context
-    let book_holon_staged_reference =
+    let mut book_holon_staged_reference =
         get_staged_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
 
     // Get its current authors

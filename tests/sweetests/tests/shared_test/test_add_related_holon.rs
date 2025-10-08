@@ -18,7 +18,7 @@ use holon_dance_builders::add_related_holons_dance::build_add_related_holons_dan
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holons_core::{
-    core_shared_objects::{Holon, HolonBehavior},
+    core_shared_objects::{Holon, ReadableHolonState},
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{HolonReference, ReadableHolon, StagedReference},
 };

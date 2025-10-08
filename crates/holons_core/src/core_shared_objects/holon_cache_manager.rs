@@ -53,12 +53,12 @@ impl HolonCacheAccess for HolonCacheManager {
         Ok(rc_holon)
     }
 
-    fn get_related_holons(
+    fn related_holons(
         &self,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Rc<HolonCollection>, HolonError> {
-        self.relationship_cache.borrow().get_related_holons(
+        self.relationship_cache.borrow().related_holons(
             self.holon_service.as_ref(),
             source_holon_id,
             relationship_name,

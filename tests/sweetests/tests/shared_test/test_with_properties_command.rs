@@ -18,7 +18,7 @@ use base_types::{MapInteger, MapString};
 use core_types::HolonId;
 use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
 use holons_core::{
-    core_shared_objects::holon::HolonBehavior,
+    core_shared_objects::ReadableHolonState,
     dances::{ResponseBody, ResponseStatusCode},
     reference_layer::{HolonReference, ReadableHolon, StagedReference, WritableHolon},
 };
@@ -45,7 +45,7 @@ pub async fn execute_with_properties(
     info!("Original Holon: {:?}", original_holon);
 
     // 3. Create the expected holon by applying the property updates
-    let expected_holon = original_holon
+    let mut expected_holon = original_holon
         .clone_holon(context)
         .expect("Failed to clone original holon into expected holon");
 

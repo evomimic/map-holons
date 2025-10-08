@@ -16,7 +16,7 @@ use core_types::{PropertyMap, RelationshipName};
 
 use holons_core::{
     core_shared_objects::holon_pool::SerializableHolonPool,
-    core_shared_objects::{Holon, HolonBehavior, TransientHolon},
+    core_shared_objects::{Holon, ReadableHolonState, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{
@@ -219,8 +219,8 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
 
     /// Converts a vector of [`HolonReference`]s into a vector of [`TestReference`]s.
     ///
-    /// For `HolonReference::Smart` entries, this method calls `get_key` on the `SmartReference`.
-    /// If `get_key` fails or returns `None`, an error is returned.
+    /// For `HolonReference::Smart` entries, this method calls `key` on the `SmartReference`.
+    /// If `key` fails or returns `None`, an error is returned.
     ///
     /// # Arguments
     ///
@@ -302,7 +302,7 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
                     ))
                 })?;
 
-                let holon_id = HolonId::from(holon.get_local_id().map_err(|e| {
+                let holon_id = HolonId::from(holon.holon_id().map_err(|e| {
                     HolonError::InvalidHolonReference(format!(
                         "Couldn't resolve TestReference for SavedHolon({}): {}",
                         key, e

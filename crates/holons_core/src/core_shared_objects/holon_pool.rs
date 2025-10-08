@@ -6,7 +6,7 @@ use std::{
     rc::Rc,
 };
 
-use super::{Holon, HolonBehavior};
+use super::{Holon, ReadableHolonState, WriteableHolonState};
 use crate::utils::uuid::create_temporary_id_from_key;
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -232,11 +232,11 @@ impl HolonPool {
 
     /// Inserts a new Holon into the pool.
     pub fn insert_holon(&mut self, mut holon: Holon) -> Result<TemporaryId, HolonError> {
-        let mut versioned_key = holon.get_versioned_key()?;
+        let mut versioned_key = holon.versioned_key()?;
 
         while self.keyed_index.get(&versioned_key).is_some() {
             holon.increment_version()?;
-            versioned_key = holon.get_versioned_key()?;
+            versioned_key = holon.versioned_key()?;
         }
 
         let id = create_temporary_id_from_key(&versioned_key);

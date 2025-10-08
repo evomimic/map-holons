@@ -17,7 +17,7 @@ use core_types::HolonId;
 use core_types::{PropertyMap, PropertyName};
 use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
 use holons_client::init_client_context;
-use holons_core::{core_shared_objects::holon::HolonBehavior, dances::ResponseBody};
+use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody};
 // use holons_guest_integrity::HolonNode;
 
 /// This function iterates through the expected_holons vector supplied as a parameter
@@ -36,7 +36,7 @@ pub async fn execute_match_db_content(
     for (_key, expected_holon) in test_state.created_holons.clone() {
         // Get HolonId
         let holon_id: HolonId =
-            expected_holon.get_local_id().expect("Failed to get local ID").into();
+            expected_holon.holon_id().expect("Failed to get HolonId").into();
 
         // 3. Build the get_holon_by_id DanceRequest
         let request = build_get_holon_by_id_dance_request(holon_id.clone())

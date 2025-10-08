@@ -13,7 +13,7 @@ pub trait HolonCacheAccess: Debug {
     ///
     fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Rc<RefCell<Holon>>, HolonError>;
 
-    fn get_related_holons(
+    fn related_holons(
         &self,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,

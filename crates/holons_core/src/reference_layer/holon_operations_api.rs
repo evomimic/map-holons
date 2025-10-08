@@ -21,7 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{CommitResponse, Holon, HolonBehavior};
+use crate::core_shared_objects::{CommitResponse, Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
@@ -88,7 +88,6 @@ use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
 /// # Errors
 /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
 ///
-
 pub fn commit_api(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
     let holon_service = context.get_space_manager().get_holon_service();
     let commit_response = holon_service.commit(context)?;
@@ -96,6 +95,10 @@ pub fn commit_api(context: &dyn HolonsContextBehavior) -> Result<CommitResponse,
     Ok(commit_response)
 }
 
+/// Constructor for new TransientHolons. Holons always begin their lifecyle as Transient.
+/// This is the only constructor used for them, where the flow is to begin as empty and then subsequent
+/// mutations can be made: properties & relationships added, etc.
+///
 /// Returns a mutable TransientReference with given 'key' and default constructor values.
 pub fn create_empty_transient_holon(
     context: &dyn HolonsContextBehavior,
@@ -143,7 +146,7 @@ pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollec
     holon_service.get_all_holons(context)
 }
 
-pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
+pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
     let key_option = map.get(&PropertyName(MapString("key".to_string())));
     if let Some(inner_value) = key_option {
         let string_value: String = inner_value.try_into().map_err(|_| {
@@ -155,6 +158,8 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>,
     }
 }
 
+/// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
+/// Returns a duplicate error if multiple found.
 pub fn get_staged_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
@@ -165,6 +170,19 @@ pub fn get_staged_holon_by_base_key(
     staging_service_borrow.get_staged_holon_by_base_key(key)
 }
 
+/// Returns StagedReference's for all Holons that have the same base key.
+/// This can be useful if multiple versions of the same Holon are being staged at the same time.
+pub fn get_staged_holons_by_base_key(
+    context: &dyn HolonsContextBehavior,
+    key: &MapString,
+) -> Result<Vec<StagedReference>, HolonError> {
+    let staging_service = context.get_space_manager().get_staging_behavior_access();
+    let staging_service_borrow = staging_service.borrow();
+
+    staging_service_borrow.get_staged_holons_by_base_key(key)
+}
+
+/// Does a lookup by full (unique) key on staged holons.
 pub fn get_staged_holon_by_versioned_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
@@ -175,6 +193,8 @@ pub fn get_staged_holon_by_versioned_key(
     staging_service_borrow.get_staged_holon_by_versioned_key(key)
 }
 
+/// Convenience method for retrieving a single TransientReference for a base key, when the caller expects there to only be one.
+/// Returns a duplicate error if multiple found.
 pub fn get_transient_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
@@ -185,6 +205,7 @@ pub fn get_transient_holon_by_base_key(
     transient_service_borrow.get_transient_holon_by_base_key(key)
 }
 
+/// Does a lookup by full (unique) key on transient holons.
 pub fn get_transient_holon_by_versioned_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,

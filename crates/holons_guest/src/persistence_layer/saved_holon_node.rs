@@ -2,7 +2,7 @@ use hdi::prelude::{Record, RecordEntry};
 
 use base_types::MapInteger;
 use core_types::HolonError;
-use holons_core::core_shared_objects::{Holon, SavedHolon};
+use holons_core::core_shared_objects::SavedHolon;
 use integrity_core_types::LocalId;
 use holons_guest_integrity::HolonNode;
 
@@ -23,17 +23,17 @@ use holons_guest_integrity::HolonNode;
 /// Constructs a `SavedHolon` from a `HolonNode`.
 ///
 /// This method is called during deserialization from persisted records.
-pub fn try_from_record(record: Record) -> Result<Holon, HolonError> {
+pub fn try_from_record(record: Record) -> Result<SavedHolon, HolonError> {
     let holon_node = get_holon_node_from_record(record.clone())?;
 
-    let holon = SavedHolon::new(
+    let saved_holon = SavedHolon::new(
         LocalId::from_bytes(record.action_address().clone().into_inner()),
         holon_node.property_map,
         holon_node.original_id,
         MapInteger(1),
     );
 
-    Ok(Holon::Saved(holon))
+    Ok(saved_holon)
 }
 
 /// Inflates a 'HolonNode' from the underlying saved 'Record'.
