@@ -1,15 +1,15 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-29T12:19:31",
+    "generated_at": "2025-10-08T11:06:19",
     "export_mode": "by-file",
     "source_files": [
-      "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.csv"
+      "MAP Schema Types-map-core-schema-concrete-value-types.csv"
     ],
     "load_with": [
-      "MAP Meta-Schema 0.0.3-metaschema-abstract-value-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json",
-      "MAP Meta-Schema 0.0.3-metaschema-root.json"
+      "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-root.json"
     ]
   },
   "holons": [
@@ -29,7 +29,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -62,7 +62,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -95,7 +95,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -128,7 +128,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -161,7 +161,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -194,7 +194,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -227,7 +227,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -260,7 +260,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -293,7 +293,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -324,7 +324,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -361,7 +361,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -398,7 +398,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -437,7 +437,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -468,7 +468,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -505,7 +505,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -542,7 +542,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -579,7 +579,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -616,7 +616,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -653,7 +653,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -690,7 +690,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -727,7 +727,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -764,7 +764,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -801,7 +801,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -838,7 +838,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -875,7 +875,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -912,7 +912,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -949,7 +949,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -986,7 +986,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {

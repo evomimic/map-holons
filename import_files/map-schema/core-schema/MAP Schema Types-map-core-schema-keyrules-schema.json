@@ -1,15 +1,15 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-29T12:19:31",
+    "generated_at": "2025-10-08T11:06:19",
     "export_mode": "by-file",
     "source_files": [
-      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.csv"
+      "MAP Schema Types-map-core-schema-keyrules-schema.csv"
     ],
     "load_with": [
-      "MAP Meta-Schema 0.0.3-metaschema-root.json",
-      "MAP Meta-Schema 0.0.3-metaschema-relationship-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-property-types.json"
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json",
+      "MAP Schema Types-map-core-schema-property-types.json"
     ]
   },
   "holons": [
@@ -43,7 +43,7 @@
         {
           "name": "DependsOn",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         }
       ]

@@ -1,25 +1,25 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-29T12:19:31",
+    "generated_at": "2025-10-08T11:06:19",
     "export_mode": "by-file",
     "source_files": [
-      "MAP Meta-Schema 0.0.3-metaschema-root.csv"
+      "MAP Schema Types-map-core-schema-root.csv"
     ],
     "load_with": [
-      "MAP Meta-Schema 0.0.3-metaschema-property-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-relationship-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json"
+      "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
   },
   "holons": [
     {
-      "key": "MAP Metaschema-v0.0.3",
+      "key": "MAP Core Schema-v0.0.4",
       "type": "#SchemaType",
       "properties": {
-        "type_name": "MAP Metaschema-v0.0.3",
-        "display_name": "MAP Metaschema-v0.0.3",
+        "type_name": "MAP Core Schema-v0.0.4",
+        "display_name": "MAP Core Schema-v0.0.4",
         "instance_type_kind": "Holon",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
         "is_abstract_type": false,
@@ -57,7 +57,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -116,7 +116,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -166,7 +166,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -210,7 +210,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -268,7 +268,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -313,7 +313,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -380,6 +380,9 @@
             },
             {
               "$ref": "#(HolonType)-[SourceOf]->(MetaRelationshipType)"
+            },
+            {
+              "$ref": "#(HolonType)-[TargetOf]->(MetaRelationshipType)"
             }
           ]
         }
@@ -401,7 +404,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -480,7 +483,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -545,7 +548,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -589,7 +592,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -634,7 +637,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -692,6 +695,9 @@
             },
             {
               "$ref": "#(HolonType)-[SourceOf]->(MetaRelationshipType)"
+            },
+            {
+              "$ref": "#(HolonType)-[TargetOf]->(MetaRelationshipType)"
             }
           ]
         }
@@ -713,7 +719,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -780,6 +786,9 @@
             },
             {
               "$ref": "#(HolonType)-[SourceOf]->(MetaRelationshipType)"
+            },
+            {
+              "$ref": "#(HolonType)-[TargetOf]->(MetaRelationshipType)"
             }
           ]
         }
@@ -801,7 +810,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -882,7 +891,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {

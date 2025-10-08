@@ -1,16 +1,16 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-09-29T12:19:31",
+    "generated_at": "2025-10-08T11:06:19",
     "export_mode": "by-file",
     "source_files": [
-      "MAP Meta-Schema 0.0.3-metaschema-relationship-types.csv"
+      "MAP Schema Types-map-core-schema-relationship-types.csv"
     ],
     "load_with": [
-      "MAP Meta-Schema 0.0.3-metaschema-root.json",
-      "MAP Meta-Schema 0.0.3-metaschema-abstract-value-types.json",
-      "MAP Meta-Schema 0.0.3-metaschema-keyrules-schema.json",
-      "MAP Meta-Schema 0.0.3-metaschema-concrete-value-types.json"
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json"
     ]
   },
   "holons": [
@@ -35,7 +35,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -86,7 +86,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -143,7 +143,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -193,7 +193,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -249,7 +249,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -299,7 +299,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -355,7 +355,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -405,7 +405,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -461,7 +461,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -511,7 +511,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -567,7 +567,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -617,7 +617,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -673,7 +673,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -723,7 +723,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -779,7 +779,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -829,7 +829,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -885,7 +885,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -923,7 +923,7 @@
         "display_name": "SourceOf",
         "display_name_plural": "SourceOf Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Defines the source holon type for a meta relationship type.",
+        "description": "Inverse of SourceType, from HolonType to MetaRelationshipType.",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -935,7 +935,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -954,6 +954,112 @@
           "name": "InverseOf",
           "target": {
             "$ref": "#(MetaRelationshipType)-[SourceType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#MetaRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(MetaRelationshipType)-[TargetType]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetType",
+        "type_name_plural": "TargetTypeRelationships",
+        "display_name": "TargetType",
+        "display_name_plural": "TargetType Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Defines the target holon type for a meta relationship type.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#MetaRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[TargetOf]->(MetaRelationshipType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TargetOf",
+        "type_name_plural": "TargetOfRelationships",
+        "display_name": "TargetOf",
+        "display_name_plural": "TargetOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of TargetType, from HolonType to MetaRelationshipType.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(MetaRelationshipType)-[TargetType]->(HolonType)"
           }
         },
         {
@@ -991,7 +1097,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1041,7 +1147,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1097,7 +1203,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1147,7 +1253,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1183,56 +1289,6 @@
       ]
     },
     {
-      "key": "(MetaRelationshipType)-[TargetType]->(HolonType)",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "type_name": "TargetType",
-        "type_name_plural": "TargetTypeRelationships",
-        "display_name": "TargetType",
-        "display_name_plural": "TargetType Relationships",
-        "instance_type_kind": "Relationship",
-        "description": "Defines the target holon type for a meta relationship type.",
-        "is_abstract_type": false,
-        "is_definitional": false,
-        "is_ordered": false,
-        "allows_duplicates": false,
-        "min_cardinality": 1,
-        "max_cardinality": 1
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#DeclaredRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#RelationshipRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "SourceType",
-          "target": {
-            "$ref": "#MetaRelationshipType"
-          }
-        },
-        {
-          "name": "TargetType",
-          "target": {
-            "$ref": "#HolonType"
-          }
-        }
-      ]
-    },
-    {
       "key": "(DeclaredRelationshipType)-[TargetType]->(HolonType)",
       "type": "#TypeDescriptor",
       "properties": {
@@ -1253,7 +1309,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1303,7 +1359,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1359,7 +1415,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1409,7 +1465,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1465,7 +1521,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1515,7 +1571,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1571,7 +1627,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1621,7 +1677,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1677,7 +1733,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1727,7 +1783,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1783,7 +1839,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1833,7 +1889,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1889,7 +1945,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1939,7 +1995,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -1995,7 +2051,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
@@ -2045,7 +2101,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Metaschema-v0.0.3"
+            "$ref": "#MAP Core Schema-v0.0.4"
           }
         },
         {
