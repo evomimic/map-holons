@@ -126,8 +126,8 @@ impl LoaderRefResolver {
             &mut outcome,
         );
 
-        // ── Unified worklist: everything that is NOT (declared DESCRIBED_BY) and NOT (declared INVERSE_OF)
-        let unified_queue: Vec<TransientReference> = queued_relationship_references
+        // ── Unified worklist for pass-2c: everything that is NOT (declared DESCRIBED_BY) and NOT (declared INVERSE_OF)
+        let deferred_queue: Vec<TransientReference> = queued_relationship_references
             .into_iter()
             .filter(|lrr| {
                 !Self::is_described_by_declared(context, lrr)
@@ -135,10 +135,10 @@ impl LoaderRefResolver {
             })
             .collect();
 
-        let (created, errors, remaining) = Self::run_fixed_point_unified(
+        let (created, errors, remaining) = Self::process_remaining_references(
             context,
             &mut resolver_state,
-            unified_queue,
+            deferred_queue,
             &mut seen_relationship_edge_keys,
         );
 
@@ -146,10 +146,10 @@ impl LoaderRefResolver {
         outcome.errors.extend(errors);
 
         // Any remaining items could not resolve within the retry budget → explicit errors
-        for lrr in remaining {
+        for relationship_reference in remaining {
             outcome.errors.push(HolonError::InvalidType(format!(
                 "LoaderRelationshipReference could not be resolved after fixed-point retries: {}",
-                Self::brief_lrr_summary(context, &lrr)
+                Self::brief_lrr_summary(context, &relationship_reference)
             )));
         }
 
@@ -345,7 +345,7 @@ impl LoaderRefResolver {
 
     /// After 2a/2b, process all remaining references together.
     /// Removes successes & fatals; retains only deferrables; stops at fixed point.
-    fn run_fixed_point_unified(
+    fn process_remaining_references(
         context: &dyn HolonsContextBehavior,
         resolver_state: &mut ResolverState,
         mut remaining_queue: Vec<TransientReference>,
@@ -355,6 +355,7 @@ impl LoaderRefResolver {
         let mut total_links_created = 0i64;
 
         // Conservative upper bound; usually we break by fixed-point first.
+        // At least 2 passes to allow for progress.
         let mut passes_remaining = (remaining_queue.len() + 1).max(2);
 
         while passes_remaining > 0 {
@@ -884,7 +885,7 @@ impl LoaderRefResolver {
         let (src_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, relationship_reference)?;
 
-        let mut links_created = 0i64;
+        let mut created_link_count = 0i64;
 
         // Precompute declared target identifier for logging
         let declared_target_identifier = Self::best_identifier_for_dedupe(context, &src_endpoint);
@@ -912,7 +913,7 @@ impl LoaderRefResolver {
             }
 
             // Perform the flipped write: declared_source −[declared_name]→ declared_target (original src)
-            links_created += Self::write_relationship(
+            created_link_count += Self::write_relationship(
                 context,
                 staged_source,
                 &declared_name,
@@ -927,7 +928,7 @@ impl LoaderRefResolver {
             );
         }
 
-        Ok(links_created)
+        Ok(created_link_count)
     }
 
     // ─────────────────────────────────────────────────────────────────────

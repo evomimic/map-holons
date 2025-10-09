@@ -12,6 +12,7 @@
 
 use tracing::info;
 
+use crate::holon_loader::errors::make_error_holons_best_effort;
 use crate::reference_layer::TransientReference;
 use crate::{
     // Reference-layer high-level operations
@@ -30,13 +31,10 @@ use type_names::CorePropertyTypeName::{
     DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, ResponseStatusCode,
 };
 use type_names::CoreRelationshipTypeName::HasLoadError;
-
 // Loader modules and helpers
 use super::errors as E;
 use crate::holon_loader::loader_holon_mapper::{LoaderHolonMapper, MapperOutput};
 use crate::holon_loader::loader_ref_resolver::{LoaderRefResolver, ResolverOutcome};
-
-const ERROR_TYPE_KEY: &str = "HolonErrorType";
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -85,7 +83,7 @@ impl HolonLoaderController {
             info!("HolonLoaderController::load_bundle - pass1 errors, short-circuit before pass2/commit");
 
             // Build error holons (prefer typed; fallback to untyped if descriptor missing)
-            let error_holons = self.build_error_holons_best_effort(context, &mapper_errors)?;
+            let error_holons = make_error_holons_best_effort(context, &mapper_errors)?;
 
             let response_reference = self.build_response(
                 context,
@@ -120,7 +118,7 @@ impl HolonLoaderController {
         if !resolver_errors.is_empty() {
             info!("HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit");
 
-            let error_holons = self.build_error_holons_best_effort(context, &resolver_errors)?;
+            let error_holons = make_error_holons_best_effort(context, &resolver_errors)?;
 
             let response_reference = self.build_response(
                 context,
@@ -184,37 +182,6 @@ impl HolonLoaderController {
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Build loader-facing error holons for a list of HolonErrors.
-    /// Strategy:
-    ///   1) Try to resolve HolonErrorType and emit **typed** error holons.
-    ///   2) If resolution fails, emit **untyped** error holons (no descriptor) with {error_type, error_message}.
-    fn build_error_holons_best_effort(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        errors: &[HolonError],
-    ) -> Result<Vec<TransientReference>, HolonError> {
-        // Try to resolve the HolonErrorType descriptor (by key or query).
-        if let Ok(holon_error_type_descriptor) = resolve_holon_error_type_descriptor(context) {
-            let mut out = Vec::with_capacity(errors.len());
-            for err in errors {
-                // Use your existing helper which sets {error_type, error_message} and the descriptor:
-                out.push(E::make_error_holon_typed(
-                    context,
-                    holon_error_type_descriptor.clone(),
-                    err,
-                )?);
-            }
-            return Ok(out);
-        }
-
-        // Fallback: emit untyped error holons (no descriptor), still include fields.
-        let mut out = Vec::with_capacity(errors.len());
-        for err in errors {
-            out.push(E::make_error_holon_untyped(context, err)?);
-        }
-        Ok(out)
-    }
-
     /// Construct a **transient** HolonLoadResponse:
     ///  - sets properties,
     ///  - attaches any error holons via HAS_LOAD_ERROR (declared),
@@ -275,17 +242,4 @@ impl HolonLoaderController {
 
         Ok(response_reference)
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Descriptor resolution (best-effort): prefer key lookup, fallback to query.
-// Keep tiny and side effect free; only used when we have errors to emit.
-// ─────────────────────────────────────────────────────────────────────────
-
-fn resolve_holon_error_type_descriptor(
-    _context: &dyn HolonsContextBehavior,
-) -> Result<HolonReference, HolonError> {
-    // TODO: real lookup (by known key or by type name).
-    // For now, we return an error to exercise the untyped fallback.
-    Err(HolonError::HolonNotFound("HolonErrorType descriptor not found".into()))
 }
