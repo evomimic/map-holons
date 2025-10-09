@@ -8,6 +8,7 @@ pub enum CoreHolonTypeName {
     Dance,
     DanceType,
     Holon,
+    HolonErrorType,
     HolonSpace,
     HolonType,
     SchemaHolonType,

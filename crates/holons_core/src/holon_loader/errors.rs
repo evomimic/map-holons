@@ -1,15 +1,16 @@
 // crates/holons_core/src/holon_loader/errors.rs
 
 use crate::{
+    reference_layer,
     reference_layer::{TransientReference, WritableHolon},
-    HolonReference, HolonsContextBehavior,
+    HolonCollectionApi, HolonReference, HolonsContextBehavior,
 };
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use std::sync::atomic::{AtomicU32, Ordering};
 use type_names;
 use type_names::CorePropertyTypeName::{ErrorMessage, ErrorType};
-use type_names::CoreRelationshipTypeName;
+use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -36,6 +37,27 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
     }
 }
 
+pub fn make_error_holons_best_effort(
+    context: &dyn HolonsContextBehavior,
+    errors: &[HolonError],
+) -> Result<Vec<TransientReference>, HolonError> {
+    // Try to resolve the HolonErrorType descriptor (by key or query).
+    if let Ok(holon_error_type_descriptor) = resolve_holon_error_type_descriptor(context) {
+        let mut out = Vec::with_capacity(errors.len());
+        for err in errors {
+            out.push(make_error_holon_typed(context, holon_error_type_descriptor.clone(), err)?);
+        }
+        return Ok(out);
+    }
+
+    // Fallback: emit untyped error holons (no descriptor), still include fields.
+    let mut out = Vec::with_capacity(errors.len());
+    for err in errors {
+        out.push(make_error_holon_untyped(context, err)?);
+    }
+    Ok(out)
+}
+
 /// Build a transient HolonError holon with {error_type, error_message} **and**
 /// set its descriptor to `HolonErrorType`.
 /// Caller can attach it to the response via REL_HAS_LOAD_ERROR.
@@ -59,27 +81,6 @@ pub fn make_error_holon_untyped(
     let transient_reference = create_empty_error_holon(context)?;
     populate_error_fields(context, &transient_reference, err)?;
     Ok(transient_reference)
-}
-
-// Convenience: create & populate in one call and attach to a response holon.
-pub fn attach_error_to_response(
-    context: &dyn HolonsContextBehavior,
-    response_holon: &TransientReference, // e.g., HolonLoadResponse
-    maybe_error_type_descriptor: Option<HolonReference>,
-    err: &HolonError,
-) -> Result<TransientReference, HolonError> {
-    let error_ref = match maybe_error_type_descriptor {
-        Some(desc) => make_error_holon_typed(context, desc, err)?,
-        None => make_error_holon_untyped(context, err)?,
-    };
-
-    response_holon.add_related_holons(
-        context,
-        CoreRelationshipTypeName::HasLoadError.as_relationship_name().clone(),
-        vec![HolonReference::Transient(error_ref.clone())],
-    )?;
-
-    Ok(error_ref)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,4 +126,44 @@ fn populate_error_fields(
     )?;
 
     Ok(())
+}
+
+/// Descriptor resolution (best-effort):
+/// 1) Staged (Nursery) lookup by key "HolonErrorType"
+/// 2) Saved fallback via get_all_holons() + get_by_key()
+fn resolve_holon_error_type_descriptor(
+    context: &dyn HolonsContextBehavior,
+) -> Result<HolonReference, HolonError> {
+    // Canonical key from the enum (=> "HolonErrorType")
+    let key = CoreHolonTypeName::HolonErrorType.as_holon_name();
+
+    // 1) Prefer staged (Nursery) by base key
+    {
+        let staging = context.get_space_manager().get_staging_behavior_access();
+        let staged = staging.borrow().get_staged_holons_by_base_key(&key)?;
+        match staged.len() {
+            1 => {
+                let s = staged.into_iter().next().unwrap();
+                return Ok(HolonReference::Staged(s));
+            }
+            n if n > 1 => {
+                return Err(HolonError::DuplicateError(
+                    "HolonErrorType descriptor (staged)".into(),
+                    n.to_string(),
+                ));
+            }
+            _ => { /* fall through to saved fallback */ }
+        }
+    }
+
+    // 2) Saved fallback: single pass over the saved index by key
+    let saved = reference_layer::get_all_holons(context)?;
+    match saved.get_by_key(&key) {
+        Ok(Some(r)) => Ok(r),
+        Ok(None) => Err(HolonError::HolonNotFound(format!(
+            "HolonErrorType descriptor not found by key '{}'",
+            key.0
+        ))),
+        Err(e) => Err(e),
+    }
 }
