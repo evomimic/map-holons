@@ -113,7 +113,7 @@ impl HolonLoaderController {
         let queued_relationship_references =
             std::mem::take(&mut mapper_output.queued_relationship_references);
 
-        let ResolverOutcome { links_created, errors: mut resolver_errors } =
+        let ResolverOutcome { links_created, errors: resolver_errors } =
             LoaderRefResolver::resolve_relationships(context, queued_relationship_references)?;
 
         // If Pass 2 produced any errors, build the response now and return (skip commit).
