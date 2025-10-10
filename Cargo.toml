@@ -21,6 +21,7 @@ members = [
     "crates/holon_dance_builders",
     "crates/holons_guest",
     "crates/holons_guest_integrity",
+    "crates/holons_loader",
     "crates/holons_prelude",
     # ✅ Bring sweetests back into the workspace
     "tests/sweetests",
@@ -46,6 +47,7 @@ default-members = [
     "crates/holons_guest",
     "crates/holons_guest_integrity",
     "crates/holons_prelude",
+    "crates/holons_loader",
 ]
 
 
@@ -101,7 +103,8 @@ path = "crates/holons_guest_integrity"
 [workspace.dependencies.holons_prelude]
 path = "crates/holons_prelude"
 
-
+[workspace.dependencies.holons_loader]
+path = "crates/holons_loader"
 
 
 

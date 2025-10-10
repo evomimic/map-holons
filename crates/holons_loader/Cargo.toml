@@ -1,0 +1,17 @@
+[package]
+name = "holons_loader"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "holons_loader"
+crate-type = ["rlib"]
+
+[dependencies]
+holons_prelude = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+
+
+[dev-dependencies]
+rstest = { workspace = true }

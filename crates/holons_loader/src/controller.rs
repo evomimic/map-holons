@@ -1,4 +1,4 @@
-// crates/holons_core/src/holon_loader/controller.rs
+// crates/holons_core/src/holons_loader/controller.rs
 //
 // Orchestrates the two-pass holon loading flow:
 //
@@ -11,30 +11,16 @@
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
 use tracing::info;
+use uuid::Uuid;
 
-use crate::holon_loader::errors::make_error_holons_best_effort;
-use crate::reference_layer::TransientReference;
-use crate::{
-    // Reference-layer high-level operations
-    commit_api,
-    create_empty_transient_holon,
-    // Core reference-layer traits/types
-    HolonReference,
-    HolonsContextBehavior,
-    ReadableHolon,
-    WritableHolon,
-};
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::HolonError;
-use type_names;
-use type_names::CorePropertyTypeName::{
+use holons_prelude::prelude::CorePropertyTypeName::{
     DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, ResponseStatusCode,
 };
-use type_names::CoreRelationshipTypeName::HasLoadError;
-// Loader modules and helpers
-use super::errors as E;
-use crate::holon_loader::loader_holon_mapper::{LoaderHolonMapper, MapperOutput};
-use crate::holon_loader::loader_ref_resolver::{LoaderRefResolver, ResolverOutcome};
+use holons_prelude::prelude::CoreRelationshipTypeName::HasLoadError;
+use holons_prelude::prelude::*;
+
+use crate::errors::make_error_holons_best_effort;
+use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -65,7 +51,8 @@ impl HolonLoaderController {
         context: &dyn HolonsContextBehavior,
         bundle: TransientReference, // -> HolonLoaderBundle
     ) -> Result<TransientReference, HolonError> {
-        info!("HolonLoaderController::load_bundle - start");
+        let run_id = Uuid::new_v4();
+        info!("HolonLoaderController::load_bundle - start run_id={run_id}");
 
         // ─────────────────────────────────────────────────────────────────────
         // PASS 1: map & stage node holons (properties only); queue relationship refs
@@ -87,6 +74,7 @@ impl HolonLoaderController {
 
             let response_reference = self.build_response(
                 context,
+                run_id,
                 MapString("UnprocessableEntity".into()),
                 self.staged_count,
                 0,
@@ -122,6 +110,7 @@ impl HolonLoaderController {
 
             let response_reference = self.build_response(
                 context,
+                run_id,
                 MapString("UnprocessableEntity".into()),
                 self.staged_count,
                 0,
@@ -142,7 +131,7 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_bundle - commit");
 
-        let commit_response = commit_api(context)?;
+        let commit_response = commit(context)?;
         // Basic accounting per meeting notes:
         // - All staged nursery holons are attempted.
         // - Abandoned are not saved; they appear in `abandoned_holons`.
@@ -156,6 +145,7 @@ impl HolonLoaderController {
         // We’re not surfacing per-item commit errors yet; just report via summary.
         let response_reference = self.build_response(
             context,
+            run_id,
             MapString(if commit_ok { "OK" } else { "Accepted" }.into()),
             self.staged_count,
             holons_committed,
@@ -189,6 +179,7 @@ impl HolonLoaderController {
     fn build_response(
         &self,
         context: &dyn HolonsContextBehavior,
+        run_id: uuid::Uuid,
         response_status_code: MapString,
         holons_staged: i64,
         holons_committed: i64,
@@ -197,10 +188,10 @@ impl HolonLoaderController {
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
         // Build response as a transient with properties…
-        let response_reference = create_empty_transient_holon(
-            context,
-            MapString("CoreLoaderControllerResponse".to_string()),
-        )?;
+        let transient_service = context.get_space_manager().get_transient_behavior_service();
+        let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
+
+        let response_reference = transient_service.borrow().create_empty(response_key)?;
 
         response_reference.with_property_value(
             context,

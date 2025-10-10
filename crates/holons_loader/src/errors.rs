@@ -1,16 +1,8 @@
-// crates/holons_core/src/holon_loader/errors.rs
+// crates/holons_core/src/holons_loader/errors.rs
 
-use crate::{
-    reference_layer,
-    reference_layer::{TransientReference, WritableHolon},
-    HolonCollectionApi, HolonReference, HolonsContextBehavior,
-};
-use base_types::{BaseValue, MapString};
-use core_types::HolonError;
+use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
+use holons_prelude::prelude::*;
 use std::sync::atomic::{AtomicU32, Ordering};
-use type_names;
-use type_names::CorePropertyTypeName::{ErrorMessage, ErrorType};
-use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -157,7 +149,7 @@ fn resolve_holon_error_type_descriptor(
     }
 
     // 2) Saved fallback: single pass over the saved index by key
-    let saved = reference_layer::get_all_holons(context)?;
+    let saved = get_all_holons(context)?;
     match saved.get_by_key(&key) {
         Ok(Some(r)) => Ok(r),
         Ok(None) => Err(HolonError::HolonNotFound(format!(
