@@ -1,4 +1,4 @@
-// crates/holons_core/src/holon_loader/loader_ref_resolver.rs
+// crates/holons_core/src/holons_loader/loader_ref_resolver.rs
 //
 // Pass-2: Resolve queued LoaderRelationshipReference holons into concrete writes
 // on staged holons (declared links and/or DescribedBy).

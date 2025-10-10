@@ -1,4 +1,4 @@
-// crates/holons_core/src/holon_loader/loader_holon_mapper.rs
+// crates/holons_core/src/holons_loader/loader_holon_mapper.rs
 //
 // Pass 1 mapper for the Holon Loader:
 //   - For each incoming LoaderHolon (container), build a *target* TransientHolon with
@@ -12,24 +12,9 @@
 use std::collections::HashMap;
 use tracing::{debug, instrument};
 
-use crate::core_shared_objects::holon::state::AccessType;
-use crate::core_shared_objects::holon::HolonCloneModel;
-use crate::core_shared_objects::HolonBehavior;
-use crate::reference_layer::{TransientReference, WritableHolon};
-use crate::{
-    // High-level staging façade (re-exported from reference_layer::holon_operations_api)
-    stage_new_holon_api,
-    // Re-exported in holons_core::lib
-    HolonReference,
-    HolonsContextBehavior,
-    ReadableHolon,
-    StagedReference,
-};
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, PropertyMap, PropertyName, PropertyValue};
-use type_names;
-use type_names::CorePropertyTypeName::Key;
-use type_names::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
+use holons_prelude::prelude::CorePropertyTypeName::Key;
+use holons_prelude::prelude::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
+use holons_prelude::prelude::*;
 
 /// The mapper's output: staged nodes and queued edge-descriptors, owned
 /// for the duration of the load call.
@@ -136,7 +121,7 @@ impl LoaderHolonMapper {
         }
 
         // Stage it
-        let staged = stage_new_holon_api(context, target_transient)?;
+        let staged = stage_new_holon(context, target_transient)?;
 
         Ok((staged, key))
     }

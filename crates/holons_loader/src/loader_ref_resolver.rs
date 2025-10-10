@@ -1,4 +1,4 @@
-// crates/holons_core/src/holon_loader/loader_ref_resolver.rs
+// crates/holons_core/src/holons_loader/loader_ref_resolver.rs
 //
 // Pass-2 (Resolver): Transform queued LoaderRelationshipReference holons into
 // concrete writes on staged holons. Implements the multi‑pass, graph‑driven
@@ -20,20 +20,11 @@
 // - Only trust INVERSE_OF links whose endpoints are relationship type descriptors
 // - If a declared name for an inverse cannot be proven via type graph → error
 
-use crate::reference_layer::{
-    HolonReference, HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference,
-    TransientReference, WritableHolon,
-};
-use crate::{reference_layer, HolonCollectionApi};
-use crate::{stage_new_version_api, HolonCollection};
-use base_types::{BaseValue, MapString};
-use core_types::{HolonError, PropertyName, RelationshipName};
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::rc::Rc;
-use tracing::{debug, info, warn};
-use type_names::{
-    CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, ToRelationshipName,
-};
+use tracing::{debug, info};
+
+use holons_prelude::prelude::*;
 
 /// Outcome of Pass-2: counts successful writes and collects non-fatal errors.
 #[derive(Debug, Default)]
@@ -81,7 +72,7 @@ impl ResolverState {
         if self.saved_index.is_some() {
             return Ok(());
         }
-        let collection = reference_layer::get_all_holons(context)?;
+        let collection = get_all_holons(context)?;
         self.saved_index = Some(Rc::new(collection));
         Ok(())
     }
@@ -736,7 +727,7 @@ impl LoaderRefResolver {
         // 2) Promotion path: saved → stage a new version (requires HolonId).
         if let Ok(saved_id) = write_source_endpoint.holon_id(context) {
             let smart = SmartReference::new_from_id(saved_id);
-            let staged = stage_new_version_api(context, smart)?;
+            let staged = stage_new_version(context, smart)?;
             return Ok(staged);
         }
 

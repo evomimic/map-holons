@@ -19,6 +19,7 @@ members = [
     "crates/holons_guest",
     "crates/holons_guest_integrity",
     "crates/holons_holochain_adapter",
+    "crates/holons_loader",
     "crates/holons_prelude",
     "crates/holons_tauri_adapter",
     "crates/holons_trust_channel",
@@ -49,6 +50,7 @@ holon_dance_builders = { path = "crates/holon_dance_builders" }
 holons_guest = { path = "crates/holons_guest" }
 holons_guest_integrity = { path = "crates/holons_guest_integrity" }
 holons_holochain_adapter = { path = "crates/holons_holochain_adapter" }
+holons_loader = { path = "crates/holons_loader" }
 holons_prelude = { path = "crates/holons_prelude" }
 holons_tauri_adapter = { path = "crates/holons_tauri_adapter" }
 holons_trust_channel = { path = "crates/holons_trust_channel" }
