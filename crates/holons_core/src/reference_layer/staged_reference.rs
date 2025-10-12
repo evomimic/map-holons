@@ -190,7 +190,6 @@ impl ReadableHolonImpl for StagedReference {
         let collection = collection_arc.read().unwrap();
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
-        let members = collection.get_members();
         if members.len() > 1 {
             return Err(HolonError::Misc(format!(
                 "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
