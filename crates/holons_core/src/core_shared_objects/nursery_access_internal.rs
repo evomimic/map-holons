@@ -1,4 +1,7 @@
-use std::{any::Any, cell::RefCell, rc::Rc};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 use super::{holon_pool::SerializableHolonPool, Holon};
 use crate::{HolonStagingBehavior, NurseryAccess};
@@ -12,7 +15,7 @@ use core_types::{HolonError, TemporaryId};
 /// - **Clearing staged holons**
 /// - **Retrieving holons by key**
 /// - **Directly staging new holons**
-pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
+pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + Sync {
     /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their concrete type.
     ///
     /// This method is useful when working with `NurseryAccessInternal` as a trait object (`dyn NurseryAccessInternal`)
@@ -66,7 +69,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// - **State Restoration:** Enables reloading staged holons from a saved state.
     ///
     /// # Notes
-    /// - The method ensures that **holons are correctly wrapped in `Rc<RefCell<_>>`** upon import.
+    /// - The method ensures that **holons are correctly wrapped in `Arc<RwLock<Holon>>`** upon import.
     /// - If the provided pool is empty, the `Nursery` will also be cleared.
     ///
     /// # Arguments
@@ -80,16 +83,6 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     ///
     /// # Returns
     ///
-    /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all staged Holons.
-    // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_;
-    fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>>;
-
-    // /// Stages a new holon and optionally updates the keyed index.
-    // ///
-    // /// # Arguments
-    // /// * `holon` - A reference to the holon to be staged.
-    // ///
-    // /// # Returns
-    // /// The index of the staged holon in the nursery.
-    // fn stage_holon(&self, holon: Holon) -> usize;
+    /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
+    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>>;
 }

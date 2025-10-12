@@ -4,7 +4,7 @@ use super::{HolonReference, HolonsContextBehavior};
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
 
-pub trait HolonCollectionApi: Debug {
+pub trait HolonCollectionApi: Debug + Send + Sync {
     fn add_references(
         &mut self,
         context: &dyn HolonsContextBehavior,

@@ -1,6 +1,6 @@
-use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
+use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 
 /// Builds a DanceRequest for retrieving holon by HolonId from the persistent store
 pub fn build_get_holon_by_id_dance_request(holon_id: HolonId) -> Result<DanceRequest, HolonError> {

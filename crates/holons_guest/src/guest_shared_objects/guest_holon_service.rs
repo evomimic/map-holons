@@ -1,6 +1,10 @@
+use holons_core::reference_layer::{HolonStagingBehavior, TransientHolonBehavior};
 use std::any::Any;
 use std::collections::HashMap;
-use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 
 use hdk::prelude::*;
 use holons_core::reference_layer::ReadableHolon;
@@ -34,7 +38,7 @@ use integrity_core_types::{LocalId, PropertyName, RelationshipName};
 #[derive(Clone)]
 pub struct GuestHolonService {
     /// Holds the internal nursery access after registration
-    pub internal_nursery_access: Option<Arc<RefCell<dyn NurseryAccessInternal>>>,
+    pub internal_nursery_access: Option<Arc<RwLock<dyn NurseryAccessInternal>>>,
 }
 
 impl GuestHolonService {
@@ -44,14 +48,14 @@ impl GuestHolonService {
         }
     }
     /// ✅ HolonSpaceManager explicitly grants internal access at registration
-    pub fn register_internal_access(&mut self, access: Arc<RefCell<dyn NurseryAccessInternal>>) {
+    pub fn register_internal_access(&mut self, access: Arc<RwLock<dyn NurseryAccessInternal>>) {
         self.internal_nursery_access = Some(access);
     }
 
     /// Retrieves the stored internal access (set during registration)
     pub fn get_internal_nursery_access(
         &self,
-    ) -> Result<Arc<RefCell<dyn NurseryAccessInternal>>, HolonError> {
+    ) -> Result<Arc<RwLock<dyn NurseryAccessInternal>>, HolonError> {
         self.internal_nursery_access.clone().ok_or(HolonError::Misc(
             "GuestHolonService does not have internal nursery access.".to_string(),
         ))
@@ -68,7 +72,7 @@ impl GuestHolonService {
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
         let transient_behavior_service_cell =
             context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior_service = transient_behavior_service_cell.borrow();
+        let transient_behavior_service = transient_behavior_service_cell.read().unwrap();
 
         // Create new (empty) TransientHolon
         let space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
@@ -167,7 +171,7 @@ impl GuestHolonService {
     pub fn get_nursery_access(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Arc<RefCell<dyn NurseryAccess>> {
+    ) -> Arc<RwLock<dyn NurseryAccess>> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 
@@ -189,7 +193,7 @@ impl HolonServiceApi for GuestHolonService {
 
         // Step 1: Borrow immutably, immediately clone the Vec, then drop the borrow
         let staged_holons = {
-            let nursery_read = internal_nursery.borrow();
+            let nursery_read = internal_nursery.read().unwrap();
             let cloned_holons = nursery_read.get_holons_to_commit().clone(); // Clone while borrow is active
             cloned_holons // Borrow ends here
         }; // `nursery_read` is dropped immediately after this block
@@ -198,7 +202,7 @@ impl HolonServiceApi for GuestHolonService {
         let commit_response = commit_functions::commit(context, &staged_holons)?;
 
         // Step 3: Borrow mutably to clear the stage
-        internal_nursery.borrow_mut().clear_stage(); // Safe, no borrow conflict
+        internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
 
         // Step 4: Return the commit response
         Ok(commit_response)
@@ -224,7 +228,8 @@ impl HolonServiceApi for GuestHolonService {
             return Err(HolonError::InvalidHolonReference("Source id must be Local".to_string()));
         }
 
-        let mut relationship_map: HashMap<RelationshipName, Rc<HolonCollection>> = HashMap::new();
+        let mut relationship_map: HashMap<RelationshipName, Arc<RwLock<HolonCollection>>> =
+            HashMap::new();
 
         let mut reference_map: HashMap<RelationshipName, Vec<HolonReference>> = HashMap::new();
 
@@ -255,7 +260,7 @@ impl HolonServiceApi for GuestHolonService {
                 })?; // At least for now, all SmartLinks should be encoded with a key
                 collection.add_reference_with_key(Some(&key), &reference)?;
             }
-            relationship_map.insert(map_name, Rc::new(collection));
+            relationship_map.insert(map_name, Arc::new(RwLock::new(collection)));
         }
 
         Ok(RelationshipMap::new(relationship_map))
@@ -350,7 +355,8 @@ impl HolonServiceApi for GuestHolonService {
 
         let cloned_staged_reference = self
             .get_internal_nursery_access()?
-            .borrow()
+            .read()
+            .unwrap()
             .stage_new_holon(context, cloned_transient_reference)?;
 
         // Reset the PREDECESSOR to None
@@ -371,7 +377,8 @@ impl HolonServiceApi for GuestHolonService {
 
         let cloned_staged_reference = self
             .get_internal_nursery_access()?
-            .borrow()
+            .read()
+            .unwrap()
             .stage_new_holon(context, cloned_holon_transient_reference)?;
 
         // Reset the PREDECESSOR to the original Holon being cloned from.

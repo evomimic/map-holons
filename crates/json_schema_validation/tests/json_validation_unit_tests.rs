@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use json_schema_validation::json_schema_validator::validate_json_against_schema;
+use std::path::PathBuf;
 
 // Basic tests on generic JSON Schema validation
 #[test]
@@ -63,11 +63,9 @@ fn assert_all_pass(schema: &PathBuf, dir: &str) {
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
             match validate_json_against_schema(schema, &path) {
                 Ok(()) => { /* good */ }
-                Err(e) => panic!(
-                    "❌  {} failed validation with error(s):\n{}\n",
-                    path.display(),
-                    e
-                ),
+                Err(e) => {
+                    panic!("❌  {} failed validation with error(s):\n{}\n", path.display(), e)
+                }
             }
         }
     }

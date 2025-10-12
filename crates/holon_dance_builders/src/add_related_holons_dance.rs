@@ -1,6 +1,9 @@
-use holons_core::{dances::{DanceRequest, DanceType, RequestBody}, HolonReference};
 use base_types::MapString;
 use core_types::HolonError;
+use holons_core::{
+    dances::{DanceRequest, DanceType, RequestBody},
+    HolonReference,
+};
 use integrity_core_types::RelationshipName;
 
 ///

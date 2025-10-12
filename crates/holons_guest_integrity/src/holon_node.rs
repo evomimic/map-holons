@@ -1,6 +1,6 @@
-use integrity_core_types::{LocalId, PropertyMap};
 use derive_new::new;
 use hdi::prelude::*;
+use integrity_core_types::{LocalId, PropertyMap};
 
 // ===============================
 // 📌 Constants

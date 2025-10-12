@@ -21,3 +21,4 @@ settings.json
 # Ignore everything in .cargo/ except config.toml
 .cargo/*
 !.cargo/config.toml
+/crates/holons_core_old/

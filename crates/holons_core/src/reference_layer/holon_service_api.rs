@@ -23,7 +23,7 @@ use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 ///
 /// In other words, this trait defines the "what" of Holon operations, while the
 /// client and guest provide the "how" for their respective contexts.
-pub trait HolonServiceApi: Debug + Any {
+pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 
     ///

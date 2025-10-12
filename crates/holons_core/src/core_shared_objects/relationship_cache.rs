@@ -1,4 +1,5 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use tracing::debug;
 
 use crate::core_shared_objects::{HolonCollection, RelationshipMap};
@@ -8,13 +9,13 @@ use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Clone, Debug)]
 pub struct RelationshipCache {
-    cache: Rc<RefCell<HashMap<HolonId, RelationshipMap>>>,
+    cache: Arc<RwLock<HashMap<HolonId, RelationshipMap>>>,
 }
 
 impl RelationshipCache {
     /// Creates a new RelationshipCache with an empty cache.
     pub fn new() -> Self {
-        Self { cache: Rc::new(RefCell::new(HashMap::new())) }
+        Self { cache: Arc::new(RwLock::new(HashMap::new())) }
     }
 
     /// Retrieves a RelationshipMap for the source HolonReference by calling the HolonService to fetch all related Holons.
@@ -45,10 +46,15 @@ impl RelationshipCache {
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         // First, check if the relationship exists in the cache (immutable borrow)
         {
-            let cache = self.cache.borrow();
+            let cache = self.cache.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on relationship_cache: {}",
+                    e
+                ))
+            })?;
             if let Some(relationship_map) = cache.get(&source_holon_id) {
                 if let Some(related_holons) =
                     relationship_map.get_collection_for_relationship(relationship_name)
@@ -58,7 +64,7 @@ impl RelationshipCache {
                         "Cache hit for source_holon_id: {:?}, relationship_name: {:?}",
                         source_holon_id, relationship_name
                     );
-                    return Ok(related_holons.clone());
+                    return Ok(Arc::clone(&related_holons));
                 }
             }
         } // Immutable borrow ends here
@@ -70,19 +76,22 @@ impl RelationshipCache {
     );
         let fetched_holons =
             holon_service.fetch_related_holons_internal(&source_holon_id, relationship_name)?;
+        // Wrap in Arc<RwLock> for caching
+        let fetched_arc = Arc::new(RwLock::new(fetched_holons));
 
-        // Wrap the fetched holons in an Rc
-        let fetched_holons_rc = Rc::new(fetched_holons);
-
-        // Update the cache (mutable borrow only for this scope)
+        // Update the cache
         {
-            let mut cache = self.cache.borrow_mut();
+            let mut cache = self.cache.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on relationship_cache: {}",
+                    e
+                ))
+            })?;
             let relationship_map =
                 cache.entry(source_holon_id.clone()).or_insert_with(RelationshipMap::new_empty);
-            relationship_map.insert(relationship_name.clone(), fetched_holons_rc.clone());
-        } // Mutable borrow ends here
-
+            relationship_map.insert(relationship_name.clone(), Arc::clone(&fetched_arc));
+        }
         // Return the fetched holons
-        Ok(fetched_holons_rc)
+        Ok(fetched_arc)
     }
 }

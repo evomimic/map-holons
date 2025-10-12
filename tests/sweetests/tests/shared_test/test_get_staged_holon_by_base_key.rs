@@ -25,5 +25,6 @@ pub async fn execute_get_staged_holon_by_base_key(
 
     // 2. Get Nursery access
     let nursery = context.get_space_manager().get_staging_behavior_access();
-    let _staged_reference = nursery.borrow().get_staged_holon_by_base_key(&key).unwrap();
+    // call the singular API to get the one staged holon
+    let _staged_reference = nursery.read().unwrap().get_transient_holon_by_base_key(&key).unwrap();
 }

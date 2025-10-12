@@ -1,6 +1,6 @@
-use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
+use holons_core::dances::{DanceRequest, DanceType, RequestBody};
 
 ///
 /// Builds a dance request for staging a new cloned Holon

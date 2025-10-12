@@ -1,4 +1,7 @@
-use std::{any::Any, cell::RefCell, rc::Rc};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -7,7 +10,7 @@ use crate::{
     core_shared_objects::{
         holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess,
     },
-    reference_layer::TransientHolonBehavior
+    reference_layer::TransientHolonBehavior,
 };
 
 /// Provides **internal management** of transient holons in the TransientHolonManager.
@@ -16,7 +19,9 @@ use crate::{
 /// It defines methods for:
 /// - **Clearing transient holons**
 /// - **Retrieving holons by key**
-pub trait TransientManagerAccessInternal: TransientManagerAccess + TransientHolonBehavior {
+pub trait TransientManagerAccessInternal:
+    TransientManagerAccess + TransientHolonBehavior + Send + Sync
+{
     /// Enables safe downcasting of `TransientManagerAccessInternal` trait objects to their concrete type.
     ///
     /// This method is useful when working with `TransientManagerAccessInternal` as a trait object (`dyn TransientManagerAccessInternal`)
@@ -68,7 +73,7 @@ pub trait TransientManagerAccessInternal: TransientManagerAccess + TransientHolo
     /// - **State Restoration:** Enables reloading transient holons from a saved state.
     ///
     /// # Notes
-    /// - The method ensures that **holons are correctly wrapped in `Rc<RefCell<_>>`** upon import.
+    /// - The method ensures that **holons are correctly wrapped in `Arc<RwLock<Holon>>`** upon import.
     /// - If the provided pool is empty, the `TransientHolonManager` will also be cleared.
     ///
     /// # Arguments
@@ -81,6 +86,6 @@ pub trait TransientManagerAccessInternal: TransientManagerAccess + TransientHolo
     /// allowing functions to operate on the actual Holon instances without cloning.
     ///
     /// # Returns
-    /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all transient Holons.
-    fn get_transient_holons_pool(&self) -> Vec<Rc<RefCell<Holon>>>;
+    /// A `Vec<Arc<RwLock<Holon>>>` containing all transient Holons.
+    fn get_transient_holons_pool(&self) -> Vec<Arc<RwLock<Holon>>>;
 }

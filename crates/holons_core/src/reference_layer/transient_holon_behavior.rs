@@ -14,7 +14,7 @@ use core_types::HolonError;
 /// This trait does **not** expose low-level details.
 ///
 /// Base key represents the Holon's key independent of versioning.
-pub trait TransientHolonBehavior {
+pub trait TransientHolonBehavior: Send + Sync {
     // ===========================
     // TransientHolon Constructors
     // ===========================

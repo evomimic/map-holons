@@ -1,12 +1,11 @@
 use super::Holon;
-use quick_cache::unsync::Cache;
 use core_types::HolonId;
-use std::cell::RefCell;
+use quick_cache::unsync::Cache;
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
-pub struct HolonCache(Cache<HolonId, Rc<RefCell<Holon>>>);
+pub struct HolonCache(Cache<HolonId, Arc<RwLock<Holon>>>);
 
 impl HolonCache {
     /// Creates a new HolonCache with a default size.
@@ -24,16 +23,16 @@ impl HolonCache {
         HolonCache(Cache::new(size))
     }
     /// Retrieves a reference to a cached item by key.
-    pub fn get(&self, key: &HolonId) -> Option<&Rc<RefCell<Holon>>> {
+    pub fn get(&self, key: &HolonId) -> Option<&Arc<RwLock<Holon>>> {
         self.0.get(key)
     }
     /// Inserts an item into the cache.
-    pub fn insert(&mut self, key: HolonId, value: Rc<RefCell<Holon>>) {
+    pub fn insert(&mut self, key: HolonId, value: Arc<RwLock<Holon>>) {
         self.0.insert(key, value);
     }
 }
 impl Deref for HolonCache {
-    type Target = Cache<HolonId, Rc<RefCell<Holon>>>;
+    type Target = Cache<HolonId, Arc<RwLock<Holon>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

@@ -1,4 +1,7 @@
-use std::{cell::RefCell, any::Any, rc::Rc};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 use super::holon::Holon;
 use core_types::{HolonError, TemporaryId};
@@ -10,7 +13,7 @@ use core_types::{HolonError, TemporaryId};
 /// It does **not** manage staging, committing, or other lifecycle behaviors.
 /// TransientManagerAccess is a single-threaded trait for accessing transient manager data.
 /// It is not `Sync` or `Send` and must not be used in multi-threaded contexts.
-pub trait TransientManagerAccess: Any {
+pub trait TransientManagerAccess: Any + Send + Sync {
     /// Resolves a `TransientReference` by retrieving the transient holon
     /// at the specified index.
     ///
@@ -18,7 +21,7 @@ pub trait TransientManagerAccess: Any {
     /// - `id` - The index (represented by TemporaryId) of the transient holon within the manager.
     ///
     /// # Returns
-    /// - `Ok(Rc<RefCell<Holon>>)` if the index is valid.
+    /// - `Ok(Arc<RwLock<Holon>>)` if the index is valid.
     /// - `Err(HolonError::IndexOutOfRange)` if the index is invalid.
-    fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError>;
+    fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Arc<RwLock<Holon>>, HolonError>;
 }

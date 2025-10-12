@@ -21,7 +21,7 @@ impl SessionState {
         staged_holons: SerializableHolonPool,
         local_holon_space: Option<HolonReference>,
     ) -> Self {
-        Self { transient_holons, staged_holons, local_holon_space}
+        Self { transient_holons, staged_holons, local_holon_space }
     }
 
     pub fn get_local_holon_space(&self) -> Option<HolonReference> {

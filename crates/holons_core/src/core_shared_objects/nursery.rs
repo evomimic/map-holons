@@ -1,4 +1,7 @@
-use std::{any::Any, cell::RefCell, rc::Rc};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 use super::{
     holon_pool::{HolonPool, SerializableHolonPool},
@@ -19,15 +22,15 @@ use crate::{
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Nursery {
-    staged_holons: Rc<RefCell<StagedHolonPool>>, // Uses Rc<RefCell<HolonPool>> for interior mutability
+    staged_holons: Arc<RwLock<StagedHolonPool>>, // Thread-safe pool of staged holons
 }
 
 impl Nursery {
     /// Creates a new Nursery with an empty HolonPool
     pub fn new() -> Self {
-        Self { staged_holons: Rc::new(RefCell::new(StagedHolonPool(HolonPool::new()))) }
+        Self { staged_holons: Arc::new(RwLock::new(StagedHolonPool(HolonPool::new()))) }
     }
 
     // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
@@ -42,7 +45,13 @@ impl Nursery {
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
     fn stage_holon(&self, holon: StagedHolon) -> Result<TemporaryId, HolonError> {
-        let id = self.staged_holons.borrow_mut().insert_holon(Holon::Staged(holon))?;
+        let mut pool = self.staged_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        let id = pool.insert_holon(Holon::Staged(holon))?;
         Ok(id)
     }
 
@@ -61,15 +70,27 @@ impl Nursery {
 
 impl NurseryAccess for Nursery {
     /// Retrieves a staged holon by index.
-    fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError> {
-        self.staged_holons.borrow().get_holon_by_id(id)
+    fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Arc<RwLock<Holon>>, HolonError> {
+        let pool = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        pool.get_holon_by_id(id)
     }
 }
 
 impl HolonStagingBehavior for Nursery {
     // Caller is assuming there is only one, returns duplicate error if multiple.
     fn get_staged_holon_by_base_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
-        let id = self.staged_holons.borrow().get_id_by_base_key(key)?;
+        let pool = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        let id = pool.get_id_by_base_key(key)?;
         self.to_validated_staged_reference(&id)
     }
 
@@ -78,8 +99,13 @@ impl HolonStagingBehavior for Nursery {
         key: &MapString,
     ) -> Result<Vec<StagedReference>, HolonError> {
         let mut staged_references = Vec::new();
-        let nursery = self.staged_holons.borrow();
-        let ids = nursery.get_ids_by_base_key(key)?;
+        let pool = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        let ids = pool.get_ids_by_base_key(key)?;
         for id in ids {
             let validated_staged_reference = self.to_validated_staged_reference(&id)?;
             staged_references.push(validated_staged_reference);
@@ -93,12 +119,19 @@ impl HolonStagingBehavior for Nursery {
         &self,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
-        let id = self.staged_holons.borrow().get_id_by_versioned_key(key)?;
+        let pool = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        let id = pool.get_id_by_versioned_key(key)?;
         self.to_validated_staged_reference(&id)
     }
 
     fn staged_count(&self) -> i64 {
-        self.staged_holons.borrow().len() as i64
+        self.staged_holons.read().expect("Failed to acquire read lock on staged_holons").len()
+            as i64
     }
 
     fn stage_new_holon(
@@ -119,7 +152,7 @@ impl NurseryAccessInternal for Nursery {
     }
 
     fn clear_stage(&mut self) {
-        self.staged_holons.borrow_mut().clear();
+        self.staged_holons.write().expect("Failed to acquire write lock on staged_holons").clear();
     }
 
     // fn get_keyed_index(&self) -> BTreeMap<MapString, usize> {
@@ -127,23 +160,39 @@ impl NurseryAccessInternal for Nursery {
     // }
 
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
-        self.staged_holons.borrow().get_id_by_versioned_key(key)
+        let pool = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        pool.get_id_by_versioned_key(key)
     }
 
     /// Exports the staged holons using `SerializableHolonPool`
     fn export_staged_holons(&self) -> SerializableHolonPool {
-        self.staged_holons.borrow().export_pool()
+        self.staged_holons
+            .read()
+            .expect("Failed to acquire read lock on staged_holons")
+            .export_pool()
     }
 
     fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> () {
-        self.staged_holons.borrow_mut().import_pool(pool); // Mutates existing HolonPool
+        self.staged_holons
+            .write()
+            .expect("Failed to acquire write lock on staged_holons")
+            .import_pool(pool); // Mutates existing HolonPool
     }
 
     /// Returns the staged Holons in the `HolonPool`,
     /// ensuring that commit functions can access the actual Holon instances.
     // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
-    fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>> {
-        self.staged_holons.borrow().get_all_holons()
+    /// Retrieves the staged Holon instances for commit, using thread-safe handles
+    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>> {
+        self.staged_holons
+            .read()
+            .expect("Failed to acquire read lock on staged_holons")
+            .get_all_holons()
     }
 
     // fn stage_holon(&self, holon: Holon) -> usize {

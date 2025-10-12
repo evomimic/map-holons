@@ -69,7 +69,11 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
 
         // 5. Update space manager's local_holon_space without moving response
         let space_manager = context.get_space_manager();
-        space_manager.set_space_holon(response_session_state.get_local_holon_space().unwrap());
+        space_manager.set_space_holon(
+            response_session_state
+                .get_local_holon_space()
+                .expect("SessionState should always contain local_holon_space"),
+        );
 
         response
     }

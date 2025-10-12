@@ -302,6 +302,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::DuplicateError(_, _)
         | HolonError::EmptyField(_)
         | HolonError::FailedToBorrow(_)
+        | HolonError::FailedToAcquireLock(_)
         | HolonError::HashConversion(_, _)
         | HolonError::HolonNotFound(_)
         | HolonError::IndexOutOfRange(_)

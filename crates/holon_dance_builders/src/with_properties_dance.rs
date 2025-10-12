@@ -1,7 +1,8 @@
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::{
-    dances::{DanceRequest, DanceType, RequestBody}, reference_layer::HolonReference,
+    dances::{DanceRequest, DanceType, RequestBody},
+    reference_layer::HolonReference,
 };
 use integrity_core_types::PropertyMap;
 

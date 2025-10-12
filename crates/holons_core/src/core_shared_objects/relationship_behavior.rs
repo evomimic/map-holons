@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use super::{HolonCollection, TransientRelationshipMap};
 use crate::{HolonReference, HolonsContextBehavior};
@@ -21,22 +21,25 @@ pub trait ReadableRelationship {
     //    DATA ACCESSORS
     // ====================
 
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
+    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
     ///
     /// If the `relationship_name` exists in the Relationship Map, this method returns the
-    /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
-    /// `HolonCollection` wrapped in an `Rc` is returned instead.
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
+    /// corresponding collection wrapped in `Arc<RwLock<HolonCollection>>`. If the relationship
+    /// is not found, an empty `HolonCollection` wrapped in `Arc<RwLock<HolonCollection>>` is returned instead.
+    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
     ///
     /// If the `relationship_name` exists in the Relationship Map, this method returns the
-    /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
-    /// `HolonCollection` wrapped in an `Rc` is returned instead.
+    /// corresponding collection wrapped in `Arc<RwLock<HolonCollection>>`. If the relationship
+    /// is not found, an empty `HolonCollection` wrapped in `Arc<RwLock<HolonCollection>>` is returned instead.
     // TODO(PERF/CLEANUP): This clones the inner HolonCollection, which may be costly in time/space.
     // Ideally, the trait method would return an associated type (e.g., `type Output: Clone`) to allow
     // different implementations to return shared ownership types like `Rc<RefCell<_>>`.
     // For now, we’re preserving this behavior to avoid destabilizing the long-lived feature branch;
     // revisit after merge for a more efficient and idiomatic design.
-    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection>;
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Arc<RwLock<HolonCollection>>;
 }
 
 pub trait WritableRelationship {
