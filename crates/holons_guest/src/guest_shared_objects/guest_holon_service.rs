@@ -72,7 +72,10 @@ impl GuestHolonService {
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
         let transient_behavior_service_cell =
             context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior_service = transient_behavior_service_cell.read().unwrap();
+        let transient_behavior_service = transient_behavior_service_cell
+            .try_read()
+            .map_err(|_e| HolonError::FailedToAcquireLock("lock failed".to_string()))?;
+
 
         // Create new (empty) TransientHolon
         let space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
