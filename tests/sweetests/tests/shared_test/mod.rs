@@ -16,6 +16,7 @@ pub mod test_load_core_schema;
 pub mod test_match_db_content;
 pub mod test_print_database;
 pub mod test_query_relationships;
+pub mod test_remove_properties_command;
 pub mod test_remove_related_holon;
 pub mod test_stage_new_from_clone;
 pub mod test_stage_new_holon;

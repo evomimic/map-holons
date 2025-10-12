@@ -156,7 +156,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // let expected_holon =
     //     HolonReference::Transient(expected_fixture_holon.clone_holon(&*fixture_context)?);
 
-    // test_case.add_related_holons_step(
+    // test_case.add_add_related_holons_step(
     //     HolonReference::Staged(publisher_staged_reference), // source holon
     //     publisher_relationship_name.clone(),
     //     holons_to_add,

@@ -56,7 +56,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  RELATIONSHIP:  Author H2 -> H3  //
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     let holons_to_add: Vec<TestReference> = Vec::new();
-    test_case.add_related_holons_step(
+    test_case.add_add_related_holons_step(
         HolonReference::Staged(person_1_staged_reference), // source holons
         "FRIENDS".to_relationship_name(),
         holons_to_add.to_vec(),

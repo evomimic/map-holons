@@ -43,6 +43,7 @@ use self::test_ensure_database_count::execute_ensure_database_count;
 // use self::test_load_core_schema::execute_load_new_schema;
 use self::test_match_db_content::execute_match_db_content;
 use self::test_query_relationships::execute_query_relationships;
+use self::test_remove_properties_command::execute_remove_properties;
 use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 
@@ -139,7 +140,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     .await
             }
             DanceTestStep::AddRelatedHolons(
-                staged_reference,
+                holon_reference,
                 relationship_name,
                 holons_to_add,
                 expected_response,
@@ -147,7 +148,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             ) => {
                 execute_add_related_holons(
                     &mut test_state,
-                    staged_reference,
+                    holon_reference,
                     relationship_name,
                     holons_to_add,
                     expected_response,
@@ -180,15 +181,24 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
+            DanceTestStep::RemoveProperties(holon_reference, properties, expected_response) => {
+                execute_remove_properties(
+                    &mut test_state,
+                    holon_reference,
+                    properties,
+                    expected_response,
+                )
+                .await
+            }
             DanceTestStep::RemoveRelatedHolons(
-                staged_reference,
+                holon_reference,
                 relationship_name,
                 holons_to_remove,
                 expected_response,
             ) => {
                 execute_remove_related_holons(
                     &mut test_state,
-                    staged_reference,
+                    holon_reference,
                     relationship_name,
                     holons_to_remove,
                     expected_response,
@@ -212,10 +222,10 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 execute_stage_new_version(&mut test_state, original_holon_key, expected_response)
                     .await
             }
-            DanceTestStep::WithProperties(staged_reference, properties, expected_response) => {
+            DanceTestStep::WithProperties(holon_reference, properties, expected_response) => {
                 execute_with_properties(
                     &mut test_state,
-                    staged_reference,
+                    holon_reference,
                     properties,
                     expected_response,
                 )

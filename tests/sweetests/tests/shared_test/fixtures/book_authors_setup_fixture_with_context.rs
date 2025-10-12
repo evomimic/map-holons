@@ -119,7 +119,7 @@ pub fn setup_book_author_steps_with_context(
     let expected_holon = HolonReference::Staged(book_staged_reference.clone());
 
     // Create the expected_holon
-    test_case.add_related_holons_step(
+    test_case.add_add_related_holons_step(
         HolonReference::Staged(book_staged_reference),
         relationship_name.clone(),
         target_references,

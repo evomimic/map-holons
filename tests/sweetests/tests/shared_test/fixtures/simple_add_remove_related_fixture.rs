@@ -94,7 +94,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
                 remove_vector.clone(),
             )?;
             // Executor step
-            test_case.remove_related_holons_step(
+            test_case.add_remove_related_holons_step(
                 HolonReference::Staged(book_holon_staged_reference.clone()),
                 relationship_name.clone(),
                 remove_vector,
@@ -118,7 +118,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         vec![HolonReference::Transient(publisher.clone())],
     )?;
 
-    test_case.add_related_holons_step(
+    test_case.add_add_related_holons_step(
         HolonReference::Staged(book_holon_staged_reference.clone()),
         "PUBLISHED_BY".to_relationship_name(),
         vec![TestReference::TransientHolon(publisher)],

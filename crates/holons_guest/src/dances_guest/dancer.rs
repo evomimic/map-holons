@@ -110,6 +110,8 @@ impl Dancer {
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
         dispatch_table
+            .insert("remove_properties", remove_properties_dance as DanceFunction);
+        dispatch_table
             .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
         dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
