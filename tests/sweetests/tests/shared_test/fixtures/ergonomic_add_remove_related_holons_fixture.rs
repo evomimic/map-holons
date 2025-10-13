@@ -58,18 +58,18 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
         .add_related_holons(
             &*fixture_context,
             "PUBLISHED_BY".to_string(),
-            vec![HolonReference::Transient(publisher_transient_reference.clone())],
+            vec![HolonReference::Staged(publisher_staged_reference.clone())],
         )?
         .remove_related_holons(
             &*fixture_context,
-            BOOK_TO_PERSON_RELATIONSHIP,
-            vec![HolonReference::Staged(person_1_staged_reference.clone())],
+            BOOK_TO_PERSON_RELATIONSHIP.to_string(),
+            vec![HolonReference::Staged(person_2_staged_reference.clone())],
+        )?
+        .remove_related_holons(
+            &*fixture_context,
+            MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string()),
+            vec![HolonReference::Staged(person_2_staged_reference.clone())],
         )?;
-    // .remove_related_holons(
-    //     &*fixture_context,
-    //     MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string()),
-    //     vec![HolonReference::Staged(person_2_staged_reference.clone())],
-    // )?;
 
     test_case.add_add_related_holons_step(
         HolonReference::Staged(book_staged_reference.clone()),
@@ -85,13 +85,6 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
         vec![HolonReference::Staged(person_1_staged_reference.clone())],
         ResponseStatusCode::OK,
     )?;
-    // test_case.add_remove_related_holons_step(
-    //     HolonReference::Transient(publisher_transient_reference.clone()),
-    //     RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string()))
-    //         .to_relationship_name(),
-    //     vec![HolonReference::Staged(book_staged_reference.clone())],
-    //     ResponseStatusCode::OK,
-    // )?;
 
     // Person 1
     person_1_staged_reference.add_related_holons(

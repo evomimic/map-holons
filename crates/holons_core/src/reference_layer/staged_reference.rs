@@ -5,7 +5,7 @@ use std::{
     fmt,
     sync::{Arc, RwLock},
 };
-use tracing::debug;
+use tracing::{debug, info};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -20,8 +20,8 @@ use crate::{
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         transient_holon_manager::ToHolonCloneModel,
-        Holon, Holon, HolonCollection, HolonCollection, NurseryAccess, NurseryAccess,
-        ReadableHolonState, ReadableHolonState, WriteableHolonState, WriteableHolonState,
+        Holon, HolonCollection, NurseryAccess,
+        ReadableHolonState, WriteableHolonState,
     },
     Nursery, RelationshipMap,
 };
@@ -156,17 +156,6 @@ impl ReadableHolonImpl for StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<RelationshipMap, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
-
-        borrowed_holon.all_related_holons()
-    }
-
-    fn essential_content_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
@@ -327,6 +316,11 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        info!(
+            "Removing {:?} related holons from relationship: {:?}",
+            holons.len(),
+            relationship_name
+        );
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().unwrap();
         holon_mut.remove_related_holons(context, relationship_name, holons)?;
