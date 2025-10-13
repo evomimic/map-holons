@@ -31,7 +31,6 @@ use holons_prelude::prelude::*;
 ///     d. committing the changes
 ///     e. confirming the new holon is no longer related to the holons to remove via the specified relationship.
 ///
-
 pub async fn execute_remove_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     source_holon: HolonReference,
