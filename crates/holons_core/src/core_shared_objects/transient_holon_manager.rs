@@ -69,12 +69,13 @@ impl TransientHolonManager {
 }
 
 impl Clone for TransientHolonManager {
-    fn clone(&self) -> Self {
-        // Clone underlying pool for thread-safe manager
-        let pool = self.transient_holons.try_read().map_err(|e| {
-            warn!("❌ Failed to acquire read lock");
-            HolonError::FailedToAcquireLock(format!("Read lock unavailable: {}", e))
-        }).unwrap().clone();
+    // Clone underlying pool for thread-safe manager
+        fn clone(&self) -> Self {
+        let pool = self
+            .transient_holons
+            .read()
+            .expect("Failed to acquire read lock on transient_holons")
+            .clone();
         TransientHolonManager::new_with_pool(pool)
     }
 }
@@ -86,12 +87,9 @@ impl TransientManagerAccess for TransientHolonManager {
             warn!("❌ Failed to acquire read lock");
             HolonError::FailedToAcquireLock(format!("Read lock unavailable: {}", e))
         })?;
-        // Clone the Holon for thread-safe access
+        // Return the existing Arc<RwLock<Holon>> for shared ownership
         let arc_ref = pool.get_holon_by_id(id)?;
-        let holon = arc_ref.try_read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Holon read lock unavailable: {}", e))
-        })?.clone();
-        Ok(Arc::new(RwLock::new(holon)))
+        Ok(Arc::clone(&arc_ref))
     }
 }
 
@@ -206,20 +204,21 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         self.transient_holons.read().unwrap().get_id_by_versioned_key(key)
     }
 
-    fn get_transient_holons_pool(&self) -> Vec<Arc<RwLock<Holon>>> {
+    fn get_transient_holons_pool(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>  {
         let pool = match self.transient_holons.try_read() {
             Ok(guard) => guard,
             Err(e) => {
-                warn!("❌ Failed to acquire read lock");
-                return Vec::new();
+                return Err(HolonError::FailedToAcquireLock(format!("Failed to acquire read lock for get_transient_holons_pool: {}", e)));
             }
         };
-        // Clone each Holon for thread-safe access
-        pool
+        // Return shared Arc pointers for thread-safe access
+        Ok(
+            pool
             .get_all_holons()
             .into_iter()
-            .map(|rc_ref| Arc::new(RwLock::new(rc_ref.read().unwrap().clone())))
-            .collect()
+            .map(|rc_ref| rc_ref.clone())
+            .collect::<Vec<_>>()
+        )
     }
 
     fn export_transient_holons(&self) -> SerializableHolonPool {
