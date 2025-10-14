@@ -1,7 +1,4 @@
-use std::{
-    any::Any,
-    sync::{Arc, RwLock},
-};
+use std::{any::Any, sync::{Arc, RwLock}};
 
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -10,7 +7,7 @@ use crate::{
     core_shared_objects::{
         holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess,
     },
-    reference_layer::TransientHolonBehavior,
+    reference_layer::TransientHolonBehavior
 };
 
 /// Provides **internal management** of transient holons in the TransientHolonManager.
@@ -19,9 +16,7 @@ use crate::{
 /// It defines methods for:
 /// - **Clearing transient holons**
 /// - **Retrieving holons by key**
-pub trait TransientManagerAccessInternal:
-    TransientManagerAccess + TransientHolonBehavior + Send + Sync
-{
+pub trait TransientManagerAccessInternal: TransientManagerAccess + TransientHolonBehavior + Send + Sync {
     /// Enables safe downcasting of `TransientManagerAccessInternal` trait objects to their concrete type.
     ///
     /// This method is useful when working with `TransientManagerAccessInternal` as a trait object (`dyn TransientManagerAccessInternal`)
@@ -87,5 +82,5 @@ pub trait TransientManagerAccessInternal:
     ///
     /// # Returns
     /// A `Vec<Arc<RwLock<Holon>>>` containing all transient Holons.
-    fn get_transient_holons_pool(&self) -> Vec<Arc<RwLock<Holon>>>;
+    fn get_transient_holons_pool(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>;
 }
