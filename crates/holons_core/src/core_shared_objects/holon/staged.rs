@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -17,7 +17,7 @@ use super::{
 };
 
 /// Represents a Holon that has been staged for persistence or updates.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StagedHolon {
     version: MapInteger,       // Used to add to hash content for creating TemporaryID
     holon_state: HolonState,   // Mutable or Immutable
@@ -89,20 +89,20 @@ impl StagedHolon {
     //    DATA ACCESSORS
     // ====================
 
+    /// Retrieves related holons for a staged relationship by locking the relationship map
     pub fn get_related_holons(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        // Use the public `get_related_holons` method on the `StagedRelationshipMap`
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
+    /// Retrieves a staged relationship after checking read access
     pub fn get_staged_relationship(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-
         Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 

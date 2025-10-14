@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc};
+use std::sync::{Arc, RwLock};
 
 use crate::guest_shared_objects::GuestHolonService;
 use core_types::HolonError;
@@ -97,7 +97,7 @@ pub fn init_guest_context(
                 "Failed to get mutable reference to GuestHolonService".to_string(),
             )
         })?;
-    service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
+    service.register_internal_access(Arc::new(RwLock::new(nursery.clone())));
 
     // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(

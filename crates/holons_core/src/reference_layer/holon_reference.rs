@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -18,6 +17,7 @@ use base_types::{BaseValue, MapString};
 use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
 };
+use std::sync::{Arc, RwLock};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
@@ -54,8 +54,14 @@ impl HolonReference {
         self.is_accessible(context, AccessType::Read)?;
         match self {
             HolonReference::Transient(transient_reference) => {
-                let collection = transient_reference
+                let collection_arc = transient_reference
                     .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                let collection = collection_arc.read().map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -71,8 +77,14 @@ impl HolonReference {
                 }
             }
             HolonReference::Staged(staged_reference) => {
-                let collection = staged_reference
+                let collection_arc = staged_reference
                     .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                let collection = collection_arc.read().map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -88,10 +100,16 @@ impl HolonReference {
                 }
             }
             HolonReference::Smart(smart_reference) => {
-                let collection = smart_reference.related_holons(
+                let collection_arc = smart_reference.related_holons(
                     context,
                     CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 )?;
+                let collection = collection_arc.read().map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?;
                 collection.is_accessible(AccessType::Read)?;
                 let members = collection.get_members();
                 if members.len() > 1 {
@@ -211,7 +229,7 @@ impl ReadableHolonImpl for HolonReference {
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
                 transient_reference.related_holons_impl(context, relationship_name)

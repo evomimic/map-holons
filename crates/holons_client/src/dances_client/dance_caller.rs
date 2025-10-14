@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use holons_core::dances::{DanceRequest, DanceResponse};
 //use async_trait::async_trait;
 
-
 #[async_trait(?Send)]
 pub trait ConductorDanceCaller {
     /// Sends a `DanceRequest` and returns a `DanceResponse`.

@@ -34,7 +34,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     let person_1_staged_reference =
         get_staged_holon_by_base_key(&*fixture_context, &MapString(PERSON_1_KEY.to_string()))?;

@@ -20,6 +20,7 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
+async-trait = { workspace = true }
 
 # MAP Dependencies
 base_types = { workspace = true }

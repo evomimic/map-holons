@@ -39,7 +39,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     let _relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     // Get and set the various Holons data.
     let book_key = MapString(BOOK_KEY.to_string());

@@ -1,6 +1,9 @@
-use holons_core::{dances::{DanceRequest, DanceType, RequestBody}, query_layer::{NodeCollection, QueryExpression}};
 use base_types::MapString;
 use core_types::HolonError;
+use holons_core::{
+    dances::{DanceRequest, DanceType, RequestBody},
+    query_layer::{NodeCollection, QueryExpression},
+};
 
 ///
 /// Builds a DanceRequest for getting related holons optionally filtered by relationship name.

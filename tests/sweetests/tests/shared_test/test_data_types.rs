@@ -347,7 +347,7 @@ impl DancesTestCase {
     /// This function is called automatically within `rs_test` and should not be used directly.
     pub fn load_test_session_state(&mut self, fixture_context: &dyn HolonsContextBehavior) {
         let space_manager = fixture_context.get_space_manager();
-        let transient_holons = space_manager.export_transient_holons();
+        let transient_holons = space_manager.export_transient_holons().unwrap();
         self.test_session_state.set_transient_holons(transient_holons);
     }
 

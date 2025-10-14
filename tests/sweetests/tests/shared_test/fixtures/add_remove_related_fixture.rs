@@ -67,7 +67,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     let author_name_to_remove = MapString("George Smith".to_string());
 
-    let maybe_author_to_remove = authors_reference.as_ref().get_by_key(&author_name_to_remove)?;
+    let maybe_author_to_remove =
+        authors_reference.read().unwrap().get_by_key(&author_name_to_remove)?;
 
     info!("result of searching for George Smith authors: {:?}", maybe_author_to_remove);
 
@@ -104,7 +105,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     //     book_holon.clone(),
     // )?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     //  COMMIT  //
     test_case.add_commit_step()?;

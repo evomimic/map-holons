@@ -1,6 +1,6 @@
 pub mod commit_functions;
-pub mod holon_service;
 pub mod guest_holon_service;
+pub mod holon_service;
 pub mod smartlink_adapter;
 
 pub use commit_functions::*;

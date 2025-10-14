@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::validation_error::ValidationError;
-use std::cell::BorrowError;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
@@ -22,6 +21,8 @@ pub enum HolonError {
     EmptyField(String),
     #[error("Failed to Borrow {0}")]
     FailedToBorrow(String),
+    #[error("Failed to acquire lock: {0}")]
+    FailedToAcquireLock(String),
     #[error("Couldn't convert {0} into {1} ")]
     HashConversion(String, String),
     #[error("Holon not found: {0}")]
@@ -62,11 +63,12 @@ pub enum HolonError {
     WasmError(String),
 }
 
-impl From<BorrowError> for HolonError {
-    fn from(error: BorrowError) -> Self {
-        HolonError::InvalidHolonReference(format!("Failed to borrow Rc<RefCell<Holon>>: {}", error))
-    }
-}
+// Remove this implementation - no longer needed with RwLock
+//impl From<BorrowError> for HolonError {
+//    fn from(error: BorrowError) -> Self {
+//       HolonError::InvalidHolonReference(format!("Failed to borrow Rc<RefCell<Holon>>: {}", error))
+//   }
+//}
 
 impl HolonError {
     pub fn combine_errors(errors: Vec<HolonError>) -> String {

@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    cell::RefCell,
     collections::BTreeMap,
     ops::{Deref, DerefMut},
-    rc::Rc,
+    sync::{Arc, RwLock},
 };
 
 use super::{Holon, HolonBehavior};
@@ -15,7 +14,7 @@ use core_types::{HolonError, TemporaryId};
 // === HolonPool NewTypes ===
 //
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct TransientHolonPool(pub HolonPool);
 
 impl From<HolonPool> for TransientHolonPool {
@@ -38,7 +37,7 @@ impl DerefMut for TransientHolonPool {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct StagedHolonPool(pub HolonPool);
 
 impl From<HolonPool> for StagedHolonPool {
@@ -61,7 +60,7 @@ impl DerefMut for StagedHolonPool {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransientSerializableHolonPool(pub SerializableHolonPool);
 
 impl Deref for TransientSerializableHolonPool {
@@ -78,7 +77,7 @@ impl DerefMut for TransientSerializableHolonPool {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StagedSerializableHolonPool(pub SerializableHolonPool);
 
 impl Deref for StagedSerializableHolonPool {
@@ -114,11 +113,17 @@ impl Default for SerializableHolonPool {
 //
 // === HolonPool ===
 //
+// HolonPool no longer derives `PartialEq` or `Eq` because it stores Holons as `Arc<RwLock<Holon>>`.
+// These types do not implement equality by default, and comparing them would require
+// acquiring locks and comparing underlying Holon values, which is non-trivial and potentially blocking.
+//
+// Instead, equality comparisons should be done on `SerializableHolonPool`, which is derived from HolonPool
+// and contains plain, serializable Holons. It continues to derive `PartialEq` and `Eq` for testing and export validation.
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct HolonPool {
-    holons: BTreeMap<TemporaryId, Rc<RefCell<Holon>>>,
+    holons: BTreeMap<TemporaryId, Arc<RwLock<Holon>>>,
     keyed_index: BTreeMap<MapString, TemporaryId>,
 }
 
@@ -126,7 +131,7 @@ impl From<SerializableHolonPool> for HolonPool {
     fn from(pool: SerializableHolonPool) -> Self {
         let mut holons = BTreeMap::new();
         for (id, holon) in pool.holons {
-            holons.insert(id, Rc::new(RefCell::new(holon)));
+            holons.insert(id, Arc::new(RwLock::new(holon)));
         }
         Self { holons, keyed_index: pool.keyed_index.clone() }
     }
@@ -147,12 +152,12 @@ impl HolonPool {
     /// Get a vector of references to the Holons in the HolonPool.
     ///
     /// ⚠️ Only intended during the commit process due to mutable access risks.
-    pub fn get_all_holons(&self) -> Vec<Rc<RefCell<Holon>>> {
+    pub fn get_all_holons(&self) -> Vec<Arc<RwLock<Holon>>> {
         self.holons.values().cloned().collect()
     }
 
     /// Retrieves a Holon by its temporary id.
-    pub fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    pub fn get_holon_by_id(&self, id: &TemporaryId) -> Result<Arc<RwLock<Holon>>, HolonError> {
         self.holons
             .get(id)
             .cloned()
@@ -160,7 +165,7 @@ impl HolonPool {
     }
 
     /// Retrieves a Holon by its versioned (unique) key.
-    pub fn get_holon_by_versioned_key(&self, key: &MapString) -> Option<Rc<RefCell<Holon>>> {
+    pub fn get_holon_by_versioned_key(&self, key: &MapString) -> Option<Arc<RwLock<Holon>>> {
         self.keyed_index.get(key).and_then(|id| self.holons.get(id).cloned())
     }
 
@@ -210,12 +215,16 @@ impl HolonPool {
     }
 
     /// Exports the HolonPool as a `SerializableHolonPool`.
-    pub fn export_pool(&self) -> SerializableHolonPool {
+    pub fn export_pool(&self) -> Result<SerializableHolonPool, HolonError> {
         let mut holons = BTreeMap::new();
         for (id, holon) in self.holons.iter() {
-            holons.insert(id.clone(), holon.borrow().clone());
+            // Read lock the holon to clone its value
+            holons.insert(
+                id.clone(),
+                holon.read().expect("Failed to acquire read lock on holon").clone(),
+            );
         }
-        SerializableHolonPool { holons, keyed_index: self.keyed_index.clone() }
+        Ok(SerializableHolonPool { holons, keyed_index: self.keyed_index.clone() })
     }
 
     /// Imports a `SerializableHolonPool`, replacing the current holons.
@@ -224,7 +233,8 @@ impl HolonPool {
         self.keyed_index.clear();
 
         for (id, holon) in pool.holons.into_iter() {
-            self.holons.insert(id, Rc::new(RefCell::new(holon)));
+            // Wrap holon in Arc<RwLock> for thread-safe storage
+            self.holons.insert(id, Arc::new(RwLock::new(holon)));
         }
 
         self.keyed_index.extend(pool.keyed_index);
@@ -242,7 +252,8 @@ impl HolonPool {
         let id = create_temporary_id_from_key(&versioned_key);
 
         self.keyed_index.insert(versioned_key, id.clone());
-        self.holons.insert(id.clone(), Rc::new(RefCell::new(holon)));
+        // Store new holon wrapped in Arc<RwLock>
+        self.holons.insert(id.clone(), Arc::new(RwLock::new(holon)));
 
         Ok(id)
     }
