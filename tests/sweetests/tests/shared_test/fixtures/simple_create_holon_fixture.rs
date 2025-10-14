@@ -39,7 +39,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;

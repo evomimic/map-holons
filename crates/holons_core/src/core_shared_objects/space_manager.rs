@@ -1,3 +1,5 @@
+use core_types::HolonError;
+
 use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
@@ -9,7 +11,7 @@ use crate::reference_layer::{HolonReference, HolonServiceApi, HolonSpaceBehavior
 use crate::TransientCollection;
 use std::sync::{Arc, RwLock};
 
-use std::fmt::{Debug, Formatter, Result};
+use std::fmt::{Debug, Formatter};
 
 pub struct HolonSpaceManager {
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
@@ -128,16 +130,18 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
-    fn export_staged_holons(&self) -> SerializableHolonPool {
-        self.nursery.read().expect("Failed to acquire read lock on nursery").export_staged_holons()
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
+        self.nursery.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
+        })?.export_staged_holons()
     }
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
-    fn export_transient_holons(&self) -> SerializableHolonPool {
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
         self.transient_manager
-            .read()
-            .expect("Failed to acquire read lock on transient_manager")
-            .export_transient_holons()
+            .read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on transient_manager: {}", e))
+            })?.export_transient_holons()
     }
 
     /// Imports staged holons into the nursery from a `SerializableHolonPool`.
@@ -168,7 +172,7 @@ impl Debug for HolonSpaceManager {
     ///
     /// This method ensures that the `internal_nursery_access` field is **not printed** to avoid
     /// redundant logging, as it holds a **second reference** to the same `Nursery` instance.
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HolonSpaceManager")
             .field("holon_service", &"<HolonServiceApi>")
             .field("local_holon_space", &self.local_holon_space)

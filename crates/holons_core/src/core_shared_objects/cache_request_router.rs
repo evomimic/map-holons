@@ -206,3 +206,15 @@ pub enum ServiceRoute {
     Local,
     // Proxy(&OutboundSpaceProxy), TODO: implement OutboundSpaceProxy
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn cache_request_router_is_thread_safe() {
+        assert_thread_safe::<CacheRequestRouter>();
+    }
+}

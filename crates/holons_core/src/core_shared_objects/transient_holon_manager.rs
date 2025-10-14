@@ -184,9 +184,11 @@ impl TransientHolonBehavior for TransientHolonManager {
         self.to_validated_transient_reference(&id)
     }
 
-    fn transient_count(&self) -> i64 {
-        let pool = self.transient_holons.read().unwrap();
-        pool.len() as i64
+    fn transient_count(&self) -> Result<i64, HolonError> {
+        let pool = self.transient_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on transient_holons: {}", e))
+        })?;
+        Ok(pool.len() as i64)
     }
 }
 
@@ -221,11 +223,25 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         )
     }
 
-    fn export_transient_holons(&self) -> SerializableHolonPool {
-        self.transient_holons.read().unwrap().export_pool()
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>  {
+        self.transient_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock for export_transient_holons: {}", e))
+        })?.export_pool()
     }
 
     fn import_transient_holons(&mut self, pool: SerializableHolonPool) -> () {
         self.transient_holons.try_write().unwrap().import_pool(pool); // Mutates existing HolonPool
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn transient_holon_manager_is_thread_safe() {
+        assert_thread_safe::<TransientHolonManager>();
     }
 }

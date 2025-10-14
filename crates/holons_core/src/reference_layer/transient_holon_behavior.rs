@@ -51,5 +51,5 @@ pub trait TransientHolonBehavior: Send + Sync {
     ) -> Result<TransientReference, HolonError>;
 
     /// Returns a count of the number of transient holons.
-    fn transient_count(&self) -> i64;
+    fn transient_count(&self) -> Result<i64, HolonError>;
 }

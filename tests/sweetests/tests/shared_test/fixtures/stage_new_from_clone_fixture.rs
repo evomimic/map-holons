@@ -38,7 +38,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // The following assumes the fixture's nursery contains the same number of holons as
     // test executor's nursery will have staged immediately prior to commit.
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     // Get references to the Holons stashed in the fixture's transient_holon_manager.
     let book_key = MapString(BOOK_KEY.to_string());

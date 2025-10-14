@@ -64,7 +64,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// # Returns
     /// A `SerializableHolonPool` containing a **deep clone** of the current staged holons and their keyed index.
-    fn export_staged_holons(&self) -> SerializableHolonPool;
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// Imports a `SerializableHolonPool`, replacing the current staged holons.
     ///
@@ -92,4 +92,18 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
     fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn nursery_access_internal_is_thread_safe() {
+        trait Dummy: NurseryAccessInternal {}
+        impl<T: NurseryAccessInternal> Dummy for T {}
+        assert_thread_safe::<&dyn Dummy>();
+    }
 }

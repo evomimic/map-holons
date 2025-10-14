@@ -215,7 +215,7 @@ impl HolonPool {
     }
 
     /// Exports the HolonPool as a `SerializableHolonPool`.
-    pub fn export_pool(&self) -> SerializableHolonPool {
+    pub fn export_pool(&self) -> Result<SerializableHolonPool, HolonError> {
         let mut holons = BTreeMap::new();
         for (id, holon) in self.holons.iter() {
             // Read lock the holon to clone its value
@@ -224,7 +224,7 @@ impl HolonPool {
                 holon.read().expect("Failed to acquire read lock on holon").clone(),
             );
         }
-        SerializableHolonPool { holons, keyed_index: self.keyed_index.clone() }
+        Ok(SerializableHolonPool { holons, keyed_index: self.keyed_index.clone() })
     }
 
     /// Imports a `SerializableHolonPool`, replacing the current holons.

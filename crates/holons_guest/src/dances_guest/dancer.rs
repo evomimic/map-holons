@@ -235,8 +235,8 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
 
     // Construct SessionState with SerializableHolonPool replacing StagingArea
     Some(SessionState::new(
-        serializable_transient_pool,
-        serializable_staged_pool,
+        serializable_transient_pool.expect("Failed to export transient holons"),
+        serializable_staged_pool.expect("Failed to export staged holons"),
         local_space_holon,
     ))
 }

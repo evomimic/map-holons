@@ -1,3 +1,5 @@
+use core_types::HolonError;
+
 use crate::core_shared_objects::TransientManagerAccess;
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonStagingBehavior, TransientHolonBehavior,
@@ -107,7 +109,7 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
-    fn export_staged_holons(&self) -> SerializableHolonPool;
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
 
     /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
     ///
@@ -115,7 +117,7 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
-    fn export_transient_holons(&self) -> SerializableHolonPool;
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
 
     /// **Mediates import of staged holons to prevent direct modification via `NurseryAccess`.**
     ///

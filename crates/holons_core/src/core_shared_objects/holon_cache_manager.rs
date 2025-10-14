@@ -10,7 +10,7 @@ use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Debug)]
 pub struct HolonCacheManager {
-    cache: RwLock<HolonCache>, // Thread-safe cache of holons
+    cache: HolonCache, // Thread-safe cache of holons
     relationship_cache: RwLock<RelationshipCache>,
     holon_service: Arc<dyn HolonServiceApi>,
 }
@@ -19,7 +19,7 @@ impl HolonCacheManager {
     /// Creates a new `HolonCacheManager` with the provided `HolonResolver`.
     pub fn new(holon_service: Arc<dyn HolonServiceApi>) -> Self {
         Self {
-            cache: RwLock::new(HolonCache::new()),
+            cache: HolonCache::new(),
             relationship_cache: RwLock::new(RelationshipCache::new()),
             holon_service,
         }
@@ -33,33 +33,24 @@ impl HolonCacheAccess for HolonCacheManager {
     /// The behavior of this method is different on the client-side, where all Holons are cached
     /// in a single cache, and the guest-side where each space has its own cache.
     fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError> {
-        // Read lock the cache to check for existing holon
-        if let Some(cached) = self
-            .cache
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!("Cache manager read lock poisoned: {}", e))
-            })?
-            .get(holon_id)
-        {
+        // Attempt to retrieve the holon from the cache
+        if let Some(cached) = self.cache.get(holon_id) {
             debug!("Holon {:?} retrieved from cache.", holon_id);
             return Ok(cached.clone());
         }
 
-        // If not in cache, resolve the Holon using the resolver
-        debug!("Holon with HolonId {:?} not in cache. Fetching using HolonSpace.", holon_id);
+        // If not found, resolve it from the HolonService
+        debug!(
+            "Holon with HolonId {:?} not in cache. Fetching using HolonService.",
+            holon_id
+        );
         let holon = self.holon_service.fetch_holon_internal(holon_id)?;
-
         let arc_holon = Arc::new(RwLock::new(holon));
 
-        // Insert the Holon into the cache using a mutable borrow
-        self.cache
-            .write()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!("Cache write lock poisoned: {}", e))
-            })?
-            .insert(holon_id.clone(), arc_holon.clone());
-        debug!("Holon with LocalId {:?} fetched and cached.", holon_id);
+        // Insert the resolved holon into the cache
+        self.cache.insert(holon_id.clone(), arc_holon.clone());
+        debug!("Holon with HolonId {:?} fetched and cached.", holon_id);
+
         Ok(arc_holon)
     }
 
@@ -87,5 +78,18 @@ impl HolonCacheAccess for HolonCacheManager {
                 HolonError::FailedToAcquireLock(format!("Cache manager read lock poisoned: {}", e))
             })?
             .get_all_related_holons(context, self.holon_service.as_ref(), source_holon_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*; // brings HolonCacheManager into scope
+
+    // Generic helper to assert Send + Sync at compile time
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn assert_cache_manager_is_thread_safe() {
+        assert_thread_safe::<HolonCacheManager>();
     }
 }

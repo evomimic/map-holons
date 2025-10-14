@@ -113,7 +113,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     let steps_count = steps.len();
 
     // 1. Set up the mock conductor
-    let conductor_config = setup_conductor().await;
+    let conductor_config = Arc::new(setup_conductor().await);
 
     // 2. Create the DanceCallService with the mock conductor
     let dance_service = Arc::new(DanceCallService::new(conductor_config));

@@ -56,7 +56,7 @@ pub trait TransientManagerAccessInternal: TransientManagerAccess + TransientHolo
     ///
     /// # Returns
     /// A `SerializableHolonPool` containing a **deep clone** of the current transient holons and their keyed index.
-    fn export_transient_holons(&self) -> SerializableHolonPool;
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
 
     /// Imports a `SerializableHolonPool`, replacing the current transient holons.
     ///

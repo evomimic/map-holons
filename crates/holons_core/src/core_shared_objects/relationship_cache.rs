@@ -71,7 +71,7 @@ impl RelationshipCache {
                     return Ok(Arc::clone(&related_holons));
                 }
             }
-        } // Immutable borrow ends here
+        } // cache read lock is dropped here
 
         // Cache miss: Fetch related holons from the HolonServiceApi
         debug!(
@@ -97,5 +97,17 @@ impl RelationshipCache {
         }
         // Return the fetched holons
         Ok(fetched_arc)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn relationship_cache_is_thread_safe() {
+        assert_thread_safe::<RelationshipCache>();
     }
 }

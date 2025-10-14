@@ -139,9 +139,11 @@ impl HolonStagingBehavior for Nursery {
         self.to_validated_staged_reference(&id)
     }
 
-    fn staged_count(&self) -> i64 {
-        self.staged_holons.read().expect("Failed to acquire read lock on staged_holons").len()
-            as i64
+    fn staged_count(&self) -> Result<i64, HolonError> {
+        let count = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on staged_holons: {}", e))
+        })?.len() as i64;
+        Ok(count)
     }
 
     fn stage_new_holon(
@@ -180,11 +182,12 @@ impl NurseryAccessInternal for Nursery {
     }
 
     /// Exports the staged holons using `SerializableHolonPool`
-    fn export_staged_holons(&self) -> SerializableHolonPool {
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
         self.staged_holons
             .read()
-            .expect("Failed to acquire read lock on staged_holons")
-            .export_pool()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on staged_holons: {}", e))
+            })?.export_pool()
     }
 
     fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> () {

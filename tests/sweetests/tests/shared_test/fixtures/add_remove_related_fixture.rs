@@ -105,7 +105,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     //     book_holon.clone(),
     // )?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     //  COMMIT  //
     test_case.add_commit_step()?;

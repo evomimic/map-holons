@@ -36,7 +36,7 @@ pub trait HolonStagingBehavior: Send + Sync {
     ) -> Result<StagedReference, HolonError>;
 
     /// Returns a count of the number of holons being staged
-    fn staged_count(&self) -> i64;
+    fn staged_count(&self) -> Result<i64, HolonError>;
 
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
