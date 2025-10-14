@@ -328,12 +328,15 @@ pub fn summarize_holons(holons: &Vec<Holon>) -> String {
 
 // Gets total count of Staged Holons present in the Nursery
 pub fn staged_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
-     return context
+    return context
         .get_space_manager()
         .get_nursery_access()
         .read()
         .map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on nursery: {}",
+                e
+            ))
         })?
         .staged_count();
 }
@@ -344,6 +347,11 @@ pub fn transient_count(context: &dyn HolonsContextBehavior) -> Result<i64, Holon
         .get_space_manager()
         .get_transient_behavior_service()
         .read()
-        .expect("Failed to acquire read lock on transient_behavior_service")
-        .transient_count()
+        .map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on transient_behavior_service: {}",
+                e
+            ))
+        })?
+        .transient_count();
 }
