@@ -27,6 +27,16 @@ pub struct Nursery {
     staged_holons: Arc<RwLock<StagedHolonPool>>, // Thread-safe pool of staged holons
 }
 
+// The Nursery uses `Arc<RwLock<StagedHolonPool>>` to allow thread-safe mutation of staged holons.
+// Each holon is stored in a `HolonPool`, where Holons are individually wrapped in `Arc<RwLock<Holon>>`.
+// This structure allows:
+//
+// - Shared concurrent reads across threads (e.g. for base key lookups)
+// - Exclusive mutation when staging or clearing
+// - Safe export/import of holons via `SerializableHolonPool`
+// - Isolation of each staged holon for commit preparation, minimizing lock contention.
+//
+// All read/write access to the staged pool is explicitly scoped to avoid lock poisoning or panic scenarios.
 impl Nursery {
     /// Creates a new Nursery with an empty HolonPool
     pub fn new() -> Self {

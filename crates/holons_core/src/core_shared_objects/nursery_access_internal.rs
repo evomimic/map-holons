@@ -8,13 +8,20 @@ use crate::{HolonStagingBehavior, NurseryAccess};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
-/// Provides **internal management** of staged holons in the nursery.
+/// Provides thread-safe **internal access** to staged holons within the `Nursery`.
 ///
-/// This trait is used **only by the nursery itself and HolonSpaceManager**.
-/// It defines methods for:
-/// - **Clearing staged holons**
-/// - **Retrieving holons by key**
-/// - **Directly staging new holons**
+/// This trait extends [`NurseryAccess`] and [`HolonStagingBehavior`] and is implemented
+/// by components that manage the lifecycle of staged holons—primarily the `Nursery`
+/// and `HolonSpaceManager`.
+///
+/// > **Note:** Although this trait is thread-safe (`Send + Sync`), it is **intended only for internal use**
+/// by core components and should not be exposed as part of public or client-facing APIs.
+///
+/// ### Responsibilities:
+/// - Clearing and replacing staged holons
+/// - Accessing holons by base or versioned key
+/// - Exporting/importing the full staged holon pool
+/// - Providing holons to the commit pipeline
 pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + Sync {
     /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their concrete type.
     ///

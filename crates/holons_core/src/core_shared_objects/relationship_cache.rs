@@ -12,6 +12,10 @@ pub struct RelationshipCache {
     cache: Arc<RwLock<HashMap<HolonId, RelationshipMap>>>,
 }
 
+// TODO: Consider replacing `HashMap<HolonId, RelationshipMap>` with a fine-grained
+// cache keyed by (HolonId, RelationshipName), e.g. `Cache<(HolonId, RelationshipName), Arc<RwLock<HolonCollection>>>`.
+// This would enable lock-free reads and concurrent inserts at the relationship level,
+// eliminating the need for outer RwLock and improving cache concurrency.
 impl RelationshipCache {
     /// Creates a new RelationshipCache with an empty cache.
     pub fn new() -> Self {

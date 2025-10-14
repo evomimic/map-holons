@@ -113,6 +113,12 @@ impl Default for SerializableHolonPool {
 //
 // === HolonPool ===
 //
+// HolonPool no longer derives `PartialEq` or `Eq` because it stores Holons as `Arc<RwLock<Holon>>`.
+// These types do not implement equality by default, and comparing them would require
+// acquiring locks and comparing underlying Holon values, which is non-trivial and potentially blocking.
+//
+// Instead, equality comparisons should be done on `SerializableHolonPool`, which is derived from HolonPool
+// and contains plain, serializable Holons. It continues to derive `PartialEq` and `Eq` for testing and export validation.
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
 #[derive(Debug, Clone)]
