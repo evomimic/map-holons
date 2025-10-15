@@ -2,7 +2,7 @@
 //
 // Pass-2 (Resolver): Transform queued LoaderRelationshipReference holons into
 // concrete writes on staged holons. Implements the multi‑pass, graph‑driven
-// inverse handling policy agreed in the latest design:
+// inverse handling policy:
 //   Pass-2a: write DESCRIBED_BY (declared) first
 //   Pass-2b: write INVERSE_OF (declared) next (no endpoint prefilter)
 //   Pass-2c: resolve remaining relationships via fixed-point iteration
