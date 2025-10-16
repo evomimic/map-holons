@@ -57,13 +57,13 @@ pub trait HolonServiceApi: Debug + Any {
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError>;
 
-    /// Asynchronously loads a HolonLoaderBundle into the current space and returns
-    /// a reference to the resulting HolonLoadResponse holon summarizing the import outcome.
-    async fn load_holons(
+    /// Execute a Holon Loader import using a HolonLoaderBundle (transient) reference.
+    /// Returns a transient reference to a HolonLoadResponse holon.
+    fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         bundle: TransientReference,
-    ) -> Result<HolonReference, HolonError>;
+    ) -> Result<TransientReference, HolonError>;
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.

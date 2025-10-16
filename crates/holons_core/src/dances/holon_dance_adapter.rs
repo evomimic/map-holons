@@ -1,21 +1,22 @@
-//! This file defines the DancesAdaptors offered by the holons zome.
-//! TODO: Move these adaptors to their own zome
+//! Dance adapters for the holons zome.
 //!
-//! For each Dance, this file defines:
-//! - a `build_` function as a helper function for creating DanceRequests for that Dance from
-//! native parameters.
-//!- a function that performs the dance
+//! This module defines the `*_dance` adapter functions that execute individual
+//! dances on the guest side. Each adapter:
+//! 1. Extracts required input parameters from the `DanceRequest`
+//! 2. Invokes the appropriate native/reference-layer function
+//! 3. Produces a `ResponseBody` (or maps errors to `HolonError` for the dancer to wrap)
 //!
-//!
-//! As a dance adaptor, this function wraps (and insulates) Dancer from native functionality
-//! and insulates the native function from any dependency on Dances. In general, this means:
-//! 1.  Extracting any required input parameters from the DanceRequest's request_body
-//! 2.  Invoking the native function
-//! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
-//! mapping any errors into an appropriate ResponseStatus and returning results in the body.
+//! Notes:
+//! - **Request builders have moved** to the `holon_dance_builders` crate. This module no longer
+//!   exposes `build_*` helper functions.
+//! - These adapters intentionally insulate native/reference-layer code from the Dance protocol
+//!   details and vice-versa.
+//! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
+//!   adapters return `Result<ResponseBody, HolonError>`.
 
 use tracing::{debug, info};
 
+use crate::reference_layer::TransientReference;
 use crate::{
     core_shared_objects::{
         commit, delete_holon, stage_new_from_clone, stage_new_holon, stage_new_version,
@@ -253,6 +254,56 @@ pub fn get_holon_by_id_dance(
 
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))
+}
+
+/// Executes the `"load_holons"` dance (guest side).
+///
+/// This adapter validates the request and delegates Holon import to the
+/// guest `HolonServiceApi` implementation, which calls the loader controller.
+///
+/// *DanceRequest:*
+/// - dance_name: **"load_holons"**
+/// - dance_type: **Standalone**
+/// - request_body: **TransientReference(…HolonLoaderBundle…)**
+///
+/// *ResponseBody:*
+/// - **HolonReference(HolonReference::Transient)** — a transient reference to the
+///   `HolonLoadResponse` holon produced by the loader
+///
+/// # Errors
+/// Returns `HolonError::InvalidParameter` if the `DanceType` is not `Standalone`
+/// or if the `RequestBody` is not `TransientReference`.
+///
+pub fn load_holons_dance(
+    context: &dyn HolonsContextBehavior,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    // Validate dance type
+    match request.dance_type {
+        DanceType::Standalone => { /* ok */ }
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid DanceType: expected Standalone".to_string(),
+            ))
+        }
+    }
+
+    // Extract bundle reference
+    let bundle_ref: TransientReference = match request.body {
+        RequestBody::TransientReference(transient_reference) => transient_reference,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid RequestBody: expected TransientReference (HolonLoaderBundle)".to_string(),
+            ))
+        }
+    };
+
+    // Delegate to the Holon Service (guest impl will call the loader controller)
+    let holon_service = context.get_space_manager().get_holon_service();
+    let response_reference = holon_service.load_holons_internal(context, bundle_ref)?;
+
+    // Wrap transient response holon
+    Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
 }
 
 /// Query relationships

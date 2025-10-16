@@ -11,10 +11,11 @@ name = "holons_client"
 # General dev-dependencies (platform-agnostic)
 tracing = { workspace = true }
 async-trait = { workspace = true }
+tokio = { version = "1.48.0", features = ["rt", "macros"] } # added for async dance calls
 
 # MAP Dependencies
 holons_core = { workspace = true }
-#holon_dance_builders = { workspace = true }
+holon_dance_builders = { workspace = true }
 base_types = { workspace = true }
 core_types = { workspace = true }
 integrity_core_types = { workspace = true }

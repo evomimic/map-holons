@@ -34,12 +34,8 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
     }
 
     /// Executes a dance call while automatically managing session state.
-    ///
-    /// - Loads session state into the request.
-    /// - Sends the request via the provided `DanceCaller` implementation.
-    /// - Restores session state from the response.
-    ///
-    /// This function is **synchronous** because all conductor calls are synchronous.
+    /// Asynchronous: loads session state into the request, awaits the conductor call,
+    /// restores session state from the response, and returns the response.
     pub async fn dance_call(
         &self,
         context: &dyn HolonsContextBehavior,
