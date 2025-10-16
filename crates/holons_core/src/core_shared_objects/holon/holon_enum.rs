@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -165,7 +165,7 @@ impl ReadableHolonState for Holon {
     fn related_holons(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         match self {
             Holon::Transient(h) => h.related_holons(relationship_name),
             Holon::Staged(h) => h.related_holons(relationship_name),

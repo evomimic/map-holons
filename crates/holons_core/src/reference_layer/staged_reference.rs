@@ -1,11 +1,8 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
-use std::{
-    fmt,
-    sync::{Arc, RwLock},
-};
-use tracing::{debug, info};
+use std::sync::RwLock;
+use std::{fmt, sync::Arc};
+use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -20,8 +17,7 @@ use crate::{
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         transient_holon_manager::ToHolonCloneModel,
-        Holon, HolonCollection, NurseryAccess,
-        ReadableHolonState, WriteableHolonState,
+        Holon, HolonCollection, NurseryAccess, ReadableHolonState, WriteableHolonState,
     },
     Nursery, RelationshipMap,
 };

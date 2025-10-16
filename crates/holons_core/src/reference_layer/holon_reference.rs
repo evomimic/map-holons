@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -311,62 +312,6 @@ impl ReadableHolonImpl for HolonReference {
                 staged_reference.versioned_key_impl(context)
             }
             HolonReference::Smart(smart_reference) => smart_reference.versioned_key_impl(context),
-        }
-    }
-
-    fn essential_content_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        match self {
-            HolonReference::Transient(transient_reference) => {
-                transient_reference.essential_content_impl(context)
-            }
-            HolonReference::Staged(staged_reference) => {
-                staged_reference.essential_content_impl(context)
-            }
-            HolonReference::Smart(smart_reference) => {
-                smart_reference.essential_content_impl(context)
-            }
-        }
-    }
-
-    fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
-        match self {
-            HolonReference::Transient(transient_reference) => {
-                transient_reference.summarize_impl(context)
-            }
-            HolonReference::Staged(staged_reference) => staged_reference.summarize_impl(context),
-            HolonReference::Smart(smart_reference) => smart_reference.summarize_impl(context),
-        }
-    }
-
-    fn into_model_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonNodeModel, HolonError> {
-        match self {
-            Self::Transient(reference) => reference.into_model_impl(context),
-            Self::Staged(reference) => reference.into_model_impl(context),
-            Self::Smart(reference) => reference.into_model_impl(context),
-        }
-    }
-
-    fn is_accessible_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        access_type: AccessType,
-    ) -> Result<(), HolonError> {
-        match self {
-            HolonReference::Transient(transient_reference) => {
-                transient_reference.is_accessible_impl(context, access_type)
-            }
-            HolonReference::Staged(staged_reference) => {
-                staged_reference.is_accessible_impl(context, access_type)
-            }
-            HolonReference::Smart(smart_reference) => {
-                smart_reference.is_accessible_impl(context, access_type)
-            }
         }
     }
 }

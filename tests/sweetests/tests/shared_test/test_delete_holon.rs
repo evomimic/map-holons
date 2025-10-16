@@ -7,7 +7,6 @@ use tracing::{debug, info};
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons_core::core_shared_objects::HolonBehavior; // TODO: Eliminate this dependency
 
 use crate::shared_test::*;
 use crate::shared_test::{
@@ -48,7 +47,7 @@ pub async fn execute_delete_holon(
     let local_id =
         match holon_to_delete.holon_id().expect("Unable to get HolonId from holon_to_delete") {
             HolonId::Local(id) => id,
-            HolonId::External(_) => panic!("Can only delete a Local Holon, found External")
+            HolonId::External(_) => panic!("Can only delete a Local Holon, found External"),
         };
 
     // 3. Build the delete Holon request

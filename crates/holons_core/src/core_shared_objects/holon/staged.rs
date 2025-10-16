@@ -106,7 +106,7 @@ impl StagedHolon {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
-        Ok(self.staged_relationships.related_holons(relationship_name))
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
     pub fn get_staged_relationship_map(&self) -> Result<StagedRelationshipMap, HolonError> {
@@ -276,7 +276,7 @@ impl ReadableHolonState for StagedHolon {
         &self,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        Ok(self.staged_relationships.related_holons(relationship_name))
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {

@@ -3,7 +3,7 @@ use derive_new::new;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
-use holons_core::core_shared_objects::{Holon, HolonBehavior};
+use holons_core::core_shared_objects::Holon;
 use holons_prelude::prelude::*;
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -12,16 +12,12 @@ use std::{
     sync::Arc,
 };
 
-use holons_client::dances_client::dance_call_service::DanceCallService;
-use holons_client::ConductorDanceCaller;
-
 use base_types::{MapInteger, MapString};
 use core_types::{HolonError, HolonId};
 use core_types::{PropertyMap, RelationshipName};
 
 use holons_core::{
-    core_shared_objects::holon_pool::SerializableHolonPool,
-    core_shared_objects::{Holon, ReadableHolonState, TransientHolon},
+    core_shared_objects::{ReadableHolonState, TransientHolon},
     dances::ResponseStatusCode,
     query_layer::QueryExpression,
     reference_layer::{

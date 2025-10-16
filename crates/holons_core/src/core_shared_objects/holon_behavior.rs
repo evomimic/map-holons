@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use base_types::{BaseValue, MapString};
 use core_types::{
@@ -74,7 +74,7 @@ pub trait ReadableHolonState {
     fn related_holons(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError>;
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
     /// Retrieves the unique versioned key (key + versioned_sequence_count suffix)
     ///

@@ -3,7 +3,6 @@ use hdi::prelude::{Record, RecordEntry};
 use base_types::MapInteger;
 use core_types::HolonError;
 use holons_core::core_shared_objects::SavedHolon;
-use integrity_core_types::LocalId;
 use holons_guest_integrity::HolonNode;
 use integrity_core_types::LocalId;
 

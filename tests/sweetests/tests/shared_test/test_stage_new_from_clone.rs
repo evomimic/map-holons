@@ -10,7 +10,6 @@ use crate::shared_test::test_data_types::{
 };
 use base_types::{MapInteger, MapString};
 use core_types::HolonId;
-use core_types::HolonId;
 use core_types::{PropertyName, RelationshipName};
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};

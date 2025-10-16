@@ -77,7 +77,7 @@ impl TransientHolon {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
-        Ok(self.transient_relationships.related_holons(relationship_name))
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
     }
 
     fn get_transient_relationship_map(&self) -> Result<TransientRelationshipMap, HolonError> {
@@ -150,7 +150,7 @@ impl ReadableHolonState for TransientHolon {
         &self,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        Ok(self.transient_relationships.related_holons(relationship_name))
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
     }
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {

@@ -1,17 +1,13 @@
 use core_types::HolonError;
 
-use crate::core_shared_objects::TransientManagerAccess;
-use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonStagingBehavior, TransientHolonBehavior,
-};
+use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
-use crate::core_shared_objects::nursery_access::NurseryAccess;
-use crate::HolonCollectionApi;
 
 // Import thread-safe core objects
-use crate::core_shared_objects::{Nursery, TransientCollection, TransientHolonManager};
+use crate::core_shared_objects::{TransientCollection, TransientHolonManager};
+use crate::Nursery;
 
 use std::sync::{Arc, RwLock};
 
@@ -67,7 +63,7 @@ pub trait HolonSpaceBehavior {
     /// # Returns
     /// - An `Arc<RwLock<TransientHolonManager>>` for interacting with staged holons in a thread-safe manner.
     // TODO: rename to get_staging_behavior_service
-    fn get_staging_behavior_access(&self) -> Arc<RwLock<TransientHolonManager>>;
+    fn get_staging_behavior_access(&self) -> Arc<RwLock<Nursery>>;
 
     /// Provides the service for the **component that implements the `TransientHolonBehavior` API**.
     ///
@@ -109,7 +105,7 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
     ///
@@ -117,7 +113,7 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// **Mediates import of staged holons to prevent direct modification via `NurseryAccess`.**
     ///

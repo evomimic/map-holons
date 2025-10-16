@@ -62,7 +62,7 @@ pub fn setup_book_author_steps_with_context(
     test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
     let mut book_staged_reference =
-        stage_new_holon_api(&*fixture_context, book_transient_reference)?;
+        stage_new_holon(&*fixture_context, book_transient_reference)?;
 
     // //  STAGE:  Person 1 //
     let person_1_key = MapString(PERSON_1_KEY.to_string());
@@ -99,7 +99,7 @@ pub fn setup_book_author_steps_with_context(
     test_case.add_stage_holon_step(publisher_transient_reference.clone())?;
 
     let _publisher_staged_reference =
-        stage_new_holon_api(&*fixture_context, publisher_transient_reference)?;
+        stage_new_holon(&*fixture_context, publisher_transient_reference)?;
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
     let mut fixture_target_references: Vec<HolonReference> = Vec::new();

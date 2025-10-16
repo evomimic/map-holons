@@ -110,8 +110,8 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
-    fn get_staging_behavior_access(&self) -> Arc<RwLock<TransientHolonManager>> {
-        Arc::clone(&self.transient_manager)
+    fn get_staging_behavior_access(&self) -> Arc<RwLock<Nursery>> {
+        Arc::clone(&self.nursery)
     }
 
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
@@ -131,17 +131,28 @@ impl HolonSpaceBehavior for HolonSpaceManager {
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
     fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.nursery.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
-        })?.export_staged_holons()
+        self.nursery
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on nursery: {}",
+                    e
+                ))
+            })?
+            .export_staged_holons()
     }
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
     fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
         self.transient_manager
-            .read().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on transient_manager: {}", e))
-            })?.export_transient_holons()
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on transient_manager: {}",
+                    e
+                ))
+            })?
+            .export_transient_holons()
     }
 
     /// Imports staged holons into the nursery from a `SerializableHolonPool`.
