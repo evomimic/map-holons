@@ -1,7 +1,6 @@
+#[allow(unused_must_use)]
+use pretty_assertions::assert_eq;
 use tracing::{error, info};
-
-use rstest::*;
-use type_names::ToRelationshipName;
 
 use crate::shared_test::{
     setup_book_author_steps_with_context,
@@ -12,7 +11,6 @@ use crate::shared_test::{
         PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-
 use base_types::{MapBoolean, MapInteger, MapString};
 use core_types::{BaseTypeKind, HolonError, HolonId};
 use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
@@ -24,6 +22,9 @@ use holons_core::{
     reference_layer::{HolonReference, ReadableHolon, WritableHolon},
     HolonCollection, HolonCollectionApi, HolonsContextBehavior,
 };
+use holons_prelude::prelude::*;
+use rstest::*;
+use type_names::ToRelationshipName;
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
@@ -75,9 +76,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // debug!("authors retrieved for book: {:?}", authors_reference);
     let person_1_option =
-        authors_reference.as_ref().get_by_key(&MapString(PERSON_1_KEY.to_string()))?;
+        authors_reference.read().unwrap().get_by_key(&MapString(PERSON_1_KEY.to_string()))?;
     let person_2_option =
-        authors_reference.as_ref().get_by_key(&MapString(PERSON_2_KEY.to_string()))?;
+        authors_reference.read().unwrap().get_by_key(&MapString(PERSON_2_KEY.to_string()))?;
 
     // REMOVE: both authors //
 
@@ -93,7 +94,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
                 remove_vector.clone(),
             )?;
             // Executor step
-            test_case.remove_related_holons_step(
+            test_case.add_remove_related_holons_step(
                 HolonReference::Staged(book_holon_staged_reference.clone()),
                 relationship_name.clone(),
                 remove_vector,
@@ -117,7 +118,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         vec![HolonReference::Transient(publisher.clone())],
     )?;
 
-    test_case.add_related_holons_step(
+    test_case.add_add_related_holons_step(
         HolonReference::Staged(book_holon_staged_reference.clone()),
         "PUBLISHED_BY".to_relationship_name(),
         vec![TestReference::TransientHolon(publisher)],
@@ -125,7 +126,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         HolonReference::Staged(book_holon_staged_reference),
     )?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     //  COMMIT  //
     test_case.add_commit_step()?;

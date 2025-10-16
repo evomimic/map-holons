@@ -1,8 +1,8 @@
 use async_std::task;
+use holons_prelude::prelude::*;
+use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info, warn};
-
-use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -56,10 +56,8 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
         }
         ResponseBody::Holons(holons) => {
             for holon in holons {
-                let key = holon
-                    .key()
-                    .expect("Holon should have a key")
-                    .expect("Key should not be None");
+                let key =
+                    holon.key().expect("Holon should have a key").expect("Key should not be None");
                 test_state.created_holons.insert(key, holon);
             }
         }

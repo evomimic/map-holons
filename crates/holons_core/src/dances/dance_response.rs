@@ -58,6 +58,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
             HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
+            HolonError::FailedToAcquireLock(_) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
             HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
             HolonError::IndexOutOfRange(_) => ResponseStatusCode::ServerError,

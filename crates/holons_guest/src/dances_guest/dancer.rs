@@ -110,6 +110,8 @@ impl Dancer {
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
         dispatch_table
+            .insert("remove_properties", remove_properties_dance as DanceFunction);
+        dispatch_table
             .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
         dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
         dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
@@ -235,8 +237,8 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
 
     // Construct SessionState with SerializableHolonPool replacing StagingArea
     Some(SessionState::new(
-        serializable_transient_pool,
-        serializable_staged_pool,
+        serializable_transient_pool.expect("Failed to export transient holons"),
+        serializable_staged_pool.expect("Failed to export staged holons"),
         local_space_holon,
     ))
 }
@@ -302,6 +304,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::DuplicateError(_, _)
         | HolonError::EmptyField(_)
         | HolonError::FailedToBorrow(_)
+        | HolonError::FailedToAcquireLock(_)
         | HolonError::HashConversion(_, _)
         | HolonError::HolonNotFound(_)
         | HolonError::IndexOutOfRange(_)

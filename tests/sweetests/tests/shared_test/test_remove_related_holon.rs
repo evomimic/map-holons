@@ -12,15 +12,8 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
-use base_types::{MapInteger, MapString};
-use holon_dance_builders::remove_related_holons_dance::build_remove_related_holons_dance_request;
-use holons_core::{
-    core_shared_objects::holon::Holon,
-    dances::{ResponseBody, ResponseStatusCode},
-    HolonReference, StagedReference,
-};
-// use holons_guest_integrity::HolonNode;
-use core_types::{PropertyMap, PropertyName, RelationshipName};
+
+use holons_prelude::prelude::*;
 
 /// This function is intended to test the ability to remove holons from a specified relationship
 /// originating at a source_holon.
@@ -38,7 +31,6 @@ use core_types::{PropertyMap, PropertyName, RelationshipName};
 ///     d. committing the changes
 ///     e. confirming the new holon is no longer related to the holons to remove via the specified relationship.
 ///
-
 pub async fn execute_remove_related_holons(
     test_state: &mut DanceTestExecutionState<MockConductorConfig>,
     source_holon: HolonReference,

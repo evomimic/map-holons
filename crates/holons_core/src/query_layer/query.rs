@@ -1,6 +1,6 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, rc::Rc};
+use std::collections::BTreeMap;
 
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
 use crate::HolonCollection;
@@ -40,9 +40,14 @@ pub fn evaluate_query(
     let mut result_collection = NodeCollection::new_empty();
 
     for node in node_collection.members {
-        let related_holons_rc = node.source_holon.related_holons(context, &relationship_name)?;
-
-        let related_holons: Rc<HolonCollection> = Rc::clone(&related_holons_rc);
+        // Fetch and lock the related holon collection
+        let related_holons_lock = node.source_holon.related_holons(context, &relationship_name)?;
+        let related_holons = related_holons_lock.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on holon collection: {}",
+                e
+            ))
+        })?;
 
         let mut query_path_map = QueryPathMap::new(BTreeMap::new());
 

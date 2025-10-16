@@ -1,9 +1,9 @@
 use async_std::task;
+use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
+use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-
-use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -45,19 +45,19 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. Verify response contains Holons
-    if let ResponseBody::Holons(holons) = response.body {
-        info!("DB contains {} holons", holons.len());
+    if let ResponseBody::HolonCollection(holons) = response.body {
+        info!("DB contains {} holons", holons.get_count());
 
         for holon in holons {
             let key = holon
-                .key()
+                .key(context)
                 .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
                 .unwrap_or_else(|err| {
                     panic!("Attempt to key() resulted in error: {:?}", err);
                 });
 
             info!("Key = {:?}", key.0);
-            info!("{:?}", holon.summarize());
+            info!("{:?}", holon.summarize(context));
             // debug!("Holon JSON: {:?}", as_json(&holon));
         }
     } else {

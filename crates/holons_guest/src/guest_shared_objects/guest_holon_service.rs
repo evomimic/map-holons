@@ -1,6 +1,10 @@
+use holons_core::reference_layer::{HolonStagingBehavior, TransientHolonBehavior};
 use std::any::Any;
 use std::collections::HashMap;
-use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 
 use hdk::prelude::*;
 use holons_core::core_shared_objects::SavedHolon;
@@ -35,7 +39,7 @@ use integrity_core_types::{LocalId, PropertyName, RelationshipName};
 #[derive(Clone)]
 pub struct GuestHolonService {
     /// Holds the internal nursery access after registration
-    pub internal_nursery_access: Option<Arc<RefCell<dyn NurseryAccessInternal>>>,
+    pub internal_nursery_access: Option<Arc<RwLock<dyn NurseryAccessInternal>>>,
 }
 
 impl GuestHolonService {
@@ -45,14 +49,14 @@ impl GuestHolonService {
         }
     }
     /// ✅ HolonSpaceManager explicitly grants internal access at registration
-    pub fn register_internal_access(&mut self, access: Arc<RefCell<dyn NurseryAccessInternal>>) {
+    pub fn register_internal_access(&mut self, access: Arc<RwLock<dyn NurseryAccessInternal>>) {
         self.internal_nursery_access = Some(access);
     }
 
     /// Retrieves the stored internal access (set during registration)
     pub fn get_internal_nursery_access(
         &self,
-    ) -> Result<Arc<RefCell<dyn NurseryAccessInternal>>, HolonError> {
+    ) -> Result<Arc<RwLock<dyn NurseryAccessInternal>>, HolonError> {
         self.internal_nursery_access.clone().ok_or(HolonError::Misc(
             "GuestHolonService does not have internal nursery access.".to_string(),
         ))
@@ -69,7 +73,10 @@ impl GuestHolonService {
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
         let transient_behavior_service_cell =
             context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior_service = transient_behavior_service_cell.borrow();
+        let transient_behavior_service = transient_behavior_service_cell
+            .try_read()
+            .map_err(|_e| HolonError::FailedToAcquireLock("lock failed".to_string()))?;
+
 
         // Create new (empty) TransientHolon
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
@@ -169,7 +176,7 @@ impl GuestHolonService {
     pub fn get_nursery_access(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Arc<RefCell<dyn NurseryAccess>> {
+    ) -> Arc<RwLock<dyn NurseryAccess>> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 
@@ -182,13 +189,16 @@ impl HolonServiceApi for GuestHolonService {
         self
     }
 
-    fn commit(&self, context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
+    fn commit_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<CommitResponse, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
 
         // Step 1: Borrow immutably, immediately clone the Vec, then drop the borrow
         let staged_holons = {
-            let nursery_read = internal_nursery.borrow();
+            let nursery_read = internal_nursery.read().unwrap();
             let cloned_holons = nursery_read.get_holons_to_commit().clone(); // Clone while borrow is active
             cloned_holons // Borrow ends here
         }; // `nursery_read` is dropped immediately after this block
@@ -197,13 +207,13 @@ impl HolonServiceApi for GuestHolonService {
         let commit_response = commit_functions::commit(context, &staged_holons)?;
 
         // Step 3: Borrow mutably to clear the stage
-        internal_nursery.borrow_mut().clear_stage(); // Safe, no borrow conflict
+        internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
 
         // Step 4: Return the commit response
         Ok(commit_response)
     }
 
-    fn delete_holon(&self, local_id: &LocalId) -> Result<(), HolonError> {
+    fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         let record = get(try_action_hash_from_local_id(&local_id)?, GetOptions::default())
             .map_err(|e| holon_error_from_wasm_error(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
@@ -214,7 +224,7 @@ impl HolonServiceApi for GuestHolonService {
             .map_err(|e| holon_error_from_wasm_error(e))
     }
 
-    fn fetch_all_related_holons(
+    fn fetch_all_related_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         source_id: &HolonId,
@@ -223,7 +233,8 @@ impl HolonServiceApi for GuestHolonService {
             return Err(HolonError::InvalidHolonReference("Source id must be Local".to_string()));
         }
 
-        let mut relationship_map: HashMap<RelationshipName, Rc<HolonCollection>> = HashMap::new();
+        let mut relationship_map: HashMap<RelationshipName, Arc<RwLock<HolonCollection>>> =
+            HashMap::new();
 
         let mut reference_map: HashMap<RelationshipName, Vec<HolonReference>> = HashMap::new();
 
@@ -254,7 +265,7 @@ impl HolonServiceApi for GuestHolonService {
                 })?; // At least for now, all SmartLinks should be encoded with a key
                 collection.add_reference_with_key(Some(&key), &reference)?;
             }
-            relationship_map.insert(map_name, Rc::new(collection));
+            relationship_map.insert(map_name, Arc::new(RwLock::new(collection)));
         }
 
         Ok(RelationshipMap::new(relationship_map))
@@ -262,7 +273,7 @@ impl HolonServiceApi for GuestHolonService {
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
     /// then "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
+    fn fetch_holon_internal(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
 
         // Retrieve the exact HolonNode for the specific ActionHash.
@@ -279,7 +290,7 @@ impl HolonServiceApi for GuestHolonService {
         }
     }
 
-    fn fetch_related_holons(
+    fn fetch_related_holons_internal(
         &self,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
@@ -300,7 +311,7 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    fn get_all_holons(
+    fn get_all_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError> {
@@ -317,7 +328,7 @@ impl HolonServiceApi for GuestHolonService {
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
-    fn stage_new_from_clone(
+    fn stage_new_from_clone_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         original_holon: HolonReference,
@@ -349,7 +360,8 @@ impl HolonServiceApi for GuestHolonService {
 
         let mut cloned_staged_reference = self
             .get_internal_nursery_access()?
-            .borrow()
+            .read()
+            .unwrap()
             .stage_new_holon(context, cloned_transient_reference)?;
 
         // Reset the PREDECESSOR to None
@@ -361,7 +373,7 @@ impl HolonServiceApi for GuestHolonService {
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
     /// to be retrieved by key.
-    fn stage_new_version(
+    fn stage_new_version_internal(
         &self,
         context: &dyn HolonsContextBehavior,
         original_holon: SmartReference,
@@ -370,7 +382,8 @@ impl HolonServiceApi for GuestHolonService {
 
         let mut cloned_staged_reference = self
             .get_internal_nursery_access()?
-            .borrow()
+            .read()
+            .unwrap()
             .stage_new_holon(context, cloned_holon_transient_reference)?;
 
         // Reset the PREDECESSOR to the original Holon being cloned from.

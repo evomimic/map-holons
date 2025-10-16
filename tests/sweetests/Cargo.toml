@@ -15,6 +15,7 @@ base_types = { workspace = true }
 core_types = { workspace = true }
 type_names = { workspace = true }
 holons_guest_integrity = { workspace = true }
+holons_prelude = { workspace = true }
 
 # General deps
 base64ct = "=1.7.3"

@@ -1,9 +1,9 @@
 use async_std::task;
+use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
+use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-
-use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -47,7 +47,7 @@ pub async fn execute_delete_holon(
     let local_id =
         match holon_to_delete.holon_id().expect("Unable to get HolonId from holon_to_delete") {
             HolonId::Local(id) => id,
-            HolonId::External(_) => panic!("Can only delete a Local Holon, found External")
+            HolonId::External(_) => panic!("Can only delete a Local Holon, found External"),
         };
 
     // 3. Build the delete Holon request

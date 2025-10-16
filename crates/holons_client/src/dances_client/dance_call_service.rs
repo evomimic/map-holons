@@ -1,5 +1,7 @@
 //! Handles making dance calls while managing session state.
 //!
+use std::sync::Arc;
+
 use crate::dances_client::ConductorDanceCaller;
 
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
@@ -20,16 +22,16 @@ use tracing::{
 /// # Type Parameters
 /// - `C`: A type implementing `DanceCaller`, which determines how the dance request is executed.
 #[derive(Debug)]
-pub struct DanceCallService<C: ConductorDanceCaller> {
-    conductor: C,
+pub struct DanceCallService<C: ConductorDanceCaller + ?Sized> {
+    conductor: Arc<C>,
 }
 
-impl<C: ConductorDanceCaller> DanceCallService<C> {
+impl<C: ConductorDanceCaller + ?Sized> DanceCallService<C> {
     /// Creates a new `DanceCallService` with a given conductor backend.
     ///
     /// # Arguments
     /// - `conductor`: A `DanceCaller` implementation that handles the actual request execution.
-    pub fn new(conductor: C) -> Self {
+    pub fn new(conductor: Arc<C>) -> Self {
         Self { conductor }
     }
 
@@ -69,7 +71,10 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
 
         // 5. Update space manager's local_holon_space without moving response
         let space_manager = context.get_space_manager();
-        space_manager.set_space_holon(response_session_state.get_local_holon_space().unwrap());
+        space_manager.set_space_holon(
+            response_session_state
+                .get_local_holon_space().expect("local_holon_space could be none?"),       
+        );
 
         response
     }
@@ -91,8 +96,10 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         session_state: &mut SessionState,
     ) {
         let space_manager = context.get_space_manager();
-        let staged_holons = space_manager.export_staged_holons();
-        let transient_holons = space_manager.export_transient_holons();
+        let staged_holons = space_manager.export_staged_holons()
+            .expect("Failed to export staged holons");
+        let transient_holons = space_manager.export_transient_holons()
+            .expect("Failed to export transient holons");
         session_state.set_staged_holons(staged_holons);
         session_state.set_transient_holons(transient_holons);
         session_state.set_local_holon_space(space_manager.get_space_holon());
@@ -136,5 +143,14 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         let space_manager = context.get_space_manager();
         let transient_holons = session_state.get_transient_holons().clone();
         space_manager.import_transient_holons(transient_holons);
+    }
+}
+
+// Enable Clone only when the Arc's inner type is Sized
+impl<C: ConductorDanceCaller> Clone for DanceCallService<C> {
+    fn clone(&self) -> Self {
+        Self {
+            conductor: Arc::clone(&self.conductor),
+        }
     }
 }

@@ -1,4 +1,5 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
 
 use derive_new::new;
 use serde::{Deserialize, Serialize};
@@ -10,10 +11,34 @@ use core_types::{HolonError, RelationshipName};
 /// Represents a map of transient relationships, where the keys are relationship names and the values
 /// are fully-loaded collections of holons for those relationships. Absence of an entry indicates
 /// that the relationship has no associated holons.
-#[derive(new, Clone, Debug, Eq, PartialEq)]
+#[derive(new, Debug, Clone)]
 pub struct TransientRelationshipMap {
-    pub map: BTreeMap<RelationshipName, Rc<RefCell<HolonCollection>>>,
+    pub map: BTreeMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
 }
+
+// Manual PartialEq implementation to compare underlying HolonCollection values in RwLocks
+impl PartialEq for TransientRelationshipMap {
+    fn eq(&self, other: &Self) -> bool {
+        if self.map.len() != other.map.len() {
+            return false;
+        }
+        for (key, lock) in &self.map {
+            let other_lock = match other.map.get(key) {
+                Some(l) => l,
+                None => return false,
+            };
+            let this_coll = lock.read().expect("Failed to acquire read lock on holon collection");
+            let other_coll =
+                other_lock.read().expect("Failed to acquire read lock on holon collection");
+            if *this_coll != *other_coll {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl Eq for TransientRelationshipMap {}
 
 impl TransientRelationshipMap {
     /// Creates a new, empty `TransientRelationshipMap`.
@@ -28,14 +53,20 @@ impl TransientRelationshipMap {
     /// - `Ok(Self)`: A new `TransientRelationshipMap` with cloned `HolonCollection` objects.
     /// - `Err(HolonError)`: If cloning any `HolonCollection` fails.
     pub fn clone_for_new_source(&self) -> Result<Self, HolonError> {
-        let mut cloned_relationship_map = BTreeMap::new();
-
-        for (name, collection) in &self.map {
-            let cloned_collection = collection.borrow().clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
-            cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
+        let mut new_map = BTreeMap::new();
+        for (name, lock) in &self.map {
+            let coll = lock
+                .read()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?
+                .clone_for_new_source()?;
+            new_map.insert(name.clone(), Arc::new(RwLock::new(coll)));
         }
-
-        Ok(Self { map: cloned_relationship_map })
+        Ok(TransientRelationshipMap::new(new_map))
     }
 
     /// Adds the specified holons to the collection associated with the given relationship name.
@@ -56,34 +87,38 @@ impl TransientRelationshipMap {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         // Retrieve or create the collection for the specified relationship name
-        let collection = self
+        let lock = self
             .map
             .entry(relationship_name)
-            .or_insert_with(|| Rc::new(RefCell::new(HolonCollection::new_transient())));
-
-        // Borrow the `HolonCollection` mutably to add the supplied holons
-        collection.borrow_mut().add_references(context, holons)?;
-
+            .or_insert_with(|| Arc::new(RwLock::new(HolonCollection::new_transient())));
+        lock.write()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on holon collection: {}",
+                    e
+                ))
+            })?
+            .add_references(context, holons)?;
         Ok(())
     }
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
+    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
     ///
     /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
     /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
     /// `HolonCollection` wrapped in an `Rc` is returned instead.
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Rc`.
+    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
     ///
     /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
     /// corresponding collection wrapped in an `Rc`. If the relationship is not found, an empty
     /// `HolonCollection` wrapped in an `Rc` is returned instead.
-    pub fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
-        if let Some(rc_refcell) = self.map.get(relationship_name) {
-            // Borrow the RefCell and clone the inner HolonCollection
-            Rc::new(rc_refcell.borrow().clone())
-        } else {
-            // Return a new Rc<HolonCollection> if the entry doesn't exist
-            Rc::new(HolonCollection::new_transient())
-        }
+    pub fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Arc<RwLock<HolonCollection>> {
+        self.map
+            .get(relationship_name)
+            .cloned()
+            .unwrap_or_else(|| Arc::new(RwLock::new(HolonCollection::new_transient())))
     }
 
     /// Removes the specified holons from the collection associated with the given relationship name.
@@ -105,9 +140,15 @@ impl TransientRelationshipMap {
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        if let Some(collection) = self.map.get(relationship_name) {
-            // Borrow the `HolonCollection` mutably to remove the supplied holons
-            collection.borrow_mut().remove_references(context, holons)?;
+        if let Some(lock) = self.map.get(relationship_name) {
+            lock.write()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire write lock on holon collection: {}",
+                        e
+                    ))
+                })?
+                .remove_references(context, holons)?;
             Ok(())
         } else {
             Err(HolonError::InvalidRelationship(
@@ -120,7 +161,7 @@ impl TransientRelationshipMap {
     /// Returns an iterator over the key-value pairs in the map. This is primarily intended for
     /// use by adapters that serialize TransientRelationshipMap into other representations
     /// (e.g., json adapter).
-    pub fn iter(&self) -> impl Iterator<Item = (&RelationshipName, &Rc<RefCell<HolonCollection>>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&RelationshipName, &Arc<RwLock<HolonCollection>>)> {
         self.map.iter()
     }
 
@@ -132,7 +173,12 @@ impl TransientRelationshipMap {
     /// Converts to a StagedRelationshipMap
     pub fn to_staged(self) -> Result<StagedRelationshipMap, HolonError> {
         for (_name, collection) in self.map.iter() {
-            let mut staged_collection = collection.borrow_mut();
+            let mut staged_collection = collection.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on holon collection: {}",
+                    e
+                ))
+            })?;
             staged_collection.mark_as_staged()?;
         }
         let staged = StagedRelationshipMap::new(self.map);
@@ -141,35 +187,17 @@ impl TransientRelationshipMap {
     }
 }
 
+// Implement thread-safe trait versions
 impl ReadableRelationship for TransientRelationshipMap {
-    // =====================
-    //     CONSTRUCTORS
-    // =====================
-
     fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
-        let mut cloned_relationship_map = BTreeMap::new();
-
-        for (name, collection) in &self.map {
-            let cloned_collection = collection.borrow().clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
-            cloned_relationship_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
-        }
-
-        Ok(TransientRelationshipMap::new(cloned_relationship_map))
+        TransientRelationshipMap::clone_for_new_source(self)
     }
 
-    // ====================
-    //    DATA ACCESSORS
-    // ====================
-
-    // See TODO on trait: clone required here due to current trait return type.
-    fn related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
-        if let Some(rc_refcell) = self.map.get(relationship_name) {
-            // Borrow the RefCell and clone the inner HolonCollection
-            Rc::new(rc_refcell.borrow().clone())
-        } else {
-            // Return a new Rc<HolonCollection> if the entry doesn't exist
-            Rc::new(HolonCollection::new_staged())
-        }
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Arc<RwLock<HolonCollection>> {
+        TransientRelationshipMap::get_related_holons(self, relationship_name)
     }
 }
 
@@ -180,16 +208,7 @@ impl WritableRelationship for TransientRelationshipMap {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        // Retrieve or create the collection for the specified relationship name
-        let collection = self
-            .map
-            .entry(relationship_name)
-            .or_insert_with(|| Rc::new(RefCell::new(HolonCollection::new_staged())));
-
-        // Borrow the `HolonCollection` mutably to add the supplied holons
-        collection.borrow_mut().add_references(context, holons)?;
-
-        Ok(())
+        TransientRelationshipMap::add_related_holons(self, context, relationship_name, holons)
     }
 
     fn remove_related_holons(
@@ -198,16 +217,7 @@ impl WritableRelationship for TransientRelationshipMap {
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        if let Some(collection) = self.map.get(relationship_name) {
-            // Borrow the `HolonCollection` mutably to remove the supplied holons
-            collection.borrow_mut().remove_references(context, holons)?;
-            Ok(())
-        } else {
-            Err(HolonError::InvalidRelationship(
-                format!("Invalid relationship: {}", relationship_name),
-                "No matching collection found in the map.".to_string(),
-            ))
-        }
+        TransientRelationshipMap::remove_related_holons(self, context, relationship_name, holons)
     }
 }
 
@@ -220,8 +230,16 @@ impl Serialize for TransientRelationshipMap {
         let serializable_map: BTreeMap<_, _> = self
             .map
             .iter()
-            .map(|(key, value)| (key.clone(), value.borrow().clone())) // Clone the inner `HolonCollection`
-            .collect();
+            .map(|(key, value)| {
+                let collection = value.read().map_err(|e| {
+                    serde::ser::Error::custom(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?;
+                Ok((key.clone(), collection.clone()))
+            })
+            .collect::<Result<_, _>>()?;
 
         serializable_map.serialize(serializer)
     }
@@ -236,10 +254,10 @@ impl<'de> Deserialize<'de> for TransientRelationshipMap {
         let deserialized_map: BTreeMap<RelationshipName, HolonCollection> =
             BTreeMap::deserialize(deserializer)?;
 
-        // Wrap each value in Rc<RefCell>
+        // Wrap each value in Arc<RwLock<HolonCollection>>
         let wrapped_map: BTreeMap<_, _> = deserialized_map
             .into_iter()
-            .map(|(key, value)| (key, Rc::new(RefCell::new(value))))
+            .map(|(key, value)| (key, Arc::new(RwLock::new(value))))
             .collect();
 
         Ok(Self { map: wrapped_map })

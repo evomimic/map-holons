@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// Represents a Holon that has been staged for persistence or updates.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StagedHolon {
     version: MapInteger,       // Used to add to hash content for creating TemporaryID
     holon_state: HolonState,   // Mutable or Immutable
@@ -103,10 +103,10 @@ impl StagedHolon {
     pub fn get_staged_relationship(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
-        Ok(self.staged_relationships.related_holons(relationship_name))
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
     pub fn get_staged_relationship_map(&self) -> Result<StagedRelationshipMap, HolonError> {
@@ -275,8 +275,8 @@ impl ReadableHolonState for StagedHolon {
     fn related_holons(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        Ok(self.staged_relationships.related_holons(relationship_name))
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        Ok(self.staged_relationships.get_related_holons(relationship_name))
     }
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {
@@ -383,7 +383,7 @@ impl WriteableHolonState for StagedHolon {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.staged_relationships.add_related_holons(context, relationship_name, holons)?;
+        self.staged_relationships.remove_related_holons(context, &relationship_name, holons)?;
 
         Ok(self)
     }

@@ -7,21 +7,7 @@ use crate::shared_test::{
     test_context::init_fixture_context,
     test_data_types::{DancesTestCase, TestReference, BOOK_KEY, PERSON_1_KEY},
 };
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, PropertyName};
-use holons_core::reference_layer::holon_operations_api::*;
-use holons_core::{
-    core_shared_objects::{Holon, TransientHolon},
-    dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression,
-    reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
-        WritableHolon,
-    },
-};
-
-// use holons_core::prelude::*;
-use type_names::relationship_names::ToRelationshipName;
+use holons_prelude::prelude::*;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
@@ -48,7 +34,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     let person_1_staged_reference =
         get_staged_holon_by_base_key(&*fixture_context, &MapString(PERSON_1_KEY.to_string()))?;
@@ -70,7 +56,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  RELATIONSHIP:  Author H2 -> H3  //
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     let holons_to_add: Vec<TestReference> = Vec::new();
-    test_case.add_related_holons_step(
+    test_case.add_add_related_holons_step(
         HolonReference::Staged(person_1_staged_reference), // source holons
         "FRIENDS".to_relationship_name(),
         holons_to_add.to_vec(),
@@ -89,7 +75,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  STAGE:  Abandoned Holon1 (H4)  //
     let mut abandoned_holon_1_transient_reference =
-        create_empty_transient_holon(&*fixture_context, MapString("Abandon1".to_string()))?;
+        new_holon(&*fixture_context, MapString("Abandon1".to_string()))?;
     abandoned_holon_1_transient_reference.with_property_value(
         &*fixture_context,
         "example abandon1",
@@ -98,12 +84,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_stage_holon_step(abandoned_holon_1_transient_reference.clone())?;
 
     let abandoned_holon_1_staged_reference =
-        stage_new_holon_api(&*fixture_context, abandoned_holon_1_transient_reference)?;
+        stage_new_holon(&*fixture_context, abandoned_holon_1_transient_reference)?;
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
     let mut abandoned_holon_2_transient_reference =
-        create_empty_transient_holon(&*fixture_context, MapString("Abandon2".to_string()))?;
+        new_holon(&*fixture_context, MapString("Abandon2".to_string()))?;
     abandoned_holon_2_transient_reference.with_property_value(
         &*fixture_context,
         "example abandon2",
@@ -112,7 +98,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_stage_holon_step(abandoned_holon_2_transient_reference.clone())?;
 
     let abandoned_holon_2_staged_reference =
-        stage_new_holon_api(&*fixture_context, abandoned_holon_2_transient_reference)?;
+        stage_new_holon(&*fixture_context, abandoned_holon_2_transient_reference)?;
     expected_count += 1;
 
     // ABANDON:  H4

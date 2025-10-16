@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -132,7 +132,7 @@ impl ReadableHolonState for SavedHolon {
     fn related_holons(
         &self,
         _relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         Err(HolonError::NotImplemented(
             "Must go through reference layer for getting relationships".to_string(),
         ))

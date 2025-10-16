@@ -8,18 +8,7 @@ use crate::shared_test::{
 use rstest::*;
 use tracing::{debug, info};
 
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::HolonError;
-use core_types::{PropertyMap, PropertyName, RelationshipName};
-use holons_core::reference_layer::holon_operations_api::*;
-use holons_core::{
-    core_shared_objects::Holon,
-    dances::ResponseStatusCode,
-    reference_layer::{
-        HolonReference, ReadableHolon, StagedReference, TransientReference, WritableHolon,
-    },
-};
-use type_names::*;
+use holons_prelude::prelude::*;
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]
@@ -51,7 +40,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // The following assumes the fixture's nursery contains the same number of holons as
     // test executor's nursery will have staged immediately prior to commit.
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     // Get references to the Holons stashed in the fixture's transient_holon_manager.
     let book_key = MapString(BOOK_KEY.to_string());
@@ -84,7 +73,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         book_key,
         ResponseStatusCode::OK,
     )?;
-    stage_new_holon_api(&*fixture_context, book_transient_reference.clone())?;
+    stage_new_holon(&*fixture_context, book_transient_reference.clone())?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step()?;
@@ -167,7 +156,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // let expected_holon =
     //     HolonReference::Transient(expected_fixture_holon.clone_holon(&*fixture_context)?);
 
-    // test_case.add_related_holons_step(
+    // test_case.add_add_related_holons_step(
     //     HolonReference::Staged(publisher_staged_reference), // source holon
     //     publisher_relationship_name.clone(),
     //     holons_to_add,

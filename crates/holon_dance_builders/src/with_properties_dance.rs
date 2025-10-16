@@ -1,12 +1,13 @@
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::{
-    dances::{DanceRequest, DanceType, RequestBody}, reference_layer::HolonReference,
+    dances::{DanceRequest, DanceType, RequestBody},
+    reference_layer::HolonReference,
 };
 use integrity_core_types::PropertyMap;
 
 ///
-/// Builds a DanceRequest for adding a new property value(s) to an already staged holon.
+/// Builds a DanceRequest for adding a new property value(s) to a transient or staged holon.
 pub fn build_with_properties_dance_request(
     holon_reference: HolonReference,
     properties: PropertyMap,

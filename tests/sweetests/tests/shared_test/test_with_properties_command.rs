@@ -6,7 +6,7 @@ use tracing::{debug, info};
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-
+use holons_prelude::prelude::*;
 use rstest::*;
 
 use crate::shared_test::*;
@@ -28,7 +28,7 @@ use core_types::{PropertyMap, PropertyName};
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:
 /// 1) with_properties dance returns with a Success
-/// 2) the returned index refers to a staged_holon that matches the expected_holon
+/// 2) the returned HolonReference refers to a Holon's essential_content that matches the expected
 ///
 
 pub async fn execute_with_properties(
@@ -45,9 +45,7 @@ pub async fn execute_with_properties(
     info!("Original Holon: {:?}", original_holon);
 
     // 3. Create the expected holon by applying the property updates
-    let mut expected_holon = original_holon
-        .clone_holon(context)
-        .expect("Failed to clone original holon into expected holon");
+    let mut expected_holon = original_holon.clone();
 
     for (property_name, base_value) in properties.clone() {
         expected_holon
@@ -75,9 +73,6 @@ pub async fn execute_with_properties(
     // 7. If successful, verify the updated holon
     if response.status_code == ResponseStatusCode::OK {
         if let ResponseBody::HolonReference(updated_holon) = response.body {
-            debug!("Updated holon reference returned: {:?}", updated_holon);
-            warn!("EXPECTED :: {:#?}", expected_holon.essential_content(context));
-            warn!("UPDATED :: {:#?}", updated_holon.essential_content(context));
             assert_eq!(
                 expected_holon.essential_content(context),
                 updated_holon.essential_content(context),
@@ -86,7 +81,7 @@ pub async fn execute_with_properties(
 
             info!("Success! Holon has been updated with supplied properties.");
         } else {
-            panic!("Expected StagedRef in response body, but got {:?}", response.body);
+            panic!("Expected HolonReference in response body, but got {:?}", response.body);
         }
     }
 }

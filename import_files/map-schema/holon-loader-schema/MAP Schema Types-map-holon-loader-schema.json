@@ -1,0 +1,1162 @@
+{
+  "meta": {
+    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
+    "generated_at": "2025-10-08T11:06:19",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-holon-loader-schema.csv"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-property-types.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "LoaderHolon.HolonType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LoaderHolon",
+        "type_name_plural": "LoaderHolons",
+        "display_name": "Loader Holon",
+        "display_name_plural": "Loader Holons",
+        "instance_type_kind": "Holon",
+        "description": "Representation of a parsed holon from JSON input, including properties and unresolved references.",
+        "is_abstract_type": false,
+        "allows_additional_properties": true,
+        "allows_additional_relationships": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#Key.PropertyType"
+          }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "#(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LoaderRelationshipReference.HolonType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LoaderRelationshipReference",
+        "type_name_plural": "LoaderRelationshipReferences",
+        "display_name": "Loader Relationship Reference",
+        "display_name_plural": "Loader Relationship References",
+        "instance_type_kind": "Holon",
+        "description": "Represents an unresolved relationship reference from a LoaderHolon, including source/target references.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#RelationshipName.PropertyType"
+            },
+            {
+              "$ref": "#IsDeclared.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "#(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
+            },
+            {
+              "$ref": "#(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoaderHolonReference.HolonType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LoaderHolonReference",
+        "type_name_plural": "LoaderHolonReferences",
+        "display_name": "Loader Holon Reference",
+        "display_name_plural": "Loader Holon References",
+        "instance_type_kind": "Holon",
+        "description": "Represents an unresolved reference to a holon, either local (by key or ID) or external (via proxy + key/ID).",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#HolonKey.PropertyType"
+            },
+            {
+              "$ref": "#HolonId.PropertyType"
+            },
+            {
+              "$ref": "#ProxyKey.PropertyType"
+            },
+            {
+              "$ref": "#ProxyId.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonLoaderBundle.HolonType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonLoaderBundle",
+        "type_name_plural": "HolonLoaderBundles",
+        "display_name": "HolonLoaderBundle",
+        "display_name_plural": "HolonLoaderBundles",
+        "instance_type_kind": "Holon",
+        "description": "Container holon for a collection of LoaderHolons supplied by the loader client.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "#(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonLoadResponse.DanceResponseType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonLoadResponse",
+        "type_name_plural": "HolonLoadResponses",
+        "display_name": "HolonLoadResponse",
+        "display_name_plural": "HolonLoadResponses",
+        "instance_type_kind": "Holon",
+        "description": "Message-only holon summarizing the outcome of a holon load operation (not persisted by the loader commit).",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DanceResponseType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#ResponseStatusCode.PropertyType"
+            },
+            {
+              "$ref": "#HolonsStaged.PropertyType"
+            },
+            {
+              "$ref": "#HolonsCommitted.PropertyType"
+            },
+            {
+              "$ref": "#ErrorCount.PropertyType"
+            },
+            {
+              "$ref": "#DanceSummary.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HasRelationshipReference",
+        "type_name_plural": "HasRelationshipReferences",
+        "display_name": "HasRelationshipReference",
+        "display_name_plural": "HasRelationshipReference Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a LoaderHolon to each unresolved relationship reference it contains.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": true,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderHolon.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderRelationshipReference.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "RelationshipReferenceOf",
+        "type_name_plural": "RelationshipReferenceOfs",
+        "display_name": "RelationshipReferenceOf",
+        "display_name_plural": "RelationshipReferenceOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderRelationshipReference.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderHolon.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ReferenceSource",
+        "type_name_plural": "ReferenceSources",
+        "display_name": "ReferenceSource",
+        "display_name_plural": "ReferenceSource Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderRelationshipReference.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderHolonReference.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ReferenceSourceOf",
+        "type_name_plural": "ReferenceSourceOfs",
+        "display_name": "ReferenceSourceOf",
+        "display_name_plural": "ReferenceSourceOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderHolonReference.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderRelationshipReference.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ReferenceTarget",
+        "type_name_plural": "ReferenceTargets",
+        "display_name": "ReferenceTarget",
+        "display_name_plural": "ReferenceTarget Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a LoaderRelationshipReference to the holons that act as relationship targets.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": true,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderRelationshipReference.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderHolonReference.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ReferenceTargetOf",
+        "type_name_plural": "ReferenceTargetOfs",
+        "display_name": "ReferenceTargetOf",
+        "display_name_plural": "ReferenceTargetOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Cascade",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderHolonReference.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderRelationshipReference.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "BundleMembers",
+        "type_name_plural": "BundleMembers",
+        "display_name": "BundleMembers",
+        "display_name_plural": "BundleMembers Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonLoaderBundle.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#LoaderHolon.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "BundleMemberOf",
+        "type_name_plural": "BundleMemberOfs",
+        "display_name": "BundleMemberOf",
+        "display_name_plural": "BundleMemberOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#LoaderHolon.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonLoaderBundle.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonErrorType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HasLoadError",
+        "type_name_plural": "HasLoadErrors",
+        "display_name": "HasLoadError",
+        "display_name_plural": "HasLoadError Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a HolonLoadResponse to one or more HolonError holons.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonLoadResponse.DanceResponseType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonErrorType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonErrorType)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LoadErrorOf",
+        "type_name_plural": "LoadErrorOfs",
+        "display_name": "LoadErrorOf",
+        "display_name_plural": "LoadErrorOf Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonErrorType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonErrorType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonLoadResponse.DanceResponseType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Key.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Key",
+        "type_name_plural": "Keys",
+        "display_name": "key",
+        "display_name_plural": "keys",
+        "instance_type_kind": "Property",
+        "description": "Optional key to identify the holon instance within the import set.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "RelationshipName.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "RelationshipName",
+        "type_name_plural": "RelationshipNames",
+        "display_name": "relationship_name",
+        "display_name_plural": "relationship_names",
+        "instance_type_kind": "Property",
+        "description": "Name of the relationship as declared in the JSON input.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IsDeclared.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "IsDeclared",
+        "type_name_plural": "IsDeclaredFlags",
+        "display_name": "is_declared",
+        "display_name_plural": "is_declared_flags",
+        "instance_type_kind": "Property",
+        "description": "Whether the relationship is declared (`true`) or inverse (`false`).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonKey.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonKey",
+        "type_name_plural": "HolonKeys",
+        "display_name": "holon_key",
+        "display_name_plural": "holon_keys",
+        "instance_type_kind": "Property",
+        "description": "Local key for the referenced holon.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonId.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonId",
+        "type_name_plural": "HolonIds",
+        "display_name": "holon_id",
+        "display_name_plural": "holon_ids",
+        "instance_type_kind": "Property",
+        "description": "ActionHash identifier of a referenced holon.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBytesValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ProxyKey.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ProxyKey",
+        "type_name_plural": "ProxyKeys",
+        "display_name": "proxy_key",
+        "display_name_plural": "proxy_keys",
+        "instance_type_kind": "Property",
+        "description": "Key of the ProxySpace through which this external reference is routed.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ProxyId.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ProxyId",
+        "type_name_plural": "ProxyId",
+        "display_name": "proxy_id",
+        "display_name_plural": "proxy_ids",
+        "instance_type_kind": "Property",
+        "description": "ActionHash of the ProxySpace holon, used to route external references.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBytesValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonsStaged.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonsStaged",
+        "type_name_plural": "HolonsStageds",
+        "display_name": "holons_staged",
+        "display_name_plural": "holons_stageds",
+        "instance_type_kind": "Property",
+        "description": "Number of holons staged during the load operation.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonsCommitted.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonsCommitted",
+        "type_name_plural": "HolonsCommitteds",
+        "display_name": "holons_committed",
+        "display_name_plural": "holons_committeds",
+        "instance_type_kind": "Property",
+        "description": "Number of holons successfully committed.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    }
+  ]
+}

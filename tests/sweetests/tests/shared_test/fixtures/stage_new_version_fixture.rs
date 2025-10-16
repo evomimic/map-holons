@@ -5,10 +5,8 @@ use crate::shared_test::{
     test_context::init_fixture_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::HolonError;
-use holons_core::reference_layer::holon_operations_api::staged_count;
-use holons_core::{dances::dance_response::ResponseStatusCode, HolonReference};
+
+use holons_prelude::prelude::*;
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
@@ -41,7 +39,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     let _relationship_name =
         setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     // Get and set the various Holons data.
     let book_key = MapString(BOOK_KEY.to_string());

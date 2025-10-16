@@ -14,7 +14,7 @@ use core_types::HolonError;
 /// This trait does **not** expose low-level details.
 ///
 /// Base key represents the Holon's key independent of versioning.
-pub trait TransientHolonBehavior {
+pub trait TransientHolonBehavior: Send + Sync {
     // ===========================
     // TransientHolon Constructors
     // ===========================
@@ -51,5 +51,5 @@ pub trait TransientHolonBehavior {
     ) -> Result<TransientReference, HolonError>;
 
     /// Returns a count of the number of transient holons.
-    fn transient_count(&self) -> i64;
+    fn transient_count(&self) -> Result<i64, HolonError>;
 }

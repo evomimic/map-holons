@@ -5,7 +5,7 @@
 // use crate::identifier::TemporaryId;
 
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -36,7 +36,7 @@ use super::{
 /// transient_relationships: TransientRelationshipMap::new_empty(),
 /// original_id: None,
 ///
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransientHolon {
     version: MapInteger,     // Used to add to hash content for creating TemporaryID
     holon_state: HolonState, // Mutable or Immutable
@@ -70,13 +70,14 @@ impl TransientHolon {
         }
     }
 
+    /// Retrieves a transient relationship after verifying read access
     pub fn get_transient_relationship(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
-        Ok(self.transient_relationships.related_holons(relationship_name))
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
     }
 
     fn get_transient_relationship_map(&self) -> Result<TransientRelationshipMap, HolonError> {
@@ -148,9 +149,8 @@ impl ReadableHolonState for TransientHolon {
     fn related_holons(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
-        // Use the public `related_holons` method on the `TransientRelationshipMap`
-        Ok(self.transient_relationships.related_holons(relationship_name))
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        Ok(self.transient_relationships.get_related_holons(relationship_name))
     }
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {
