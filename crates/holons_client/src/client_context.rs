@@ -1,9 +1,11 @@
 // use holochain::prelude::*;
 
 use crate::client_shared_objects::ClientHolonService;
+use crate::{ConductorDanceCaller, DanceCallService};
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy, TransientHolonManager};
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
+use std::fmt::Debug;
 use std::sync::Arc;
 
 /// The client-side implementation of `HolonsContextBehavior`, responsible for managing
@@ -31,9 +33,17 @@ pub struct ClientHolonsContext {
 ///
 /// # Returns
 /// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
-pub fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
+pub fn init_client_context<C>(
+    dance_call_service: Arc<DanceCallService<C>>,
+) -> Arc<dyn HolonsContextBehavior>
+where
+    C: ConductorDanceCaller + Debug + 'static,
+{
     // Step 1: Create the ClientHolonService
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+
+    // temporarily create with injected DanceCallService
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(ClientHolonService::new(dance_call_service));
 
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();

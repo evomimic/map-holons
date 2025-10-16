@@ -313,3 +313,11 @@ pub fn transient_count(context: &dyn HolonsContextBehavior) -> i64 {
 
     transient_service_borrow.transient_count()
 }
+
+pub fn load_holons(
+    context: &dyn HolonsContextBehavior,
+    bundle: TransientReference,
+) -> Result<TransientReference, core_types::HolonError> {
+    let service = context.get_space_manager().get_holon_service();
+    service.load_holons_internal(context, bundle)
+}

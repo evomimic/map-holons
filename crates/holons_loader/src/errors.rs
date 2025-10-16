@@ -1,4 +1,4 @@
-// crates/holons_core/src/holons_loader/errors.rs
+// crates/holons_loader/src/errors.rs
 
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
