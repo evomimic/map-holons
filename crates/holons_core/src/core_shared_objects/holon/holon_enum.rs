@@ -52,43 +52,6 @@ pub struct HolonCloneModel {
     pub relationships: Option<RelationshipMap>,
 }
 
-// ==================================
-//   ASSOCIATED METHODS (IMPL BLOCK)
-// ==================================
-impl Holon {
-    /// Gets inner StagedHolon object for Staged variant
-    pub fn into_saved(&self) -> Result<StagedHolon, HolonError> {
-        match self {
-            Holon::Staged(staged_holon) => Ok(staged_holon.clone()),
-            _ => Err(HolonError::InvalidTransition("Holon variant must be Saved".to_string())),
-        }
-    }
-
-    /// Gets inner StagedHolon object for Staged variant
-    pub fn into_staged(&self) -> Result<StagedHolon, HolonError> {
-        match self {
-            Holon::Staged(staged_holon) => Ok(staged_holon.clone()),
-            _ => Err(HolonError::InvalidTransition("Holon variant must be Staged".to_string())),
-        }
-    }
-
-    /// Gets inner TransientHolon object for Transient variant
-    pub fn into_transient(&self) -> Result<TransientHolon, HolonError> {
-        match self {
-            Holon::Transient(transient_holon) => Ok(transient_holon.clone()),
-            _ => Err(HolonError::InvalidTransition("Holon variant must be Transient".to_string())),
-        }
-    }
-
-    // Helps to distinguish from non-persisted Holons and shortcut to error throws
-    pub fn is_saved(&self) -> bool {
-        match self {
-            Holon::Saved(_) => true,
-            _ => false,
-        }
-    }
-}
-
 // =================================
 //   HOLONBEHAVIOR IMPLEMENTATIONS
 // =================================

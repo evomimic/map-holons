@@ -14,16 +14,16 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
-use base_types::{MapInteger, MapString};
-use core_types::HolonId;
-use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
-use holons_core::{
-    core_shared_objects::ReadableHolonState,
-    dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonReference, ReadableHolon, StagedReference, WritableHolon},
-};
-// use holons_guest_integrity::HolonNode;
-use core_types::{PropertyMap, PropertyName};
+// use base_types::{MapInteger, MapString};
+// use core_types::HolonId;
+// use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
+// use holons_core::{
+//     core_shared_objects::ReadableHolonState,
+//     dances::{ResponseBody, ResponseStatusCode},
+//     reference_layer::{HolonReference, ReadableHolon, StagedReference, WritableHolon},
+// };
+// // use holons_guest_integrity::HolonNode;
+// use core_types::{PropertyMap, PropertyName};
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:

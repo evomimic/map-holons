@@ -1,7 +1,6 @@
 pub mod abandon_staged_changes_fixture;
 pub mod book_authors_setup_fixture_with_context;
 pub mod delete_holon_fixture;
-pub mod descriptor_dance_fixtures;
 pub mod ergonomic_add_remove_properties_fixture;
 pub mod ergonomic_add_remove_related_holons_fixture;
 pub mod simple_add_remove_related_fixture;

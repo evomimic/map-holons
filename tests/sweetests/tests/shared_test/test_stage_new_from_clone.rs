@@ -8,17 +8,11 @@ use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{
     DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference,
 };
-use base_types::{MapInteger, MapString};
-use core_types::HolonId;
-use core_types::{PropertyName, RelationshipName};
+
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
-use holons_core::{
-    core_shared_objects::ReadableHolonState,
-    dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{HolonReference, ReadableHolon, SmartReference, TransientReference},
-};
+// use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
+use holons_core::core_shared_objects::ReadableHolonState; // TODO: Eliminate this dependency
 use holons_prelude::prelude::*;
 
 /// This function builds and dances a `stage_new_from_clone` DanceRequest for the supplied

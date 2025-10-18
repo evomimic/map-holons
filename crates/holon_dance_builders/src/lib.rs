@@ -20,6 +20,7 @@ pub use delete_holon_dance::build_delete_holon_dance_request;
 pub use get_all_holons_dance::build_get_all_holons_dance_request;
 pub use get_holon_by_id_dance::build_get_holon_by_id_dance_request;
 pub use query_relationships_dance::build_query_relationships_dance_request;
+pub use remove_properties_dance::build_remove_properties_dance_request;
 pub use remove_related_holons_dance::build_remove_related_holons_dance_request;
 pub use stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 pub use stage_new_holon_dance::build_stage_new_holon_dance_request;

@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use holochain::prelude::AgentPubKey;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use holons_client::ConductorDanceCaller;
-use holons_core::dances::{DanceRequest, DanceResponse};
+
+use holons_prelude::prelude::*;
 
 const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
 

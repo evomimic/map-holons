@@ -14,14 +14,7 @@ use crate::shared_test::{
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 
-use holon_dance_builders::delete_holon_dance::build_delete_holon_dance_request;
-use holon_dance_builders::get_holon_by_id_dance::build_get_holon_by_id_dance_request;
-
-use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseStatusCode};
-
-use base_types::{MapInteger, MapString};
-use core_types::HolonId;
-use core_types::{LocalId, PropertyMap, PropertyName};
+use holons_core::core_shared_objects::ReadableHolonState;
 
 /// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
 /// and matches the expected response

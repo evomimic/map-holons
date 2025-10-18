@@ -4,18 +4,7 @@ use crate::shared_test::{
     test_context::init_fixture_context,
     test_data_types::{DancesTestCase, BOOK_KEY},
 };
-use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
-use core_types::{HolonError, HolonId};
-use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
-use holons_core::reference_layer::holon_operations_api::*;
-use holons_core::ReadableHolon;
-use holons_core::{
-    core_shared_objects::{Holon, TransientHolon},
-    dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression,
-    reference_layer::{TransientReference, WritableHolon},
-    HolonCollection, HolonsContextBehavior,
-};
+
 use holons_prelude::prelude::*;
 use rstest::*;
 

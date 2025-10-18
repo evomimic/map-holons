@@ -55,14 +55,14 @@ impl SavedHolon {
         }
     }
 
-    pub fn holon_clone_model(&self) -> HolonCloneModel {
-        HolonCloneModel::new(
-            self.version.clone(),
-            self.original_id.clone(),
-            self.property_map.clone(),
-            None,
-        )
-    }
+    // pub fn holon_clone_model(&self) -> HolonCloneModel {
+    //     HolonCloneModel::new(
+    //         self.version.clone(),
+    //         self.original_id.clone(),
+    //         self.property_map.clone(),
+    //         None,
+    //     )
+    // }
 
     /// Retrieves the `LocalId`.
     pub fn get_local_id(&self) -> Result<LocalId, HolonError> {

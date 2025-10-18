@@ -40,10 +40,7 @@ impl HolonCacheAccess for HolonCacheManager {
         }
 
         // If not found, resolve it from the HolonService
-        debug!(
-            "Holon with HolonId {:?} not in cache. Fetching using HolonService.",
-            holon_id
-        );
+        debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
         let holon = self.holon_service.fetch_holon_internal(holon_id)?;
         let arc_holon = Arc::new(RwLock::new(holon));
 
@@ -64,7 +61,7 @@ impl HolonCacheAccess for HolonCacheManager {
             .map_err(|e| {
                 HolonError::FailedToAcquireLock(format!("Cache manager read lock poisoned: {}", e))
             })?
-            .get_related_holons(self.holon_service.as_ref(), source_holon_id, relationship_name)
+            .related_holons(self.holon_service.as_ref(), source_holon_id, relationship_name)
     }
 
     fn get_all_related_holons(

@@ -11,20 +11,9 @@ use crate::shared_test::{
         PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
-use base_types::{MapBoolean, MapInteger, MapString};
-use core_types::{BaseTypeKind, HolonError, HolonId};
-use core_types::{PropertyMap, PropertyName, PropertyValue, RelationshipName};
-use holons_core::reference_layer::holon_operations_api::*;
-use holons_core::{
-    core_shared_objects::Holon,
-    dances::dance_response::ResponseStatusCode,
-    query_layer::QueryExpression,
-    reference_layer::{HolonReference, ReadableHolon, WritableHolon},
-    HolonCollection, HolonCollectionApi, HolonsContextBehavior,
-};
+
 use holons_prelude::prelude::*;
 use rstest::*;
-use type_names::ToRelationshipName;
 
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {

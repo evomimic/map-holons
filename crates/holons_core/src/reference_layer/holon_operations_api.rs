@@ -173,7 +173,7 @@ pub fn get_staged_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
+    let staging_service = context.get_space_manager().get_staging_service();
     let staging_service = staging_service.read().map_err(|e| {
         HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
     })?;
@@ -186,7 +186,7 @@ pub fn get_staged_holons_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<Vec<StagedReference>, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
+    let staging_service = context.get_space_manager().get_staging_service();
     let staging_service_borrow = staging_service.read().unwrap();
 
     staging_service_borrow.get_staged_holons_by_base_key(key)
@@ -197,7 +197,7 @@ pub fn get_staged_holon_by_versioned_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
+    let staging_service = context.get_space_manager().get_staging_service();
     let staging_service = staging_service.read().map_err(|e| {
         HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
     })?;
@@ -293,7 +293,7 @@ pub fn stage_new_holon(
     context: &dyn HolonsContextBehavior,
     transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_nursery_access();
+    let staging_service = context.get_space_manager().get_staging_service();
     let staged_reference = staging_service
         .read()
         .map_err(|e| {
@@ -348,7 +348,7 @@ pub fn summarize_holons(holons: &Vec<Holon>) -> String {
 pub fn staged_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
     return context
         .get_space_manager()
-        .get_nursery_access()
+        .get_staging_service()
         .read()
         .map_err(|e| {
             HolonError::FailedToAcquireLock(format!(

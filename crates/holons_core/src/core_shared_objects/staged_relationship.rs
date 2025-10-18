@@ -1,66 +1,52 @@
 //! # StagedRelationshipMap
 //!
-//! This module provides the implementation for `StagedRelationshipMap`, a core component
-//! designed to manage relationships and their associated collections of holon references.
-//! The following design principles and key elements inform this implementation:
+//! `StagedRelationshipMap` manages in-progress holon relationships in a way that is both
+//! **thread-safe** and consistent with other relationship models in the MAP architecture.
 //!
-//! ## Key Design Elements
+//! ## Key Design Principles
 //!
-//! 1. **Consistency Across Maps:**
-//!    - The `StagedRelationshipMap` and `RelationshipMap` structures follow the same general design approach,
-//!      ensuring consistency in behavior and API usage. Both structures encapsulate a map of relationships
-//!      (`RelationshipName` as keys) to `HolonCollection` objects as values, though their specific mutability
-//!      and use cases differ:
-//!        - `StagedRelationshipMap` represents *staged* relationships (mutable collections under construction).
-//!        - `RelationshipMap` represents *saved* relationships (read-only collections already persisted).
+//! 1. **Thread-Safe Interior Mutability:**
+//!    - Internally, each `HolonCollection` is wrapped in an `Arc<RwLock<...>>`.
+//!        - `Arc` enables safe shared ownership across threads.
+//!        - `RwLock` enables concurrent read access with exclusive write access.
+//!    - This replaces the prior `Rc<RefCell<>>` design, making the entire map safe for
+//!      use across threads and aligning with MAP’s concurrency requirements.
 //!
-//! 2. **Encapsulation:**
-//!    - The internal map (`map`) is private, with access provided only through controlled public methods like
-//!      `related_holons`, `insert`, and `remove`. This ensures:
-//!        - Better control over how relationships and holons are accessed or modified.
-//!        - Prevention of unintended direct manipulation of the internal map.
+//! 2. **Consistent API with `RelationshipMap`:**
+//!    - Like `RelationshipMap`, this structure maps `RelationshipName`s to holon collections.
+//!    - Unlike `RelationshipMap`, it supports **in-place mutations** during staging workflows.
 //!
-//! 3. **Interior Mutability with Controlled Immutability:**
-//!    - For `StagedRelationshipMap`, each `HolonCollection` is stored as an `Rc<RefCell<HolonCollection>>`:
-//!        - `Rc` provides shared ownership.
-//!        - `RefCell` enables interior mutability, allowing updates to individual holon collections
-//!          without requiring mutable access to the entire map.
-//!    - The `related_holons` method enforces immutability at the API level by returning
-//!      `Rc<HolonCollection>` instead of exposing the underlying `RefCell`.
+//! 3. **Encapsulation and Controlled Access:**
+//!    - The internal map is private and manipulated only via public trait methods.
+//!    - Read and write access to `HolonCollection`s is guarded through locking, which
+//!      gracefully fails with structured `HolonError::FailedToAcquireLock` errors.
 //!
-//! 4. **Serialization and Deserialization:**
-//!    - The `StagedRelationshipMap` and its contents are fully serializable and deserializable
-//!      using `serde`.
-//!        - `HolonCollection` objects are serialized/deserialized in their entirety.
-//!        - Upon deserialization, `HolonCollection` objects are wrapped in `Rc<RefCell>` to
-//!          restore the original runtime mutability.
+//! 4. **Serialization Support:**
+//!    - `StagedRelationshipMap` is fully `Serialize` and `Deserialize`.
+//!    - During deserialization, each collection is automatically wrapped in a fresh `Arc<RwLock<_>>`
+//!      to preserve its runtime mutability and thread safety.
 //!
-//! 5. **Extensibility:**
-//!    - The named-field design (`map` as a named field) allows for easy addition of new fields (e.g., metadata,
-//!      timestamps, or validation rules) in the future without breaking the existing API.
+//! 5. **Clone for New Source:**
+//!    - The `clone_for_new_source()` method produces a deep clone of the map, creating
+//!      new `HolonCollection`s with reset source information—useful for cloning staged
+//!      relationships into a new editing context.
 //!
-//! ## Intent for StagedRelationshipMap
+//! ## Intended Use
 //!
-//! The `StagedRelationshipMap` is intended for use cases where relationships and their associated
-//! holon collections are being actively modified or constructed. Key methods include:
-//! - `related_holons`: Retrieves a holon collection for a given relationship as an immutable reference
-//!   (`Rc<HolonCollection>`).
-//! - `insert` and `remove`: Add or remove relationships and their associated collections.
-//! - `clone_for_new_source`: Produces a deep clone of the entire map and its holon collections, resetting
-//!   them for use in a new context.
+//! `StagedRelationshipMap` is used when **modifying relationships in-memory prior to commit**,
+//! particularly during transient or staged phases. Key use cases include:
 //!
-//! ## Shared Philosophy for RelationshipMap
+//! - Adding/removing related holons from a relationship
+//! - Cloning staged holons and their relationships into a new editing context
+//! - Serializing the current staged relationship state for syncing across boundaries
 //!
-//! The `RelationshipMap` shares many of these design goals but is geared toward *read-only*
-//! relationships (e.g., those already persisted or immutable). While `StagedRelationshipMap`
-//! provides mutable access to its collections, `RelationshipMap` does not employ `RefCell`
-//! because its collections are immutable.
+//! ## Relationship to `RelationshipMap`
 //!
-//! ## Conclusion
+//! - `StagedRelationshipMap`: mutable, thread-safe, used for in-progress relationships
+//! - `RelationshipMap`: immutable, used for persisted or read-only relationships
 //!
-//! By following these principles, `StagedRelationshipMap` and `RelationshipMap` provide
-//! a consistent and extensible foundation for managing holon relationships, balancing the
-//! need for flexibility (via interior mutability) with clear, immutable APIs where appropriate.
+//! Together, they represent a consistent, phase-aware pattern for modeling holon relationships
+//! across different lifecycle states within the MAP.
 
 use derive_new::new;
 use serde::{Deserialize, Serialize};

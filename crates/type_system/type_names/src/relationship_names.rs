@@ -2,7 +2,6 @@ use base_types::MapString;
 use convert_case::{Case, Casing};
 use integrity_core_types::RelationshipName;
 use strum_macros::VariantNames;
-use tracing::info;
 
 pub trait ToRelationshipName {
     fn to_relationship_name(self) -> RelationshipName;
@@ -24,7 +23,6 @@ impl ToRelationshipName for String {
 
 impl ToRelationshipName for MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        info!("Converting Mapstring {:?}, to RelationshipName", self);
         let upper = self.0.to_case(Case::ScreamingSnake);
         RelationshipName(MapString(upper))
     }

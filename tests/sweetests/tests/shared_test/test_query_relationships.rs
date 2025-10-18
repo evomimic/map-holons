@@ -14,18 +14,7 @@ use crate::shared_test::{
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 
-use base_types::{MapInteger, MapString};
-use core_types::HolonId;
-use core_types::{PropertyMap, PropertyName};
-use holon_dance_builders::query_relationships_dance::build_query_relationships_dance_request;
-use holons_core::{
-    core_shared_objects::ReadableHolonState,
-    dances::ResponseStatusCode,
-    query_layer::{Node, NodeCollection, QueryExpression},
-    HolonReference, ReadableHolon, SmartReference, WritableHolon,
-};
-
-// use holons_guest_integrity::HolonNode;
+use holons_core::core_shared_objects::ReadableHolonState; // TODO: Eliminate this dependency
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(
@@ -48,8 +37,7 @@ pub async fn execute_query_relationships(
         .holon_id()
         .expect(&format!("Failed to get local_id for Holon: {:#?}", source_holon));
 
-    let holon_reference =
-        HolonReference::Smart(SmartReference::new_from_id(source_holon_id));
+    let holon_reference = HolonReference::Smart(SmartReference::new_from_id(source_holon_id));
 
     let node_collection =
         NodeCollection { members: vec![Node::new(holon_reference, None)], query_spec: None };

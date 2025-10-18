@@ -1,31 +1,20 @@
-use holons_core::{
-    get_staged_holon_by_base_key, get_staged_holon_by_versioned_key, get_staged_holons_by_base_key,
-};
+// use holons_core::{
+//     get_staged_holon_by_base_key, get_staged_holon_by_versioned_key, get_staged_holons_by_base_key,
+// };
+use holochain::sweettest::*;
+use holochain::sweettest::{SweetCell, SweetConductor};
+use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
 use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-use holons_prelude::prelude::*;
-use holochain::sweettest::*;
-use holochain::sweettest::{SweetCell, SweetConductor};
 
-use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
-use holons_core::{
-    core_shared_objects::{Holon, ReadableHolonState},
-    dances::{ResponseBody, ResponseStatusCode},
-    reference_layer::{
-        HolonCollectionApi, HolonReference, ReadableHolon, SmartReference, StagedReference,
-    },
-};
-
-use base_types::MapString;
-use core_types::PropertyName;
-use core_types::{HolonError, HolonId};
-
+// use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference},
 };
+use holons_core::core_shared_objects::ReadableHolonState; // Eliminate this dependency
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
