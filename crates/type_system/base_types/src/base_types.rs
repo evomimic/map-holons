@@ -119,6 +119,10 @@ impl BaseValue {
     }
 }
 
+pub trait ToBaseValue {
+    fn to_base_value(self) -> BaseValue;
+}
+
 // ===============================
 // 🔀 Conversion Implementations
 // ===============================
@@ -130,5 +134,55 @@ impl Into<String> for &BaseValue {
             BaseValue::BooleanValue(val) => val.0.to_string(),
             BaseValue::EnumValue(val) => val.0 .0.clone(),
         }
+    }
+}
+
+impl ToBaseValue for MapString {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(self)
+    }
+}
+
+impl ToBaseValue for &MapString {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(self.clone())
+    }
+}
+
+impl ToBaseValue for &str {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(MapString(self.to_string()))
+    }
+}
+
+impl ToBaseValue for String {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(MapString(self))
+    }
+}
+
+impl ToBaseValue for bool {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::BooleanValue(MapBoolean(self))
+    }
+}
+
+impl ToBaseValue for i64 {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::IntegerValue(MapInteger(self))
+    }
+}
+
+impl ToBaseValue for BaseValue {
+    #[inline]
+    fn to_base_value(self) -> BaseValue {
+        self
+    }
+}
+
+impl ToBaseValue for &BaseValue {
+    #[inline]
+    fn to_base_value(self) -> BaseValue {
+        self.clone()
     }
 }

@@ -1,7 +1,7 @@
 use super::Holon;
 use core_types::HolonId;
 use quick_cache::sync::Cache;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
@@ -39,7 +39,7 @@ impl Deref for HolonCache {
     }
 }
 //impl DerefMut for HolonCache {
- //   fn deref_mut(&mut self) -> &mut Self::Target {
-  //      &mut self.0
-  //  }
+//   fn deref_mut(&mut self) -> &mut Self::Target {
+//      &mut self.0
+//  }
 //}

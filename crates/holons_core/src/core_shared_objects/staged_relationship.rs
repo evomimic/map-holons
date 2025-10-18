@@ -1,6 +1,52 @@
 //! # StagedRelationshipMap
 //!
-//! Manages staged (mutable) holon relationships using thread-safe collections.
+//! `StagedRelationshipMap` manages in-progress holon relationships in a way that is both
+//! **thread-safe** and consistent with other relationship models in the MAP architecture.
+//!
+//! ## Key Design Principles
+//!
+//! 1. **Thread-Safe Interior Mutability:**
+//!    - Internally, each `HolonCollection` is wrapped in an `Arc<RwLock<...>>`.
+//!        - `Arc` enables safe shared ownership across threads.
+//!        - `RwLock` enables concurrent read access with exclusive write access.
+//!    - This replaces the prior `Rc<RefCell<>>` design, making the entire map safe for
+//!      use across threads and aligning with MAP’s concurrency requirements.
+//!
+//! 2. **Consistent API with `RelationshipMap`:**
+//!    - Like `RelationshipMap`, this structure maps `RelationshipName`s to holon collections.
+//!    - Unlike `RelationshipMap`, it supports **in-place mutations** during staging workflows.
+//!
+//! 3. **Encapsulation and Controlled Access:**
+//!    - The internal map is private and manipulated only via public trait methods.
+//!    - Read and write access to `HolonCollection`s is guarded through locking, which
+//!      gracefully fails with structured `HolonError::FailedToAcquireLock` errors.
+//!
+//! 4. **Serialization Support:**
+//!    - `StagedRelationshipMap` is fully `Serialize` and `Deserialize`.
+//!    - During deserialization, each collection is automatically wrapped in a fresh `Arc<RwLock<_>>`
+//!      to preserve its runtime mutability and thread safety.
+//!
+//! 5. **Clone for New Source:**
+//!    - The `clone_for_new_source()` method produces a deep clone of the map, creating
+//!      new `HolonCollection`s with reset source information—useful for cloning staged
+//!      relationships into a new editing context.
+//!
+//! ## Intended Use
+//!
+//! `StagedRelationshipMap` is used when **modifying relationships in-memory prior to commit**,
+//! particularly during transient or staged phases. Key use cases include:
+//!
+//! - Adding/removing related holons from a relationship
+//! - Cloning staged holons and their relationships into a new editing context
+//! - Serializing the current staged relationship state for syncing across boundaries
+//!
+//! ## Relationship to `RelationshipMap`
+//!
+//! - `StagedRelationshipMap`: mutable, thread-safe, used for in-progress relationships
+//! - `RelationshipMap`: immutable, used for persisted or read-only relationships
+//!
+//! Together, they represent a consistent, phase-aware pattern for modeling holon relationships
+//! across different lifecycle states within the MAP.
 
 use derive_new::new;
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+use crate::shared_test::tracing_utils::init_tracing;
 use crate::test_data_types::DancesTestCase;
 
 use holochain::prelude::DbKind::Test;
@@ -12,6 +13,7 @@ use holons_core::core_shared_objects::TransientHolonManager;
 use holons_core::{HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy};
 use std::cell::RefCell;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 /// The implementation of `HolonsContextBehavior` , responsible for managing
 /// holon-related operations in a Sweetest environment.
@@ -34,6 +36,9 @@ pub struct TestHolonsContext {
 /// # Returns
 /// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
 pub fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
+    init_tracing();
+    warn!("\n ========== Tracing has been initialized ============");
+
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 

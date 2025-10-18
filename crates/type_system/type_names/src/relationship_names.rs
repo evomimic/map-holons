@@ -23,14 +23,14 @@ impl ToRelationshipName for String {
 
 impl ToRelationshipName for MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = format!("{self:?}").to_case(Case::ScreamingSnake);
+        let upper = self.0.to_case(Case::ScreamingSnake);
         RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for &MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = format!("{self:?}").to_case(Case::ScreamingSnake);
+        let upper = self.0.to_case(Case::ScreamingSnake);
         RelationshipName(MapString(upper))
     }
 }
@@ -52,14 +52,14 @@ impl ToRelationshipName for &CoreRelationshipTypeName {
 impl ToRelationshipName for RelationshipName {
     fn to_relationship_name(self) -> RelationshipName {
         // Normalize in case a RelationshipName was constructed ad hoc
-        let upper = format!("{:?}", self).to_case(Case::ScreamingSnake);
+        let upper = self.0 .0.to_case(Case::ScreamingSnake);
         RelationshipName(MapString(upper))
     }
 }
 
 impl ToRelationshipName for &RelationshipName {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = format!("{:?}", self).to_case(Case::ScreamingSnake);
+        let upper = self.0 .0.to_case(Case::ScreamingSnake);
         RelationshipName(MapString(upper))
     }
 }

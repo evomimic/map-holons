@@ -6,40 +6,40 @@ use core_types::{HolonError, PropertyName, RelationshipName};
 #[doc(hidden)] // or `pub(crate)` if possible
 pub trait WritableHolonImpl {
     fn add_related_holons_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         relationship: RelationshipName,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError>;
+    ) -> Result<&mut Self, HolonError>;
 
     fn remove_related_holons_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         relationship: RelationshipName,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError>;
+    ) -> Result<&mut Self, HolonError>;
 
     fn with_property_value_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
         value: BaseValue,
-    ) -> Result<(), HolonError>;
+    ) -> Result<&mut Self, HolonError>;
 
     fn remove_property_value_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         property: PropertyName,
-    ) -> Result<(), HolonError>;
+    ) -> Result<&mut Self, HolonError>;
 
     fn with_descriptor_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         descriptor: HolonReference,
     ) -> Result<(), HolonError>;
 
     fn with_predecessor_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         predecessor: Option<HolonReference>,
     ) -> Result<(), HolonError>;

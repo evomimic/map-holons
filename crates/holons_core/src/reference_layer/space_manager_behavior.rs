@@ -1,17 +1,13 @@
 use core_types::HolonError;
 
-use crate::core_shared_objects::TransientManagerAccess;
-use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonStagingBehavior, TransientHolonBehavior,
-};
+use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
-use crate::core_shared_objects::nursery_access::NurseryAccess;
-use crate::HolonCollectionApi;
 
 // Import thread-safe core objects
-use crate::core_shared_objects::{Nursery, TransientCollection, TransientHolonManager};
+use crate::core_shared_objects::{TransientCollection, TransientManagerAccess};
+use crate::{HolonStagingBehavior, NurseryAccess, TransientHolonBehavior};
 
 use std::sync::{Arc, RwLock};
 
@@ -47,8 +43,8 @@ pub trait HolonSpaceBehavior {
     /// - If the nursery is **not yet initialized**, it will be created automatically.
     ///
     /// # Returns
-    /// - An `Arc<RwLock<Nursery>>` to allow interior mutability in a multi-threaded context.
-    fn get_nursery_access(&self) -> Arc<RwLock<Nursery>>;
+    /// - An Arc<RwLock<dyn NurseryAccess + Send + Sync>> to allow interior mutability in a multithreaded context.
+    fn get_nursery_access(&self) -> Arc<RwLock<dyn NurseryAccess + Send + Sync>>;
 
     /// Retrieves a reference to the **local space holon**, if it exists.
     ///
@@ -65,17 +61,18 @@ pub trait HolonSpaceBehavior {
     /// This allows holons to be staged, retrieved, and committed within the nursery.
     ///
     /// # Returns
-    /// - An `Arc<RwLock<TransientHolonManager>>` for interacting with staged holons in a thread-safe manner.
-    // TODO: rename to get_staging_behavior_service
-    fn get_staging_behavior_access(&self) -> Arc<RwLock<TransientHolonManager>>;
+    /// - An Arc<RwLock<dyn HolonStagingBehavior + Send + Sync>> for interacting with staged holons in a thread-safe manner.
+    fn get_staging_service(&self) -> Arc<RwLock<dyn HolonStagingBehavior + Send + Sync>>;
 
     /// Provides the service for the **component that implements the `TransientHolonBehavior` API**.
     ///
     /// This allows holons to be created and retrieved, within the TransientManager.
     ///
     /// # Returns
-    /// - An `Arc<RwLock<TransientHolonManager>>` for interacting with transient holons in a thread-safe manner.
-    fn get_transient_behavior_service(&self) -> Arc<RwLock<TransientHolonManager>>;
+    /// - An `Arc<RwLock<dyn TransientHolonBehavior + Send + Sync>> for interacting with transient holons in a thread-safe manner.
+    fn get_transient_behavior_service(
+        &self,
+    ) -> Arc<RwLock<dyn TransientHolonBehavior + Send + Sync>>;
 
     /// Provides access to the **TransientHolonManager**, where transient holons are stored.
     ///
@@ -87,8 +84,9 @@ pub trait HolonSpaceBehavior {
     /// - If the manager is **not yet initialized**, it will be created automatically.
     ///
     /// # Returns
-    /// - An `Arc<RwLock<TransientHolonManager>>` to allow interior mutability in a multi-threaded context.
-    fn get_transient_manager_access(&self) -> Arc<RwLock<TransientHolonManager>>;
+    /// - An Arc<RwLock<dyn TransientManagerAccess + Send + Sync>> to allow interior mutability in a multithreaded context.
+    fn get_transient_manager_access(&self)
+        -> Arc<RwLock<dyn TransientManagerAccess + Send + Sync>>;
 
     /// Provides access to a **transient state collection**, initializing it if necessary.
     ///
@@ -109,7 +107,7 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
     ///
@@ -117,7 +115,7 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> ;
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// **Mediates import of staged holons to prevent direct modification via `NurseryAccess`.**
     ///

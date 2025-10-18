@@ -1,8 +1,12 @@
-use std::{any::Any, sync::{Arc, RwLock}};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, PropertyMap, PropertyName, TemporaryId};
-use tracing::{debug, warn};
+// use tracing::{debug};
+use tracing::warn;
 
 use crate::{
     core_shared_objects::{
@@ -22,7 +26,7 @@ use crate::{
 ///
 /// Regardless of the source phase, cloned Holons always begin their lifecycle as `TransientHolon`.
 pub trait ToHolonCloneModel {
-    fn get_holon_clone_model(
+    fn holon_clone_model(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCloneModel, HolonError>;
@@ -49,8 +53,8 @@ impl TransientHolonManager {
         let id: TemporaryId = {
             let mut pool = self.transient_holons.try_write().map_err(|e| {
                 warn!("❌ Failed to acquire write lock - lock may be held elsewhere");
-                    HolonError::FailedToAcquireLock(format!("Write lock unavailable: {}", e))
-                })?;
+                HolonError::FailedToAcquireLock(format!("Write lock unavailable: {}", e))
+            })?;
             pool.insert_holon(Holon::Transient(holon))?
         };
         self.to_validated_transient_reference(&id)
@@ -70,7 +74,7 @@ impl TransientHolonManager {
 
 impl Clone for TransientHolonManager {
     // Clone underlying pool for thread-safe manager
-        fn clone(&self) -> Self {
+    fn clone(&self) -> Self {
         let pool = self
             .transient_holons
             .read()
@@ -145,10 +149,13 @@ impl TransientHolonBehavior for TransientHolonManager {
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
         let id = {
-            self.transient_holons.try_read().map_err(|e| {
-                warn!("❌ Failed to acquire read lock");
-                HolonError::FailedToAcquireLock(format!("Read lock unavailable: {}", e))
-            })?.get_id_by_base_key(key)?
+            self.transient_holons
+                .try_read()
+                .map_err(|e| {
+                    warn!("❌ Failed to acquire read lock");
+                    HolonError::FailedToAcquireLock(format!("Read lock unavailable: {}", e))
+                })?
+                .get_id_by_base_key(key)?
         };
         self.to_validated_transient_reference(&id)
     }
@@ -175,18 +182,24 @@ impl TransientHolonBehavior for TransientHolonManager {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
-        let id = { 
-            self.transient_holons.try_read().map_err(|e| {
-                warn!("❌ Failed to acquire read lock");
-                HolonError::FailedToAcquireLock(format!("Read lock unavailable: {}", e))
-            })?.get_id_by_versioned_key(key)?
+        let id = {
+            self.transient_holons
+                .try_read()
+                .map_err(|e| {
+                    warn!("❌ Failed to acquire read lock");
+                    HolonError::FailedToAcquireLock(format!("Read lock unavailable: {}", e))
+                })?
+                .get_id_by_versioned_key(key)?
         };
         self.to_validated_transient_reference(&id)
     }
 
     fn transient_count(&self) -> Result<i64, HolonError> {
         let pool = self.transient_holons.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on transient_holons: {}", e))
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on transient_holons: {}",
+                e
+            ))
         })?;
         Ok(pool.len() as i64)
     }
@@ -206,27 +219,30 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         self.transient_holons.read().unwrap().get_id_by_versioned_key(key)
     }
 
-    fn get_transient_holons_pool(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>  {
+    fn get_transient_holons_pool(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError> {
         let pool = match self.transient_holons.try_read() {
             Ok(guard) => guard,
             Err(e) => {
-                return Err(HolonError::FailedToAcquireLock(format!("Failed to acquire read lock for get_transient_holons_pool: {}", e)));
+                return Err(HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock for get_transient_holons_pool: {}",
+                    e
+                )));
             }
         };
         // Return shared Arc pointers for thread-safe access
-        Ok(
-            pool
-            .get_all_holons()
-            .into_iter()
-            .map(|rc_ref| rc_ref.clone())
-            .collect::<Vec<_>>()
-        )
+        Ok(pool.get_all_holons().into_iter().map(|rc_ref| rc_ref.clone()).collect::<Vec<_>>())
     }
 
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>  {
-        self.transient_holons.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock for export_transient_holons: {}", e))
-        })?.export_pool()
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
+        self.transient_holons
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock for export_transient_holons: {}",
+                    e
+                ))
+            })?
+            .export_pool()
     }
 
     fn import_transient_holons(&mut self, pool: SerializableHolonPool) -> () {

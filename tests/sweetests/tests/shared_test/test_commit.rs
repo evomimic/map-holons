@@ -1,19 +1,31 @@
 use async_std::task;
+use holons_prelude::prelude::*;
+use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info, warn};
 
-use rstest::*;
-
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons_core::core_shared_objects::HolonBehavior; // TODO: eliminate this dependency
 
 use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DancesTestCase},
 };
-
 use holons_prelude::prelude::*;
+
+// TODO: Remove this import, direct access to HolonState should not be allowed from test layer.
+// The need for this will go away once Holon is removed from ResponseBody
+
+use holons_core::core_shared_objects::ReadableHolonState;
+// use base_types::{MapInteger, MapString};
+// use core_types::HolonId;
+// use holon_dance_builders::commit_dance::build_commit_dance_request;
+// use holons_core::{
+//     core_shared_objects::ReadableHolonState,
+//     dances::{ResponseBody, ResponseStatusCode},
+// };
+// // use holons_guest_integrity::HolonNode;
+// use core_types::{PropertyMap, PropertyName};
 
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -45,15 +57,13 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
     match response.body {
         ResponseBody::Holon(holon) => {
             let key =
-                holon.get_key().expect("Holon should have a key").expect("Key should not be None");
+                holon.key().expect("Holon should have a key").expect("Key should not be None");
             test_state.created_holons.insert(key, holon);
         }
         ResponseBody::Holons(holons) => {
             for holon in holons {
-                let key = holon
-                    .get_key()
-                    .expect("Holon should have a key")
-                    .expect("Key should not be None");
+                let key =
+                    holon.key().expect("Holon should have a key").expect("Key should not be None");
                 test_state.created_holons.insert(key, holon);
             }
         }

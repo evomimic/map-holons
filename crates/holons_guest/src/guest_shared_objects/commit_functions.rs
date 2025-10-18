@@ -16,7 +16,8 @@ use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolon
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
-        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, StagedHolon,
+        CommitRequestStatus, CommitResponse, Holon, HolonCollection, ReadableHolonState,
+        StagedHolon,
     },
     reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
@@ -187,7 +188,7 @@ fn commit_holon(rc_holon: Arc<RwLock<Holon>>) -> Result<Holon, HolonError> {
             StagedState::ForCreate => {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("StagedState is New... requesting new HolonNode be created in the DHT");
-                let node = staged_holon.into_node();
+                let node = staged_holon.into_node_model();
                 let result = create_holon_node(HolonNode::from(node));
 
                 match result {
@@ -207,7 +208,7 @@ fn commit_holon(rc_holon: Arc<RwLock<Holon>>) -> Result<Holon, HolonError> {
             }
             StagedState::ForUpdateChanged => {
                 // Changed holons MUST have an original_id
-                let original_id = staged_holon.get_original_id();
+                let original_id = staged_holon.original_id();
                 if let Some(id) = original_id {
                     let original_holon_node_hash = try_action_hash_from_local_id(&id)?;
                     let previous_holon_node_hash =
@@ -216,7 +217,7 @@ fn commit_holon(rc_holon: Arc<RwLock<Holon>>) -> Result<Holon, HolonError> {
                     let input = UpdateHolonNodeInput {
                         original_holon_node_hash,
                         previous_holon_node_hash,
-                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node()),
+                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node_model()),
                     };
                     debug!("Requesting HolonNode be updated in the DHT"); //
 

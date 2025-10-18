@@ -1,10 +1,8 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    sync::{Arc, RwLock},
-};
-use tracing::debug;
+use std::sync::RwLock;
+use std::{fmt, sync::Arc};
+use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -19,8 +17,7 @@ use crate::{
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         transient_holon_manager::ToHolonCloneModel,
-        Holon, HolonBehavior, HolonCollection, NurseryAccess, ReadableRelationship,
-        WritableRelationship,
+        Holon, HolonCollection, NurseryAccess, ReadableHolonState, WriteableHolonState,
     },
     Nursery, RelationshipMap,
 };
@@ -45,8 +42,6 @@ impl StagedReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
-        debug!("Entered: abandon_staged_changes for staged_id: {:#?}", self.id);
-
         // Get access to the source holon
         let rc_holon = self.get_rc_holon(context)?;
 
@@ -57,7 +52,6 @@ impl StagedReference {
 
         match &mut *holon_mut {
             Holon::Staged(staged_holon) => {
-                debug!("Mutably borrowing Holon::Staged for staged_id: {:#?}", self.id);
                 staged_holon.abandon_staged_changes()?;
             }
             _ => {
@@ -103,13 +97,6 @@ impl StagedReference {
         // Retrieve the holon by its temporaryId
         let rc_holon = pool.get_holon_by_id(&self.id)?;
 
-        match &*rc_holon.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on holon: {}", e))
-        })? {
-            Holon::Staged(_) => {}
-            _ => return Err(HolonError::InvalidHolonReference("Expected Staged".to_string())),
-        }
-
         Ok(rc_holon)
     }
 
@@ -123,7 +110,9 @@ impl StagedReference {
     ///
     /// # Panics
     /// This function assumes that the context and space manager will always return valid references.
-    fn get_nursery_access(context: &dyn HolonsContextBehavior) -> Arc<RwLock<Nursery>> {
+    fn get_nursery_access(
+        context: &dyn HolonsContextBehavior,
+    ) -> Arc<RwLock<dyn NurseryAccess + Send + Sync>> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 
@@ -149,7 +138,7 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<TransientReference, HolonError> {
         self.is_accessible(context, AccessType::Clone)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon_clone_model = rc_holon.read().unwrap().get_holon_clone_model();
+        let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
         let transient_behavior_service =
             context.get_space_manager().get_transient_behavior_service();
@@ -169,16 +158,15 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        Ok(RelationshipMap::from(borrowed_holon.into_staged()?.get_staged_relationship_map()?))
+        borrowed_holon.all_related_holons()
     }
 
     fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        let local_id = borrowed_holon.get_local_id()?;
 
-        Ok(HolonId::from(local_id))
+        borrowed_holon.holon_id()
     }
 
     fn predecessor_impl(
@@ -192,7 +180,7 @@ impl ReadableHolonImpl for StagedReference {
         let members = collection.get_members();
         if members.len() > 1 {
             return Err(HolonError::Misc(format!(
-                "get_related_holons for PREDECESSOR returned multiple members: {:#?}",
+                "related_holons for PREDECESSOR returned multiple members: {:#?}",
                 members
             )));
         }
@@ -211,7 +199,8 @@ impl ReadableHolonImpl for StagedReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        borrowed_holon.get_property_value(property_name)
+
+        borrowed_holon.property_value(property_name)
     }
 
     fn key_impl(
@@ -221,7 +210,8 @@ impl ReadableHolonImpl for StagedReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        borrowed_holon.get_key().clone()
+
+        borrowed_holon.key().clone()
     }
 
     fn related_holons_impl(
@@ -231,20 +221,9 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-
         let holon = rc_holon.read().unwrap();
 
-        match &*holon {
-            Holon::Staged(staged_holon) => {
-                let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                // Get collection for related holons
-                let collection = staged_relationship_map.get_related_holons(relationship_name);
-                Ok(collection)
-            }
-            _ => {
-                unreachable!()
-            }
-        }
+        holon.related_holons(relationship_name)
     }
 
     fn versioned_key_impl(
@@ -253,7 +232,7 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<MapString, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let holon = self.get_rc_holon(context)?;
-        let key = holon.read().unwrap().get_versioned_key()?;
+        let key = holon.read().unwrap().versioned_key()?;
 
         Ok(key)
     }
@@ -265,15 +244,14 @@ impl ReadableHolonImpl for StagedReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
+
         borrowed_holon.essential_content()
     }
 
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon
-            .read()
-            .map_err(|e| HolonError::FailedToAcquireLock(format!("Failed to read holon: {}", e)))?;
+        let borrowed_holon = rc_holon.read().unwrap();
         Ok(borrowed_holon.summarize())
     }
 
@@ -285,7 +263,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        Ok(borrowed_holon.into_node())
+        Ok(borrowed_holon.into_node_model())
     }
 
     fn is_accessible_impl(
@@ -303,95 +281,68 @@ impl ReadableHolonImpl for StagedReference {
 
 impl WritableHolonImpl for StagedReference {
     fn add_related_holons_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::add_related_holons");
-        // Ensure the holon is accessible for write
+    ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-
-        // Get access to the source holon and its relationship map
         let rc_holon = self.get_rc_holon(context)?;
-
-        // Mutably borrow the inner Holon and match it
         let mut holon_mut = rc_holon.write().unwrap();
+        holon_mut.add_related_holons(context, relationship_name, holons)?;
 
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                // Delegate the addition of holons to the `StagedRelationshipMap`
-                staged_relationship_map.add_related_holons(context, relationship_name, holons)?;
-                staged_holon.update_relationship_map(staged_relationship_map)?;
-            }
-            _ => {
-                unreachable!()
-            }
-        }
-
-        Ok(())
-    }
-
-    fn remove_property_value_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        name: PropertyName,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(context, AccessType::Write)?;
-        let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_refcell = rc_holon.write().unwrap();
-
-        match &mut *holon_refcell {
-            Holon::Staged(staged_holon) => {
-                staged_holon.remove_property_value(&name)?;
-            }
-            _ => {
-                unreachable!()
-            }
-        }
-
-        Ok(())
+        Ok(self)
     }
 
     fn remove_related_holons_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
-        debug!("Entered StagedReference::remove_related_holons");
-
-        // Ensure the holon is accessible for write
+    ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-
-        // Get access to the source holon and its relationship map
+        info!(
+            "Removing {:?} related holons from relationship: {:?}",
+            holons.len(),
+            relationship_name
+        );
         let rc_holon = self.get_rc_holon(context)?;
+        let mut holon_mut = rc_holon.write().unwrap();
+        holon_mut.remove_related_holons(context, relationship_name, holons)?;
 
-        // Mutably borrow the inner Holon and match it
+        Ok(self)
+    }
+
+    fn with_property_value_impl(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        property: PropertyName,
+        value: BaseValue,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(context, AccessType::Write)?;
+        let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().unwrap();
 
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                let mut staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                // Delegate the removal of holons to the `StagedRelationshipMap`
-                staged_relationship_map.remove_related_holons(
-                    context,
-                    &relationship_name,
-                    holons,
-                )?;
-                staged_holon.update_relationship_map(staged_relationship_map)?;
-            }
-            _ => {
-                unreachable!()
-            }
-        }
+        holon_mut.with_property_value(property, value)?;
 
-        Ok(())
+        Ok(self)
+    }
+
+    fn remove_property_value_impl(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        name: PropertyName,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(context, AccessType::Write)?;
+        let rc_holon = self.get_rc_holon(context)?;
+        let mut holon_mut = rc_holon.write().unwrap();
+        holon_mut.remove_property_value(&name)?;
+
+        Ok(self)
     }
 
     fn with_descriptor_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
@@ -403,13 +354,11 @@ impl WritableHolonImpl for StagedReference {
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor.clone()],
             )?;
-            debug!("removed existing descriptor: {:#?}", descriptor);
             self.add_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference],
             )?;
-            debug!("added descriptor: {:#?}", descriptor);
 
             Ok(())
         } else {
@@ -418,14 +367,13 @@ impl WritableHolonImpl for StagedReference {
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![descriptor_reference.clone()],
             )?;
-            debug!("added descriptor: {:#?}", descriptor_reference);
 
             Ok(())
         }
     }
 
     fn with_predecessor_impl(
-        &self,
+        &mut self,
         context: &dyn HolonsContextBehavior,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
     ) -> Result<(), HolonError> {
@@ -437,7 +385,6 @@ impl WritableHolonImpl for StagedReference {
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor.clone()],
             )?;
-            debug!("removed existing predecessor: {:#?}", predecessor);
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
             self.add_related_holons_impl(
@@ -445,31 +392,6 @@ impl WritableHolonImpl for StagedReference {
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor_reference.clone()],
             )?;
-            debug!("added predecessor: {:#?}", predecessor_reference);
-        }
-
-        Ok(())
-    }
-
-    fn with_property_value_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        property: PropertyName,
-        value: BaseValue,
-    ) -> Result<(), HolonError> {
-        self.is_accessible(context, AccessType::Write)?;
-        let rc_holon = self.get_rc_holon(context)?;
-
-        // Mutably borrow the inner Holon and match it
-        let mut holon_mut = rc_holon.write().unwrap();
-
-        match &mut *holon_mut {
-            Holon::Staged(staged_holon) => {
-                staged_holon.with_property_value(property, value)?;
-            }
-            _ => {
-                unreachable!()
-            }
         }
 
         Ok(())
@@ -477,13 +399,13 @@ impl WritableHolonImpl for StagedReference {
 }
 
 impl ToHolonCloneModel for StagedReference {
-    fn get_holon_clone_model(
+    fn holon_clone_model(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCloneModel, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon_clone_model = rc_holon.read().unwrap().get_holon_clone_model();
+        let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
         Ok(holon_clone_model)
     }

@@ -7,7 +7,6 @@ use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-use holons_core::HolonCollectionApi;
 
 use crate::shared_test::*;
 use crate::shared_test::{

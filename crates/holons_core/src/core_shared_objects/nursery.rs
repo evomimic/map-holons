@@ -140,9 +140,16 @@ impl HolonStagingBehavior for Nursery {
     }
 
     fn staged_count(&self) -> Result<i64, HolonError> {
-        let count = self.staged_holons.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on staged_holons: {}", e))
-        })?.len() as i64;
+        let count = self
+            .staged_holons
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged_holons: {}",
+                    e
+                ))
+            })?
+            .len() as i64;
         Ok(count)
     }
 
@@ -152,7 +159,7 @@ impl HolonStagingBehavior for Nursery {
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
         let staged_holon =
-            StagedHolon::new_from_clone_model(transient_reference.get_holon_clone_model(context)?)?;
+            StagedHolon::new_from_clone_model(transient_reference.holon_clone_model(context)?)?;
         let new_id = self.stage_holon(staged_holon)?;
         self.to_validated_staged_reference(&new_id)
     }
@@ -167,7 +174,7 @@ impl NurseryAccessInternal for Nursery {
         self.staged_holons.write().expect("Failed to acquire write lock on staged_holons").clear();
     }
 
-    // fn get_keyed_index(&self) -> BTreeMap<MapString, usize> {
+    // fn keyed_index(&self) -> BTreeMap<MapString, usize> {
     //     self.holon_store.borrow().keyed_index.clone()
     // }
 
@@ -186,8 +193,12 @@ impl NurseryAccessInternal for Nursery {
         self.staged_holons
             .read()
             .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on staged_holons: {}", e))
-            })?.export_pool()
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged_holons: {}",
+                    e
+                ))
+            })?
+            .export_pool()
     }
 
     fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> () {

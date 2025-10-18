@@ -1,9 +1,9 @@
 use async_std::task;
+use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
+use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-
-use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -13,8 +13,6 @@ use crate::shared_test::{
     mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference},
 };
-
-use holons_prelude::prelude::*;
 
 /// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
 /// supplied Holon and confirms a Success response

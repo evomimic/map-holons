@@ -1,9 +1,9 @@
 use async_std::task;
+use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
+use rstest::*;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
-
-use rstest::*;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -14,9 +14,7 @@ use crate::shared_test::{
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 
-use holons_prelude::prelude::*;
-
-use holons_core::core_shared_objects::HolonBehavior;
+use holons_core::core_shared_objects::ReadableHolonState; // TODO: Eliminate this dependency
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(
@@ -36,11 +34,10 @@ pub async fn execute_query_relationships(
         .unwrap_or_else(|| panic!("Holon with key {:?} not found in created_holons", source_key));
 
     let source_holon_id = source_holon
-        .get_local_id()
+        .holon_id()
         .expect(&format!("Failed to get local_id for Holon: {:#?}", source_holon));
 
-    let holon_reference =
-        HolonReference::Smart(SmartReference::new_from_id(HolonId::Local(source_holon_id)));
+    let holon_reference = HolonReference::Smart(SmartReference::new_from_id(source_holon_id));
 
     let node_collection =
         NodeCollection { members: vec![Node::new(holon_reference, None)], query_spec: None };

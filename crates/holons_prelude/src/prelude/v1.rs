@@ -32,7 +32,9 @@
 //! - ✅ Tooling or CLI layers that construct `DanceRequest`s
 //! - ❌ Internal modules within `holons_core` (should import directly)
 
-pub use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
+pub use base_types::{
+    BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString, ToBaseValue,
+};
 pub use core_types::HolonId;
 pub use integrity_core_types::{
     HolonError, PropertyMap, PropertyName, PropertyValue, RelationshipName,

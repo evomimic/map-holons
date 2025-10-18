@@ -43,10 +43,10 @@ use self::test_ensure_database_count::execute_ensure_database_count;
 // use self::test_load_core_schema::execute_load_new_schema;
 use self::test_match_db_content::execute_match_db_content;
 use self::test_query_relationships::execute_query_relationships;
+use self::test_remove_properties_command::execute_remove_properties;
 use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 
-use crate::descriptor_dance_fixtures::*;
 use crate::shared_test::{
     mock_conductor::setup_conductor,
     test_context::init_test_context,
@@ -87,6 +87,8 @@ use shared_test::*;
 #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 #[case::delete_holon(delete_holon_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+#[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+#[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
@@ -101,11 +103,15 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     use test_delete_holon::execute_delete_holon;
 
-    // let _ = holochain_trace::test_run();
-
     // The heavy lifting for this test is in the test data set creation.
 
     let mut test_case: DancesTestCase = input.unwrap();
+    // Initialize TestHolonsContext from test_session_state
+    let test_context = init_test_context(&mut test_case); // Already returns Arc
+                                                          // let _ = holochain_trace::test_run();
+
+    tracing::info!("Hello from the test!");
+
     let steps = test_case.clone().steps;
     let name = test_case.clone().name.clone();
     let description = test_case.clone().description;
@@ -118,8 +124,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // 2. Create the DanceCallService with the mock conductor
     let dance_service = Arc::new(DanceCallService::new(conductor_config));
 
-    // Initialize TestHolonsContext from test_session_state
-    let test_context = init_test_context(&mut test_case); // Already returns Arc
+    warn!("TEST SESSION STATE {:?}", test_case.test_session_state);
 
     // Initialize the DanceTestState
     let mut test_state = DanceTestExecutionState::new(test_context, dance_service);
@@ -135,7 +140,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     .await
             }
             DanceTestStep::AddRelatedHolons(
-                staged_reference,
+                holon_reference,
                 relationship_name,
                 holons_to_add,
                 expected_response,
@@ -143,7 +148,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             ) => {
                 execute_add_related_holons(
                     &mut test_state,
-                    staged_reference,
+                    holon_reference,
                     relationship_name,
                     holons_to_add,
                     expected_response,
@@ -176,15 +181,24 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
+            DanceTestStep::RemoveProperties(holon_reference, properties, expected_response) => {
+                execute_remove_properties(
+                    &mut test_state,
+                    holon_reference,
+                    properties,
+                    expected_response,
+                )
+                .await
+            }
             DanceTestStep::RemoveRelatedHolons(
-                staged_reference,
+                holon_reference,
                 relationship_name,
                 holons_to_remove,
                 expected_response,
             ) => {
                 execute_remove_related_holons(
                     &mut test_state,
-                    staged_reference,
+                    holon_reference,
                     relationship_name,
                     holons_to_remove,
                     expected_response,
@@ -208,10 +222,10 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 execute_stage_new_version(&mut test_state, original_holon_key, expected_response)
                     .await
             }
-            DanceTestStep::WithProperties(staged_reference, properties, expected_response) => {
+            DanceTestStep::WithProperties(holon_reference, properties, expected_response) => {
                 execute_with_properties(
                     &mut test_state,
-                    staged_reference,
+                    holon_reference,
                     properties,
                     expected_response,
                 )
