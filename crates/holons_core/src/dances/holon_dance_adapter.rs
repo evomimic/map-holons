@@ -27,13 +27,14 @@ use crate::{
         dance_response::ResponseBody,
         DanceRequest,
     },
+    load_holons,
     query_layer::evaluate_query,
     reference_layer::{
-        holon_operations_api::get_all_holons, writable_holon::WritableHolon, HolonReference,
-        HolonsContextBehavior, SmartReference,
+        holon_operations_api::get_all_holons, holon_operations_api::new_holon,
+        writable_holon::WritableHolon, HolonReference, HolonsContextBehavior, SmartReference,
     },
 };
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};
 
 /// Abandon staged changes
@@ -278,18 +279,16 @@ pub fn load_holons_dance(
     context: &dyn HolonsContextBehavior,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
+    info!("----- Entered load holons dance");
     // Validate dance type
-    match request.dance_type {
-        DanceType::Standalone => { /* ok */ }
-        _ => {
-            return Err(HolonError::InvalidParameter(
-                "Invalid DanceType: expected Standalone".to_string(),
-            ))
-        }
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected Standalone".to_string(),
+        ));
     }
 
     // Extract bundle reference
-    let bundle_ref: TransientReference = match request.body {
+    let bundle_reference: TransientReference = match request.body {
         RequestBody::TransientReference(transient_reference) => transient_reference,
         _ => {
             return Err(HolonError::InvalidParameter(
@@ -298,11 +297,42 @@ pub fn load_holons_dance(
         }
     };
 
-    // Delegate to the Holon Service (guest impl will call the loader controller)
-    let holon_service = context.get_space_manager().get_holon_service();
-    let response_reference = holon_service.load_holons_internal(context, bundle_ref)?;
+    // Delegate to the public ops API (which calls the *_internal service impl)
+    let response_reference = load_holons(context, bundle_reference)?;
 
     // Wrap transient response holon
+    Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
+}
+
+pub fn new_holon_dance(
+    context: &dyn HolonsContextBehavior,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    info!("----- Entered new holon dance");
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter("Invalid DanceType: expected Standalone".into()));
+    }
+
+    // Optional key via ParameterValues; allow None for keyless creation.
+    let key_option: Option<MapString> = match &request.body {
+        RequestBody::ParameterValues(map) => {
+            let property_name = PropertyName(MapString("key".into()));
+            match map.get(&property_name) {
+                Some(BaseValue::StringValue(key)) => Some(key.clone()),
+                Some(_) => return Err(HolonError::InvalidParameter("key must be a string".into())),
+                None => None,
+            }
+        }
+        RequestBody::None => None,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid RequestBody: expected None or ParameterValues".into(),
+            ))
+        }
+    };
+
+    // Delegate to the public API; it will route to the *_internal impl for this env.
+    let response_reference = new_holon(context, key_option)?;
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
 }
 

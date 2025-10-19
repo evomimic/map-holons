@@ -4,7 +4,7 @@ use crate::{dances_client, ConductorDanceCaller, DanceCallService};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holon_dance_builders;
-use holon_dance_builders::build_load_holons_dance_request;
+use holon_dance_builders::{build_load_holons_dance_request, build_new_holon_dance_request};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
@@ -117,6 +117,42 @@ where
                 // relationship for the response holon so we just clone to transient and return it.
                 holon_reference.clone_holon(context)
             }
+            _ => Err(HolonError::InvalidParameter(
+                "Unexpected ResponseBody: expected HolonReference".into(),
+            )),
+        }
+    }
+
+    fn new_holon_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        key: Option<MapString>,
+    ) -> Result<TransientReference, HolonError> {
+        // 1) Build request (None => RequestBody::None; Some(key) => RequestBody::ParameterValues)
+        let request = build_new_holon_dance_request(key);
+
+        // 2) Simple current-thread runtime (compatible with #[async_trait(?Send)])
+        let runtime = Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
+
+        let response = runtime.block_on(self.dance_call_service.dance_call(context, request));
+
+        // 3) Handle non-OK statuses (accept OK/Accepted for flexibility)
+        match response.status_code {
+            ResponseStatusCode::OK | ResponseStatusCode::Accepted => {}
+            other => {
+                return Err(HolonError::Misc(format!(
+                    "Dance call failed: {:?} — {}",
+                    other, response.description.0
+                )));
+            }
+        }
+
+        // 4) Extract the holon reference and return a TransientReference
+        match response.body {
+            ResponseBody::HolonReference(href) => href.clone_holon(context),
             _ => Err(HolonError::InvalidParameter(
                 "Unexpected ResponseBody: expected HolonReference".into(),
             )),

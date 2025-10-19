@@ -329,6 +329,21 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_bundle(context, bundle)
     }
 
+    /// Creates a new Holon in transient state, without any lineage to prior Holons.
+    fn new_holon_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        key: Option<MapString>,
+    ) -> Result<TransientReference, HolonError> {
+        let transient = context.get_space_manager().get_transient_behavior_service();
+
+        // Handle optionally provided key
+        match key {
+            Some(k) => transient.borrow().create_empty(k),
+            None => transient.borrow().create_empty_without_key(),
+        }
+    }
+
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
     fn stage_new_from_clone_internal(

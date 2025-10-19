@@ -109,6 +109,7 @@ impl Dancer {
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
+        dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
         dispatch_table
             .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);

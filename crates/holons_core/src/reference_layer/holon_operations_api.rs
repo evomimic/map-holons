@@ -96,16 +96,15 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, Hol
     Ok(commit_response)
 }
 
-/// Creates a new TransientHolon and assigns the specified key
-/// Returns a TransientReference to the newly created holon
+/// Creates a new TransientHolon.
+/// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
+/// Returns a TransientReference to the newly created holon.
 pub fn new_holon(
     context: &dyn HolonsContextBehavior,
-    key: MapString,
+    key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_reference = transient_service.borrow().create_empty(key)?;
-
-    Ok(transient_reference)
+    let service = context.get_space_manager().get_holon_service();
+    service.new_holon_internal(context, key)
 }
 
 /// Deletes a holon identified by its ID.
