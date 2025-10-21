@@ -10,6 +10,10 @@ use holons_prelude::prelude::*;
 use tracing::{debug, info};
 use type_names::CorePropertyTypeName::Description;
 
+use holons_core::dances::DanceCallServiceApi;
+use std::string::ToString; // temporary import for dance calls
+                           // Import the test-only extension
+
 /// This function updates the supplied test_case with a set of steps that establish some basic
 /// data the different test cases can then extend for different purposes.
 /// Specifically, this function stages 4 Holons (but does NOT commit) and creates 1 Relationship, with the following test data:
@@ -22,6 +26,7 @@ use type_names::CorePropertyTypeName::Description;
 pub fn setup_book_author_steps_with_context(
     fixture_context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
+    dance_service: Option<&dyn DanceCallServiceApi>,
 ) -> Result<RelationshipName, HolonError> {
     // Set relationship
     let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
@@ -29,7 +34,7 @@ pub fn setup_book_author_steps_with_context(
     //  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
 
-    let mut book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
+    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_holon_key.clone()), dance_service)?;
     book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
             &*fixture_context,
             PropertyName(MapString("description".to_string())),
@@ -48,7 +53,7 @@ pub fn setup_book_author_steps_with_context(
 
     // //  STAGE:  Person 1 //
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let mut person_1_transient_reference = new_holon(&*fixture_context, person_1_key.clone())?;
+    let mut person_1_transient_reference = new_holon(&*fixture_context, Some(person_1_key.clone()), dance_service)?;
     person_1_transient_reference
         .with_property_value(&*fixture_context, "first name", "Roger")?
         .with_property_value(&*fixture_context, "last name", "Briggs")?;
@@ -59,7 +64,7 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Person 2 //
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let mut person_2_transient_reference = new_holon(&*fixture_context, person_2_key.clone())?;
+    let mut person_2_transient_reference = new_holon(&*fixture_context, Some(person_2_key.clone()), dance_service)?;
     person_2_transient_reference
         .with_property_value(&*fixture_context, "first name", "George")?
         .with_property_value(&*fixture_context, "last name", "Smith")?;
@@ -70,7 +75,7 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Publisher //
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let mut publisher_transient_reference = new_holon(&*fixture_context, publisher_key.clone())?;
+    let mut publisher_transient_reference = new_holon(&*fixture_context, Some(publisher_key.clone()), dance_service)?;
     publisher_transient_reference
         .with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?
         .with_property_value(

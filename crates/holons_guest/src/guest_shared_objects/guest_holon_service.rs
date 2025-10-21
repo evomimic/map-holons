@@ -6,6 +6,7 @@ use std::{
 };
 
 use hdk::prelude::*;
+use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_core::core_shared_objects::SavedHolon;
 use holons_core::reference_layer::ReadableHolon;
 use holons_core::RelationshipMap;
@@ -22,6 +23,7 @@ use crate::persistence_layer::{create_holon_node, delete_holon_node, get_origina
 use crate::{create_local_path, get_holon_by_path, try_from_record};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
+use holons_core::dances::DanceCallServiceApi; // temporary
 use holons_core::{
     core_shared_objects::{
         nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonCollection,
@@ -33,6 +35,7 @@ use holons_core::{
     },
 };
 use holons_integrity::LinkTypes;
+use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
 
 #[derive(Clone)]
@@ -322,6 +325,35 @@ impl HolonServiceApi for GuestHolonService {
         collection.add_references(context, holon_references)?;
 
         Ok(collection)
+    }
+
+    /// Execute a Holon import from a `HolonLoaderBundle`.
+    /// Delegates to the `HolonLoaderController` and returns a transient `HolonLoadResponse`.
+    fn load_holons_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        bundle: TransientReference,
+        _dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
+    ) -> Result<TransientReference, HolonError> {
+        // Construct controller and delegate to load_bundle()
+        let mut controller = HolonLoaderController::new();
+        controller.load_bundle(context, bundle)
+    }
+
+    /// Creates a new Holon in transient state, without any lineage to prior Holons.
+    fn new_holon_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        key: Option<MapString>,
+        _dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
+    ) -> Result<TransientReference, HolonError> {
+        let transient = context.get_space_manager().get_transient_behavior_service();
+
+        // Handle optionally provided key
+        match key {
+            Some(k) => transient.borrow().create_empty(k),
+            None => transient.borrow().create_empty_without_key(),
+        }
     }
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining

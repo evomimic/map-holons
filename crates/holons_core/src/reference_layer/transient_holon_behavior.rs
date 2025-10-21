@@ -21,6 +21,11 @@ pub trait TransientHolonBehavior: Send + Sync {
 
     fn create_empty(&self, key: MapString) -> Result<TransientReference, HolonError>;
 
+    /// Create a new transient holon without setting a key property.
+    /// The holon is identified only by its TemporaryId until a key is set/derived.
+    // This enables an optional key field in the new_holon dance
+    fn create_empty_without_key(&self) -> Result<TransientReference, HolonError>;
+
     fn new_from_clone_model(
         &self,
         holon_clone_model: HolonCloneModel,

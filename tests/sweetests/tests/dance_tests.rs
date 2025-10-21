@@ -56,6 +56,7 @@ use crate::shared_test::{
 use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
 use holons_client::init_client_context;
+use holons_core::dances::DanceCallServiceApi; // temporary import for dance calls
 use holons_prelude::prelude::*;
 use shared_test::*;
 

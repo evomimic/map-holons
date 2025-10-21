@@ -31,7 +31,7 @@ pub async fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError>
     // // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
 
     let _author_relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, None)?;
 
     // // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // // This allows them to be assigned StagedReferences and also retrieved by either index or key

@@ -117,6 +117,18 @@ impl TransientHolonBehavior for TransientHolonManager {
         Ok(transient_reference)
     }
 
+    fn create_empty_without_key(&self) -> Result<TransientReference, HolonError> {
+        let holon = TransientHolon::with_fields(
+            MapInteger(1),
+            HolonState::Mutable,
+            ValidationState::ValidationRequired,
+            PropertyMap::new(),
+            TransientRelationshipMap::new_empty(),
+            None,
+        );
+        self.add_new_holon(holon)
+    }
+
     fn new_from_clone_model(
         &self,
         holon_clone_model: HolonCloneModel,
