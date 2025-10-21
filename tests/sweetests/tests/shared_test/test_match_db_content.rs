@@ -26,7 +26,8 @@ use holons_client::init_client_context;
 /// then confirms that the Holon returned matches the expected
 
 pub async fn execute_match_db_content(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
 ) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
 

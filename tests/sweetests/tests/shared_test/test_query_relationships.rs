@@ -20,7 +20,8 @@ use holons_core::core_shared_objects::HolonBehavior;
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     source_key: MapString,
     query_expression: QueryExpression,
     expected_response: ResponseStatusCode,

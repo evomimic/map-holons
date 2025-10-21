@@ -23,7 +23,8 @@ use holons_prelude::prelude::*;
 ///
 
 pub async fn execute_with_properties(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    //test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_holon: HolonReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,

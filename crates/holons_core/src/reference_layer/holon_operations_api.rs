@@ -22,14 +22,14 @@
 //! and improving usability.
 
 use crate::core_shared_objects::{CommitResponse, Holon, HolonBehavior};
+use crate::dances::DanceCallServiceApi;
 use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
 };
 use base_types::MapString;
-use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
-
-//TODO: move static/stateless HDI/HDK functions to the Holon_service
+use core_types::{HolonError, LocalId, PropertyMap, PropertyName}; // temporary
+                                                                  //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 /// Commits the state of all staged holons and their relationships to the DHT.
 ///
@@ -102,9 +102,10 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, Hol
 pub fn new_holon(
     context: &dyn HolonsContextBehavior,
     key: Option<MapString>,
+    dance: Option<&dyn DanceCallServiceApi>, //
 ) -> Result<TransientReference, HolonError> {
     let service = context.get_space_manager().get_holon_service();
-    service.new_holon_internal(context, key)
+    service.new_holon_internal(context, key, dance)
 }
 
 /// Deletes a holon identified by its ID.
@@ -316,7 +317,8 @@ pub fn transient_count(context: &dyn HolonsContextBehavior) -> i64 {
 pub fn load_holons(
     context: &dyn HolonsContextBehavior,
     bundle: TransientReference,
+    dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
 ) -> Result<TransientReference, core_types::HolonError> {
     let service = context.get_space_manager().get_holon_service();
-    service.load_holons_internal(context, bundle)
+    service.load_holons_internal(context, bundle, dance)
 }

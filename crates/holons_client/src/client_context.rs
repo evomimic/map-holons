@@ -33,17 +33,11 @@ pub struct ClientHolonsContext {
 ///
 /// # Returns
 /// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
-pub fn init_client_context<C>(
-    dance_call_service: Arc<DanceCallService<C>>,
-) -> Arc<dyn HolonsContextBehavior>
-where
-    C: ConductorDanceCaller + Debug + 'static,
-{
+pub fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
 
     // temporarily create with injected DanceCallService
-    let holon_service: Arc<dyn HolonServiceApi> =
-        Arc::new(ClientHolonService::new(dance_call_service));
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
     // Step 2: Create an empty Nursery for the client
     let nursery = Nursery::new();

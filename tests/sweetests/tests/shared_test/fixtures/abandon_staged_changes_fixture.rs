@@ -32,7 +32,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     let relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, None)?;
 
     expected_count += staged_count(&*fixture_context);
 
@@ -75,7 +75,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  STAGE:  Abandoned Holon1 (H4)  //
     let abandoned_holon_1_transient_reference =
-        new_holon(&*fixture_context, MapString("Abandon1".to_string()))?;
+        new_holon(&*fixture_context, Some(MapString("Abandon1".to_string())), None)?;
     abandoned_holon_1_transient_reference.with_property_value(
         &*fixture_context,
         PropertyName(MapString("example abandon1".to_string())),
@@ -89,7 +89,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  STAGE:  Abandoned Holon2 (H5)  //
     let abandoned_holon_2_transient_reference =
-        new_holon(&*fixture_context, MapString("Abandon2".to_string()))?;
+        new_holon(&*fixture_context, Some(MapString("Abandon2".to_string())), None)?;
     abandoned_holon_2_transient_reference.with_property_value(
         &*fixture_context,
         PropertyName(MapString("example abandon2".to_string())),

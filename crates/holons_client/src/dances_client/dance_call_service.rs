@@ -1,6 +1,8 @@
 //! Handles making dance calls while managing session state.
 //!
+
 use crate::dances_client::ConductorDanceCaller;
+use std::fmt::Debug;
 
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
 use holons_core::HolonsContextBehavior;
@@ -132,5 +134,21 @@ impl<C: ConductorDanceCaller> DanceCallService<C> {
         let space_manager = context.get_space_manager();
         let transient_holons = session_state.get_transient_holons().clone();
         space_manager.import_transient_holons(transient_holons);
+    }
+}
+
+//  Remove temporary alias once we include DanceCallService in SpaceManager directly
+use async_trait::async_trait;
+use holons_core::dances::DanceCallServiceApi;
+// temporary alias until we refactor DanceCallService out of dances_client
+#[async_trait(?Send)]
+impl<C: ConductorDanceCaller + Debug> DanceCallServiceApi for DanceCallService<C> {
+    async fn dance_call(
+        &self,
+        ctx: &dyn HolonsContextBehavior,
+        req: DanceRequest,
+    ) -> DanceResponse {
+        // Call the inherent method explicitly to avoid recursion:
+        DanceCallService::<C>::dance_call(self, ctx, req).await
     }
 }

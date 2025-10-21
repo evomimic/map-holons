@@ -18,7 +18,8 @@ use crate::shared_test::{
 /// and confirms a Success response
 ///
 pub async fn execute_stage_new_version(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_holon_key: MapString,
     expected_response: ResponseStatusCode,
 ) {

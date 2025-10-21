@@ -4,6 +4,7 @@ use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::ConductorDanceCaller;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 use holons_core::core_shared_objects::{Holon, HolonBehavior};
+use holons_core::dances::DanceCallServiceApi;
 use holons_prelude::prelude::*;
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -39,10 +40,18 @@ pub const EDITOR_FOR: &str = "EDITOR_FOR";
 ///
 /// # Type Parameters
 /// - `C`: A type implementing `DanceCaller`, used to execute dance calls.
+// #[derive(Debug)]
+// pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
+//     context: Arc<dyn HolonsContextBehavior>,
+//     pub dance_call_service: Arc<DanceCallService<C>>,
+//     pub created_holons: BTreeMap<MapString, Holon>,
+// }
+
+// temporary non-generic version
 #[derive(Debug)]
-pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
-    context: Arc<dyn HolonsContextBehavior>,
-    pub dance_call_service: Arc<DanceCallService<C>>,
+pub struct DanceTestExecutionState {
+    pub context: Arc<dyn HolonsContextBehavior>,
+    pub dance_call_service: Arc<dyn DanceCallServiceApi>,
     pub created_holons: BTreeMap<MapString, Holon>,
 }
 
@@ -182,27 +191,45 @@ impl Display for DanceTestStep {
     }
 }
 
-impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
-    /// Creates a new `DanceTestExecutionState`.
-    ///
-    /// # Arguments
-    /// - `test_context`: The test execution context.
-    /// - `dance_call_service`: The `DanceCallService` instance for managing dance calls.
-    ///
-    /// # Returns
-    /// A new `DanceTestExecutionState` instance.
+// impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
+//     /// Creates a new `DanceTestExecutionState`.
+//     ///
+//     /// # Arguments
+//     /// - `test_context`: The test execution context.
+//     /// - `dance_call_service`: The `DanceCallService` instance for managing dance calls.
+//     ///
+//     /// # Returns
+//     /// A new `DanceTestExecutionState` instance.
+//     pub fn new(
+//         test_context: Arc<dyn HolonsContextBehavior>,
+//         dance_call_service: Arc<DanceCallService<C>>,
+//     ) -> Self {
+//         DanceTestExecutionState {
+//             context: test_context,
+//             dance_call_service,
+//             created_holons: BTreeMap::new(),
+//         }
+//     }
+//     pub fn context(&self) -> &dyn HolonsContextBehavior {
+//         &*self.context
+//     }
+
+// temporary non-generic version
+impl DanceTestExecutionState {
     pub fn new(
         test_context: Arc<dyn HolonsContextBehavior>,
-        dance_call_service: Arc<DanceCallService<C>>,
+        dance_call_service: Arc<dyn DanceCallServiceApi>,
     ) -> Self {
-        DanceTestExecutionState {
-            context: test_context,
-            dance_call_service,
-            created_holons: BTreeMap::new(),
-        }
+        Self { context: test_context, dance_call_service, created_holons: BTreeMap::new() }
     }
+
     pub fn context(&self) -> &dyn HolonsContextBehavior {
         &*self.context
+    }
+
+    /// handy accessor so callers can pass `Some(state.dance())`
+    pub fn dance(&self) -> &dyn DanceCallServiceApi {
+        self.dance_call_service.as_ref()
     }
 
     /// Converts a vector of [`HolonReference`]s into a vector of [`TestReference`]s.

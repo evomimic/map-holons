@@ -298,7 +298,7 @@ pub fn load_holons_dance(
     };
 
     // Delegate to the public ops API (which calls the *_internal service impl)
-    let response_reference = load_holons(context, bundle_reference)?;
+    let response_reference = load_holons(context, bundle_reference, None)?;
 
     // Wrap transient response holon
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
@@ -332,7 +332,7 @@ pub fn new_holon_dance(
     };
 
     // Delegate to the public API; it will route to the *_internal impl for this env.
-    let response_reference = new_holon(context, key_option)?;
+    let response_reference = new_holon(context, key_option, None)?;
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
 }
 

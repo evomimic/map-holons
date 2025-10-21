@@ -19,7 +19,7 @@ use holons_prelude::prelude::*;
 /// `info!` -- writes only the "key" for each holon
 /// `debug!` -- writes the full json-formatted contents of the holon
 ///
-pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<MockConductorConfig>) {
+pub async fn execute_database_print(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Print Database Contents ---");
 
     // 1. Get context from test_state

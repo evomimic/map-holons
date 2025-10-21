@@ -32,7 +32,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // // let desired_test_relationship = RelationshipName(MapString("AUTHORED_BY".to_string()));
 
     let _author_relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, None)?;
 
     // // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // // This allows them to be assigned StagedReferences and also retrieved by either index or key

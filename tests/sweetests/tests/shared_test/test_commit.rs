@@ -18,7 +18,7 @@ use holons_prelude::prelude::*;
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
-pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConductorConfig>) {
+pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Committing Staged Holons ---");
 
     // 1. Get context from test_state

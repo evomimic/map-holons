@@ -52,7 +52,8 @@ use holons_prelude::prelude::*; // TODO: Eliminate this dependency
 ///  To get the `HolonReference` in the `Staged case`, we simply need to wrap the `StagedReference`
 ///  in a `HolonReference`
 pub async fn execute_stage_new_from_clone(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_test_reference: TestReference,
     new_key: MapString,
     expected_response: ResponseStatusCode,

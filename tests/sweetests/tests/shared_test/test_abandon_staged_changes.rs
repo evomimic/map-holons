@@ -24,7 +24,8 @@ use rstest::*;
 /// Log a `info` level message marking the test step as Successful and return
 ///
 pub async fn execute_abandon_staged_changes(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     staged_reference: HolonReference,
     expected_response: ResponseStatusCode,
 ) {

@@ -58,6 +58,7 @@ use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
 use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
+use holons_core::dances::DanceCallServiceApi; // temporary import for dance calls
 use holons_prelude::prelude::*;
 
 use shared_test::*;
@@ -116,13 +117,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     let conductor_config = setup_conductor().await;
 
     // 2. Create the DanceCallService with the mock conductor
-    let dance_service = Arc::new(DanceCallService::new(conductor_config));
+    let dance_service: Arc<dyn DanceCallServiceApi> =
+        Arc::new(DanceCallService::new(conductor_config));
 
     // Initialize TestHolonsContext from test_session_state
-    let test_context = init_test_context(&mut test_case); // Already returns Arc
+    let test_context = init_test_context(&mut test_case);
 
     // Initialize the DanceTestState
-    let mut test_state = DanceTestExecutionState::new(test_context, dance_service);
+    let mut test_state = DanceTestExecutionState::new(test_context, dance_service.clone());
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");

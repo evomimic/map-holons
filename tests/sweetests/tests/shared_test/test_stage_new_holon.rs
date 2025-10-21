@@ -20,7 +20,8 @@ use holons_prelude::prelude::*;
 /// supplied Holon and confirms a Success response
 ///
 pub async fn execute_stage_new_holon(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    //test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     transient_reference: TransientReference,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");

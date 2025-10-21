@@ -5,6 +5,7 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holon_dance_builders;
 use holon_dance_builders::{build_load_holons_dance_request, build_new_holon_dance_request};
+use holons_core::dances::DanceCallServiceApi;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
@@ -15,27 +16,12 @@ use holons_core::{
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
-use std::sync::Arc;
 use tokio::runtime::Builder;
 
 #[derive(Debug, Clone)]
-pub struct ClientHolonService<C: ConductorDanceCaller + Debug + 'static> {
-    /// Temporary: injected directly until DanceCallService is managed by SpaceManager
-    /// and available via `context.get_space_manager().get_dance_call_service()`.
-    dance_call_service: Arc<DanceCallService<C>>,
-}
+pub struct ClientHolonService;
 
-impl<C: ConductorDanceCaller + Debug + 'static> ClientHolonService<C> {
-    pub fn new(dance_call_service: Arc<DanceCallService<C>>) -> Self {
-        Self { dance_call_service }
-    }
-}
-
-impl<C: ConductorDanceCaller + Debug> HolonServiceApi for ClientHolonService<C>
-where
-    // temporary fix for injecting DanceCallService and making `as_any()` happy
-    C: ConductorDanceCaller + 'static,
-{
+impl HolonServiceApi for ClientHolonService {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -85,20 +71,23 @@ where
         &self,
         context: &dyn HolonsContextBehavior,
         bundle: TransientReference,
+        dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
-        // 1) Build request
+        // Build request
         let request = build_load_holons_dance_request(bundle)?;
 
-        // 2) Keep it simple: create a small current-thread runtime and block
-        //    (compatible with #[async_trait(?Send)]).
+        // Temporary: Require a dance caller on the client
+        let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
+
+        // Bridge async → sync with a small current-thread runtime
         let runtime = Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
 
-        let response = runtime.block_on(self.dance_call_service.dance_call(context, request));
+        let response = runtime.block_on(dance.dance_call(context, request));
 
-        // 3) Handle non-OK statuses
+        // Handle non-OK statuses
         match response.status_code {
             ResponseStatusCode::OK => { /* proceed */ }
             other => {
@@ -110,7 +99,7 @@ where
             }
         }
 
-        // 4) Extract the reference and return a TransientReference
+        // Extract the reference and return a TransientReference
         match response.body {
             ResponseBody::HolonReference(holon_reference) => {
                 // Can't verify type if the loader had an error before setting the DescribedBy
@@ -127,9 +116,13 @@ where
         &self,
         context: &dyn HolonsContextBehavior,
         key: Option<MapString>,
+        dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
         // 1) Build request (None => RequestBody::None; Some(key) => RequestBody::ParameterValues)
         let request = build_new_holon_dance_request(key);
+
+        // Temporary: Require a dance caller on the client
+        let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
 
         // 2) Simple current-thread runtime (compatible with #[async_trait(?Send)])
         let runtime = Builder::new_current_thread()
@@ -137,7 +130,7 @@ where
             .build()
             .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
 
-        let response = runtime.block_on(self.dance_call_service.dance_call(context, request));
+        let response = runtime.block_on(dance.dance_call(context, request));
 
         // 3) Handle non-OK statuses (accept OK/Accepted for flexibility)
         match response.status_code {

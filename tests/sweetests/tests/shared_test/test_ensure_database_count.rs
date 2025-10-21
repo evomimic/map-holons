@@ -22,7 +22,8 @@ use holons_prelude::prelude::*;
 ///
 
 pub async fn execute_ensure_database_count(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     expected_count: MapInteger,
 ) {
     info!("--- TEST STEP: Ensuring database holds {} holons ---", expected_count.0);

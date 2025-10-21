@@ -2,7 +2,7 @@ use crate::test_data_types::DancesTestCase;
 
 use holochain::prelude::DbKind::Test;
 use holons_client::client_context::ClientHolonsContext;
-use holons_client::ClientHolonService;
+use holons_client::{ClientHolonService, ConductorDanceCaller, DanceCallService};
 
 use holons_prelude::prelude::*;
 
@@ -11,6 +11,7 @@ use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::TransientHolonManager;
 use holons_core::{HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy};
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::sync::Arc;
 
 /// The implementation of `HolonsContextBehavior` , responsible for managing

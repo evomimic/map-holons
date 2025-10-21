@@ -21,7 +21,8 @@ use holons_prelude::prelude::*;
 /// and matches the expected response
 ///
 pub async fn execute_delete_holon(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    //test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     holon_to_delete_key: MapString, // key of the holon to delete
     expected_response: ResponseStatusCode,
 ) {

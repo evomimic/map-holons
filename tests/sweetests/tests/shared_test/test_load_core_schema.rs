@@ -22,7 +22,8 @@ use holons_core::dances::descriptors_dance_adapter::build_load_core_schema_dance
 /// and confirms a Success response
 ///
 pub async fn execute_load_new_schema(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    // test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
 ) {
     info!("--- TEST STEP: Loading Core Schema ---");
 
