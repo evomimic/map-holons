@@ -33,6 +33,10 @@ pub fn make_error_holons_best_effort(
     context: &dyn HolonsContextBehavior,
     errors: &[HolonError],
 ) -> Result<Vec<TransientReference>, HolonError> {
+    if errors.is_empty() {
+        return Ok(Vec::new());
+    }
+
     // Try to resolve the HolonErrorType descriptor (by key or query).
     if let Ok(holon_error_type_descriptor) = resolve_holon_error_type_descriptor(context) {
         let mut out = Vec::with_capacity(errors.len());

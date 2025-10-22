@@ -66,13 +66,28 @@ impl HolonLoaderController {
         // (If/when keyless or extra targets appear, have the mapper return exact staged_count.)
         self.staged_count = mapper_output.staged_count as i64;
 
-        // If Pass 1 produced any errors, build the response now and return (skip Pass 2 & commit).
+        // If Pass 1 produced any errors or the bundle was empty,
+        // build the response now and return (skip Pass 2 & commit).
         let mapper_errors = std::mem::take(&mut mapper_output.errors);
-        if !mapper_errors.is_empty() {
-            info!("HolonLoaderController::load_bundle - pass1 errors, short-circuit before pass2/commit");
+        let is_empty_bundle =
+            self.staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
+        if !mapper_errors.is_empty() || is_empty_bundle {
+            info!(
+                "HolonLoaderController::load_bundle - early return: {}",
+                if !mapper_errors.is_empty() { "pass1 errors" } else { "empty bundle" }
+            );
 
             // Build error holons (prefer typed; fallback to untyped if descriptor missing)
             let error_holons = make_error_holons_best_effort(context, &mapper_errors)?;
+
+            let summary = if !mapper_errors.is_empty() {
+                format!(
+                    "Pass 1 reported {} error(s). Pass 2 and commit were skipped.",
+                    mapper_errors.len()
+                )
+            } else {
+                "Empty bundle: no LoaderHolons found; nothing to process.".into()
+            };
 
             let response_reference = self.build_response(
                 context,
@@ -82,10 +97,7 @@ impl HolonLoaderController {
                 0,
                 0,
                 error_holons.len() as i64,
-                format!(
-                    "Pass 1 reported {} error(s). Pass 2 and commit were skipped.",
-                    error_holons.len()
-                ),
+                summary,
                 error_holons,
             )?;
 
