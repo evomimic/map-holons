@@ -81,6 +81,7 @@ pub enum CorePropertyTypeName {
     IsOrdered,
     IsRequired,
     Key,
+    LinksCreated,
     MapBoolean,
     MapBytes,
     MapInteger,

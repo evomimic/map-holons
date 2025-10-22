@@ -107,13 +107,13 @@ impl LoaderHolonMapper {
         // Mint a fresh empty transient, then copy properties one-by-one (no relationships).
         let transient_behavior_service =
             context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior = transient_behavior_service.borrow();
+        let borrowed_service = transient_behavior_service.borrow();
 
         // Convert key_value -> MapString for the return tuple (for logging/diagnostics if needed).
         let key = MapString((&key_value).into());
 
         // start from an empty holon
-        let target_transient: TransientReference = transient_behavior.create_empty(key.clone())?;
+        let target_transient: TransientReference = borrowed_service.create_empty(key.clone())?;
 
         // apply each property explicitly
         for (prop_name, prop_value) in properties.into_iter() {
@@ -146,8 +146,8 @@ impl LoaderHolonMapper {
 
         for holon_reference in members {
             // Work on detached copies so Pass-2 can resolve in any order/idempotently.
-            let loader_rel = holon_reference.clone_holon(context)?;
-            out.push(loader_rel);
+            let loader_relationship = holon_reference.clone_holon(context)?;
+            out.push(loader_relationship);
         }
 
         Ok(out)

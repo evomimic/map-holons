@@ -11,10 +11,10 @@
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
 use tracing::info;
-use uuid::Uuid;
+// use uuid::Uuid;
 
 use holons_prelude::prelude::CorePropertyTypeName::{
-    DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, ResponseStatusCode,
+    DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, LinksCreated, ResponseStatusCode,
 };
 use holons_prelude::prelude::CoreRelationshipTypeName::HasLoadError;
 use holons_prelude::prelude::*;
@@ -51,8 +51,10 @@ impl HolonLoaderController {
         context: &dyn HolonsContextBehavior,
         bundle: TransientReference, // -> HolonLoaderBundle
     ) -> Result<TransientReference, HolonError> {
-        let run_id = Uuid::new_v4();
-        info!("HolonLoaderController::load_bundle - start run_id={run_id}");
+        // let run_id = Uuid::new_v4();
+        // info!("HolonLoaderController::load_bundle - start run_id={run_id}");
+        info!("HolonLoaderController::load_bundle - start");
+        let run_id = 1; // Temporary fixed run_id until we wire in Uuid
 
         // ─────────────────────────────────────────────────────────────────────
         // PASS 1: map & stage node holons (properties only); queue relationship refs
@@ -77,6 +79,7 @@ impl HolonLoaderController {
                 run_id,
                 MapString("UnprocessableEntity".into()),
                 self.staged_count,
+                0,
                 0,
                 error_holons.len() as i64,
                 format!(
@@ -114,6 +117,7 @@ impl HolonLoaderController {
                 MapString("UnprocessableEntity".into()),
                 self.staged_count,
                 0,
+                links_created,
                 error_holons.len() as i64,
                 format!(
                     "Pass 2 reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
@@ -149,6 +153,7 @@ impl HolonLoaderController {
             MapString(if commit_ok { "OK" } else { "Accepted" }.into()),
             self.staged_count,
             holons_committed,
+            links_created,
             0,
             if commit_ok {
                 format!(
@@ -179,10 +184,11 @@ impl HolonLoaderController {
     fn build_response(
         &self,
         context: &dyn HolonsContextBehavior,
-        run_id: uuid::Uuid,
+        run_id: i64, // uuid::Uuid,
         response_status_code: MapString,
         holons_staged: i64,
         holons_committed: i64,
+        links_created: i64,
         errors_encountered: i64,
         summary: String,
         transient_error_references: Vec<TransientReference>,
@@ -207,6 +213,11 @@ impl HolonLoaderController {
             context,
             HolonsCommitted.as_property_name(),
             BaseValue::IntegerValue(MapInteger(holons_committed)),
+        )?;
+        response_reference.with_property_value(
+            context,
+            LinksCreated.as_property_name(),
+            BaseValue::IntegerValue(MapInteger(links_created)),
         )?;
         response_reference.with_property_value(
             context,
