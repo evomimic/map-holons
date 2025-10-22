@@ -12,13 +12,12 @@ use core_types::{
 };
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
-use crate::reference_layer::transient_holon_behavior::TransientHolonBehavior;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonCloneModel},
         transient_holon_manager::ToHolonCloneModel,
-        ReadableHolonState, TransientManagerAccess, WriteableHolonState,
+        ReadableHolonState, WriteableHolonState,
     },
     reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon},
     HolonCollection, RelationshipMap,

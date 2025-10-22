@@ -8,6 +8,7 @@ use crate::core_shared_objects::{
     HolonCacheAccess, HolonCacheManager, Nursery, ServiceRoutingPolicy, TransientHolonManager,
     TransientManagerAccess,
 };
+use crate::dances::DanceCallServiceApi;
 use crate::reference_layer::{HolonReference, HolonServiceApi, HolonSpaceBehavior};
 use crate::{HolonStagingBehavior, NurseryAccess, TransientCollection, TransientHolonBehavior};
 use std::sync::{Arc, RwLock};
@@ -15,6 +16,12 @@ use std::sync::{Arc, RwLock};
 use std::fmt::{Debug, Formatter};
 
 pub struct HolonSpaceManager {
+    /// Manages cache access for retrieving both local and external holons efficiently.
+    cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
+
+    /// Handles conductor dance calls.
+    dance_call_service: Arc<dyn DanceCallServiceApi>,
+
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
     holon_service: Arc<dyn HolonServiceApi + Send + Sync>,
 
@@ -26,9 +33,6 @@ pub struct HolonSpaceManager {
 
     /// Manages **transient holons** .
     transient_manager: Arc<RwLock<TransientHolonManager>>,
-
-    /// Manages cache access for retrieving both local and external holons efficiently.
-    cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
 
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
     transient_state: Arc<RwLock<TransientCollection>>,
@@ -52,6 +56,7 @@ impl HolonSpaceManager {
     /// # Returns
     /// A new instance of `HolonSpaceManager`
     pub fn new_with_managers(
+        dance_call_service: Arc<dyn DanceCallServiceApi>,
         holon_service: Arc<dyn HolonServiceApi>,
         local_holon_space: Option<HolonReference>,
         cache_routing_policy: ServiceRoutingPolicy,
@@ -76,9 +81,10 @@ impl HolonSpaceManager {
 
         // Step 5: Initialize and return the HolonSpaceManager with thread-safe fields
         Self {
+            cache_request_router,
+            dance_call_service,
             holon_service,
             local_holon_space: RwLock::new(local_holon_space),
-            cache_request_router,
             nursery: nursery_lock,
             transient_manager: transient_lock,
             transient_state: Arc::new(RwLock::new(TransientCollection::new())),
@@ -90,6 +96,11 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
         Arc::clone(&self.cache_request_router)
+    }
+
+    /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
+    fn get_dance_call_service(&self) -> Arc<dyn DanceCallServiceApi> {
+        Arc::clone(&self.dance_call_service)
     }
 
     /// Provides access to the Holon service API.

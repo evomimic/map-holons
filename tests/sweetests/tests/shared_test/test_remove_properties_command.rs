@@ -1,3 +1,4 @@
+use holons_core::MockConductorConfig;
 use holons_prelude::prelude::*;
 
 // use holons_core::{
@@ -7,7 +8,8 @@ use holons_prelude::prelude::*;
 use tracing::{debug, info};
 // use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig, test_data_types::DanceTestExecutionState,
+    // mock_conductor::MockConductorConfig,
+    test_data_types::DanceTestExecutionState,
 };
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon

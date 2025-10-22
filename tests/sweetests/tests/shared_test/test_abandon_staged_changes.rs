@@ -1,4 +1,5 @@
 use async_std::task;
+use holons_core::MockConductorConfig;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, error, info, warn};
@@ -8,7 +9,7 @@ use rstest::*;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
-use crate::shared_test::mock_conductor::MockConductorConfig;
+// use crate::shared_test::mock_conductor::MockConductorConfig;
 use crate::shared_test::test_data_types::{DanceTestExecutionState, DancesTestCase};
 
 use holons_prelude::prelude::*;

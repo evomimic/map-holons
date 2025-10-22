@@ -24,53 +24,62 @@ use holons_core::{
 /// errors are encoded in the DanceResponse's status_code.
 #[hdk_extern]
 pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
-    info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
-
-    // -------------------------- ENSURE VALID REQUEST ---------------------------------
-    if let Err(status_code) = validate_request(&request) {
-        let response = DanceResponse::new(
-            status_code,
-            MapString("Invalid Request".to_string()),
-            ResponseBody::None,
-            None,
-            request.state.clone(),
+    tokio::runtime::Handle::current().block_on(async move {
+        info!(
+            "\n\n\n***********************  Entered Dancer::dance() with {}",
+            request.summarize()
         );
 
-        return Ok(response);
-    }
+        // -------------------------- ENSURE VALID REQUEST ---------------------------------
+        if let Err(status_code) = validate_request(&request) {
+            let response = DanceResponse::new(
+                status_code,
+                MapString("Invalid Request".to_string()),
+                ResponseBody::None,
+                None,
+                request.state.clone(),
+            );
 
-    // Initialize the context for this request
-    //
-    let context = match initialize_context_from_request(&request) {
-        Ok(ctx) => ctx,
-        Err(error_response) => return Ok(error_response),
-    };
+            return Ok(response);
+        }
 
-    debug!("context and space manager ready to dance");
+        // Initialize the context for this request
+        //
+        let context = match initialize_context_from_request(&request).await {
+            Ok(ctx) => ctx,
+            Err(error_response) => return Ok(error_response),
+        };
 
-    // Get the Dancer
-    let dancer = Dancer::new();
+        debug!("context and space manager ready to dance");
 
-    // TODO: If the request is a Command, add the request to the undo_list
-    // info!("confirm dance is dispatchable");
-    //
-    // // Dispatch the dance and map result to DanceResponse
-    // if !dancer.dance_name_is_dispatchable(request.clone()) {
-    //     return Err(HolonError::NotImplemented(
-    //         "No function to dispatch in dispatch table".to_string(),
-    //     )
-    //     .into());
-    // }
-    debug!("dispatching dance");
+        // Get the Dancer
+        let dancer = Dancer::new();
 
-    let dispatch_result = dancer.dispatch(&*context, request.clone());
-    let result = process_dispatch_result(&*context, dispatch_result);
+        // TODO: If the request is a Command, add the request to the undo_list
+        // info!("confirm dance is dispatchable");
+        //
+        // // Dispatch the dance and map result to DanceResponse
+        // if !dancer.dance_name_is_dispatchable(request.clone()) {
+        //     return Err(HolonError::NotImplemented(
+        //         "No function to dispatch in dispatch table".to_string(),
+        //     )
+        //     .into());
+        // }
+        debug!("dispatching dance");
 
-    // assert_eq!(result.staging_area.staged_holons.len(), context.get_space_manager().staged_holons.len());
+        let dispatch_result = dancer.dispatch(&*context, request.clone());
+        let result = process_dispatch_result(&*context, dispatch_result);
 
-    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
+        // assert_eq!(result.staging_area.staged_holons.len(), context.get_space_manager().staged_holons.len());
 
-    Ok(result)
+        info!(
+            "\n======== RETURNING FROM {:?} Dance with {}",
+            request.dance_name.0,
+            result.summarize()
+        );
+
+        Ok(result)
+    })
 }
 
 // Define a type alias for functions that can be dispatched
@@ -109,8 +118,7 @@ impl Dancer {
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
-        dispatch_table
-            .insert("remove_properties", remove_properties_dance as DanceFunction);
+        dispatch_table.insert("remove_properties", remove_properties_dance as DanceFunction);
         dispatch_table
             .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
         dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
@@ -168,7 +176,7 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
         state: request.get_state().cloned(), // Use the session state from the request
     }
 }
-fn initialize_context_from_request(
+async fn initialize_context_from_request(
     request: &DanceRequest,
 ) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
     info!("Initializing context from request: {:#?}", request);
@@ -182,6 +190,7 @@ fn initialize_context_from_request(
 
     // Initialize context from session state
     let context = init_guest_context(transient_holons, staged_holons, local_space_holon.clone())
+        .await
         .map_err(|error| create_error_response(error, request))?;
 
     let space_manager = context.get_space_manager();

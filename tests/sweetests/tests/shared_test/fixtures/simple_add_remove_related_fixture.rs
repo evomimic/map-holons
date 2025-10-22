@@ -16,7 +16,7 @@ use holons_prelude::prelude::*;
 use rstest::*;
 
 #[fixture]
-pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
     let mut test_case = DancesTestCase::new(
         "Simple Add / Remove Related Holon Testcase".to_string(),
@@ -33,7 +33,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // let _ = holochain_trace::test_run();
 
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;

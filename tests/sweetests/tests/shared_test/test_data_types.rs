@@ -1,8 +1,7 @@
 use derive_new::new;
 
-use holons_client::dances_client::dance_call_service::DanceCallService;
-use holons_client::ConductorDanceCaller;
-use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
+use holons_core::dances::DanceCallService;
+use holons_core::{core_shared_objects::holon_pool::SerializableHolonPool, dances::ConductorDanceCaller};
 use holons_core::core_shared_objects::Holon;
 use holons_prelude::prelude::*;
 use std::{

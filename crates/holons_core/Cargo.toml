@@ -13,6 +13,12 @@ ahash = "=0.8.11"
 # only used by holons_core
 quick_cache = "0.6"
 
+holochain = { version = "0.5", default-features = false, features = [
+    "sweettest",
+    "wasmer_sys",
+    "datachannel-vendored"
+] }
+
 # General dev-dependencies (platform-agnostic)
 derive-new = { workspace = true }
 serde = { workspace = true }
@@ -33,3 +39,4 @@ type_names = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+

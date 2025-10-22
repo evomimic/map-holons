@@ -1,4 +1,5 @@
 use async_std::task;
+use holons_core::MockConductorConfig;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::info;
@@ -9,7 +10,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 

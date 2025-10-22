@@ -1,11 +1,12 @@
-use std::sync::Arc;
+// use std::sync::Arc;
 
-use async_trait::async_trait;
+// use async_trait::async_trait;
 use holochain::prelude::AgentPubKey;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
-use holons_client::ConductorDanceCaller;
 
-use holons_prelude::prelude::*;
+use crate::dances::{ConductorDanceCaller, DanceRequest, DanceResponse};
+
+// use holons_prelude::prelude::*;
 
 const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
 

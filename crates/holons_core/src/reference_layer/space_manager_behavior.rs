@@ -1,5 +1,6 @@
 use core_types::HolonError;
 
+use crate::dances::DanceCallServiceApi;
 use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
@@ -15,6 +16,22 @@ use std::sync::{Arc, RwLock};
 /// 1. **Service registry access** (Nursery, Cache, HolonService, Transient State)
 /// 2. **Controlled mediation** for importing/exporting staged holons.
 pub trait HolonSpaceBehavior {
+    /// **Mediates access to nursery exports, avoiding direct exposure in `NurseryAccess`.**
+    ///
+    /// This method is used when **sending the staged state** to another process (e.g., guest → client sync).
+    ///
+    /// # Returns
+    /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+
+    /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
+    ///
+    /// This method is used when ** sending the "transient state" ** to another process (e.g., guest → client sync).
+    ///
+    /// # Returns
+    /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+
     /// Provides access to the **cache service** for retrieving and storing holons.
     ///
     /// The cache mediates access between:
@@ -24,6 +41,12 @@ pub trait HolonSpaceBehavior {
     /// # Returns
     /// - An `Arc<dyn HolonCacheAccess>` that allows cache operations.
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync>;
+
+    /// Provides access to the **DanceCallService**.
+    ///
+    /// # Returns
+    /// - An `Arc<dyn DanceCallServiceApi>` for performing dance calls.
+    fn get_dance_call_service(&self) -> Arc<dyn DanceCallServiceApi>;
 
     /// Provides access to the **holon service API**, which includes core operations
     /// such as creating, retrieving, updating, and deleting holons.
@@ -100,22 +123,6 @@ pub trait HolonSpaceBehavior {
     /// # Returns
     /// - An `Arc<RwLock<TransientCollection>>` for managing transient holon collections in a thread-safe context.
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>>;
-
-    /// **Mediates access to nursery exports, avoiding direct exposure in `NurseryAccess`.**
-    ///
-    /// This method is used when **sending the staged state** to another process (e.g., guest → client sync).
-    ///
-    /// # Returns
-    /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
-
-    /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
-    ///
-    /// This method is used when ** sending the "transient state" ** to another process (e.g., guest → client sync).
-    ///
-    /// # Returns
-    /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// **Mediates import of staged holons to prevent direct modification via `NurseryAccess`.**
     ///

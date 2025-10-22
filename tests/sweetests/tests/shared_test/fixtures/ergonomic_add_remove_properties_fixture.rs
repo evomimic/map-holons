@@ -25,13 +25,13 @@ use rstest::*;
 use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 
 #[fixture]
-pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
     let mut test_case = DancesTestCase::new(
         "Ergonomic Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),
     );
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
     setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
     // == //
 

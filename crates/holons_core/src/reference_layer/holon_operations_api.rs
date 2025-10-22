@@ -28,9 +28,6 @@ use crate::{
 };
 use base_types::MapString;
 use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
-// Import traits for transient and staging behaviors and borrow utilities
-use crate::reference_layer::holon_staging_behavior::HolonStagingBehavior;
-use crate::reference_layer::transient_holon_behavior::TransientHolonBehavior;
 
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 

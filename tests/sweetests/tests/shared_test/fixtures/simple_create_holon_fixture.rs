@@ -12,9 +12,9 @@ use rstest::*;
 /// This function creates a set of simple (undescribed) holons
 ///
 #[fixture]
-pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
 
     let mut test_case = DancesTestCase::new(
         "Simple Create/Get Holon Testcase".to_string(),

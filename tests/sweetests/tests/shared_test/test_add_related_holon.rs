@@ -1,10 +1,11 @@
 use async_std::task;
+use holons_core::MockConductorConfig;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::info;
 
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DancesTestCase, TestReference},
 };
 use holons_prelude::prelude::*;

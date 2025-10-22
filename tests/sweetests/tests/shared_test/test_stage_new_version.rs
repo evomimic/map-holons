@@ -3,6 +3,7 @@
 // };
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
+use holons_core::MockConductorConfig;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -11,7 +12,7 @@ use tracing::{debug, info};
 
 // use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference},
 };
 use holons_core::core_shared_objects::ReadableHolonState; // Eliminate this dependency
