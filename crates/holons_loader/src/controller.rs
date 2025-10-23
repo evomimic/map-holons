@@ -10,7 +10,7 @@
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
-use tracing::info;
+use tracing::{error, info};
 // use uuid::Uuid;
 
 use holons_prelude::prelude::CorePropertyTypeName::{
@@ -83,7 +83,7 @@ impl HolonLoaderController {
             let summary = if !mapper_errors.is_empty() {
                 format!(
                     "Pass 1 reported {} error(s). Pass 2 and commit were skipped.",
-                    mapper_errors.len()
+                    error_holons.len()
                 )
             } else {
                 "Empty bundle: no LoaderHolons found; nothing to process.".into()

@@ -16,7 +16,7 @@ use holons_core::{
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
-use tokio::runtime::Builder;
+use tokio::runtime::{Builder, Handle};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -73,25 +73,25 @@ impl HolonServiceApi for ClientHolonService {
         bundle: TransientReference,
         dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
-        // Build request
+        // 1) Build the dance request for the loader.
         let request = build_load_holons_dance_request(bundle)?;
 
-        // Temporary: Require a dance caller on the client
+        // 2) Temporary: Require a dance caller on the client (loader executes on guest).
         let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
 
-        // Bridge async → sync with a small current-thread runtime
-        let runtime = Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
+        // ─────────────────────────────────────────────────────────────────────
+        // 3) BRIDGE ASYNC → SYNC WITHOUT NESTED RUNTIMES
+        //
+        // If we're already *in* a Tokio runtime (e.g., #[tokio::test]), the helper
+        // reuses it safely (no nested runtime). If no runtime exists, it creates a
+        // small current-thread runtime just for this call. Works on native & WASM.
+        // ─────────────────────────────────────────────────────────────────────
+        let response = run_future_synchronously(dance.dance_call(context, request))?;
 
-        let response = runtime.block_on(dance.dance_call(context, request));
-
-        // Handle non-OK statuses
+        // 4) Handle non-OK statuses (map to HolonError; refine mapping later if needed).
         match response.status_code {
             ResponseStatusCode::OK => { /* proceed */ }
             other => {
-                // Map to a HolonError; refine if you later add a reverse mapping helper
                 return Err(HolonError::Misc(format!(
                     "Dance call failed: {:?} — {}",
                     other, response.description.0
@@ -99,11 +99,11 @@ impl HolonServiceApi for ClientHolonService {
             }
         }
 
-        // Extract the reference and return a TransientReference
+        // 5) Extract the holon reference and return a TransientReference.
         match response.body {
             ResponseBody::HolonReference(holon_reference) => {
                 // Can't verify type if the loader had an error before setting the DescribedBy
-                // relationship for the response holon so we just clone to transient and return it.
+                // relationship for the response holon, so just clone to transient and return it.
                 holon_reference.clone_holon(context)
             }
             _ => Err(HolonError::InvalidParameter(
@@ -116,39 +116,48 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
         key: Option<MapString>,
-        dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
+        dance: Option<&dyn DanceCallServiceApi>, // temporary parameter(unused in local-only implementation)
     ) -> Result<TransientReference, HolonError> {
-        // 1) Build request (None => RequestBody::None; Some(key) => RequestBody::ParameterValues)
-        let request = build_new_holon_dance_request(key);
+        // // 1) Build request (None => RequestBody::None; Some(key) => RequestBody::ParameterValues)
+        // let request = build_new_holon_dance_request(key);
+        //
+        // // Temporary: Require a dance caller on the client
+        // let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
+        //
+        // // 2) Simple current-thread runtime (compatible with #[async_trait(?Send)])
+        // let runtime = Builder::new_current_thread()
+        //     .enable_all()
+        //     .build()
+        //     .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
+        //
+        // let response = runtime.block_on(dance.dance_call(context, request));
+        //
+        // // 3) Handle non-OK statuses (accept OK/Accepted for flexibility)
+        // match response.status_code {
+        //     ResponseStatusCode::OK | ResponseStatusCode::Accepted => {}
+        //     other => {
+        //         return Err(HolonError::Misc(format!(
+        //             "Dance call failed: {:?} — {}",
+        //             other, response.description.0
+        //         )));
+        //     }
+        // }
+        //
+        // // 4) Extract the holon reference and return a TransientReference
+        // match response.body {
+        //     ResponseBody::HolonReference(href) => href.clone_holon(context),
+        //     _ => Err(HolonError::InvalidParameter(
+        //         "Unexpected ResponseBody: expected HolonReference".into(),
+        //     )),
+        // }
 
-        // Temporary: Require a dance caller on the client
-        let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
+        let transient_service = context.get_space_manager().get_transient_behavior_service();
+        let mut borrowed_service = transient_service.borrow_mut();
 
-        // 2) Simple current-thread runtime (compatible with #[async_trait(?Send)])
-        let runtime = Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
-
-        let response = runtime.block_on(dance.dance_call(context, request));
-
-        // 3) Handle non-OK statuses (accept OK/Accepted for flexibility)
-        match response.status_code {
-            ResponseStatusCode::OK | ResponseStatusCode::Accepted => {}
-            other => {
-                return Err(HolonError::Misc(format!(
-                    "Dance call failed: {:?} — {}",
-                    other, response.description.0
-                )));
-            }
-        }
-
-        // 4) Extract the holon reference and return a TransientReference
-        match response.body {
-            ResponseBody::HolonReference(href) => href.clone_holon(context),
-            _ => Err(HolonError::InvalidParameter(
-                "Unexpected ResponseBody: expected HolonReference".into(),
-            )),
+        // Create empty holon with or without key
+        match key {
+            Some(key_string) => borrowed_service.create_empty(key_string),
+            None => borrowed_service.create_empty_without_key(),
         }
     }
 
@@ -167,5 +176,62 @@ impl HolonServiceApi for ClientHolonService {
         _original_holon: SmartReference,
     ) -> Result<StagedReference, HolonError> {
         todo!()
+    }
+}
+
+/// Run an async future to completion from synchronous code,
+/// working in both "no runtime yet" and "already inside a Tokio runtime" cases,
+/// and compiling cleanly for native and WASM targets.
+///
+/// Behavior:
+/// - If a Tokio runtime is already running (native): reuse it and **do not** spin up
+///   a nested runtime (avoids the “Cannot start a runtime from within a runtime” panic).
+/// - If no runtime is present (native): create a small current-thread runtime and block.
+/// - On WASM: always create a small current-thread runtime and block (Tokio’s multi-thread
+///   & `block_in_place` are not available on wasm32).
+///
+/// Errors while building the temporary runtime are mapped to `HolonError`.
+///
+/// Requirements (native):
+/// - Tokio features must include at least `rt` (you already have this).
+/// - If your toolchain says `tokio::task::block_in_place` is missing, ensure the dependency for
+///   non-WASM targets enables the multi-thread scheduler (see Cargo.toml note below).
+
+pub fn run_future_synchronously<F, R>(future_to_run: F) -> Result<R, HolonError>
+where
+    F: core::future::Future<Output = R>,
+{
+    // ------- Native (non-wasm32) path -------
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use tokio::runtime::{Builder, Handle};
+
+        // If we are already inside a Tokio runtime, block the current thread in-place
+        // and drive the provided future to completion on the existing runtime.
+        if Handle::try_current().is_ok() {
+            let result = tokio::task::block_in_place(|| Handle::current().block_on(future_to_run));
+            return Ok(result);
+        }
+
+        // Otherwise, create a tiny current-thread runtime just for this call.
+        let rt = Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed: {e}")))?;
+        Ok(rt.block_on(future_to_run))
+    }
+
+    // ------- WASM path -------
+    #[cfg(target_arch = "wasm32")]
+    {
+        use tokio::runtime::Builder;
+
+        // On WASM there is no multi-thread scheduler or block_in_place; just build a
+        // small current-thread runtime and block on the future.
+        let rt = Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| HolonError::Misc(format!("Tokio runtime build failed (wasm): {e}")))?;
+        Ok(rt.block_on(future_to_run))
     }
 }

@@ -54,12 +54,27 @@ pub async fn execute_load_holons(
             .unwrap_or_else(|e| panic!("load_holons() failed: {e:?}"));
 
     // Read response properties from the returned HolonLoadResponse holon.
-    let actual_status = read_string_property(
+    // let actual_status = read_string_property(
+    //     context,
+    //     &response_reference,
+    //     CorePropertyTypeName::ResponseStatusCode,
+    // )
+    // .unwrap_or_else(|e| panic!("read ResponseStatusCode failed: {e:?}"));
+    let actual_status = match read_string_property(
         context,
         &response_reference,
         CorePropertyTypeName::ResponseStatusCode,
-    )
-    .unwrap_or_else(|e| panic!("read ResponseStatusCode failed: {e:?}"));
+    ) {
+        Ok(s) => s,
+        Err(e) => {
+            let props = dump_property_names(context, &response_reference);
+            panic!(
+                "read ResponseStatusCode failed: {e:?}\nResponse holon properties present: {}",
+                props
+            );
+        }
+    };
+
     let actual_staged =
         read_integer_property(context, &response_reference, CorePropertyTypeName::HolonsStaged)
             .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}")) as i64;
@@ -101,4 +116,22 @@ pub async fn execute_load_holons(
         "Expected ErrorCount={}, got {}",
         expect_errors.0, actual_error_count
     );
+}
+
+/// Utility: dump all property names on a transient holon (for debugging).
+fn dump_property_names(
+    context: &dyn HolonsContextBehavior,
+    response: &TransientReference,
+) -> String {
+    // Best-effort; ignore errors while dumping
+    if let Ok(map) = response.get_raw_property_map(context) {
+        let mut names: Vec<String> = map
+            .keys()
+            .map(|pname| pname.0 .0.clone()) // PropertyName(MapString(...))
+            .collect();
+        names.sort();
+        format!("[{}]", names.join(", "))
+    } else {
+        "<unavailable>".to_string()
+    }
 }
