@@ -100,7 +100,14 @@ pub enum DanceTestStep {
     DatabasePrint, // Writes log messages for each holon in the persistent store
     DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
-    // LoadCoreSchema,
+    LoadHolons {
+        bundle: TransientReference,
+        expect_status: ResponseStatusCode,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+    },
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveProperties(HolonReference, PropertyMap, ResponseStatusCode),
@@ -144,9 +151,24 @@ impl Display for DanceTestStep {
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
             }
-            // DanceTestStep::LoadCoreSchema => {
-            //     write!(f, "LoadCoreSchema")
-            // }
+            DanceTestStep::LoadHolons {
+                bundle: _,
+                expect_status,
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+            } => {
+                write!(
+                    f,
+                    "LoadHolons(expect_status={:?}, staged={}, committed={}, links_created={}, errors={})",
+                    expect_status,
+                    expect_staged.0,
+                    expect_committed.0,
+                    expect_links_created.0,
+                    expect_errors.0
+                )
+            }
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
@@ -416,10 +438,25 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // pub fn add_load_core_schema(&mut self) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::LoadCoreSchema);
-    //     Ok(())
-    // }
+    pub fn add_load_holons_step(
+        &mut self,
+        bundle: TransientReference,
+        expect_status: ResponseStatusCode,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::LoadHolons {
+            bundle,
+            expect_status,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+        });
+        Ok(())
+    }
 
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);
