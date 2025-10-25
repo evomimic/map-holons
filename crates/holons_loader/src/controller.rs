@@ -1,4 +1,4 @@
-// crates/holons_core/src/holons_loader/controller.rs
+// crates/holons_loader/src/controller.rs
 //
 // Orchestrates the two-pass holon loading flow:
 //
@@ -205,17 +205,20 @@ impl HolonLoaderController {
         summary: String,
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
+        info!("Building HolonLoadResponse for run_id={}", run_id);
         // Build response as a transient with properties…
         let transient_service = context.get_space_manager().get_transient_behavior_service();
         let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
 
         let response_reference = transient_service.borrow().create_empty(response_key)?;
 
+        let pname_status = ResponseStatusCode.as_property_name();
         response_reference.with_property_value(
             context,
-            ResponseStatusCode.as_property_name(),
+            pname_status.clone(),
             BaseValue::StringValue(response_status_code),
         )?;
+        log_read_back(context, &response_reference, "ResponseStatusCode", &pname_status);
         response_reference.with_property_value(
             context,
             HolonsStaged.as_property_name(),
@@ -242,6 +245,15 @@ impl HolonLoaderController {
             BaseValue::StringValue(MapString(summary)),
         )?;
 
+        // debug probe
+        let probe_name = PropertyName(MapString("debug_probe".into()));
+        response_reference.with_property_value(
+            context,
+            probe_name.clone(),
+            BaseValue::StringValue(MapString("ok".into())),
+        )?;
+        log_read_back(context, &response_reference, "debug_probe", &probe_name);
+
         // attach any error holons via HAS_LOAD_ERROR
         if !transient_error_references.is_empty() {
             let error_holon_references: Vec<HolonReference> =
@@ -253,6 +265,40 @@ impl HolonLoaderController {
                 error_holon_references,
             )?;
         }
+
+        // Helper to log a property read-back
+        fn log_read_back(
+            ctx: &dyn HolonsContextBehavior,
+            r: &TransientReference,
+            label: &str,
+            pname: &PropertyName,
+        ) {
+            match r.property_value(ctx, pname) {
+                Ok(Some(v)) => tracing::info!("READ-BACK {label} -> {:?}", v),
+                Ok(None) => tracing::info!("READ-BACK {label} -> None"),
+                Err(e) => tracing::info!("READ-BACK {label} -> ERROR: {e:?}"),
+            }
+        }
+        // Diagnostic: confirm the response holon is fully populated before returning it.
+        let temp_id = response_reference.get_temporary_id();
+        let props: Vec<String> = response_reference
+            .get_raw_property_map(context)?
+            .keys()
+            .map(|p| p.0 .0.clone()) // PropertyName(MapString(..)) -> String
+            .collect();
+        let key_prop = CorePropertyTypeName::Key.as_property_name();
+        let key_s = match response_reference.property_value(context, &key_prop)? {
+            Some(PropertyValue::StringValue(MapString(s))) => s,
+            other => format!("<missing-or-non-string: {:?}>", other),
+        };
+
+        let err_rel = HasLoadError.as_relationship_name();
+        let err_members = response_reference.related_holons(context, &err_rel)?.get_members().len();
+
+        info!(
+            "HolonLoadResponse built: temp_id={:?}, key={}, props={:?}, has_load_error_count={}, staged={}, committed={}, links_created={}, errors={}",
+            temp_id, key_s, props, err_members, holons_staged, holons_committed, links_created, errors_encountered
+        );
 
         Ok(response_reference)
     }

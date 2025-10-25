@@ -71,13 +71,14 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
         bundle: TransientReference,
-        dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
+        dance_service: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
         // 1) Build the dance request for the loader.
         let request = build_load_holons_dance_request(bundle)?;
 
         // 2) Temporary: Require a dance caller on the client (loader executes on guest).
-        let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
+        let dance =
+            dance_service.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
 
         // ─────────────────────────────────────────────────────────────────────
         // 3) BRIDGE ASYNC → SYNC WITHOUT NESTED RUNTIMES
@@ -101,10 +102,9 @@ impl HolonServiceApi for ClientHolonService {
 
         // 5) Extract the holon reference and return a TransientReference.
         match response.body {
-            ResponseBody::HolonReference(holon_reference) => {
-                // Can't verify type if the loader had an error before setting the DescribedBy
-                // relationship for the response holon, so just clone to transient and return it.
-                holon_reference.clone_holon(context)
+            // Directly pass through the transient reference that has been restored from session state.
+            ResponseBody::HolonReference(HolonReference::Transient(transient_reference)) => {
+                Ok(transient_reference)
             }
             _ => Err(HolonError::InvalidParameter(
                 "Unexpected ResponseBody: expected HolonReference".into(),
@@ -116,13 +116,13 @@ impl HolonServiceApi for ClientHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
         key: Option<MapString>,
-        dance: Option<&dyn DanceCallServiceApi>, // temporary parameter(unused in local-only implementation)
+        dance_service: Option<&dyn DanceCallServiceApi>, // temporary parameter(unused in local-only implementation)
     ) -> Result<TransientReference, HolonError> {
         // // 1) Build request (None => RequestBody::None; Some(key) => RequestBody::ParameterValues)
         // let request = build_new_holon_dance_request(key);
         //
         // // Temporary: Require a dance caller on the client
-        // let dance = dance.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
+        // let dance = dance_service.ok_or_else(|| HolonError::Misc("DanceCallService missing".into()))?;
         //
         // // 2) Simple current-thread runtime (compatible with #[async_trait(?Send)])
         // let runtime = Builder::new_current_thread()

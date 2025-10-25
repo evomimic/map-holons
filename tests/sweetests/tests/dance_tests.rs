@@ -91,8 +91,8 @@ use shared_test::*;
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
-// #[case::load_core_schema(load_core_schema_test_fixture())]
 #[case::loader_minimal_test(loader_minimal_fixture())]
+#[case::with_properties_test(with_properties_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
     #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,
@@ -101,7 +101,6 @@ async fn rstest_dance_tests(
 
     use test_stage_new_from_clone::execute_stage_new_from_clone;
     use test_stage_new_version::execute_stage_new_version;
-    // use test_stage_new_version::execute_stage_new_version;
 
     use test_delete_holon::execute_delete_holon;
 

@@ -36,11 +36,11 @@ fn build_nodes_only_bundle(
     let mut members: Vec<HolonReference> = Vec::with_capacity(node_keys.len());
     for key in node_keys {
         let loader_node = borrowed.create_empty(MapString(format!("LoaderHolon.{key}")))?;
-        loader_node.with_property_value(
-            context,
-            CorePropertyTypeName::Key.as_property_name(),
-            BaseValue::StringValue(MapString((*key).into())),
-        )?;
+        // loader_node.with_property_value(
+        //     context,
+        //     CorePropertyTypeName::Key.as_property_name(),
+        //     BaseValue::StringValue(MapString((*key).into())),
+        // )?;
         members.push(HolonReference::Transient(loader_node));
     }
 
