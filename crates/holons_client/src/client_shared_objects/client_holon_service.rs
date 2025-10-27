@@ -152,7 +152,9 @@ impl HolonServiceApi for ClientHolonService {
         // }
 
         let transient_service = context.get_space_manager().get_transient_behavior_service();
-        let mut borrowed_service = transient_service.borrow_mut();
+        let borrowed_service = transient_service
+            .write()
+            .map_err(|_| HolonError::FailedToBorrow("Transient service write".into()))?;
 
         // Create empty holon with or without key
         match key {

@@ -62,9 +62,9 @@ pub fn make_error_holon_typed(
     holon_error_type_descriptor: HolonReference, // resolved HolonErrorType descriptor
     err: &HolonError,
 ) -> Result<TransientReference, HolonError> {
-    let transient_reference = create_empty_error_holon(context)?;
+    let mut transient_reference = create_empty_error_holon(context)?;
     transient_reference.with_descriptor(context, holon_error_type_descriptor)?;
-    populate_error_fields(context, &transient_reference, err)?;
+    populate_error_fields(context, &mut transient_reference, err)?;
     Ok(transient_reference)
 }
 
@@ -74,8 +74,8 @@ pub fn make_error_holon_untyped(
     context: &dyn HolonsContextBehavior,
     err: &HolonError,
 ) -> Result<TransientReference, HolonError> {
-    let transient_reference = create_empty_error_holon(context)?;
-    populate_error_fields(context, &transient_reference, err)?;
+    let mut transient_reference = create_empty_error_holon(context)?;
+    populate_error_fields(context, &mut transient_reference, err)?;
     Ok(transient_reference)
 }
 
@@ -86,25 +86,29 @@ pub fn make_error_holon_untyped(
 fn create_empty_error_holon(
     context: &dyn HolonsContextBehavior,
 ) -> Result<TransientReference, HolonError> {
-    // Unique, local-only key (fast and deterministic within a process).
+    // Generate a unique, local-only key (fast and deterministic within a process).
     let id = ERROR_SEQ.fetch_add(1, Ordering::Relaxed);
     let key = MapString(format!("loader-error-{id}"));
 
-    // Avoid chaining borrows on temporaries; confine the Ref<'_> to a short scope.
-    let transient_behavior_service_rc =
+    // Obtain a handle to the TransientHolonBehavior service from the Space Manager.
+    let transient_behavior_service_handle =
         context.get_space_manager().get_transient_behavior_service();
 
-    let transient_reference = {
-        let svc = transient_behavior_service_rc.borrow();
-        svc.create_empty(key)?
-    };
+    // Acquire a write lock for mutable access to the TransientHolonBehavior service.
+    let mut transient_behavior_service =
+        transient_behavior_service_handle.write().map_err(|_| {
+            HolonError::FailedToBorrow("TransientHolonBehavior RwLock was poisoned".into())
+        })?;
+
+    // Create a new, empty transient holon using the generated key.
+    let transient_reference = transient_behavior_service.create_empty(key)?;
 
     Ok(transient_reference)
 }
 
 fn populate_error_fields(
     context: &dyn HolonsContextBehavior,
-    error_ref: &TransientReference,
+    error_ref: &mut TransientReference,
     err: &HolonError,
 ) -> Result<(), HolonError> {
     let error_type: &str = error_type_code(err);
@@ -134,28 +138,37 @@ fn resolve_holon_error_type_descriptor(
     let key = CoreHolonTypeName::HolonErrorType.as_holon_name();
 
     // 1) Prefer staged (Nursery) by base key
-    {
-        let staging = context.get_space_manager().get_staging_behavior_access();
-        let staged = staging.borrow().get_staged_holons_by_base_key(&key)?;
-        match staged.len() {
-            1 => {
-                let s = staged.into_iter().next().unwrap();
-                return Ok(HolonReference::Staged(s));
-            }
-            n if n > 1 => {
-                return Err(HolonError::DuplicateError(
-                    "HolonErrorType descriptor (staged)".into(),
-                    n.to_string(),
-                ));
-            }
-            _ => { /* fall through to saved fallback */ }
+    let staged_matches = {
+        let staging_handle = context.get_space_manager().get_staging_service();
+
+        // We only need read access to query staged holons.
+        let staging_guard = staging_handle
+            .read()
+            .map_err(|_| HolonError::FailedToBorrow("Staging service lock poisoned".into()))?;
+
+        // Query staged holons by base key.
+        // This returns a Vec<StagedReference> without mutating state.
+        staging_guard.get_staged_holons_by_base_key(&key)?
+    };
+
+    match staged_matches.len() {
+        1 => {
+            let staged_ref = staged_matches.into_iter().next().unwrap();
+            return Ok(HolonReference::Staged(staged_ref));
         }
+        n if n > 1 => {
+            return Err(HolonError::DuplicateError(
+                "HolonErrorType descriptor (staged)".into(),
+                n.to_string(),
+            ));
+        }
+        _ => { /* fall through to saved fallback */ }
     }
 
     // 2) Saved fallback: single pass over the saved index by key
-    let saved = get_all_holons(context)?;
-    match saved.get_by_key(&key) {
-        Ok(Some(r)) => Ok(r),
+    let saved_collection = get_all_holons(context)?;
+    match saved_collection.get_by_key(&key) {
+        Ok(Some(reference)) => Ok(reference),
         Ok(None) => Err(HolonError::HolonNotFound(format!(
             "HolonErrorType descriptor not found by key '{}'",
             key.0

@@ -29,7 +29,7 @@ pub async fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestC
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons
     let book_to_person_relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, None)?;
 
     let mut book_staged_reference =
         get_staged_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;

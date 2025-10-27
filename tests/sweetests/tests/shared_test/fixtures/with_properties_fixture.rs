@@ -21,11 +21,15 @@ pub fn with_properties_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(1))?;
 
     // Create a transient holon directly via the transient service (no DanceCallService needed here)
-    let transient_service = fixture_context.get_space_manager().get_transient_behavior_service();
+    let transient_service_handle =
+        fixture_context.get_space_manager().get_transient_behavior_service();
     let transient_ref = {
-        let borrowed = transient_service.borrow();
+        // Acquire a write lock to construct a new transient
+        let mut transient_service = transient_service_handle
+            .write()
+            .map_err(|_| HolonError::FailedToBorrow("Transient service lock poisoned".into()))?;
         // give it a stable key
-        borrowed.create_empty(MapString("WithProps.1".into()))?
+        transient_service.create_empty(MapString("WithProps.1".into()))?
     };
 
     // Stage it (so the dance can target a mutable staged holon)

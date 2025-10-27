@@ -1,5 +1,6 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 use std::{
     fmt,
     sync::{Arc, RwLock},
@@ -8,7 +9,8 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName, TemporaryId,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName, TemporaryId,
 };
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -94,12 +96,19 @@ impl TransientReference {
         // Enforce read access
         self.is_accessible(context, AccessType::Read)?;
 
-        // Borrow the underlying transient holon
-        let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.borrow();
+        // Get read access
+        let arc_lock = self.get_rc_holon(context)?;
+        let guard = arc_lock.read().map_err(|_| {
+            HolonError::FailedToBorrow("TransientHolon RwLock poisoned (read)".into())
+        })?;
 
-        // Return a cloned snapshot
-        Ok(holon.raw_property_map_clone())
+        // Only the Transient variant exposes raw_property_map_clone()
+        match guard.deref() {
+            Holon::Transient(t) => Ok(t.raw_property_map_clone()),
+            _ => Err(HolonError::InvalidHolonReference(
+                "get_raw_property_map is only valid for Transient holons".into(),
+            )),
+        }
     }
 }
 

@@ -21,7 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{CommitResponse, Holon, HolonBehavior, ReadableHolonState};
+use crate::core_shared_objects::{CommitResponse, Holon, ReadableHolonState};
 use crate::dances::DanceCallServiceApi;
 use crate::reference_layer::TransientReference;
 use crate::{

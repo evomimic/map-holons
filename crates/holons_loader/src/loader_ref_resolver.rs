@@ -444,9 +444,17 @@ impl LoaderRefResolver {
 
         // 5) Follow INVERSE_OF from the inverse relationship type descriptor
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        let related = inverse_reltype.related_holons(context, &inverse_of)?;
-        let related_count = related.get_count().0 as usize;
-        if related_count == 0 {
+        let related_handle = inverse_reltype.related_holons(context, &inverse_of)?;
+
+        // Take a short read lock, clone members, then drop the lock before further work.
+        let related_members: Vec<HolonReference> = {
+            let guard = related_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("INVERSE_OF collection read lock poisoned".into())
+            })?;
+            guard.get_members().clone()
+        };
+
+        if related_members.is_empty() {
             return Err(HolonError::InvalidRelationship(
                 "InverseOf".into(),
                 format!("No INVERSE_OF target from relationship type key '{}'", key_string),
@@ -455,8 +463,7 @@ impl LoaderRefResolver {
 
         // 6) Type-gate: accept only targets that are relationship type descriptors
         let mut valid_targets: Vec<HolonReference> = Vec::new();
-        for i in 0..related_count {
-            let candidate = related.get_by_index(i)?;
+        for candidate in related_members {
             if Self::is_relationship_type_kind(context, &candidate) {
                 valid_targets.push(candidate);
             }
@@ -533,14 +540,33 @@ impl LoaderRefResolver {
         context: &dyn HolonsContextBehavior,
         lrr: &TransientReference,
     ) -> Result<(HolonReference, Vec<HolonReference>), HolonError> {
-        let src_rel = CoreRelationshipTypeName::ReferenceSource.as_relationship_name();
-        let tgt_rel = CoreRelationshipTypeName::ReferenceTarget.as_relationship_name();
+        // Relationship names used on the LoaderRelationshipReference
+        let source_relationship_name =
+            CoreRelationshipTypeName::ReferenceSource.as_relationship_name();
+        let target_relationship_name =
+            CoreRelationshipTypeName::ReferenceTarget.as_relationship_name();
 
-        let sources = lrr.related_holons(context, src_rel)?;
-        let targets = lrr.related_holons(context, tgt_rel)?;
+        // Fetch related collections (handles are Arc<RwLock<HolonCollection>>)
+        let source_collection_handle = lrr.related_holons(context, source_relationship_name)?;
+        let target_collection_handle = lrr.related_holons(context, target_relationship_name)?;
 
-        match sources.get_count().0 {
-            1 => {}
+        // Clone members out under a short read lock so we can release the lock early
+        let source_members: Vec<HolonReference> = {
+            let guard = source_collection_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("Source collection read lock poisoned".into())
+            })?;
+            guard.get_members().clone()
+        };
+        let target_members: Vec<HolonReference> = {
+            let guard = target_collection_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("Target collection read lock poisoned".into())
+            })?;
+            guard.get_members().clone()
+        };
+
+        // Validate exactly one ReferenceSource
+        match source_members.len() {
+            1 => { /* ok */ }
             0 => {
                 return Err(HolonError::EmptyField(
                     "LoaderRelationshipReference.ReferenceSource".into(),
@@ -554,19 +580,18 @@ impl LoaderRefResolver {
             }
         }
 
-        let target_count = targets.get_count().0 as usize;
-        if target_count < 1 {
+        // Validate at least one ReferenceTarget
+        if target_members.is_empty() {
             return Err(HolonError::EmptyField(
                 "LoaderRelationshipReference.ReferenceTarget".into(),
             ));
         }
 
-        let source = sources.get_by_index(0)?;
-        let mut target_vec = Vec::with_capacity(target_count);
-        for i in 0..target_count {
-            target_vec.push(targets.get_by_index(i)?);
-        }
-        Ok((source, target_vec))
+        // Extract the single source and all targets
+        let source: HolonReference = source_members[0].clone();
+        let targets: Vec<HolonReference> = target_members;
+
+        Ok((source, targets))
     }
 
     /// Resolve the *type descriptor* for an endpoint:
@@ -586,13 +611,19 @@ impl LoaderRefResolver {
         let type_descriptor_name = CoreHolonTypeName::TypeDescriptor.as_holon_name();
 
         // Read `DescribedBy` targets (propagate access errors).
-        let related = endpoint.related_holons(context, &described_by)?;
-        let count = related.get_count().0 as usize;
+        let described_members: Vec<HolonReference> = {
+            let related_handle = endpoint.related_holons(context, &described_by)?;
+            let related_guard = related_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("DescribedBy collection read lock poisoned".into())
+            })?;
+            related_guard.get_members().clone()
+            // guard dropped here
+        };
 
-        match count {
+        match described_members.len() {
             0 => Err(HolonError::EmptyField("DescribedBy".into())),
             1 => {
-                let candidate = related.get_by_index(0)?;
+                let candidate = described_members[0].clone();
 
                 // If the `DescribedBy` target is *meta* TypeDescriptor, endpoint is a TypeDescriptor instance.
                 if let Ok(candidate_type_name) =
@@ -640,9 +671,13 @@ impl LoaderRefResolver {
         let canonical_key = MapString(canonical_key_string.clone());
 
         // 1) Prefer staged (Nursery) lookup by base key.
-        let staging_behavior_access = context.get_space_manager().get_staging_behavior_access();
-        let staged_candidates =
-            staging_behavior_access.borrow().get_staged_holons_by_base_key(&canonical_key)?;
+        let staging_service_handle = context.get_space_manager().get_staging_service();
+        let staged_candidates = {
+            let guard = staging_service_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("Staging service read lock poisoned".into())
+            })?;
+            guard.get_staged_holons_by_base_key(&canonical_key)?
+        };
 
         match staged_candidates.len() {
             1 => {
@@ -701,17 +736,31 @@ impl LoaderRefResolver {
         context: &dyn HolonsContextBehavior,
         write_source_endpoint: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
-        let staging_access = context.get_space_manager().get_staging_behavior_access();
+        let staging_service_handle = context.get_space_manager().get_staging_service();
 
         // 1) If the endpoint already corresponds to a staged holon, use it (prefer versioned key).
-        if let Ok(vkey) = write_source_endpoint.versioned_key(context) {
-            if let Ok(staged) = staging_access.borrow().get_staged_holon_by_versioned_key(&vkey) {
-                return Ok(staged);
+        if let Ok(versioned_key) = write_source_endpoint.versioned_key(context) {
+            // Short read lock to check by versioned key
+            if let Ok(staged_ref) = {
+                let guard = staging_service_handle.read().map_err(|_| {
+                    HolonError::FailedToBorrow("Staging service read lock poisoned".into())
+                })?;
+                guard.get_staged_holon_by_versioned_key(&versioned_key)
+            } {
+                return Ok(staged_ref);
             }
         }
+
+        // Try base key as a secondary staged lookup.
         if let Ok(Some(base_key)) = write_source_endpoint.key(context) {
-            let staged_matches =
-                staging_access.borrow().get_staged_holons_by_base_key(&base_key)?;
+            // Read lock just long enough to fetch the list
+            let staged_matches = {
+                let guard = staging_service_handle.read().map_err(|_| {
+                    HolonError::FailedToBorrow("Staging service read lock poisoned".into())
+                })?;
+                guard.get_staged_holons_by_base_key(&base_key)?
+            };
+
             match staged_matches.len() {
                 1 => return Ok(staged_matches.into_iter().next().unwrap()),
                 n if n > 1 => {
@@ -720,21 +769,23 @@ impl LoaderRefResolver {
                         n.to_string(),
                     ))
                 }
-                _ => {} // not staged by base key; try promotion next
+                _ => {
+                    // not staged by base key; try promotion next
+                }
             }
         }
 
         // 2) Promotion path: saved → stage a new version (requires HolonId).
         if let Ok(saved_id) = write_source_endpoint.holon_id(context) {
-            let smart = SmartReference::new_from_id(saved_id);
-            let staged = stage_new_version(context, smart)?;
-            return Ok(staged);
+            let smart_reference = SmartReference::new_from_id(saved_id);
+            let staged_reference = stage_new_version(context, smart_reference)?;
+            return Ok(staged_reference);
         }
 
         // 3) No staged match and no saved identity → not supported in Pass-2.
         Err(HolonError::InvalidParameter(
-        "Write source is not staged, and no saved identity (holon_id) available to stage a new version. Inline/embedded instance creation is not supported in Pass-2.".into(),
-    ))
+            "Write source is not staged, and no saved identity (holon_id) available to stage a new version. Inline/embedded instance creation is not supported in Pass-2.".into(),
+        ))
     }
 
     /// Performs the actual write:
@@ -742,7 +793,7 @@ impl LoaderRefResolver {
     /// - Others: batch → `add_related_holons`
     fn write_relationship(
         context: &dyn HolonsContextBehavior,
-        staged_source: StagedReference,
+        mut staged_source: StagedReference,
         declared_relationship_name: &RelationshipName,
         mut write_targets: Vec<HolonReference>,
     ) -> Result<i64, HolonError> {
@@ -751,20 +802,23 @@ impl LoaderRefResolver {
 
         if is_descriptor {
             match write_targets.len() {
-                0 => return Ok(0), // nothing to do (deduped away)
+                0 => return Ok(0), // nothing to do (likely deduped earlier)
                 1 => {
+                    // Exactly one descriptor: attach it
                     staged_source.with_descriptor(context, write_targets.remove(0))?;
                     return Ok(1);
                 }
                 _ => {
                     return Err(HolonError::InvalidRelationship(
-                    declared_relationship_name.to_string(),
-                    "DescribedBy target was duplicate or ambiguous; expected exactly one unique target".into(),
-                ));
+                        declared_relationship_name.to_string(),
+                        "DescribedBy target was duplicate or ambiguous; expected exactly one unique target"
+                            .into(),
+                    ));
                 }
             }
         }
 
+        // Non-descriptor relationships: add the whole batch (if any)
         if write_targets.is_empty() {
             return Ok(0);
         }
@@ -775,6 +829,7 @@ impl LoaderRefResolver {
             declared_relationship_name.clone(),
             write_targets,
         )?;
+
         Ok(number_of_targets)
     }
 

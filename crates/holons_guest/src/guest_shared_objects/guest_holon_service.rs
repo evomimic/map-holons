@@ -6,9 +6,8 @@ use std::{
 };
 
 use hdk::prelude::*;
-use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_core::core_shared_objects::SavedHolon;
-use holons_core::reference_layer::ReadableHolon;
+use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
     holon_error_from_wasm_error, try_action_hash_from_local_id,
@@ -347,12 +346,19 @@ impl HolonServiceApi for GuestHolonService {
         key: Option<MapString>,
         _dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
-        let transient = context.get_space_manager().get_transient_behavior_service();
+        // Obtain the transient holon service handle from the Space Manager.
+        let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+        // If your branch has `get_transient_service()`, prefer that accessor instead.
 
-        // Handle optionally provided key
+        // Acquire a write lock on the inner service implementation.
+        let transient_service = transient_service_handle.write().map_err(|_| {
+            HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
+        })?;
+
+        // Handle optionally provided key.
         match key {
-            Some(k) => transient.borrow().create_empty(k),
-            None => transient.borrow().create_empty_without_key(),
+            Some(k) => transient_service.create_empty(k),
+            None => transient_service.create_empty_without_key(),
         }
     }
 

@@ -13,8 +13,13 @@ fn build_empty_bundle(
     context: &dyn HolonsContextBehavior,
     bundle_key: &str,
 ) -> Result<TransientReference, HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let bundle = transient_service.borrow().create_empty(MapString(bundle_key.into()))?;
+    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+
+    let transient_service = transient_service_handle
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+
+    let bundle = transient_service.create_empty(MapString(bundle_key.into()))?;
     Ok(bundle)
 }
 
@@ -26,16 +31,20 @@ fn build_nodes_only_bundle(
     bundle_key: &str,
     node_keys: &[&str],
 ) -> Result<(TransientReference, usize), HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let borrowed = transient_service.borrow();
+    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+
+    let transient_service = transient_service_handle
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
 
     // 1) Create the bundle container.
-    let bundle = borrowed.create_empty(MapString(bundle_key.into()))?;
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.into()))?;
 
     // 2) Create LoaderHolon containers (minimal: just a Key property).
     let mut members: Vec<HolonReference> = Vec::with_capacity(node_keys.len());
     for key in node_keys {
-        let loader_node = borrowed.create_empty(MapString(format!("LoaderHolon.{key}")))?;
+        let loader_node =
+            transient_service.create_empty(MapString(format!("LoaderHolon.{key}")))?;
         // loader_node.with_property_value(
         //     context,
         //     CorePropertyTypeName::Key.as_property_name(),
@@ -43,6 +52,7 @@ fn build_nodes_only_bundle(
         // )?;
         members.push(HolonReference::Transient(loader_node));
     }
+    drop(transient_service); // release lock before adding relationships
 
     // 3) Attach members via BUNDLE_MEMBERS.
     bundle.add_related_holons(

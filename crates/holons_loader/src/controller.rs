@@ -210,7 +210,10 @@ impl HolonLoaderController {
         let transient_service = context.get_space_manager().get_transient_behavior_service();
         let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
 
-        let response_reference = transient_service.borrow().create_empty(response_key)?;
+        let borrowed_service = transient_service
+            .write()
+            .map_err(|_| HolonError::FailedToBorrow("Transient service write".into()))?;
+        let mut response_reference = borrowed_service.create_empty(response_key)?;
 
         let pname_status = ResponseStatusCode.as_property_name();
         response_reference.with_property_value(
@@ -292,8 +295,15 @@ impl HolonLoaderController {
             other => format!("<missing-or-non-string: {:?}>", other),
         };
 
+        // Count HAS_LOAD_ERROR members (lock the RwLock, then call on the inner collection)
         let err_rel = HasLoadError.as_relationship_name();
-        let err_members = response_reference.related_holons(context, &err_rel)?.get_members().len();
+        let err_members = {
+            let related_handle = response_reference.related_holons(context, &err_rel)?;
+            let related = related_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("HolonCollection read lock poisoned".into())
+            })?;
+            related.get_members().len()
+        };
 
         info!(
             "HolonLoadResponse built: temp_id={:?}, key={}, props={:?}, has_load_error_count={}, staged={}, committed={}, links_created={}, errors={}",
