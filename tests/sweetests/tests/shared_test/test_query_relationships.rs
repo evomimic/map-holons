@@ -26,10 +26,7 @@ pub async fn execute_query_relationships(
 ) {
     info!("--- TEST STEP: Querying Relationships ---");
 
-    // 1. Get context from test_state
-    let context = test_state.context();
-
-    // 2. Retrieve the source Holon
+    // 1. Retrieve the source Holon
     let source_holon = test_state
         .get_created_holon_by_key(&source_key)
         .unwrap_or_else(|| panic!("Holon with key {:?} not found in created_holons", source_key));
@@ -43,17 +40,17 @@ pub async fn execute_query_relationships(
     let node_collection =
         NodeCollection { members: vec![Node::new(holon_reference, None)], query_spec: None };
 
-    // 3. Build the query_relationships DanceRequest
+    // 2. Build the query_relationships DanceRequest
     let request = build_query_relationships_dance_request(node_collection, query_expression)
         .expect("Failed to build query_relationships request");
 
     debug!("Dance Request: {:#?}", request);
 
-    // 4. Call the dance
+    // 3. Call the dance
     let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
-    // 5. Validate response status
+    // 4. Validate response status
     assert_eq!(
         response.status_code, expected_response,
         "query_relationships request returned unexpected status: {}",

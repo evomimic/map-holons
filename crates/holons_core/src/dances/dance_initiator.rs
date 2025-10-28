@@ -2,7 +2,6 @@ use async_trait::async_trait;
 
 use crate::dances::{DanceRequest, DanceResponse};
 use crate::HolonsContextBehavior;
-use core_types::HolonError;
 use std::fmt::Debug;
 
 /// Canonical trait for initiating outbound Dances.

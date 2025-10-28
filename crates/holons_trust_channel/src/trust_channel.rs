@@ -1,6 +1,6 @@
 use async_trait::async_trait;
+use holons_core::HolonsContextBehavior;
 use holons_core::dances::{DanceRequest, DanceResponse};
-use holons_core::{HolonError, HolonsContextBehavior};
 use tracing::debug;
 
 use crate::envelopes::session_state_envelope::SessionStateEnvelope;

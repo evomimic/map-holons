@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [dependencies]
-convert_case = "0.5"
+#convert_case = "0.5"
 derive-new = "0.7"
 hex = "0.4"
 

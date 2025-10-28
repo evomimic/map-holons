@@ -29,7 +29,6 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 // use holons_client::init_client_context;
 
-use holons_client::dances_client::dance_call_service::DanceCallService;
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};

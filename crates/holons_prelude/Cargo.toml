@@ -5,9 +5,6 @@ edition = "2024"
 
 [dependencies]
 
-[dependencies.holons_trust_channel]
-path = "../holons_trust_channel"
-
 [dependencies.holons_core]
 path = "../holons_core"
 

@@ -8,14 +8,14 @@ edition = "2021"
 [dependencies]
 
 serde = { version = "1", features = ["derive"] }
-derive-new = "0.7"
-thiserror = "2"
+#derive-new = "0.7"
+#thiserror = "2"
 
 [dependencies.integrity_core_types]
 path = "../integrity_core_types"
 
-[dependencies.base_types]
-path = "../base_types"
+#[dependencies.base_types]
+#path = "../base_types"
 
 [dependencies.uuid]
 version = "1"

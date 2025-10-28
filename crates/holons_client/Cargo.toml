@@ -11,7 +11,7 @@ name = "holons_client"
 # General dev-dependencies (platform-agnostic)
 derive-new = "0.7"
 tracing = "0.1"
-async-trait = "0.1.51"
+#async-trait = "0.1.51"
 
 # MAP Dependencies
 
