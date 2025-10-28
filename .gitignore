@@ -1,24 +1,49 @@
-
+# Node / JS artifacts
 node_modules/
-/dist/
-/target/
-.DS_Store
+dist/
+package-lock.json
+/tests/node_modules/
+
+# Build outputs
+target/
+**/target/
 *.happ
 *.webhapp
-*.zip
 *.dna
+*.zip
+
+# Workspace-specific targets (for multi-package isolation)
+workspaces/*/target/
+workspaces/*/target/**/
+workspaces/**/target/
+workspaces/**/target/**/
+
+# Cargo and Rust build artifacts
+Cargo.lock
+.rustc_info.json
+*.rlib
+*.rmeta
+*.d
+*.o
+*.so
+*.bc
+*.ll
+
+# OS / IDE cruft
+.DS_Store
+.idea/
+.vscode/
+.running
+settings.json
+
+# Holochain local run files
 .hc*
 .hc
-.running
-Cargo.lock
-.idea
-.vscode
-/package-lock.json
-settings.json
-/tests/node_modules/
-/tests/sweetests/target
+.holochain/
 
-# Ignore everything in .cargo/ except config.toml
+# Keep Cargo config overrides
 .cargo/*
 !.cargo/config.toml
+
+# Legacy / deprecated directories
 /crates/holons_core_old/

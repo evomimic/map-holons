@@ -1,3 +1,4 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
@@ -9,7 +10,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 
@@ -17,7 +18,7 @@ use crate::shared_test::{
 /// `info!` -- writes only the "key" for each holon
 /// `debug!` -- writes the full json-formatted contents of the holon
 ///
-pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<MockConductorConfig>) {
+pub async fn execute_database_print(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Print Database Contents ---");
 
     // 1. Get context from test_state
@@ -30,7 +31,7 @@ pub async fn execute_database_print(test_state: &mut DanceTestExecutionState<Moc
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. Verify response contains Holons

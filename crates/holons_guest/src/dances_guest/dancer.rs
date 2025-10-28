@@ -109,8 +109,7 @@ impl Dancer {
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
-        dispatch_table
-            .insert("remove_properties", remove_properties_dance as DanceFunction);
+        dispatch_table.insert("remove_properties", remove_properties_dance as DanceFunction);
         dispatch_table
             .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
         dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
@@ -299,6 +298,7 @@ fn extract_error_message(error: &HolonError) -> String {
     match error.clone() {
         HolonError::CacheError(_)
         | HolonError::CommitFailure(_)
+        | HolonError::ConductorError(_)
         | HolonError::DeletionNotAllowed(_)
         | HolonError::DowncastFailure(_)
         | HolonError::DuplicateError(_, _)
@@ -319,6 +319,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::NotAccessible(_, _)
         | HolonError::NotImplemented(_)
         | HolonError::RecordConversion(_)
+        | HolonError::ServiceNotAvailable(_)
         | HolonError::UnableToAddHolons(_)
         | HolonError::UnexpectedValueType(_, _)
         | HolonError::Utf8Conversion(_, _)

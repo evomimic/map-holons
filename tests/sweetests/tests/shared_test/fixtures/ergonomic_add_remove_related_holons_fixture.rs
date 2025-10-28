@@ -15,7 +15,7 @@ use crate::shared_test::{
 use holons_prelude::prelude::*;
 
 #[fixture]
-pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
     let mut test_case = DancesTestCase::new(
         "Ergonomic Add / Remove Related Holons Testcase".to_string(),
@@ -24,7 +24,7 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
 
     // let _ = holochain_trace::test_run();
 
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons

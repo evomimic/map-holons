@@ -11,7 +11,7 @@ use holons_prelude::prelude::*;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
-pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
     //== INIT ==//
 
     let mut test_case = DancesTestCase::new(
@@ -27,7 +27,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either key
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.

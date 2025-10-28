@@ -8,27 +8,49 @@ publish = false
 
 [dependencies]
 # Workspace crates (prefer workspace deps over path for consistency)
-holons_core = { workspace = true }
-holon_dance_builders = { workspace = true }
-holons_client = { workspace = true }
-base_types = { workspace = true }
-core_types = { workspace = true }
-type_names = { workspace = true }
-holons_guest_integrity = { workspace = true }
-holons_prelude = { workspace = true }
 
 # General deps
-base64ct = "=1.7.3"
-derive-new = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-tracing = { workspace = true }
-async-trait = { workspace = true }
+#base64ct = "=1.7.3"
+derive-new = "0.7"
+serde = { version = "1", features = ["derive"] }
+#serde_json = "1.0.109"
+tracing = "0.1"
+async-trait = "0.1.51"
+
+[dependencies.holons_prelude]
+path = "../../crates/holons_prelude"
+
+#[dependencies.holons_guest_integrity]
+#path = "../../crates/holons_guest_integrity"
+#
+#[dependencies.holon_dance_builders]
+#path = "../../crates/holon_dance_builders"
+
+[dependencies.holons_core]
+path = "../../crates/holons_core"
+
+[dependencies.holons_client]
+path = "../../crates/holons_client"
+
+[dependencies.holons_trust_channel]
+path = "../../crates/holons_trust_channel"
+
+[dependencies.type_names]
+path = "../../crates/type_system/type_names"
+
+[dependencies.core_types]
+path = "../../crates/type_system/core_types"
+
+[dependencies.base_types]
+path = "../../crates/type_system/base_types"
+
+[dev-dependencies.holons_trust_channel]
+path = "../../crates/holons_trust_channel"
 
 [dev-dependencies]
-futures = { workspace = true, default-features = false }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
+rstest = "0.25"
+pretty_assertions = "1.4"
+#futures = { version = "0.3.1", default-features = false }
 tokio = { version = "1.35", features = ["full"] }
 async-std = "1"
 tracing-subscriber = "0.3"

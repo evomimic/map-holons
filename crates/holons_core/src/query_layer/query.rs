@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
-use crate::HolonCollection;
+// use crate::HolonCollection;
 use core_types::{HolonError, RelationshipName};
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

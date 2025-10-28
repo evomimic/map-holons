@@ -1,3 +1,4 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
@@ -11,7 +12,7 @@ use rstest::*;
 
 use crate::shared_test::*;
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
 // use base_types::{MapInteger, MapString};
@@ -32,7 +33,7 @@ use crate::shared_test::{
 ///
 
 pub async fn execute_with_properties(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_holon: HolonReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
@@ -60,7 +61,7 @@ pub async fn execute_with_properties(
     debug!("Dance Request: {:#?}", request);
 
     // 5. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 6. Validate response status

@@ -1,6 +1,7 @@
 // use holons_core::{
 //     get_staged_holon_by_base_key, get_staged_holon_by_versioned_key, get_staged_holons_by_base_key,
 // };
+use crate::mock_conductor::MockConductorConfig;
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 use holons_prelude::prelude::*;
@@ -11,7 +12,7 @@ use tracing::{debug, info};
 
 // use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TestReference},
 };
 use holons_core::core_shared_objects::ReadableHolonState; // Eliminate this dependency
@@ -20,7 +21,7 @@ use holons_core::core_shared_objects::ReadableHolonState; // Eliminate this depe
 /// and confirms a Success response
 ///
 pub async fn execute_stage_new_version(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_holon_key: MapString,
     expected_response: ResponseStatusCode,
 ) {
@@ -44,7 +45,7 @@ pub async fn execute_stage_new_version(
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(test_state.context(), request).await;
+    let response = test_state.invoke_dance(request).await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status
@@ -111,8 +112,7 @@ pub async fn execute_stage_new_version(
         .expect("Failed to build stage_new_version request");
     debug!("2nd Dance Request: {:#?}", next_request);
 
-    let next_response =
-        test_state.dance_call_service.dance_call(test_state.context(), next_request).await;
+    let next_response = test_state.invoke_dance(next_request).await;
     info!("2nd Dance Response: {:#?}", next_response.clone());
 
     assert_eq!(

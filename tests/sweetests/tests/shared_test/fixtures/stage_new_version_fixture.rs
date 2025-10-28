@@ -10,7 +10,7 @@ use holons_prelude::prelude::*;
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
-pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Simple StageNewVersion Testcase".to_string(),
         "Tests stage_new_version dance, \n\
@@ -24,7 +24,7 @@ pub fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> 
     // NOTE: This context will NOT be shared by test executors. The fixture's client context
     // includes a TransientHolonManager that is used as a scratch pad while in the fixture.
     // This allows them to be assigned TransientReferences and also retrieved by either index or key
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;

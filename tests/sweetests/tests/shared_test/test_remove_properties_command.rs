@@ -1,3 +1,4 @@
+use crate::mock_conductor::MockConductorConfig;
 use holons_prelude::prelude::*;
 
 // use holons_core::{
@@ -7,7 +8,8 @@ use holons_prelude::prelude::*;
 use tracing::{debug, info};
 // use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig, test_data_types::DanceTestExecutionState,
+    // mock_conductor::MockConductorConfig,
+    test_data_types::DanceTestExecutionState,
 };
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
@@ -17,7 +19,7 @@ use crate::shared_test::{
 ///
 
 pub async fn execute_remove_properties(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_holon: HolonReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
@@ -45,7 +47,7 @@ pub async fn execute_remove_properties(
     debug!("Dance Request: {:#?}", request);
 
     // 5. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 6. Validate response status

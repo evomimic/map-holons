@@ -1,0 +1,35 @@
+[package]
+name = "native-build"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+resolver = "2"
+
+[dependencies]
+
+# Shared Types and Validation
+shared_validation = { path = "../../crates/shared_validation" }
+base_types = { path = "../../crates/type_system/base_types" }
+core_types = { path = "../../crates/type_system/core_types" }
+integrity_core_types = { path = "../../crates/type_system/integrity_core_types" }
+type_names = { path = "../../crates/type_system/type_names" }
+json_schema_validation = { path = "../../crates/json_schema_validation" }
+json_schema_validate_cli = { path = "../../crates/json_schema_validate_cli" }
+
+# Shared Core & Guest Libraries
+holons_core = { path = "../../crates/holons_core" }
+holon_dance_builders = { path = "../../crates/holon_dance_builders" }
+holons_prelude = { path = "../../crates/holons_prelude" }
+holons_trust_channel = { path = "../../crates/holons_trust_channel" }
+holons_client = { path = "../../crates/holons_client" }
+
+
+
+[profile.dev]
+opt-level = "z"
+
+[profile.release]
+opt-level = "z"

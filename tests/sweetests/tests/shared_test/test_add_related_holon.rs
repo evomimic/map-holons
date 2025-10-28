@@ -1,10 +1,11 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::info;
 
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DancesTestCase, TestReference},
 };
 use holons_prelude::prelude::*;
@@ -17,7 +18,7 @@ use rstest::*;
 ///
 
 pub async fn execute_add_related_holons(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     source_holon: HolonReference,
     relationship_name: RelationshipName,
     holons_to_add: Vec<TestReference>,
@@ -44,7 +45,7 @@ pub async fn execute_add_related_holons(
     info!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status

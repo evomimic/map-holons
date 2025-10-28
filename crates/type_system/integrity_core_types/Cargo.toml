@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-base_types = { workspace = true }
-serde = { workspace = true }
-derive-new = { workspace = true }
-thiserror = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+derive-new = "0.7"
+thiserror = "2"
+[dependencies.base_types]
+path = "../base_types"

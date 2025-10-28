@@ -9,13 +9,20 @@ name = "holons_client"
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-tracing = { workspace = true }
-async-trait = { workspace = true }
+derive-new = "0.7"
+tracing = "0.1"
+#async-trait = "0.1.51"
 
 # MAP Dependencies
-holons_core = { workspace = true }
-#holon_dance_builders = { workspace = true }
-base_types = { workspace = true }
-core_types = { workspace = true }
-integrity_core_types = { workspace = true }
 
+[dependencies.holons_core]
+path = "../holons_core"
+
+[dependencies.core_types]
+path = "../type_system/core_types"
+
+[dependencies.base_types]
+path = "../type_system/base_types"
+
+[dependencies.integrity_core_types]
+path = "../type_system/integrity_core_types"

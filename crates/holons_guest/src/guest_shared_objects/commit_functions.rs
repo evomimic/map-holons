@@ -21,7 +21,7 @@ use holons_core::{
     },
     reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
-// use holons_core::utils::as_json;
+
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};

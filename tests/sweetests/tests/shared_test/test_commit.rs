@@ -1,3 +1,4 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
 use holons_prelude::prelude::*;
 use rstest::*;
@@ -8,7 +9,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DancesTestCase},
 };
 use holons_prelude::prelude::*;
@@ -30,21 +31,18 @@ use holons_core::core_shared_objects::ReadableHolonState;
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
-pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConductorConfig>) {
+pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Committing Staged Holons ---");
 
-    // 1. Get context from test_state
-    let context = test_state.context();
-
-    // 2. Build commit DanceRequest (state is handled inside dance_call)
+    // 1. Build commit DanceRequest (state is handled inside dance_call)
     let request = build_commit_dance_request().expect("Failed to build commit DanceRequest");
     debug!("Dance Request: {:#?}", request);
 
-    // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    // 2. Call the dance
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
-    // 4. Validate response status
+    // 3. Validate response status
     assert_eq!(
         response.status_code,
         ResponseStatusCode::OK,
@@ -53,7 +51,7 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
     );
     info!("Success! Commit succeeded");
 
-    // 5. Extract saved Holons from response body and add them to `created_holons`
+    // 4. Extract saved Holons from response body and add them to `created_holons`
     match response.body {
         ResponseBody::Holon(holon) => {
             let key =

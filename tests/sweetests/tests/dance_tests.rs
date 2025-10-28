@@ -21,9 +21,9 @@
 
 mod shared_test;
 
+use async_std::prelude::Future;
 use std::collections::BTreeMap;
 use std::rc::Rc;
-// use async_std::task;
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
@@ -31,7 +31,6 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 
 use rstest::*;
 use serde::de::Expected;
-use shared_test::mock_conductor::MockConductorConfig;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
@@ -48,7 +47,7 @@ use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 
 use crate::shared_test::{
-    mock_conductor::setup_conductor,
+    // mock_conductor::*,
     test_context::init_test_context,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX},
     test_print_database::execute_database_print,
@@ -56,10 +55,8 @@ use crate::shared_test::{
 };
 use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
-use holons_client::dances_client::dance_call_service::DanceCallService;
 use holons_client::init_client_context;
 use holons_prelude::prelude::*;
-
 use shared_test::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
@@ -94,7 +91,9 @@ use shared_test::*;
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 #[tokio::test(flavor = "multi_thread")]
-async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
+async fn rstest_dance_tests(
+    #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,
+) {
     // Setup
 
     use test_stage_new_from_clone::execute_stage_new_from_clone;
@@ -105,10 +104,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     // The heavy lifting for this test is in the test data set creation.
 
-    let mut test_case: DancesTestCase = input.unwrap();
+    let mut test_case: DancesTestCase = input.await.unwrap();
     // Initialize TestHolonsContext from test_session_state
-    let test_context = init_test_context(&mut test_case); // Already returns Arc
-                                                          // let _ = holochain_trace::test_run();
+    let test_context: Arc<dyn HolonsContextBehavior> = init_test_context(&mut test_case).await;
 
     tracing::info!("Hello from the test!");
 
@@ -118,16 +116,10 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     let steps_count = steps.len();
 
-    // 1. Set up the mock conductor
-    let conductor_config = Arc::new(setup_conductor().await);
-
-    // 2. Create the DanceCallService with the mock conductor
-    let dance_service = Arc::new(DanceCallService::new(conductor_config));
-
     warn!("TEST SESSION STATE {:?}", test_case.test_session_state);
 
     // Initialize the DanceTestState
-    let mut test_state = DanceTestExecutionState::new(test_context, dance_service);
+    let mut test_state = DanceTestExecutionState::new(test_context);
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");

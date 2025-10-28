@@ -10,11 +10,19 @@ use crate::core_shared_objects::{
 };
 use crate::reference_layer::{HolonReference, HolonServiceApi, HolonSpaceBehavior};
 use crate::{HolonStagingBehavior, NurseryAccess, TransientCollection, TransientHolonBehavior};
+
 use std::sync::{Arc, RwLock};
 
+use crate::dances::dance_initiator::DanceInitiator;
 use std::fmt::{Debug, Formatter};
 
 pub struct HolonSpaceManager {
+    /// Manages cache access for retrieving both local and external holons efficiently.
+    cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
+
+    /// Handles conductor dance calls.
+    dance_initiator: Option<Arc<dyn DanceInitiator>>,
+
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
     holon_service: Arc<dyn HolonServiceApi + Send + Sync>,
 
@@ -26,9 +34,6 @@ pub struct HolonSpaceManager {
 
     /// Manages **transient holons** .
     transient_manager: Arc<RwLock<TransientHolonManager>>,
-
-    /// Manages cache access for retrieving both local and external holons efficiently.
-    cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
 
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
     transient_state: Arc<RwLock<TransientCollection>>,
@@ -52,6 +57,7 @@ impl HolonSpaceManager {
     /// # Returns
     /// A new instance of `HolonSpaceManager`
     pub fn new_with_managers(
+        dance_initiator: Option<Arc<dyn DanceInitiator>>,
         holon_service: Arc<dyn HolonServiceApi>,
         local_holon_space: Option<HolonReference>,
         cache_routing_policy: ServiceRoutingPolicy,
@@ -76,9 +82,10 @@ impl HolonSpaceManager {
 
         // Step 5: Initialize and return the HolonSpaceManager with thread-safe fields
         Self {
+            cache_request_router,
+            dance_initiator,
             holon_service,
             local_holon_space: RwLock::new(local_holon_space),
-            cache_request_router,
             nursery: nursery_lock,
             transient_manager: transient_lock,
             transient_state: Arc::new(RwLock::new(TransientCollection::new())),
@@ -87,9 +94,42 @@ impl HolonSpaceManager {
 }
 
 impl HolonSpaceBehavior for HolonSpaceManager {
+    /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
+        self.nursery
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on nursery: {}",
+                    e
+                ))
+            })?
+            .export_staged_holons()
+    }
+
+    /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
+        self.transient_manager
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on transient_manager: {}",
+                    e
+                ))
+            })?
+            .export_transient_holons()
+    }
+
     /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
         Arc::clone(&self.cache_request_router)
+    }
+
+    fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {
+        self.dance_initiator
+            .as_ref()
+            .map(Arc::clone)
+            .ok_or_else(|| HolonError::ServiceNotAvailable("DanceInitiator".into()))
     }
 
     /// Provides access to the Holon service API.
@@ -132,32 +172,6 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     /// Retrieves a shared reference to the transient state.
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
         Arc::clone(&self.transient_state)
-    }
-
-    /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.nursery
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on nursery: {}",
-                    e
-                ))
-            })?
-            .export_staged_holons()
-    }
-
-    /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.transient_manager
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on transient_manager: {}",
-                    e
-                ))
-            })?
-            .export_transient_holons()
     }
 
     /// Imports staged holons into the nursery from a `SerializableHolonPool`.
