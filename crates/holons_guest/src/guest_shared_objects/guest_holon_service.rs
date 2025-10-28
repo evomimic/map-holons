@@ -1,4 +1,3 @@
-use holons_core::reference_layer::{HolonStagingBehavior, TransientHolonBehavior};
 use std::any::Any;
 use std::collections::HashMap;
 use std::{
@@ -76,7 +75,6 @@ impl GuestHolonService {
         let transient_behavior_service = transient_behavior_service_cell
             .try_read()
             .map_err(|_e| HolonError::FailedToAcquireLock("lock failed".to_string()))?;
-
 
         // Create new (empty) TransientHolon
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;

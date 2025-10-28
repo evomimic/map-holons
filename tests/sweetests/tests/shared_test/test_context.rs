@@ -5,13 +5,17 @@ use holochain::prelude::DbKind::Test;
 use holons_client::client_context::ClientHolonsContext;
 use holons_client::ClientHolonService;
 
-use holons_core::dances::{DanceCallService, DanceCallServiceApi};
 use holons_prelude::prelude::*;
+
+use crate::shared_test::mock_conductor::create_test_dance_initiator;
 
 use holons_core::core_shared_objects::holon_pool::TransientHolonPool;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::TransientHolonManager;
-use holons_core::{setup_conductor, HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy};
+use holons_core::{HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy};
+
+use holons_trust_channel::TrustChannel;
+
 use std::cell::RefCell;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -49,14 +53,12 @@ pub async fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 3: Create an empty TransientHolonManager for the client
     let transient_manager = TransientHolonManager::new_empty();
 
-    // Step 4: Setup SweetConductor (Mock) and Inject DanceCallService
-    let conductor_config = setup_conductor().await;
-    let dance_call_service: Arc<dyn DanceCallServiceApi> =
-        Arc::new(DanceCallService::new(Arc::new(conductor_config)));
+    // Step 4: Setup trust channel and Inject DanceInitiator
+    // SKIP -- Fixtures cannot initiate dances!
 
     // Step 5: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        dance_call_service,
+        None,
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
@@ -88,14 +90,12 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn Holons
         HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
     ));
 
-    // Step 4: Setup SweetConductor (Mock) and Inject DanceCallService
-    let conductor_config = setup_conductor().await;
-    let dance_call_service: Arc<dyn DanceCallServiceApi> =
-        Arc::new(DanceCallService::new(Arc::new(conductor_config)));
+    // Step 4: Setup DanceInitiator
+    let dance_initiator = create_test_dance_initiator().await;
 
     // Step 5: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        dance_call_service,
+        Some(dance_initiator),
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,

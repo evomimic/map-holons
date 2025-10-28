@@ -16,9 +16,9 @@ use crate::{
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         transient_holon_manager::ToHolonCloneModel,
-        Holon, HolonCollection, NurseryAccess, ReadableHolonState, WriteableHolonState,
+        Holon, HolonCollection, ReadableHolonState, WriteableHolonState,
     },
-    Nursery, RelationshipMap,
+    RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
@@ -86,6 +86,7 @@ impl StagedReference {
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
         let nursery_access = context.get_space_manager().get_nursery_access();
+
         let pool = nursery_access.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on nursery: {}",
@@ -97,26 +98,6 @@ impl StagedReference {
         let rc_holon = pool.get_holon_by_id(&self.id)?;
 
         Ok(rc_holon)
-    }
-
-    /// Retrieves access to the nursery via the provided context.
-    ///
-    /// # Arguments
-    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
-    ///
-    /// # Returns
-    /// A reference to an object implementing the `NurseryAccess` trait.
-    ///
-    /// # Panics
-    /// This function assumes that the context and space manager will always return valid references.
-    fn get_nursery_access(
-        context: &dyn HolonsContextBehavior,
-    ) -> Arc<RwLock<dyn NurseryAccess + Send + Sync>> {
-        // Retrieve the space manager from the context
-        let space_manager = context.get_space_manager();
-
-        // Get the nursery access
-        space_manager.get_nursery_access()
     }
 
     pub fn temporary_id(&self) -> TemporaryId {

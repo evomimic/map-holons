@@ -22,6 +22,8 @@ pub mod test_stage_new_holon;
 pub mod test_stage_new_version;
 pub mod test_with_properties_command;
 pub mod tracing_utils;
+//temp
+pub mod mock_conductor;
 
 use base_types::MapString;
 use core_types::HolonId;

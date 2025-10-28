@@ -1,5 +1,5 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
-use holons_core::MockConductorConfig;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -21,7 +21,7 @@ use holons_core::core_shared_objects::ReadableHolonState;
 /// and matches the expected response
 ///
 pub async fn execute_delete_holon(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     holon_to_delete_key: MapString, // key of the holon to delete
     expected_response: ResponseStatusCode,
 ) {
@@ -31,7 +31,7 @@ pub async fn execute_delete_holon(
     );
 
     // 1. Get context from test_state
-    let context = test_state.context();
+    let _context = test_state.context();
 
     // 2. Retrieve the Holon to delete
     let holon_to_delete = test_state
@@ -51,7 +51,7 @@ pub async fn execute_delete_holon(
     debug!("delete_holon Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("delete_holon Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status
@@ -68,7 +68,7 @@ pub async fn execute_delete_holon(
         let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id.clone()))
             .expect("Failed to build get_holon_by_id request");
 
-        let get_response = test_state.dance_call_service.dance_call(context, get_request).await;
+        let get_response = test_state.invoke_dance(get_request).await;
         assert_eq!(
             get_response.status_code,
             ResponseStatusCode::NotFound,

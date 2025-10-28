@@ -1,7 +1,6 @@
 use derive_new::new;
 
-use holons_core::dances::DanceCallService;
-use holons_core::{core_shared_objects::holon_pool::SerializableHolonPool, dances::ConductorDanceCaller};
+use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 use holons_core::core_shared_objects::Holon;
 use holons_prelude::prelude::*;
 use std::{
@@ -52,9 +51,8 @@ pub const EDITOR_FOR: &str = "EDITOR_FOR";
 /// # Type Parameters
 /// - `C`: A type implementing `DanceCaller`, used to execute dance calls.
 #[derive(Debug)]
-pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
-    context: Arc<dyn HolonsContextBehavior>,
-    pub dance_call_service: Arc<DanceCallService<C>>,
+pub struct DanceTestExecutionState {
+    pub context: Arc<dyn HolonsContextBehavior>,
     pub created_holons: BTreeMap<MapString, Holon>,
 }
 
@@ -202,7 +200,7 @@ impl Display for DanceTestStep {
     }
 }
 
-impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
+impl DanceTestExecutionState {
     /// Creates a new `DanceTestExecutionState`.
     ///
     /// # Arguments
@@ -211,15 +209,8 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
     ///
     /// # Returns
     /// A new `DanceTestExecutionState` instance.
-    pub fn new(
-        test_context: Arc<dyn HolonsContextBehavior>,
-        dance_call_service: Arc<DanceCallService<C>>,
-    ) -> Self {
-        DanceTestExecutionState {
-            context: test_context,
-            dance_call_service,
-            created_holons: BTreeMap::new(),
-        }
+    pub fn new(test_context: Arc<dyn HolonsContextBehavior>) -> Self {
+        DanceTestExecutionState { context: test_context, created_holons: BTreeMap::new() }
     }
     pub fn context(&self) -> &dyn HolonsContextBehavior {
         &*self.context
@@ -264,6 +255,26 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
     }
     pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
         self.created_holons.get(key).cloned()
+    }
+
+    /// Invokes a full dance roundtrip using the current test context.
+    ///
+    /// This function retrieves the [`DanceInitiator`] from the active
+    /// [`HolonSpaceManager`] and executes `initiate_dance()` with the given request.
+    ///
+    /// It panics only if the test environment is misconfigured (e.g. no initiator present),
+    /// not for any normal dance-level errors — those are encoded into the returned
+    /// [`DanceResponse`].
+    pub async fn invoke_dance(&self, request: DanceRequest) -> DanceResponse {
+        // Get the initiator — this unwrap is safe in test context setup
+        let initiator = self
+            .context
+            .get_space_manager()
+            .get_dance_initiator()
+            .expect("Dance initiator must be initialized in test context");
+
+        // Call the pipeline — always returns a DanceResponse
+        initiator.initiate_dance(&*self.context, request).await
     }
 
     /// Resolves a [`TestReference`] into a [`HolonReference`].

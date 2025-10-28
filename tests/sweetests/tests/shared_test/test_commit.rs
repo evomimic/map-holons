@@ -1,5 +1,5 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
-use holons_core::MockConductorConfig;
 use holons_prelude::prelude::*;
 use rstest::*;
 use std::collections::BTreeMap;
@@ -31,7 +31,7 @@ use holons_core::core_shared_objects::ReadableHolonState;
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
-pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConductorConfig>) {
+pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Committing Staged Holons ---");
 
     // 1. Get context from test_state
@@ -42,7 +42,7 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState<MockConduct
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status

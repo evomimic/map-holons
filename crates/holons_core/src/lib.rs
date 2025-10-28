@@ -19,6 +19,7 @@ pub use core_shared_objects::{
     HolonCacheManager, HolonCollection, HolonPool, Nursery, NurseryAccess, RelationshipCache,
     RelationshipMap, ServiceRoutingPolicy, StagedRelationshipMap, TransientCollection,
 };
+pub use core_types::HolonError;
 pub use reference_layer::holon_operations_api::*;
 pub use reference_layer::{
     HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
@@ -26,7 +27,3 @@ pub use reference_layer::{
     WritableHolon,
 };
 // pub use utils::*;
-
-//temp
-pub mod mock_conductor;
-pub use mock_conductor::*;

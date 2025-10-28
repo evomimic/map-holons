@@ -53,6 +53,7 @@ impl From<HolonError> for ResponseStatusCode {
         match error {
             HolonError::CacheError(_) => ResponseStatusCode::ServerError,
             HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
+            HolonError::ConductorError(_) => ResponseStatusCode::ServerError,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
             HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
             HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
@@ -73,6 +74,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
             HolonError::NotImplemented(_) => ResponseStatusCode::NotImplemented,
             HolonError::RecordConversion(_) => ResponseStatusCode::ServerError,
+            HolonError::ServiceNotAvailable(_) => ResponseStatusCode::ServerError,
             HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
             HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
             HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
@@ -120,6 +122,49 @@ impl DanceResponse {
         self.state.set_staging_area(staging_area);
         self.state.set_local_holon_space(local_space_holon);
     }*/
+    /// Annotates this response with a local processing error (e.g. envelope hydration failure).
+    ///
+    /// Preserves existing fields (body, descriptor, etc.) but:
+    /// - Updates `status_code` to reflect the mapped error code.
+    /// - Appends a diagnostic note to the `description`, including both
+    ///   the local error and the original response status.
+    pub fn annotate_error(&mut self, error: HolonError) {
+        let prev_code = self.status_code.clone();
+        let new_code = ResponseStatusCode::from(error.clone());
+
+        let note = format!(
+            "[Local processing error: {} → mapped to {} (original response was {})]",
+            error, new_code, prev_code
+        );
+
+        // Update the status code
+        self.status_code = new_code;
+
+        // Append to or initialize description
+        if self.description.0.is_empty() {
+            self.description = MapString(note);
+        } else {
+            self.description = MapString(format!("{}\n{}", self.description.0, note));
+        }
+    }
+    /// Constructs a `DanceResponse` representing an error that occurred during a dance.
+    ///
+    /// This method wraps the provided [`HolonError`] into a [`DanceResponse`] object
+    /// by:
+    /// - Mapping the error to a [`ResponseStatusCode`] using its `From<HolonError>` implementation.
+    /// - Converting the error message into a `MapString` description.
+    /// - Setting `body` to `ResponseBody::None` (no successful payload).
+    /// - Leaving `descriptor` and `state` unset (`None`).
+    pub fn from_error(error: HolonError) -> Self {
+        Self {
+            status_code: ResponseStatusCode::from(error.clone()),
+            description: MapString(error.to_string()),
+            body: ResponseBody::None,
+            descriptor: None,
+            state: None,
+        }
+    }
+
     // Method to summarize the DanceResponse for logging purposes
     pub fn summarize(&self) -> String {
         let body_summary = match &self.body {

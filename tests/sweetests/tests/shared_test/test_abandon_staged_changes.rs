@@ -1,5 +1,5 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
-use holons_core::MockConductorConfig;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, error, info, warn};
@@ -25,7 +25,7 @@ use rstest::*;
 /// Log a `info` level message marking the test step as Successful and return
 ///
 pub async fn execute_abandon_staged_changes(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     staged_reference: HolonReference,
     expected_response: ResponseStatusCode,
 ) {
@@ -41,7 +41,7 @@ pub async fn execute_abandon_staged_changes(
     info!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
 
     // 4. Validate response status
     assert_eq!(response.status_code, expected_response);

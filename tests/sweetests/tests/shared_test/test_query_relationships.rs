@@ -1,5 +1,5 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
-use holons_core::MockConductorConfig;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -19,7 +19,7 @@ use holons_core::core_shared_objects::ReadableHolonState; // TODO: Eliminate thi
 
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied NodeCollection and QueryExpression.
 pub async fn execute_query_relationships(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     source_key: MapString,
     query_expression: QueryExpression,
     expected_response: ResponseStatusCode,
@@ -50,7 +50,7 @@ pub async fn execute_query_relationships(
     debug!("Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status

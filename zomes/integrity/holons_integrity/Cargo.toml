@@ -11,12 +11,18 @@ name = "holons_integrity"
 [dependencies]
 
 
-serde = { workspace = true }
+serde = { version = "1", features = ["derive"] }
 
-shared_validation = { workspace = true }
 
 # Holochain dependencies
-hdi = { workspace = true }
-holochain_integrity_types = { workspace = true }
-holons_guest_integrity = { workspace = true }
-integrity_core_types = { workspace = true }
+hdi = "0.6"
+holochain_integrity_types = "0.5"
+
+[dependencies.holons_guest_integrity]
+path = "../../../crates/holons_guest_integrity"
+
+[dependencies.shared_validation]
+path = "../../../crates/shared_validation"
+
+[dependencies.integrity_core_types]
+path = "../../../crates/type_system/integrity_core_types"

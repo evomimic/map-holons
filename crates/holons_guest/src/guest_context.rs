@@ -9,9 +9,7 @@ use holons_core::{
         transient_manager_access_internal::TransientManagerAccessInternal, Nursery,
         ServiceRoutingPolicy, TransientHolonManager,
     },
-    dances::{dance_call_service::DanceCallService, DanceCallServiceApi},
     reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior},
-    setup_conductor,
 };
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
@@ -77,7 +75,7 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - The DHT lookup for the HolonSpace Holon fails.
 /// - There are issues retrieving holons from persistent storage.
 /// - The creation of a new HolonSpace Holon encounters a failure.
-pub async fn init_guest_context(
+pub fn init_guest_context(
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_space_holon: Option<HolonReference>,
@@ -102,17 +100,10 @@ pub async fn init_guest_context(
         })?;
     service.register_internal_access(Arc::new(RwLock::new(nursery.clone())));
 
-    // Step 5: Setup Conductor and Construct the DanceCallService
-    let conductor_config = setup_conductor().await; // Temporarily using mock conductor
-    let dance_call_service: Arc<dyn DanceCallServiceApi> =
-        Arc::new(DanceCallService::new(Arc::new(conductor_config)));
-    // let guest_dance_caller = GuestDanceCaller::new(conductor);
-    // let dance_call_service: Arc<dyn DanceCallServiceApi> =
-    //     Arc::new(DanceCallService::new(guest_dance_caller));
-
     // Step 6: Create the HolonSpaceManager with injected Nursery & HolonService
+    // TODO: add a DanceInitiator service to enable guest->guest dancing
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        dance_call_service,
+        None,
         guest_holon_service,
         local_space_holon,
         ServiceRoutingPolicy::Combined,

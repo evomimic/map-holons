@@ -29,6 +29,7 @@ use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
 // use holons_client::init_client_context;
 
+use holons_client::dances_client::dance_call_service::DanceCallService;
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};
@@ -57,7 +58,6 @@ use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
 use holons_client::init_client_context;
 use holons_prelude::prelude::*;
-
 use shared_test::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
@@ -97,7 +97,6 @@ async fn rstest_dance_tests(
 ) {
     // Setup
 
-    use holons_core::{dances::DanceCallService, setup_conductor};
     use test_stage_new_from_clone::execute_stage_new_from_clone;
     use test_stage_new_version::execute_stage_new_version;
     // use test_stage_new_version::execute_stage_new_version;
@@ -108,8 +107,7 @@ async fn rstest_dance_tests(
 
     let mut test_case: DancesTestCase = input.await.unwrap();
     // Initialize TestHolonsContext from test_session_state
-    let test_context: Arc<dyn HolonsContextBehavior> = init_test_context(&mut test_case).await; // Already returns Arc
-                                                                // let _ = holochain_trace::test_run();
+    let test_context: Arc<dyn HolonsContextBehavior> = init_test_context(&mut test_case).await;
 
     tracing::info!("Hello from the test!");
 
@@ -119,16 +117,10 @@ async fn rstest_dance_tests(
 
     let steps_count = steps.len();
 
-    // 1. Set up the mock conductor
-    let conductor_config = Arc::new(setup_conductor().await);
-
-    // 2. Create the DanceCallService with the mock conductor
-    let dance_service = Arc::new(DanceCallService::new(conductor_config));
-
     warn!("TEST SESSION STATE {:?}", test_case.test_session_state);
 
     // Initialize the DanceTestState
-    let mut test_state = DanceTestExecutionState::new(test_context, dance_service);
+    let mut test_state = DanceTestExecutionState::new(test_context);
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");

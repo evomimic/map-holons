@@ -10,103 +10,50 @@ members = [
     "crates/type_system/base_types",
     "crates/type_system/core_types",
     "crates/type_system/integrity_core_types",
-    "crates/type_system/descriptor_types",
-    "crates/type_system/core_descriptor_types",
     "crates/type_system/type_names",
     "crates/json_schema_validation",
-    "crates/json_schema_validate_cli",
     # Shared Core & Guest Libraries
     "crates/holons_client",
     "crates/holons_core",
     "crates/holon_dance_builders",
     "crates/holons_guest",
     "crates/holons_guest_integrity",
+    "crates/holons_holochain_adapter",
     "crates/holons_prelude",
-    # ✅ Bring sweetests back into the workspace
+    "crates/holons_tauri_adapter",
+    "crates/holons_trust_channel",
     "tests/sweetests",
 ]
-resolver = "2"
 
-# ✅ Keep default builds the same (omit sweetests by default)
-default-members = [
-    "zomes/coordinator/holons",
-    "zomes/integrity/holons_integrity",
-    "crates/shared_validation",
-    "crates/type_system/base_types",
-    "crates/type_system/core_types",
-    "crates/type_system/integrity_core_types",
-    "crates/type_system/descriptor_types",
-    "crates/type_system/core_descriptor_types",
-    "crates/type_system/type_names",
-    "crates/json_schema_validation",
-    "crates/json_schema_validate_cli",
-    "crates/holons_client",
-    "crates/holons_core",
-    "crates/holon_dance_builders",
-    "crates/holons_guest",
-    "crates/holons_guest_integrity",
-    "crates/holons_prelude",
+exclude = [
+    "workspaces/wasm",
+    "workspaces/native",
+    "workspaces/test"
 ]
 
+resolver = "2"
 
-# Local workspace dependencies
-[workspace.dependencies.holons]
-path = "zomes/coordinator/holons"
-
-[workspace.dependencies.holons_integrity]
-path = "zomes/integrity/holons_integrity"
-
-[workspace.dependencies.shared_validation]
-path = "crates/shared_validation"
-
-[workspace.dependencies.base_types]
-path = "crates/type_system/base_types"
-
-[workspace.dependencies.core_types]
-path = "crates/type_system/core_types"
-
-[workspace.dependencies.integrity_core_types]
-path = "crates/type_system/integrity_core_types"
-
-# [workspace.dependencies.descriptor_types]
-# path = "crates/type_system/descriptor_types"
-
-# [workspace.dependencies.core_descriptor_types]
-# path = "crates/type_system/core_descriptor_types"
-
-[workspace.dependencies.type_names]
-path = "crates/type_system/type_names"
-
-[workspace.dependencies.json_schema_validation]
-path = "crates/json_schema_validation"
-
-# [workspace.dependencies.json_schema_validation_cli]
-# path = "crates/json_schema_validation_cli"
-
-[workspace.dependencies.holons_client]
-path = "crates/holons_client"
-
-[workspace.dependencies.holons_core]
-path = "crates/holons_core"
-
-[workspace.dependencies.holon_dance_builders]
-path = "crates/holon_dance_builders"
-
-[workspace.dependencies.holons_guest]
-path = "crates/holons_guest"
-
-[workspace.dependencies.holons_guest_integrity]
-path = "crates/holons_guest_integrity"
-
-[workspace.dependencies.holons_prelude]
-path = "crates/holons_prelude"
-
-
-
-
+[workspace.dependencies]
+# Path dependencies
+holons = { path = "zomes/coordinator/holons" }
+holons_integrity = { path = "zomes/integrity/holons_integrity" }
+shared_validation = { path = "crates/shared_validation" }
+base_types = { path = "crates/type_system/base_types" }
+core_types = { path = "crates/type_system/core_types" }
+integrity_core_types = { path = "crates/type_system/integrity_core_types" }
+type_names = { path = "crates/type_system/type_names" }
+json_schema_validation = { path = "crates/json_schema_validation" }
+holons_client = { path = "crates/holons_client" }
+holons_core = { path = "crates/holons_core" }
+holon_dance_builders = { path = "crates/holon_dance_builders" }
+holons_guest = { path = "crates/holons_guest" }
+holons_guest_integrity = { path = "crates/holons_guest_integrity" }
+holons_holochain_adapter = { path = "crates/holons_holochain_adapter" }
+holons_prelude = { path = "crates/holons_prelude" }
+holons_tauri_adapter = { path = "crates/holons_tauri_adapter" }
+holons_trust_channel = { path = "crates/holons_trust_channel" }
 
 # External dependencies
-[workspace.dependencies]
 async-trait = "0.1.51"
 convert_case = "0.5"
 derive-new = "0.7"
@@ -125,7 +72,6 @@ sha2 = "0.10.8"
 strum = "0.27"
 strum_macros = "0.27"
 thiserror = "2"
-tokio = "1.48.0"
 tracing = "0.1"
 rstest = "0.25"
 uuid = { version = "1", features = ["serde"] }

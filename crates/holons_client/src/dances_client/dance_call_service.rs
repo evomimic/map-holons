@@ -1,6 +1,6 @@
 //! Handles making dance calls while managing session state.
 //!
-use async_trait::async_trait;
+
 use std::sync::Arc;
 use std::{any::Any, fmt::Debug};
 use tracing::{
@@ -9,11 +9,10 @@ use tracing::{
     // warn,
 };
 
-use crate::dances::DanceCallServiceApi;
-use crate::{
-    dances::{ConductorDanceCaller, DanceRequest, DanceResponse, SessionState},
-    HolonsContextBehavior,
+use holons_core::dances::{
+    ConductorDanceCaller, DanceInitiator, DanceRequest, DanceResponse, SessionState,
 };
+use holons_core::HolonsContextBehavior;
 
 /// A service that executes dance calls while managing session state.
 ///
@@ -158,17 +157,17 @@ impl<C: ConductorDanceCaller> Clone for DanceCallService<C> {
 }
 
 // Implement façade over generic ConductorDanceCaller to allow for client/guest agnostic DanceCallService
-#[async_trait(?Send)]
-impl<C: ConductorDanceCaller + Debug + Any> DanceCallServiceApi for DanceCallService<C> {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    
-    async fn dance_call(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        request: DanceRequest,
-    ) -> DanceResponse {
-        self.dance_call(context, request).await
-    }
-}
+
+// impl<C: ConductorDanceCaller + Debug + Any> DanceCallServiceApi for DanceCallService<C> {
+//     fn as_any(&self) -> &dyn Any {
+//         self
+//     }
+//
+//     async fn dance_call(
+//         &self,
+//         context: &dyn HolonsContextBehavior,
+//         request: DanceRequest,
+//     ) -> DanceResponse {
+//         self.dance_call(context, request).await
+//     }
+// }

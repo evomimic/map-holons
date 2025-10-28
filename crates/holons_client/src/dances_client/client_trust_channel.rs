@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use derive_new::new;
-use holons_core::dances::{ConductorDanceCaller, DanceRequest, DanceResponse};
+use holons_core::dances::ConductorDanceCaller;
 
 /// Handles outbound dance calls from the client to a guest via the conductor.
 #[derive(new, Debug, Clone)]

@@ -9,6 +9,8 @@ pub enum HolonError {
     CacheError(String),
     #[error("Commit Failure {0}")]
     CommitFailure(String),
+    #[error("Conductor call failed: {0}")]
+    ConductorError(String),
     #[error(
         "You must remove related holons from {0} relationship before you can delete this holon."
     )]
@@ -51,6 +53,8 @@ pub enum HolonError {
     NotImplemented(String),
     #[error("Couldn't convert Record to {0}")]
     RecordConversion(String),
+    #[error("Service '{0}' is not available")]
+    ServiceNotAvailable(String),
     #[error("to {0}")]
     UnableToAddHolons(String),
     #[error("Unable to cast {0} into expected ValueType: {1}")]

@@ -1,4 +1,4 @@
-use holons_core::MockConductorConfig;
+use crate::mock_conductor::MockConductorConfig;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::{debug, error, info, warn};
@@ -42,7 +42,7 @@ use holons_prelude::prelude::*;
 ///  To get the `HolonReference` in the `Staged case`, we simply need to wrap the `StagedReference`
 ///  in a `HolonReference`
 pub async fn execute_stage_new_from_clone(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_test_reference: TestReference,
     new_key: MapString,
     expected_response: ResponseStatusCode,
@@ -112,7 +112,7 @@ pub async fn execute_stage_new_from_clone(
     debug!("Dance Request: {:#?}", request);
 
     // 4. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 5. Validate response status

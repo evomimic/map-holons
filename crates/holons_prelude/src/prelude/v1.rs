@@ -45,7 +45,9 @@ pub use holons_core::core_shared_objects::holon::state::AccessType;
 pub use holons_core::core_shared_objects::{
     CommitRequestStatus, CommitResponse, HolonCollection, RelationshipMap,
 };
-pub use holons_core::dances::{DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode};
+pub use holons_core::dances::{
+    DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode,
+};
 pub use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 pub use holons_core::reference_layer::holon_operations_api::*;
 pub use holons_core::reference_layer::{
@@ -53,6 +55,7 @@ pub use holons_core::reference_layer::{
     HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior,
     TransientReference, WritableHolon,
 };
+
 pub use type_names::{
     CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
     ToPropertyName, ToRelationshipName,

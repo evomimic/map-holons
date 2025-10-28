@@ -9,12 +9,20 @@ name = "holon_dance_builders"
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-serde = { workspace = true }
-serde_json = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.109"
 
 
 # MAP Dependencies
-holons_core = { workspace = true }
-base_types = { workspace = true }
-core_types = { workspace = true }
-integrity_core_types = { workspace = true }
+
+[dependencies.holons_core]
+path = "../holons_core"
+
+[dependencies.core_types]
+path = "../type_system/core_types"
+
+[dependencies.base_types]
+path = "../type_system/base_types"
+
+[dependencies.integrity_core_types]
+path = "../type_system/integrity_core_types"

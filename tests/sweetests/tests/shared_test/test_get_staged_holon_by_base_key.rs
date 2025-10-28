@@ -1,4 +1,4 @@
-use holons_core::MockConductorConfig;
+use crate::mock_conductor::MockConductorConfig;
 use holons_prelude::prelude::*;
 
 use tracing::info;
@@ -19,7 +19,7 @@ use super::{
 /// IMPORTANT:
 /// The test step calling this execution assumes that there is only one Holon with the associated base_key.
 pub async fn execute_get_staged_holon_by_base_key(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     key: MapString,
 ) {
     info!("--- TEST STEP: Get Staged Holon By Base Key ---");

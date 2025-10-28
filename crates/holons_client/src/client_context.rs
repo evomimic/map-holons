@@ -1,13 +1,10 @@
-// use holochain::prelude::*;
-
 use crate::client_shared_objects::ClientHolonService;
-use crate::ClientDanceCaller;
+
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy, TransientHolonManager};
-use holons_core::dances::dance_call_service::DanceCallService;
-use holons_core::dances::DanceCallServiceApi;
+
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
-use holons_core::setup_conductor;
+
 use std::sync::Arc;
 
 /// The client-side implementation of `HolonsContextBehavior`, responsible for managing
@@ -47,16 +44,16 @@ pub async fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
     let transient_manager = TransientHolonManager::new_empty();
 
     // Step 4: Setup Conductor and Construct the DanceCallService
-    let conductor_config = setup_conductor().await; // Temporarily using mock conductor
-    let dance_call_service: Arc<dyn DanceCallServiceApi> =
-        Arc::new(DanceCallService::new(Arc::new(conductor_config)));
+    // let conductor_config = setup_conductor().await; // Temporarily using mock conductor
+    // let dance_call_service: Arc<dyn DanceCallServiceApi> =
+    //     Arc::new(DanceCallService::new(Arc::new(conductor_config)));
     // let client_dance_caller = ClientDanceCaller::new(Arc::new(conductor));
     // let dance_call_service: Arc<dyn DanceCallServiceApi> =
     //     Arc::new(DanceCallService::new(Arc::new(client_dance_caller)));
 
     // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        dance_call_service,
+        None,
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,

@@ -1,6 +1,5 @@
 use core_types::HolonError;
 
-use crate::dances::DanceCallServiceApi;
 use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
@@ -10,6 +9,7 @@ use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::{TransientCollection, TransientManagerAccess};
 use crate::{HolonStagingBehavior, NurseryAccess, TransientHolonBehavior};
 
+use crate::dances::dance_initiator::DanceInitiator;
 use std::sync::{Arc, RwLock};
 
 /// Defines the core behavior of a **Holon Space**, providing:
@@ -42,11 +42,13 @@ pub trait HolonSpaceBehavior {
     /// - An `Arc<dyn HolonCacheAccess>` that allows cache operations.
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync>;
 
-    /// Provides access to the **DanceCallService**.
+    /// Retrieves the configured [`DanceInitiator`] responsible for outbound Dances.
     ///
-    /// # Returns
-    /// - An `Arc<dyn DanceCallServiceApi>` for performing dance calls.
-    fn get_dance_call_service(&self) -> Arc<dyn DanceCallServiceApi>;
+    /// Returns:
+    /// - `Ok(Arc<dyn DanceInitiator>)` when the initiator has been injected.
+    /// - `Err(HolonError::ServiceNotAvailable("DanceInitiator"))` when the
+    ///   initiator is not configured for this context (e.g., in a guest runtime).
+    fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError>;
 
     /// Provides access to the **holon service API**, which includes core operations
     /// such as creating, retrieving, updating, and deleting holons.

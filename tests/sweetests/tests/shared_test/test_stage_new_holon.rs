@@ -1,5 +1,5 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
-use holons_core::MockConductorConfig;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -19,7 +19,7 @@ use crate::shared_test::{
 /// supplied Holon and confirms a Success response
 ///
 pub async fn execute_stage_new_holon(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     transient_reference: TransientReference,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
@@ -34,7 +34,7 @@ pub async fn execute_stage_new_holon(
     debug!("Dance Request: {:#?}", request);
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 4. Validate response status

@@ -1,5 +1,5 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
-use holons_core::MockConductorConfig;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tracing::info;
@@ -22,7 +22,7 @@ use holons_prelude::prelude::*;
 ///
 
 pub async fn execute_ensure_database_count(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     expected_count: MapInteger,
 ) {
     info!("--- TEST STEP: Ensuring database holds {} holons ---", expected_count.0);
@@ -35,7 +35,7 @@ pub async fn execute_ensure_database_count(
         build_get_all_holons_dance_request().expect("Failed to build get_all_holons request");
 
     // 3. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
 
     // 4. Verify response contains Holons
     if let ResponseBody::HolonCollection(holon_collection) = response.body {

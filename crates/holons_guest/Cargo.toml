@@ -12,21 +12,35 @@ guest = []  # This crate supports the `guest` feature
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-Inflector = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
+Inflector = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.109"
+thiserror = "2"
+tracing = "0.1"
 
 # Holochain Dependencies
-hdk = { workspace = true }
-hdi = { workspace = true }
-holons_integrity = { workspace = true }
+hdk = "0.5"
+hdi = "0.6"
 
 # MAP Dependencies
-holons_core = { workspace = true }
-holon_dance_builders = { workspace = true }
-base_types = { workspace = true }
-core_types = { workspace = true }
-integrity_core_types = { workspace = true }
-holons_guest_integrity = { workspace = true }
+
+[dependencies.holon_dance_builders]
+path = "../holon_dance_builders"
+
+[dependencies.holons_core]
+path = "../holons_core"
+
+[dependencies.integrity_core_types]
+path = "../type_system/integrity_core_types"
+
+[dependencies.core_types]
+path = "../type_system/core_types"
+
+[dependencies.base_types]
+path = "../type_system/base_types"
+
+[dependencies.holons_integrity]
+path = "../../zomes/integrity/holons_integrity"
+
+[dependencies.holons_guest_integrity]
+path = "../holons_guest_integrity"

@@ -5,9 +5,15 @@ edition = "2021"
 
 [dependencies]
 
-serde = { workspace = true }
-thiserror = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
 
-core_types = { workspace = true }
-integrity_core_types = { workspace = true }
-holons_core = { workspace = true }
+
+[dependencies.integrity_core_types]
+path = "../type_system/integrity_core_types"
+
+[dependencies.core_types]
+path = "../type_system/core_types"
+
+[dependencies.holons_core]
+path = "../holons_core"
