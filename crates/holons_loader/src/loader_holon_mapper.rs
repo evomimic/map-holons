@@ -1,4 +1,4 @@
-// crates/holons_core/src/holons_loader/loader_holon_mapper.rs
+// crates/holons_loader/src/loader_holon_mapper.rs
 //
 // Pass 1 mapper for the Holon Loader:
 //   - For each incoming LoaderHolon (container), build a *target* TransientHolon with
@@ -9,7 +9,7 @@
 // This module intentionally avoids any relationship writes or type application;
 // those are handled by the resolver in Pass 2.
 
-use tracing::{debug, instrument};
+use tracing::info;
 
 use holons_prelude::prelude::CorePropertyTypeName::Key;
 use holons_prelude::prelude::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
@@ -65,7 +65,7 @@ impl LoaderHolonMapper {
 
         // Iterate through LoaderHolon members and stage target holons.
         for (index, loader_reference) in loader_holon_members.iter().enumerate() {
-            debug!("Pass1: staging target from LoaderHolon #{}", index);
+            info!("Pass1: staging target from LoaderHolon #{}", index);
 
             match Self::build_target_staged(context, loader_reference) {
                 Ok((_staged_reference, _loader_key)) => {
@@ -94,7 +94,6 @@ impl LoaderHolonMapper {
     ///
     /// Invariants:
     /// - `key` MUST be present on the LoaderHolon (we currently do not support keyless).
-    #[instrument(level = "debug", skip_all)]
     pub fn build_target_staged(
         context: &dyn HolonsContextBehavior,
         loader: &HolonReference,
@@ -121,18 +120,18 @@ impl LoaderHolonMapper {
         // Convert key_value -> MapString for the return tuple (for logging/diagnostics if needed).
         let key = MapString((&key_value).into());
 
-        // Mint a fresh empty transient, then copy properties one-by-one (no relationships).
-        // The transient service is now Arc<RwLock<...>>; acquire a write lock to mutate.
-        let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-        let mut transient_service = transient_service_handle.write().map_err(|_| {
-            HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
-        })?;
+        // ── Create the empty transient under a short write lock, then immediately release it.
+        let mut target_transient: TransientReference = {
+            let transient_service_handle =
+                context.get_space_manager().get_transient_behavior_service();
+            let transient_service = transient_service_handle.write().map_err(|_| {
+                HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
+            })?;
+            transient_service.create_empty(key.clone())?
+            // `transient_service` guard drops here — lock released before property writes.
+        };
 
-        // Start from an empty holon
-        let mut target_transient: TransientReference =
-            transient_service.create_empty(key.clone())?;
-
-        // Apply each property explicitly (mutating the transient holon)
+        // Apply each property explicitly (mutating the transient holon) — no service lock is held now.
         for (property_name, property_value) in properties.into_iter() {
             target_transient.with_property_value(context, &property_name, property_value)?;
         }
@@ -147,7 +146,6 @@ impl LoaderHolonMapper {
     /// return them as **detached transients** for the resolver to consume.
     ///
     /// Relationship used: `HAS_LOADER_RELATIONSHIP_REFERENCE`.
-    #[instrument(level = "debug", skip_all)]
     pub fn collect_loader_rel_refs(
         context: &dyn HolonsContextBehavior,
         loader: &HolonReference,

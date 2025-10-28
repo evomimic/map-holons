@@ -111,7 +111,7 @@ pub fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0),        // ErrorCount
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n as i64))?;
-    (test_case).add_database_print_step()?;
+    test_case.add_database_print_step()?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(&*fixture_context);

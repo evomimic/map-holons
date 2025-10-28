@@ -205,71 +205,25 @@ impl HolonLoaderController {
         summary: String,
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
+        use tracing::info;
+
         info!("Building HolonLoadResponse for run_id={}", run_id);
-        // Build response as a transient with properties…
-        let transient_service = context.get_space_manager().get_transient_behavior_service();
-        let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
 
-        let borrowed_service = transient_service
-            .write()
-            .map_err(|_| HolonError::FailedToBorrow("Transient service write".into()))?;
-        let mut response_reference = borrowed_service.create_empty(response_key)?;
+        // 1) Create the transient under a short-lived write lock, then DROP the lock
+        let response_reference = {
+            let transient_service_handle =
+                context.get_space_manager().get_transient_behavior_service();
+            let service = transient_service_handle
+                .write()
+                .map_err(|_| HolonError::FailedToBorrow("Transient service write".into()))?;
+            let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
+            service.create_empty(response_key)?
+        }; // <- write lock released here
 
-        let pname_status = ResponseStatusCode.as_property_name();
-        response_reference.with_property_value(
-            context,
-            pname_status.clone(),
-            BaseValue::StringValue(response_status_code),
-        )?;
-        log_read_back(context, &response_reference, "ResponseStatusCode", &pname_status);
-        response_reference.with_property_value(
-            context,
-            HolonsStaged.as_property_name(),
-            BaseValue::IntegerValue(MapInteger(holons_staged)),
-        )?;
-        response_reference.with_property_value(
-            context,
-            HolonsCommitted.as_property_name(),
-            BaseValue::IntegerValue(MapInteger(holons_committed)),
-        )?;
-        response_reference.with_property_value(
-            context,
-            LinksCreated.as_property_name(),
-            BaseValue::IntegerValue(MapInteger(links_created)),
-        )?;
-        response_reference.with_property_value(
-            context,
-            ErrorCount.as_property_name(),
-            BaseValue::IntegerValue(MapInteger(errors_encountered)),
-        )?;
-        response_reference.with_property_value(
-            context,
-            DanceSummary.as_property_name(),
-            BaseValue::StringValue(MapString(summary)),
-        )?;
+        // We'll mutate the holon via its reference
+        let mut response_reference = response_reference;
 
-        // debug probe
-        let probe_name = PropertyName(MapString("debug_probe".into()));
-        response_reference.with_property_value(
-            context,
-            probe_name.clone(),
-            BaseValue::StringValue(MapString("ok".into())),
-        )?;
-        log_read_back(context, &response_reference, "debug_probe", &probe_name);
-
-        // attach any error holons via HAS_LOAD_ERROR
-        if !transient_error_references.is_empty() {
-            let error_holon_references: Vec<HolonReference> =
-                transient_error_references.into_iter().map(HolonReference::Transient).collect();
-
-            response_reference.add_related_holons(
-                context,
-                HasLoadError.as_relationship_name().clone(),
-                error_holon_references,
-            )?;
-        }
-
-        // Helper to log a property read-back
+        // Temporary helper to log a property read-back (kept inside this function)
         fn log_read_back(
             ctx: &dyn HolonsContextBehavior,
             r: &TransientReference,
@@ -282,33 +236,81 @@ impl HolonLoaderController {
                 Err(e) => tracing::info!("READ-BACK {label} -> ERROR: {e:?}"),
             }
         }
-        // Diagnostic: confirm the response holon is fully populated before returning it.
+
+        // 2) Set properties
+        let pname_status = CorePropertyTypeName::ResponseStatusCode.as_property_name();
+        response_reference.with_property_value(
+            context,
+            pname_status.clone(),
+            BaseValue::StringValue(response_status_code),
+        )?;
+        log_read_back(context, &response_reference, "ResponseStatusCode", &pname_status);
+
+        response_reference.with_property_value(
+            context,
+            CorePropertyTypeName::HolonsStaged.as_property_name(),
+            BaseValue::IntegerValue(MapInteger(holons_staged)),
+        )?;
+        response_reference.with_property_value(
+            context,
+            CorePropertyTypeName::HolonsCommitted.as_property_name(),
+            BaseValue::IntegerValue(MapInteger(holons_committed)),
+        )?;
+        response_reference.with_property_value(
+            context,
+            CorePropertyTypeName::LinksCreated.as_property_name(),
+            BaseValue::IntegerValue(MapInteger(links_created)),
+        )?;
+        response_reference.with_property_value(
+            context,
+            CorePropertyTypeName::ErrorCount.as_property_name(),
+            BaseValue::IntegerValue(MapInteger(errors_encountered)),
+        )?;
+        response_reference.with_property_value(
+            context,
+            CorePropertyTypeName::DanceSummary.as_property_name(),
+            BaseValue::StringValue(MapString(summary)),
+        )?;
+
+        // 3) Attach any error holons
+        if !transient_error_references.is_empty() {
+            let error_refs: Vec<HolonReference> =
+                transient_error_references.into_iter().map(HolonReference::Transient).collect();
+
+            response_reference.add_related_holons(
+                context,
+                CoreRelationshipTypeName::HasLoadError.as_relationship_name().clone(),
+                error_refs,
+            )?;
+        }
+
+        // 4) Diagnostics
         let temp_id = response_reference.get_temporary_id();
         let props: Vec<String> = response_reference
             .get_raw_property_map(context)?
             .keys()
-            .map(|p| p.0 .0.clone()) // PropertyName(MapString(..)) -> String
+            .map(|p| p.0 .0.clone())
             .collect();
+
         let key_prop = CorePropertyTypeName::Key.as_property_name();
         let key_s = match response_reference.property_value(context, &key_prop)? {
             Some(PropertyValue::StringValue(MapString(s))) => s,
             other => format!("<missing-or-non-string: {:?}>", other),
         };
 
-        // Count HAS_LOAD_ERROR members (lock the RwLock, then call on the inner collection)
-        let err_rel = HasLoadError.as_relationship_name();
+        let err_rel = CoreRelationshipTypeName::HasLoadError.as_relationship_name();
         let err_members = {
-            let related_handle = response_reference.related_holons(context, &err_rel)?;
-            let related = related_handle.read().map_err(|_| {
+            let handle = response_reference.related_holons(context, &err_rel)?;
+            let guard = handle.read().map_err(|_| {
                 HolonError::FailedToBorrow("HolonCollection read lock poisoned".into())
             })?;
-            related.get_members().len()
+            guard.get_members().len()
         };
 
         info!(
-            "HolonLoadResponse built: temp_id={:?}, key={}, props={:?}, has_load_error_count={}, staged={}, committed={}, links_created={}, errors={}",
-            temp_id, key_s, props, err_members, holons_staged, holons_committed, links_created, errors_encountered
-        );
+        "HolonLoadResponse built: temp_id={:?}, key={}, props={:?}, has_load_error_count={}, staged={}, committed={}, links_created={}, errors={}",
+        temp_id, key_s, props, err_members, holons_staged, holons_committed, links_created, errors_encountered
+    );
 
         Ok(response_reference)
     }
