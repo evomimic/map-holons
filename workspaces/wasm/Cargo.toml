@@ -26,27 +26,6 @@ holons_guest_integrity = { path = "../../crates/holons_guest_integrity" }
 holons_prelude = { path = "../../crates/holons_prelude" }
 holons_trust_channel = { path = "../../crates/holons_trust_channel" }
 
-async-trait = "0.1.51"
-convert_case = "0.5"
-derive-new = "0.7"
-futures = { version = "0.3.1", default-features = false }
-hex = "0.4"
-hdi = "0.6"
-hdk = "0.5"
-holochain_integrity_types = "0.5"
-holochain_serialized_bytes = "*"          # May want to pin this if instability ever becomes an issue
-Inflector = "0.11"
-pretty_assertions = "1.4.0"
-quick_cache = { version = "0.6.14", default-features = false }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.109"
-sha2 = "0.10.8"
-strum = "0.27"
-strum_macros = "0.27"
-thiserror = "2"
-tracing = "0.1"
-uuid = { version = "1", features = ["serde"] }
-rstest = "0.25"
 
 [profile.dev]
 opt-level = "z"
