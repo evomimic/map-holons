@@ -32,6 +32,8 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::time::timeout;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
@@ -92,7 +94,7 @@ use shared_test::*;
 // #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 #[case::loader_minimal_test(loader_minimal_fixture())]
-//#[case::with_properties_test(with_properties_fixture())]
+//#[case::loader_complex_relationships_test(load_holons_declared_links_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
     #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,

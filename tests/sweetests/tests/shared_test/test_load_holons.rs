@@ -51,17 +51,9 @@ pub async fn execute_load_holons(
     let context = state.context();
 
     // Always exercise the dancer path (façade present). Panic on failure like other executors.
-    let response_reference =
-        holon_operations_api::load_holons(context, bundle, Some(state.dance()))
-            .unwrap_or_else(|e| panic!("load_holons() failed: {e:?}"));
+    let response_reference = load_holons(context, bundle, Some(state.dance()))
+        .unwrap_or_else(|e| panic!("load_holons() failed: {e:?}"));
 
-    // Read response properties from the returned HolonLoadResponse holon.
-    // let actual_status = read_string_property(
-    //     context,
-    //     &response_reference,
-    //     CorePropertyTypeName::ResponseStatusCode,
-    // )
-    // .unwrap_or_else(|e| panic!("read ResponseStatusCode failed: {e:?}"));
     let actual_status = match read_string_property(
         context,
         &response_reference,
