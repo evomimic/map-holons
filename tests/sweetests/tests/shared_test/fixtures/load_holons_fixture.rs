@@ -45,11 +45,6 @@ fn build_nodes_only_bundle(
     for key in node_keys {
         let loader_node =
             transient_service.create_empty(MapString(format!("LoaderHolon.{key}")))?;
-        // loader_node.with_property_value(
-        //     context,
-        //     CorePropertyTypeName::Key.as_property_name(),
-        //     BaseValue::StringValue(MapString((*key).into())),
-        // )?;
         members.push(HolonReference::Transient(loader_node));
     }
     drop(transient_service); // release lock before adding relationships
@@ -111,7 +106,7 @@ pub fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0),        // ErrorCount
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n as i64))?;
-    test_case.add_database_print_step()?;
+    // test_case.add_database_print_step()?; // problem with client fetch_holon_internal()
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(&*fixture_context);

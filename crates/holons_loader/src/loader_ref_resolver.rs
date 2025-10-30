@@ -288,7 +288,7 @@ impl LoaderRefResolver {
 
         info!("Pass 2B: Processing INVERSE_OF relationships");
         for relationship_reference in
-            queue.iter().filter(|r| Self::is_inverse_of_declared(context, r))
+            queue.iter().filter(|reference| Self::is_inverse_of_declared(context, reference))
         {
             match Self::resolve_endpoints(context, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
@@ -331,7 +331,7 @@ impl LoaderRefResolver {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Pass-2c: Remaining relationships (fixed-point)
+    // Pass-2c: Process remaining relationship references
     // ─────────────────────────────────────────────────────────────────────
 
     /// After 2a/2b, process all remaining references together.

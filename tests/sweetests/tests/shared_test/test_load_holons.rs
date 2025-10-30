@@ -4,6 +4,7 @@ use holons_core::reference_layer::{
     holon_operations_api, HolonsContextBehavior, ReadableHolon, TransientReference,
 };
 use holons_prelude::prelude::*;
+use tracing::info;
 
 /// Read a string property from a transient response holon.
 fn read_string_property(
@@ -46,6 +47,7 @@ pub async fn execute_load_holons(
     expect_links_created: MapInteger,
     expect_errors: MapInteger,
 ) {
+    info!("--- TEST STEP: Load Holons ---");
     let context = state.context();
 
     // Always exercise the dancer path (façade present). Panic on failure like other executors.
