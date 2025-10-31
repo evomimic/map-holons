@@ -22,7 +22,6 @@ use crate::persistence_layer::{create_holon_node, delete_holon_node, get_origina
 use crate::{create_local_path, get_holon_by_path, try_from_record};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
-use holons_core::dances::DanceCallServiceApi; // temporary
 use holons_core::{
     core_shared_objects::{
         nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonCollection,
@@ -332,7 +331,6 @@ impl HolonServiceApi for GuestHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
         bundle: TransientReference,
-        _dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
         // Construct controller and delegate to load_bundle()
         let mut controller = HolonLoaderController::new();
@@ -344,7 +342,6 @@ impl HolonServiceApi for GuestHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
         key: Option<MapString>,
-        _dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
     ) -> Result<TransientReference, HolonError> {
         // Obtain the transient holon service handle from the Space Manager.
         let transient_service_handle = context.get_space_manager().get_transient_behavior_service();

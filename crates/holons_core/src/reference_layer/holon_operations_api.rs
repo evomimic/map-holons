@@ -22,7 +22,6 @@
 //! and improving usability.
 
 use crate::core_shared_objects::{CommitResponse, Holon, ReadableHolonState};
-use crate::dances::DanceCallServiceApi;
 use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
@@ -103,10 +102,9 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, Hol
 pub fn new_holon(
     context: &dyn HolonsContextBehavior,
     key: Option<MapString>,
-    dance: Option<&dyn DanceCallServiceApi>, //
 ) -> Result<TransientReference, HolonError> {
     let service = context.get_space_manager().get_holon_service();
-    service.new_holon_internal(context, key, dance)
+    service.new_holon_internal(context, key)
 }
 
 /// Deletes a holon identified by its ID.
@@ -367,8 +365,7 @@ pub fn transient_count(context: &dyn HolonsContextBehavior) -> Result<i64, Holon
 pub fn load_holons(
     context: &dyn HolonsContextBehavior,
     bundle: TransientReference,
-    dance: Option<&dyn DanceCallServiceApi>, // temporary parameter
 ) -> Result<TransientReference, core_types::HolonError> {
     let service = context.get_space_manager().get_holon_service();
-    service.load_holons_internal(context, bundle, dance)
+    service.load_holons_internal(context, bundle)
 }

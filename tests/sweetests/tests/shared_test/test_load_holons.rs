@@ -36,10 +36,10 @@ fn read_integer_property(
     }
 }
 
-/// Execute the `LoadHolons` step by calling the client operation that delegates to the dancer,
-/// which calls the guest-side loader controller. Then assert each response property.
+/// Execute the `LoadHolons` step by initiating the LoadHolons dance (test → guest via TrustChannel),
+/// then assert each response property on the returned response holon.
 pub async fn execute_load_holons(
-    state: &mut DanceTestExecutionState,
+    test_state: &mut DanceTestExecutionState,
     bundle: TransientReference,
     expect_status: ResponseStatusCode,
     expect_staged: MapInteger,
@@ -48,12 +48,27 @@ pub async fn execute_load_holons(
     expect_errors: MapInteger,
 ) {
     info!("--- TEST STEP: Load Holons ---");
-    let context = state.context();
+    let context = test_state.context();
 
-    // Always exercise the dancer path (façade present). Panic on failure like other executors.
-    let response_reference = load_holons(context, bundle, Some(state.dance()))
-        .unwrap_or_else(|e| panic!("load_holons() failed: {e:?}"));
+    // Build the DanceRequest
+    let request = build_load_holons_dance_request(bundle)
+        .unwrap_or_else(|e| panic!("build_load_holons_dance_request() failed: {e:?}"));
 
+    // Initiate the dance using the test harness (TrustChannel-backed initiator).
+    let dance_response = test_state.invoke_dance(request).await;
+
+    // Convert the DanceResponse into a TransientReference for property assertions.
+    let response_reference: TransientReference = match dance_response.body {
+        ResponseBody::HolonReference(HolonReference::Transient(t)) => t,
+        ResponseBody::HolonReference(other_ref) => {
+            other_ref.clone_holon(context).unwrap_or_else(|e| {
+                panic!("LoadHolons returned non-transient reference and clone_holon failed: {e:?}")
+            })
+        }
+        other => panic!("LoadHolons: expected ResponseBody::HolonReference, got {:?}", other),
+    };
+
+    // Read response properties from the returned HolonLoadResponse holon.
     let actual_status = match read_string_property(
         context,
         &response_reference,

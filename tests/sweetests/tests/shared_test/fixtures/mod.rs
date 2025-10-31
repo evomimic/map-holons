@@ -8,7 +8,6 @@ pub mod simple_add_remove_related_fixture;
 pub mod simple_create_holon_fixture;
 pub mod stage_new_from_clone_fixture;
 pub mod stage_new_version_fixture;
-pub mod with_properties_fixture;
 
 pub use abandon_staged_changes_fixture::*;
 pub use book_authors_setup_fixture_with_context::*;
@@ -20,4 +19,3 @@ pub use simple_add_remove_related_fixture::*;
 pub use simple_create_holon_fixture::*;
 pub use stage_new_from_clone_fixture::*;
 pub use stage_new_version_fixture::*;
-pub use with_properties_fixture::*;

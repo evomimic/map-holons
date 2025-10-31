@@ -37,7 +37,7 @@ pub async fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonE
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     let _relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, None)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
     expected_count += staged_count(&*fixture_context).unwrap();
 

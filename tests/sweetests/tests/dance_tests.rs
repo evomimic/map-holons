@@ -59,7 +59,6 @@ use crate::shared_test::{
 use crate::stage_new_from_clone_fixture::*;
 use crate::stage_new_version_fixture::*;
 use holons_client::init_client_context;
-use holons_core::dances::DanceCallServiceApi; // temporary import for dance calls
 use holons_prelude::prelude::*;
 use shared_test::*;
 
@@ -94,7 +93,7 @@ use shared_test::*;
 // #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 #[case::loader_minimal_test(loader_minimal_fixture())]
-//#[case::loader_complex_relationships_test(load_holons_declared_links_fixture())]
+// #[case::loader_complex_relationships_test(load_holons_declared_links_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
     #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,

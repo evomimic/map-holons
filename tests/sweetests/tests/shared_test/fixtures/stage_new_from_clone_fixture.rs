@@ -36,7 +36,7 @@ pub async fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, Hol
     // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
 
     let _author_relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, None)?;
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
 
     // The following assumes the fixture's nursery contains the same number of holons as
     // test executor's nursery will have staged immediately prior to commit.

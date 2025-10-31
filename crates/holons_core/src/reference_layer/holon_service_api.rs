@@ -3,7 +3,6 @@ use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference, TransientReference};
 use crate::core_shared_objects::{CommitResponse, Holon, HolonCollection};
-use crate::dances::DanceCallServiceApi; // temporary
 use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
 use base_types::MapString;
@@ -64,7 +63,6 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         &self,
         ctx: &dyn HolonsContextBehavior,
         bundle: TransientReference,
-        dance: Option<&dyn DanceCallServiceApi>, // temp param, Option for guest side
     ) -> Result<TransientReference, HolonError>;
 
     /// Creates a new Holon in transient state, without any lineage to prior Holons.
@@ -72,7 +70,6 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         &self,
         ctx: &dyn HolonsContextBehavior,
         key: Option<MapString>,
-        dance: Option<&dyn DanceCallServiceApi>, // temp param, Option for guest side
     ) -> Result<TransientReference, HolonError>;
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining

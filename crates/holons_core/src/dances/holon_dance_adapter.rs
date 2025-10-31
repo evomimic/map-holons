@@ -75,7 +75,7 @@ pub fn abandon_staged_changes_dance(
     }
 }
 /// Add related Holons
-/// 
+///
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
 /// - dance_type: CommandMethod(HolonReference) -- references the Holon that is the `source` of the relationship being extended
@@ -93,25 +93,18 @@ pub fn add_related_holons_dance(
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::CommandMethod(mut holon_reference) => {
-            match request.body {
-                RequestBody::TargetHolons(relationship_name, holons_to_add) => {
-                    holon_reference.add_related_holons(
-                                context,
-                                relationship_name,
-                                holons_to_add,
-                            )?;
-            
-                    Ok(ResponseBody::HolonReference(holon_reference))
-                }
-                _ => Err(HolonError::InvalidParameter(
-                    "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
-                )),
+        DanceType::CommandMethod(mut holon_reference) => match request.body {
+            RequestBody::TargetHolons(relationship_name, holons_to_add) => {
+                holon_reference.add_related_holons(context, relationship_name, holons_to_add)?;
+
+                Ok(ResponseBody::HolonReference(holon_reference))
             }
-        }
+            _ => Err(HolonError::InvalidParameter(
+                "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
+            )),
+        },
         _ => Err(HolonError::InvalidParameter(
-            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one"
-                .to_string(),
+            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one".to_string(),
         )),
     }
 }
@@ -278,7 +271,7 @@ pub fn load_holons_dance(
     };
 
     // Delegate to the public ops API (which calls the *_internal service impl)
-    let response_reference = load_holons(context, bundle_reference, None)?;
+    let response_reference = load_holons(context, bundle_reference)?;
 
     // Wrap transient response holon
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
@@ -312,7 +305,7 @@ pub fn new_holon_dance(
     };
 
     // Delegate to the public API; it will route to the *_internal impl for this env.
-    let response_reference = new_holon(context, key_option, None)?;
+    let response_reference = new_holon(context, key_option)?;
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
 }
 
@@ -376,10 +369,7 @@ pub fn remove_properties_dance(
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
                     for property_name in parameters.keys() {
-                        holon_reference.remove_property_value(
-                            context,
-                            property_name,
-                        )?;
+                        holon_reference.remove_property_value(context, property_name)?;
                     }
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
@@ -415,7 +405,11 @@ pub fn remove_related_holons_dance(
         DanceType::CommandMethod(mut holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
-                    holon_reference.remove_related_holons(context, relationship_name, holons_to_remove)?;
+                    holon_reference.remove_related_holons(
+                        context,
+                        relationship_name,
+                        holons_to_remove,
+                    )?;
 
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
@@ -428,8 +422,7 @@ pub fn remove_related_holons_dance(
             // }
         }
         _ => Err(HolonError::InvalidParameter(
-            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one"
-                .to_string(),
+            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one".to_string(),
         )),
     }
 }

@@ -26,3 +26,6 @@ path = "../type_system/base_types"
 
 [dependencies.integrity_core_types]
 path = "../type_system/integrity_core_types"
+
+[dependencies.holon_dance_builders]
+path = "../holon_dance_builders"

@@ -140,20 +140,21 @@ fn build_declared_links_bundle(
 ///  1) Empty bundle → UnprocessableEntity; DB remains 1 (space holon)
 ///  2) Nodes-only bundle (3 nodes) → OK; LinksCreated=0; DB becomes 1 + 3
 #[fixture]
-pub fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Loader Minimal Fixture".to_string(),
         "Empty bundle (422) then nodes-only (OK)".to_string(),
     );
 
     // Create a private fixture context with its own TransientHolonManager.
-    let fixture_context = init_fixture_context();
+    let fixture_context_arc = init_fixture_context().await;
+    let fixture_context_ref: &dyn HolonsContextBehavior = &*fixture_context_arc;
 
     // A) Ensure DB starts with only the Space holon.
     test_case.add_ensure_database_count_step(MapInteger(1))?;
 
     // B) Empty bundle → expect UnprocessableEntity and no DB change.
-    let empty_bundle = build_empty_bundle(&*fixture_context, "Bundle.Empty.1")?;
+    let empty_bundle = build_empty_bundle(fixture_context_ref, "Bundle.Empty.1")?;
     test_case.add_load_holons_step(
         empty_bundle,
         ResponseStatusCode::UnprocessableEntity,
@@ -166,7 +167,7 @@ pub fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
 
     // C) Nodes-only bundle → expect OK, N committed, 0 links created.
     let (nodes_bundle, n) = build_nodes_only_bundle(
-        &*fixture_context,
+        fixture_context_ref,
         "Bundle.NodesOnly.1",
         &["Book.TheHollowTree", "Person.AMonk", "Publisher.GreenLeaf"],
     )?;
@@ -179,10 +180,10 @@ pub fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0),        // ErrorCount
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n as i64))?;
-    // test_case.add_database_print_step()?; // problem with client fetch_holon_internal()
+    // test_case.add_database_print_step()?; // keep disabled for now
 
     // Export the fixture’s transient pool into the test case’s session state.
-    test_case.load_test_session_state(&*fixture_context);
+    test_case.load_test_session_state(fixture_context_ref);
 
     Ok(test_case)
 }

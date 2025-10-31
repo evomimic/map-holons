@@ -3,7 +3,7 @@ use crate::test_data_types::DancesTestCase;
 
 use holochain::prelude::DbKind::Test;
 use holons_client::client_context::ClientHolonsContext;
-use holons_client::{ClientHolonService, ConductorDanceCaller, DanceCallService};
+use holons_client::ClientHolonService;
 
 use holons_prelude::prelude::*;
 
