@@ -53,7 +53,7 @@ impl HolonLoaderController {
     ) -> Result<TransientReference, HolonError> {
         // let run_id = Uuid::new_v4();
         // info!("HolonLoaderController::load_bundle - start run_id={run_id}");
-        info!("HolonLoaderController::load_bundle - start");
+        info!("HolonLoaderController::load_bundle - starting");
         let run_id = 1; // Temporary fixed run_id until we wire in Uuid
 
         // ─────────────────────────────────────────────────────────────────────

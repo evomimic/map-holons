@@ -10,14 +10,18 @@
 //!
 //! ## Key Implementation Notes
 //!
-//! - `create_empty(key)` sets the holon's internal identifier, but LoaderHolons must
-//!   **explicitly set their `Key` property** for Pass-1 resolution
-//! - Type descriptors are not required for basic declared relationship testing
-//! - Endpoints are resolved by key during Pass-2 via Nursery lookup
+//! - `create_empty(key: String | MapString)` **sets the holon `Key` property automatically**,
+//!   so we simply pass the *intended instance key string* when creating LoaderHolons.
+//! - Type descriptors are **not** required for these fixtures.
+//! - Pass-2 resolves LoaderRelationshipReference endpoints by `LoaderHolonReference.holon_key`,
+//!   which must match the LoaderHolon keys we pass to `create_empty()`.
+//!
+//! Result: endpoint resolution uses consistent strings everywhere.
 
 use holons_prelude::prelude::*;
 use rstest::*;
 
+use crate::shared_test::test_data_types::{BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY};
 use crate::shared_test::{test_context::init_fixture_context, test_data_types::DancesTestCase};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,40 +35,39 @@ fn build_empty_bundle(
     bundle_key: &str,
 ) -> Result<TransientReference, HolonError> {
     let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-
     let transient_service = transient_service_handle
         .write()
         .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
 
-    let bundle = transient_service.create_empty(MapString(bundle_key.into()))?;
+    // `create_empty()` sets the bundle's `Key` to the provided string.
+    let bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
     Ok(bundle)
 }
 
 /// Build a HolonLoaderBundle with **N minimal LoaderHolons (nodes only)**.
-/// Each member has a Key property and **no** relationship references.
-/// This exercises Pass-1 staging + commit, with LinksCreated = 0.
+/// Each member is created with its **instance key string**; no relationship references.
+/// This exercises Pass-1 staging + commit with LinksCreated = 0.
 fn build_nodes_only_bundle(
     context: &dyn HolonsContextBehavior,
     bundle_key: &str,
-    node_keys: &[&str],
+    instance_keys: &[&str],
 ) -> Result<(TransientReference, usize), HolonError> {
     let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-
     let transient_service = transient_service_handle
         .write()
         .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
 
-    // 1) Create the bundle container.
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.into()))?;
+    // 1) Create the bundle container (Key = bundle_key).
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
 
-    // 2) Create LoaderHolon containers (minimal: just a Key property).
-    let mut members: Vec<HolonReference> = Vec::with_capacity(node_keys.len());
-    for key in node_keys {
-        let loader_node =
-            transient_service.create_empty(MapString(format!("LoaderHolon.{key}")))?;
-        members.push(HolonReference::Transient(loader_node));
+    // 2) Create LoaderHolon containers with **consistent instance keys**.
+    //    `create_empty()` sets the Key property; no manual Key setting required.
+    let mut members: Vec<HolonReference> = Vec::with_capacity(instance_keys.len());
+    for key in instance_keys {
+        let loader_holon = transient_service.create_empty(MapString((*key).to_string()))?;
+        members.push(HolonReference::Transient(loader_holon));
     }
-    drop(transient_service); // release lock before adding relationships
+    drop(transient_service); // release lock before mutating relationships
 
     // 3) Attach members via BUNDLE_MEMBERS.
     bundle.add_related_holons(
@@ -73,16 +76,17 @@ fn build_nodes_only_bundle(
         members,
     )?;
 
-    Ok((bundle, node_keys.len()))
+    Ok((bundle, instance_keys.len()))
 }
 
 /// Build a HolonLoaderBundle with:
-///   - Two LoaderHolons representing instance nodes (source, target)
+///   - Two LoaderHolons representing instances (source, target)
 ///   - One declared LoaderRelationshipReference from source → target
 ///
-/// This exercises:
-///   - Pass-1: stage two instance holons (properties-only)
-///   - Pass-2: create **one** declared link (LinksCreated = 1)
+/// All keys are **consistent**:
+///   - Source LoaderHolon: `create_empty(source_instance_key)`
+///   - Target LoaderHolon: `create_empty(target_instance_key)`
+///   - LoaderHolonReference.holon_key values use the **same strings**
 ///
 /// RETURNS: (bundle, expected_node_count, expected_links_created)
 fn build_declared_links_bundle(
@@ -92,25 +96,21 @@ fn build_declared_links_bundle(
     target_instance_key: &str,
     declared_relationship_name: &str,
 ) -> Result<(TransientReference, usize, usize), HolonError> {
-    use holons_prelude::prelude::*;
-
-    // 1) Create the bundle container.
+    // 1) Create the bundle container (Key = bundle_key).
     let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
     let mut transient_service = transient_service_handle
         .write()
         .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.into()))?;
 
-    // 2) Create minimal LoaderHolons for the source and target instances.
-    //    (You can add properties here if you want to assert propagation later.)
-    let mut source_loader = transient_service
-        .create_empty(MapString(format!("LoaderHolon.{source}", source = source_instance_key)))?;
-    let target_loader = transient_service
-        .create_empty(MapString(format!("LoaderHolon.{target}", target = target_instance_key)))?;
-    // Done with transient service for now.
-    drop(transient_service);
+    // LoaderHolons created with **instance key strings** (Key set automatically).
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    let mut source_loader =
+        transient_service.create_empty(MapString(source_instance_key.to_string()))?;
+    let target_loader =
+        transient_service.create_empty(MapString(target_instance_key.to_string()))?;
+    drop(transient_service); // release lock before wiring relationships
 
-    // 3) Attach both as BundleMembers.
+    // 2) Attach both as BundleMembers.
     bundle.add_related_holons(
         context,
         CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
@@ -120,7 +120,7 @@ fn build_declared_links_bundle(
         ],
     )?;
 
-    // 4) Add a **declared** LoaderRelationshipReference on the source pointing to the target.
+    // 3) Add a **declared** LRR on the source pointing to the target (by matching holon_key).
     add_declared_relationship_reference(
         context,
         &mut source_loader,
@@ -180,11 +180,49 @@ pub async fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0),        // ErrorCount
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n as i64))?;
-    // test_case.add_database_print_step()?; // keep disabled for now
+    // test_case.add_database_print_step()?; // disabled due to client-side fetch issue
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(fixture_context_ref);
 
+    Ok(test_case)
+}
+
+/// Declared relationship happy path (no type graph).
+#[fixture]
+pub async fn load_holons_declared_links_fixture() -> Result<DancesTestCase, HolonError> {
+    let title = "Loader Declared Relationship Fixture".to_string();
+    let desc = format!(
+        "Declared relationship: ({})-[{}]->({})",
+        BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY
+    );
+    let mut test_case = DancesTestCase::new(title, desc);
+
+    let fixture_context_arc = init_fixture_context().await;
+    let ctx: &dyn HolonsContextBehavior = &*fixture_context_arc;
+
+    test_case.add_ensure_database_count_step(MapInteger(1))?;
+
+    let (bundle, node_count, links_created) = build_declared_links_bundle(
+        ctx,
+        "Bundle.DeclaredLink.1",
+        BOOK_KEY,                    // LoaderHolon Key = "Book.TheHollowTree"
+        PERSON_1_KEY,                // LoaderHolon Key = "Person.AMonk"
+        BOOK_TO_PERSON_RELATIONSHIP, // relationship_name on LRR
+    )?;
+
+    test_case.add_load_holons_step(
+        bundle,
+        ResponseStatusCode::OK,
+        MapInteger(node_count as i64),
+        MapInteger(node_count as i64),
+        MapInteger(links_created as i64), // expect 1
+        MapInteger(0),
+    )?;
+
+    test_case.add_ensure_database_count_step(MapInteger(1 + node_count as i64));
+
+    test_case.load_test_session_state(ctx);
     Ok(test_case)
 }
 
@@ -208,12 +246,12 @@ pub async fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
 /// Build and attach a **declared** LoaderRelationshipReference (LRR) to a given LoaderHolon,
 /// wiring up its ReferenceSource and ordered ReferenceTarget(s).
 ///
-/// This function **only** constructs the *loader-side* graph:
+/// This function constructs the *loader-side* graph:
 /// - `HasRelationshipReference`: LoaderHolon → LoaderRelationshipReference
-/// - `ReferenceSource`: LRR → LoaderHolonReference (source)
-/// - `ReferenceTarget`: LRR → LoaderHolonReference(s) (targets, kept in order)
+/// - `ReferenceSource`: LRR → LoaderHolonReference (source, `holon_key = source_instance_key`)
+/// - `ReferenceTarget`: LRR → LoaderHolonReference(s) (targets, ordered; `holon_key = target_instance_key`)
 ///
-/// At load time, the resolver uses:
+/// The resolver uses:
 ///   - `relationship_name` (declared side),
 ///   - endpoint keys (via LoaderHolonReference.holon_key),
 /// to write the real links on the staged instance holons.
@@ -226,24 +264,44 @@ fn add_declared_relationship_reference(
     source_instance_key: &str,
     target_instance_keys: &[&str],
 ) -> Result<TransientReference, HolonError> {
-    use holons_prelude::prelude::*;
+    // ── 1) Create LRR + endpoint containers under a short-lived write lock ──
+    let (
+        mut relationship_reference,
+        mut source_ref,
+        mut target_refs_uninitialized, // Vec<TransientReference>
+    ) = {
+        let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+        let mut transient_service = transient_service_handle.write().map_err(|_| {
+            HolonError::FailedToBorrow("Transient service lock was poisoned".into())
+        })?;
 
-    // Acquire the transient service so we can create the LRR + endpoint references.
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let mut transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+        // 1a) LRR container (Key is descriptive; not used for endpoint resolution)
+        let relationship_reference_key = format!(
+            "LoaderRelationshipReference.{}.{}",
+            source_instance_key, relationship_name_str
+        );
+        let relationship_reference =
+            transient_service.create_empty(MapString(relationship_reference_key))?;
 
-    // 1) Create the LoaderRelationshipReference container.
-    let relationship_reference_key = format!(
-        "LoaderRelationshipReference.{}.{relationship_name}",
-        source_instance_key,
-        relationship_name = relationship_name_str
-    );
-    let mut relationship_reference =
-        transient_service.create_empty(MapString(relationship_reference_key))?;
+        // 1b) Source LoaderHolonReference container
+        let source_ref_key = format!("LoaderHolonReference.Source.{}", source_instance_key);
+        let source_ref = transient_service.create_empty(MapString(source_ref_key))?;
 
-    // 2) Set required properties on the LRR.
+        // 1c) Target LoaderHolonReference containers
+        let mut target_refs: Vec<TransientReference> =
+            Vec::with_capacity(target_instance_keys.len());
+        for (index, target_key) in target_instance_keys.iter().enumerate() {
+            let target_ref_key = format!("LoaderHolonReference.Target{}.{}", index + 1, target_key);
+            let target_ref = transient_service.create_empty(MapString(target_ref_key))?;
+            target_refs.push(target_ref);
+        }
+
+        (relationship_reference, source_ref, target_refs)
+    }; // 🔑 write lock released here
+
+    // ── 2) Set properties on created transients ───────────────────────────────
+
+    // 2a) LRR required properties
     relationship_reference.with_property_value(
         context,
         CorePropertyTypeName::RelationshipName.as_property_name(),
@@ -255,48 +313,48 @@ fn add_declared_relationship_reference(
         BaseValue::BooleanValue(MapBoolean(true)),
     )?;
 
-    // 3) Create the LoaderHolonReference for the source endpoint (by local key).
-    let source_ref_key = format!("LoaderHolonReference.Source.{}", source_instance_key);
-    let mut source_ref = transient_service.create_empty(MapString(source_ref_key))?;
+    // 2b) Source ref: holon_key = source instance key
     source_ref.with_property_value(
         context,
         CorePropertyTypeName::HolonKey.as_property_name(),
         BaseValue::StringValue(MapString(source_instance_key.to_string())),
     )?;
 
-    // 4) Create ordered LoaderHolonReference(s) for each target endpoint (by local key).
-    let mut target_refs: Vec<HolonReference> = Vec::with_capacity(target_instance_keys.len());
-    for (index, target_key) in target_instance_keys.iter().enumerate() {
-        let target_ref_key = format!("LoaderHolonReference.Target{}.{}", index + 1, target_key);
-        let mut target_ref = transient_service.create_empty(MapString(target_ref_key))?;
+    // 2c) Target refs: holon_key = matching target instance keys (ordered)
+    let mut target_ref_hrefs: Vec<HolonReference> =
+        Vec::with_capacity(target_refs_uninitialized.len());
+    for (mut target_ref, target_key) in
+        target_refs_uninitialized.into_iter().zip(target_instance_keys.iter())
+    {
         target_ref.with_property_value(
             context,
             CorePropertyTypeName::HolonKey.as_property_name(),
             BaseValue::StringValue(MapString((*target_key).to_string())),
         )?;
-        target_refs.push(HolonReference::Transient(target_ref));
+        target_ref_hrefs.push(HolonReference::Transient(target_ref));
     }
 
-    // Release the lock before we start adding relationships.
-    drop(transient_service);
+    // ── 3) Wire relationships on the loader graph ─────────────────────────────
 
-    // 5) Attach the LRR to the LoaderHolon (HasRelationshipReference).
+    // 3a) LoaderHolon → HasRelationshipReference → LRR
     source_loader_holon.add_related_holons(
         context,
         CoreRelationshipTypeName::HasRelationshipReference.as_relationship_name().clone(),
         vec![HolonReference::Transient(relationship_reference.clone())],
     )?;
 
-    // 6) Wire ReferenceSource (exactly one) and ordered ReferenceTarget(s).
+    // 3b) LRR → ReferenceSource → source_ref
     relationship_reference.add_related_holons(
         context,
         CoreRelationshipTypeName::ReferenceSource.as_relationship_name().clone(),
         vec![HolonReference::Transient(source_ref)],
     )?;
+
+    // 3c) LRR → ReferenceTarget → target_refs (ordered)
     relationship_reference.add_related_holons(
         context,
         CoreRelationshipTypeName::ReferenceTarget.as_relationship_name().clone(),
-        target_refs,
+        target_ref_hrefs,
     )?;
 
     Ok(relationship_reference)

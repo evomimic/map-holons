@@ -16,3 +16,4 @@ shared_validation = { path = "../../crates/shared_validation" }
 core_types = { path = "../../crates/type_system/core_types" }
 base_types = { path = "../../crates/type_system/base_types" }
 type_names = { path = "../../crates/type_system/type_names" }
+holons_loader = { path = "../../crates/holons_loader" }

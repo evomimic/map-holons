@@ -127,6 +127,12 @@ impl LoaderHolonMapper {
             let transient_service = transient_service_handle.write().map_err(|_| {
                 HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
             })?;
+            info!(
+                "Pass-1: staging instance from LoaderHolon temp_id={:?}, key_prop_raw={:?}, create_empty_key=\"{}\"",
+                loader_id,
+                key_value,
+                key.0,
+            );
             transient_service.create_empty(key.clone())?
             // `transient_service` guard drops here — lock released before property writes.
         };
