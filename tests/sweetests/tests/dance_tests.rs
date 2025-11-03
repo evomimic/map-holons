@@ -93,7 +93,7 @@ use shared_test::*;
 // #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::loader_minimal_test(loader_minimal_fixture())]
-#[case::loader_declared_links_test(load_holons_declared_links_fixture())]
+#[case::load_holons_test(loader_incremental_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
     #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,

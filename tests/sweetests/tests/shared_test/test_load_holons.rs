@@ -150,7 +150,7 @@ fn dump_error_holons_from_response(
             }
         };
 
-        out.push_str(&format!("  --- error holon #{} ---\n", idx));
+        out.push_str(&format!("  --- error holon #{} ---\n", idx + 1));
 
         match error_transient.get_raw_property_map(context) {
             Ok(map) => {

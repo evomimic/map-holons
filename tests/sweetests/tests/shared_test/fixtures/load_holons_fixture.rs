@@ -1,28 +1,62 @@
-//! # Holon Loader Test Fixtures
+//! # Holon Loader Test Fixtures (Incremental)
 //!
-//! This module provides rstest fixtures for testing the holon loader's two-pass workflow.
+//! This module provides an **incremental** rstest fixture that exercises the holon
+//! loader’s two-pass workflow in a single test case by appending multiple bundles
+//! and assertions as steps. This keeps setup lean and mirrors real usage.
 //!
-//! ## Fixture Progression
+//! ## Fixture Progression (combined)
 //!
-//! 1. **`loader_minimal_fixture`**: Empty bundle + nodes-only (no relationships)
-//! 2. **`load_holons_declared_links_fixture`**: Declared relationship (forward direction)
-//! 3. *[Future]* Inverse, error handling, deduplication, and large-scale fixtures
+//! 1. **Empty bundle** → `UnprocessableEntity`; database remains baseline (only Space holon)
+//! 2. **Nodes-only bundle** (no relationships) → `OK`; LinksCreated = 0
+//! 3. **Declared relationship bundle** (forward direction) → `OK`; LinksCreated = 1
+//! 4. **Minimal micro-schema** (Book/Person + AUTHORED_BY + AUTHORS via InverseOf) → `OK`
+//! 5. **Inverse LRR bundle** (Person AUTHORS Book) → `OK`; resolves to declared edge
+//!
+//! ### Why a single fixture?
+//! - Enables incremental coverage growth by appending new steps (`add_load_holons_step()`).
+//! - Avoids repeated context setup; we export the same transient pool at the end.
+//! - Keeps each step’s expectations explicit (status, staged/committed counts, links, errors).
 //!
 //! ## Key Implementation Notes
 //!
 //! - `create_empty(key: String | MapString)` **sets the holon `Key` property automatically**,
 //!   so we simply pass the *intended instance key string* when creating LoaderHolons.
-//! - Type descriptors are **not** required for these fixtures.
-//! - Pass-2 resolves LoaderRelationshipReference endpoints by `LoaderHolonReference.holon_key`,
-//!   which must match the LoaderHolon keys we pass to `create_empty()`.
+//! - Tier-0 (declared-only) needs **no** type descriptors.
+//! - For inverse mapping, we load a **tiny micro-schema** first (two HolonTypes + DeclaredRelationshipType + InverseRelationshipType).
+//! - Pass-2 resolves `LoaderRelationshipReference` endpoints by `LoaderHolonReference.holon_key`
+//!   (in-bundle first, then previously committed as your resolver specifies).
 //!
 //! Result: endpoint resolution uses consistent strings everywhere.
 
 use holons_prelude::prelude::*;
 use rstest::*;
 
-use crate::shared_test::test_data_types::{BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY};
+use crate::shared_test::test_data_types::{
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_TO_BOOK_REL_INVERSE,
+};
 use crate::shared_test::{test_context::init_fixture_context, test_data_types::DancesTestCase};
+
+/// Declaredness of a `LoaderRelationshipReference` as represented by the
+/// loader’s `IsDeclared` boolean property.
+#[derive(Copy, Clone, Debug)]
+pub enum LoaderRelationshipDeclaredness {
+    /// Relationship is declared on the forward (canonical) side.
+    Declared,
+    /// Relationship is declared on the inverse side (resolver must map it).
+    Inverse,
+}
+
+impl LoaderRelationshipDeclaredness {
+    #[inline]
+    fn as_map_boolean(self) -> MapBoolean {
+        match self {
+            LoaderRelationshipDeclaredness::Declared => MapBoolean(true),
+            LoaderRelationshipDeclaredness::Inverse => MapBoolean(false),
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal bundle builders (kept private to this file)
@@ -121,10 +155,11 @@ fn build_declared_links_bundle(
     )?;
 
     // 3) Add a **declared** LRR on the source pointing to the target (by matching holon_key).
-    add_declared_relationship_reference(
+    add_loader_relationship_reference(
         context,
         &mut source_loader,
         declared_relationship_name,
+        LoaderRelationshipDeclaredness::Declared,
         source_instance_key,
         &[target_instance_key],
     )?;
@@ -132,18 +167,168 @@ fn build_declared_links_bundle(
     Ok((bundle, 2, 1))
 }
 
+/// Build a **minimal micro-schema** using LoaderHolons + declared LRRs:
+///   HolonTypes: Book, Person
+///   DeclaredRelationshipType: AUTHORED_BY  (SourceType=Book, TargetType=Person)
+///   InverseRelationshipType:  AUTHORS      (InverseOf=AUTHORED_BY)
+///
+/// RETURNS: (bundle, node_count=4, links_created=3)
+fn build_schema_bundle(
+    context: &dyn HolonsContextBehavior,
+) -> Result<(TransientReference, usize, usize), HolonError> {
+    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+    let mut transient_service = transient_service_handle
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+
+    // Keys for the four descriptors (keys double as instance identifiers in-bundle)
+    let book_type_key = BOOK_DESCRIPTOR_KEY;
+    let person_type_key = PERSON_DESCRIPTOR_KEY;
+    let declared_rel_key = BOOK_TO_PERSON_RELATIONSHIP_KEY;
+    let inverse_rel_key = PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY;
+
+    // 1) Create bundle
+    let mut bundle =
+        transient_service.create_empty(MapString("Bundle.MicroSchema.1".to_string()))?;
+
+    // 2) Create Type/Relationship descriptor LoaderHolons
+    let mut book_type_descriptor =
+        transient_service.create_empty(MapString(book_type_key.to_string()))?;
+    let mut person_type_descriptor =
+        transient_service.create_empty(MapString(person_type_key.to_string()))?;
+    let mut declared_type_descriptor =
+        transient_service.create_empty(MapString(declared_rel_key.to_string()))?;
+    let mut inverse_type_descriptor =
+        transient_service.create_empty(MapString(inverse_rel_key.to_string()))?;
+    drop(transient_service); // release write lock before wiring
+
+    // 3) Set `type_name` on each descriptor (minimal property set)
+    for (tref, name) in [
+        (&mut book_type_descriptor, "Book"),
+        (&mut person_type_descriptor, "Person"),
+        (&mut declared_type_descriptor, BOOK_TO_PERSON_RELATIONSHIP), // "AuthoredBy"
+        (&mut inverse_type_descriptor, PERSON_TO_BOOK_REL_INVERSE),   // e.g., "Authors"
+    ] {
+        tref.with_property_value(
+            context,
+            CorePropertyTypeName::TypeName.as_property_name(),
+            BaseValue::StringValue(MapString(name.to_string())),
+        )?;
+    }
+
+    // 4) Put all four into the bundle
+    bundle.add_related_holons(
+        context,
+        CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
+        vec![
+            HolonReference::Transient(book_type_descriptor.clone()),
+            HolonReference::Transient(person_type_descriptor.clone()),
+            HolonReference::Transient(declared_type_descriptor.clone()),
+            HolonReference::Transient(inverse_type_descriptor.clone()),
+        ],
+    )?;
+
+    // 5) Wire the schema relationships as **declared** LRRs (these create 3 links)
+    // Declared: (AUTHORED_BY) -[SourceType]-> (Book)
+    add_loader_relationship_reference(
+        context,
+        &mut declared_type_descriptor,
+        CoreRelationshipTypeName::SourceType.as_relationship_name().0 .0.as_str(),
+        LoaderRelationshipDeclaredness::Declared,
+        declared_rel_key,
+        &[book_type_key],
+    )?;
+
+    // Declared: (AUTHORED_BY) -[TargetType]-> (Person)
+    add_loader_relationship_reference(
+        context,
+        &mut declared_type_descriptor,
+        CoreRelationshipTypeName::TargetType.as_relationship_name().0 .0.as_str(),
+        LoaderRelationshipDeclaredness::Declared,
+        declared_rel_key,
+        &[person_type_key],
+    )?;
+
+    // Declared: (AUTHORS) -[InverseOf]-> (AUTHORED_BY)
+    add_loader_relationship_reference(
+        context,
+        &mut inverse_type_descriptor,
+        CoreRelationshipTypeName::InverseOf.as_relationship_name().0 .0.as_str(),
+        LoaderRelationshipDeclaredness::Declared,
+        inverse_rel_key,
+        &[declared_rel_key],
+    )?;
+
+    Ok((bundle, 4, 3))
+}
+
+/// Build a HolonLoaderBundle for **inverse** authoring that references an
+/// **existing book by key** (so we do not duplicate it), and stages only the Person:
+///   - LoaderHolon(Person) as LRR **source**   (staged new)
+///   - ReferenceTarget → LoaderHolonReference with `holon_key = BOOK_KEY` (already committed)
+///   - LRR: relationship_name = PERSON_TO_BOOK_REL_INVERSE, is_declared = false
+///
+/// EXPECT: Pass-2 maps to declared "AUTHORED_BY" and writes 1 link (Book → Person).
+/// RETURNS: (bundle, node_count_staged=1, links_created=1)
+fn build_inverse_links_bundle_person_to_existing_book(
+    context: &dyn HolonsContextBehavior,
+    bundle_key: &str,
+    inverse_rel_name: &str,
+    person_instance_key: &str,
+    existing_book_key: &str,
+) -> Result<(TransientReference, usize, usize), HolonError> {
+    // 1) Create bundle + Person LoaderHolon (staged new)
+    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+    let mut transient_service = transient_service_handle
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    let mut person_loader =
+        transient_service.create_empty(MapString(person_instance_key.to_string()))?;
+    drop(transient_service);
+
+    // 2) Bundle members (Person only; Book will be resolved by key, not staged again)
+    bundle.add_related_holons(
+        context,
+        CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
+        vec![HolonReference::Transient(person_loader.clone())],
+    )?;
+
+    // 3) Add **inverse** LRR on the Person pointing to the existing Book by key
+    add_loader_relationship_reference(
+        context,
+        &mut person_loader,
+        inverse_rel_name, // e.g., "AUTHORS"
+        LoaderRelationshipDeclaredness::Inverse,
+        person_instance_key, // LRR source key (person)
+        &[existing_book_key],
+    )?;
+
+    Ok((bundle, 1, 1))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Public fixtures (each returns a complete DancesTestCase)
+// Public fixture (returns a complete DancesTestCase)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Minimal loader path:
+/// Combined loader fixture:
 ///  1) Empty bundle → UnprocessableEntity; DB remains 1 (space holon)
 ///  2) Nodes-only bundle (3 nodes) → OK; LinksCreated=0; DB becomes 1 + 3
+///  3) Declared link bundle (2 nodes, 1 link) → OK; DB becomes 1 + 3 + 2
+///  4) Minimal micro-schema (4 nodes, 3 schema links) → OK; DB becomes 1 + 3 + 2 + 4
+///  5) Inverse LRR bundle (1 node, maps to declared edge) → OK; DB becomes 1 + 3 + 2 + 4 + 1
+///
+/// Notes:
+/// - The nodes-only keys are chosen to **avoid clashing** with the declared-link keys.
+/// - The micro-schema enables inverse-name→declared-name mapping for Pass-2.
+/// - Inverse bundle stages only a Person and references the existing Book by key.
+/// - We export the fixture’s transient pool into the test case session state exactly once at the end.
 #[fixture]
-pub async fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
-        "Loader Minimal Fixture".to_string(),
-        "Empty bundle (422) then nodes-only (OK)".to_string(),
+        "Loader Incremental Fixture".to_string(),
+        "Empty → nodes-only → declared link → micro-schema → inverse".to_string(),
     );
 
     // Create a private fixture context with its own TransientHolonManager.
@@ -161,26 +346,79 @@ pub async fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0), // HolonsStaged
         MapInteger(0), // HolonsCommitted
         MapInteger(0), // LinksCreated
-        MapInteger(0), // ErrorCount
+        MapInteger(0), // ErrorCount (no Pass-1/2 errors; just short-circuit)
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1))?;
 
     // C) Nodes-only bundle → expect OK, N committed, 0 links created.
-    let (nodes_bundle, n) = build_nodes_only_bundle(
-        fixture_context_ref,
-        "Bundle.NodesOnly.1",
-        &["Book.TheHollowTree", "Person.AMonk", "Publisher.GreenLeaf"],
-    )?;
+    let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
+    let (nodes_bundle, n_nodes) =
+        build_nodes_only_bundle(fixture_context_ref, "Bundle.NodesOnly.1", nodes_only_keys)?;
     test_case.add_load_holons_step(
         nodes_bundle,
         ResponseStatusCode::OK,
-        MapInteger(n as i64), // HolonsStaged
-        MapInteger(n as i64), // HolonsCommitted
-        MapInteger(0),        // LinksCreated
-        MapInteger(0),        // ErrorCount
+        MapInteger(n_nodes as i64), // HolonsStaged
+        MapInteger(n_nodes as i64), // HolonsCommitted
+        MapInteger(0),              // LinksCreated
+        MapInteger(0),              // ErrorCount
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n as i64))?;
-    // test_case.add_database_print_step()?; // disabled due to client-side fetch issue
+    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64))?;
+
+    // D) Declared relationship happy path (no type graph).
+    let (declared_bundle, node_count, links_created) = build_declared_links_bundle(
+        fixture_context_ref,
+        "Bundle.DeclaredLink.1",
+        BOOK_KEY,
+        PERSON_1_KEY,
+        BOOK_TO_PERSON_RELATIONSHIP, // e.g., "AUTHORED_BY"
+    )?;
+    test_case.add_load_holons_step(
+        declared_bundle,
+        ResponseStatusCode::OK,
+        MapInteger(node_count as i64),    // 2
+        MapInteger(node_count as i64),    // 2
+        MapInteger(links_created as i64), // expect 1
+        MapInteger(0),
+    )?;
+    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64))?;
+    //
+    // // E) Minimal micro-schema to enable inverse mapping.
+    // let (schema_bundle, schema_nodes, schema_links) = build_schema_bundle(fixture_context_ref)?;
+    // test_case.add_load_holons_step(
+    //     schema_bundle,
+    //     ResponseStatusCode::OK,
+    //     MapInteger(schema_nodes as i64), // 4
+    //     MapInteger(schema_nodes as i64), // 4
+    //     MapInteger(schema_links as i64), // 3
+    //     MapInteger(0),
+    // )?;
+    // test_case.add_ensure_database_count_step(MapInteger(
+    //     1 + n_nodes as i64 + node_count as i64 + schema_nodes as i64,
+    // ))?;
+    //
+    // // F) Inverse LRR bundle: Person AUTHORS Book → writes declared AUTHORED_BY(Book→Person).
+    // let (inverse_bundle, inv_nodes, inv_links) =
+    //     build_inverse_links_bundle_person_to_existing_book(
+    //         fixture_context_ref,
+    //         "Bundle.InverseLink.1",
+    //         PERSON_TO_BOOK_REL_INVERSE, // e.g., "AUTHORS"
+    //         PERSON_2_KEY,               // stage a new Person (avoid duplicating PERSON_1_KEY)
+    //         BOOK_KEY,                   // reference existing Book by key
+    //     )?;
+    // test_case.add_load_holons_step(
+    //     inverse_bundle,
+    //     ResponseStatusCode::OK,
+    //     MapInteger(inv_nodes as i64), // 1
+    //     MapInteger(inv_nodes as i64), // 1
+    //     MapInteger(inv_links as i64), // 1 (declared edge written)
+    //     MapInteger(0),
+    // )?;
+    //
+    // // Final DB count:
+    // // 1 (space) + n_nodes (3) + node_count (2) + schema_nodes (4) + inv_nodes (1) = 11
+    // test_case.add_ensure_database_count_step(MapInteger(
+    //     1 + n_nodes as i64 + node_count as i64 + schema_nodes as i64 + inv_nodes as i64,
+    // ))?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(fixture_context_ref);
@@ -188,94 +426,61 @@ pub async fn loader_minimal_fixture() -> Result<DancesTestCase, HolonError> {
     Ok(test_case)
 }
 
-/// Declared relationship happy path (no type graph).
-#[fixture]
-pub async fn load_holons_declared_links_fixture() -> Result<DancesTestCase, HolonError> {
-    let title = "Loader Declared Relationship Fixture".to_string();
-    let desc = format!(
-        "Declared relationship: ({})-[{}]->({})",
-        BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY
-    );
-    let mut test_case = DancesTestCase::new(title, desc);
-
-    let fixture_context_arc = init_fixture_context().await;
-    let ctx: &dyn HolonsContextBehavior = &*fixture_context_arc;
-
-    test_case.add_ensure_database_count_step(MapInteger(1))?;
-
-    let (bundle, node_count, links_created) = build_declared_links_bundle(
-        ctx,
-        "Bundle.DeclaredLink.1",
-        BOOK_KEY,                    // LoaderHolon Key = "Book.TheHollowTree"
-        PERSON_1_KEY,                // LoaderHolon Key = "Person.AMonk"
-        BOOK_TO_PERSON_RELATIONSHIP, // relationship_name on LRR
-    )?;
-
-    test_case.add_load_holons_step(
-        bundle,
-        ResponseStatusCode::OK,
-        MapInteger(node_count as i64),
-        MapInteger(node_count as i64),
-        MapInteger(links_created as i64), // expect 1
-        MapInteger(0),
-    )?;
-
-    test_case.add_ensure_database_count_step(MapInteger(1 + node_count as i64));
-
-    test_case.load_test_session_state(ctx);
-    Ok(test_case)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Placeholders for possible upcoming fixtures (keep in this file, or split to subfiles
-// once they grow):
-//   #[fixture] pub fn load_holons_declared_links_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] pub fn load_holons_inverse_links_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] pub fn load_holons_pass1_error_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] pub fn load_holons_pass2_error_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] pub fn load_holons_dedupe_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] pub fn load_holons_saved_staged_mix_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] pub fn load_holons_by_id_fixture() -> Result<DancesTestCase, HolonError> { … }
-//   #[fixture] #[ignore] pub fn load_holons_large_smoke_fixture() -> Result<DancesTestCase, HolonError> { … }
-// ─────────────────────────────────────────────────────────────────────────────
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Private helpers for loader holon building
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Build and attach a **declared** LoaderRelationshipReference (LRR) to a given LoaderHolon,
-/// wiring up its ReferenceSource and ordered ReferenceTarget(s).
+/// Build and attach a `LoaderRelationshipReference` (LRR) to a given `LoaderHolon`,
+/// wiring `ReferenceSource` and ordered `ReferenceTarget` endpoint containers,
+/// and setting `relationship_name` plus `is_declared` in one place.
 ///
-/// This function constructs the *loader-side* graph:
-/// - `HasRelationshipReference`: LoaderHolon → LoaderRelationshipReference
-/// - `ReferenceSource`: LRR → LoaderHolonReference (source, `holon_key = source_instance_key`)
-/// - `ReferenceTarget`: LRR → LoaderHolonReference(s) (targets, ordered; `holon_key = target_instance_key`)
+/// This replaces `add_declared_relationship_reference` and
+/// `add_inverse_relationship_reference`.
 ///
-/// The resolver uses:
-///   - `relationship_name` (declared side),
-///   - endpoint keys (via LoaderHolonReference.holon_key),
-/// to write the real links on the staged instance holons.
+/// ### Behavior
+/// - Creates a new LRR container and one `LoaderHolonReference` for the source,
+///   plus one per target (in order).
+/// - Sets:
+///   - `relationship_name` (string)
+///   - `is_declared` (`true` for declared, `false` for inverse)
+///   - Each endpoint’s `holon_key` to the provided instance keys
+/// - Wires:
+///   - `HasRelationshipReference` from the `source_loader_holon` to the LRR
+///   - `ReferenceSource` from the LRR to the source ref
+///   - `ReferenceTarget` from the LRR to each target ref (preserving order)
 ///
-/// RETURNS: the created LoaderRelationshipReference transient reference.
-fn add_declared_relationship_reference(
+/// ### Parameters
+/// - `context`: Holons context used for creation and wiring
+/// - `source_loader_holon`: the **LoaderHolon** that owns this LRR
+/// - `relationship_name_str`: the loader-declared relationship name
+/// - `declaredness`: whether the LRR is declared or inverse
+/// - `source_instance_key`: key of the **instance** acting as relationship source
+/// - `target_instance_keys`: keys of the **instance(s)** acting as relationship target(s)
+///
+/// ### Returns
+/// - `Ok(TransientReference)` of the created LRR container
+///
+/// ### Notes
+/// - `create_empty(MapString(key))` automatically sets the `Key` property; no
+///   explicit `with_property_value(Key, ..)` needed.
+/// - Endpoint resolution in Pass-2 relies on `LoaderHolonReference.holon_key`
+///   values matching the instance keys you use for the corresponding LoaderHolons.
+pub fn add_loader_relationship_reference(
     context: &dyn HolonsContextBehavior,
     source_loader_holon: &mut TransientReference,
     relationship_name_str: &str,
+    declaredness: LoaderRelationshipDeclaredness,
     source_instance_key: &str,
     target_instance_keys: &[&str],
 ) -> Result<TransientReference, HolonError> {
     // ── 1) Create LRR + endpoint containers under a short-lived write lock ──
-    let (
-        mut relationship_reference,
-        mut source_ref,
-        mut target_refs_uninitialized, // Vec<TransientReference>
-    ) = {
+    let (mut relationship_reference, mut source_ref, mut target_refs_uninitialized) = {
         let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
         let mut transient_service = transient_service_handle.write().map_err(|_| {
             HolonError::FailedToBorrow("Transient service lock was poisoned".into())
         })?;
 
-        // 1a) LRR container (Key is descriptive; not used for endpoint resolution)
+        // LRR container: key is descriptive; endpoint resolution does not use it.
         let relationship_reference_key = format!(
             "LoaderRelationshipReference.{}.{}",
             source_instance_key, relationship_name_str
@@ -283,11 +488,11 @@ fn add_declared_relationship_reference(
         let relationship_reference =
             transient_service.create_empty(MapString(relationship_reference_key))?;
 
-        // 1b) Source LoaderHolonReference container
+        // Source LoaderHolonReference container
         let source_ref_key = format!("LoaderHolonReference.Source.{}", source_instance_key);
         let source_ref = transient_service.create_empty(MapString(source_ref_key))?;
 
-        // 1c) Target LoaderHolonReference containers
+        // Target LoaderHolonReference containers (ordered)
         let mut target_refs: Vec<TransientReference> =
             Vec::with_capacity(target_instance_keys.len());
         for (index, target_key) in target_instance_keys.iter().enumerate() {
@@ -297,11 +502,11 @@ fn add_declared_relationship_reference(
         }
 
         (relationship_reference, source_ref, target_refs)
-    }; // 🔑 write lock released here
+    }; // 🔑 lock released here
 
     // ── 2) Set properties on created transients ───────────────────────────────
 
-    // 2a) LRR required properties
+    // LRR required properties: relationship_name + is_declared
     relationship_reference.with_property_value(
         context,
         CorePropertyTypeName::RelationshipName.as_property_name(),
@@ -310,17 +515,17 @@ fn add_declared_relationship_reference(
     relationship_reference.with_property_value(
         context,
         CorePropertyTypeName::IsDeclared.as_property_name(),
-        BaseValue::BooleanValue(MapBoolean(true)),
+        BaseValue::BooleanValue(declaredness.as_map_boolean()),
     )?;
 
-    // 2b) Source ref: holon_key = source instance key
+    // Source endpoint: holon_key = source instance key
     source_ref.with_property_value(
         context,
         CorePropertyTypeName::HolonKey.as_property_name(),
         BaseValue::StringValue(MapString(source_instance_key.to_string())),
     )?;
 
-    // 2c) Target refs: holon_key = matching target instance keys (ordered)
+    // Target endpoints: holon_key = matching target instance keys (ordered)
     let mut target_ref_hrefs: Vec<HolonReference> =
         Vec::with_capacity(target_refs_uninitialized.len());
     for (mut target_ref, target_key) in
@@ -335,22 +540,21 @@ fn add_declared_relationship_reference(
     }
 
     // ── 3) Wire relationships on the loader graph ─────────────────────────────
-
-    // 3a) LoaderHolon → HasRelationshipReference → LRR
+    // LoaderHolon → HasRelationshipReference → LRR
     source_loader_holon.add_related_holons(
         context,
         CoreRelationshipTypeName::HasRelationshipReference.as_relationship_name().clone(),
         vec![HolonReference::Transient(relationship_reference.clone())],
     )?;
 
-    // 3b) LRR → ReferenceSource → source_ref
+    // LRR → ReferenceSource → source_ref
     relationship_reference.add_related_holons(
         context,
         CoreRelationshipTypeName::ReferenceSource.as_relationship_name().clone(),
         vec![HolonReference::Transient(source_ref)],
     )?;
 
-    // 3c) LRR → ReferenceTarget → target_refs (ordered)
+    // LRR → ReferenceTarget → target_refs (ordered)
     relationship_reference.add_related_holons(
         context,
         CoreRelationshipTypeName::ReferenceTarget.as_relationship_name().clone(),
