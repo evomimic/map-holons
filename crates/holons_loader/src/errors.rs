@@ -95,10 +95,9 @@ fn create_empty_error_holon(
         context.get_space_manager().get_transient_behavior_service();
 
     // Acquire a write lock for mutable access to the TransientHolonBehavior service.
-    let mut transient_behavior_service =
-        transient_behavior_service_handle.write().map_err(|_| {
-            HolonError::FailedToBorrow("TransientHolonBehavior RwLock was poisoned".into())
-        })?;
+    let transient_behavior_service = transient_behavior_service_handle.write().map_err(|_| {
+        HolonError::FailedToBorrow("TransientHolonBehavior RwLock was poisoned".into())
+    })?;
 
     // Create a new, empty transient holon using the generated key.
     let transient_reference = transient_behavior_service.create_empty(key)?;

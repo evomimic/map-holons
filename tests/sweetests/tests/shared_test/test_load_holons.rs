@@ -6,6 +6,13 @@ use holons_core::reference_layer::{
 use holons_prelude::prelude::*;
 use tracing::info;
 
+// temporary workspace workaround to ensure the holons_loader crate is linked in tests
+#[allow(dead_code)]
+fn _build_anchor_holons_loader() {
+    // Touching something stable so Cargo links the loader crate.
+    let _ = holons_loader::CRATE_LINK; // e.g., an inert constant
+}
+
 /// Read a string property from a transient response holon.
 fn read_string_property(
     context: &dyn HolonsContextBehavior,

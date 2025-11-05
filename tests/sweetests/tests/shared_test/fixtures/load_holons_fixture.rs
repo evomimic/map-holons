@@ -132,7 +132,7 @@ fn build_declared_links_bundle(
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create the bundle container (Key = bundle_key).
     let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let mut transient_service = transient_service_handle
+    let transient_service = transient_service_handle
         .write()
         .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
 
@@ -167,145 +167,125 @@ fn build_declared_links_bundle(
     Ok((bundle, 2, 1))
 }
 
-/// Build a **minimal micro-schema** using LoaderHolons + declared LRRs:
-///   HolonTypes: Book, Person
-///   DeclaredRelationshipType: AUTHORED_BY  (SourceType=Book, TargetType=Person)
-///   InverseRelationshipType:  AUTHORS      (InverseOf=AUTHORED_BY)
-///
-/// RETURNS: (bundle, node_count=4, links_created=3)
-fn build_schema_bundle(
+/// Build a HolonLoaderBundle to test **inverse LRR mapping**,
+/// including inline micro-schema descriptors and two instances:
+fn build_inverse_with_inline_schema_bundle(
     context: &dyn HolonsContextBehavior,
+    bundle_key: &str,
+    inverse_rel_name: &str,    // e.g., PERSON_TO_BOOK_REL_INVERSE ("Authors")
+    person_instance_key: &str, // e.g., PERSON_2_KEY
+    book_instance_key: &str,   // e.g., "Emerging World (Test Edition)"
 ) -> Result<(TransientReference, usize, usize), HolonError> {
+    // 1) Create bundle + 6 loader holons (2 instances + 4 schema descriptors)
     let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let mut transient_service = transient_service_handle
+    let transient_service = transient_service_handle
         .write()
         .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
 
-    // Keys for the four descriptors (keys double as instance identifiers in-bundle)
-    let book_type_key = BOOK_DESCRIPTOR_KEY;
-    let person_type_key = PERSON_DESCRIPTOR_KEY;
-    let declared_rel_key = BOOK_TO_PERSON_RELATIONSHIP_KEY;
-    let inverse_rel_key = PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY;
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
 
-    // 1) Create bundle
-    let mut bundle =
-        transient_service.create_empty(MapString("Bundle.MicroSchema.1".to_string()))?;
+    // Instances
+    let mut person_loader =
+        transient_service.create_empty(MapString(person_instance_key.to_string()))?;
+    let mut book_loader =
+        transient_service.create_empty(MapString(book_instance_key.to_string()))?;
 
-    // 2) Create Type/Relationship descriptor LoaderHolons
+    // Schema descriptors (type + relationship types)
     let mut book_type_descriptor =
-        transient_service.create_empty(MapString(book_type_key.to_string()))?;
+        transient_service.create_empty(MapString(BOOK_DESCRIPTOR_KEY.to_string()))?;
     let mut person_type_descriptor =
-        transient_service.create_empty(MapString(person_type_key.to_string()))?;
-    let mut declared_type_descriptor =
-        transient_service.create_empty(MapString(declared_rel_key.to_string()))?;
-    let mut inverse_type_descriptor =
-        transient_service.create_empty(MapString(inverse_rel_key.to_string()))?;
-    drop(transient_service); // release write lock before wiring
+        transient_service.create_empty(MapString(PERSON_DESCRIPTOR_KEY.to_string()))?;
+    let mut declared_rel_descriptor =
+        transient_service.create_empty(MapString(BOOK_TO_PERSON_RELATIONSHIP_KEY.to_string()))?;
+    let mut inverse_rel_descriptor = transient_service
+        .create_empty(MapString(PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY.to_string()))?;
+    drop(transient_service); // 🔓
 
-    // 3) Set `type_name` on each descriptor (minimal property set)
-    for (tref, name) in [
+    // Minimal names (helps diagnostics; not required for deref-by-key)
+    for (transient_reference, name) in [
         (&mut book_type_descriptor, "Book"),
         (&mut person_type_descriptor, "Person"),
-        (&mut declared_type_descriptor, BOOK_TO_PERSON_RELATIONSHIP), // "AuthoredBy"
-        (&mut inverse_type_descriptor, PERSON_TO_BOOK_REL_INVERSE),   // e.g., "Authors"
+        (&mut declared_rel_descriptor, BOOK_TO_PERSON_RELATIONSHIP), // "AuthoredBy"
+        (&mut inverse_rel_descriptor, PERSON_TO_BOOK_REL_INVERSE),   // "Authors"
     ] {
-        tref.with_property_value(
+        transient_reference.with_property_value(
             context,
             CorePropertyTypeName::TypeName.as_property_name(),
             BaseValue::StringValue(MapString(name.to_string())),
         )?;
     }
 
-    // 4) Put all four into the bundle
+    // 2) Add all six to the bundle as members
     bundle.add_related_holons(
         context,
         CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
         vec![
+            HolonReference::Transient(person_loader.clone()),
+            HolonReference::Transient(book_loader.clone()),
             HolonReference::Transient(book_type_descriptor.clone()),
             HolonReference::Transient(person_type_descriptor.clone()),
-            HolonReference::Transient(declared_type_descriptor.clone()),
-            HolonReference::Transient(inverse_type_descriptor.clone()),
+            HolonReference::Transient(declared_rel_descriptor.clone()),
+            HolonReference::Transient(inverse_rel_descriptor.clone()),
         ],
     )?;
 
-    // 5) Wire the schema relationships as **declared** LRRs (these create 3 links)
-    // Declared: (AUTHORED_BY) -[SourceType]-> (Book)
+    // 3) Wire schema links (DECLARED)
     add_loader_relationship_reference(
         context,
-        &mut declared_type_descriptor,
+        &mut declared_rel_descriptor,
         CoreRelationshipTypeName::SourceType.as_relationship_name().0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
-        declared_rel_key,
-        &[book_type_key],
+        BOOK_TO_PERSON_RELATIONSHIP_KEY,
+        &[BOOK_DESCRIPTOR_KEY],
     )?;
-
-    // Declared: (AUTHORED_BY) -[TargetType]-> (Person)
     add_loader_relationship_reference(
         context,
-        &mut declared_type_descriptor,
+        &mut declared_rel_descriptor,
         CoreRelationshipTypeName::TargetType.as_relationship_name().0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
-        declared_rel_key,
-        &[person_type_key],
+        BOOK_TO_PERSON_RELATIONSHIP_KEY,
+        &[PERSON_DESCRIPTOR_KEY],
     )?;
-
-    // Declared: (AUTHORS) -[InverseOf]-> (AUTHORED_BY)
     add_loader_relationship_reference(
         context,
-        &mut inverse_type_descriptor,
+        &mut inverse_rel_descriptor,
         CoreRelationshipTypeName::InverseOf.as_relationship_name().0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
-        inverse_rel_key,
-        &[declared_rel_key],
+        PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+        &[BOOK_TO_PERSON_RELATIONSHIP_KEY],
     )?;
 
-    Ok((bundle, 4, 3))
-}
-
-/// Build a HolonLoaderBundle for **inverse** authoring that references an
-/// **existing book by key** (so we do not duplicate it), and stages only the Person:
-///   - LoaderHolon(Person) as LRR **source**   (staged new)
-///   - ReferenceTarget → LoaderHolonReference with `holon_key = BOOK_KEY` (already committed)
-///   - LRR: relationship_name = PERSON_TO_BOOK_REL_INVERSE, is_declared = false
-///
-/// EXPECT: Pass-2 maps to declared "AUTHORED_BY" and writes 1 link (Book → Person).
-/// RETURNS: (bundle, node_count_staged=1, links_created=1)
-fn build_inverse_links_bundle_person_to_existing_book(
-    context: &dyn HolonsContextBehavior,
-    bundle_key: &str,
-    inverse_rel_name: &str,
-    person_instance_key: &str,
-    existing_book_key: &str,
-) -> Result<(TransientReference, usize, usize), HolonError> {
-    // 1) Create bundle + Person LoaderHolon (staged new)
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let mut transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
-
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
-    let mut person_loader =
-        transient_service.create_empty(MapString(person_instance_key.to_string()))?;
-    drop(transient_service);
-
-    // 2) Bundle members (Person only; Book will be resolved by key, not staged again)
-    bundle.add_related_holons(
+    // 4) Type the instances (DECLARED DescribedBy)
+    let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
+    add_loader_relationship_reference(
         context,
-        CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
-        vec![HolonReference::Transient(person_loader.clone())],
+        &mut book_loader,
+        described_by.0 .0.as_str(),
+        LoaderRelationshipDeclaredness::Declared,
+        book_instance_key,
+        &[BOOK_DESCRIPTOR_KEY],
     )?;
-
-    // 3) Add **inverse** LRR on the Person pointing to the existing Book by key
     add_loader_relationship_reference(
         context,
         &mut person_loader,
-        inverse_rel_name, // e.g., "AUTHORS"
-        LoaderRelationshipDeclaredness::Inverse,
-        person_instance_key, // LRR source key (person)
-        &[existing_book_key],
+        described_by.0 .0.as_str(),
+        LoaderRelationshipDeclaredness::Declared,
+        person_instance_key,
+        &[PERSON_DESCRIPTOR_KEY],
     )?;
 
-    Ok((bundle, 1, 1))
+    // 5) Inverse LRR (Person --Authors--> Book) → maps to declared AuthoredBy(Book→Person)
+    add_loader_relationship_reference(
+        context,
+        &mut person_loader,
+        inverse_rel_name,
+        LoaderRelationshipDeclaredness::Inverse,
+        person_instance_key,
+        &[book_instance_key],
+    )?;
+
+    // Staged nodes = 6; links created = 3 (schema) + 2 (DescribedBy) + 1 (declared) = 6
+    Ok((bundle, 6, 6))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -381,44 +361,31 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
         MapInteger(0),
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64))?;
+
+    // // E) Inverse LRR bundle: Person AUTHORS Book → writes declared AuthoredBy(Book→Person).
+    // // Use a distinct book key to avoid colliding with the earlier Book instance.
+    // let inverse_book_key = "Emerging World (Test Edition)";
     //
-    // // E) Minimal micro-schema to enable inverse mapping.
-    // let (schema_bundle, schema_nodes, schema_links) = build_schema_bundle(fixture_context_ref)?;
-    // test_case.add_load_holons_step(
-    //     schema_bundle,
-    //     ResponseStatusCode::OK,
-    //     MapInteger(schema_nodes as i64), // 4
-    //     MapInteger(schema_nodes as i64), // 4
-    //     MapInteger(schema_links as i64), // 3
-    //     MapInteger(0),
+    // let (inverse_bundle, inv_nodes, inv_links) = build_inverse_with_inline_schema_bundle(
+    //     fixture_context_ref,
+    //     "Bundle.InverseLink.1",
+    //     PERSON_TO_BOOK_REL_INVERSE, // "Authors"
+    //     PERSON_2_KEY,               // stage a new Person (2)
+    //     inverse_book_key,           // stage a new Book with a distinct key
     // )?;
-    // test_case.add_ensure_database_count_step(MapInteger(
-    //     1 + n_nodes as i64 + node_count as i64 + schema_nodes as i64,
-    // ))?;
-    //
-    // // F) Inverse LRR bundle: Person AUTHORS Book → writes declared AUTHORED_BY(Book→Person).
-    // let (inverse_bundle, inv_nodes, inv_links) =
-    //     build_inverse_links_bundle_person_to_existing_book(
-    //         fixture_context_ref,
-    //         "Bundle.InverseLink.1",
-    //         PERSON_TO_BOOK_REL_INVERSE, // e.g., "AUTHORS"
-    //         PERSON_2_KEY,               // stage a new Person (avoid duplicating PERSON_1_KEY)
-    //         BOOK_KEY,                   // reference existing Book by key
-    //     )?;
     // test_case.add_load_holons_step(
     //     inverse_bundle,
     //     ResponseStatusCode::OK,
-    //     MapInteger(inv_nodes as i64), // 1
-    //     MapInteger(inv_nodes as i64), // 1
+    //     MapInteger(inv_nodes as i64), // 2
+    //     MapInteger(inv_nodes as i64), // 2
     //     MapInteger(inv_links as i64), // 1 (declared edge written)
     //     MapInteger(0),
     // )?;
     //
     // // Final DB count:
-    // // 1 (space) + n_nodes (3) + node_count (2) + schema_nodes (4) + inv_nodes (1) = 11
-    // test_case.add_ensure_database_count_step(MapInteger(
-    //     1 + n_nodes as i64 + node_count as i64 + schema_nodes as i64 + inv_nodes as i64,
-    // ))?;
+    // // 1 (space) + n_nodes (3) + node_count (2) + schema_nodes (4) + inv_nodes (2) = 12
+    // test_case
+    //     .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64 + 6))?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(fixture_context_ref);
@@ -474,9 +441,9 @@ pub fn add_loader_relationship_reference(
     target_instance_keys: &[&str],
 ) -> Result<TransientReference, HolonError> {
     // ── 1) Create LRR + endpoint containers under a short-lived write lock ──
-    let (mut relationship_reference, mut source_ref, mut target_refs_uninitialized) = {
+    let (mut relationship_reference, mut source_ref, target_refs_uninitialized) = {
         let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-        let mut transient_service = transient_service_handle.write().map_err(|_| {
+        let transient_service = transient_service_handle.write().map_err(|_| {
             HolonError::FailedToBorrow("Transient service lock was poisoned".into())
         })?;
 

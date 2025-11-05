@@ -285,11 +285,13 @@ impl LoaderRefResolver {
         outcome: &mut ResolverOutcome,
     ) {
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
+        let inverse_of_refs: Vec<_> = queue
+            .iter()
+            .filter(|reference| Self::is_inverse_of_declared(context, reference))
+            .collect();
+        info!("Pass 2B: Processing {} INVERSE_OF relationships", inverse_of_refs.len());
 
-        info!("Pass 2B: Processing INVERSE_OF relationships");
-        for relationship_reference in
-            queue.iter().filter(|reference| Self::is_inverse_of_declared(context, reference))
-        {
+        for relationship_reference in inverse_of_refs {
             match Self::resolve_endpoints(context, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
                     let staged_source =
@@ -412,6 +414,7 @@ impl LoaderRefResolver {
         src_endpoint: &HolonReference,
         dst_endpoint: &HolonReference,
     ) -> Result<RelationshipName, HolonError> {
+        info!("[resolver] entering declared_name_for_inverse for inverse '{}'", inverse_name.0);
         // 1) Resolve endpoint type descriptors (instances → follow DESCRIBED_BY; types pass through)
         let src_type_td = Self::resolve_type_descriptor(context, src_endpoint)?;
         let dst_type_td = Self::resolve_type_descriptor(context, dst_endpoint)?;
@@ -603,7 +606,7 @@ impl LoaderRefResolver {
         let mut target_holons = Vec::with_capacity(target_loader_refs.len());
         for loader_ref in target_loader_refs {
             let resolved = Self::resolve_loader_holon_reference(context, &loader_ref)?;
-            tracing::info!(
+            info!(
                 "[resolver]   resolved target holon = {}",
                 Self::best_identifier_for_dedupe(context, &resolved)
             );
@@ -633,25 +636,22 @@ impl LoaderRefResolver {
         {
             info!("[resolver] dereference LHR by holon_key='{}'", key.0);
             // Use the convenience API for single expected match
-            match get_staged_holon_by_base_key(context, &key) {
+            return match get_staged_holon_by_base_key(context, &key) {
                 Ok(staged) => {
                     info!("[resolver]   → FOUND staged holon for key='{}'", key.0);
-                    return Ok(HolonReference::Staged(staged));
+                    Ok(HolonReference::Staged(staged))
                 }
                 Err(HolonError::HolonNotFound(_)) => {
                     // Key was present, but nothing staged yet → deferrable
                     info!("[resolver]   → NO staged holon for key='{}' (HolonNotFound)", key.0);
-                    return Err(HolonError::HolonNotFound(format!(
-                        "staged holon with key '{}'",
-                        key.0
-                    )));
+                    Err(HolonError::HolonNotFound(format!("staged holon with key '{}'", key.0)))
                 }
                 Err(e) => {
                     // Propagate duplicate/borrow/etc.
                     info!("[resolver]   → lookup for key='{}' failed with: {:?}", key.0, e);
-                    return Err(e);
+                    Err(e)
                 }
-            }
+            };
         }
 
         // TODO: un-comment when saved holon fetch by ID is implemented (we need a MapBytes BaseValue variant)
@@ -887,21 +887,21 @@ impl LoaderRefResolver {
             == CoreRelationshipTypeName::DescribedBy.as_relationship_name();
 
         if is_descriptor {
-            match write_targets.len() {
-                0 => return Ok(0), // nothing to do (likely deduped earlier)
+            return match write_targets.len() {
+                0 => Ok(0), // nothing to do (likely deduped earlier)
                 1 => {
                     // Exactly one descriptor: attach it
                     staged_source.with_descriptor(context, write_targets.remove(0))?;
-                    return Ok(1);
+                    Ok(1)
                 }
                 _ => {
-                    return Err(HolonError::InvalidRelationship(
+                    Err(HolonError::InvalidRelationship(
                         declared_relationship_name.to_string(),
                         "DescribedBy target was duplicate or ambiguous; expected exactly one unique target"
                             .into(),
-                    ));
+                    ))
                 }
-            }
+            };
         }
 
         // Non-descriptor relationships: add the whole batch (if any)
@@ -957,7 +957,7 @@ impl LoaderRefResolver {
         relationship_reference: &TransientReference,
         seen: &mut HashSet<RelationshipEdgeKey>,
     ) -> Result<i64, HolonError> {
-        info!("Entering try_declared_single_resolve");
+        info!("[resolver] Entering try_declared_single_resolve");
         // Fast skips if caller forgot to prefilter
         if !Self::is_declared(context, relationship_reference)
             || Self::is_described_by_declared(context, relationship_reference)
@@ -1009,6 +1009,7 @@ impl LoaderRefResolver {
         relationship_reference: &TransientReference,
         seen: &mut HashSet<RelationshipEdgeKey>,
     ) -> Result<i64, HolonError> {
+        info!("[resolver] Entering try_inverse_single_resolve");
         if Self::is_declared(context, relationship_reference) {
             return Ok(0); // not an inverse item
         }
@@ -1046,6 +1047,10 @@ impl LoaderRefResolver {
             }
 
             // Perform the flipped write: declared_source −[declared_name]→ declared_target (original src)
+            info!(
+                "Attempting to write inverse→declared relationship: declared_name={}",
+                declared_name.0
+            );
             created_link_count += Self::write_relationship(
                 context,
                 staged_source,

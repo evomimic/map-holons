@@ -10,17 +10,15 @@
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
-use tracing::{error, info};
+use tracing::info;
 // use uuid::Uuid;
 
-use holons_prelude::prelude::CorePropertyTypeName::{
-    DanceSummary, ErrorCount, HolonsCommitted, HolonsStaged, LinksCreated, ResponseStatusCode,
-};
-use holons_prelude::prelude::CoreRelationshipTypeName::HasLoadError;
 use holons_prelude::prelude::*;
 
 use crate::errors::make_error_holons_best_effort;
 use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
+
+pub const CRATE_LINK: &str = "I like loading holons with HolonsLoader!"; // temporary const to link crate to test crate
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -64,7 +62,7 @@ impl HolonLoaderController {
         let mut mapper_output = LoaderHolonMapper::map_bundle(context, bundle)?;
         // For now we approximate staged_count by the number of staged targets created in Pass 1.
         // (If/when keyless or extra targets appear, have the mapper return exact staged_count.)
-        self.staged_count = mapper_output.staged_count as i64;
+        self.staged_count = mapper_output.staged_count;
 
         // If Pass 1 produced any errors or the bundle was empty,
         // build the response now and return (skip Pass 2 & commit).
@@ -231,9 +229,9 @@ impl HolonLoaderController {
             pname: &PropertyName,
         ) {
             match r.property_value(ctx, pname) {
-                Ok(Some(v)) => tracing::info!("READ-BACK {label} -> {:?}", v),
-                Ok(None) => tracing::info!("READ-BACK {label} -> None"),
-                Err(e) => tracing::info!("READ-BACK {label} -> ERROR: {e:?}"),
+                Ok(Some(v)) => info!("READ-BACK {label} -> {:?}", v),
+                Ok(None) => info!("READ-BACK {label} -> None"),
+                Err(e) => info!("READ-BACK {label} -> ERROR: {e:?}"),
             }
         }
 

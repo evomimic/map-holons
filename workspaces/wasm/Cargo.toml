@@ -25,6 +25,7 @@ holons_guest = { path = "../../crates/holons_guest" }
 holons_guest_integrity = { path = "../../crates/holons_guest_integrity" }
 holons_prelude = { path = "../../crates/holons_prelude" }
 holons_trust_channel = { path = "../../crates/holons_trust_channel" }
+holons_loader = { path = "../../crates/holons_loader" }
 
 
 [profile.dev]
