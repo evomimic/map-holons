@@ -1,15 +1,26 @@
 use derive_new::new;
 
-use holons_client::dances_client::dance_call_service::DanceCallService;
-use holons_client::ConductorDanceCaller;
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
-use holons_core::core_shared_objects::{Holon, HolonBehavior};
+use holons_core::core_shared_objects::Holon;
 use holons_prelude::prelude::*;
 use std::{
     collections::{BTreeMap, VecDeque},
     fmt,
     fmt::{Debug, Display},
     sync::Arc,
+};
+
+use base_types::{MapInteger, MapString};
+use core_types::{HolonError, HolonId};
+use core_types::{PropertyMap, RelationshipName};
+
+use holons_core::{
+    core_shared_objects::{ReadableHolonState, TransientHolon},
+    dances::ResponseStatusCode,
+    query_layer::QueryExpression,
+    reference_layer::{
+        HolonReference, HolonsContextBehavior, ReadableHolon, StagedReference, TransientReference,
+    },
 };
 
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
@@ -20,8 +31,15 @@ pub const BOOK_KEY: &str =
 pub const PERSON_1_KEY: &str = "Roger Briggs";
 pub const PERSON_2_KEY: &str = "George Smith";
 pub const PUBLISHER_KEY: &str = "Publishing Company";
-pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AUTHORED_BY";
-pub const EDITOR_FOR: &str = "EDITOR_FOR";
+pub const BOOK_DESCRIPTOR_KEY: &str = "Book.HolonType";
+pub const PERSON_DESCRIPTOR_KEY: &str = "Person.HolonType";
+pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AuthoredBy";
+pub const BOOK_TO_PERSON_RELATIONSHIP_KEY: &str =
+    "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)";
+pub const PERSON_TO_BOOK_REL_INVERSE: &str = "Authors";
+pub const PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY: &str =
+    "(Person.HolonType)-[Authors]->(Book.HolonType)";
+pub const EDITOR_FOR: &str = "EditorFor";
 
 // #[derive(new, Clone, Debug)]
 // pub struct TestHolonData {
@@ -40,9 +58,8 @@ pub const EDITOR_FOR: &str = "EDITOR_FOR";
 /// # Type Parameters
 /// - `C`: A type implementing `DanceCaller`, used to execute dance calls.
 #[derive(Debug)]
-pub struct DanceTestExecutionState<C: ConductorDanceCaller> {
-    context: Arc<dyn HolonsContextBehavior>,
-    pub dance_call_service: Arc<DanceCallService<C>>,
+pub struct DanceTestExecutionState {
+    pub context: Arc<dyn HolonsContextBehavior>,
     pub created_holons: BTreeMap<MapString, Holon>,
 }
 
@@ -90,9 +107,17 @@ pub enum DanceTestStep {
     DatabasePrint, // Writes log messages for each holon in the persistent store
     DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
-    // LoadCoreSchema,
+    LoadHolons {
+        bundle: TransientReference,
+        expect_status: ResponseStatusCode,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+    },
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
+    RemoveProperties(HolonReference, PropertyMap, ResponseStatusCode),
     RemoveRelatedHolons(HolonReference, RelationshipName, Vec<HolonReference>, ResponseStatusCode),
     StageHolon(TransientReference),
     StageNewFromClone(TestReference, MapString, ResponseStatusCode),
@@ -113,13 +138,13 @@ impl Display for DanceTestStep {
                 )
             }
             DanceTestStep::AddRelatedHolons(
-                staged_reference,
+                holon_reference,
                 relationship_name,
                 holons_to_add,
                 expected_response,
                 expected_holon,
             ) => {
-                write!(f, "AddRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", staged_reference, relationship_name, holons_to_add.len(), expected_response, expected_holon)
+                write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", holon_reference, relationship_name, holons_to_add.len(), expected_response, expected_holon)
             }
             DanceTestStep::Commit => {
                 write!(f, "Commit")
@@ -133,9 +158,24 @@ impl Display for DanceTestStep {
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
             }
-            // DanceTestStep::LoadCoreSchema => {
-            //     write!(f, "LoadCoreSchema")
-            // }
+            DanceTestStep::LoadHolons {
+                bundle: _,
+                expect_status,
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+            } => {
+                write!(
+                    f,
+                    "LoadHolons(expect_status={:?}, staged={}, committed={}, links_created={}, errors={})",
+                    expect_status,
+                    expect_staged.0,
+                    expect_committed.0,
+                    expect_links_created.0,
+                    expect_errors.0
+                )
+            }
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
@@ -146,13 +186,20 @@ impl Display for DanceTestStep {
             ) => {
                 write!(f, "QueryRelationships for node_collection:{:#?}, with query expression: {:#?}, expecting {:#?}", node_collection, query_expression, expected_response)
             }
+            DanceTestStep::RemoveProperties(holon_reference, properties, expected_response) => {
+                write!(
+                    f,
+                    "RemoveProperties {:#?} for Holon {:#?}, expecting {:#?} ",
+                    properties, holon_reference, expected_response,
+                )
+            }
             DanceTestStep::RemoveRelatedHolons(
-                staged_reference,
+                holon_reference,
                 relationship_name,
                 holons_to_remove,
                 expected_response,
             ) => {
-                write!(f, "RemoveRelatedHolons to Holon at ({:#?}) for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", staged_reference, relationship_name, holons_to_remove.len(), expected_response)
+                write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", holon_reference, relationship_name, holons_to_remove.len(), expected_response)
             }
             DanceTestStep::StageHolon(holon) => {
                 write!(f, "StageHolon({:#?})", holon)
@@ -171,18 +218,18 @@ impl Display for DanceTestStep {
                     original_holon, new_key, expected_response
                 )
             }
-            DanceTestStep::WithProperties(staged_reference, properties, expected_response) => {
+            DanceTestStep::WithProperties(holon_reference, properties, expected_response) => {
                 write!(
                     f,
-                    "WithProperties for Holon at ({:#?}) with properties: {:#?}, expecting {:#?} ",
-                    staged_reference, properties, expected_response,
+                    "WithProperties for Holon {:#?} with properties: {:#?}, expecting {:#?} ",
+                    holon_reference, properties, expected_response,
                 )
             }
         }
     }
 }
 
-impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
+impl DanceTestExecutionState {
     /// Creates a new `DanceTestExecutionState`.
     ///
     /// # Arguments
@@ -191,15 +238,8 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
     ///
     /// # Returns
     /// A new `DanceTestExecutionState` instance.
-    pub fn new(
-        test_context: Arc<dyn HolonsContextBehavior>,
-        dance_call_service: Arc<DanceCallService<C>>,
-    ) -> Self {
-        DanceTestExecutionState {
-            context: test_context,
-            dance_call_service,
-            created_holons: BTreeMap::new(),
-        }
+    pub fn new(test_context: Arc<dyn HolonsContextBehavior>) -> Self {
+        DanceTestExecutionState { context: test_context, created_holons: BTreeMap::new() }
     }
     pub fn context(&self) -> &dyn HolonsContextBehavior {
         &*self.context
@@ -207,8 +247,8 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
 
     /// Converts a vector of [`HolonReference`]s into a vector of [`TestReference`]s.
     ///
-    /// For `HolonReference::Smart` entries, this method calls `get_key` on the `SmartReference`.
-    /// If `get_key` fails or returns `None`, an error is returned.
+    /// For `HolonReference::Smart` entries, this method calls `key` on the `SmartReference`.
+    /// If `key` fails or returns `None`, an error is returned.
     ///
     /// # Arguments
     ///
@@ -244,6 +284,26 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
     }
     pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
         self.created_holons.get(key).cloned()
+    }
+
+    /// Invokes a full dance roundtrip using the current test context.
+    ///
+    /// This function retrieves the [`DanceInitiator`] from the active
+    /// [`HolonSpaceManager`] and executes `initiate_dance()` with the given request.
+    ///
+    /// It panics only if the test environment is misconfigured (e.g. no initiator present),
+    /// not for any normal dance-level errors — those are encoded into the returned
+    /// [`DanceResponse`].
+    pub async fn invoke_dance(&self, request: DanceRequest) -> DanceResponse {
+        // Get the initiator — this unwrap is safe in test context setup
+        let initiator = self
+            .context
+            .get_space_manager()
+            .get_dance_initiator()
+            .expect("Dance initiator must be initialized in test context");
+
+        // Call the pipeline — always returns a DanceResponse
+        initiator.initiate_dance(&*self.context, request).await
     }
 
     /// Resolves a [`TestReference`] into a [`HolonReference`].
@@ -290,7 +350,7 @@ impl<C: ConductorDanceCaller> DanceTestExecutionState<C> {
                     ))
                 })?;
 
-                let holon_id = HolonId::from(holon.get_local_id().map_err(|e| {
+                let holon_id = HolonId::from(holon.holon_id().map_err(|e| {
                     HolonError::InvalidHolonReference(format!(
                         "Couldn't resolve TestReference for SavedHolon({}): {}",
                         key, e
@@ -347,7 +407,7 @@ impl DancesTestCase {
     /// This function is called automatically within `rs_test` and should not be used directly.
     pub fn load_test_session_state(&mut self, fixture_context: &dyn HolonsContextBehavior) {
         let space_manager = fixture_context.get_space_manager();
-        let transient_holons = space_manager.export_transient_holons();
+        let transient_holons = space_manager.export_transient_holons().unwrap();
         self.test_session_state.set_transient_holons(transient_holons);
     }
 
@@ -385,10 +445,25 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // pub fn add_load_core_schema(&mut self) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::LoadCoreSchema);
-    //     Ok(())
-    // }
+    pub fn add_load_holons_step(
+        &mut self,
+        bundle: TransientReference,
+        expect_status: ResponseStatusCode,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::LoadHolons {
+            bundle,
+            expect_status,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+        });
+        Ok(())
+    }
 
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);
@@ -409,11 +484,11 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_related_holons_step(
+    pub fn add_add_related_holons_step(
         &mut self,
         staged_holon: HolonReference, // "owning" source Holon, which owns the Relationship
         relationship_name: RelationshipName,
-        related_holons: Vec<TestReference>, // "targets" referenced by HolonId for Saved and index for Staged
+        related_holons: Vec<TestReference>,
         expected_response: ResponseStatusCode,
         expected_holon: HolonReference,
     ) -> Result<(), HolonError> {
@@ -423,6 +498,32 @@ impl DancesTestCase {
             related_holons,
             expected_response,
             expected_holon,
+        ));
+        Ok(())
+    }
+
+    pub fn add_remove_properties_step(
+        &mut self,
+        holon: HolonReference,
+        properties: PropertyMap,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::RemoveProperties(holon, properties, expected_response));
+        Ok(())
+    }
+
+    pub fn add_remove_related_holons_step(
+        &mut self,
+        holon: HolonReference, // "owning" source Holon, which owns the Relationship
+        relationship_name: RelationshipName,
+        related_holons: Vec<HolonReference>,
+        expected_response: ResponseStatusCode,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::RemoveRelatedHolons(
+            holon,
+            relationship_name,
+            related_holons,
+            expected_response,
         ));
         Ok(())
     }
@@ -457,27 +558,11 @@ impl DancesTestCase {
 
     pub fn add_with_properties_step(
         &mut self,
-        index: HolonReference,
+        holon: HolonReference,
         properties: PropertyMap,
         expected_response: ResponseStatusCode,
     ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::WithProperties(index, properties, expected_response));
-        Ok(())
-    }
-
-    pub fn remove_related_holons_step(
-        &mut self,
-        staged_holon: HolonReference, // "owning" source Holon, which owns the Relationship
-        relationship_name: RelationshipName,
-        related_holons: Vec<HolonReference>, // "targets" referenced by HolonId for Saved and index for Staged
-        expected_response: ResponseStatusCode,
-    ) -> Result<(), HolonError> {
-        self.steps.push_back(DanceTestStep::RemoveRelatedHolons(
-            staged_holon,
-            relationship_name,
-            related_holons,
-            expected_response,
-        ));
+        self.steps.push_back(DanceTestStep::WithProperties(holon, properties, expected_response));
         Ok(())
     }
 }

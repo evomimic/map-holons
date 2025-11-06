@@ -21,7 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{CommitResponse, Holon, HolonBehavior};
+use crate::core_shared_objects::{CommitResponse, Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
@@ -96,16 +96,15 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, Hol
     Ok(commit_response)
 }
 
-/// Creates a new TransientHolon and assigns the specified key
-/// Returns a TransientReference to the newly created holon
+/// Creates a new TransientHolon.
+/// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
+/// Returns a TransientReference to the newly created holon.
 pub fn new_holon(
     context: &dyn HolonsContextBehavior,
-    key: MapString,
+    key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_reference = transient_service.borrow().create_empty(key)?;
-
-    Ok(transient_reference)
+    let service = context.get_space_manager().get_holon_service();
+    service.new_holon_internal(context, key)
 }
 
 /// Deletes a holon identified by its ID.
@@ -144,7 +143,7 @@ pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollec
     holon_service.get_all_holons_internal(context)
 }
 
-pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
+pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
     let key_option = map.get(&PropertyName(MapString("key".to_string())));
     if let Some(inner_value) = key_option {
         let string_value: String = inner_value.try_into().map_err(|_| {
@@ -156,44 +155,72 @@ pub fn get_key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>,
     }
 }
 
+/// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
+/// Returns a duplicate error if multiple found.
 pub fn get_staged_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
-    let staging_service_borrow = staging_service.borrow();
-
-    staging_service_borrow.get_staged_holon_by_base_key(key)
+    let staging_service = context.get_space_manager().get_staging_service();
+    let staging_service = staging_service.read().map_err(|e| {
+        HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
+    })?;
+    staging_service.get_staged_holon_by_base_key(key)
 }
 
+/// Returns StagedReference's for all Holons that have the same base key.
+/// This can be useful if multiple versions of the same Holon are being staged at the same time.
+pub fn get_staged_holons_by_base_key(
+    context: &dyn HolonsContextBehavior,
+    key: &MapString,
+) -> Result<Vec<StagedReference>, HolonError> {
+    let staging_service = context.get_space_manager().get_staging_service();
+    let staging_service_borrow = staging_service.read().unwrap();
+
+    staging_service_borrow.get_staged_holons_by_base_key(key)
+}
+
+/// Does a lookup by full (unique) key on staged holons.
 pub fn get_staged_holon_by_versioned_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
-    let staging_service_borrow = staging_service.borrow();
-
-    staging_service_borrow.get_staged_holon_by_versioned_key(key)
+    let staging_service = context.get_space_manager().get_staging_service();
+    let staging_service = staging_service.read().map_err(|e| {
+        HolonError::FailedToAcquireLock(format!("Failed to acquire read lock on nursery: {}", e))
+    })?;
+    staging_service.get_staged_holon_by_versioned_key(key)
 }
 
+/// Convenience method for retrieving a single TransientReference for a base key, when the caller expects there to only be one.
+/// Returns a duplicate error if multiple found.
 pub fn get_transient_holon_by_base_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
     let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_service_borrow = transient_service.borrow();
-
-    transient_service_borrow.get_transient_holon_by_base_key(key)
+    let transient_service = transient_service.read().map_err(|e| {
+        HolonError::FailedToAcquireLock(format!(
+            "Failed to acquire read lock on transient_behavior_service: {}",
+            e
+        ))
+    })?;
+    transient_service.get_transient_holon_by_base_key(key)
 }
 
+/// Does a lookup by full (unique) key on transient holons.
 pub fn get_transient_holon_by_versioned_key(
     context: &dyn HolonsContextBehavior,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
     let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_service_borrow = transient_service.borrow();
-
-    transient_service_borrow.get_transient_holon_by_versioned_key(key)
+    let transient_service = transient_service.read().map_err(|e| {
+        HolonError::FailedToAcquireLock(format!(
+            "Failed to acquire read lock on transient_behavior_service: {}",
+            e
+        ))
+    })?;
+    transient_service.get_transient_holon_by_versioned_key(key)
 }
 
 // == //
@@ -254,9 +281,16 @@ pub fn stage_new_holon(
     context: &dyn HolonsContextBehavior,
     transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
-    let staged_reference =
-        staging_service.borrow().stage_new_holon(context, transient_reference)?;
+    let staging_service = context.get_space_manager().get_staging_service();
+    let staged_reference = staging_service
+        .read()
+        .map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on nursery: {}",
+                e
+            ))
+        })?
+        .stage_new_holon(context, transient_reference)?;
 
     Ok(staged_reference)
 }
@@ -299,17 +333,39 @@ pub fn summarize_holons(holons: &Vec<Holon>) -> String {
 }
 
 // Gets total count of Staged Holons present in the Nursery
-pub fn staged_count(context: &dyn HolonsContextBehavior) -> i64 {
-    let staging_service = context.get_space_manager().get_staging_behavior_access();
-    let staging_service_borrow = staging_service.borrow();
-
-    staging_service_borrow.staged_count()
+pub fn staged_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
+    return context
+        .get_space_manager()
+        .get_staging_service()
+        .read()
+        .map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on nursery: {}",
+                e
+            ))
+        })?
+        .staged_count();
 }
 
 // Gets total count of Transient Holons present in the TransientHolonManager
-pub fn transient_count(context: &dyn HolonsContextBehavior) -> i64 {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_service_borrow = transient_service.borrow();
+pub fn transient_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
+    return context
+        .get_space_manager()
+        .get_transient_behavior_service()
+        .read()
+        .map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on transient_behavior_service: {}",
+                e
+            ))
+        })?
+        .transient_count();
+}
 
-    transient_service_borrow.transient_count()
+pub fn load_holons(
+    context: &dyn HolonsContextBehavior,
+    bundle: TransientReference,
+) -> Result<TransientReference, core_types::HolonError> {
+    let service = context.get_space_manager().get_holon_service();
+    service.load_holons_internal(context, bundle)
 }

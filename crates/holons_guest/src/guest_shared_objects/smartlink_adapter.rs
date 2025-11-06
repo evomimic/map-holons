@@ -5,7 +5,7 @@ use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId};
 use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_core::{
-    core_shared_objects::get_key_from_property_map,
+    core_shared_objects::key_from_property_map,
     reference_layer::{HolonReference, SmartReference},
 };
 use holons_guest_integrity::type_conversions::*;
@@ -39,9 +39,9 @@ impl SmartLink {
     /// KEY_PROPERTIES relationship. However, the current parameters to this function are not
     /// sufficient to do this.
     /// TODO: update this function to align with described key property list design
-    pub fn get_key(&self) -> Result<Option<MapString>, HolonError> {
+    pub fn key(&self) -> Result<Option<MapString>, HolonError> {
         if let Some(ref map) = self.smart_property_values {
-            get_key_from_property_map(map)
+            key_from_property_map(map)
         } else {
             Ok(None)
         }

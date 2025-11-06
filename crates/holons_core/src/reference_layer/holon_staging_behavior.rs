@@ -1,4 +1,7 @@
-use crate::{reference_layer::{StagedReference, TransientReference}, HolonsContextBehavior};
+use crate::{
+    reference_layer::{StagedReference, TransientReference},
+    HolonsContextBehavior,
+};
 
 use base_types::MapString;
 use core_types::HolonError;
@@ -14,7 +17,7 @@ use core_types::HolonError;
 /// This trait does **not** expose low-level details.
 ///
 /// Base key represents the Holon's key independent of versioning.
-pub trait HolonStagingBehavior {
+pub trait HolonStagingBehavior: Send + Sync {
     /// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
     /// Returns a duplicate error if multiple found.
     fn get_staged_holon_by_base_key(&self, key: &MapString) -> Result<StagedReference, HolonError>;
@@ -33,10 +36,14 @@ pub trait HolonStagingBehavior {
     ) -> Result<StagedReference, HolonError>;
 
     /// Returns a count of the number of holons being staged
-    fn staged_count(&self) -> i64;
+    fn staged_count(&self) -> Result<i64, HolonError>;
 
     /// Stages the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the staged holon
     /// to be retrieved by key
-    fn stage_new_holon(&self, context: &dyn HolonsContextBehavior, holon: TransientReference) -> Result<StagedReference, HolonError>;
+    fn stage_new_holon(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        holon: TransientReference,
+    ) -> Result<StagedReference, HolonError>;
 }

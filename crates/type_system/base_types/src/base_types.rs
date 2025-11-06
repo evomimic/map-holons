@@ -6,7 +6,6 @@ use std::fmt;
 //  (e.g., `MapString`, `MapBoolean`, `MapInteger`, `MapEnumValue`, `MapBytes`)
 //  that support serialization, hashing, and consistent formatting.
 
-
 // ===============================
 // 📦 MapString
 // ===============================
@@ -110,6 +109,7 @@ impl fmt::Display for BaseValue {
 }
 
 impl BaseValue {
+    /// Convert any `BaseValue` to raw bytes (big-endian for integers).
     pub fn into_bytes(&self) -> MapBytes {
         match self {
             Self::StringValue(map_string) => MapBytes(map_string.0.clone().into_bytes()),
@@ -120,9 +120,8 @@ impl BaseValue {
     }
 }
 
-// ===============================
-// 🔀 Conversion Implementations
-// ===============================
+/// Convert a `&BaseValue` to a `String` for display-like usage.
+/// (This is intentionally *not* a full lossless conversion for all variants.)
 impl Into<String> for &BaseValue {
     fn into(self) -> String {
         match self {
@@ -134,64 +133,102 @@ impl Into<String> for &BaseValue {
     }
 }
 
-// --- MapString ---
+// ===============================
+// 🔀 Canonical conversion API
+// ===============================
+
+/// Preferred, explicit conversion into `BaseValue`.
+///
+/// Import the trait (usually via the prelude) and call:
+/// - `"hello".to_base_value()`
+/// - `MapString("x".into()).to_base_value()`
+/// - `42_i64.to_base_value()`
+/// - `true.to_base_value()`
+/// - `some_base_value.to_base_value()` (no-op)
+pub trait ToBaseValue {
+    fn to_base_value(self) -> BaseValue;
+}
+
+// Owned wrappers → BaseValue
+impl ToBaseValue for MapString {
+    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(self) }
+}
+impl ToBaseValue for MapBoolean {
+    fn to_base_value(self) -> BaseValue { BaseValue::BooleanValue(self) }
+}
+impl ToBaseValue for MapInteger {
+    fn to_base_value(self) -> BaseValue { BaseValue::IntegerValue(self) }
+}
+impl ToBaseValue for MapEnumValue {
+    fn to_base_value(self) -> BaseValue { BaseValue::EnumValue(self) }
+}
+
+// References to wrappers → BaseValue (clone as needed)
+impl ToBaseValue for &MapString {
+    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(self.clone()) }
+}
+impl ToBaseValue for &MapBoolean {
+    fn to_base_value(self) -> BaseValue { BaseValue::BooleanValue(self.clone()) }
+}
+impl ToBaseValue for &MapInteger {
+    fn to_base_value(self) -> BaseValue { BaseValue::IntegerValue(self.clone()) }
+}
+impl ToBaseValue for &MapEnumValue {
+    fn to_base_value(self) -> BaseValue { BaseValue::EnumValue(self.clone()) }
+}
+
+// Primitives → BaseValue
+impl ToBaseValue for &str {
+    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(MapString(self.to_string())) }
+}
+impl ToBaseValue for String {
+    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(MapString(self)) }
+}
+impl ToBaseValue for bool {
+    fn to_base_value(self) -> BaseValue { BaseValue::BooleanValue(MapBoolean(self)) }
+}
+impl ToBaseValue for i64 {
+    fn to_base_value(self) -> BaseValue { BaseValue::IntegerValue(MapInteger(self)) }
+}
+
+// Identity conversions
+impl ToBaseValue for BaseValue {
+    #[inline]
+    fn to_base_value(self) -> BaseValue { self }
+}
+impl ToBaseValue for &BaseValue {
+    #[inline]
+    fn to_base_value(self) -> BaseValue { self.clone() }
+}
+
+// ===============================
+// 🧰 Convenience conversions (wrappers <-> primitives)
+// These do NOT convert to BaseValue; they’re general ergonomics that don’t
+// conflict with the ToBaseValue API.
+// ===============================
+
+// MapString
 impl From<String> for MapString {
     #[inline]
-    fn from(v: String) -> Self { MapString(v) }
+    fn from(value: String) -> Self { MapString(value) }
 }
 impl From<&str> for MapString {
     #[inline]
-    fn from(v: &str) -> Self { MapString(v.to_owned()) }
+    fn from(value: &str) -> Self { MapString(value.to_owned()) }
 }
 
-// --- MapBoolean ---
+// MapBoolean
 impl From<bool> for MapBoolean {
     #[inline]
-    fn from(v: bool) -> Self { MapBoolean(v) }
+    fn from(value: bool) -> Self { MapBoolean(value) }
 }
 
-// --- MapInteger <-> i64 ---
+// MapInteger <-> i64
 impl From<i64> for MapInteger {
     #[inline]
-    fn from(v: i64) -> Self { MapInteger(v) }
+    fn from(value: i64) -> Self { MapInteger(value) }
 }
 impl From<MapInteger> for i64 {
     #[inline]
-    fn from(v: MapInteger) -> Self { v.0 }
-}
-
-// --- BaseValue from wrappers ---
-impl From<MapString> for BaseValue {
-    #[inline]
-    fn from(v: MapString) -> Self { BaseValue::StringValue(v) }
-}
-impl From<MapBoolean> for BaseValue {
-    #[inline]
-    fn from(v: MapBoolean) -> Self { BaseValue::BooleanValue(v) }
-}
-impl From<MapInteger> for BaseValue {
-    #[inline]
-    fn from(v: MapInteger) -> Self { BaseValue::IntegerValue(v) }
-}
-impl From<MapEnumValue> for BaseValue {
-    #[inline]
-    fn from(v: MapEnumValue) -> Self { BaseValue::EnumValue(v) }
-}
-
-// --- BaseValue from primitives via wrappers ---
-impl From<&str> for BaseValue {
-    #[inline]
-    fn from(v: &str) -> Self { BaseValue::StringValue(MapString::from(v)) }
-}
-impl From<String> for BaseValue {
-    #[inline]
-    fn from(v: String) -> Self { BaseValue::StringValue(MapString::from(v)) }
-}
-impl From<bool> for BaseValue {
-    #[inline]
-    fn from(v: bool) -> Self { BaseValue::BooleanValue(MapBoolean::from(v)) }
-}
-impl From<i64> for BaseValue {
-    #[inline]
-    fn from(v: i64) -> Self { BaseValue::IntegerValue(MapInteger::from(v)) }
+    fn from(value: MapInteger) -> Self { value.0 }
 }

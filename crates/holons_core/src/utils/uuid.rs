@@ -1,6 +1,6 @@
-use sha2::{Digest, Sha256};
 use base_types::MapString;
 use core_types::TemporaryId;
+use sha2::{Digest, Sha256};
 use uuid::Builder;
 
 pub fn create_temporary_id_from_key(key: &MapString) -> TemporaryId {

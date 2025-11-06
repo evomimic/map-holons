@@ -1,0 +1,12 @@
+[package]
+name = "holons_trust_channel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tracing = "0.1"
+#serde = { version = "1", features = ["derive"] }
+async-trait = "0.1.51"
+
+[dependencies.holons_core]
+path = "../holons_core"

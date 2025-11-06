@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc};
+use std::sync::{Arc, RwLock};
 
 use crate::guest_shared_objects::GuestHolonService;
 use core_types::HolonError;
@@ -57,6 +57,7 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - Internal nursery access, required for commit operations.
 /// - Shared ownership support via `Arc<dyn HolonsContextBehavior>`, allowing multiple components
 ///   to reference the same context without unnecessary cloning.
+/// - Injects the **DanceCallService**, backed by a guest-side implementation `ConductorDanceCaller`
 ///
 /// This function also ensures that a HolonSpace Holon exists in the local DHT.
 ///
@@ -97,10 +98,12 @@ pub fn init_guest_context(
                 "Failed to get mutable reference to GuestHolonService".to_string(),
             )
         })?;
-    service.register_internal_access(Arc::new(RefCell::new(nursery.clone())));
+    service.register_internal_access(Arc::new(RwLock::new(nursery.clone())));
 
-    // Step 5: Create the HolonSpaceManager with injected Nursery & HolonService
+    // Step 6: Create the HolonSpaceManager with injected Nursery & HolonService
+    // TODO: add a DanceInitiator service to enable guest->guest dancing
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
         guest_holon_service,
         local_space_holon,
         ServiceRoutingPolicy::Combined,
@@ -108,6 +111,6 @@ pub fn init_guest_context(
         transient_manager,
     ));
 
-    // Step 6: Wrap in `GuestHolonsContext` and return as a trait object
+    // Step 7: Wrap in `GuestHolonsContext` and return as a trait object
     Ok(Arc::new(GuestHolonsContext::new(space_manager)))
 }

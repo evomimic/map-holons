@@ -1,0 +1,18 @@
+[package]
+name = "test_workspace"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+
+# We only need native (non-wasm) crates in the test workspace
+holons_core = { path = "../../crates/holons_core" }
+holons_trust_channel = { path = "../../crates/holons_trust_channel" }
+holon_dance_builders = { path = "../../crates/holon_dance_builders" }
+shared_validation = { path = "../../crates/shared_validation" }
+core_types = { path = "../../crates/type_system/core_types" }
+base_types = { path = "../../crates/type_system/base_types" }
+type_names = { path = "../../crates/type_system/type_names" }

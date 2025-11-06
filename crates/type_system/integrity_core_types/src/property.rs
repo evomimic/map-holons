@@ -1,7 +1,7 @@
 use base_types::{BaseValue, MapString};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
-use serde::{Deserialize, Serialize};
 
 // ===============================
 // 🔑 Property Name
@@ -20,7 +20,6 @@ impl fmt::Display for PropertyName {
 // ===============================
 // 📦 Type Aliases
 // ===============================
-
 
 /// The type of a property’s value at runtime.
 pub type PropertyValue = BaseValue;

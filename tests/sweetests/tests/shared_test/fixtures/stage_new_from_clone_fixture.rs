@@ -1,5 +1,3 @@
-use rstest::*;
-
 use crate::shared_test::{
     setup_book_author_steps_with_context,
     test_context::init_fixture_context,
@@ -7,15 +5,17 @@ use crate::shared_test::{
         DancesTestCase, TestReference, BOOK_KEY, EDITOR_FOR, PERSON_2_KEY, PUBLISHER_KEY,
     },
 };
+use rstest::*;
+use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
 /// Fixture for creating Simple StageNewFromClone Testcase
 #[fixture]
-pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // The fixture has its own TransientHolonManager which is used as a scratch pad during the test setup phase.
     // This allows them to be assigned TransientReferences and also retrieved by either index or key
-    let fixture_context = init_fixture_context();
+    let fixture_context = init_fixture_context().await;
 
     let mut test_case = DancesTestCase::new(
         "Simple StageNewFromClone Testcase".to_string(),
@@ -23,6 +23,8 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
         properties, adds a relationship, commits it and then compares essential content of existing \n\
         holon and cloned holon".to_string(),
     );
+
+    info!("In simple_stage_new_from_clone_fixture: {:?}", test_case);
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -38,7 +40,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
 
     // The following assumes the fixture's nursery contains the same number of holons as
     // test executor's nursery will have staged immediately prior to commit.
-    expected_count += staged_count(&*fixture_context);
+    expected_count += staged_count(&*fixture_context).unwrap();
 
     // Get references to the Holons stashed in the fixture's transient_holon_manager.
     let book_key = MapString(BOOK_KEY.to_string());
@@ -95,7 +97,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // //
     // // NOTE: In each step we need to mirror the actions being added via test steps in the
     // // fixture's nursery in order to build the expected holon.
-
+    // //
     // // Step 1: stage_new_from_clone for the publisher holon committed in Phase I.
     // // This will create an exact copy of the publisher holon.
 
@@ -105,7 +107,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     //     ResponseStatusCode::OK,
     // )?;
     // // Mirror the test step in the fixture's Nursery
-    // let expected_fixture_holon =
+    // let mut expected_fixture_holon =
     //     stage_new_holon_api(&*fixture_context, publisher_transient_reference.clone())?; // Staged
 
     // // Step 2: with_properties step to modify the staged clone's properties
@@ -154,7 +156,7 @@ pub fn simple_stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonErro
     // let expected_holon =
     //     HolonReference::Transient(expected_fixture_holon.clone_holon(&*fixture_context)?);
 
-    // test_case.add_related_holons_step(
+    // test_case.add_add_related_holons_step(
     //     HolonReference::Staged(publisher_staged_reference), // source holon
     //     publisher_relationship_name.clone(),
     //     holons_to_add,

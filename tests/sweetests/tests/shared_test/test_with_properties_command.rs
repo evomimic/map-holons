@@ -1,29 +1,39 @@
+use crate::mock_conductor::MockConductorConfig;
 use async_std::task;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+use tracing::warn;
 use tracing::{debug, info};
 
 use holochain::sweettest::*;
 use holochain::sweettest::{SweetCell, SweetConductor};
-
+use holons_prelude::prelude::*;
 use rstest::*;
 
 use crate::shared_test::*;
 use crate::shared_test::{
-    mock_conductor::MockConductorConfig,
+    // mock_conductor::MockConductorConfig,
     test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
 };
-
-use holons_prelude::prelude::*;
+// use base_types::{MapInteger, MapString};
+// use core_types::HolonId;
+// use holon_dance_builders::with_properties_dance::build_with_properties_dance_request;
+// use holons_core::{
+//     core_shared_objects::ReadableHolonState,
+//     dances::{ResponseBody, ResponseStatusCode},
+//     reference_layer::{HolonReference, ReadableHolon, StagedReference, WritableHolon},
+// };
+// // use holons_guest_integrity::HolonNode;
+// use core_types::{PropertyMap, PropertyName};
 
 /// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
 /// To pass this test, all the following must be true:
 /// 1) with_properties dance returns with a Success
-/// 2) the returned index refers to a staged_holon that matches the expected_holon
+/// 2) the returned HolonReference refers to a Holon's essential_content that matches the expected
 ///
 
 pub async fn execute_with_properties(
-    test_state: &mut DanceTestExecutionState<MockConductorConfig>,
+    test_state: &mut DanceTestExecutionState,
     original_holon: HolonReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
@@ -36,9 +46,7 @@ pub async fn execute_with_properties(
     info!("Original Holon: {:?}", original_holon);
 
     // 3. Create the expected holon by applying the property updates
-    let expected_holon = original_holon
-        .clone_holon(context)
-        .expect("Failed to clone original holon into expected holon");
+    let mut expected_holon = original_holon.clone();
 
     for (property_name, base_value) in properties.clone() {
         expected_holon
@@ -53,7 +61,7 @@ pub async fn execute_with_properties(
     debug!("Dance Request: {:#?}", request);
 
     // 5. Call the dance
-    let response = test_state.dance_call_service.dance_call(context, request).await;
+    let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 6. Validate response status
@@ -66,8 +74,6 @@ pub async fn execute_with_properties(
     // 7. If successful, verify the updated holon
     if response.status_code == ResponseStatusCode::OK {
         if let ResponseBody::HolonReference(updated_holon) = response.body {
-            debug!("Updated holon reference returned: {:?}", updated_holon);
-
             assert_eq!(
                 expected_holon.essential_content(context),
                 updated_holon.essential_content(context),
@@ -76,7 +82,7 @@ pub async fn execute_with_properties(
 
             info!("Success! Holon has been updated with supplied properties.");
         } else {
-            panic!("Expected StagedRef in response body, but got {:?}", response.body);
+            panic!("Expected HolonReference in response body, but got {:?}", response.body);
         }
     }
 }

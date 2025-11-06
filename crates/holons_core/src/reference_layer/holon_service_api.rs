@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use super::{HolonReference, SmartReference, StagedReference};
+use super::{HolonReference, SmartReference, StagedReference, TransientReference};
 use crate::core_shared_objects::{CommitResponse, Holon, HolonCollection};
 use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
@@ -23,7 +23,7 @@ use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 ///
 /// In other words, this trait defines the "what" of Holon operations, while the
 /// client and guest provide the "how" for their respective contexts.
-pub trait HolonServiceApi: Debug + Any {
+pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 
     ///
@@ -56,6 +56,21 @@ pub trait HolonServiceApi: Debug + Any {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError>;
+
+    /// Execute a Holon Loader import using a HolonLoaderBundle (transient) reference.
+    /// Returns a transient reference to a HolonLoadResponse holon.
+    fn load_holons_internal(
+        &self,
+        ctx: &dyn HolonsContextBehavior,
+        bundle: TransientReference,
+    ) -> Result<TransientReference, HolonError>;
+
+    /// Creates a new Holon in transient state, without any lineage to prior Holons.
+    fn new_holon_internal(
+        &self,
+        ctx: &dyn HolonsContextBehavior,
+        key: Option<MapString>,
+    ) -> Result<TransientReference, HolonError>;
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.

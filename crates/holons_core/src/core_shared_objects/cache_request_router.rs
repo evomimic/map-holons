@@ -1,4 +1,5 @@
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, RwLock};
+// Removed `RefCell`/`Rc` in favor of thread-safe types
 
 use super::Holon;
 use crate::{
@@ -8,15 +9,15 @@ use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Debug)]
 pub struct CacheRequestRouter {
-    local_cache_manager: HolonCacheManager, // Local cache manager for handling local requests
-    cache_routing_policy: ServiceRoutingPolicy, // Determines how requests are routed
-                                            //outbound_proxies: Option<Arc<BTreeMap<String, Box<dyn HolonCacheAccess>>>>, // Optional external proxies for remote spaces
+    local_cache_manager: Arc<RwLock<HolonCacheManager>>, // Thread-safe local cache manager
+    cache_routing_policy: ServiceRoutingPolicy,          // Determines how requests are routed
+                                                         //outbound_proxies: Option<Arc<BTreeMap<String, Box<dyn HolonCacheAccess>>>>, // Optional external proxies for remote spaces
 }
 
 impl CacheRequestRouter {
     /// Creates a new `CacheRequestRouter` instance.
     pub fn new(
-        local_cache_manager: HolonCacheManager,
+        local_cache_manager: Arc<RwLock<HolonCacheManager>>,
         cache_routing_policy: ServiceRoutingPolicy,
         //outbound_proxies: Option<Arc<BTreeMap<String, Box<dyn HolonCacheAccess>>>>,
     ) -> Self {
@@ -76,15 +77,23 @@ impl CacheRequestRouter {
     }
 }
 impl HolonCacheAccess for CacheRequestRouter {
-    /// Retrieves a mutable reference (`Rc<RefCell>`) to the `Holon` identified by `holon_id`.
+    /// Retrieves a mutable reference (`Arc<RwLock<Holon>`) to the `Holon` identified by `holon_id`.
     /// Delegates to the `local_cache_manager` if the `ServiceRoute` is `Local`.
     /// Returns an error if the route is not `Local` or cannot be resolved.
-    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Rc<RefCell<Holon>>, HolonError> {
+    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Determine the routing policy for the request
         match CacheRequestRouter::get_request_route(holon_id, &self.cache_routing_policy)? {
             ServiceRoute::Local => {
-                // Delegate to the local cache manager
-                self.local_cache_manager.get_rc_holon(holon_id)
+                // Delegate to the local cache manager through a read lock
+                self.local_cache_manager
+                    .read()
+                    .map_err(|e| {
+                        HolonError::FailedToAcquireLock(format!(
+                            "Cache manager read lock poisoned: {}",
+                            e
+                        ))
+                    })?
+                    .get_rc_holon(holon_id)
             } // ServiceRoute::Proxy(_) => {
               //     // Handle proxy-based requests (if supported in the future)
               //     Err(HolonError::NotImplemented(
@@ -96,17 +105,25 @@ impl HolonCacheAccess for CacheRequestRouter {
 
     /// Retrieves a collection of `Holon`s related to the `source_holon_id` by a given `relationship_name`.
     /// Delegates to the `local_cache_manager` if the `ServiceRoute` is `Local`.
-    /// Returns an error if the route is not `Local` or cannot be resolved.
+    /// Returns a thread-safe `Arc<RwLock<HolonCollection>>` or an error if not `Local`.
     fn get_related_holons(
         &self,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         // Determine the routing policy for the request
         match CacheRequestRouter::get_request_route(source_holon_id, &self.cache_routing_policy)? {
             ServiceRoute::Local => {
-                // Delegate to the local cache manager
-                self.local_cache_manager.get_related_holons(source_holon_id, relationship_name)
+                // Delegate to the local cache manager through a read lock
+                self.local_cache_manager
+                    .read()
+                    .map_err(|e| {
+                        HolonError::FailedToAcquireLock(format!(
+                            "Cache manager read lock poisoned: {}",
+                            e
+                        ))
+                    })?
+                    .get_related_holons(source_holon_id, relationship_name)
             } // ServiceRoute::Proxy(_) => {
               //     // Handle proxy-based requests (if supported in the future)
               //     Err(HolonError::NotImplemented(
@@ -124,8 +141,16 @@ impl HolonCacheAccess for CacheRequestRouter {
         // Determine the routing policy for the request
         match CacheRequestRouter::get_request_route(source_holon_id, &self.cache_routing_policy)? {
             ServiceRoute::Local => {
-                // Delegate to the local cache manager
-                self.local_cache_manager.get_all_related_holons(context, source_holon_id)
+                // Delegate to the local cache manager through a read lock
+                self.local_cache_manager
+                    .read()
+                    .map_err(|e| {
+                        HolonError::FailedToAcquireLock(format!(
+                            "Cache manager read lock poisoned: {}",
+                            e
+                        ))
+                    })?
+                    .get_all_related_holons(context, source_holon_id)
             }
         }
     }
@@ -180,4 +205,16 @@ pub enum ServiceRoutingPolicy {
 pub enum ServiceRoute {
     Local,
     // Proxy(&OutboundSpaceProxy), TODO: implement OutboundSpaceProxy
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn cache_request_router_is_thread_safe() {
+        assert_thread_safe::<CacheRequestRouter>();
+    }
 }

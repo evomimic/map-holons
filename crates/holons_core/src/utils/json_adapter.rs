@@ -152,8 +152,8 @@ impl<'a> Serialize for StagedRelationshipMapWrapper<'a> {
         let map_len = self.0.iter().count();
         let mut map = serializer.serialize_map(Some(map_len))?;
         for (k, v) in self.0.iter() {
-            // Borrow the RefCell to get the inner HolonCollection
-            let holon_collection = v.borrow();
+            // Read the RwLock to get the inner HolonCollection
+            let holon_collection = v.read().unwrap();
             // Use your existing HolonCollectionWrapper
             map.serialize_entry(&k.0.to_string(), &HolonCollectionWrapper(&holon_collection))?;
         }

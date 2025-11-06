@@ -1,9 +1,8 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, HashMap},
-    rc::Rc,
+    sync::{Arc, RwLock},
 };
 
 use super::{ReadableRelationship, TransientRelationshipMap};
@@ -11,9 +10,9 @@ use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
 use core_types::{HolonError, RelationshipName};
 
 /// Custom RelationshipMap is only used for caching and will never be serialized
-#[derive(new, Clone, Debug, Eq, PartialEq)]
+#[derive(new, Clone, Debug)]
 pub struct RelationshipMap {
-    map: HashMap<RelationshipName, Rc<HolonCollection>>,
+    map: HashMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
 }
 impl RelationshipMap {
     /// Creates a new, empty `RelationshipMap`.
@@ -24,34 +23,42 @@ impl RelationshipMap {
     /// Converts to a StagedRelationshipMap.
     pub fn clone_for_staged(&self) -> Result<StagedRelationshipMap, HolonError> {
         let mut cloned_map = BTreeMap::new();
-
-        for (name, rc_collection) in self.map.iter() {
-            let cloned_collection = rc_collection.clone_for_staged()?;
-            cloned_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection.clone())));
+        for (name, arc_lock) in self.map.iter() {
+            let collection = arc_lock
+                .read()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?
+                .clone_for_staged()?;
+            cloned_map.insert(name.clone(), Arc::new(RwLock::new(collection)));
         }
-
         Ok(StagedRelationshipMap::new(cloned_map))
     }
 
-    /// Returns a shared reference (`Rc<HolonCollection>`) for the given `relationship_name`.
+    /// Returns a shared reference (`Arc<RwLock<HolonCollection>>`) for the given `relationship_name`.
     /// Returns `None` if the relationship is not found.
     pub fn get_collection_for_relationship(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Option<Rc<HolonCollection>> {
-        // Borrow the map immutably and clone the Rc for the requested relationship
+    ) -> Option<Arc<RwLock<HolonCollection>>> {
         self.map.get(relationship_name).cloned()
     }
     /// Inserts a `HolonCollection` into the `RelationshipMap` for the given `relationship_name`.
-    pub fn insert(&mut self, relationship_name: RelationshipName, collection: Rc<HolonCollection>) {
-        // Borrow the map mutably and insert the new collection
+    pub fn insert(
+        &mut self,
+        relationship_name: RelationshipName,
+        collection: Arc<RwLock<HolonCollection>>,
+    ) {
         self.map.insert(relationship_name, collection);
     }
 
     /// Iterates over all relationships in the `RelationshipMap`.
-    /// Returns a vector of `(RelationshipName, Rc<HolonCollection>)` pairs for read-only access.
-    pub fn iter(&self) -> Vec<(RelationshipName, Rc<HolonCollection>)> {
-        self.map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    /// Returns a vector of `(RelationshipName, Arc<RwLock<HolonCollection>>)` pairs for read-only access.
+    pub fn iter(&self) -> Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)> {
+        self.map.iter().map(|(k, v)| (k.clone(), Arc::clone(v))).collect()
     }
 }
 
@@ -63,13 +70,18 @@ impl ReadableRelationship for RelationshipMap {
     /// Since all Holons begin their lifecylce as Transient, so too does their relationship_map.
     fn clone_for_new_source(&self) -> Result<TransientRelationshipMap, HolonError> {
         let mut cloned_map = BTreeMap::new();
-
-        for (name, rc_collection) in self.map.iter() {
-            // Sets CollectionState::Transient
-            let cloned_collection = rc_collection.clone_for_new_source()?; // Assumes `clone_for_new_source` exists on `HolonCollection`.
-            cloned_map.insert(name.clone(), Rc::new(RefCell::new(cloned_collection)));
+        for (name, arc_lock) in self.map.iter() {
+            let cloned_collection = arc_lock
+                .read()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on holon collection: {}",
+                        e
+                    ))
+                })?
+                .clone_for_new_source()?;
+            cloned_map.insert(name.clone(), Arc::new(RwLock::new(cloned_collection)));
         }
-
         Ok(TransientRelationshipMap::new(cloned_map))
     }
 
@@ -77,13 +89,14 @@ impl ReadableRelationship for RelationshipMap {
     //    DATA ACCESSORS
     // ====================
 
-    fn get_related_holons(&self, relationship_name: &RelationshipName) -> Rc<HolonCollection> {
-        if let Some(rc_collection) = self.map.get(relationship_name) {
-            // Clone the inner HolonCollection
-            Rc::clone(rc_collection)
+    fn get_related_holons(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Arc<RwLock<HolonCollection>> {
+        if let Some(arc_lock) = self.map.get(relationship_name) {
+            Arc::clone(arc_lock)
         } else {
-            // Return a new Rc<HolonCollection> if the entry doesn't exist
-            Rc::new(HolonCollection::new_staged())
+            Arc::new(RwLock::new(HolonCollection::new_staged()))
         }
     }
 }
@@ -94,11 +107,16 @@ impl Serialize for RelationshipMap {
     where
         S: serde::Serializer,
     {
-        let serializable_map: HashMap<_, _> = self
-            .map
-            .iter()
-            .map(|(key, value)| (key.clone(), &**value)) // Deref Rc
-            .collect();
+        let mut serializable_map = HashMap::new();
+        for (key, arc_lock) in &self.map {
+            let coll = arc_lock.read().map_err(|e| {
+                serde::ser::Error::custom(format!(
+                    "Failed to acquire read lock on holon collection: {}",
+                    e
+                ))
+            })?;
+            serializable_map.insert(key.clone(), coll.clone());
+        }
         serializable_map.serialize(serializer)
     }
 }
@@ -111,8 +129,10 @@ impl<'de> Deserialize<'de> for RelationshipMap {
     {
         let deserialized_map: HashMap<RelationshipName, HolonCollection> =
             HashMap::deserialize(deserializer)?;
-        let wrapped_map: HashMap<_, _> =
-            deserialized_map.into_iter().map(|(key, value)| (key, Rc::new(value))).collect();
+        let wrapped_map: HashMap<_, _> = deserialized_map
+            .into_iter()
+            .map(|(key, value)| (key, Arc::new(RwLock::new(value))))
+            .collect();
 
         Ok(RelationshipMap { map: wrapped_map })
     }
@@ -122,9 +142,10 @@ impl From<StagedRelationshipMap> for RelationshipMap {
     fn from(staged: StagedRelationshipMap) -> Self {
         let mut new_map = HashMap::new();
 
-        for (name, rc_refcell_collection) in staged.map {
-            let cloned_collection = rc_refcell_collection.borrow().clone();
-            new_map.insert(name, Rc::new(cloned_collection));
+        for (name, arc_lock) in staged.map {
+            let cloned_collection =
+                arc_lock.read().expect("Failed to acquire read lock on holon collection").clone();
+            new_map.insert(name, Arc::new(RwLock::new(cloned_collection)));
         }
 
         RelationshipMap::new(new_map)
@@ -135,9 +156,10 @@ impl From<TransientRelationshipMap> for RelationshipMap {
     fn from(transient: TransientRelationshipMap) -> Self {
         let mut new_map = HashMap::new();
 
-        for (name, rc_refcell_collection) in transient.map {
-            let cloned_collection = rc_refcell_collection.borrow().clone();
-            new_map.insert(name, Rc::new(cloned_collection));
+        for (name, arc_lock) in transient.map {
+            let cloned_collection =
+                arc_lock.read().expect("Failed to acquire read lock on holon collection").clone();
+            new_map.insert(name, Arc::new(RwLock::new(cloned_collection)));
         }
 
         RelationshipMap::new(new_map)

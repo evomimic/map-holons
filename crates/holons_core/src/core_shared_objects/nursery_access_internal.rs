@@ -1,18 +1,28 @@
-use std::{any::Any, cell::RefCell, rc::Rc};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock},
+};
 
 use super::{holon_pool::SerializableHolonPool, Holon};
 use crate::{HolonStagingBehavior, NurseryAccess};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
-/// Provides **internal management** of staged holons in the nursery.
+/// Provides thread-safe **internal access** to staged holons within the `Nursery`.
 ///
-/// This trait is used **only by the nursery itself and HolonSpaceManager**.
-/// It defines methods for:
-/// - **Clearing staged holons**
-/// - **Retrieving holons by key**
-/// - **Directly staging new holons**
-pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
+/// This trait extends [`NurseryAccess`] and [`HolonStagingBehavior`] and is implemented
+/// by components that manage the lifecycle of staged holons—primarily the `Nursery`
+/// and `HolonSpaceManager`.
+///
+/// > **Note:** Although this trait is thread-safe (`Send + Sync`), it is **intended only for internal use**
+/// by core components and should not be exposed as part of public or client-facing APIs.
+///
+/// ### Responsibilities:
+/// - Clearing and replacing staged holons
+/// - Accessing holons by base or versioned key
+/// - Exporting/importing the full staged holon pool
+/// - Providing holons to the commit pipeline
+pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + Sync {
     /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their concrete type.
     ///
     /// This method is useful when working with `NurseryAccessInternal` as a trait object (`dyn NurseryAccessInternal`)
@@ -54,7 +64,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     ///
     /// # Returns
     /// A `SerializableHolonPool` containing a **deep clone** of the current staged holons and their keyed index.
-    fn export_staged_holons(&self) -> SerializableHolonPool;
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
     /// Imports a `SerializableHolonPool`, replacing the current staged holons.
     ///
@@ -66,7 +76,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     /// - **State Restoration:** Enables reloading staged holons from a saved state.
     ///
     /// # Notes
-    /// - The method ensures that **holons are correctly wrapped in `Rc<RefCell<_>>`** upon import.
+    /// - The method ensures that **holons are correctly wrapped in `Arc<RwLock<Holon>>`** upon import.
     /// - If the provided pool is empty, the `Nursery` will also be cleared.
     ///
     /// # Arguments
@@ -80,16 +90,20 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior {
     ///
     /// # Returns
     ///
-    /// A Ref to a `Vec<Rc<RefCell<Holon>>>` containing all staged Holons.
-    // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_;
-    fn get_holons_to_commit(&self) -> Vec<Rc<RefCell<Holon>>>;
+    /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
+    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>>;
+}
 
-    // /// Stages a new holon and optionally updates the keyed index.
-    // ///
-    // /// # Arguments
-    // /// * `holon` - A reference to the holon to be staged.
-    // ///
-    // /// # Returns
-    // /// The index of the staged holon in the nursery.
-    // fn stage_holon(&self, holon: Holon) -> usize;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn nursery_access_internal_is_thread_safe() {
+        trait Dummy: NurseryAccessInternal {}
+        impl<T: NurseryAccessInternal> Dummy for T {}
+        assert_thread_safe::<&dyn Dummy>();
+    }
 }

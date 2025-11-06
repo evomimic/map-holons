@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -162,7 +162,7 @@ pub trait ReadableHolon: ReadableHolonImpl {
         &self,
         context: &dyn HolonsContextBehavior,
         name: T,
-    ) -> Result<Rc<HolonCollection>, HolonError> {
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         let rel = name.to_relationship_name();
         ReadableHolonImpl::related_holons_impl(self, context, &rel)
     }

@@ -10,14 +10,20 @@ name = "holons"
 
 [dependencies]
 # General Dependencies
-serde = { workspace = true }
-serde_json = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.109"
 
 # Holochain Dependencies
-hdk = { workspace = true }
-holons_integrity = { workspace = true }
+hdk = "0.5"
 
 
 # MAP Dependencies
-holons_core = { workspace = true }
-holons_guest = { workspace = true }
+
+[dependencies.holons_core]
+path = "../../../crates/holons_core"
+
+[dependencies.holons_integrity]
+path = "../../integrity/holons_integrity"
+
+[dependencies.holons_guest]
+path = "../../../crates/holons_guest"

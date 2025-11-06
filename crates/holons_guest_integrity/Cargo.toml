@@ -12,13 +12,15 @@ guest = []  # This crate supports the `guest` feature
 
 [dependencies]
 # General dev-dependencies (platform-agnostic)
-derive-new = { workspace = true }
-serde = { workspace = true }
+derive-new = "0.7"
+serde = { version = "1", features = ["derive"] }
 
 # Holochain Dependencies
-hdi = { workspace = true }
-holochain_serialized_bytes = { workspace = true }
+hdi = "0.6"
+holochain_serialized_bytes = "*"
 
 
 # MAP Dependencies
-integrity_core_types = { workspace = true }
+
+[dependencies.integrity_core_types]
+path = "../type_system/integrity_core_types"

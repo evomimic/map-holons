@@ -1,4 +1,7 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
+};
 
 use hdk::prelude::*;
 use holons_guest_integrity::type_conversions::*;
@@ -13,11 +16,12 @@ use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolon
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
-        CommitRequestStatus, CommitResponse, Holon, HolonBehavior, HolonCollection, StagedHolon,
+        CommitRequestStatus, CommitResponse, Holon, HolonCollection, ReadableHolonState,
+        StagedHolon,
     },
     reference_layer::{HolonsContextBehavior, ReadableHolon},
 };
-// use holons_core::utils::as_json;
+
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
@@ -63,7 +67,7 @@ use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName}
 ///
 pub fn commit(
     context: &dyn HolonsContextBehavior,
-    staged_holons: &Vec<Rc<RefCell<Holon>>>,
+    staged_holons: &Vec<Arc<RwLock<Holon>>>,
 ) -> Result<CommitResponse, HolonError> {
     info!("Entering commit...");
 
@@ -89,17 +93,17 @@ pub fn commit(
         info!("\n\nStarting FIRST PASS... commit staged_holons...");
         for rc_holon in staged_holons.iter().cloned() {
             {
-                rc_holon.borrow().is_accessible(AccessType::Commit)?;
+                rc_holon.read().unwrap().is_accessible(AccessType::Commit)?;
             }
 
             let should_commit = {
-                let borrowed = rc_holon.borrow();
+                let borrowed = rc_holon.read().unwrap();
                 matches!(&*borrowed, Holon::Staged(_))
             };
 
             if should_commit {
                 trace!(" In commit_service... getting ready to call commit()");
-                let outcome = commit_holon(rc_holon);
+                let outcome = commit_holon(rc_holon.clone());
                 match outcome {
                     Ok(holon) => match holon {
                         Holon::Staged(ref staged_holon) => {
@@ -140,7 +144,7 @@ pub fn commit(
         info!("\n\nStarting 2ND PASS... commit relationships for the saved staged_holons...");
         //let commit_manager = context.commit_manager.borrow();
         for rc_holon in staged_holons {
-            let mut holon_write = rc_holon.borrow_mut();
+            let mut holon_write = rc_holon.write().unwrap();
 
             if let Holon::Staged(staged_holon) = &mut *holon_write {
                 let outcome = commit_relationships(context, &staged_holon);
@@ -175,9 +179,8 @@ pub fn commit(
 /// If an error is encountered, it is pushed into the holons `errors` vector, the holon's state
 /// is left unchanged and an Err is returned.
 ///
-fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
-    let mut holon_write =
-        rc_holon.try_borrow_mut().map_err(|e| HolonError::WasmError(e.to_string()))?;
+fn commit_holon(rc_holon: Arc<RwLock<Holon>>) -> Result<Holon, HolonError> {
+    let mut holon_write = rc_holon.write().unwrap();
     if let Holon::Staged(staged_holon) = &mut *holon_write {
         let staged_state = staged_holon.get_staged_state();
 
@@ -185,7 +188,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
             StagedState::ForCreate => {
                 // Create a new HolonNode from this Holon and request it be created
                 trace!("StagedState is New... requesting new HolonNode be created in the DHT");
-                let node = staged_holon.into_node();
+                let node = staged_holon.into_node_model();
                 let result = create_holon_node(HolonNode::from(node));
 
                 match result {
@@ -205,7 +208,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
             }
             StagedState::ForUpdateChanged => {
                 // Changed holons MUST have an original_id
-                let original_id = staged_holon.get_original_id();
+                let original_id = staged_holon.original_id();
                 if let Some(id) = original_id {
                     let original_holon_node_hash = try_action_hash_from_local_id(&id)?;
                     let previous_holon_node_hash =
@@ -214,7 +217,7 @@ fn commit_holon(rc_holon: Rc<RefCell<Holon>>) -> Result<Holon, HolonError> {
                     let input = UpdateHolonNodeInput {
                         original_holon_node_hash,
                         previous_holon_node_hash,
-                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node()),
+                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node_model()),
                     };
                     debug!("Requesting HolonNode be updated in the DHT"); //
 
@@ -276,7 +279,7 @@ fn commit_relationships(
         StagedState::Committed(local_id) => {
             for (name, holon_collection_rc) in holon.get_staged_relationship_map()?.map.iter() {
                 debug!("COMMITTING {:#?} relationship", name.0.clone());
-                let holon_collection = holon_collection_rc.borrow();
+                let holon_collection = holon_collection_rc.read().unwrap();
                 commit_relationship(context, local_id.clone(), name.clone(), &holon_collection)?;
             }
 

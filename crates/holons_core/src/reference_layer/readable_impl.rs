@@ -6,7 +6,7 @@ use base_types::MapString;
 use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
 };
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 pub trait ReadableHolonImpl {
     /// Generic clone for all Holon variants. Resulting clone is always a TransientReference, regardless of source phase.
@@ -42,7 +42,7 @@ pub trait ReadableHolonImpl {
         &self,
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
-    ) -> Result<Rc<HolonCollection>, HolonError>;
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
     fn versioned_key_impl(
         &self,

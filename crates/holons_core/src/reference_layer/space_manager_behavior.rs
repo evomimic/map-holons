@@ -1,20 +1,37 @@
-use crate::core_shared_objects::TransientManagerAccess;
-use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonStagingBehavior, TransientHolonBehavior,
-};
+use core_types::HolonError;
+
+use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
-use crate::core_shared_objects::nursery_access::NurseryAccess;
-use crate::HolonCollectionApi;
 
-use std::cell::RefCell;
-use std::sync::Arc;
+// Import thread-safe core objects
+use crate::core_shared_objects::{TransientCollection, TransientManagerAccess};
+use crate::{HolonStagingBehavior, NurseryAccess, TransientHolonBehavior};
+
+use crate::dances::dance_initiator::DanceInitiator;
+use std::sync::{Arc, RwLock};
 
 /// Defines the core behavior of a **Holon Space**, providing:
 /// 1. **Service registry access** (Nursery, Cache, HolonService, Transient State)
 /// 2. **Controlled mediation** for importing/exporting staged holons.
 pub trait HolonSpaceBehavior {
+    /// **Mediates access to nursery exports, avoiding direct exposure in `NurseryAccess`.**
+    ///
+    /// This method is used when **sending the staged state** to another process (e.g., guest → client sync).
+    ///
+    /// # Returns
+    /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
+    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+
+    /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
+    ///
+    /// This method is used when ** sending the "transient state" ** to another process (e.g., guest → client sync).
+    ///
+    /// # Returns
+    /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
+    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+
     /// Provides access to the **cache service** for retrieving and storing holons.
     ///
     /// The cache mediates access between:
@@ -23,14 +40,22 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Returns
     /// - An `Arc<dyn HolonCacheAccess>` that allows cache operations.
-    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess>;
+    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync>;
+
+    /// Retrieves the configured [`DanceInitiator`] responsible for outbound Dances.
+    ///
+    /// Returns:
+    /// - `Ok(Arc<dyn DanceInitiator>)` when the initiator has been injected.
+    /// - `Err(HolonError::ServiceNotAvailable("DanceInitiator"))` when the
+    ///   initiator is not configured for this context (e.g., in a guest runtime).
+    fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError>;
 
     /// Provides access to the **holon service API**, which includes core operations
     /// such as creating, retrieving, updating, and deleting holons.
     ///
     /// # Returns
     /// - An `Arc<dyn HolonServiceApi>` for interacting with holons.
-    fn get_holon_service(&self) -> Arc<dyn HolonServiceApi>;
+    fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync>;
 
     /// Provides access to the **nursery**, where staged holons are temporarily stored before being committed.
     ///
@@ -43,8 +68,8 @@ pub trait HolonSpaceBehavior {
     /// - If the nursery is **not yet initialized**, it will be created automatically.
     ///
     /// # Returns
-    /// - An `Arc<RefCell<dyn NurseryAccess>>` to allow interior mutability.
-    fn get_nursery_access(&self) -> Arc<RefCell<dyn NurseryAccess>>;
+    /// - An Arc<RwLock<dyn NurseryAccess + Send + Sync>> to allow interior mutability in a multithreaded context.
+    fn get_nursery_access(&self) -> Arc<RwLock<dyn NurseryAccess + Send + Sync>>;
 
     /// Retrieves a reference to the **local space holon**, if it exists.
     ///
@@ -61,17 +86,18 @@ pub trait HolonSpaceBehavior {
     /// This allows holons to be staged, retrieved, and committed within the nursery.
     ///
     /// # Returns
-    /// - An `Arc<RefCell<dyn HolonStagingBehavior>>` for interacting with staged holons.
-    // TODO: rename to get_staging_behavior_service
-    fn get_staging_behavior_access(&self) -> Arc<RefCell<dyn HolonStagingBehavior>>;
+    /// - An Arc<RwLock<dyn HolonStagingBehavior + Send + Sync>> for interacting with staged holons in a thread-safe manner.
+    fn get_staging_service(&self) -> Arc<RwLock<dyn HolonStagingBehavior + Send + Sync>>;
 
     /// Provides the service for the **component that implements the `TransientHolonBehavior` API**.
     ///
     /// This allows holons to be created and retrieved, within the TransientManager.
     ///
     /// # Returns
-    /// - An `Arc<RefCell<dyn TransientHolonBehavior>>` for interacting with transient holons.
-    fn get_transient_behavior_service(&self) -> Arc<RefCell<dyn TransientHolonBehavior>>;
+    /// - An `Arc<RwLock<dyn TransientHolonBehavior + Send + Sync>> for interacting with transient holons in a thread-safe manner.
+    fn get_transient_behavior_service(
+        &self,
+    ) -> Arc<RwLock<dyn TransientHolonBehavior + Send + Sync>>;
 
     /// Provides access to the **TransientHolonManager**, where transient holons are stored.
     ///
@@ -83,8 +109,9 @@ pub trait HolonSpaceBehavior {
     /// - If the manager is **not yet initialized**, it will be created automatically.
     ///
     /// # Returns
-    /// - An `Arc<RefCell<dyn TransientManagerAccess>>` to allow interior mutability.
-    fn get_transient_manager_access(&self) -> Arc<RefCell<dyn TransientManagerAccess>>;
+    /// - An Arc<RwLock<dyn TransientManagerAccess + Send + Sync>> to allow interior mutability in a multithreaded context.
+    fn get_transient_manager_access(&self)
+        -> Arc<RwLock<dyn TransientManagerAccess + Send + Sync>>;
 
     /// Provides access to a **transient state collection**, initializing it if necessary.
     ///
@@ -96,24 +123,8 @@ pub trait HolonSpaceBehavior {
     /// - If the transient state has **not been initialized**, it is created automatically.
     ///
     /// # Returns
-    /// - An `Arc<RefCell<dyn HolonCollectionApi>>` for managing transient holon collections.
-    fn get_transient_state(&self) -> Arc<RefCell<dyn HolonCollectionApi>>;
-
-    /// **Mediates access to nursery exports, avoiding direct exposure in `NurseryAccess`.**
-    ///
-    /// This method is used when **sending the staged state** to another process (e.g., guest → client sync).
-    ///
-    /// # Returns
-    /// - A `SerializableHolonPool` containing all staged holons and their keyed index.
-    fn export_staged_holons(&self) -> SerializableHolonPool;
-
-    /// **Mediates access to transient exports, avoiding direct exposure in `TransientManagerAccess`.**
-    ///
-    /// This method is used when ** sending the "transient state" ** to another process (e.g., guest → client sync).
-    ///
-    /// # Returns
-    /// - A `SerializableHolonPool` containing all transient holons and their keyed index.
-    fn export_transient_holons(&self) -> SerializableHolonPool;
+    /// - An `Arc<RwLock<TransientCollection>>` for managing transient holon collections in a thread-safe context.
+    fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>>;
 
     /// **Mediates import of staged holons to prevent direct modification via `NurseryAccess`.**
     ///

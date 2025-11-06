@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
-use derive_new::new;
 use crate::{LocalId, PropertyMap};
+use derive_new::new;
+use serde::{Deserialize, Serialize};
 
 /// Holochain-independent model for a HolonNode entry.
 ///

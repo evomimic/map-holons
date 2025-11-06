@@ -10,5 +10,3 @@ impl fmt::Display for RelationshipName {
         write!(f, "{}", self.0)
     }
 }
-
-

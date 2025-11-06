@@ -1,4 +1,4 @@
-// crates/holons_core/src/holons_loader/loader_holon_mapper.rs
+// crates/holons_loader/src/loader_holon_mapper.rs
 //
 // Pass 1 mapper for the Holon Loader:
 //   - For each incoming LoaderHolon (container), build a *target* TransientHolon with
@@ -9,8 +9,7 @@
 // This module intentionally avoids any relationship writes or type application;
 // those are handled by the resolver in Pass 2.
 
-use std::collections::HashMap;
-use tracing::{debug, instrument};
+use tracing::info;
 
 use holons_prelude::prelude::CorePropertyTypeName::Key;
 use holons_prelude::prelude::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
@@ -49,24 +48,39 @@ impl LoaderHolonMapper {
         let mut out = MapperOutput::default();
 
         // Extract loader holons (bundle --BUNDLE_MEMBERS--> LoaderHolon*)
-        let loader_holon_refs =
-            bundle.related_holons(context, BundleMembers.as_relationship_name())?;
+        // `related_holons` returns an Arc<RwLock<HolonCollection>>; lock it for read,
+        // then clone the Vec so we can iterate without holding the lock.
+        let loader_holon_members = {
+            let loader_holon_collection_handle =
+                bundle.related_holons(context, BundleMembers.as_relationship_name())?;
 
-        for (i, loader_reference) in loader_holon_refs.get_members().iter().enumerate() {
-            debug!("Pass1: staging target from LoaderHolon #{}", i);
+            let loader_holon_collection_guard =
+                loader_holon_collection_handle.read().map_err(|_| {
+                    HolonError::FailedToBorrow("HolonCollection read lock poisoned".into())
+                })?;
+
+            loader_holon_collection_guard.get_members().clone()
+            // guard dropped here; lock released before we enter the loop
+        };
+
+        // Iterate through LoaderHolon members and stage target holons.
+        for (index, loader_reference) in loader_holon_members.iter().enumerate() {
+            info!("Pass1: staging target from LoaderHolon #{}", index);
 
             match Self::build_target_staged(context, loader_reference) {
-                Ok((_staged, _key)) => {
+                Ok((_staged_reference, _loader_key)) => {
                     // Nursery will index by key; we only track counts and queue refs.
                     out.staged_count += 1;
 
-                    // queue rel refs only for successfully staged holons
+                    // Queue relationship references only for successfully staged holons.
                     match Self::collect_loader_rel_refs(context, loader_reference) {
-                        Ok(rel_refs) => out.queued_relationship_references.extend(rel_refs),
-                        Err(e) => out.errors.push(e),
+                        Ok(relationship_refs) => {
+                            out.queued_relationship_references.extend(relationship_refs)
+                        }
+                        Err(err) => out.errors.push(err),
                     }
                 }
-                Err(e) => out.errors.push(e),
+                Err(err) => out.errors.push(err),
             }
         }
 
@@ -80,7 +94,6 @@ impl LoaderHolonMapper {
     ///
     /// Invariants:
     /// - `key` MUST be present on the LoaderHolon (we currently do not support keyless).
-    #[instrument(level = "debug", skip_all)]
     pub fn build_target_staged(
         context: &dyn HolonsContextBehavior,
         loader: &HolonReference,
@@ -104,20 +117,29 @@ impl LoaderHolonMapper {
             ))
         })?;
 
-        // Mint a fresh empty transient, then copy properties one-by-one (no relationships).
-        let transient_behavior_service =
-            context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior = transient_behavior_service.borrow();
-
         // Convert key_value -> MapString for the return tuple (for logging/diagnostics if needed).
         let key = MapString((&key_value).into());
 
-        // start from an empty holon
-        let target_transient: TransientReference = transient_behavior.create_empty(key.clone())?;
+        // ── Create the empty transient under a short write lock, then immediately release it.
+        let mut target_transient: TransientReference = {
+            let transient_service_handle =
+                context.get_space_manager().get_transient_behavior_service();
+            let transient_service = transient_service_handle.write().map_err(|_| {
+                HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
+            })?;
+            info!(
+                "Pass-1: staging instance from LoaderHolon temp_id={:?}, key_prop_raw={:?}, create_empty_key=\"{}\"",
+                loader_id,
+                key_value,
+                key.0,
+            );
+            transient_service.create_empty(key.clone())?
+            // `transient_service` guard drops here — lock released before property writes.
+        };
 
-        // apply each property explicitly
-        for (prop_name, prop_value) in properties.into_iter() {
-            target_transient.with_property_value(context, &prop_name, prop_value)?;
+        // Apply each property explicitly (mutating the transient holon) — no service lock is held now.
+        for (property_name, property_value) in properties.into_iter() {
+            target_transient.with_property_value(context, &property_name, property_value)?;
         }
 
         // Stage it
@@ -130,7 +152,6 @@ impl LoaderHolonMapper {
     /// return them as **detached transients** for the resolver to consume.
     ///
     /// Relationship used: `HAS_LOADER_RELATIONSHIP_REFERENCE`.
-    #[instrument(level = "debug", skip_all)]
     pub fn collect_loader_rel_refs(
         context: &dyn HolonsContextBehavior,
         loader: &HolonReference,
@@ -138,16 +159,22 @@ impl LoaderHolonMapper {
         let mut out: Vec<TransientReference> = Vec::new();
 
         // Direct traversal from LoaderHolon → LoaderRelationshipReference entries.
-        let rel_name = HasRelationshipReference.as_relationship_name();
-        let collection = loader.related_holons(context, &rel_name)?;
+        let relationship_name = HasRelationshipReference.as_relationship_name();
+        let collection_handle = loader.related_holons(context, &relationship_name)?;
 
-        collection.is_accessible(AccessType::Read)?;
-        let members = collection.get_members();
+        // Lock the collection for read, then clone members so we can release the lock early.
+        let member_refs = {
+            let collection_guard = collection_handle.read().map_err(|_| {
+                HolonError::FailedToBorrow("HolonCollection read lock poisoned".into())
+            })?;
+            collection_guard.get_members().clone()
+            // guard dropped here; lock released
+        };
 
-        for holon_reference in members {
-            // Work on detached copies so Pass-2 can resolve in any order/idempotently.
-            let loader_rel = holon_reference.clone_holon(context)?;
-            out.push(loader_rel);
+        // Work on **detached** copies so Pass-2 can resolve in any order/idempotently.
+        for holon_reference in member_refs {
+            let loader_relationship = holon_reference.clone_holon(context)?;
+            out.push(loader_relationship);
         }
 
         Ok(out)

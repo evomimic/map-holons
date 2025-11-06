@@ -1,6 +1,3 @@
-mod dance_caller;
+pub mod client_trust_channel;
 
-pub mod dance_call_service;
-
-pub use dance_call_service::DanceCallService;
-pub use dance_caller::ConductorDanceCaller;
+pub use client_trust_channel::ClientDanceCaller;
