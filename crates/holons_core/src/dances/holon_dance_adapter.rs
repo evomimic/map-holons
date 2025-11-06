@@ -36,6 +36,7 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};
+use type_names::CorePropertyTypeName;
 
 /// Abandon staged changes
 ///
@@ -432,7 +433,7 @@ pub fn remove_related_holons_dance(
 /// *DanceRequest:*
 /// - dance_name: "stage_new_from_clone"
 /// - dance_type: CloneMethod(HolonReference)
-/// - request_body: ParemeterValues(PropertyMap)
+/// - request_body: ParameterValues(PropertyMap)
 ///
 ///
 /// *ResponseBody:*
@@ -444,33 +445,45 @@ pub fn stage_new_from_clone_dance(
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_from_clone dance");
 
+    // 1) Extract the original holon from the dance type
     let original_holon = match request.dance_type {
         DanceType::CloneMethod(holon_reference) => holon_reference,
         _ => {
             return Err(HolonError::InvalidParameter(
-                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+                "Invalid DanceType: expected CloneMethod".to_string(),
             ));
         }
     };
 
+    // 2) Extract the ParameterValues map from the body
     let property_map = match request.body {
-        RequestBody::ParameterValues(property_map) => property_map,
+        RequestBody::ParameterValues(map) => map,
         _ => {
             return Err(HolonError::InvalidParameter(
-                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+                "Invalid RequestBody: expected ParameterValues(PropertyMap)".to_string(),
             ));
         }
     };
 
-    let new_key = property_map
-        .get(&PropertyName(MapString("key".to_string())))
-        .ok_or(HolonError::InvalidParameter(
-            "ParameterValues PropertyMap must have a key".to_string(),
-        ))?
-        .clone();
+    // 3) Pull the Key from the map
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+    let new_key: MapString = match property_map.get(&key_prop) {
+        Some(BaseValue::StringValue(s)) => s.clone(),
+        Some(other) => {
+            return Err(HolonError::UnexpectedValueType(
+                format!("{:?}", other),
+                "String".to_string(),
+            ));
+        }
+        None => {
+            return Err(HolonError::InvalidParameter(
+                "ParameterValues must include Key".to_string(),
+            ));
+        }
+    };
 
-    let staged_reference =
-        stage_new_from_clone(context, original_holon, MapString(Into::<String>::into(&new_key)))?;
+    // 4) Stage the clone with the provided key
+    let staged_reference = stage_new_from_clone(context, original_holon, new_key)?;
 
     Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }

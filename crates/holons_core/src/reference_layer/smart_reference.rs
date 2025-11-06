@@ -26,6 +26,7 @@ use base_types::{BaseValue, MapString};
 use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
+use type_names::CorePropertyTypeName;
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SmartReference {
@@ -207,42 +208,27 @@ impl ReadableHolonImpl for SmartReference {
         Ok(())
     }
 
-    /// This function extracts the key from the smart_property_values or, if not found there, from
-    /// its referenced holon. Returns an Option -- as even though an entry for 'key' may be present in the BTreeMap, the value could be None.
-    ///
+    /// Extracts the Holon's primary key from `smart_property_values` or, if not found there,
+    /// from its referenced holon. Returns `Ok(Some(MapString))` if found, or `Ok(None)` if absent.
     fn key_impl(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        // Since smart_property_values is an optional PropertyMap, first check to see if one exists.
-        if let Some(smart_property_values) = self.smart_property_values.clone() {
-            // If found, do a get on the PropertyMap to see if it contains a value.
-            if let Some(inner_value) =
-                smart_property_values.get(&PropertyName(MapString("key".to_string())))
-            {
-                // Try to convert a Some value to String, throws an error on failure because all values for the Key 'key' should be MapString.
-                let string_value: String = inner_value.try_into().map_err(|_| {
-                    HolonError::UnexpectedValueType(
-                        format!("{:?}", inner_value),
-                        "MapString".to_string(),
-                    )
-                })?;
-                Ok(Some(MapString(string_value)))
-            } else {
-                Ok(None)
+        let key_prop = CorePropertyTypeName::Key.as_property_name();
+
+        // 1. Check for a locally cached value in smart_property_values
+        if let Some(smart_property_values) = &self.smart_property_values {
+            if let Some(BaseValue::StringValue(s)) = smart_property_values.get(&key_prop) {
+                return Ok(Some(s.clone()));
             }
+            return Ok(None);
         }
-        // Then if not, check the reference.
-        else {
-            let holon = self.get_rc_holon(context)?;
-            let key_option = holon.read().unwrap().key()?;
-            if let Some(key) = key_option {
-                Ok(Some(key))
-            } else {
-                Ok(None)
-            }
-        }
+
+        // 2. Fallback: resolve from the referenced holon
+        let holon = self.get_rc_holon(context)?;
+        let key_option = holon.read().unwrap().key()?;
+        Ok(key_option)
     }
 
     fn predecessor_impl(

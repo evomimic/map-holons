@@ -39,6 +39,9 @@ path = "../type_system/core_types"
 [dependencies.base_types]
 path = "../type_system/base_types"
 
+[dependencies.type_names]
+path = "../type_system/type_names"
+
 [dependencies.holons_integrity]
 path = "../../zomes/integrity/holons_integrity"
 

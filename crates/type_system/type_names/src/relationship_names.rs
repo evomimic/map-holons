@@ -7,60 +7,62 @@ pub trait ToRelationshipName {
     fn to_relationship_name(self) -> RelationshipName;
 }
 
+// --- Internal single point for canonicalization (ClassCase) ---
+#[inline]
+fn canonical_relationship_name<S: AsRef<str>>(s: S) -> RelationshipName {
+    RelationshipName(MapString(s.as_ref().to_case(Case::UpperCamel)))
+}
+
+// --- to_relationship_name impls ---
+
 impl ToRelationshipName for &str {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = self.to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper))
+        canonical_relationship_name(self) // canonicalize to ClassCase
     }
 }
 
 impl ToRelationshipName for String {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = self.to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper))
+        // Assume already canonical; pass through unchanged
+        RelationshipName(MapString(self))
     }
 }
 
 impl ToRelationshipName for MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = self.0.to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper))
+        // Assume already canonical; pass through unchanged
+        RelationshipName(self)
     }
 }
 
 impl ToRelationshipName for &MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = self.0.to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper))
+        // Assume already canonical; pass through unchanged (clone)
+        RelationshipName(self.clone())
     }
 }
 
 impl ToRelationshipName for CoreRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
-        // Assuming as_relationship_name() already gives a canonical MapString,
-        self.as_relationship_name()
+        self.as_relationship_name() // canonical via enum method
     }
 }
 
 impl ToRelationshipName for &CoreRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
-        // Assuming as_relationship_name() already gives a canonical MapString,
-        self.clone().as_relationship_name()
+        self.clone().as_relationship_name() // canonical via enum method
     }
 }
 
 impl ToRelationshipName for RelationshipName {
     fn to_relationship_name(self) -> RelationshipName {
-        // Normalize in case a RelationshipName was constructed ad hoc
-        let upper = self.0 .0.to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper))
+        self // pass-through unchanged
     }
 }
 
 impl ToRelationshipName for &RelationshipName {
     fn to_relationship_name(self) -> RelationshipName {
-        let upper = self.0 .0.to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper))
+        self.clone() // pass-through unchanged
     }
 }
 
@@ -99,9 +101,10 @@ pub enum CoreRelationshipTypeName {
 }
 
 impl CoreRelationshipTypeName {
+    /// Canonical relationship name in ClassCase (UpperCamel).
     pub fn as_relationship_name(&self) -> RelationshipName {
-        let upper_case = format!("{self:?}").to_case(Case::ScreamingSnake);
-        RelationshipName(MapString(upper_case))
+        let pascal = format!("{self:?}").to_case(Case::UpperCamel);
+        RelationshipName(MapString(pascal))
     }
 }
 
@@ -112,17 +115,28 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
-            RelationshipName(MapString("COMPONENT_OF".to_string())),
+            RelationshipName(MapString("ComponentOf".to_string())),
             CoreRelationshipTypeName::ComponentOf.as_relationship_name()
         );
-
         assert_eq!(
-            RelationshipName(MapString("EXTENDS".to_string())),
+            RelationshipName(MapString("Extends".to_string())),
             CoreRelationshipTypeName::Extends.as_relationship_name()
         );
         assert_eq!(
-            RelationshipName(MapString("INSTANCE_RELATIONSHIP_FOR".to_string())),
+            RelationshipName(MapString("InstanceRelationshipFor".to_string())),
             CoreRelationshipTypeName::InstanceRelationshipFor.as_relationship_name()
+        );
+    }
+
+    #[test]
+    fn test_to_relationship_name_str_and_string() {
+        assert_eq!(
+            RelationshipName(MapString("InverseOf".to_string())),
+            "INVERSE_OF".to_relationship_name() // canonicalized
+        );
+        assert_eq!(
+            RelationshipName(MapString("AlreadyCanonical".to_string())),
+            String::from("AlreadyCanonical").to_relationship_name() // pass-through
         );
     }
 }

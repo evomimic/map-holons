@@ -92,7 +92,6 @@ use shared_test::*;
 // #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 // #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
-// #[case::loader_minimal_test(loader_minimal_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(

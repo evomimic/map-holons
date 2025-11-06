@@ -26,9 +26,9 @@ use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
 };
-use base_types::MapString;
-use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
-
+use base_types::{BaseValue, MapString};
+use core_types::{HolonError, LocalId, PropertyMap};
+use type_names::CorePropertyTypeName;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 /// Commits the state of all staged holons and their relationships to the DHT.
@@ -144,14 +144,14 @@ pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollec
 }
 
 pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
-    let key_option = map.get(&PropertyName(MapString("key".to_string())));
-    if let Some(inner_value) = key_option {
-        let string_value: String = inner_value.try_into().map_err(|_| {
-            HolonError::UnexpectedValueType(format!("{:?}", inner_value), "MapString".to_string())
-        })?;
-        Ok(Some(MapString(string_value)))
-    } else {
-        Ok(None)
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
+    match map.get(&key_prop) {
+        Some(BaseValue::StringValue(s)) => Ok(Some(s.clone())),
+        Some(other) => {
+            Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".to_string()))
+        }
+        None => Ok(None),
     }
 }
 
