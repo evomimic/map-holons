@@ -25,6 +25,7 @@ use holons_core::{
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::HolonError;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
+use type_names::CorePropertyTypeName;
 
 /// `commit`
 ///
@@ -307,7 +308,7 @@ fn commit_relationship(
 }
 
 /// This method creates smartlinks from the specified source_id for the specified relationship name
-/// to each holon its collection that has a holon_id.
+/// to each holon in its collection that has a holon_id.
 fn save_smartlinks_for_collection(
     context: &dyn HolonsContextBehavior,
     source_id: LocalId,
@@ -319,16 +320,16 @@ fn save_smartlinks_for_collection(
         source_id,
         name.0 .0.clone()
     );
+
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
     for holon_reference in collection.get_members() {
-        // Only commit references to holons with id's (i.e., Saved)
+        // Only commit references to holons with ids (i.e., Saved)
         if let Ok(target_id) = holon_reference.holon_id(context) {
             let key_option = holon_reference.key(context)?;
             let smartlink: SmartLink = if let Some(key) = key_option {
                 let mut prop_vals: PropertyMap = BTreeMap::new();
-                prop_vals.insert(
-                    PropertyName(MapString("key".to_string())),
-                    BaseValue::StringValue(key),
-                );
+                prop_vals.insert(key_prop.clone(), BaseValue::StringValue(key));
                 SmartLink {
                     from_address: source_id.clone(),
                     to_address: target_id,
@@ -343,6 +344,7 @@ fn save_smartlinks_for_collection(
                     smart_property_values: None,
                 }
             };
+
             debug!("saving smartlink: {:#?}", smartlink);
             save_smartlink(smartlink)?;
         } else {

@@ -7,55 +7,64 @@ pub trait ToPropertyName {
     fn to_property_name(self) -> PropertyName;
 }
 
+// --- Internal single point for canonicalization (ClassCase) ---
+#[inline]
+fn canonical_property_name<S: AsRef<str>>(s: S) -> PropertyName {
+    PropertyName(MapString(s.as_ref().to_case(Case::UpperCamel)))
+}
+
+// --- to_property_name impls ---
+
 impl ToPropertyName for &str {
     fn to_property_name(self) -> PropertyName {
-        PropertyName(MapString(self.to_string()))
+        canonical_property_name(self) // canonicalize to ClassCase
     }
 }
 
 impl ToPropertyName for String {
     fn to_property_name(self) -> PropertyName {
+        // Assume already canonical; pass through unchanged
         PropertyName(MapString(self))
     }
 }
 
 impl ToPropertyName for MapString {
     fn to_property_name(self) -> PropertyName {
-        let snake_case = format!("{self:?}").to_case(Case::Snake);
-        PropertyName(MapString(snake_case))
+        // Assume already canonical; pass through unchanged
+        PropertyName(self)
     }
 }
 
 impl ToPropertyName for &MapString {
     fn to_property_name(self) -> PropertyName {
-        let snake_case = format!("{self:?}").to_case(Case::Snake);
-        PropertyName(MapString(snake_case))
+        // Assume already canonical; pass through unchanged (clone)
+        PropertyName(self.clone())
     }
 }
 
 impl ToPropertyName for CorePropertyTypeName {
     fn to_property_name(self) -> PropertyName {
-        self.as_property_name()
+        self.as_property_name() // canonical via enum method
     }
 }
 
 impl ToPropertyName for &CorePropertyTypeName {
     fn to_property_name(self) -> PropertyName {
-        self.clone().as_property_name()
+        self.clone().as_property_name() // canonical via enum method
     }
 }
 
 impl ToPropertyName for PropertyName {
     #[inline]
     fn to_property_name(self) -> PropertyName {
-        self
+        self // pass-through unchanged
     }
 }
 
 impl ToPropertyName for &PropertyName {
     #[inline]
     fn to_property_name(self) -> PropertyName {
-        self.clone()
+        self.clone() // pass-through unchanged
     }
 }
 
@@ -100,9 +109,10 @@ pub enum CorePropertyTypeName {
 }
 
 impl CorePropertyTypeName {
+    /// Canonical property name in ClassCase (UpperCamel).
     pub fn as_property_name(&self) -> PropertyName {
-        let snake_case = format!("{self:?}").to_case(Case::Snake);
-        PropertyName(MapString(snake_case))
+        let pascal = format!("{self:?}").to_case(Case::UpperCamel);
+        PropertyName(MapString(pascal))
     }
 }
 
@@ -113,16 +123,28 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
-            PropertyName(MapString("allows_duplicates".to_string())),
+            PropertyName(MapString("AllowsDuplicates".to_string())),
             CorePropertyTypeName::AllowsDuplicates.as_property_name()
         );
         assert_eq!(
-            PropertyName(MapString("description".to_string())),
+            PropertyName(MapString("Description".to_string())),
             CorePropertyTypeName::Description.as_property_name()
         );
         assert_eq!(
-            PropertyName(MapString("type_name_plural".to_string())),
+            PropertyName(MapString("TypeNamePlural".to_string())),
             CorePropertyTypeName::TypeNamePlural.as_property_name()
+        );
+    }
+
+    #[test]
+    fn test_to_property_name_str_and_string() {
+        assert_eq!(
+            PropertyName(MapString("InstanceTypeKind".to_string())),
+            "instance_type_kind".to_property_name() // canonicalized
+        );
+        assert_eq!(
+            PropertyName(MapString("AlreadyCanonical".to_string())),
+            String::from("AlreadyCanonical").to_property_name() // pass-through
         );
     }
 }

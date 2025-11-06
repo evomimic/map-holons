@@ -7,12 +7,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{
-    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
-    RelationshipName,
-};
-
 use crate::{
     core_shared_objects::{
         holon::HolonCloneModel, holon_behavior::ReadableHolonState, TransientRelationshipMap,
@@ -20,6 +14,12 @@ use crate::{
     },
     HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
 };
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName,
+};
+use type_names::CorePropertyTypeName;
 
 use super::{
     state::{AccessType, HolonState, ValidationState},
@@ -126,16 +126,11 @@ impl ReadableHolonState for TransientHolon {
     }
 
     fn key(&self) -> Result<Option<MapString>, HolonError> {
-        if let Some(inner_value) =
-            self.property_map.get(&PropertyName(MapString("key".to_string())))
-        {
-            let string_value: String = inner_value.try_into().map_err(|_| {
-                HolonError::UnexpectedValueType(
-                    format!("{:?}", inner_value),
-                    "MapString".to_string(),
-                )
-            })?;
-            Ok(Some(MapString(string_value)))
+        // Use canonical PascalCase property name
+        let key_property_name = CorePropertyTypeName::Key.as_property_name();
+
+        if let Some(BaseValue::StringValue(s)) = self.property_map.get(&key_property_name) {
+            Ok(Some(s.clone()))
         } else {
             Ok(None)
         }

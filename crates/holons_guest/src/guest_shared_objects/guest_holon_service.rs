@@ -35,6 +35,7 @@ use holons_core::{
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
+use type_names::CorePropertyTypeName;
 
 #[derive(Clone)]
 pub struct GuestHolonService {
@@ -369,10 +370,11 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<StagedReference, HolonError> {
         let mut cloned_transient_reference = original_holon.clone_holon(context)?;
 
-        // update key
+        // Update Key (canonical PascalCase)
+        let key_prop = CorePropertyTypeName::Key.as_property_name();
         cloned_transient_reference.with_property_value(
             context,
-            PropertyName(MapString("key".to_string())),
+            key_prop,
             BaseValue::StringValue(new_key),
         )?;
 

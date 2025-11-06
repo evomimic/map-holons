@@ -28,15 +28,15 @@
 //!
 //! Result: endpoint resolution uses consistent strings everywhere.
 
-use holons_prelude::prelude::*;
-use rstest::*;
-
 use crate::shared_test::test_data_types::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
     PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
     PERSON_TO_BOOK_REL_INVERSE,
 };
 use crate::shared_test::{test_context::init_fixture_context, test_data_types::DancesTestCase};
+use core_types::TypeKind;
+use holons_prelude::prelude::*;
+use rstest::*;
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
 /// loader’s `IsDeclared` boolean property.
@@ -215,6 +215,16 @@ fn build_inverse_with_inline_schema_bundle(
         )?;
     }
 
+    // Set TypeKind for relationship descriptors to enable
+    // the loader's is_relationship_type_kind() check.
+    for rel_descriptor in [&mut declared_rel_descriptor, &mut inverse_rel_descriptor] {
+        rel_descriptor.with_property_value(
+            context,
+            CorePropertyTypeName::InstanceTypeKind.as_property_name(),
+            BaseValue::StringValue(MapString(TypeKind::Relationship.to_string())),
+        )?;
+    }
+
     // 2) Add all six to the bundle as members
     bundle.add_related_holons(
         context,
@@ -362,30 +372,30 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64))?;
 
-    // // E) Inverse LRR bundle: Person AUTHORS Book → writes declared AuthoredBy(Book→Person).
-    // // Use a distinct book key to avoid colliding with the earlier Book instance.
-    // let inverse_book_key = "Emerging World (Test Edition)";
-    //
-    // let (inverse_bundle, inv_nodes, inv_links) = build_inverse_with_inline_schema_bundle(
-    //     fixture_context_ref,
-    //     "Bundle.InverseLink.1",
-    //     PERSON_TO_BOOK_REL_INVERSE, // "Authors"
-    //     PERSON_2_KEY,               // stage a new Person (2)
-    //     inverse_book_key,           // stage a new Book with a distinct key
-    // )?;
-    // test_case.add_load_holons_step(
-    //     inverse_bundle,
-    //     ResponseStatusCode::OK,
-    //     MapInteger(inv_nodes as i64), // 2
-    //     MapInteger(inv_nodes as i64), // 2
-    //     MapInteger(inv_links as i64), // 1 (declared edge written)
-    //     MapInteger(0),
-    // )?;
-    //
-    // // Final DB count:
-    // // 1 (space) + n_nodes (3) + node_count (2) + schema_nodes (4) + inv_nodes (2) = 12
-    // test_case
-    //     .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64 + 6))?;
+    // E) Inverse LRR bundle: Person Authors Book → writes declared AuthoredBy(Book→Person).
+    // Use a distinct book key to avoid colliding with the earlier Book instance.
+    let inverse_book_key = "Emerging World (Test Edition)";
+
+    let (inverse_bundle, inv_nodes, inv_links) = build_inverse_with_inline_schema_bundle(
+        fixture_context_ref,
+        "Bundle.InverseLink.1",
+        PERSON_TO_BOOK_REL_INVERSE, // "Authors"
+        PERSON_2_KEY,               // stage a new Person (2)
+        inverse_book_key,           // stage a new Book with a distinct key
+    )?;
+    test_case.add_load_holons_step(
+        inverse_bundle,
+        ResponseStatusCode::OK,
+        MapInteger(inv_nodes as i64), // 2
+        MapInteger(inv_nodes as i64), // 2
+        MapInteger(inv_links as i64), // 1 (declared edge written)
+        MapInteger(0),
+    )?;
+
+    // Final DB count:
+    // 1 (space) + n_nodes (3) + node_count (2) + schema_nodes (4) + inv_nodes (2) = 12
+    test_case
+        .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64 + 6))?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(fixture_context_ref);
