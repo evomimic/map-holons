@@ -9,6 +9,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 holons_prelude = { workspace = true }
+core_types = { workspace = true }
 tracing = { workspace = true }
 # uuid = { workspace = true, features = ["v4", "serde"] }
 

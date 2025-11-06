@@ -28,15 +28,15 @@
 //!
 //! Result: endpoint resolution uses consistent strings everywhere.
 
-use holons_prelude::prelude::*;
-use rstest::*;
-
 use crate::shared_test::test_data_types::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
     PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
     PERSON_TO_BOOK_REL_INVERSE,
 };
 use crate::shared_test::{test_context::init_fixture_context, test_data_types::DancesTestCase};
+use core_types::TypeKind;
+use holons_prelude::prelude::*;
+use rstest::*;
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
 /// loader’s `IsDeclared` boolean property.
@@ -212,6 +212,16 @@ fn build_inverse_with_inline_schema_bundle(
             context,
             CorePropertyTypeName::TypeName.as_property_name(),
             BaseValue::StringValue(MapString(name.to_string())),
+        )?;
+    }
+
+    // Set TypeKind for relationship descriptors to enable
+    // the loader's is_relationship_type_kind() check.
+    for rel_descriptor in [&mut declared_rel_descriptor, &mut inverse_rel_descriptor] {
+        rel_descriptor.with_property_value(
+            context,
+            CorePropertyTypeName::InstanceTypeKind.as_property_name(),
+            BaseValue::StringValue(MapString(TypeKind::Relationship.to_string())),
         )?;
     }
 
