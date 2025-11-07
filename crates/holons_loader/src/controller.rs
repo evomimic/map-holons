@@ -22,12 +22,7 @@ pub const CRATE_LINK: &str = "I like loading holons with HolonsLoader!"; // temp
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
-pub struct HolonLoaderController {
-    /// Stats for response construction (purely informational).
-    staged_count: i64,
-    committed_count: i64,
-    error_count: i64,
-}
+pub struct HolonLoaderController;
 
 impl HolonLoaderController {
     /// Create a new controller with empty per-call caches.
@@ -62,13 +57,13 @@ impl HolonLoaderController {
         let mut mapper_output = LoaderHolonMapper::map_bundle(context, bundle)?;
         // For now we approximate staged_count by the number of staged targets created in Pass 1.
         // (If/when keyless or extra targets appear, have the mapper return exact staged_count.)
-        self.staged_count = mapper_output.staged_count;
+        let staged_count = mapper_output.staged_count;
 
         // If Pass 1 produced any errors or the bundle was empty,
         // build the response now and return (skip Pass 2 & commit).
         let mapper_errors = std::mem::take(&mut mapper_output.errors);
         let is_empty_bundle =
-            self.staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
+            staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
         if !mapper_errors.is_empty() || is_empty_bundle {
             info!(
                 "HolonLoaderController::load_bundle - early return: {}",
@@ -91,7 +86,7 @@ impl HolonLoaderController {
                 context,
                 run_id,
                 MapString("UnprocessableEntity".into()),
-                self.staged_count,
+                staged_count,
                 0,
                 0,
                 error_holons.len() as i64,
@@ -125,13 +120,13 @@ impl HolonLoaderController {
                 context,
                 run_id,
                 MapString("UnprocessableEntity".into()),
-                self.staged_count,
+                staged_count,
                 0,
                 links_created,
                 error_holons.len() as i64,
                 format!(
                     "Pass 2 reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
-                    error_holons.len(), self.staged_count, links_created
+                    error_holons.len(), staged_count, links_created
                 ),
                 error_holons,
             )?;
@@ -145,8 +140,9 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_bundle - commit");
 
+        // commit(): provided by HolonOperationsApi via holons_prelude
         let commit_response = commit(context)?;
-        // Basic accounting per meeting notes:
+        // Basic accounting:
         // - All staged nursery holons are attempted.
         // - Abandoned are not saved; they appear in `abandoned_holons`.
         // - If saved + abandoned != commits_attempted, then errors occurred.
@@ -161,19 +157,19 @@ impl HolonLoaderController {
             context,
             run_id,
             MapString(if commit_ok { "OK" } else { "Accepted" }.into()),
-            self.staged_count,
+            staged_count,
             holons_committed,
             links_created,
             0,
             if commit_ok {
                 format!(
                     "{} holons staged; {} committed; {} abandoned; {} attempts.",
-                    self.staged_count, holons_committed, holons_abandoned, commits_attempted
+                    staged_count, holons_committed, holons_abandoned, commits_attempted
                 )
             } else {
                 format!(
                     "{} holons staged; {} committed; {} abandoned; {} attempts; commit incomplete.",
-                    self.staged_count, holons_committed, holons_abandoned, commits_attempted
+                    staged_count, holons_committed, holons_abandoned, commits_attempted
                 )
             },
             Vec::new(),
