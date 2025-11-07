@@ -338,28 +338,6 @@ impl HolonServiceApi for GuestHolonService {
         controller.load_bundle(context, bundle)
     }
 
-    /// Creates a new Holon in transient state, without any lineage to prior Holons.
-    fn new_holon_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        key: Option<MapString>,
-    ) -> Result<TransientReference, HolonError> {
-        // Obtain the transient holon service handle from the Space Manager.
-        let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-        // If your branch has `get_transient_service()`, prefer that accessor instead.
-
-        // Acquire a write lock on the inner service implementation.
-        let transient_service = transient_service_handle.write().map_err(|_| {
-            HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
-        })?;
-
-        // Handle optionally provided key.
-        match key {
-            Some(k) => transient_service.create_empty(k),
-            None => transient_service.create_empty_without_key(),
-        }
-    }
-
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
     fn stage_new_from_clone_internal(
