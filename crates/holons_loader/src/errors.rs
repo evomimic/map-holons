@@ -3,6 +3,7 @@
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
 use std::sync::atomic::{AtomicU32, Ordering};
+use tracing::warn;
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -29,6 +30,7 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
     }
 }
 
+/// Build transient HolonErrorType holons for reporting load errors.
 pub fn make_error_holons_best_effort(
     context: &dyn HolonsContextBehavior,
     errors: &[HolonError],
@@ -40,16 +42,32 @@ pub fn make_error_holons_best_effort(
     // Try to resolve the HolonErrorType descriptor (by key or query).
     if let Ok(holon_error_type_descriptor) = resolve_holon_error_type_descriptor(context) {
         let mut out = Vec::with_capacity(errors.len());
-        for err in errors {
-            out.push(make_error_holon_typed(context, holon_error_type_descriptor.clone(), err)?);
+        for load_error in errors {
+            match make_error_holon_typed(context, holon_error_type_descriptor.clone(), load_error) {
+                Ok(transient_reference) => out.push(transient_reference),
+                Err(e) => {
+                    warn!("typed error holon creation failed, falling back to untyped: {}", e);
+                    match make_error_holon_untyped(context, load_error) {
+                        Ok(untyped_transient_reference) => out.push(untyped_transient_reference),
+                        Err(e2) => {
+                            warn!("untyped error holon creation also failed; continuing: {}", e2);
+                        }
+                    }
+                }
+            }
         }
         return Ok(out);
     }
 
     // Fallback: emit untyped error holons (no descriptor), still include fields.
     let mut out = Vec::with_capacity(errors.len());
-    for err in errors {
-        out.push(make_error_holon_untyped(context, err)?);
+    for load_error in errors {
+        match make_error_holon_untyped(context, load_error) {
+            Ok(untyped_transient_reference) => out.push(untyped_transient_reference),
+            Err(e2) => {
+                warn!("untyped error holon creation failed; continuing: {}", e2);
+            }
+        }
     }
     Ok(out)
 }

@@ -10,7 +10,7 @@
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
-use tracing::info;
+use tracing::{debug, info};
 // use uuid::Uuid;
 
 use holons_prelude::prelude::*;
@@ -18,7 +18,7 @@ use holons_prelude::prelude::*;
 use crate::errors::make_error_holons_best_effort;
 use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
 
-pub const CRATE_LINK: &str = "I like loading holons with HolonsLoader!"; // temporary const to link crate to test crate
+pub const CRATE_LINK: &str = "I like loading holons with holons_loader!"; // temporary const to link crate to test crate
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -71,7 +71,11 @@ impl HolonLoaderController {
             );
 
             // Build error holons (prefer typed; fallback to untyped if descriptor missing)
-            let error_holons = make_error_holons_best_effort(context, &mapper_errors)?;
+            let error_holons = make_error_holons_best_effort(context, &mapper_errors)
+                .unwrap_or_else(|e| {
+                    info!("Failed to build error holons (pass1); proceeding without: {}", e);
+                    Vec::new()
+                });
 
             let summary = if !mapper_errors.is_empty() {
                 format!(
@@ -85,7 +89,6 @@ impl HolonLoaderController {
             let response_reference = self.build_response(
                 context,
                 run_id,
-                MapString("UnprocessableEntity".into()),
                 staged_count,
                 0,
                 0,
@@ -114,12 +117,15 @@ impl HolonLoaderController {
         if !resolver_errors.is_empty() {
             info!("HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit");
 
-            let error_holons = make_error_holons_best_effort(context, &resolver_errors)?;
+            let error_holons = make_error_holons_best_effort(context, &resolver_errors)
+                .unwrap_or_else(|e| {
+                    info!("Failed to build error holons (pass2); proceeding without: {}", e);
+                    Vec::new()
+                });
 
             let response_reference = self.build_response(
                 context,
                 run_id,
-                MapString("UnprocessableEntity".into()),
                 staged_count,
                 0,
                 links_created,
@@ -156,7 +162,6 @@ impl HolonLoaderController {
         let response_reference = self.build_response(
             context,
             run_id,
-            MapString(if commit_ok { "OK" } else { "Accepted" }.into()),
             staged_count,
             holons_committed,
             links_created,
@@ -191,7 +196,6 @@ impl HolonLoaderController {
         &self,
         context: &dyn HolonsContextBehavior,
         run_id: i64, // uuid::Uuid,
-        response_status_code: MapString,
         holons_staged: i64,
         holons_committed: i64,
         links_created: i64,
@@ -232,14 +236,6 @@ impl HolonLoaderController {
         }
 
         // 2) Set properties
-        let pname_status = CorePropertyTypeName::ResponseStatusCode.as_property_name();
-        response_reference.with_property_value(
-            context,
-            pname_status.clone(),
-            BaseValue::StringValue(response_status_code),
-        )?;
-        log_read_back(context, &response_reference, "ResponseStatusCode", &pname_status);
-
         response_reference.with_property_value(
             context,
             CorePropertyTypeName::HolonsStaged.as_property_name(),
@@ -278,33 +274,10 @@ impl HolonLoaderController {
             )?;
         }
 
-        // 4) Diagnostics
-        let temp_id = response_reference.get_temporary_id();
-        let props: Vec<String> = response_reference
-            .get_raw_property_map(context)?
-            .keys()
-            .map(|p| p.0 .0.clone())
-            .collect();
-
-        let key_prop = CorePropertyTypeName::Key.as_property_name();
-        let key_s = match response_reference.property_value(context, &key_prop)? {
-            Some(PropertyValue::StringValue(MapString(s))) => s,
-            other => format!("<missing-or-non-string: {:?}>", other),
-        };
-
-        let err_rel = CoreRelationshipTypeName::HasLoadError.as_relationship_name();
-        let err_members = {
-            let handle = response_reference.related_holons(context, &err_rel)?;
-            let guard = handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("HolonCollection read lock poisoned".into())
-            })?;
-            guard.get_members().len()
-        };
-
-        info!(
-        "HolonLoadResponse built: temp_id={:?}, key={}, props={:?}, has_load_error_count={}, staged={}, committed={}, links_created={}, errors={}",
-        temp_id, key_s, props, err_members, holons_staged, holons_committed, links_created, errors_encountered
-    );
+        debug!(
+            "HolonLoadResponse built: staged={}, committed={}, links_created={}, errors={}",
+            holons_staged, holons_committed, links_created, errors_encountered
+        );
 
         Ok(response_reference)
     }

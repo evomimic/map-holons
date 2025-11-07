@@ -228,7 +228,7 @@ fn build_inverse_with_inline_schema_bundle(
     // 2) Add all six to the bundle as members
     bundle.add_related_holons(
         context,
-        CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
+        CoreRelationshipTypeName::BundleMembers,
         vec![
             HolonReference::Transient(person_loader.clone()),
             HolonReference::Transient(book_loader.clone()),
