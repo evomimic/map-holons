@@ -332,7 +332,6 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
     let empty_bundle = build_empty_bundle(fixture_context_ref, "Bundle.Empty.1")?;
     test_case.add_load_holons_step(
         empty_bundle,
-        ResponseStatusCode::UnprocessableEntity,
         MapInteger(0), // HolonsStaged
         MapInteger(0), // HolonsCommitted
         MapInteger(0), // LinksCreated
@@ -346,7 +345,6 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
         build_nodes_only_bundle(fixture_context_ref, "Bundle.NodesOnly.1", nodes_only_keys)?;
     test_case.add_load_holons_step(
         nodes_bundle,
-        ResponseStatusCode::OK,
         MapInteger(n_nodes as i64), // HolonsStaged
         MapInteger(n_nodes as i64), // HolonsCommitted
         MapInteger(0),              // LinksCreated
@@ -364,7 +362,6 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
     )?;
     test_case.add_load_holons_step(
         declared_bundle,
-        ResponseStatusCode::OK,
         MapInteger(node_count as i64),    // 2
         MapInteger(node_count as i64),    // 2
         MapInteger(links_created as i64), // expect 1
@@ -385,7 +382,6 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
     )?;
     test_case.add_load_holons_step(
         inverse_bundle,
-        ResponseStatusCode::OK,
         MapInteger(inv_nodes as i64), // 2
         MapInteger(inv_nodes as i64), // 2
         MapInteger(inv_links as i64), // 1 (declared edge written)

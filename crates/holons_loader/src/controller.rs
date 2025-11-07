@@ -27,7 +27,7 @@ pub struct HolonLoaderController;
 impl HolonLoaderController {
     /// Create a new controller with empty per-call caches.
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
     /// Entry point called by the Guest-side adapter.
@@ -46,7 +46,6 @@ impl HolonLoaderController {
     ) -> Result<TransientReference, HolonError> {
         // let run_id = Uuid::new_v4();
         // info!("HolonLoaderController::load_bundle - start run_id={run_id}");
-        info!("HolonLoaderController::load_bundle - starting");
         let run_id = 1; // Temporary fixed run_id until we wire in Uuid
 
         // ─────────────────────────────────────────────────────────────────────
@@ -65,7 +64,7 @@ impl HolonLoaderController {
         let is_empty_bundle =
             staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
         if !mapper_errors.is_empty() || is_empty_bundle {
-            info!(
+            debug!(
                 "HolonLoaderController::load_bundle - early return: {}",
                 if !mapper_errors.is_empty() { "pass1 errors" } else { "empty bundle" }
             );
@@ -73,7 +72,7 @@ impl HolonLoaderController {
             // Build error holons (prefer typed; fallback to untyped if descriptor missing)
             let error_holons = make_error_holons_best_effort(context, &mapper_errors)
                 .unwrap_or_else(|e| {
-                    info!("Failed to build error holons (pass1); proceeding without: {}", e);
+                    debug!("Failed to build error holons (pass1); proceeding without: {}", e);
                     Vec::new()
                 });
 
@@ -97,7 +96,7 @@ impl HolonLoaderController {
                 error_holons,
             )?;
 
-            info!("HolonLoaderController::load_bundle - done (pass1 short-circuit)");
+            debug!("HolonLoaderController::load_bundle - done (pass1 short-circuit)");
             return Ok(response_reference);
         }
 
@@ -115,11 +114,13 @@ impl HolonLoaderController {
 
         // If Pass 2 produced any errors, build the response now and return (skip commit).
         if !resolver_errors.is_empty() {
-            info!("HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit");
+            debug!(
+                "HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit"
+            );
 
             let error_holons = make_error_holons_best_effort(context, &resolver_errors)
                 .unwrap_or_else(|e| {
-                    info!("Failed to build error holons (pass2); proceeding without: {}", e);
+                    debug!("Failed to build error holons (pass2); proceeding without: {}", e);
                     Vec::new()
                 });
 
@@ -137,7 +138,7 @@ impl HolonLoaderController {
                 error_holons,
             )?;
 
-            info!("HolonLoaderController::load_bundle - done (pass2 short-circuit)");
+            debug!("HolonLoaderController::load_bundle - done (pass2 short-circuit)");
             return Ok(response_reference);
         }
 
@@ -180,7 +181,7 @@ impl HolonLoaderController {
             Vec::new(),
         )?;
 
-        info!("HolonLoaderController::load_bundle - done");
+        debug!("HolonLoaderController::load_bundle - done");
         Ok(response_reference)
     }
 
@@ -203,9 +204,7 @@ impl HolonLoaderController {
         summary: String,
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
-        use tracing::info;
-
-        info!("Building HolonLoadResponse for run_id={}", run_id);
+        debug!("Building HolonLoadResponse for run_id={}", run_id);
 
         // 1) Create the transient under a short-lived write lock, then DROP the lock
         let response_reference = {
@@ -218,22 +217,8 @@ impl HolonLoaderController {
             service.create_empty(response_key)?
         }; // <- write lock released here
 
-        // We'll mutate the holon via its reference
+        // Mutate the holon via its reference
         let mut response_reference = response_reference;
-
-        // Temporary helper to log a property read-back (kept inside this function)
-        fn log_read_back(
-            ctx: &dyn HolonsContextBehavior,
-            r: &TransientReference,
-            label: &str,
-            pname: &PropertyName,
-        ) {
-            match r.property_value(ctx, pname) {
-                Ok(Some(v)) => info!("READ-BACK {label} -> {:?}", v),
-                Ok(None) => info!("READ-BACK {label} -> None"),
-                Err(e) => info!("READ-BACK {label} -> ERROR: {e:?}"),
-            }
-        }
 
         // 2) Set properties
         response_reference.with_property_value(

@@ -109,7 +109,6 @@ pub enum DanceTestStep {
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     LoadHolons {
         bundle: TransientReference,
-        expect_status: ResponseStatusCode,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,
@@ -160,7 +159,6 @@ impl Display for DanceTestStep {
             }
             DanceTestStep::LoadHolons {
                 bundle: _,
-                expect_status,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
@@ -168,12 +166,8 @@ impl Display for DanceTestStep {
             } => {
                 write!(
                     f,
-                    "LoadHolons(expect_status={:?}, staged={}, committed={}, links_created={}, errors={})",
-                    expect_status,
-                    expect_staged.0,
-                    expect_committed.0,
-                    expect_links_created.0,
-                    expect_errors.0
+                    "LoadHolons(staged={}, committed={}, links_created={}, errors={})",
+                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0
                 )
             }
             DanceTestStep::MatchSavedContent => {
@@ -448,7 +442,6 @@ impl DancesTestCase {
     pub fn add_load_holons_step(
         &mut self,
         bundle: TransientReference,
-        expect_status: ResponseStatusCode,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,
@@ -456,7 +449,6 @@ impl DancesTestCase {
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::LoadHolons {
             bundle,
-            expect_status,
             expect_staged,
             expect_committed,
             expect_links_created,

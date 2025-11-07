@@ -243,9 +243,6 @@
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#ResponseStatusCode.PropertyType"
-            },
-            {
               "$ref": "#HolonsStaged.PropertyType"
             },
             {

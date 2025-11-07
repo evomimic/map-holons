@@ -84,14 +84,14 @@ use shared_test::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-// #[case::delete_holon(delete_holon_fixture())]
-// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-// #[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-// #[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
-// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-// #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-// #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+#[case::delete_holon(delete_holon_fixture())]
+#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+#[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+#[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
+#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
@@ -160,7 +160,6 @@ async fn rstest_dance_tests(
             }
             DanceTestStep::LoadHolons {
                 bundle,
-                expect_status,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
@@ -169,7 +168,6 @@ async fn rstest_dance_tests(
                 execute_load_holons(
                     &mut test_state,
                     bundle,
-                    expect_status,
                     expect_staged,
                     expect_committed,
                     expect_links_created,
