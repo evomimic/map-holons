@@ -554,24 +554,23 @@ impl LoaderRefResolver {
         let target_refs_handle =
             relationship_reference.related_holons(context, target_relationship)?;
 
-        let source_loader_refs: Vec<HolonReference> = {
-            let guard = source_refs_handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("Source collection read lock poisoned".into())
-            })?;
-            guard.get_members().clone()
-        };
+        // NOTE: Safe to hold these read locks in resolver paths; parser-produced bundles are immutable during Pass-2.
+        let source_guard = source_refs_handle.read().map_err(|_| {
+            HolonError::FailedToBorrow("Source collection read lock poisoned".into())
+        })?;
+        let source_loader_refs = source_guard.get_members(); // &Vec<HolonReference>
 
-        let target_loader_refs: Vec<HolonReference> = {
-            let guard = target_refs_handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("Target collection read lock poisoned".into())
-            })?;
-            guard.get_members().clone()
-        };
+        let target_guard = target_refs_handle.read().map_err(|_| {
+            HolonError::FailedToBorrow("Target collection read lock poisoned".into())
+        })?;
+        let target_loader_refs = target_guard.get_members(); // &Vec<HolonReference>
+
         debug!(
             "[resolver] LRR endpoints: sources={}, targets={}",
             source_loader_refs.len(),
             target_loader_refs.len()
         );
+
         // Validate cardinality
         // Exactly one ReferenceSource
         match source_loader_refs.len() {
@@ -602,9 +601,10 @@ impl LoaderRefResolver {
             "[resolver]   resolved source holon = {}",
             Self::best_identifier_for_dedupe(context, &source_holon)
         );
+
         let mut target_holons = Vec::with_capacity(target_loader_refs.len());
-        for loader_ref in target_loader_refs {
-            let resolved = Self::resolve_loader_holon_reference(context, &loader_ref)?;
+        for loader_ref in target_loader_refs.iter() {
+            let resolved = Self::resolve_loader_holon_reference(context, loader_ref)?;
             debug!(
                 "[resolver]   resolved target holon = {}",
                 Self::best_identifier_for_dedupe(context, &resolved)
@@ -693,23 +693,21 @@ impl LoaderRefResolver {
         let type_descriptor_name = CoreHolonTypeName::TypeDescriptor.as_holon_name();
 
         // Read `DescribedBy` targets (propagate access errors).
-        let described_members: Vec<HolonReference> = {
-            let related_handle = endpoint.related_holons(context, &described_by)?;
-            let related_guard = related_handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("DescribedBy collection read lock poisoned".into())
-            })?;
-            related_guard.get_members().clone()
-            // guard dropped here
-        };
+        // NOTE: Safe to hold this read lock in resolver paths; bundles & RTD sets are immutable during Pass-2.
+        let related_handle = endpoint.related_holons(context, &described_by)?;
+        let related_guard = related_handle.read().map_err(|_| {
+            HolonError::FailedToBorrow("DescribedBy collection read lock poisoned".into())
+        })?;
+        let described_members = related_guard.get_members(); // &Vec<HolonReference>
 
         match described_members.len() {
             0 => Err(HolonError::EmptyField("DescribedBy".into())),
             1 => {
-                let candidate = described_members[0].clone();
+                let candidate_ref = &described_members[0];
 
                 // If the `DescribedBy` target is *meta* TypeDescriptor, endpoint is a TypeDescriptor instance.
                 if let Ok(candidate_type_name) =
-                    Self::read_string_property(context, &candidate, &type_name_prop)
+                    Self::read_string_property(context, candidate_ref, &type_name_prop)
                 {
                     if candidate_type_name == type_descriptor_name {
                         // Endpoint is itself a TypeDescriptor (do not climb to meta)
@@ -718,7 +716,7 @@ impl LoaderRefResolver {
                 }
 
                 // Otherwise the candidate is the concrete type descriptor for the instance endpoint.
-                Ok(candidate)
+                Ok(candidate_ref.clone())
             }
             _ => Err(HolonError::DuplicateError(
                 "DescribedBy".into(),
