@@ -13,21 +13,6 @@ fn _build_anchor_holons_loader() {
     let _ = holons_loader::CRATE_LINK; // e.g., an inert constant
 }
 
-/// Read a string property from a transient response holon.
-fn read_string_property(
-    context: &dyn HolonsContextBehavior,
-    response: &TransientReference,
-    property: CorePropertyTypeName,
-) -> Result<String, HolonError> {
-    match response.property_value(context, &property.as_property_name())? {
-        Some(PropertyValue::StringValue(s)) => Ok(s.0),
-        other => Err(HolonError::InvalidParameter(format!(
-            "Expected string value for {:?}, got {:?}",
-            property, other
-        ))),
-    }
-}
-
 /// Read an integer property from a transient response holon.
 fn read_integer_property(
     context: &dyn HolonsContextBehavior,
@@ -40,24 +25,6 @@ fn read_integer_property(
             "Expected integer value for {:?}, got {:?}",
             property, other
         ))),
-    }
-}
-
-/// Utility: dump all property *names* on a transient holon (for quick debugging).
-fn dump_property_names(
-    context: &dyn HolonsContextBehavior,
-    response: &TransientReference,
-) -> String {
-    // Best-effort; ignore errors while dumping
-    if let Ok(map) = response.get_raw_property_map(context) {
-        let mut names: Vec<String> = map
-            .keys()
-            .map(|pname| pname.0 .0.clone()) // PropertyName(MapString(...))
-            .collect();
-        names.sort();
-        format!("[{}]", names.join(", "))
-    } else {
-        "<unavailable>".to_string()
     }
 }
 

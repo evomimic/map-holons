@@ -413,25 +413,25 @@ impl LoaderRefResolver {
         resolver_state: &mut ResolverState,
         inverse_name: &RelationshipName,
         src_endpoint: &HolonReference,
-        dst_endpoint: &HolonReference,
+        tgt_endpoint: &HolonReference,
     ) -> Result<RelationshipName, HolonError> {
         debug!("[resolver] entering declared_name_for_inverse for inverse '{}'", inverse_name.0);
 
         // 1) Resolve endpoint type descriptors (instances → follow DescribedBy; types pass through).
-        let src_type_td = Self::resolve_type_descriptor(context, src_endpoint)?;
-        let dst_type_td = Self::resolve_type_descriptor(context, dst_endpoint)?;
+        let source_type_descriptor = Self::resolve_type_descriptor(context, src_endpoint)?;
+        let target_type_descriptor = Self::resolve_type_descriptor(context, tgt_endpoint)?;
         debug!("[resolver] TypeDescriptors resolved for endpoints of inverse '{}'", inverse_name.0);
 
         // 2) Build the **canonical key** for the *inverse* RTD using descriptor Keys.
         let key_prop: PropertyName = CorePropertyTypeName::Key.as_property_name();
-        let src_desc_key = Self::read_string_property(context, &src_type_td, &key_prop)?;
-        let dst_desc_key = Self::read_string_property(context, &dst_type_td, &key_prop)?;
+        let src_desc_key = Self::read_string_property(context, &source_type_descriptor, &key_prop)?;
+        let tgt_desc_key = Self::read_string_property(context, &target_type_descriptor, &key_prop)?;
         let inverse_key =
-            MapString(format!("({})-[{}]->({})", src_desc_key.0, inverse_name.0, dst_desc_key.0));
+            MapString(format!("({})-[{}]->({})", src_desc_key.0, inverse_name.0, tgt_desc_key.0));
         debug!("[resolver] looking up RelationshipType by key '{}'", inverse_key.0);
 
         // 3) Locate the inverse RTD by canonical key (prefer staged).
-        let inverse_reltype =
+        let inverse_relationship_descriptor =
             match Self::find_relationship_type_by_key(context, resolver_state, &inverse_key)? {
                 Some(h) => h,
                 None => {
@@ -445,7 +445,8 @@ impl LoaderRefResolver {
 
         // 4) Follow InverseOf from the inverse RTD to the declared RTD.
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        let declared_handle = inverse_reltype.related_holons(context, &inverse_of)?;
+        let declared_handle =
+            inverse_relationship_descriptor.related_holons(context, &inverse_of)?;
         debug!("[resolver] found declared TypeDescriptor");
 
         let related_members: Vec<HolonReference> = {
@@ -627,7 +628,7 @@ impl LoaderRefResolver {
     ) -> Result<HolonReference, HolonError> {
         // Property names from LoaderHolonReference schema
         let holon_key_property = CorePropertyTypeName::HolonKey.as_property_name();
-        let holon_id_property = CorePropertyTypeName::HolonId.as_property_name();
+        // let holon_id_property = CorePropertyTypeName::HolonId.as_property_name(); // to be used with holon id lookup below
 
         // Try holon_key first (local staged)
         if let Some(BaseValue::StringValue(key)) =
@@ -925,21 +926,41 @@ impl LoaderRefResolver {
         }
     }
 
-    /// Best-effort identifier for dedupe/diagnostics: id > versioned_key > key > "<no-id>".
+    /// Provenance prefix used only for key-like identifiers (not for HolonId).
+    #[inline]
+    fn provenance_prefix(reference: &HolonReference) -> &'static str {
+        match reference {
+            HolonReference::Staged(_) => "staged:",
+            HolonReference::Smart(_) => "saved:",
+            HolonReference::Transient(_) => "transient:",
+        }
+    }
+
+    /// Best-effort identifier for dedupe/diagnostics:
+    /// 1) Prefer HolonId (no provenance prefix) so staged/saved of the *same* holon dedupe together.
+    /// 2) Fall back to versioned_key (prefixed with provenance).
+    /// 3) Fall back to base key (prefixed with provenance).
+    /// 4) Final fallback includes provenance as well.
     fn best_identifier_for_dedupe(
         context: &dyn HolonsContextBehavior,
         reference: &HolonReference,
     ) -> String {
+        // If we can resolve a HolonId, that’s the canonical identity across staged/saved.
         if let Ok(id) = reference.holon_id(context) {
             return format!("id:{id}");
         }
+
+        // Otherwise we’re in key territory—prefix to avoid staged/saved collisions.
+        let prefix = Self::provenance_prefix(reference);
+
         if let Ok(vk) = reference.versioned_key(context) {
-            return format!("vkey:{vk}");
+            return format!("{prefix}vkey:{vk}");
         }
         if let Ok(Some(k)) = reference.key(context) {
-            return format!("key:{k}");
+            return format!("{prefix}key:{k}");
         }
-        "<no-id>".to_string()
+
+        format!("{prefix}<no-id>")
     }
 
     /// Handle a single DECLARED (non-InverseOf, non-DescribedBy) reference.
@@ -1006,6 +1027,9 @@ impl LoaderRefResolver {
             return Ok(0); // not an inverse item
         }
 
+        // Single diagnostic summary (used only if we need to surface an error)
+        let lrr_ctx = Self::brief_lrr_summary(context, relationship_reference);
+
         let (inverse_name, _flag) =
             Self::extract_relationship_metadata(context, relationship_reference)?;
         let (src_endpoint, target_endpoints) =
@@ -1024,7 +1048,11 @@ impl LoaderRefResolver {
                 &inverse_name,
                 &src_endpoint,
                 &target_endpoint,
-            )?;
+            )
+            .map_err(|e| {
+                // Enrich just this error path with the single precomputed summary
+                HolonError::InvalidType(format!("inverse LRR ({}): {}", lrr_ctx, e))
+            })?;
 
             // In declared orientation, each original target becomes the write source
             let staged_source = Self::resolve_staged_write_source(context, &target_endpoint)?;
