@@ -97,23 +97,6 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn new_holon_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        key: Option<MapString>,
-    ) -> Result<TransientReference, HolonError> {
-        let transient_service = context.get_space_manager().get_transient_behavior_service();
-        let borrowed_service = transient_service
-            .write()
-            .map_err(|_| HolonError::FailedToBorrow("Transient service write".into()))?;
-
-        // Create empty holon with or without key
-        match key {
-            Some(key_string) => borrowed_service.create_empty(key_string),
-            None => borrowed_service.create_empty_without_key(),
-        }
-    }
-
     fn stage_new_from_clone_internal(
         &self,
         _context: &dyn HolonsContextBehavior,

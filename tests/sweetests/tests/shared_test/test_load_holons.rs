@@ -13,21 +13,6 @@ fn _build_anchor_holons_loader() {
     let _ = holons_loader::CRATE_LINK; // e.g., an inert constant
 }
 
-/// Read a string property from a transient response holon.
-fn read_string_property(
-    context: &dyn HolonsContextBehavior,
-    response: &TransientReference,
-    property: CorePropertyTypeName,
-) -> Result<String, HolonError> {
-    match response.property_value(context, &property.as_property_name())? {
-        Some(PropertyValue::StringValue(s)) => Ok(s.0),
-        other => Err(HolonError::InvalidParameter(format!(
-            "Expected string value for {:?}, got {:?}",
-            property, other
-        ))),
-    }
-}
-
 /// Read an integer property from a transient response holon.
 fn read_integer_property(
     context: &dyn HolonsContextBehavior,
@@ -40,24 +25,6 @@ fn read_integer_property(
             "Expected integer value for {:?}, got {:?}",
             property, other
         ))),
-    }
-}
-
-/// Utility: dump all property *names* on a transient holon (for quick debugging).
-fn dump_property_names(
-    context: &dyn HolonsContextBehavior,
-    response: &TransientReference,
-) -> String {
-    // Best-effort; ignore errors while dumping
-    if let Ok(map) = response.get_raw_property_map(context) {
-        let mut names: Vec<String> = map
-            .keys()
-            .map(|pname| pname.0 .0.clone()) // PropertyName(MapString(...))
-            .collect();
-        names.sort();
-        format!("[{}]", names.join(", "))
-    } else {
-        "<unavailable>".to_string()
     }
 }
 
@@ -95,7 +62,6 @@ fn dump_full_response(
     // Pull out common “loader” properties for quick eyeballing
     out.push_str("----- important (best-effort) -----\n");
     for pname in [
-        CorePropertyTypeName::ResponseStatusCode.as_property_name(),
         CorePropertyTypeName::ErrorCount.as_property_name(),
         CorePropertyTypeName::HolonsStaged.as_property_name(),
         CorePropertyTypeName::HolonsCommitted.as_property_name(),
@@ -186,7 +152,6 @@ fn dump_error_holons_from_response(
 pub async fn execute_load_holons(
     test_state: &mut DanceTestExecutionState,
     bundle: TransientReference,
-    expect_status: ResponseStatusCode,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
@@ -216,21 +181,6 @@ pub async fn execute_load_holons(
     };
 
     // Read response properties from the returned HolonLoadResponse holon.
-    let actual_status = match read_string_property(
-        context,
-        &response_reference,
-        CorePropertyTypeName::ResponseStatusCode,
-    ) {
-        Ok(s) => s,
-        Err(e) => {
-            let props = dump_property_names(context, &response_reference);
-            panic!(
-                "read ResponseStatusCode failed: {e:?}\nResponse holon properties present: {}",
-                props
-            );
-        }
-    };
-
     let actual_staged =
         read_integer_property(context, &response_reference, CorePropertyTypeName::HolonsStaged)
             .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}")) as i64;
@@ -244,9 +194,6 @@ pub async fn execute_load_holons(
         read_integer_property(context, &response_reference, CorePropertyTypeName::ErrorCount)
             .unwrap_or_else(|ev| panic!("read ErrorCount failed: {ev:?}")) as i64;
 
-    // We compare status by Debug-printing the enum ("OK", "UnprocessableEntity", etc.).
-    let expect_status_string = format!("{:?}", expect_status);
-
     // Always print any attached error holons if there are any.
     if actual_error_count > 0 {
         info!(
@@ -257,38 +204,24 @@ pub async fn execute_load_holons(
     }
 
     // If *anything* is off, dump the whole response to make debugging fast.
-    if actual_status != expect_status_string
-        || actual_staged != expect_staged.0
+    if actual_staged != expect_staged.0
         || actual_committed != expect_committed.0
         || actual_links_created != expect_links_created.0
         || actual_error_count != expect_errors.0
     {
         info!(
-            "[loader-test] EXPECTED: status={}, staged={}, committed={}, links_created={}, errors={}",
-            expect_status_string,
-            expect_staged.0,
-            expect_committed.0,
-            expect_links_created.0,
-            expect_errors.0,
+            "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}",
+            expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0,
         );
         info!(
-            "[loader-test]   ACTUAL: status={}, staged={}, committed={}, links_created={}, errors={}",
-            actual_status,
-            actual_staged,
-            actual_committed,
-            actual_links_created,
-            actual_error_count,
+            "[loader-test]   ACTUAL: staged={}, committed={}, links_created={}, errors={}",
+            actual_staged, actual_committed, actual_links_created, actual_error_count,
         );
         info!("{}", dump_full_response(context, &response_reference));
         // we already printed error holons above if any existed
     }
 
     // Final assertions (same as before).
-    assert_eq!(
-        actual_status, expect_status_string,
-        "Expected ResponseStatusCode={}, got {}",
-        expect_status_string, actual_status
-    );
     assert_eq!(
         actual_staged, expect_staged.0,
         "Expected HolonsStaged={}, got {}",

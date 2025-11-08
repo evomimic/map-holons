@@ -9,7 +9,7 @@
 // This module intentionally avoids any relationship writes or type application;
 // those are handled by the resolver in Pass 2.
 
-use tracing::info;
+use tracing::debug;
 
 use holons_prelude::prelude::CorePropertyTypeName::Key;
 use holons_prelude::prelude::CoreRelationshipTypeName::{BundleMembers, HasRelationshipReference};
@@ -65,7 +65,7 @@ impl LoaderHolonMapper {
 
         // Iterate through LoaderHolon members and stage target holons.
         for (index, loader_reference) in loader_holon_members.iter().enumerate() {
-            info!("Pass1: staging target from LoaderHolon #{}", index);
+            debug!("Pass1: staging target from LoaderHolon #{}", index);
 
             match Self::build_target_staged(context, loader_reference) {
                 Ok((_staged_reference, _loader_key)) => {
@@ -127,7 +127,7 @@ impl LoaderHolonMapper {
             let transient_service = transient_service_handle.write().map_err(|_| {
                 HolonError::FailedToBorrow("TransientHolonBehavior lock poisoned".into())
             })?;
-            info!(
+            debug!(
                 "Pass-1: staging instance from LoaderHolon temp_id={:?}, key_prop_raw={:?}, create_empty_key=\"{}\"",
                 loader_id,
                 key_value,

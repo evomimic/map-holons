@@ -10,7 +10,7 @@
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
-use tracing::info;
+use tracing::{debug, info};
 // use uuid::Uuid;
 
 use holons_prelude::prelude::*;
@@ -18,21 +18,16 @@ use holons_prelude::prelude::*;
 use crate::errors::make_error_holons_best_effort;
 use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
 
-pub const CRATE_LINK: &str = "I like loading holons with HolonsLoader!"; // temporary const to link crate to test crate
+pub const CRATE_LINK: &str = "I like loading holons with holons_loader!"; // temporary const to link crate to test crate
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
-pub struct HolonLoaderController {
-    /// Stats for response construction (purely informational).
-    staged_count: i64,
-    committed_count: i64,
-    error_count: i64,
-}
+pub struct HolonLoaderController;
 
 impl HolonLoaderController {
     /// Create a new controller with empty per-call caches.
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
     /// Entry point called by the Guest-side adapter.
@@ -51,7 +46,6 @@ impl HolonLoaderController {
     ) -> Result<TransientReference, HolonError> {
         // let run_id = Uuid::new_v4();
         // info!("HolonLoaderController::load_bundle - start run_id={run_id}");
-        info!("HolonLoaderController::load_bundle - starting");
         let run_id = 1; // Temporary fixed run_id until we wire in Uuid
 
         // ─────────────────────────────────────────────────────────────────────
@@ -62,21 +56,25 @@ impl HolonLoaderController {
         let mut mapper_output = LoaderHolonMapper::map_bundle(context, bundle)?;
         // For now we approximate staged_count by the number of staged targets created in Pass 1.
         // (If/when keyless or extra targets appear, have the mapper return exact staged_count.)
-        self.staged_count = mapper_output.staged_count;
+        let staged_count = mapper_output.staged_count;
 
         // If Pass 1 produced any errors or the bundle was empty,
         // build the response now and return (skip Pass 2 & commit).
         let mapper_errors = std::mem::take(&mut mapper_output.errors);
         let is_empty_bundle =
-            self.staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
+            staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
         if !mapper_errors.is_empty() || is_empty_bundle {
-            info!(
+            debug!(
                 "HolonLoaderController::load_bundle - early return: {}",
                 if !mapper_errors.is_empty() { "pass1 errors" } else { "empty bundle" }
             );
 
             // Build error holons (prefer typed; fallback to untyped if descriptor missing)
-            let error_holons = make_error_holons_best_effort(context, &mapper_errors)?;
+            let error_holons = make_error_holons_best_effort(context, &mapper_errors)
+                .unwrap_or_else(|e| {
+                    debug!("Failed to build error holons (pass1); proceeding without: {}", e);
+                    Vec::new()
+                });
 
             let summary = if !mapper_errors.is_empty() {
                 format!(
@@ -90,8 +88,7 @@ impl HolonLoaderController {
             let response_reference = self.build_response(
                 context,
                 run_id,
-                MapString("UnprocessableEntity".into()),
-                self.staged_count,
+                staged_count,
                 0,
                 0,
                 error_holons.len() as i64,
@@ -99,7 +96,7 @@ impl HolonLoaderController {
                 error_holons,
             )?;
 
-            info!("HolonLoaderController::load_bundle - done (pass1 short-circuit)");
+            debug!("HolonLoaderController::load_bundle - done (pass1 short-circuit)");
             return Ok(response_reference);
         }
 
@@ -117,26 +114,31 @@ impl HolonLoaderController {
 
         // If Pass 2 produced any errors, build the response now and return (skip commit).
         if !resolver_errors.is_empty() {
-            info!("HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit");
+            debug!(
+                "HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit"
+            );
 
-            let error_holons = make_error_holons_best_effort(context, &resolver_errors)?;
+            let error_holons = make_error_holons_best_effort(context, &resolver_errors)
+                .unwrap_or_else(|e| {
+                    debug!("Failed to build error holons (pass2); proceeding without: {}", e);
+                    Vec::new()
+                });
 
             let response_reference = self.build_response(
                 context,
                 run_id,
-                MapString("UnprocessableEntity".into()),
-                self.staged_count,
+                staged_count,
                 0,
                 links_created,
                 error_holons.len() as i64,
                 format!(
                     "Pass 2 reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
-                    error_holons.len(), self.staged_count, links_created
+                    error_holons.len(), staged_count, links_created
                 ),
                 error_holons,
             )?;
 
-            info!("HolonLoaderController::load_bundle - done (pass2 short-circuit)");
+            debug!("HolonLoaderController::load_bundle - done (pass2 short-circuit)");
             return Ok(response_reference);
         }
 
@@ -145,8 +147,9 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_bundle - commit");
 
+        // commit(): provided by HolonOperationsApi via holons_prelude
         let commit_response = commit(context)?;
-        // Basic accounting per meeting notes:
+        // Basic accounting:
         // - All staged nursery holons are attempted.
         // - Abandoned are not saved; they appear in `abandoned_holons`.
         // - If saved + abandoned != commits_attempted, then errors occurred.
@@ -160,26 +163,25 @@ impl HolonLoaderController {
         let response_reference = self.build_response(
             context,
             run_id,
-            MapString(if commit_ok { "OK" } else { "Accepted" }.into()),
-            self.staged_count,
+            staged_count,
             holons_committed,
             links_created,
             0,
             if commit_ok {
                 format!(
                     "{} holons staged; {} committed; {} abandoned; {} attempts.",
-                    self.staged_count, holons_committed, holons_abandoned, commits_attempted
+                    staged_count, holons_committed, holons_abandoned, commits_attempted
                 )
             } else {
                 format!(
                     "{} holons staged; {} committed; {} abandoned; {} attempts; commit incomplete.",
-                    self.staged_count, holons_committed, holons_abandoned, commits_attempted
+                    staged_count, holons_committed, holons_abandoned, commits_attempted
                 )
             },
             Vec::new(),
         )?;
 
-        info!("HolonLoaderController::load_bundle - done");
+        debug!("HolonLoaderController::load_bundle - done");
         Ok(response_reference)
     }
 
@@ -195,7 +197,6 @@ impl HolonLoaderController {
         &self,
         context: &dyn HolonsContextBehavior,
         run_id: i64, // uuid::Uuid,
-        response_status_code: MapString,
         holons_staged: i64,
         holons_committed: i64,
         links_created: i64,
@@ -203,9 +204,7 @@ impl HolonLoaderController {
         summary: String,
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
-        use tracing::info;
-
-        info!("Building HolonLoadResponse for run_id={}", run_id);
+        debug!("Building HolonLoadResponse for run_id={}", run_id);
 
         // 1) Create the transient under a short-lived write lock, then DROP the lock
         let response_reference = {
@@ -218,32 +217,10 @@ impl HolonLoaderController {
             service.create_empty(response_key)?
         }; // <- write lock released here
 
-        // We'll mutate the holon via its reference
+        // Mutate the holon via its reference
         let mut response_reference = response_reference;
 
-        // Temporary helper to log a property read-back (kept inside this function)
-        fn log_read_back(
-            ctx: &dyn HolonsContextBehavior,
-            r: &TransientReference,
-            label: &str,
-            pname: &PropertyName,
-        ) {
-            match r.property_value(ctx, pname) {
-                Ok(Some(v)) => info!("READ-BACK {label} -> {:?}", v),
-                Ok(None) => info!("READ-BACK {label} -> None"),
-                Err(e) => info!("READ-BACK {label} -> ERROR: {e:?}"),
-            }
-        }
-
         // 2) Set properties
-        let pname_status = CorePropertyTypeName::ResponseStatusCode.as_property_name();
-        response_reference.with_property_value(
-            context,
-            pname_status.clone(),
-            BaseValue::StringValue(response_status_code),
-        )?;
-        log_read_back(context, &response_reference, "ResponseStatusCode", &pname_status);
-
         response_reference.with_property_value(
             context,
             CorePropertyTypeName::HolonsStaged.as_property_name(),
@@ -282,33 +259,10 @@ impl HolonLoaderController {
             )?;
         }
 
-        // 4) Diagnostics
-        let temp_id = response_reference.get_temporary_id();
-        let props: Vec<String> = response_reference
-            .get_raw_property_map(context)?
-            .keys()
-            .map(|p| p.0 .0.clone())
-            .collect();
-
-        let key_prop = CorePropertyTypeName::Key.as_property_name();
-        let key_s = match response_reference.property_value(context, &key_prop)? {
-            Some(PropertyValue::StringValue(MapString(s))) => s,
-            other => format!("<missing-or-non-string: {:?}>", other),
-        };
-
-        let err_rel = CoreRelationshipTypeName::HasLoadError.as_relationship_name();
-        let err_members = {
-            let handle = response_reference.related_holons(context, &err_rel)?;
-            let guard = handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("HolonCollection read lock poisoned".into())
-            })?;
-            guard.get_members().len()
-        };
-
-        info!(
-        "HolonLoadResponse built: temp_id={:?}, key={}, props={:?}, has_load_error_count={}, staged={}, committed={}, links_created={}, errors={}",
-        temp_id, key_s, props, err_members, holons_staged, holons_committed, links_created, errors_encountered
-    );
+        debug!(
+            "HolonLoadResponse built: staged={}, committed={}, links_created={}, errors={}",
+            holons_staged, holons_committed, links_created, errors_encountered
+        );
 
         Ok(response_reference)
     }

@@ -65,13 +65,6 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 
-    /// Creates a new Holon in transient state, without any lineage to prior Holons.
-    fn new_holon_internal(
-        &self,
-        ctx: &dyn HolonsContextBehavior,
-        key: Option<MapString>,
-    ) -> Result<TransientReference, HolonError>;
-
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
     fn stage_new_from_clone_internal(

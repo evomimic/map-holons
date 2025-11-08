@@ -160,7 +160,6 @@ async fn rstest_dance_tests(
             }
             DanceTestStep::LoadHolons {
                 bundle,
-                expect_status,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
@@ -169,7 +168,6 @@ async fn rstest_dance_tests(
                 execute_load_holons(
                     &mut test_state,
                     bundle,
-                    expect_status,
                     expect_staged,
                     expect_committed,
                     expect_links_created,

@@ -103,8 +103,18 @@ pub fn new_holon(
     context: &dyn HolonsContextBehavior,
     key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
-    let service = context.get_space_manager().get_holon_service();
-    service.new_holon_internal(context, key)
+    // Acquire transient service
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
+    let borrowed_service = transient_service
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service write lock poisoned".into()))?;
+
+    let reference = match key {
+        Some(key_string) => borrowed_service.create_empty(key_string)?,
+        None => borrowed_service.create_empty_without_key()?,
+    };
+
+    Ok(reference)
 }
 
 /// Deletes a holon identified by its ID.
