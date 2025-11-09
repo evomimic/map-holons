@@ -3,7 +3,7 @@
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
 use std::sync::atomic::{AtomicU32, Ordering};
-use tracing::warn;
+use tracing::{error, warn};
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -39,64 +39,60 @@ pub fn make_error_holons_best_effort(
         return Ok(Vec::new());
     }
 
-    // Try to resolve the HolonErrorType descriptor (by key or query).
-    if let Ok(holon_error_type_descriptor) = resolve_holon_error_type_descriptor(context) {
-        let mut out = Vec::with_capacity(errors.len());
-        for load_error in errors {
-            match make_error_holon_typed(context, holon_error_type_descriptor.clone(), load_error) {
-                Ok(transient_reference) => out.push(transient_reference),
-                Err(e) => {
-                    warn!("typed error holon creation failed, falling back to untyped: {}", e);
-                    match make_error_holon_untyped(context, load_error) {
-                        Ok(untyped_transient_reference) => out.push(untyped_transient_reference),
-                        Err(e2) => {
-                            warn!("untyped error holon creation also failed; continuing: {}", e2);
-                        }
-                    }
-                }
+    let mut out = Vec::with_capacity(errors.len());
+    // Try resolving the HolonErrorType descriptor once.
+    let holon_error_type_descriptor = resolve_holon_error_type_descriptor(context).ok();
+
+    for load_error in errors {
+        match make_error_holon(context, holon_error_type_descriptor.clone(), load_error) {
+            Ok(transient_reference) => out.push(transient_reference),
+            Err(e) => {
+                // This indicates a system-level issue (e.g., failed to allocate transient holon).
+                // There’s no reliable way to continue building error holons.
+                error!("failed to create error holon (typed or untyped): {}", e);
+                return Err(e);
             }
         }
-        return Ok(out);
     }
 
-    // Fallback: emit untyped error holons (no descriptor), still include fields.
-    let mut out = Vec::with_capacity(errors.len());
-    for load_error in errors {
-        match make_error_holon_untyped(context, load_error) {
-            Ok(untyped_transient_reference) => out.push(untyped_transient_reference),
-            Err(e2) => {
-                warn!("untyped error holon creation failed; continuing: {}", e2);
-            }
-        }
-    }
     Ok(out)
 }
 
-/// Build a transient HolonError holon with {error_type, error_message} **and**
-/// set its descriptor to `HolonErrorType`.
-/// Caller can attach it to the response via REL_HAS_LOAD_ERROR.
-pub fn make_error_holon_typed(
+/// Builds a transient **HolonError** holon representing the specified `HolonError`.
+///
+/// This function creates a new transient holon and populates it with the
+/// standard error fields (e.g., `error_type`, `error_message`).
+/// If a `descriptor` is provided, it is attached via `with_descriptor()` to identify
+/// the holon's type (typically `HolonErrorType`). If `descriptor` is `None`, the holon
+/// is left untyped but still contains all relevant error details.
+///
+/// # Arguments
+/// - `context`: The active holon execution context used to access transient behavior services.
+/// - `descriptor`: An optional reference to the `HolonErrorType` descriptor holon.
+/// - `err`: The `HolonError` instance to encode into the transient holon.
+///
+/// # Returns
+/// - `Ok(TransientReference)` — reference to the newly created transient error holon.
+/// - `Err(HolonError)` — if the transient holon could not be created or populated.
+///
+/// # Behavior
+/// - Always calls `create_empty_error_holon()` to allocate a new transient holon.
+/// - Applies `with_descriptor()` only if a descriptor is provided.
+/// - Uses `populate_error_fields()` to fill in diagnostic fields.
+///
+/// Use this helper to create both typed and untyped error holons from a single entry point.
+pub fn make_error_holon(
     context: &dyn HolonsContextBehavior,
-    holon_error_type_descriptor: HolonReference, // resolved HolonErrorType descriptor
+    descriptor: Option<HolonReference>,
     err: &HolonError,
 ) -> Result<TransientReference, HolonError> {
     let mut transient_reference = create_empty_error_holon(context)?;
-    transient_reference.with_descriptor(context, holon_error_type_descriptor)?;
+    if let Some(desc) = descriptor {
+        transient_reference.with_descriptor(context, desc)?;
+    }
     populate_error_fields(context, &mut transient_reference, err)?;
     Ok(transient_reference)
 }
-
-/// Build a transient HolonError holon with {error_type, error_message} **without**
-/// setting any descriptor. Use when `HolonErrorType` descriptor is unavailable.
-pub fn make_error_holon_untyped(
-    context: &dyn HolonsContextBehavior,
-    err: &HolonError,
-) -> Result<TransientReference, HolonError> {
-    let mut transient_reference = create_empty_error_holon(context)?;
-    populate_error_fields(context, &mut transient_reference, err)?;
-    Ok(transient_reference)
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────

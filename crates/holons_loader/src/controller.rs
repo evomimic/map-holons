@@ -10,7 +10,7 @@
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 // use uuid::Uuid;
 
 use holons_prelude::prelude::*;
@@ -58,45 +58,77 @@ impl HolonLoaderController {
         // (If/when keyless or extra targets appear, have the mapper return exact staged_count.)
         let staged_count = mapper_output.staged_count;
 
-        // If Pass 1 produced any errors or the bundle was empty,
-        // build the response now and return (skip Pass 2 & commit).
+        // Extract Pass-1 errors
         let mapper_errors = std::mem::take(&mut mapper_output.errors);
-        let is_empty_bundle =
-            staged_count == 0 && mapper_output.queued_relationship_references.is_empty();
-        if !mapper_errors.is_empty() || is_empty_bundle {
-            debug!(
-                "HolonLoaderController::load_bundle - early return: {}",
-                if !mapper_errors.is_empty() { "pass1 errors" } else { "empty bundle" }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // PASS 1: handle early-exit conditions (errors or empty bundle)
+        // ─────────────────────────────────────────────────────────────────────
+
+        let error_count = mapper_errors.len() as i64;
+        let is_error_case = error_count > 0;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CASE 1: Pass-1 errors detected
+        // ─────────────────────────────────────────────────────────────────────
+        if is_error_case {
+            warn!(
+            "HolonLoaderController::load_bundle - early return due to Pass 1 errors ({} detected)",
+            error_count
+        );
+
+            // Prefer typed error holons; bubble up if system-level failure
+            let error_holons = make_error_holons_best_effort(context, &mapper_errors)?;
+
+            let summary = format!(
+                "Pass 1 reported {} error(s). Pass 2 and commit were skipped.",
+                error_count
             );
-
-            // Build error holons (prefer typed; fallback to untyped if descriptor missing)
-            let error_holons = make_error_holons_best_effort(context, &mapper_errors)
-                .unwrap_or_else(|e| {
-                    debug!("Failed to build error holons (pass1); proceeding without: {}", e);
-                    Vec::new()
-                });
-
-            let summary = if !mapper_errors.is_empty() {
-                format!(
-                    "Pass 1 reported {} error(s). Pass 2 and commit were skipped.",
-                    error_holons.len()
-                )
-            } else {
-                "Empty bundle: no LoaderHolons found; nothing to process.".into()
-            };
 
             let response_reference = self.build_response(
                 context,
                 run_id,
                 staged_count,
-                0,
-                0,
-                error_holons.len() as i64,
+                0,           // holons_committed
+                0,           // links_created
+                error_count, // always use real error count, not holon count
                 summary,
                 error_holons,
             )?;
 
-            debug!("HolonLoaderController::load_bundle - done (pass1 short-circuit)");
+            warn!("HolonLoaderController::load_bundle - done (aborted after Pass 1)");
+            return Ok(response_reference);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CASE 2: Empty bundle (no holons and no relationships)
+        // ─────────────────────────────────────────────────────────────────────
+        // Clarify “empty bundle” semantics for readability and extensibility
+        let no_staged_holons = staged_count == 0;
+        let no_relationships = mapper_output.queued_relationship_references.is_empty();
+        let is_empty_bundle = no_staged_holons && no_relationships;
+
+        if is_empty_bundle {
+            info!(
+            "HolonLoaderController::load_bundle - early return (empty bundle: no holons, no relationships)"
+        );
+
+            let summary =
+                "Empty bundle: no LoaderHolons or relationship references found; nothing to process."
+                    .to_string();
+
+            let response_reference = self.build_response(
+                context,
+                run_id,
+                staged_count,
+                0, // holons_committed
+                0, // links_created
+                0, // errors_encountered
+                summary,
+                Vec::new(), // no error holons
+            )?;
+
+            info!("HolonLoaderController::load_bundle - done (empty bundle short-circuit)");
             return Ok(response_reference);
         }
 
@@ -114,13 +146,16 @@ impl HolonLoaderController {
 
         // If Pass 2 produced any errors, build the response now and return (skip commit).
         if !resolver_errors.is_empty() {
-            debug!(
-                "HolonLoaderController::load_bundle - pass2 errors, short-circuit before commit"
-            );
+            let resolver_error_count = resolver_errors.len() as i64;
+
+            warn!(
+            "HolonLoaderController::load_bundle - pass2 errors ({}), short-circuit before commit",
+            resolver_error_count
+        );
 
             let error_holons = make_error_holons_best_effort(context, &resolver_errors)
                 .unwrap_or_else(|e| {
-                    debug!("Failed to build error holons (pass2); proceeding without: {}", e);
+                    warn!("Failed to build error holons (pass2); proceeding without: {}", e);
                     Vec::new()
                 });
 
@@ -128,17 +163,17 @@ impl HolonLoaderController {
                 context,
                 run_id,
                 staged_count,
-                0,
+                0, // holons_committed
                 links_created,
-                error_holons.len() as i64,
+                resolver_error_count,
                 format!(
                     "Pass 2 reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
-                    error_holons.len(), staged_count, links_created
+                    resolver_error_count, staged_count, links_created
                 ),
                 error_holons,
             )?;
 
-            debug!("HolonLoaderController::load_bundle - done (pass2 short-circuit)");
+            warn!("HolonLoaderController::load_bundle - done (pass2 short-circuit)");
             return Ok(response_reference);
         }
 
@@ -166,7 +201,7 @@ impl HolonLoaderController {
             staged_count,
             holons_committed,
             links_created,
-            0,
+            0, // errors_encountered
             if commit_ok {
                 format!(
                     "{} holons staged; {} committed; {} abandoned; {} attempts.",
