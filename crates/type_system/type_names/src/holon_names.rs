@@ -6,10 +6,14 @@ use strum_macros::VariantNames;
 pub enum CoreHolonTypeName {
     Collection,
     Dance,
+    DanceType,
     Holon,
+    HolonErrorType,
     HolonSpace,
     HolonType,
     SchemaHolonType,
+    SchemaType,
+    TypeDescriptor,
 }
 
 impl CoreHolonTypeName {

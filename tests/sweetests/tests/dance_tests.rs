@@ -32,6 +32,8 @@ use holochain::sweettest::{SweetCell, SweetConductor};
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::time::timeout;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
@@ -39,13 +41,14 @@ use self::test_abandon_staged_changes::execute_abandon_staged_changes;
 use self::test_add_related_holon::execute_add_related_holons;
 use self::test_commit::execute_commit;
 use self::test_ensure_database_count::execute_ensure_database_count;
-// use self::test_load_core_schema::execute_load_new_schema;
+use self::test_load_holons::execute_load_holons;
 use self::test_match_db_content::execute_match_db_content;
 use self::test_query_relationships::execute_query_relationships;
 use self::test_remove_properties_command::execute_remove_properties;
 use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 
+use crate::load_holons_fixture::*;
 use crate::shared_test::{
     // mock_conductor::*,
     test_context::init_test_context,
@@ -89,7 +92,7 @@ use shared_test::*;
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
-// #[case::load_core_schema(load_core_schema_test_fixture())]
+#[case::load_holons_test(loader_incremental_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
     #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,
@@ -98,7 +101,6 @@ async fn rstest_dance_tests(
 
     use test_stage_new_from_clone::execute_stage_new_from_clone;
     use test_stage_new_version::execute_stage_new_version;
-    // use test_stage_new_version::execute_stage_new_version;
 
     use test_delete_holon::execute_delete_holon;
 
@@ -156,9 +158,23 @@ async fn rstest_dance_tests(
             DanceTestStep::EnsureDatabaseCount(expected_count) => {
                 execute_ensure_database_count(&mut test_state, expected_count).await
             }
-            // DanceTestStep::LoadCoreSchema => {
-            //     execute_load_new_schema(&conductor, &cell, &mut test_state).await
-            // }
+            DanceTestStep::LoadHolons {
+                bundle,
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+            } => {
+                execute_load_holons(
+                    &mut test_state,
+                    bundle,
+                    expect_staged,
+                    expect_committed,
+                    expect_links_created,
+                    expect_errors,
+                )
+                .await
+            }
             DanceTestStep::MatchSavedContent => execute_match_db_content(&mut test_state).await,
             DanceTestStep::QueryRelationships(
                 node_collection,

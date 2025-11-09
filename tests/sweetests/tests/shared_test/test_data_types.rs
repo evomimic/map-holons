@@ -31,8 +31,15 @@ pub const BOOK_KEY: &str =
 pub const PERSON_1_KEY: &str = "Roger Briggs";
 pub const PERSON_2_KEY: &str = "George Smith";
 pub const PUBLISHER_KEY: &str = "Publishing Company";
-pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AUTHORED_BY";
-pub const EDITOR_FOR: &str = "EDITOR_FOR";
+pub const BOOK_DESCRIPTOR_KEY: &str = "Book.HolonType";
+pub const PERSON_DESCRIPTOR_KEY: &str = "Person.HolonType";
+pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AuthoredBy";
+pub const BOOK_TO_PERSON_RELATIONSHIP_KEY: &str =
+    "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)";
+pub const PERSON_TO_BOOK_REL_INVERSE: &str = "Authors";
+pub const PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY: &str =
+    "(Person.HolonType)-[Authors]->(Book.HolonType)";
+pub const EDITOR_FOR: &str = "EditorFor";
 
 // #[derive(new, Clone, Debug)]
 // pub struct TestHolonData {
@@ -100,7 +107,13 @@ pub enum DanceTestStep {
     DatabasePrint, // Writes log messages for each holon in the persistent store
     DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
-    // LoadCoreSchema,
+    LoadHolons {
+        bundle: TransientReference,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+    },
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveProperties(HolonReference, PropertyMap, ResponseStatusCode),
@@ -144,9 +157,19 @@ impl Display for DanceTestStep {
             DanceTestStep::EnsureDatabaseCount(count) => {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
             }
-            // DanceTestStep::LoadCoreSchema => {
-            //     write!(f, "LoadCoreSchema")
-            // }
+            DanceTestStep::LoadHolons {
+                bundle: _,
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+            } => {
+                write!(
+                    f,
+                    "LoadHolons(staged={}, committed={}, links_created={}, errors={})",
+                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0
+                )
+            }
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
@@ -416,10 +439,23 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // pub fn add_load_core_schema(&mut self) -> Result<(), HolonError> {
-    //     self.steps.push_back(DanceTestStep::LoadCoreSchema);
-    //     Ok(())
-    // }
+    pub fn add_load_holons_step(
+        &mut self,
+        bundle: TransientReference,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+    ) -> Result<(), HolonError> {
+        self.steps.push_back(DanceTestStep::LoadHolons {
+            bundle,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+        });
+        Ok(())
+    }
 
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::MatchSavedContent);

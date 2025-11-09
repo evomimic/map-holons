@@ -22,7 +22,7 @@ pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
+    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_holon_key.clone()))?;
     book_transient_reference.with_property_value(
         &*fixture_context,
         "title".to_string(),

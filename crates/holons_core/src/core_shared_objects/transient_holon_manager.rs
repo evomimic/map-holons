@@ -6,8 +6,6 @@ use std::{
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, PropertyMap, PropertyName, TemporaryId};
 // use tracing::{debug};
-use tracing::warn;
-
 use crate::{
     core_shared_objects::{
         holon::{
@@ -21,6 +19,8 @@ use crate::{
     reference_layer::{TransientHolonBehavior, TransientReference},
     HolonPool, HolonsContextBehavior,
 };
+use tracing::warn;
+use type_names::CorePropertyTypeName;
 
 /// Holon variant-agnostic interface for cloning.
 ///
@@ -100,8 +100,8 @@ impl TransientManagerAccess for TransientHolonManager {
 impl TransientHolonBehavior for TransientHolonManager {
     fn create_empty(&self, key: MapString) -> Result<TransientReference, HolonError> {
         let mut property_map = PropertyMap::new();
-        property_map
-            .insert(PropertyName(MapString("key".to_string())), BaseValue::StringValue(key));
+        let key_property_name = CorePropertyTypeName::Key.as_property_name();
+        property_map.insert(key_property_name, BaseValue::StringValue(key));
         let holon = TransientHolon::with_fields(
             MapInteger(1),
             HolonState::Mutable,
@@ -115,6 +115,18 @@ impl TransientHolonBehavior for TransientHolonManager {
         let transient_reference = self.add_new_holon(holon)?;
 
         Ok(transient_reference)
+    }
+
+    fn create_empty_without_key(&self) -> Result<TransientReference, HolonError> {
+        let holon = TransientHolon::with_fields(
+            MapInteger(1),
+            HolonState::Mutable,
+            ValidationState::ValidationRequired,
+            PropertyMap::new(),
+            TransientRelationshipMap::new_empty(),
+            None,
+        );
+        self.add_new_holon(holon)
     }
 
     fn new_from_clone_model(

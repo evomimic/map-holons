@@ -108,6 +108,8 @@ impl Dancer {
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
+        dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
+        dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
         dispatch_table.insert("remove_properties", remove_properties_dance as DanceFunction);
         dispatch_table
@@ -206,18 +208,6 @@ fn initialize_context_from_request(
     Ok(context)
 }
 
-// fn initialize_context_from_request(
-//     request: &DanceRequest,
-// ) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
-//     // Extract session state from request
-//     let session_state = request.get_state();
-//     let staged_holons = session_state.get_staged_holons().clone();
-//     let local_space_holon = session_state.get_local_holon_space();
-//
-//     // Initialize context from session state
-//     init_guest_context(staged_holons, local_space_holon)
-//         .map_err(|error| create_error_response(error, request))
-// }
 /// Restores the session state for the DanceResponse from context. This should always
 /// be called before returning DanceResponse since the state is intended to be "ping-ponged"
 /// between client and guest.
@@ -241,15 +231,6 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
         local_space_holon,
     ))
 }
-// fn restore_session_state_from_space_manager(context: &dyn HolonsContextBehavior) -> SessionState {
-//     let space_manager = &context.get_space_manager();
-//     let staging_area = StagingArea::empty();
-//     let staged_holons = space_manager.export_staged_holons();
-//     let staged_index = space_manager.export_keyed_index();
-//     let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
-//     let local_space_holon = space_manager.get_space_holon();
-//     SessionState::new(staging_area, local_space_holon)
-// }
 
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///

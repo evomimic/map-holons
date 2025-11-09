@@ -32,6 +32,9 @@ path = "../../crates/holons_core"
 [dependencies.holons_client]
 path = "../../crates/holons_client"
 
+[dependencies.holons_loader]
+path = "../../crates/holons_loader"
+
 [dependencies.holons_trust_channel]
 path = "../../crates/holons_trust_channel"
 

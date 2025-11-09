@@ -7,7 +7,7 @@ use std::{
 
 use hdk::prelude::*;
 use holons_core::core_shared_objects::SavedHolon;
-use holons_core::reference_layer::ReadableHolon;
+use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
     holon_error_from_wasm_error, try_action_hash_from_local_id,
@@ -33,7 +33,9 @@ use holons_core::{
     },
 };
 use holons_integrity::LinkTypes;
+use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
+use type_names::CorePropertyTypeName;
 
 #[derive(Clone)]
 pub struct GuestHolonService {
@@ -324,6 +326,18 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
+    /// Execute a Holon import from a `HolonLoaderBundle`.
+    /// Delegates to the `HolonLoaderController` and returns a transient `HolonLoadResponse`.
+    fn load_holons_internal(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        bundle: TransientReference,
+    ) -> Result<TransientReference, HolonError> {
+        // Construct controller and delegate to load_bundle()
+        let mut controller = HolonLoaderController::new();
+        controller.load_bundle(context, bundle)
+    }
+
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
     /// lineage to the Holon its cloned from.
     fn stage_new_from_clone_internal(
@@ -334,10 +348,11 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<StagedReference, HolonError> {
         let mut cloned_transient_reference = original_holon.clone_holon(context)?;
 
-        // update key
+        // Update Key (canonical PascalCase)
+        let key_prop = CorePropertyTypeName::Key.as_property_name();
         cloned_transient_reference.with_property_value(
             context,
-            PropertyName(MapString("key".to_string())),
+            key_prop,
             BaseValue::StringValue(new_key),
         )?;
 

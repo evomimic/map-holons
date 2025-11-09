@@ -29,7 +29,7 @@ pub fn setup_book_author_steps_with_context(
     //  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
 
-    let mut book_transient_reference = new_holon(&*fixture_context, book_holon_key.clone())?;
+    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_holon_key.clone()))?;
     book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
             &*fixture_context,
             PropertyName(MapString("description".to_string())),
@@ -48,7 +48,8 @@ pub fn setup_book_author_steps_with_context(
 
     // //  STAGE:  Person 1 //
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let mut person_1_transient_reference = new_holon(&*fixture_context, person_1_key.clone())?;
+    let mut person_1_transient_reference =
+        new_holon(&*fixture_context, Some(person_1_key.clone()))?;
     person_1_transient_reference
         .with_property_value(&*fixture_context, "first name", "Roger")?
         .with_property_value(&*fixture_context, "last name", "Briggs")?;
@@ -59,7 +60,8 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Person 2 //
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let mut person_2_transient_reference = new_holon(&*fixture_context, person_2_key.clone())?;
+    let mut person_2_transient_reference =
+        new_holon(&*fixture_context, Some(person_2_key.clone()))?;
     person_2_transient_reference
         .with_property_value(&*fixture_context, "first name", "George")?
         .with_property_value(&*fixture_context, "last name", "Smith")?;
@@ -70,7 +72,8 @@ pub fn setup_book_author_steps_with_context(
 
     //  STAGE:  Publisher //
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let mut publisher_transient_reference = new_holon(&*fixture_context, publisher_key.clone())?;
+    let mut publisher_transient_reference =
+        new_holon(&*fixture_context, Some(publisher_key.clone()))?;
     publisher_transient_reference
         .with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?
         .with_property_value(

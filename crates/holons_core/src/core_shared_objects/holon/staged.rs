@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{
-    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
-    RelationshipName,
-};
-
 use crate::{
     core_shared_objects::{
         holon::{
@@ -17,6 +11,12 @@ use crate::{
     },
     HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap, StagedRelationshipMap,
 };
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{
+    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName,
+};
+use type_names::CorePropertyTypeName;
 
 /// Represents a Holon that has been staged for persistence or updates.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -245,17 +245,12 @@ impl ReadableHolonState for StagedHolon {
         }
     }
 
+    /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn key(&self) -> Result<Option<MapString>, HolonError> {
-        if let Some(inner_value) =
-            self.property_map.get(&PropertyName(MapString("key".to_string())))
-        {
-            let string_value: String = inner_value.try_into().map_err(|_| {
-                HolonError::UnexpectedValueType(
-                    format!("{:?}", inner_value),
-                    "MapString".to_string(),
-                )
-            })?;
-            Ok(Some(MapString(string_value)))
+        let key_property_name = CorePropertyTypeName::Key.as_property_name();
+
+        if let Some(BaseValue::StringValue(s)) = self.property_map.get(&key_property_name) {
+            Ok(Some(s.clone()))
         } else {
             Ok(None)
         }

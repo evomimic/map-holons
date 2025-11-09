@@ -1,21 +1,22 @@
-//! This file defines the DancesAdaptors offered by the holons zome.
-//! TODO: Move these adaptors to their own zome
+//! Dance adapters for the holons zome.
 //!
-//! For each Dance, this file defines:
-//! - a `build_` function as a helper function for creating DanceRequests for that Dance from
-//! native parameters.
-//!- a function that performs the dance
+//! This module defines the `*_dance` adapter functions that execute individual
+//! dances on the guest side. Each adapter:
+//! 1. Extracts required input parameters from the `DanceRequest`
+//! 2. Invokes the appropriate native/reference-layer function
+//! 3. Produces a `ResponseBody` (or maps errors to `HolonError` for the dancer to wrap)
 //!
-//!
-//! As a dance adaptor, this function wraps (and insulates) Dancer from native functionality
-//! and insulates the native function from any dependency on Dances. In general, this means:
-//! 1.  Extracting any required input parameters from the DanceRequest's request_body
-//! 2.  Invoking the native function
-//! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
-//! mapping any errors into an appropriate ResponseStatus and returning results in the body.
+//! Notes:
+//! - **Request builders have moved** to the `holon_dance_builders` crate. This module no longer
+//!   exposes `build_*` helper functions.
+//! - These adapters intentionally insulate native/reference-layer code from the Dance protocol
+//!   details and vice-versa.
+//! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
+//!   adapters return `Result<ResponseBody, HolonError>`.
 
 use tracing::{debug, info};
 
+use crate::reference_layer::TransientReference;
 use crate::{
     core_shared_objects::{
         commit, delete_holon, stage_new_from_clone, stage_new_holon, stage_new_version,
@@ -26,14 +27,16 @@ use crate::{
         dance_response::ResponseBody,
         DanceRequest,
     },
+    load_holons,
     query_layer::evaluate_query,
     reference_layer::{
-        holon_operations_api::get_all_holons, writable_holon::WritableHolon, HolonReference,
-        HolonsContextBehavior, SmartReference,
+        holon_operations_api::get_all_holons, holon_operations_api::new_holon,
+        writable_holon::WritableHolon, HolonReference, HolonsContextBehavior, SmartReference,
     },
 };
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};
+use type_names::CorePropertyTypeName;
 
 /// Abandon staged changes
 ///
@@ -73,7 +76,7 @@ pub fn abandon_staged_changes_dance(
     }
 }
 /// Add related Holons
-/// 
+///
 /// *DanceRequest:*
 /// - dance_name: "add_related_holons"
 /// - dance_type: CommandMethod(HolonReference) -- references the Holon that is the `source` of the relationship being extended
@@ -91,25 +94,18 @@ pub fn add_related_holons_dance(
 
     // Match the dance_type
     match request.dance_type {
-        DanceType::CommandMethod(mut holon_reference) => {
-            match request.body {
-                RequestBody::TargetHolons(relationship_name, holons_to_add) => {
-                    holon_reference.add_related_holons(
-                                context,
-                                relationship_name,
-                                holons_to_add,
-                            )?;
-            
-                    Ok(ResponseBody::HolonReference(holon_reference))
-                }
-                _ => Err(HolonError::InvalidParameter(
-                    "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
-                )),
+        DanceType::CommandMethod(mut holon_reference) => match request.body {
+            RequestBody::TargetHolons(relationship_name, holons_to_add) => {
+                holon_reference.add_related_holons(context, relationship_name, holons_to_add)?;
+
+                Ok(ResponseBody::HolonReference(holon_reference))
             }
-        }
+            _ => Err(HolonError::InvalidParameter(
+                "Invalid RequestBody: expected TargetHolons, didn't get one".to_string(),
+            )),
+        },
         _ => Err(HolonError::InvalidParameter(
-            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one"
-                .to_string(),
+            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one".to_string(),
         )),
     }
 }
@@ -235,6 +231,85 @@ pub fn get_holon_by_id_dance(
     Ok(ResponseBody::Holon(holon))
 }
 
+/// Executes the `"load_holons"` dance (guest side).
+///
+/// This adapter validates the request and delegates Holon import to the
+/// guest `HolonServiceApi` implementation, which calls the loader controller.
+///
+/// *DanceRequest:*
+/// - dance_name: **"load_holons"**
+/// - dance_type: **Standalone**
+/// - request_body: **TransientReference(…HolonLoaderBundle…)**
+///
+/// *ResponseBody:*
+/// - **HolonReference(HolonReference::Transient)** — a transient reference to the
+///   `HolonLoadResponse` holon produced by the loader
+///
+/// # Errors
+/// Returns `HolonError::InvalidParameter` if the `DanceType` is not `Standalone`
+/// or if the `RequestBody` is not `TransientReference`.
+///
+pub fn load_holons_dance(
+    context: &dyn HolonsContextBehavior,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    info!("----- Entered load holons dance");
+    // Validate dance type
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected Standalone".to_string(),
+        ));
+    }
+
+    // Extract bundle reference
+    let bundle_reference: TransientReference = match request.body {
+        RequestBody::TransientReference(transient_reference) => transient_reference,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid RequestBody: expected TransientReference (HolonLoaderBundle)".to_string(),
+            ))
+        }
+    };
+
+    // Delegate to the public ops API (which calls the *_internal service impl)
+    let response_reference = load_holons(context, bundle_reference)?;
+
+    // Wrap transient response holon
+    Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
+}
+
+pub fn new_holon_dance(
+    context: &dyn HolonsContextBehavior,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    info!("----- Entered new holon dance");
+    if request.dance_type != DanceType::Standalone {
+        return Err(HolonError::InvalidParameter("Invalid DanceType: expected Standalone".into()));
+    }
+
+    // Optional key via ParameterValues; allow None for keyless creation.
+    let key_option: Option<MapString> = match &request.body {
+        RequestBody::ParameterValues(map) => {
+            let property_name = PropertyName(MapString("key".into()));
+            match map.get(&property_name) {
+                Some(BaseValue::StringValue(key)) => Some(key.clone()),
+                Some(_) => return Err(HolonError::InvalidParameter("key must be a string".into())),
+                None => None,
+            }
+        }
+        RequestBody::None => None,
+        _ => {
+            return Err(HolonError::InvalidParameter(
+                "Invalid RequestBody: expected None or ParameterValues".into(),
+            ))
+        }
+    };
+
+    // Delegate to the public API; it will route to the *_internal impl for this env.
+    let response_reference = new_holon(context, key_option)?;
+    Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
+}
+
 /// Query relationships
 ///
 /// *DanceRequest:*
@@ -295,10 +370,7 @@ pub fn remove_properties_dance(
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
                     for property_name in parameters.keys() {
-                        holon_reference.remove_property_value(
-                            context,
-                            property_name,
-                        )?;
+                        holon_reference.remove_property_value(context, property_name)?;
                     }
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
@@ -334,7 +406,11 @@ pub fn remove_related_holons_dance(
         DanceType::CommandMethod(mut holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
-                    holon_reference.remove_related_holons(context, relationship_name, holons_to_remove)?;
+                    holon_reference.remove_related_holons(
+                        context,
+                        relationship_name,
+                        holons_to_remove,
+                    )?;
 
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
@@ -347,8 +423,7 @@ pub fn remove_related_holons_dance(
             // }
         }
         _ => Err(HolonError::InvalidParameter(
-            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one"
-                .to_string(),
+            "Invalid DanceType: expected CommandMethod(HolonReference), didn't get one".to_string(),
         )),
     }
 }
@@ -358,7 +433,7 @@ pub fn remove_related_holons_dance(
 /// *DanceRequest:*
 /// - dance_name: "stage_new_from_clone"
 /// - dance_type: CloneMethod(HolonReference)
-/// - request_body: ParemeterValues(PropertyMap)
+/// - request_body: ParameterValues(PropertyMap)
 ///
 ///
 /// *ResponseBody:*
@@ -370,33 +445,45 @@ pub fn stage_new_from_clone_dance(
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_from_clone dance");
 
+    // 1) Extract the original holon from the dance type
     let original_holon = match request.dance_type {
         DanceType::CloneMethod(holon_reference) => holon_reference,
         _ => {
             return Err(HolonError::InvalidParameter(
-                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+                "Invalid DanceType: expected CloneMethod".to_string(),
             ));
         }
     };
 
+    // 2) Extract the ParameterValues map from the body
     let property_map = match request.body {
-        RequestBody::ParameterValues(property_map) => property_map,
+        RequestBody::ParameterValues(map) => map,
         _ => {
             return Err(HolonError::InvalidParameter(
-                "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
+                "Invalid RequestBody: expected ParameterValues(PropertyMap)".to_string(),
             ));
         }
     };
 
-    let new_key = property_map
-        .get(&PropertyName(MapString("key".to_string())))
-        .ok_or(HolonError::InvalidParameter(
-            "ParameterValues PropertyMap must have a key".to_string(),
-        ))?
-        .clone();
+    // 3) Pull the Key from the map
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+    let new_key: MapString = match property_map.get(&key_prop) {
+        Some(BaseValue::StringValue(s)) => s.clone(),
+        Some(other) => {
+            return Err(HolonError::UnexpectedValueType(
+                format!("{:?}", other),
+                "String".to_string(),
+            ));
+        }
+        None => {
+            return Err(HolonError::InvalidParameter(
+                "ParameterValues must include Key".to_string(),
+            ));
+        }
+    };
 
-    let staged_reference =
-        stage_new_from_clone(context, original_holon, MapString(Into::<String>::into(&new_key)))?;
+    // 4) Stage the clone with the provided key
+    let staged_reference = stage_new_from_clone(context, original_holon, new_key)?;
 
     Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }

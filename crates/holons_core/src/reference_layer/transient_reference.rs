@@ -1,5 +1,6 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 use std::{
     fmt,
     sync::{Arc, RwLock},
@@ -8,7 +9,8 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName, TemporaryId,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName, TemporaryId,
 };
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -78,6 +80,35 @@ impl TransientReference {
             HolonError::FailedToAcquireLock(format!("Failed to acquire write lock on holon: {}", e))
         })?;
         borrow.update_original_id(None)
+    }
+
+    /// ⚠️ Returns a snapshot of the raw property map of this holon.
+    ///
+    /// Intended **only** for the holon loader, specifically for LoaderHolons whose
+    /// property set is unknown at load time. Do **NOT** use outside the loader context.
+    ///
+    /// We return an owned `PropertyMap` rather than `&PropertyMap` because the holon is
+    /// accessed via `Rc<RefCell<...>>`; any reference would be tied to a temporary borrow.
+    pub fn get_raw_property_map(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<PropertyMap, HolonError> {
+        // Enforce read access
+        self.is_accessible(context, AccessType::Read)?;
+
+        // Get read access
+        let arc_lock = self.get_rc_holon(context)?;
+        let guard = arc_lock.read().map_err(|_| {
+            HolonError::FailedToBorrow("TransientHolon RwLock poisoned (read)".into())
+        })?;
+
+        // Only the Transient variant exposes raw_property_map_clone()
+        match guard.deref() {
+            Holon::Transient(t) => Ok(t.raw_property_map_clone()),
+            _ => Err(HolonError::InvalidHolonReference(
+                "get_raw_property_map is only valid for Transient holons".into(),
+            )),
+        }
     }
 }
 

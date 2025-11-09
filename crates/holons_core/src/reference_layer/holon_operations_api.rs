@@ -26,9 +26,9 @@ use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
 };
-use base_types::MapString;
-use core_types::{HolonError, LocalId, PropertyMap, PropertyName};
-
+use base_types::{BaseValue, MapString};
+use core_types::{HolonError, LocalId, PropertyMap};
+use type_names::CorePropertyTypeName;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 /// Commits the state of all staged holons and their relationships to the DHT.
@@ -96,24 +96,25 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, Hol
     Ok(commit_response)
 }
 
-/// Creates a new TransientHolon and assigns the specified key
-/// Returns a TransientReference to the newly created holon
+/// Creates a new TransientHolon.
+/// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
+/// Returns a TransientReference to the newly created holon.
 pub fn new_holon(
     context: &dyn HolonsContextBehavior,
-    key: MapString,
+    key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
+    // Acquire transient service
     let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let transient_reference = transient_service
-        .read()
-        .map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on transient_behavior_service: {}",
-                e
-            ))
-        })?
-        .create_empty(key)?;
+    let borrowed_service = transient_service
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service write lock poisoned".into()))?;
 
-    Ok(transient_reference)
+    let reference = match key {
+        Some(key_string) => borrowed_service.create_empty(key_string)?,
+        None => borrowed_service.create_empty_without_key()?,
+    };
+
+    Ok(reference)
 }
 
 /// Deletes a holon identified by its ID.
@@ -153,14 +154,14 @@ pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollec
 }
 
 pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
-    let key_option = map.get(&PropertyName(MapString("key".to_string())));
-    if let Some(inner_value) = key_option {
-        let string_value: String = inner_value.try_into().map_err(|_| {
-            HolonError::UnexpectedValueType(format!("{:?}", inner_value), "MapString".to_string())
-        })?;
-        Ok(Some(MapString(string_value)))
-    } else {
-        Ok(None)
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
+    match map.get(&key_prop) {
+        Some(BaseValue::StringValue(s)) => Ok(Some(s.clone())),
+        Some(other) => {
+            Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".to_string()))
+        }
+        None => Ok(None),
     }
 }
 
@@ -369,4 +370,12 @@ pub fn transient_count(context: &dyn HolonsContextBehavior) -> Result<i64, Holon
             ))
         })?
         .transient_count();
+}
+
+pub fn load_holons(
+    context: &dyn HolonsContextBehavior,
+    bundle: TransientReference,
+) -> Result<TransientReference, core_types::HolonError> {
+    let service = context.get_space_manager().get_holon_service();
+    service.load_holons_internal(context, bundle)
 }

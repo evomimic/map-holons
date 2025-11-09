@@ -75,7 +75,7 @@ pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, H
 
     //  STAGE:  Abandoned Holon1 (H4)  //
     let mut abandoned_holon_1_transient_reference =
-        new_holon(&*fixture_context, MapString("Abandon1".to_string()))?;
+        new_holon(&*fixture_context, Some(MapString("Abandon1".to_string())))?;
     abandoned_holon_1_transient_reference.with_property_value(
         &*fixture_context,
         "example abandon1",
@@ -89,7 +89,7 @@ pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, H
 
     //  STAGE:  Abandoned Holon2 (H5)  //
     let mut abandoned_holon_2_transient_reference =
-        new_holon(&*fixture_context, MapString("Abandon2".to_string()))?;
+        new_holon(&*fixture_context, Some(MapString("Abandon2".to_string())))?;
     abandoned_holon_2_transient_reference.with_property_value(
         &*fixture_context,
         "example abandon2",
