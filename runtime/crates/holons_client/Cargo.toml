@@ -15,17 +15,8 @@ tracing = "0.1"
 
 # MAP Dependencies
 
-[dependencies.holons_core]
-path = "../../../shared_crates/holons_core"
-
-[dependencies.core_types]
-path = "../../../shared_crates/type_system/core_types"
-
-[dependencies.base_types]
-path = "../../../shared_crates/type_system/base_types"
-
-[dependencies.integrity_core_types]
-path = "../../../shared_crates/type_system/integrity_core_types"
-
-[dependencies.holon_dance_builders]
-path = "../../../shared_crates/holon_dance_builders"
+holons_core = {path = "../../../shared_crates/holons_core"}
+core_types = {path = "../../../shared_crates/type_system/core_types"}
+base_types = {path = "../../../shared_crates/type_system/base_types"}
+integrity_core_types = {path = "../../../shared_crates/type_system/integrity_core_types"}
+holon_dance_builders = {path = "../../../shared_crates/holon_dance_builders"}

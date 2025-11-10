@@ -9,11 +9,5 @@ edition = "2021"
 #thiserror = "2"
 
 
-[dependencies.integrity_core_types]
-path = "../type_system/integrity_core_types"
-
-[dependencies.core_types]
-path = "../type_system/core_types"
-
-#[dependencies.holons_core]
-#path = "../holons_core"
+integrity_core_types = {path = "../type_system/integrity_core_types"}
+core_types = {path = "../type_system/core_types"}

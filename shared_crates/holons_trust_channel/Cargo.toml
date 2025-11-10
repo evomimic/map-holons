@@ -7,6 +7,5 @@ edition = "2024"
 tracing = "0.1"
 #serde = { version = "1", features = ["derive"] }
 async-trait = "0.1.51"
+holons_core = {path = "../holons_core"}
 
-[dependencies.holons_core]
-path = "../holons_core"

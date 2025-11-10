@@ -17,39 +17,14 @@ serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
 async-trait = "0.1.51"
 
-[dependencies.holons_prelude]
-path = "../../shared_crates/holons_prelude"
-
-#[dependencies.holons_guest_integrity]
-#path = "../../shared_crates/holons_guest_integrity"
-#
-#[dependencies.holon_dance_builders]
-#path = "../../shared_crates/holon_dance_builders"
-
-[dependencies.holons_core]
-path = "../../shared_crates/holons_core"
-
-[dependencies.holons_client]
-path = "../../runtime/crates/holons_client"
-
-[dependencies.holons_loader]
-path = "../../happ/crates/holons_loader"
-
-[dependencies.holons_trust_channel]
-path = "../../shared_crates/holons_trust_channel"
-
-[dependencies.type_names]
-path = "../../shared_crates/type_system/type_names"
-
-[dependencies.core_types]
-path = "../../shared_crates/type_system/core_types"
-
-[dependencies.base_types]
-path = "../../shared_crates/type_system/base_types"
-
-[dev-dependencies.holons_trust_channel]
-path = "../../shared_crates/holons_trust_channel"
-
+holons_prelude = {path = "../../shared_crates/holons_prelude"}
+holons_core = {path = "../../shared_crates/holons_core"}
+holons_client = {path = "../../runtime/crates/holons_client"}
+holons_loader = {path = "../../happ/crates/holons_loader"}
+holons_trust_channel = {path = "../../shared_crates/holons_trust_channel"}
+type_names = {path = "../../shared_crates/type_system/type_names"}
+core_types = {path = "../../shared_crates/type_system/core_types"}
+base_types = {path = "../../shared_crates/type_system/base_types"}
 [dev-dependencies]
 rstest = "0.25"
 pretty_assertions = "1.4"
@@ -64,3 +39,4 @@ holochain = { version = "0.5", default-features = false, features = [
     "wasmer_sys",
     "datachannel-vendored"
 ] }
+holons_trust_channel = {path = "../../shared_crates/holons_trust_channel"}

@@ -9,6 +9,5 @@ serde_json = "1.0.109"
 jsonschema = { version = "0.30.0", default-features = false }
 
 # MAP Dependencies
+integrity_core_types = {path = "../type_system/integrity_core_types"}
 
-[dependencies.integrity_core_types]
-path = "../type_system/integrity_core_types"

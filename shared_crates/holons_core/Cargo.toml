@@ -22,14 +22,6 @@ async-trait = "0.1.51"
 
 # MAP Dependencies
 
-[dependencies.core_types]
-path = "../type_system/core_types"
-
-[dependencies.base_types]
-path = "../type_system/base_types"
-
-[dependencies.type_names]
-path = "../type_system/type_names"
-
-
-
+core_types = {path = "../type_system/core_types"}
+base_types = {path = "../type_system/base_types"}
+type_names = {path = "../type_system/type_names"}

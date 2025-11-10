@@ -8,7 +8,5 @@ edition = "2021"
 #convert_case = "0.5"
 derive-new = "0.7"
 hex = "0.4"
+serde = {version = "1", features = ["derive"]}
 
-[dependencies.serde]
-version = "1"
-features = ["derive"]

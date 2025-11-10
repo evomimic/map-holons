@@ -5,20 +5,9 @@ edition = "2024"
 
 [dependencies]
 
-[dependencies.holons_core]
-path = "../holons_core"
-
-[dependencies.type_names]
-path = "../type_system/type_names"
-
-[dependencies.integrity_core_types]
-path = "../type_system/integrity_core_types"
-
-[dependencies.core_types]
-path = "../type_system/core_types"
-
-[dependencies.base_types]
-path = "../type_system/base_types"
-
-[dependencies.holon_dance_builders]
-path = "../holon_dance_builders"
+holons_core = {path = "../holons_core"}
+type_names = {path = "../type_system/type_names"}
+integrity_core_types = {path = "../type_system/integrity_core_types"}
+core_types = {path = "../type_system/core_types"}
+base_types = {path = "../type_system/base_types"}
+holon_dance_builders = {path = "../holon_dance_builders"}

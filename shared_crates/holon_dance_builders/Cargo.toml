@@ -12,17 +12,8 @@ name = "holon_dance_builders"
 
 # MAP Dependencies
 
-[dependencies.holons_core]
-path = "../holons_core"
-
-[dependencies.core_types]
-path = "../type_system/core_types"
-
-[dependencies.base_types]
-path = "../type_system/base_types"
-
-[dependencies.type_names]
-path = "../type_system/type_names"
-
-[dependencies.integrity_core_types]
-path = "../type_system/integrity_core_types"
+holons_core = {path = "../holons_core"}
+core_types = {path = "../type_system/core_types"}
+base_types = {path = "../type_system/base_types"}
+type_names = {path = "../type_system/type_names"}
+integrity_core_types = {path = "../type_system/integrity_core_types"}
