@@ -24,8 +24,8 @@ path = "../../crates/holons_prelude"
 #[dependencies.holons_guest_integrity]
 #path = "../../crates/holons_guest_integrity"
 #
-#[dependencies.holon_dance_builders]
-#path = "../../crates/holon_dance_builders"
+[dependencies.holon_dance_builders]
+path = "../../crates/holon_dance_builders"
 
 [dependencies.holons_core]
 path = "../../crates/holons_core"

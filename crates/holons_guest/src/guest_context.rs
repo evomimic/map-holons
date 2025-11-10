@@ -60,6 +60,7 @@ impl HolonsContextBehavior for GuestHolonsContext {
 /// - Internal nursery access, required for commit operations.
 /// - Shared ownership support via `Arc<dyn HolonsContextBehavior>`, allowing multiple components
 ///   to reference the same context without unnecessary cloning.
+/// - Injects the **DanceInitiator**, backed by a guest-side implementation `ConductorDanceCaller`
 ///
 /// This function also ensures that a HolonSpace Holon exists in the local DHT.
 ///

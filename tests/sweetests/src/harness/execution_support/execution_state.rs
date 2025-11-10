@@ -1,0 +1,101 @@
+//! Minimal execution-time state for running a test case.
+//!
+//! `TestExecutionState` is the single runtime hub executors use to:
+//! - **record** new realizations (e.g., a freshly staged holon), and
+//! - **look up** previously realized handles from fixture tokens.
+//!
+//! It intentionally **does not** own services; those come from the provided
+//! `context` (per Issue #308). This keeps executors focused on the loop:
+//! **lookup → call → record**.
+//!
+//! Despite the name, this is **not** an enum of lifecycle phases (Running, Done, …).
+//! It’s a thin container around [`ExecutionHolons`] so we can grow execution-time
+//! concerns later (diagnostics, metrics, history) without changing executor APIs.
+
+
+use crate::harness::execution_support::{ExecutionHolons, ResolvedTestReference};
+use crate::harness::fixtures_support::TestReference;
+use holons_prelude::prelude::*;
+
+#[derive(Clone, Debug, Default)]
+pub struct TestExecutionState {
+    /// Registry of realized references keyed by source token’s `TemporaryId`.
+    pub execution_holons: ExecutionHolons,
+}
+
+impl TestExecutionState {
+    /// Create a new empty execution state.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Reset the state (clears all recorded holons).
+    pub fn clear(&mut self) {
+        self.execution_holons = ExecutionHolons::new();
+    }
+
+    /// Borrow the registry (read-only).
+    #[inline]
+    pub fn holons(&self) -> &ExecutionHolons {
+        &self.execution_holons
+    }
+
+    /// Borrow the registry (mutable).
+    #[inline]
+    pub fn holons_mut(&mut self) -> &mut ExecutionHolons {
+        &mut self.execution_holons
+    }
+
+    // ---------------------------------------------------------------------
+    // Recording (Realization → Registry)
+    // ---------------------------------------------------------------------
+
+    /// Record a fully-built resolved entry produced by this step.
+    ///
+    /// Overwrites any previous entry for the same `TemporaryId` (most recent wins).
+    #[inline]
+    pub fn record_resolved(&mut self, resolved: ResolvedTestReference) {
+        self.execution_holons.record_resolved(resolved);
+    }
+
+    /// Convenience: construct and record from a source token + resulting handle.
+    ///
+    /// Returns a clone of the `ResolvedTestReference` just stored.
+    #[inline]
+    pub fn record_from_parts(
+        &mut self,
+        source_token: TestReference,
+        resulting_reference: HolonReference,
+    ) -> ResolvedTestReference {
+        self.execution_holons.record_from_parts(source_token, resulting_reference)
+    }
+
+    // ---------------------------------------------------------------------
+    // Lookup (Tokens → HolonReference) for executor inputs
+    // ---------------------------------------------------------------------
+
+    /// Convert a fixture token into the **current** runtime handle for use as input.
+    ///
+    /// Enforces the invariant: **Saved ≙ Staged(Committed(LocalId))**.
+    /// No Nursery/DHT fallback is performed; missing entries are treated as
+    /// authoring/ordering errors.
+    #[inline]
+    pub fn lookup_holon_reference(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        token: &TestReference,
+    ) -> Result<HolonReference, HolonError> {
+        self.execution_holons.lookup_holon_reference(context, token)
+    }
+
+    /// Batch variant of `lookup_holon_reference`.
+    #[inline]
+    pub fn lookup_holon_references(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        tokens: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        self.execution_holons.lookup_holon_references(context, tokens)
+    }
+}
+
