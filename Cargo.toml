@@ -1,59 +1,52 @@
 [workspace]
 
 members = [
-    # Coordinator Zomes
-    "zomes/coordinator/holons",
-    # Integrity Zome
-    "zomes/integrity/holons_integrity",
-    # Shared Types and Validation
-    "crates/shared_validation",
-    "crates/type_system/base_types",
-    "crates/type_system/core_types",
-    "crates/type_system/integrity_core_types",
-    "crates/type_system/type_names",
-    "crates/json_schema_validation",
-    # Shared Core & Guest Libraries
-    "crates/holons_client",
-    "crates/holons_core",
-    "crates/holon_dance_builders",
-    "crates/holons_guest",
-    "crates/holons_guest_integrity",
-    "crates/holons_holochain_adapter",
-    "crates/holons_loader",
-    "crates/holons_prelude",
-    "crates/holons_tauri_adapter",
-    "crates/holons_trust_channel",
+    # happ crates
+    "happ/zomes/coordinator/holons",
+    "happ/zomes/integrity/holons_integrity",
+    "happ/crates/holons_guest",
+    "happ/crates/holons_guest_integrity",
+    "happ/crates/holons_loader",
+    #runtime crates
+    "runtime/crates/holons_client",
+    "runtime/crates/holons_tauri_adapter",
+    # shared crates
+    "shared_crates/shared_validation",
+    "shared_crates/type_system/base_types",
+    "shared_crates/type_system/core_types",
+    "shared_crates/type_system/integrity_core_types",
+    "shared_crates/type_system/type_names",
+    "shared_crates/json_schema_validation",
+    "shared_crates/holons_core",
+    "shared_crates/holon_dance_builders",
+    "shared_crates/holons_holochain_adapter",
+    "shared_crates/holons_prelude",
+    "shared_crates/holons_trust_channel",
     "tests/sweetests",
-]
-
-exclude = [
-    "workspaces/wasm",
-    "workspaces/native",
-    "workspaces/test"
 ]
 
 resolver = "2"
 
 [workspace.dependencies]
 # Path dependencies
-holons = { path = "zomes/coordinator/holons" }
-holons_integrity = { path = "zomes/integrity/holons_integrity" }
-shared_validation = { path = "crates/shared_validation" }
-base_types = { path = "crates/type_system/base_types" }
-core_types = { path = "crates/type_system/core_types" }
-integrity_core_types = { path = "crates/type_system/integrity_core_types" }
-type_names = { path = "crates/type_system/type_names" }
-json_schema_validation = { path = "crates/json_schema_validation" }
-holons_client = { path = "crates/holons_client" }
-holons_core = { path = "crates/holons_core" }
-holon_dance_builders = { path = "crates/holon_dance_builders" }
-holons_guest = { path = "crates/holons_guest" }
-holons_guest_integrity = { path = "crates/holons_guest_integrity" }
-holons_holochain_adapter = { path = "crates/holons_holochain_adapter" }
-holons_loader = { path = "crates/holons_loader" }
-holons_prelude = { path = "crates/holons_prelude" }
-holons_tauri_adapter = { path = "crates/holons_tauri_adapter" }
-holons_trust_channel = { path = "crates/holons_trust_channel" }
+holons = { path = "happ/zomes/coordinator/holons" }
+holons_integrity = { path = "happ/zomes/integrity/holons_integrity" }
+shared_validation = { path = "shared_crates/shared_validation" }
+base_types = { path = "shared_crates/type_system/base_types" }
+core_types = { path = "shared_crates/type_system/core_types" }
+integrity_core_types = { path = "shared_crates/type_system/integrity_core_types" }
+type_names = { path = "shared_crates/type_system/type_names" }
+json_schema_validation = { path = "shared_crates/json_schema_validation" }
+holons_client = { path = "runtime/crates/holons_client" }
+holons_core = { path = "shared_crates/holons_core" }
+holon_dance_builders = { path = "shared_crates/holon_dance_builders" }
+holons_guest = { path = "happ/crates/holons_guest" }
+holons_guest_integrity = { path = "happ/crates/holons_guest_integrity" }
+holons_holochain_adapter = { path = "shared_crates/holons_holochain_adapter" }
+holons_loader = { path = "happ/crates/holons_loader" }
+holons_prelude = { path = "shared_crates/holons_prelude" }
+holons_tauri_adapter = { path = "runtime/crates/holons_tauri_adapter" }
+holons_trust_channel = { path = "shared_crates/holons_trust_channel" }
 
 # External dependencies
 async-trait = "0.1.51"

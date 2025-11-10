@@ -1,0 +1,48 @@
+{
+  "name": "map_sdk",
+  "version": "0.0.0",
+  "scripts": {
+    "start": "npm run build:runtime",
+    "build": "npm run build:runtime",
+    "build:runtime": "cargo build --release -p holons_client",
+    "build:runtime:dev": "cargo build -p holons_client"
+  },
+  "prettier": {
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^20.1.4",
+    "@angular/compiler": "^20.1.4",
+    "@angular/core": "^20.1.4",
+    "@angular/forms": "^20.1.4",
+    "@angular/platform-browser": "^20.1.4",
+    "@angular/platform-browser-dynamic": "^20.1.4",
+    "@angular/router": "^20.1.4",
+    "@ngrx/signals": "^20",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@tauri-apps/api": "^2.6",
+    "js-base64": "^3.7.7",
+    "postcss": "^8.5.6",
+    "rxjs": "~7.8.0",
+    "tailwindcss": "^4.1.11",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.1.4",
+    "@angular/cli": "^20.1.4",
+    "@angular/compiler-cli": "^20.1.4",
+    "@tauri-apps/cli": "^2.6",
+    "@tauri-apps/cli-darwin-arm64": "2.6",
+    "typescript": "~5.8.2",
+    "tailwindcss": "^4.1.8",
+    "postcss": "^8.5.4"
+  }
+}

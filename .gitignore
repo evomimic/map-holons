@@ -46,4 +46,4 @@ settings.json
 !.cargo/config.toml
 
 # Legacy / deprecated directories
-/crates/holons_core_old/
+/shared_crates/holons_core_old/

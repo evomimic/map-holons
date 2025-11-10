@@ -1,0 +1,31 @@
+[package]
+name = "holons_client"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+name = "holons_client"
+
+[dependencies]
+# General dev-dependencies (platform-agnostic)
+derive-new = "0.7"
+tracing = "0.1"
+#async-trait = "0.1.51"
+
+# MAP Dependencies
+
+[dependencies.holons_core]
+path = "../../../shared_crates/holons_core"
+
+[dependencies.core_types]
+path = "../../../shared_crates/type_system/core_types"
+
+[dependencies.base_types]
+path = "../../../shared_crates/type_system/base_types"
+
+[dependencies.integrity_core_types]
+path = "../../../shared_crates/type_system/integrity_core_types"
+
+[dependencies.holon_dance_builders]
+path = "../../../shared_crates/holon_dance_builders"

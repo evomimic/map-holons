@@ -1,0 +1,26 @@
+[package]
+name = "holons_guest_integrity"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+name = "holons_guest_integrity"
+
+[features]
+guest = []  # This crate supports the `guest` feature
+
+[dependencies]
+# General dev-dependencies (platform-agnostic)
+derive-new = "0.7"
+serde = { version = "1", features = ["derive"] }
+
+# Holochain Dependencies
+hdi = "0.6"
+holochain_serialized_bytes = "*"
+
+
+# MAP Dependencies
+
+[dependencies.integrity_core_types]
+path = "../../../shared_crates/type_system/integrity_core_types"
