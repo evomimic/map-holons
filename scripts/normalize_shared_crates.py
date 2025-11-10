@@ -1,67 +1,94 @@
 #!/usr/bin/env python3
 """
 normalize_shared_crates.py
+--------------------------------
+Normalizes Cargo.toml files inside `shared_crates/` so that any dependencies
+that also exist in the root `[workspace.dependencies]` are replaced with:
 
-Convert explicit dependency specs in shared crates (e.g. `{ path = "../..." }`
-or `{ version = "1" }`) into workspace references (`{ workspace = true }`).
+    dep_name = { workspace = true }
 
-Usage:
-  python3 scripts/normalize_shared_crates.py --dry-run
-  python3 scripts/normalize_shared_crates.py --verbose
-  python3 scripts/normalize_shared_crates.py --write
+Supports:
+  ✅ inline tables  (e.g. { version = "1", features = ["derive"] })
+  ✅ path tables    (e.g. { path = "../core" })
+  ✅ string specs   (e.g. dep = "0.1")
+
+Safe: skips dependencies not defined in the root workspace.
 """
 
-import argparse
-import difflib
-from pathlib import Path
 import tomlkit
+from pathlib import Path
+import difflib
 
-ROOT = Path(__file__).resolve().parents[1]
-SHARED_ROOT = ROOT / "shared_crates"
-FIELDS_TO_CONVERT = ["dependencies", "dev-dependencies", "build-dependencies"]
-
-
-def make_workspace_inline():
-    """Return a `{ workspace = true }` inline table."""
-    t = tomlkit.inline_table()
-    t["workspace"] = True
-    return t
+ROOT = Path("Cargo.toml")
+SHARED = Path("shared_crates")
+FIELDS = ["dependencies", "dev-dependencies", "build-dependencies"]
 
 
-def normalize_dependencies(doc, section, verbose=False):
-    """Replace inline or path-table dependencies with `{ workspace = true }`."""
+def load_workspace_deps():
+    """Load `[workspace.dependencies]` from the root Cargo.toml."""
+    doc = tomlkit.parse(ROOT.read_text())
+    ws_deps = doc.get("workspace", {}).get("dependencies", {})
+    return set(ws_deps.keys())
+
+
+def normalize_dependencies(doc, section, workspace_deps, verbose=False):
+    """Normalize inline/path/string dependencies that exist in workspace deps."""
     if section not in doc:
         return False
 
-    changed = False
     deps = doc[section]
+    changed = False
 
-    for name, spec in list(deps.items()):
-        # Skip if already workspace=true
-        if isinstance(spec, dict) and spec.get("workspace") is True:
+    for name, val in list(deps.items()):
+        # Skip if not a workspace dependency
+        if name not in workspace_deps:
             continue
 
-        # Convert if explicit path or version found
-        if isinstance(spec, dict) and ("path" in spec or "version" in spec):
+        # Handle inline tables (e.g., { version = "...", ... })
+        if isinstance(val, tomlkit.items.InlineTable):
             if verbose:
-                print(f"  🔄 Normalizing {name}: {spec} → {{ workspace = true }}")
-            deps[name] = make_workspace_inline()
+                print(f"  🔄 Normalizing {name}: {dict(val)} → {{ workspace = true }}")
+            deps[name] = tomlkit.inline_table()
+            deps[name]["workspace"] = True
+            changed = True
+
+        # Handle plain tables (e.g., [dependencies.foo])
+        elif isinstance(val, tomlkit.items.Table):
+            if verbose:
+                print(f"  🔄 Normalizing {name}: [table] → {{ workspace = true }}")
+            deps[name] = tomlkit.inline_table()
+            deps[name]["workspace"] = True
+            changed = True
+
+        # Handle string values (e.g., "0.1")
+        elif isinstance(val, tomlkit.items.String):
+            if verbose:
+                print(f"  🔄 Normalizing {name}: \"{val}\" → {{ workspace = true }}")
+            deps[name] = tomlkit.inline_table()
+            deps[name]["workspace"] = True
             changed = True
 
     return changed
 
 
-def process_manifest(manifest_path, dry_run=False, verbose=False):
-    """Normalize a single Cargo.toml file."""
+def process_manifest(manifest_path, workspace_deps, dry_run=False, verbose=False):
+    """Process a single Cargo.toml and optionally write changes."""
+    repo_root = Path(__file__).resolve().parent.parent  # resolve repo root dynamically
+
+    try:
+        rel_path = manifest_path.resolve().relative_to(repo_root)
+    except ValueError:
+        rel_path = manifest_path.name  # fallback if outside repo
+
+    if verbose:
+        print(f"\n📄 Processing: {rel_path}")
+
     text = manifest_path.read_text()
     doc = tomlkit.parse(text)
     changed = False
 
-    if verbose:
-        print(f"\n📄 Processing: {manifest_path.relative_to(ROOT)}")
-
-    for section in FIELDS_TO_CONVERT:
-        if normalize_dependencies(doc, section, verbose):
+    for section in FIELDS:
+        if normalize_dependencies(doc, section, workspace_deps, verbose):
             changed = True
 
     if not changed:
@@ -71,44 +98,44 @@ def process_manifest(manifest_path, dry_run=False, verbose=False):
 
     updated = tomlkit.dumps(doc)
     if dry_run:
-        diff = difflib.unified_diff(
-            text.splitlines(),
-            updated.splitlines(),
-            fromfile=f"{manifest_path} (original)",
-            tofile=f"{manifest_path} (updated)",
-            lineterm=""
+        diff = "\n".join(
+            difflib.unified_diff(
+                text.splitlines(),
+                updated.splitlines(),
+                fromfile=f"{rel_path} (original)",
+                tofile=f"{rel_path} (updated)",
+                lineterm="",
+            )
         )
-        print("\n".join(diff))
+        print(diff)
     else:
         manifest_path.write_text(updated)
-        print(f"✅ Updated: {manifest_path.relative_to(ROOT)}")
+        print(f"✅ Updated: {rel_path}")
 
     return True
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Normalize shared crate dependencies to `{ workspace = true }`")
-    parser.add_argument("--dry-run", action="store_true", help="Show diffs without writing changes")
-    parser.add_argument("--verbose", action="store_true", help="Print detailed logs")
-    parser.add_argument("--write", action="store_true", help="Apply changes instead of dry run")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Normalize shared_crates Cargo.toml to use workspace = true")
+    parser.add_argument("--dry-run", action="store_true", help="Show changes without writing them")
+    parser.add_argument("--verbose", action="store_true", help="Print detailed actions")
+    parser.add_argument("--write", action="store_true", help="Actually modify files")
     args = parser.parse_args()
 
-    if not SHARED_ROOT.exists():
-        print(f"❌ shared_crates/ not found at {SHARED_ROOT}")
-        return
-
-    manifests = list(SHARED_ROOT.rglob("Cargo.toml"))
+    workspace_deps = load_workspace_deps()
+    manifests = sorted(SHARED.rglob("Cargo.toml"))
     print(f"🧭 Found {len(manifests)} manifests under shared_crates/")
 
-    any_changed = False
+    any_changes = False
     for manifest in manifests:
-        if process_manifest(manifest, dry_run=not args.write, verbose=args.verbose):
-            any_changed = True
+        if process_manifest(manifest, workspace_deps, dry_run=args.dry_run, verbose=args.verbose):
+            any_changes = True
 
-    if not any_changed:
-        print("✅ No updates needed.")
-    else:
-        print("✨ Done.")
+    if not any_changes:
+        print("✅ No changes made.")
+    print("✨ Done.")
 
 
 if __name__ == "__main__":

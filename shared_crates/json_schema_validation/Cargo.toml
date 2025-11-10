@@ -5,9 +5,9 @@ edition = "2021"
 
 [dependencies]
 # General
-serde_json = "1.0.109"
+serde_json = {workspace = true}
 jsonschema = { version = "0.30.0", default-features = false }
 
 # MAP Dependencies
-integrity_core_types = {path = "../type_system/integrity_core_types"}
+integrity_core_types = {workspace = true}
 

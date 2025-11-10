@@ -9,5 +9,5 @@ edition = "2021"
 #thiserror = "2"
 
 
-integrity_core_types = {path = "../type_system/integrity_core_types"}
-core_types = {path = "../type_system/core_types"}
+integrity_core_types = {workspace = true}
+core_types = {workspace = true}

@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 #convert_case = "0.5"
-derive-new = "0.7"
-hex = "0.4"
-serde = {version = "1", features = ["derive"]}
+derive-new = {workspace = true}
+hex = {workspace = true}
+serde = {workspace = true}
 

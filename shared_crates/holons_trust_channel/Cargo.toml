@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tracing = "0.1"
+tracing = {workspace = true}
 #serde = { version = "1", features = ["derive"] }
-async-trait = "0.1.51"
-holons_core = {path = "../holons_core"}
+async-trait = {workspace = true}
+holons_core = {workspace = true}
 
