@@ -30,7 +30,7 @@ pub struct ClientHolonsContext {
 /// - A space manager configured with client-specific routing policies.
 /// - Shared ownership support via `Arc<dyn HolonsContextBehavior>`, allowing multiple components
 ///   to reference the same context without unnecessary cloning.
-/// - Injects the **DanceCallService**, backed by a client-side implementation `ConductorDanceCaller`
+/// - Injects the **DanceInitiator**, backed by a client-side implementation `ConductorDanceCaller`
 ///
 /// # Returns
 /// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
@@ -46,13 +46,13 @@ pub async fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 3: Create an empty TransientHolonManager for the client
     let transient_manager = TransientHolonManager::new_empty();
 
-    // Step 4: Setup Conductor and Construct the DanceCallService
+    // Step 4: Setup Conductor and Construct the DanceInitiator
     // let conductor_config = setup_conductor().await; // Temporarily using mock conductor
-    // let dance_call_service: Arc<dyn DanceCallServiceApi> =
-    //     Arc::new(DanceCallService::new(Arc::new(conductor_config)));
+    // let dance_initiator: Arc<dyn DanceInitiatorApi> =
+    //     Arc::new(DanceInitiator::new(Arc::new(conductor_config)));
     // let client_dance_caller = ClientDanceCaller::new(Arc::new(conductor));
-    // let dance_call_service: Arc<dyn DanceCallServiceApi> =
-    //     Arc::new(DanceCallService::new(Arc::new(client_dance_caller)));
+    // let dance_initiator: Arc<dyn DanceInitiatorApi> =
+    //     Arc::new(DanceInitiator::new(Arc::new(client_dance_caller)));
 
     // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
