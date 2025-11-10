@@ -8,8 +8,8 @@ name = "holons_loader"
 crate-type = ["rlib"]
 
 [dependencies]
-holons_prelude = { workspace = true }
-core_types = { workspace = true }
+holons_prelude = {path = "../../../shared_crates/holons_prelude"}
+core_types = {path = "../../../shared_crates/type_system/core_types"}
 tracing = { workspace = true }
 # uuid = { workspace = true, features = ["v4", "serde"] }
 
