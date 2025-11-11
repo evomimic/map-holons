@@ -152,11 +152,9 @@ def main():
         if process_manifest(manifest, workspace_deps, dry_run=not args.write, verbose=args.verbose):
             any_changed = True
 
-    if not any_changed:
-        print("✅ No updates needed.")
-    else:
-        print("✨ Done.")
-
 
 if __name__ == "__main__":
-    main()
+    script_name = Path(__file__).stem
+    changed = main()
+    status = "⚠️ Changes detected (see above)" if changed else "✅ No updates needed"
+    print(f"\n🔹 {script_name}: {status}")

@@ -18,6 +18,7 @@ Safe: skips dependencies not defined in the root workspace.
 import tomlkit
 from pathlib import Path
 import difflib
+import sys
 
 ROOT = Path("Cargo.toml")
 SHARED = Path("shared_crates")
@@ -40,11 +41,15 @@ def normalize_dependencies(doc, section, workspace_deps, verbose=False):
     changed = False
 
     for name, val in list(deps.items()):
-        # Skip if not a workspace dependency
+        # Skip if not part of the workspace
         if name not in workspace_deps:
             continue
 
-        # Handle inline tables (e.g., { version = "...", ... })
+        # ✅ Already normalized (nothing to do)
+        if isinstance(val, tomlkit.items.InlineTable) and val.get("workspace") is True:
+            continue
+
+        # Inline table (e.g. { version = "...", ... })
         if isinstance(val, tomlkit.items.InlineTable):
             if verbose:
                 print(f"  🔄 Normalizing {name}: {dict(val)} → {{ workspace = true }}")
@@ -52,7 +57,7 @@ def normalize_dependencies(doc, section, workspace_deps, verbose=False):
             deps[name]["workspace"] = True
             changed = True
 
-        # Handle plain tables (e.g., [dependencies.foo])
+        # Plain table ([dependencies.foo])
         elif isinstance(val, tomlkit.items.Table):
             if verbose:
                 print(f"  🔄 Normalizing {name}: [table] → {{ workspace = true }}")
@@ -60,7 +65,7 @@ def normalize_dependencies(doc, section, workspace_deps, verbose=False):
             deps[name]["workspace"] = True
             changed = True
 
-        # Handle string values (e.g., "0.1")
+        # String value ("0.1")
         elif isinstance(val, tomlkit.items.String):
             if verbose:
                 print(f"  🔄 Normalizing {name}: \"{val}\" → {{ workspace = true }}")
@@ -81,7 +86,7 @@ def process_manifest(manifest_path, workspace_deps, dry_run=False, verbose=False
         rel_path = manifest_path.name  # fallback if outside repo
 
     if verbose:
-        print(f"\n📄 Processing: {rel_path}")
+        print(f"📄 Processing: {rel_path}")
 
     text = manifest_path.read_text()
     doc = tomlkit.parse(text)
@@ -92,13 +97,11 @@ def process_manifest(manifest_path, workspace_deps, dry_run=False, verbose=False
             changed = True
 
     if not changed:
-        if verbose:
-            print("  ✅ No changes needed.")
         return False
 
     updated = tomlkit.dumps(doc)
     if dry_run:
-        diff = "\n".join(
+        diff = "".join(
             difflib.unified_diff(
                 text.splitlines(),
                 updated.splitlines(),
@@ -107,12 +110,14 @@ def process_manifest(manifest_path, workspace_deps, dry_run=False, verbose=False
                 lineterm="",
             )
         )
-        print(diff)
-    else:
-        manifest_path.write_text(updated)
-        print(f"✅ Updated: {rel_path}")
+        if diff.strip():
+            print(f"\n📄 Diff for {rel_path}:")
+            print(diff)
+        else:
+            manifest_path.write_text(updated)
+            print(f"✅ Updated: {rel_path}")
 
-    return True
+        return True
 
 
 def main():
@@ -130,13 +135,23 @@ def main():
 
     any_changes = False
     for manifest in manifests:
-        if process_manifest(manifest, workspace_deps, dry_run=args.dry_run, verbose=args.verbose):
-            any_changes = True
+        changed = process_manifest(manifest, workspace_deps, dry_run=args.dry_run, verbose=args.verbose)
+        any_changes = any_changes or changed
+        sys.stdout.flush()  # ensure no buffered newlines accumulate
 
-    if not any_changes:
-        print("✅ No changes made.")
-    print("✨ Done.")
+    if any_changes:
+        if args.dry_run:
+            print(f"⚠️ Changes *would* be made in one or more of {len(manifests)} manifests.")
+        else:
+            print(f"⚠️ Changes applied in one or more of {len(manifests)} manifests.")
+    elif args.verbose:
+        print(f"✅ No changes made across {len(manifests)} manifests.")
+
+    return any_changes
 
 
 if __name__ == "__main__":
-    main()
+    script_name = Path(__file__).stem
+    changed = main()
+    status = "⚠️ Changes detected (see above)" if changed else "✅ No updates needed"
+    print(f"🔹 {script_name}: {status}")

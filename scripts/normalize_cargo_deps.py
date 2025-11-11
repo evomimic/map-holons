@@ -21,20 +21,21 @@ ROOT = Path(__file__).resolve().parents[1]
 FIELDS_TO_CONVERT = ["dependencies", "dev-dependencies", "build-dependencies"]
 
 
-def normalize_dependencies(doc, section):
+def normalize_dependencies(doc, section, verbose=False):
     """Convert [dependencies.foo] tables into inline { ... } syntax."""
     if section not in doc:
-        print(f"  (no explicit [{section}] section)")
+        if verbose:
+            print(f"  (no explicit [{section}] section)")
         return False
 
     changed = False
     deps = doc[section]
-
-    print(f"\n🔍 Scanning for section-table deps in [{section}] ...")
     found = []
 
+    if verbose:
+        print(f"  🔍 Scanning for section-table deps in [{section}] ...")
+
     for name, spec in list(deps.items()):
-        # Some TOML may use subtables, like [dependencies.foo]
         if isinstance(spec, tomlkit.items.Table) and not isinstance(spec, tomlkit.items.InlineTable):
             inline = tomlkit.inline_table()
             for k, v in spec.items():
@@ -43,35 +44,38 @@ def normalize_dependencies(doc, section):
             found.append((name, dict(spec)))
             changed = True
 
-    if found:
-        print(f"🧩 Found path dependencies in [{section}]:")
-        for n, s in found:
-            if "path" in s:
-                print(f"   → {n}: path = {s['path']}")
-            else:
-                print(f"   → {n}: {s}")
-    else:
-        print(f"✅ No section-table dependencies found in [{section}].")
+    if verbose:
+        if found:
+            print(f"  🧩 Found section-table deps in [{section}]:")
+            for n, s in found:
+                if "path" in s:
+                    print(f"     → {n}: path = {s['path']}")
+                else:
+                    print(f"     → {n}: {s}")
+        else:
+            print(f"  ✅ No section-table dependencies found in [{section}].")
+        print(f"  ✅ Explicit [{section}] keys: {list(deps.keys())}")
 
-    print(f"✅ Explicit [{section}] keys: {list(deps.keys())}")
     return changed
 
 
 def process_manifest(manifest_path: Path, dry_run=False, verbose=False):
     """Process a single Cargo.toml file."""
-    print(f"\n📄 Processing manifest: {manifest_path.resolve()}")
+    if verbose:
+        rel_path = manifest_path.relative_to(ROOT)
+        print(f"\n📄 Processing manifest: {rel_path}")
+
     text = manifest_path.read_text()
     doc = tomlkit.parse(text)
     changed = False
 
     for section in FIELDS_TO_CONVERT:
-        if normalize_dependencies(doc, section):
+        if normalize_dependencies(doc, section, verbose=verbose):
             changed = True
 
     if changed:
         updated = tomlkit.dumps(doc)
         if dry_run:
-            print(f"\n🔍 Diff for {manifest_path}:")
             diff = difflib.unified_diff(
                 text.splitlines(),
                 updated.splitlines(),
@@ -79,12 +83,17 @@ def process_manifest(manifest_path: Path, dry_run=False, verbose=False):
                 tofile=f"{manifest_path} (updated)",
                 lineterm=""
             )
-            print("\n".join(diff))
+            diff_output = "\n".join(diff)
+            if diff_output.strip():
+                print(diff_output)
         else:
             manifest_path.write_text(updated)
-            print(f"✅ Updated: {manifest_path}")
+            print(f"✅ Updated: {manifest_path.relative_to(ROOT)}")
+
     elif verbose:
-        print(f"✅ No changes needed: {manifest_path}")
+        print(f"  ✅ No changes needed.")
+
+    return changed
 
 
 def find_target_manifests(filter_str=None):
@@ -106,15 +115,21 @@ def main():
     args = parser.parse_args()
 
     targets = find_target_manifests(args.filter)
+    print(f"🧭 Found {len(targets)} Cargo.toml manifests.")
     if not targets:
         print("⚠️ No Cargo.toml files found matching filter.")
-        return
+        return False
 
+    any_changes = False
     for manifest in targets:
-        process_manifest(manifest, dry_run=args.dry_run, verbose=args.verbose)
+        if process_manifest(manifest, dry_run=args.dry_run, verbose=args.verbose):
+            any_changes = True
 
-    print("\n✅ Done.")
+    return any_changes
 
 
 if __name__ == "__main__":
-    main()
+    script_name = Path(__file__).stem
+    changed = main()
+    status = "⚠️ Changes detected (see above)" if changed else "✅ No updates needed"
+    print(f"🔹 {script_name}: {status}")
