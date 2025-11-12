@@ -14,7 +14,7 @@ pub async fn execute_stage_new_holon(
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
-    // 1) LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &holon).unwrap();   
 
@@ -55,7 +55,7 @@ pub async fn execute_stage_new_holon(
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Staged holon's essential content matched expected");
 
-    // 6) RECORD — tie the new staged handle to the **source token’s TemporaryId**
+    // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     state.record_resolved(resolved_reference);
 }

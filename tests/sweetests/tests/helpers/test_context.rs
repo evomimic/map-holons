@@ -11,7 +11,7 @@ use holons_core::{
     {HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy},
 };
 
-use holons_test::test_case::DancesTestCase;
+use holons_test::{test_case::DancesTestCase, TestExecutionState};
 use holons_trust_channel::TrustChannel;
 
 use std::cell::RefCell;
@@ -42,7 +42,7 @@ pub struct TestHolonsContext {
 ///
 /// # Returns
 /// * A `Box<dyn HolonsContextBehavior>` containing the initialized client context.
-pub async fn init_fixture_context() -> Box<dyn HolonsContextBehavior> {
+pub fn init_fixture_context() -> Box<dyn HolonsContextBehavior> {
     init_tracing();
     warn!("\n ========== Tracing has been initialized ============");
 
@@ -80,7 +80,10 @@ pub async fn init_fixture_context() -> Box<dyn HolonsContextBehavior> {
 ///
 /// # Returns
 /// * A `Box<dyn HolonsContextBehavior>` containing the initialized client context.
-pub async fn init_test_context(test_case: &mut DancesTestCase) -> Box<dyn HolonsContextBehavior> {
+pub async fn init_test_context(
+    test_case: &mut DancesTestCase,
+    test_state: TestExecutionState,
+) -> Box<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
@@ -88,10 +91,9 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Box<dyn Holons
     let nursery = Nursery::new();
 
     // Step 3: Set transient holons in client TransientManager
-    let transient_manager = TransientHolonManager::new_empty();
-    // let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
-    //     HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
-    // ));
+    let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
+        HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
+    ));
 
     // Step 4: Setup DanceInitiator
     let dance_initiator = create_test_dance_initiator().await;

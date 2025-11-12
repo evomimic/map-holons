@@ -31,7 +31,7 @@ pub async fn execute_remove_related_holons(
 ) {
     info!("--- TEST STEP: Removing Related Holons ---");
 
-     // 1) LOOKUP — get the input handle for the source token
+     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
     let holons_to_remove: Vec<HolonReference> =
@@ -58,7 +58,7 @@ pub async fn execute_remove_related_holons(
     );
     info!("Success! Related Holons have been removed");
    
-    // 4) RECORD — tie the new staged handle to the **source token’s TemporaryId**
+    // 4. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),

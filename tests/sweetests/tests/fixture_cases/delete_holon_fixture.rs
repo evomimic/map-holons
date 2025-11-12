@@ -1,4 +1,5 @@
 use holons_prelude::prelude::*;
+use holons_test::{DancesTestCase, FixtureHolons};
 use rstest::*;
 
 use crate::helpers::{init_fixture_context, BOOK_KEY};
@@ -13,7 +14,8 @@ pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.".to_string(),
     );
 
-    let fixture_context = init_fixture_context().await;
+    let fixture_context = init_fixture_context();
+    let mut fixture_holons = FixtureHolons::new();
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_holon_key = MapString(BOOK_KEY.to_string());
@@ -27,21 +29,27 @@ pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
             "description",
                 "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
             )?;
-    test_case.add_stage_holon_step(book_transient_reference.clone())?;
 
-    stage_new_holon(&*fixture_context, book_transient_reference)?;
+    // Mint a transient-intent token and index it by key.
+    let transient_source_token =
+        fixture_holons.add_transient_with_key(&book_transient_reference, book_holon_key.clone())?;
 
-    // // ADD STEP:  COMMIT  // all Holons in staging_area
-    // test_case.add_commit_step()?;
+    // Returns a minted staged token. 
+    let staged_token = test_case.add_stage_holon_step(
+        &mut fixture_holons,
+        transient_source_token.clone(),
+        Some(book_holon_key),
+        ResponseStatusCode::OK,
+    )?;
 
-    // // ADD STEP: DELETE HOLON - Valid //
-    // test_case.add_delete_holon_step(book_holon_key.clone(), ResponseStatusCode::OK)?;
+    // ADD STEP:  COMMIT  // all Holons in staging_area
+    test_case.add_commit_step(ResponseStatusCode::OK)?;
 
-    // // ADD STEP: DELETE HOLON - Invalid //
-    // test_case.add_delete_holon_step(book_holon_key.clone(), ResponseStatusCode::NotFound)?;
+    // ADD STEP: DELETE HOLON - Valid //
+    test_case.add_delete_holon_step(staged_token.clone(), ResponseStatusCode::OK)?;
 
-    // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    // ADD STEP: DELETE HOLON - Invalid //
+    test_case.add_delete_holon_step(staged_token, ResponseStatusCode::NotFound)?;
 
     Ok(test_case.clone())
 }

@@ -12,7 +12,6 @@
 //! It’s a thin container around [`ExecutionHolons`] so we can grow execution-time
 //! concerns later (diagnostics, metrics, history) without changing executor APIs.
 
-
 use crate::harness::execution_support::{ExecutionHolons, ResolvedTestReference};
 use crate::harness::fixtures_support::TestReference;
 use holons_prelude::prelude::*;
@@ -98,4 +97,3 @@ impl TestExecutionState {
         self.execution_holons.lookup_holon_references(context, tokens)
     }
 }
-

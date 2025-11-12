@@ -18,11 +18,11 @@ pub async fn execute_remove_properties(
 ) {
     info!("--- TEST STEP: Removing Properties from Holon ---");
 
-    // 1) LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 
-    // 2) BUILD — remove_properties DanceRequest
+    // 2. BUILD — remove_properties DanceRequest
     let request = build_remove_properties_dance_request(source_reference, properties.clone())
         .expect("Failed to build remove_properties request");
     debug!("Dance Request: {:#?}", request);
@@ -51,7 +51,7 @@ pub async fn execute_remove_properties(
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Updated holon's essential content matched expected");
 
-    // 6) RECORD — tie the new staged handle to the **source token’s TemporaryId**
+    // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     state.record_resolved(resolved_reference);
 

@@ -114,7 +114,7 @@ pub fn commit(
                                     response.abandoned_holons.push(holon);
                                     //}
                                 }
-                                StagedState::Committed(_saved_id) => {
+                                StagedState::Committed(saved_id) => {
                                     response.saved_holons.push(holon);
                                 }
                                 _ => {}

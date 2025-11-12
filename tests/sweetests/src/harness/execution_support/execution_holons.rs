@@ -89,7 +89,6 @@ impl ExecutionHolons {
 
                 match &resolved.resulting_reference {
                     HolonReference::Staged(staged_reference) => {
-                        // let is_committed = true;
                         let is_committed = staged_reference
                             .is_in_state(context, StagedState::Committed(LocalId(Vec::new())))?;
 

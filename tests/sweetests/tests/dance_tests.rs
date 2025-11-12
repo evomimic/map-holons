@@ -81,18 +81,18 @@ use holons_prelude::prelude::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 // #[case::delete_holon(delete_holon_fixture())]
 // #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 // #[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 // #[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 // #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-// #[case::simple_stage_new_from_clone_test(stage_new_from_clone_fixture())]
+#[case::simple_stage_new_from_clone_test(stage_new_from_clone_fixture())]
 // #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 // #[case::load_core_schema(load_core_schema_test_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
-    #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,
+    #[case] input: Result<DancesTestCase, HolonError>,
 ) {
     // Setup
 
@@ -102,9 +102,10 @@ async fn rstest_dance_tests(
 
     use self::helpers::init_test_context;
 
-    let mut test_case: DancesTestCase = input.await.unwrap();
+    let mut test_case: DancesTestCase = input.unwrap();
     // Initialize TestHolonsContext from test_session_state
-    let test_context = init_test_context(&mut test_case).await;
+    let mut test_state = TestExecutionState::new();
+    let test_context = init_test_context(&mut test_case, test_state).await;
 
     tracing::info!("Hello from the test!");
 
@@ -113,9 +114,6 @@ async fn rstest_dance_tests(
     let description = test_case.clone().description;
 
     let steps_count = steps.len();
-
-    // Initialize the DanceTestState
-    let mut test_state = TestExecutionState::new();
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");
@@ -137,7 +135,7 @@ async fn rstest_dance_tests(
             DanceTestStep::AddRelatedHolons {
                 source,
                 relationship_name,
-                holons,
+                holons_to_add,
                 expected_status,
                 expected_holon,
             } => {
@@ -146,16 +144,16 @@ async fn rstest_dance_tests(
                     &mut test_state,
                     source,
                     relationship_name,
-                    holons,
+                    holons_to_add,
                     expected_status,
                 )
                 .await
             }
-            DanceTestStep::Commit { holon, expected_status } => {
-                execute_commit(test_context.as_ref(), &mut test_state, holon, expected_status).await
+            DanceTestStep::Commit { expected_status } => {
+                execute_commit(test_context.as_ref(), &mut test_state, expected_status).await
             }
-            DanceTestStep::DeleteHolon { holon, expected_status } => {
-                execute_delete_holon(test_context.as_ref(), &mut test_state, holon, expected_status)
+            DanceTestStep::DeleteHolon { holon_token, expected_status } => {
+                execute_delete_holon(test_context.as_ref(), &mut test_state, holon_token, expected_status)
                     .await
             }
             DanceTestStep::EnsureDatabaseCount { expected_count } => {
@@ -184,11 +182,11 @@ async fn rstest_dance_tests(
                 )
                 .await
             }
-            DanceTestStep::RemoveProperties { holon, properties, expected_status } => {
+            DanceTestStep::RemoveProperties { holon_token, properties, expected_status } => {
                 execute_remove_properties(
                     test_context.as_ref(),
                     &mut test_state,
-                    holon,
+                    holon_token,
                     properties,
                     expected_status,
                 )
@@ -197,7 +195,7 @@ async fn rstest_dance_tests(
             DanceTestStep::RemoveRelatedHolons {
                 source,
                 relationship_name,
-                holons,
+                holons_to_remove,
                 expected_status,
             } => {
                 execute_remove_related_holons(
@@ -205,14 +203,14 @@ async fn rstest_dance_tests(
                     &mut test_state,
                     source,
                     relationship_name,
-                    holons,
+                    holons_to_remove,
                     expected_status,
                 )
                 .await
             }
-            DanceTestStep::StageHolon { holon, expected_status } => {
+            DanceTestStep::StageHolon { holon_token, expected_status } => {
 
-                execute_stage_new_holon(test_context.as_ref(), &mut test_state, holon).await
+                execute_stage_new_holon(test_context.as_ref(), &mut test_state, holon_token).await
             }
             DanceTestStep::StageNewFromClone { source, new_key, expected_status } => {
                 use self::execution_steps::execute_stage_new_from_clone;

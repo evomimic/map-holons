@@ -17,20 +17,20 @@ pub async fn execute_stage_new_from_clone(
     new_key: MapString,
     expected_status: ResponseStatusCode,
 ) {
-    // 1) LOOKUP — get the input handle for the clone source
+    // 1. LOOKUP — get the input handle for the clone source
     //    (enforces Saved ≙ Staged(Committed(LocalId)); no nursery fallback)
     let source_reference: HolonReference = state.lookup_holon_reference(context, &source_token).unwrap();
 
-    // 2) BUILD — dance request to stage a new holon cloned from `source_reference`
+    // 2. BUILD — dance request to stage a new holon cloned from `source_reference`
     let request = build_stage_new_from_clone_dance_request(source_reference, new_key)
         .expect("Failed to build stage_new_from_clone request");
 
-    // 3) CALL — use the context-owned call service
+    // 3. CALL — use the context-owned call service
     let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
     assert_eq!(response.status_code, expected_status);
 
-    // 4) ASSERT — on success, the body should be a HolonReference to the newly staged holon.
+    // 4. ASSERT — on success, the body should be a HolonReference to the newly staged holon.
     //            Compare essential content (source vs. result) without durable fetch.
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(hr) => hr,
@@ -42,7 +42,7 @@ pub async fn execute_stage_new_from_clone(
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();
 
-    // 5) RECORD — tie the new staged handle to the **source token’s TemporaryId**
+    // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     state.record_resolved(resolved_reference);
 
