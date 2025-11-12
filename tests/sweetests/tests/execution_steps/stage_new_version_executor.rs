@@ -32,20 +32,30 @@ pub async fn execute_stage_new_version(
 
     // 2. Build the DanceRequest
     // 1) LOOKUP — get the input handle for the source token
+    // VERSION 1 //
+
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 
-    // 2) BUILD — stage_new_version DanceRequest
-    let original_holon_id = original_holon.holon_id().expect("Failed to get LocalId");
+    // Can only stage Transient
+    let transient_reference = match source_reference {
+        HolonReference::Transient(tr) => tr,
+        other => {
+            panic!("{}", format!("expected lookup to return TransientReference, got {:?}", other));
+        }
+    };
+
+    // 2. BUILD — stage_new_version DanceRequest
+    let original_holon_id = transient_reference.holon_id(context).expect("Failed to get LocalId");
     let request = build_stage_new_version_dance_request(original_holon_id.clone())
         .expect("Failed to build stage_new_version request");
-
     debug!("Dance Request: {:#?}", request);
 
     // 3. CALL - the dance
     let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
-    info!("Dance Response: {:#?}", response.clone());
+    debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
     assert_eq!(
@@ -55,15 +65,15 @@ pub async fn execute_stage_new_version(
     );
 
    // 5. ASSERT the staged holon's content matches
-    let resulting_reference = match response.body {
+    let version_1_resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
             panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
         }
     };
-    let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
-    resolved_reference.assert_essential_content_eq(context).unwrap();
+    let version_1_resolved_reference =
+        ResolvedTestReference::from_reference_parts(source_token, version_1_resulting_reference);
+    version_1_resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Staged new version holon's essential content matched expected");
 
     info!("New version Holon reference returned: {:?}", version_1);
@@ -76,13 +86,15 @@ pub async fn execute_stage_new_version(
     //     "New version Holon content did not match original"
     // );
     // 6) RECORD — tie the new staged handle to the **source token’s TemporaryId**
+    // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
-    state.record_resolved(resolved_reference);
+    state.record_resolved(version_1_resolved_reference);
 
     
     // 7. Verify the new version as the original holon as its predecessor
 
     let predecessor = version_1.predecessor(context).unwrap();
+    let predecessor = version_1_resulting_reference.predecessor(context).unwrap();
 
     assert_eq!(
         predecessor,
@@ -113,6 +125,9 @@ pub async fn execute_stage_new_version(
 
     info!("Success! New version Holon matched expected content and relationships.");
 
+
+    // VERSION 2 //
+
     // Stage a second version from the same original holon in order to verify that:
     // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
     // b. get_staged_holons_by_base_key correctly returns BOTH stage holons
@@ -120,32 +135,36 @@ pub async fn execute_stage_new_version(
         .expect("Failed to build stage_new_version request");
     debug!("2nd Dance Request: {:#?}", next_request);
 
-    let next_response = state.invoke_dance(next_request).await;
+    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
+    let next_response = dance_initiator.initiate_dance(context, request).await;
     info!("2nd Dance Response: {:#?}", next_response.clone());
 
     assert_eq!(
-        response.status_code, expected_response,
+        next_response.status_code, expected_response,
         "stage_new_version request returned unexpected status: {}",
-        response.description
+        next_response.description
     );
 
     // Extract the second new version holon from the response
-    let version_2 = match next_response.status_code {
-        ResponseStatusCode::OK => match next_response.body {
-            ResponseBody::HolonReference(ref h) => h.clone(),
-            _ => panic!("Expected StagedRef in response body, but got {:?}", next_response.body),
-        },
-        _ => panic!("Expected Ok response, but got {:?}", next_response.status_code),
+    let version_2_resulting_reference = match next_response.body {
+        ResponseBody::HolonReference(ref hr) => hr.clone(),
+        other => {
+            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+        }
     };
-
-    debug!("Second New version Holon reference returned: {:?}", version_2);
-
+    let version_2_resolved_reference =
+        ResolvedTestReference::from_reference_parts(source_token, version_2_resulting_reference);
     // Ensure essential content is preserved
     // assert_eq!(
     //     original_holon.essential_content(context),
     //     version_2.essential_content(context),
     //     "New version Holon content did not match original"
     // );
+    version_2_resolved_reference.assert_essential_content_eq(context).unwrap();
+    info!("Success! Staged new version holon's essential content matched expected");
+
+    // Record resolved
+    state.record_resolved(version_2_resolved_reference);
 
     // Confirm that get_staged_holon_by_versioned_key returns the new version
     let versioned_lookup =

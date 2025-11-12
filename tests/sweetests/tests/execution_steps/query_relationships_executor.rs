@@ -16,7 +16,7 @@ pub async fn execute_query_relationships(
 ) {
     info!("--- TEST STEP: Querying Relationships ---");
 
-    // 1) LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 

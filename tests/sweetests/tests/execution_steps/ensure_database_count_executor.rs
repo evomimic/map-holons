@@ -18,7 +18,7 @@ pub async fn execute_ensure_database_count(
     let request =
         build_get_all_holons_dance_request().expect("Failed to build get_all_holons request");
 
-    // 3. CALL - the dance
+    // 2. CALL - the dance
     let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
@@ -31,16 +31,16 @@ pub async fn execute_ensure_database_count(
             expected_count, actual_count.0
         );
 
-        // 4. ASSERT - that the expected count matches actual count
-        assert_eq!(
-            expected_count, actual_count,
-            "ensure_database_count request returned unexpected status: {}",
-            response.description
-        );
-        info!("Success! DB count matched expected");
+    // 4. ASSERT - that the expected count matches actual count
+    assert_eq!(
+        expected_count, actual_count,
+        "ensure_database_count request returned unexpected status: {}",
+        response.description
+    );
+    info!("Success! DB count matched expected");
     } else {
         panic!(
-            "Expected get_all_holons to return {} holons, but it returned an unexpected response: {:?}",
+            "Expected ensure_database_count to return {} holons, but it returned an unexpected response: {:?}",
             expected_count.0, response.body
         );
     }

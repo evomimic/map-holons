@@ -115,7 +115,7 @@ impl FixtureHolons {
     /// Bulk flip: convert all **Staged** tokens currently in this container to **Saved**.
     /// Returns the number of tokens flipped.
     pub fn commit(&mut self) -> usize {
-        let mut flipped = 0usize;
+        let mut flipped = 0;
         for token in &mut self.test_references {
             if matches!(token.expected_state(), ExpectedState::Staged) {
                 token.set_expected_state(ExpectedState::Saved);
@@ -137,13 +137,13 @@ impl FixtureHolons {
         counts
     }
 
-    pub fn count_transient(&self) -> usize {
+    pub fn count_transient(&self) -> i64 {
         self.counts().transient
     }
-    pub fn count_staged(&self) -> usize {
+    pub fn count_staged(&self) -> i64 {
         self.counts().staged
     }
-    pub fn count_saved(&self) -> usize {
+    pub fn count_saved(&self) -> i64 {
         self.counts().saved
     }
 
@@ -164,7 +164,7 @@ impl FixtureHolons {
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct FixtureHolonCounts {
-    pub transient: usize,
-    pub staged: usize,
-    pub saved: usize,
+    pub transient: i64,
+    pub staged: i64,
+    pub saved: i64,
 }
