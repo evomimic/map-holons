@@ -233,13 +233,13 @@ pub fn get_holon_by_id_dance(
 
 /// Executes the `"load_holons"` dance (guest side).
 ///
-/// This adapter validates the request and delegates Holon import to the
+/// This adapter validates the request and delegates Holon loading to the
 /// guest `HolonServiceApi` implementation, which calls the loader controller.
 ///
 /// *DanceRequest:*
 /// - dance_name: **"load_holons"**
 /// - dance_type: **Standalone**
-/// - request_body: **TransientReference(…HolonLoaderBundle…)**
+/// - request_body: **TransientReference(…HolonLoadSet…)**
 ///
 /// *ResponseBody:*
 /// - **HolonReference(HolonReference::Transient)** — a transient reference to the
@@ -261,18 +261,18 @@ pub fn load_holons_dance(
         ));
     }
 
-    // Extract bundle reference
-    let bundle_reference: TransientReference = match request.body {
+    // Extract load set reference
+    let load_set_reference: TransientReference = match request.body {
         RequestBody::TransientReference(transient_reference) => transient_reference,
         _ => {
             return Err(HolonError::InvalidParameter(
-                "Invalid RequestBody: expected TransientReference (HolonLoaderBundle)".to_string(),
+                "Invalid RequestBody: expected TransientReference (HolonLoadSet)".to_string(),
             ))
         }
     };
 
     // Delegate to the public ops API (which calls the *_internal service impl)
-    let response_reference = load_holons(context, bundle_reference)?;
+    let response_reference = load_holons(context, load_set_reference)?;
 
     // Wrap transient response holon
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))

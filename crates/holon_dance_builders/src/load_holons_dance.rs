@@ -10,12 +10,12 @@ use holons_core::{
 /// Build a Standalone dance request to load holons from a HolonLoaderBundle.
 /// NOTE: We can't assume descriptors are loaded here; validation happens in the guest.
 pub fn build_load_holons_dance_request(
-    bundle: TransientReference,
+    bundle_set: TransientReference,
 ) -> Result<DanceRequest, HolonError> {
     Ok(DanceRequest::new(
         MapString("load_holons".into()),
         DanceType::Standalone,
-        RequestBody::TransientReference(bundle),
+        RequestBody::TransientReference(bundle_set),
         None,
     ))
 }
