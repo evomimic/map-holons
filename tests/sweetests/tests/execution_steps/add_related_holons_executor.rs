@@ -46,7 +46,7 @@ pub async fn execute_add_related_holons(
         "add_related_holons request returned unexpected status: {}",
         response.description
     );
-    info!("Success! DanceResponse matched expected");
+    info!("Success! add_related_holons DanceResponse matched expected");
 
     // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
     //            Compare essential content

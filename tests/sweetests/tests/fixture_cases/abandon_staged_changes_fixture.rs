@@ -27,7 +27,7 @@ pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, H
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either key
-    let fixture_context = init_fixture_context().await;
+    let fixture_context = init_fixture_context();
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.

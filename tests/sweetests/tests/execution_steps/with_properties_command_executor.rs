@@ -19,11 +19,14 @@ pub async fn execute_with_properties(
 ) {
     info!("--- TEST STEP: Updating Holon with Properties ---");
 
-    // 1) LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 
-    // 2) BUILD — with_properties DanceRequest
+    // 2. BUILD — with_properties DanceRequest
+
+    // 3. Create the expected holon by applying the property updates
+    let mut expected_holon = original_holon.clone();
     for (property_name, base_value) in properties.clone() {
         expected_holon
             .with_property_value(context, property_name.clone(), base_value.clone())

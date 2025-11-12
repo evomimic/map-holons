@@ -15,29 +15,29 @@ use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody}
 /// and for each holon: builds and dances a `get_holon_by_id` DanceRequest,
 /// then confirms that the Holon returned matches the expected
 
-pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, test_state: &mut TestExecutionState, expected_status: ResponseStatusCode) {
+pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, state: &mut TestExecutionState, expected_status: ResponseStatusCode) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
 
     let ctx_arc = test_state.context(); // Arc lives until end of scope
     let context = ctx_arc.as_ref();
 
-    // 1. ITERATE - through all created holons and verify them in the database
-    for (_key, expected_holon) in test_state.holons().by_temporary_id {
-        // Get HolonId
-        let holon_id: HolonId =
-            expected_holon.holon_id(context).expect("Failed to get HolonId").into();
+    // Iterate through all created holons and verify them in the database
+    for (_key, expected_holon) in state.holons().by_temporary_id.clone() {
+        // 1. LOOKUP — get the input handle for the source token
+        let source_reference =
+            state.lookup_holon_reference(context, &expected_holon.source_token).unwrap();
+        let holon_id = source_reference.holon_id(context).expect("Failed to get HolonId");
 
-        // 2) BUILD — get_holon_by_id DanceRequest
+        // 2. BUILD — get_holon_by_id DanceRequest
         let request = build_get_holon_by_id_dance_request(holon_id.clone())
             .expect("Failed to build get_holon_by_id request");
         debug!("Dance Request: {:#?}", request);
 
-        // 3) CALL — the dance
+        // 3. CALL — the dance
         let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
         let response = dance_initiator.initiate_dance(context, request).await;
 
         // 4. VALIDATE - Ensure response contains the expected Holon
-        
         if let ResponseBody::Holon(actual_holon) = response.body {
             assert_eq!(
                 expected_holon.key(context),
@@ -57,5 +57,24 @@ pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, test_
                 holon_id, response.body
             );
         }
+        // // 4. VALIDATE - Ensure response contains the expected Holon
+        // if let ResponseBody::Holon(actual_holon) = response.body {
+        //     assert_eq!(
+        //         expected_holon.essential_content(),
+        //         actual_holon.essential_content(),
+        //         "Holon content mismatch for ID {:?}",
+        //         holon_id
+        //     );
+        //     info!(
+        //         "SUCCESS! DB fetched holon matched expected for: \n {:?}",
+        //         actual_holon.summarize()
+        //     );
+        // } else {
+        //     panic!(
+        //         "Expected get_holon_by_id to return a Holon response for id: {:?}, but got {:?}",
+        //         holon_id, response.body
+        //     );
+        // }
     }
 }
+

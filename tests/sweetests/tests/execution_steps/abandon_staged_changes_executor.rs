@@ -41,7 +41,7 @@ pub async fn execute_abandon_staged_changes(
         "abandon_staged_changes request returned unexpected status: {}",
         response.description
     );
-    info!("Success! DanceResponse matched expected");
+    info!("Success! abandon_staged_changes DanceResponse matched expected");
 
     // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
     //            Compare essential content

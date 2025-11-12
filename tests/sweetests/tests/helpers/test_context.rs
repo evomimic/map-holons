@@ -11,7 +11,7 @@ use holons_core::{
     {HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy},
 };
 
-use holons_test::test_case::DancesTestCase;
+use holons_test::{test_case::DancesTestCase, TestExecutionState};
 use holons_trust_channel::TrustChannel;
 
 use std::cell::RefCell;
@@ -92,10 +92,9 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn Holons
     let nursery = Nursery::new();
 
     // Step 3: Set transient holons in client TransientManager
-    let transient_manager = TransientHolonManager::new_empty();
-    // let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
-    //     HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
-    // ));
+    let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
+        HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
+    ));
 
     // Step 4: Setup DanceInitiator
     let dance_initiator = create_test_dance_initiator().await;
