@@ -23,12 +23,12 @@ pub const CRATE_LINK: &str = "I like loading holons with holons_loader!"; // tem
 
 /// Local structure to hold LoaderHolon provenance used for error enrichment.
 #[derive(Debug, Clone)]
-struct FileProvenance {
-    filename: MapString,
-    start_utf8_byte_offset: Option<i64>,
+pub struct FileProvenance {
+    pub filename: MapString,
+    pub start_utf8_byte_offset: Option<i64>,
 }
 
-type ProvenanceIndex = HashMap<MapString /* loader_holon_key */, FileProvenance>;
+pub type ProvenanceIndex = HashMap<MapString /* loader_holon_key */, FileProvenance>;
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -129,7 +129,7 @@ impl HolonLoaderController {
                 LoaderHolonMapper::map_bundle(context, bundle_reference.clone())?;
 
             total_holons_staged += mapper_output.staged_count;
-            // total_loader_holons also need updating
+            total_loader_holons += mapper_output.loader_holon_count;
 
             merged_queued_relationship_references
                 .extend(std::mem::take(&mut mapper_output.queued_relationship_references));
@@ -147,7 +147,7 @@ impl HolonLoaderController {
                 // Prefer typed error holons; enrich with filename/offset via provenance index.
                 let error_holons = make_error_holons_best_effort(
                     context,
-                    &mappper_output.errors,
+                    &mapper_output.errors,
                     Some(&provenance_index),
                 )?;
 
@@ -228,7 +228,7 @@ impl HolonLoaderController {
             );
 
             let error_holons =
-                make_error_holons_best_effort(context, &resolver_errors, Some(provenance_index))?;
+                make_error_holons_best_effort(context, &resolver_errors, Some(&provenance_index))?;
 
             let response_reference = self.build_response(
                 context,
