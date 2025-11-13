@@ -104,6 +104,8 @@ pub enum CorePropertyTypeName {
     ResponseStatusCode,
     SpaceName,
     StartUtf8ByteOffset,
+    TotalBundles,
+    TotalLoaderHolons,
     Type,
     TypeKind,
     TypeName,

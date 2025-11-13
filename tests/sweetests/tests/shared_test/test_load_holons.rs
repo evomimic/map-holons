@@ -91,7 +91,7 @@ fn dump_error_holons_from_response(
     let mut out = String::new();
 
     // Try to follow the relationship. If it doesn't exist, just return empty.
-    let rel_name = CoreRelationshipTypeName::HasLoadError.as_relationship_name();
+    let rel_name = CoreRelationshipTypeName::HasLoadError;
     let collection_handle = match response.related_holons(context, &rel_name) {
         Ok(c) => c,
         Err(_) => return out, // no error holons, or link not present

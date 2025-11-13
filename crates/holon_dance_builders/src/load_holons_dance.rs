@@ -7,7 +7,7 @@ use holons_core::{
     reference_layer::TransientReference,
 };
 
-/// Build a Standalone dance request to load holons from a HolonLoaderBundle.
+/// Build a Standalone dance request to load holons from a HolonLoadSet.
 /// NOTE: We can't assume descriptors are loaded here; validation happens in the guest.
 pub fn build_load_holons_dance_request(
     bundle_set: TransientReference,

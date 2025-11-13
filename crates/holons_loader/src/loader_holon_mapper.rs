@@ -63,6 +63,8 @@ impl LoaderHolonMapper {
             // guard dropped here; lock released before we enter the loop
         };
 
+        // Count LoaderHolon members for diagnostics here
+
         // Iterate through LoaderHolon members and stage target holons.
         for (index, loader_reference) in loader_holon_members.iter().enumerate() {
             debug!("Pass1: staging target from LoaderHolon #{}", index);
