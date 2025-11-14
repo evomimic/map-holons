@@ -3,6 +3,7 @@
 use crate::controller::{FileProvenance, ProvenanceIndex};
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
+use std::iter::Map;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tracing::{error, warn};
 
@@ -192,13 +193,14 @@ fn populate_error_fields(
 }
 
 /// Descriptor resolution (best-effort):
-/// 1) Staged (Nursery) lookup by key "HolonErrorType"
+/// 1) Staged (Nursery) lookup by key "HolonLoadError.HolonErrorType"
 /// 2) Saved fallback via get_all_holons() + get_by_key()
 fn resolve_holon_error_type_descriptor(
     context: &dyn HolonsContextBehavior,
 ) -> Result<HolonReference, HolonError> {
-    // Canonical key from the enum (=> "HolonErrorType")
-    let key = CoreHolonTypeName::HolonErrorType.as_holon_name();
+    // Canonical key from the enum (=> "HolonLoadError")
+    let type_name = CoreHolonTypeName::HolonLoadError.as_holon_name();
+    let key = MapString(format!("{type_name}.HolonErrorType"));
 
     // 1) Prefer staged (Nursery) by base key
     let staged_matches = {

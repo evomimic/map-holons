@@ -16,7 +16,7 @@ use tracing::{debug, info, warn};
 
 use holons_prelude::prelude::*;
 
-use crate::errors::make_error_holons_best_effort;
+use crate::errors::{make_error_holons_best_effort, ErrorWithContext};
 use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
 
 pub const CRATE_LINK: &str = "I like loading holons with holons_loader!"; // temporary const to link crate to test crate
@@ -105,6 +105,8 @@ impl HolonLoaderController {
 
         // In-memory provenance index: loader_holon_key -> (filename, start_utf8_byte_offset)
         let mut provenance_index: ProvenanceIndex = HashMap::new();
+        // Accumulates duplicate-key errors discovered while indexing provenance.
+        let mut provenance_errors: Vec<ErrorWithContext> = Vec::new();
 
         // Collect provenance data from all bundles first
         for bundle_reference in bundle_references.iter() {
@@ -121,6 +123,7 @@ impl HolonLoaderController {
                 bundle_reference,
                 &filename,
                 &mut provenance_index,
+                &mut provenance_errors,
             )?;
 
             // Map & stage LoaderHolons from this bundle; queue its relationship references
@@ -174,6 +177,47 @@ impl HolonLoaderController {
         }
 
         // SHORT-CIRCUIT CASE 2:
+        // Duplicate loader_holon keys across the set: treat as a hard Pass-1 failure.
+        if !provenance_errors.is_empty() {
+            let duplicate_error_count = provenance_errors.len() as i64;
+
+            warn!(
+                "HolonLoaderController::load_set - duplicate loader_holon keys detected ({} error(s)); \
+                 Pass 2 and commit will be skipped",
+                duplicate_error_count
+            );
+
+            // Build error holons, enriched with filename/offset via provenance_index.
+            let error_holons = make_error_holons_best_effort(
+                context,
+                &provenance_errors,
+                Some(&provenance_index),
+            )?;
+
+            let summary = format!(
+                "Duplicate loader_holon keys detected across HolonLoadSet. \
+                 Pass 2 and commit were skipped. {} holons staged; 0 committed.",
+                total_holons_staged
+            );
+
+            let response_reference = self.build_response(
+                context,
+                run_id,
+                total_holons_staged,
+                0,                     // holons_committed
+                0,                     // links_created (none attempted)
+                duplicate_error_count, // errors_encountered
+                total_bundles,
+                total_loader_holons,
+                summary,
+                error_holons,
+            )?;
+
+            warn!("HolonLoaderController::load_set - done (aborted due to duplicate keys)");
+            return Ok(response_reference);
+        }
+
+        // SHORT-CIRCUIT CASE 3:
         // Empty set short-circuit check: nothing staged and no relationships queued
         let no_staged_holons = total_holons_staged == 0;
         let no_relationships = merged_queued_relationship_references.is_empty();
@@ -377,6 +421,7 @@ impl HolonLoaderController {
         bundle_reference: &TransientReference,
         filename: &MapString,
         provenance_index: &mut ProvenanceIndex,
+        duplicate_errors: &mut Vec<ErrorWithContext>,
     ) -> Result<(), HolonError> {
         let members_relationship = CoreRelationshipTypeName::BundleMembers;
 
@@ -414,11 +459,11 @@ impl HolonLoaderController {
             let maybe_loader_key =
                 transient_member_reference.property_value(context, CorePropertyTypeName::Key)?;
             let loader_key = match maybe_loader_key {
-                Some(BaseValue::StringValue(k)) if !k.0.is_empty() => k,
+                Some(BaseValue::StringValue(key)) if !key.0.is_empty() => key,
                 _ => continue, // no key → cannot index
             };
 
-            // Read start byte offset (optional; default 0).
+            // Read start byte offset (optional).
             let maybe_offset = transient_member_reference
                 .property_value(context, CorePropertyTypeName::StartUtf8ByteOffset)?;
             let start_utf8_byte_offset = match maybe_offset {
@@ -426,15 +471,34 @@ impl HolonLoaderController {
                 _ => None,
             };
 
-            // Insert first occurrence, warn on duplicates (policy: keep-first).
+            // Insert first occurrence; subsequent occurrences become **ErrorWithContext**.
             provenance_index
                 .entry(loader_key.clone())
                 .and_modify(|existing| {
                     warn!(
                         "collect_provenance_from_bundle: duplicate loader key '{}' encountered; \
-                     keeping first from file '{}', ignoring subsequent from file '{}'",
+                         keeping first from file '{}', ignoring subsequent from file '{}'",
                         loader_key.0, existing.filename.0, filename.0
                     );
+
+                    let first_offset = existing.start_utf8_byte_offset.unwrap_or(0);
+                    let second_offset = start_utf8_byte_offset.unwrap_or(0);
+
+                    let message = format!(
+                        "Duplicate loader_holon key '{}' across HolonLoadSet. \
+                         First occurrence: file='{}', offset={}. \
+                         Subsequent occurrence: file='{}', offset={}.",
+                        loader_key.0, existing.filename.0, first_offset, filename.0, second_offset,
+                    );
+
+                    // Attach the loader key so make_error_holons_best_effort can
+                    // enrich with filename/offset via the provenance index.
+                    let error = HolonError::DuplicateError(
+                        "duplicate loader_holon key in HolonLoadSet".into(),
+                        message,
+                    );
+                    duplicate_errors
+                        .push(ErrorWithContext::new(error).with_loader_key(loader_key.clone()));
                 })
                 .or_insert(FileProvenance { filename: filename.clone(), start_utf8_byte_offset });
         }

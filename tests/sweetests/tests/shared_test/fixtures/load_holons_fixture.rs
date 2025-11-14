@@ -12,6 +12,7 @@
 //! 4. **Minimal micro-schema** (Book/Person + AUTHORED_BY + AUTHORS via InverseOf) → `OK`
 //! 5. **Inverse LRR bundle** (Person AUTHORS Book) → `OK`; resolves to declared edge
 //! 6. **Multi-bundle set** (Book in one bundle, Person+link in another) → `OK`; cross-bundle resolution
+//! 7. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; DB unchanged
 //!
 //! ### Why a single fixture?
 //! - Enables incremental coverage growth by appending new steps (`add_load_holons_step()`).
@@ -231,6 +232,42 @@ fn build_cross_bundle_declared_link_bundle(
     Ok((bundle, 1, 1))
 }
 
+/// Build a HolonLoaderBundle that contains a single LoaderHolon with a
+/// specific `Key` and `StartUtf8ByteOffset`.
+///
+/// Used to exercise multi-bundle duplicate-key detection + byte-offset
+/// provenance in error holons.
+///
+/// RETURNS: (bundle, staged_node_count)
+fn build_single_loader_with_offset_bundle(
+    context: &dyn HolonsContextBehavior,
+    bundle_key: &str,
+    loader_key: &str,
+    offset: i64,
+) -> Result<(TransientReference, usize), HolonError> {
+    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+    let transient_service = transient_service_handle
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+
+    // Bundle + single LoaderHolon (Key = loader_key)
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    let mut loader = transient_service.create_empty(MapString(loader_key.to_string()))?;
+    drop(transient_service); // 🔓
+
+    // Stamp the byte offset on the loader so the controller can enrich errors.
+    set_start_offset(context, &mut loader, offset)?;
+
+    // (HolonLoaderBundle)-[BUNDLE_MEMBERS]->(LoaderHolon)
+    bundle.add_related_holons(
+        context,
+        CoreRelationshipTypeName::BundleMembers,
+        vec![HolonReference::Transient(loader)],
+    )?;
+
+    Ok((bundle, 1))
+}
+
 /// Build a HolonLoaderBundle to test **inverse LRR mapping**,
 /// including inline micro-schema descriptors and two instances:
 fn build_inverse_with_inline_schema_bundle(
@@ -373,6 +410,7 @@ fn build_inverse_with_inline_schema_bundle(
 ///  4) Minimal micro-schema (4 nodes, 3 schema links) → OK; DB becomes 1 + 3 + 2 + 4
 ///  5) Inverse LRR bundle (1 node, maps to declared edge) → OK; DB becomes 1 + 3 + 2 + 4 + 1
 ///  6) Multi-bundle set (Book in one bundle, Person+link in another) → OK; DB becomes 1 + 3 + 2 + 4 + 1 + 2
+///  7) Multi-bundle duplicate-key set (same LoaderHolon key in two files) → UnprocessableEntity; DB unchanged
 ///
 /// Notes:
 /// - The nodes-only keys are chosen to **avoid clashing** with the declared-link keys.
@@ -530,10 +568,61 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
         MapInteger(multi_bundle_nodes_total), // total_loader_holons
     )?;
 
-    // Final DB count: 12 (post-inverse) + 2 (multi-bundle Book + Person) = 14
-    test_case.add_ensure_database_count_step(MapInteger(
-        post_inverse_db_count + multi_bundle_nodes_total,
-    ))?;
+    // Final DB count after multi-bundle happy path:
+    // 12 (post-inverse) + 2 (multi-bundle Book + Person) = 14
+    let post_multi_db_count = post_inverse_db_count + multi_bundle_nodes_total;
+    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
+
+    // G) Multi-bundle duplicate-key failure:
+    //
+    // Two bundles, each containing a single LoaderHolon with the **same Key** but
+    // different filenames and byte offsets. The controller should:
+    //   - detect the duplicate loader_holon key across the HolonLoadSet,
+    //   - emit a DuplicateError wrapped in ErrorWithContext,
+    //   - enrich error holons with LoaderHolonKey + Filename + StartUtf8ByteOffset,
+    //   - skip Pass 2 + commit (HolonsCommitted = 0),
+    //   - leave the DB count unchanged.
+    let dup_key = "MultiBundle.DuplicateKey.1";
+
+    // Bundle G1: first occurrence (offset = 10)
+    let (dup_bundle_1, dup_nodes_1) = build_single_loader_with_offset_bundle(
+        fixture_context_ref,
+        "Bundle.Multi.DuplicateKey.File1",
+        dup_key,
+        10,
+    )?;
+
+    // Bundle G2: second occurrence (offset = 200)
+    let (dup_bundle_2, dup_nodes_2) = build_single_loader_with_offset_bundle(
+        fixture_context_ref,
+        "Bundle.Multi.DuplicateKey.File2",
+        dup_key,
+        200,
+    )?;
+
+    let dup_set = make_load_set_from_bundles(
+        fixture_context_ref,
+        "LoadSet.MultiBundle.DuplicateKey.1",
+        vec![
+            BundleWithFilename::new(dup_bundle_1, "multi_dup_file_1.json"),
+            BundleWithFilename::new(dup_bundle_2, "multi_dup_file_2.json"),
+        ],
+    )?;
+
+    let dup_total_nodes = (dup_nodes_1 + dup_nodes_2) as i64; // 1 + 1 = 2
+
+    test_case.add_load_holons_step(
+        dup_set,
+        MapInteger(dup_total_nodes), // holons_staged (Pass 1 still stages them)
+        MapInteger(0),               // holons_committed (commit skipped)
+        MapInteger(0),               // links_created
+        MapInteger(1),               // errors_encountered (one DuplicateError)
+        MapInteger(2),               // total_bundles
+        MapInteger(dup_total_nodes), // total_loader_holons
+    )?;
+
+    // DB must remain unchanged after duplicate-key failure.
+    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(fixture_context_ref);
