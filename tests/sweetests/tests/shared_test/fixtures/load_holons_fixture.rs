@@ -11,6 +11,7 @@
 //! 3. **Declared relationship bundle** (forward direction) → `OK`; LinksCreated = 1
 //! 4. **Minimal micro-schema** (Book/Person + AUTHORED_BY + AUTHORS via InverseOf) → `OK`
 //! 5. **Inverse LRR bundle** (Person AUTHORS Book) → `OK`; resolves to declared edge
+//! 6. **Multi-bundle set** (Book in one bundle, Person+link in another) → `OK`; cross-bundle resolution
 //!
 //! ### Why a single fixture?
 //! - Enables incremental coverage growth by appending new steps (`add_load_holons_step()`).
@@ -180,6 +181,56 @@ fn build_declared_links_bundle(
     Ok((bundle, 2, 1))
 }
 
+/// Build a HolonLoaderBundle that contains:
+///   - One LoaderHolon representing the source instance
+///   - One **declared** LoaderRelationshipReference whose target key may point
+///     to a LoaderHolon in another bundle (or a previously saved holon).
+///
+/// This is used to exercise **cross-bundle** relationship resolution within
+/// a single HolonLoadSet.
+///
+/// RETURNS: (bundle, expected_node_count, expected_links_created)
+fn build_cross_bundle_declared_link_bundle(
+    context: &dyn HolonsContextBehavior,
+    bundle_key: &str,
+    source_instance_key: &str,
+    target_instance_key: &str,
+    declared_relationship_name: &str,
+) -> Result<(TransientReference, usize, usize), HolonError> {
+    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
+    let transient_service = transient_service_handle
+        .write()
+        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+
+    // Bundle + source LoaderHolon (target lives in a different bundle or is pre-existing)
+    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    let mut source_loader =
+        transient_service.create_empty(MapString(source_instance_key.to_string()))?;
+    drop(transient_service); // 🔓
+
+    // Add source as BundleMember.
+    bundle.add_related_holons(
+        context,
+        CoreRelationshipTypeName::BundleMembers,
+        vec![HolonReference::Transient(source_loader.clone())],
+    )?;
+
+    // Declared LRR: source_instance_key → target_instance_key
+    // Target key may be in another bundle, but Pass-1 stages all loader holons
+    // before Pass-2 resolution, so cross-bundle lookup is supported.
+    add_loader_relationship_reference(
+        context,
+        &mut source_loader,
+        declared_relationship_name,
+        LoaderRelationshipDeclaredness::Declared,
+        source_instance_key,
+        &[target_instance_key],
+    )?;
+
+    // Nodes staged from this bundle = 1 (source instance); links_created = 1
+    Ok((bundle, 1, 1))
+}
+
 /// Build a HolonLoaderBundle to test **inverse LRR mapping**,
 /// including inline micro-schema descriptors and two instances:
 fn build_inverse_with_inline_schema_bundle(
@@ -321,6 +372,7 @@ fn build_inverse_with_inline_schema_bundle(
 ///  3) Declared link bundle (2 nodes, 1 link) → OK; DB becomes 1 + 3 + 2
 ///  4) Minimal micro-schema (4 nodes, 3 schema links) → OK; DB becomes 1 + 3 + 2 + 4
 ///  5) Inverse LRR bundle (1 node, maps to declared edge) → OK; DB becomes 1 + 3 + 2 + 4 + 1
+///  6) Multi-bundle set (Book in one bundle, Person+link in another) → OK; DB becomes 1 + 3 + 2 + 4 + 1 + 2
 ///
 /// Notes:
 /// - The nodes-only keys are chosen to **avoid clashing** with the declared-link keys.
@@ -429,10 +481,59 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
         MapInteger(inv_nodes as i64), // total_loader_holons
     )?;
 
-    // Final DB count:
-    // 1 (space) + n_nodes (3) + node_count (2) + schema_nodes (4) + inv_nodes (2) = 12
-    test_case
-        .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64 + 6))?;
+    // DB after inverse step:
+    // 1 (space) + n_nodes (3) + node_count (2) + inv_nodes (6) = 12
+    let post_inverse_db_count = 1 + n_nodes as i64 + node_count as i64 + inv_nodes as i64;
+    test_case.add_ensure_database_count_step(MapInteger(post_inverse_db_count))?;
+
+    // F) Multi-bundle happy path:
+    //
+    // Bundle F1: Book node only (no relationships)
+    // Bundle F2: Person node + declared AuthoredBy(Book→Person) LRR
+    //            where the Book key lives in F1.
+    //
+    // This exercises cross-bundle resolution within a single HolonLoadSet.
+    let multi_book_key = "MultiBundle.Book.1";
+    let multi_person_key = "MultiBundle.Person.1";
+
+    // Bundle F1: Book node only
+    let (bundle_f1, f1_nodes) =
+        build_nodes_only_bundle(fixture_context_ref, "Bundle.Multi.BookOnly", &[multi_book_key])?;
+
+    // Bundle F2: Person node + declared AuthoredBy link pointing to Book in F1
+    let (bundle_f2, f2_nodes, f_links) = build_cross_bundle_declared_link_bundle(
+        fixture_context_ref,
+        "Bundle.Multi.PersonWithLink",
+        multi_person_key,            // source (Person)
+        multi_book_key,              // target (Book in Bundle F1)
+        BOOK_TO_PERSON_RELATIONSHIP, // "AuthoredBy"
+    )?;
+
+    let multi_set = make_load_set_from_bundles(
+        fixture_context_ref,
+        "LoadSet.MultiBundle.1",
+        vec![
+            BundleWithFilename::new(bundle_f1, "multi_book.json"),
+            BundleWithFilename::new(bundle_f2, "multi_person_with_link.json"),
+        ],
+    )?;
+
+    let multi_bundle_nodes_total = (f1_nodes + f2_nodes) as i64; // 1 Book + 1 Person = 2
+
+    test_case.add_load_holons_step(
+        multi_set,
+        MapInteger(multi_bundle_nodes_total), // holons_staged
+        MapInteger(multi_bundle_nodes_total), // holons_committed
+        MapInteger(f_links as i64),           // links_created = 1
+        MapInteger(0),                        // errors_encountered
+        MapInteger(2),                        // total_bundles
+        MapInteger(multi_bundle_nodes_total), // total_loader_holons
+    )?;
+
+    // Final DB count: 12 (post-inverse) + 2 (multi-bundle Book + Person) = 14
+    test_case.add_ensure_database_count_step(MapInteger(
+        post_inverse_db_count + multi_bundle_nodes_total,
+    ))?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.load_test_session_state(fixture_context_ref);
