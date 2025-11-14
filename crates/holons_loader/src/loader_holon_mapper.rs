@@ -54,8 +54,8 @@ impl LoaderHolonMapper {
         // Locking & safety:
         //   The bundle’s relationship map is immutable once parsing completes (loader phase has no writers).
         //   It is therefore safe to hold the read lock while iterating members to avoid cloning the collection.
-        let collecion_handle = bundle.related_holons(context, &BundleMembers)?;
-        let guard = collecion_handle
+        let collection_handle = bundle.related_holons(context, &BundleMembers)?;
+        let guard = collection_handle
             .read()
             .map_err(|_| HolonError::FailedToBorrow("HolonCollection read lock poisoned".into()))?;
         let members = guard.get_members();
