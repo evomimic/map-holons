@@ -42,8 +42,9 @@ pub struct TestHolonsContext {
 /// # Returns
 /// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
 pub async fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
-    init_tracing();
-    warn!("\n ========== Tracing has been initialized ============");
+    init_tracing(); // this sets tracing level for both fixture and test client
+
+    info!("\n ========== Initializing FIXTURE CONTEXT ============");
 
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
@@ -80,6 +81,8 @@ pub async fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
 /// # Returns
 /// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
 pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn HolonsContextBehavior> {
+    info!("\n ========== Initializing TEST CONTEXT ============");
+
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 

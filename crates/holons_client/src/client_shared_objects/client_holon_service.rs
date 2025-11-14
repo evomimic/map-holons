@@ -26,7 +26,7 @@ impl HolonServiceApi for ClientHolonService {
     fn commit_internal(
         &self,
         _context: &dyn HolonsContextBehavior,
-    ) -> Result<CommitResponse, HolonError> {
+    ) -> Result<TransientReference, HolonError> {
         //let request = build_commit_dance_request(&SessionState::default())?;
         // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
         // _context.get_space_manager()

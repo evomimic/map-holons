@@ -6,6 +6,7 @@ use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy, TransientH
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
 use std::fmt::Debug;
 use std::sync::Arc;
+use tracing::warn;
 
 /// The client-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations in a local (non-guest) environment.
@@ -34,8 +35,8 @@ pub struct ClientHolonsContext {
 /// # Returns
 /// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
 pub async fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
+    warn!("\n ========== Initializing CLIENT CONTEXT ============");
     // Step 1: Create the ClientHolonService
-
     // temporarily create with injected DanceCallService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 

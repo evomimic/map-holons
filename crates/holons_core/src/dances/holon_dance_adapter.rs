@@ -10,7 +10,7 @@
 //! - **Request builders have moved** to the `holon_dance_builders` crate. This module no longer
 //!   exposes `build_*` helper functions.
 //! - These adapters intentionally insulate native/reference-layer code from the Dance protocol
-//!   details and vice-versa.
+//!   details and vice versa.
 //! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
 //!   adapters return `Result<ResponseBody, HolonError>`.
 
@@ -20,7 +20,6 @@ use crate::reference_layer::TransientReference;
 use crate::{
     core_shared_objects::{
         commit, delete_holon, stage_new_from_clone, stage_new_holon, stage_new_version,
-        CommitRequestStatus,
     },
     dances::{
         dance_request::{DanceType, RequestBody},
@@ -126,19 +125,7 @@ pub fn commit_dance(
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered commit_dance");
     let commit_response = commit(context)?;
-
-    match commit_response.status {
-        CommitRequestStatus::Complete => Ok(ResponseBody::Holons(commit_response.saved_holons)),
-        CommitRequestStatus::Incomplete => {
-            let completion_message = format!(
-                "{} of {:?} were successfully committed",
-                commit_response.saved_holons.len(),
-                commit_response.commits_attempted.0,
-            );
-            // TODO: Why turn INCOMPLETE into an Error? Shouldn't we just pass CommitResponse to client?
-            Err(HolonError::CommitFailure(completion_message.to_string()))
-        }
-    }
+    Ok(ResponseBody::HolonReference(commit_response.into()))
 }
 
 /// This dance deletes an existing holon from the persistent store.
