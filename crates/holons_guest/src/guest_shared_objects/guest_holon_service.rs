@@ -24,8 +24,7 @@ use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal, CommitResponse, Holon, HolonCollection,
-        NurseryAccess,
+        nursery_access_internal::NurseryAccessInternal, Holon, HolonCollection, NurseryAccess,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
@@ -192,19 +191,18 @@ impl HolonServiceApi for GuestHolonService {
     fn commit_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<CommitResponse, HolonError> {
+    ) -> Result<TransientReference, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
 
-        // Step 1: Borrow immutably, immediately clone the Vec, then drop the borrow
-        let staged_holons = {
+        // Step 1: Borrow the nursery immutably and clone its HolonPool reference
+        let holon_pool = {
             let nursery_read = internal_nursery.read().unwrap();
-            let cloned_holons = nursery_read.get_holons_to_commit().clone(); // Clone while borrow is active
-            cloned_holons // Borrow ends here
+            nursery_read.get_holon_pool() // Returns Arc<RwLock<StagedHolonPool>>
         }; // `nursery_read` is dropped immediately after this block
 
         // Step 2: Commit the staged holons
-        let commit_response = commit_functions::commit(context, &staged_holons)?;
+        let commit_response = commit_functions::commit(context, &holon_pool)?;
 
         // Step 3: Borrow mutably to clear the stage
         internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
@@ -217,7 +215,7 @@ impl HolonServiceApi for GuestHolonService {
         let record = get(try_action_hash_from_local_id(&local_id)?, GetOptions::default())
             .map_err(|e| holon_error_from_wasm_error(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
-        let mut _holon = try_from_record(record)?;
+        let _holon = try_from_record(record)?;
         // holon.is_deletable()?;
         delete_holon_node(try_action_hash_from_local_id(&local_id)?)
             .map(|_| ()) // Convert ActionHash to ()
@@ -319,7 +317,7 @@ impl HolonServiceApi for GuestHolonService {
         let holon_ids = fetch_links_to_all_holons()?;
         let mut holon_references = Vec::new();
         for id in holon_ids {
-            holon_references.push(HolonReference::from_id(id));
+            holon_references.push(id.into());
         }
         collection.add_references(context, holon_references)?;
 

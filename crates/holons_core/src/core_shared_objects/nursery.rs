@@ -178,6 +178,10 @@ impl NurseryAccessInternal for Nursery {
     //     self.holon_store.borrow().keyed_index.clone()
     // }
 
+    fn get_holon_pool(&self) -> Arc<RwLock<StagedHolonPool>> {
+        Arc::clone(&self.staged_holons)
+    }
+
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
         let pool = self.staged_holons.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(

@@ -79,6 +79,8 @@ pub enum CoreRelationshipTypeName {
     HasInverse,
     HasLoadError,
     HasRelationshipReference,
+    HolonsAbandoned,
+    HolonsCommitted,
     InstanceProperties,
     InstanceRelationshipFor,
     InstanceRelationships,

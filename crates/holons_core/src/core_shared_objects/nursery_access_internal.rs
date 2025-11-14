@@ -4,6 +4,7 @@ use std::{
 };
 
 use super::{holon_pool::SerializableHolonPool, Holon};
+use crate::core_shared_objects::holon_pool::StagedHolonPool;
 use crate::{HolonStagingBehavior, NurseryAccess};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -36,6 +37,14 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// Clears the Nursery's staged holons
     fn clear_stage(&mut self);
+
+    /// Returns a reference to the current (single) `HolonPool`.
+    ///
+    /// This method abstracts over whether the Nursery manages one pool or many.
+    /// In a future transaction-aware model, it can be adapted to accept a transaction ID
+    /// and return the corresponding pool. Existing callers (like commit_internal)
+    /// will remain unchanged.
+    fn get_holon_pool(&self) -> Arc<RwLock<StagedHolonPool>>;
 
     /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
     ///

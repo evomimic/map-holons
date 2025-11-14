@@ -7,9 +7,9 @@ use std::{
 
 use super::{Holon, ReadableHolonState, WriteableHolonState};
 use crate::utils::uuid::create_temporary_id_from_key;
+use crate::StagedReference;
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
-
 //
 // === HolonPool NewTypes ===
 //
@@ -212,6 +212,15 @@ impl HolonPool {
             .get(key)
             .cloned()
             .ok_or_else(|| HolonError::HolonNotFound(format!("for key: {}", key)))
+    }
+
+    /// Returns a vector of `StagedReference`s for all holons currently staged in this pool.
+    ///
+    /// This provides a reference-layer view of the pool contents without exposing
+    /// the underlying Holon structs or locks. The references can then be passed
+    /// to higher-level commit or validation logic.
+    pub fn get_staged_references(&self) -> Vec<StagedReference> {
+        self.holons.keys().map(|temp_id| StagedReference::from_temporary_id(temp_id)).collect()
     }
 
     /// Exports the HolonPool as a `SerializableHolonPool`.
