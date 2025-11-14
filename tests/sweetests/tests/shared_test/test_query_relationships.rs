@@ -26,13 +26,16 @@ pub async fn execute_query_relationships(
 ) {
     info!("--- TEST STEP: Querying Relationships ---");
 
+    let ctx_arc = test_state.context(); // own the Arc clone
+    let context = ctx_arc.as_ref(); // borrow from the owned Arc
+
     // 1. Retrieve the source Holon
     let source_holon = test_state
         .get_created_holon_by_key(&source_key)
         .unwrap_or_else(|| panic!("Holon with key {:?} not found in created_holons", source_key));
 
     let source_holon_id = source_holon
-        .holon_id()
+        .holon_id(context)
         .expect(&format!("Failed to get local_id for Holon: {:#?}", source_holon));
 
     let holon_reference = HolonReference::Smart(SmartReference::new_from_id(source_holon_id));

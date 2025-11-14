@@ -27,7 +27,8 @@ pub async fn execute_remove_properties(
     info!("--- TEST STEP: Removing Properties from Holon ---");
 
     // 1. Get context from test_state
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     info!("Original Holon: {:?}", original_holon);
 

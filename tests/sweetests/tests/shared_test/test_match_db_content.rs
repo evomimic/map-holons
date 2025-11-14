@@ -30,10 +30,14 @@ use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody}
 pub async fn execute_match_db_content(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
 
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
+
     // 1. Iterate through all created holons and verify them in the database
     for (_key, expected_holon) in test_state.created_holons.clone() {
         // Get HolonId
-        let holon_id: HolonId = expected_holon.holon_id().expect("Failed to get HolonId").into();
+        let holon_id: HolonId =
+            expected_holon.holon_id(context).expect("Failed to get HolonId").into();
 
         // 2. Build the get_holon_by_id DanceRequest
         let request = build_get_holon_by_id_dance_request(holon_id.clone())
@@ -47,8 +51,8 @@ pub async fn execute_match_db_content(test_state: &mut DanceTestExecutionState) 
         // 4. Ensure response contains the expected Holon
         if let ResponseBody::Holon(actual_holon) = response.body {
             assert_eq!(
-                expected_holon.essential_content(),
-                actual_holon.essential_content(),
+                expected_holon.key(context),
+                actual_holon.key(),
                 "Holon content mismatch for ID {:?}",
                 holon_id
             );

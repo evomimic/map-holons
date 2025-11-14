@@ -50,7 +50,8 @@ pub async fn execute_stage_new_from_clone(
     info!("--- TEST STEP: Cloning a Holon ---");
 
     // 1. Get context from test_state
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     info!("Got context from test_state");
 
@@ -60,17 +61,9 @@ pub async fn execute_stage_new_from_clone(
             HolonReference::Transient(transient_reference)
         }
         TestReference::StagedHolon(staged_reference) => HolonReference::Staged(staged_reference),
-        TestReference::SavedHolon(key) => {
-            let saved_holon = test_state
-                .get_created_holon_by_key(&key)
-                .unwrap_or_else(|| panic!("Holon with key {key} not found in created_holons"));
-
-            let holon_id = saved_holon.holon_id().expect("Failed to get LocalId");
-            HolonReference::Smart(SmartReference::new(
-                holon_id,
-                Some(saved_holon.into_node_model().property_map.clone()),
-            ))
-        }
+        TestReference::SavedHolon(key) => test_state
+            .get_created_holon_by_key(&key)
+            .unwrap_or_else(|| panic!("Holon with key {key} not found in created_holons")),
     };
 
     // TODO: fix in future issue for being able to clone from a Saved Holon

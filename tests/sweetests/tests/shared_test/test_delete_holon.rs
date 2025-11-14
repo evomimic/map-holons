@@ -31,18 +31,21 @@ pub async fn execute_delete_holon(
     );
 
     // 1. Get context from test_state
-    let _context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // 2. Retrieve the Holon to delete
     let holon_to_delete = test_state
         .get_created_holon_by_key(&holon_to_delete_key)
         .expect("Failed to retrieve holon from test_state's created_holons.");
 
-    let local_id =
-        match holon_to_delete.holon_id().expect("Unable to get HolonId from holon_to_delete") {
-            HolonId::Local(id) => id,
-            HolonId::External(_) => panic!("Can only delete a Local Holon, found External"),
-        };
+    let local_id = match holon_to_delete
+        .holon_id(context)
+        .expect("Unable to get HolonId from holon_to_delete")
+    {
+        HolonId::Local(id) => id,
+        HolonId::External(_) => panic!("Can only delete a Local Holon, found External"),
+    };
 
     // 3. Build the delete Holon request
     let request = build_delete_holon_dance_request(local_id.clone())
