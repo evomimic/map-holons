@@ -66,7 +66,6 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         // Discover all HolonLoaderBundle references in the HolonLoadSet
         // ─────────────────────────────────────────────────────────────────────
-        let bundle_relationship_name = CoreRelationshipTypeName::Contains;
         let bundle_references: Vec<TransientReference> =
             Self::discover_bundle_transients(context, &set_reference)?;
 

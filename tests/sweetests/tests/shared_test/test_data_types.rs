@@ -108,11 +108,13 @@ pub enum DanceTestStep {
     DeleteHolon(MapString, ResponseStatusCode), // Deletes the holon whose key is the MapString value
     EnsureDatabaseCount(MapInteger), // Ensures the expected number of holons exist in the DB
     LoadHolons {
-        bundle: TransientReference,
+        set: TransientReference,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,
         expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
     },
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
@@ -158,16 +160,18 @@ impl Display for DanceTestStep {
                 write!(f, "EnsureDatabaseCount = {}", count.0)
             }
             DanceTestStep::LoadHolons {
-                bundle: _,
+                set: _,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
                 expect_errors,
+                expect_total_bundles,
+                expect_total_loader_holons,
             } => {
                 write!(
                     f,
-                    "LoadHolons(staged={}, committed={}, links_created={}, errors={})",
-                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0
+                    "LoadHolons(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
+                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
                 )
             }
             DanceTestStep::MatchSavedContent => {
@@ -441,18 +445,22 @@ impl DancesTestCase {
 
     pub fn add_load_holons_step(
         &mut self,
-        bundle: TransientReference,
+        set: TransientReference,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,
         expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
     ) -> Result<(), HolonError> {
         self.steps.push_back(DanceTestStep::LoadHolons {
-            bundle,
+            set,
             expect_staged,
             expect_committed,
             expect_links_created,
             expect_errors,
+            expect_total_bundles,
+            expect_total_loader_holons,
         });
         Ok(())
     }
