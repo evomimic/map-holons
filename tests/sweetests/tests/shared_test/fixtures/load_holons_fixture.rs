@@ -421,7 +421,25 @@ fn build_inverse_with_inline_schema_bundle(
 pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Loader Incremental Fixture".to_string(),
-        "Empty → nodes-only → declared link → micro-schema → inverse".to_string(),
+        "1) Ensure DB starts with only the Space holon,\n\
+         2) Load a HolonLoadSet containing a single empty HolonLoaderBundle and assert the\n\
+            loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
+         3) Load a nodes-only HolonLoadSet (Book/Person/Publisher LoaderHolons, no relationships)\n\
+            and assert holons are staged + committed, LinksCreated = 0,\n\
+         4) Load a declared-relationship HolonLoadSet (Book + Person in one bundle with a\n\
+            declared AUTHORED_BY edge) and assert 2 holons committed and 1 link created,\n\
+         5) Load a HolonLoadSet that includes a minimal inline micro-schema (Book/Person\n\
+            HolonTypes + AuthoredBy/Authors RelationshipTypes) and exercise inverse-name\n\
+            resolution so a Person AUTHORS Book edge is written as the declared AuthoredBy\n\
+           (Book→Person) relationship,\n\
+         6) Load a multi-bundle HolonLoadSet where the Book LoaderHolon lives in one bundle\n\
+            and the Person + declared AuthoredBy edge live in another, and assert cross-bundle\n\
+            endpoint resolution works (both holons committed, 1 link created),\n\
+         7) Load a multi-bundle HolonLoadSet where two different bundles each contain a\n\
+            LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
+            the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
+            leaves the DB unchanged, and surfaces per-file provenance via error holons.\n"
+            .to_string(),
     );
 
     // Create a private fixture context with its own TransientHolonManager.
