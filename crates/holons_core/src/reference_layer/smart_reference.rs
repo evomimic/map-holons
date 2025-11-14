@@ -4,7 +4,7 @@ use std::{
     fmt,
     sync::{Arc, RwLock},
 };
-use tracing::trace;
+use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
@@ -40,6 +40,10 @@ impl SmartReference {
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
     pub fn new_from_id(holon_id: HolonId) -> Self {
         SmartReference { holon_id, smart_property_values: None }
+    }
+
+    pub fn new_with_properties(holon_id: HolonId, smart_property_values: PropertyMap) -> Self {
+        SmartReference { holon_id, smart_property_values: Some(smart_property_values) }
     }
 
     // *************** ACCESSORS ***************
@@ -181,7 +185,6 @@ impl ReadableHolonImpl for SmartReference {
     }
 
     fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
         Ok(self.holon_id.clone())
     }
 
@@ -214,21 +217,19 @@ impl ReadableHolonImpl for SmartReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<MapString>, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
         let key_prop = CorePropertyTypeName::Key.as_property_name();
 
-        // 1. Check for a locally cached value in smart_property_values
-        if let Some(smart_property_values) = &self.smart_property_values {
-            if let Some(BaseValue::StringValue(s)) = smart_property_values.get(&key_prop) {
-                return Ok(Some(s.clone()));
-            }
-            return Ok(None);
-        }
+        match self.property_value_impl(context, &key_prop)? {
+            Some(BaseValue::StringValue(s)) => Ok(Some(s.clone())),
 
-        // 2. Fallback: resolve from the referenced holon
-        let holon = self.get_rc_holon(context)?;
-        let key_option = holon.read().unwrap().key()?;
-        Ok(key_option)
+            // Key exists but is wrong value type (e.g., enum?)
+            Some(other) => Err(HolonError::InvalidType(format!(
+                "Key property must be a StringValue, found {:?}",
+                other
+            ))),
+
+            None => Ok(None),
+        }
     }
 
     fn predecessor_impl(
@@ -269,13 +270,16 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
         // Check if the property value is available in smart_property_values
         if let Some(smart_map) = &self.smart_property_values {
             if let Some(value) = smart_map.get(property_name) {
                 return Ok(Some(value.clone()));
             }
         }
+
+        info!("unable to get value for {:?} property from smart_property_values. Fetching rc_holon from HolonsCache", property_name);
+
+        self.is_accessible(context, AccessType::Read)?;
 
         // Get rc_holon from HolonCacheManager
         let holon = self.get_rc_holon(context)?;

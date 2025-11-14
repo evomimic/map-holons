@@ -158,7 +158,8 @@ pub async fn execute_load_holons(
     expect_errors: MapInteger,
 ) {
     info!("--- TEST STEP: Load Holons ---");
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // Build the DanceRequest for the loader.
     let request = build_load_holons_dance_request(bundle)

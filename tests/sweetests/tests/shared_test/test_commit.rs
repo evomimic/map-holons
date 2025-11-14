@@ -18,21 +18,15 @@ use holons_prelude::prelude::*;
 // The need for this will go away once Holon is removed from ResponseBody
 
 use holons_core::core_shared_objects::ReadableHolonState;
-// use base_types::{MapInteger, MapString};
-// use core_types::HolonId;
-// use holon_dance_builders::commit_dance::build_commit_dance_request;
-// use holons_core::{
-//     core_shared_objects::ReadableHolonState,
-//     dances::{ResponseBody, ResponseStatusCode},
-// };
-// // use holons_guest_integrity::HolonNode;
-// use core_types::{PropertyMap, PropertyName};
 
 /// This function builds and dances a `commit` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
 pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
     info!("--- TEST STEP: Committing Staged Holons ---");
+
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // 1. Build commit DanceRequest (state is handled inside dance_call)
     let request = build_commit_dance_request().expect("Failed to build commit DanceRequest");
@@ -42,7 +36,7 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
     let response = test_state.invoke_dance(request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
-    // 3. Validate response status
+    // 3. Validate response status and ResponseBody type
     assert_eq!(
         response.status_code,
         ResponseStatusCode::OK,
@@ -51,20 +45,58 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
     );
     info!("Success! Commit succeeded");
 
-    // 4. Extract saved Holons from response body and add them to `created_holons`
-    match response.body {
-        ResponseBody::Holon(holon) => {
-            let key =
-                holon.key().expect("Holon should have a key").expect("Key should not be None");
-            test_state.created_holons.insert(key, holon);
+    // 3. The response body is now a HolonReference::Transient to a CommitResponseType holon.
+    let commit_response_body_reference = match response.body {
+        ResponseBody::HolonReference(HolonReference::Transient(ref commit_ref)) => {
+            commit_ref.clone()
         }
-        ResponseBody::Holons(holons) => {
-            for holon in holons {
-                let key =
-                    holon.key().expect("Holon should have a key").expect("Key should not be None");
-                test_state.created_holons.insert(key, holon);
-            }
-        }
-        _ => panic!("Invalid ResponseBody: {:?}", response.body),
+        other => panic!("Unexpected ResponseBody for commit: {:?}", other),
+    };
+
+    // TODO: Once TypeDescriptors are enabled, we should also check the HolonType of the ResponseBody
+
+    // 4. Retrieve committed holons from the HolonsCommitted relationship.
+    let committed_references = commit_response_body_reference
+        .related_holons(context, CoreRelationshipTypeName::HolonsCommitted)
+        .expect("Failed to read HolonsCommitted relationship");
+
+    let committed_refs_guard = committed_references.read().unwrap();
+    let commit_count: MapInteger = committed_refs_guard.get_count();
+    debug!("Discovered {:?} committed holons", commit_count.0);
+
+    // 5. Add committed holons to the test_state.created_holons map.
+    let committed_refs_guard =
+        committed_references.read().expect("Failed to read committed holons");
+    for href in committed_refs_guard.get_members() {
+        // Extract key from the SmartReference’s cached smart properties
+        let key_string: MapString = href
+            .key(context)
+            .expect("Failed to read key from committed HolonReference")
+            .expect("Committed holon missing key");
+
+        // href *is already* a fully valid, saved HolonReference
+        test_state.created_holons.insert(key_string.clone(), href.clone());
+
+        info!("Committed holon: {}", key_string);
     }
+
+    // 6. Optional: log a summary
+    info!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
+
+    // // 4. Extract saved Holons from response body and add them to `created_holons`
+    // match response.body {
+    //     ResponseBody::Holon(holon) => {
+    //         let key =
+    //             holon.key().expect("Holon should have a key").expect("Key should not be None");
+    //         test_state.created_holons.insert(key, holon);
+    //     }
+    //     ResponseBody::Holons(holons) => {
+    //         for holon in holons {
+    //             let key =
+    //                 holon.key().expect("Holon should have a key").expect("Key should not be None");
+    //             test_state.created_holons.insert(key, holon);
+    //         }
+    //     }
+    //     _ => panic!("Invalid ResponseBody: {:?}", response.body),
+    // }
 }
