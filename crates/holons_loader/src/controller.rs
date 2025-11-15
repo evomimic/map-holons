@@ -19,8 +19,6 @@ use holons_prelude::prelude::*;
 use crate::errors::{make_error_holons_best_effort, ErrorWithContext};
 use crate::{LoaderHolonMapper, LoaderRefResolver, ResolverOutcome};
 
-pub const CRATE_LINK: &str = "I like loading holons with holons_loader!"; // temporary const to link crate to test crate
-
 /// Local structure to hold LoaderHolon provenance used for error enrichment.
 #[derive(Debug, Clone)]
 pub struct FileProvenance {
