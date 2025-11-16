@@ -11,7 +11,7 @@ use holons_core::{
     {HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy},
 };
 
-use holons_test::{test_case::DancesTestCase, TestExecutionState};
+use holons_test::{TestExecutionState, TestSessionState, test_case::DancesTestCase};
 use holons_trust_channel::TrustChannel;
 
 use std::cell::RefCell;

@@ -67,6 +67,7 @@ impl ExecutionHolons {
     /// - `ExpectedState::Transient`  → return `HolonReference::Transient(token.transient().clone())`.
     /// - `ExpectedState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `ExpectedState::Saved`      → must find a recorded `StagedReference` **committed**.
+    /// - `ExpectedState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
     ///
     /// No Nursery/DHT fallback is performed. Missing entries are treated as authoring/ordering errors.
     pub fn lookup_holon_reference(
@@ -77,7 +78,7 @@ impl ExecutionHolons {
         let expected_state = token.expected_state();
         match expected_state {
             ExpectedState::Transient => Ok(HolonReference::Transient(token.transient().clone())),
-            ExpectedState::Staged | ExpectedState::Saved => {
+            ExpectedState::Staged | ExpectedState::Saved | ExpectedState::Abandoned => {
                 let resolved = self
                     .by_temporary_id
                     .get(&token.temporary_id())
@@ -92,30 +93,42 @@ impl ExecutionHolons {
                         let is_committed = staged_reference
                             .is_in_state(context, StagedState::Committed(LocalId(Vec::new())))?;
 
-                        if expected_state == ExpectedState::Staged {
-                            if !is_committed {
+                        if expected_state == ExpectedState::Abandoned {
+                            let is_abandoned =
+                                staged_reference.is_in_state(context, StagedState::Abandoned)?;
+                            if is_abandoned {
                                 Ok(HolonReference::Staged(staged_reference.clone()))
                             } else {
                                 Err(HolonError::InvalidHolonReference(
-                                    "ExecutionHolons::lookup: expected STAGED (not committed)"
-                                        .to_string(),
+                                    "ExecutionHolons::lookup: expected ABANDONED".to_string(),
                                 ))
                             }
                         } else {
-                            if expected_state == ExpectedState::Saved {
-                                if is_committed {
+                            if expected_state == ExpectedState::Staged {
+                                if !is_committed {
                                     Ok(HolonReference::Staged(staged_reference.clone()))
+                                } else {
+                                    Err(HolonError::InvalidHolonReference(
+                                        "ExecutionHolons::lookup: expected STAGED (not committed)"
+                                            .to_string(),
+                                    ))
+                                }
+                            } else {
+                                if expected_state == ExpectedState::Saved {
+                                    if is_committed {
+                                        Ok(HolonReference::Staged(staged_reference.clone()))
+                                    } else {
+                                        Err(HolonError::InvalidHolonReference(
+                                            "ExecutionHolons::lookup: expected SAVED (committed)"
+                                                .to_string(),
+                                        ))
+                                    }
                                 } else {
                                     Err(HolonError::InvalidHolonReference(
                                         "ExecutionHolons::lookup: expected SAVED (committed)"
                                             .to_string(),
                                     ))
                                 }
-                            } else {
-                                Err(HolonError::InvalidHolonReference(
-                                    "ExecutionHolons::lookup: expected SAVED (committed)"
-                                        .to_string(),
-                                ))
                             }
                         }
                     }

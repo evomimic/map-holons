@@ -5,7 +5,6 @@ use tracing::{debug, info};
 use holons_prelude::prelude::*;
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
-use holons_core::core_shared_objects::ReadableHolonState; // Eliminate this dependency
 
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
@@ -101,6 +100,8 @@ pub async fn execute_stage_new_version(
         Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
         "Predecessor relationship did not match expected"
     );
+
+    let original_holon_key = transient_reference.key(context).unwrap().unwrap();
 
     // 8. Verify new version's key matches original holon's key and that it is the ONLY staged
     // holon whose key matches.
