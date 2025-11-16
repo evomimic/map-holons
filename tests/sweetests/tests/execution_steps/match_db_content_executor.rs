@@ -22,10 +22,10 @@ pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, state
     let context = ctx_arc.as_ref();
 
     // Iterate through all created holons and verify them in the database
-    for (_key, expected_holon) in state.holons().by_temporary_id.clone() {
+    for (_key, resolved_reference) in state.holons().by_temporary_id.clone() {
         // 1. LOOKUP — get the input handle for the source token
         let source_reference =
-            state.lookup_holon_reference(context, &expected_holon.source_token).unwrap();
+            state.lookup_holon_reference(context, &resolved_reference.source_token).unwrap();
         let holon_id = source_reference.holon_id(context).expect("Failed to get HolonId");
 
         // 2. BUILD — get_holon_by_id DanceRequest

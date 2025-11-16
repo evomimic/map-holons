@@ -1,6 +1,7 @@
 // sweetests/src/harness/test_case/test_case.rs (excerpt)
 
 use crate::{harness::fixtures_support::TestReference, FixtureHolons};
+use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
 use holons_prelude::prelude::*;
 
 /// Public test case type that collects steps to be executed later.
@@ -9,6 +10,22 @@ pub struct DancesTestCase {
     pub name: String,
     pub description: String,
     pub steps: Vec<DanceTestStep>,
+    pub test_session_state: TestSessionState,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TestSessionState {
+    transient_holons: SerializableHolonPool,
+}
+
+impl TestSessionState {
+    pub fn set_transient_holons(&mut self, transient_holons: SerializableHolonPool) {
+        self.transient_holons = transient_holons;
+    }
+
+    pub fn get_transient_holons(&self) -> &SerializableHolonPool {
+        &self.transient_holons
+    }
 }
 
 /// - The source *token* is a TestReference that is *embedded as input* for the step. Executors will look it up at runtime
@@ -17,25 +34,64 @@ pub struct DancesTestCase {
 ///   to produce any “promise” tokens you want to chain in the fixture.
 impl DancesTestCase {
     pub fn new<S: Into<String>>(name: S, description: S) -> Self {
-        Self { name: name.into(), description: description.into(), steps: Vec::new() }
+        Self {
+            name: name.into(),
+            description: description.into(),
+            steps: Vec::new(),
+            test_session_state: TestSessionState::default(),
+        }
+    }
+
+    /// Loads the current test_session_state from the fixture_context the given `TestSessionState` instance.
+    ///
+    /// This function exports transient holons from the HolonSpaceManager and injects them into
+    /// the provided `session_state`, ensuring that the outgoing `TestCase` includes
+    /// the latest state from the local context.
+    ///
+    /// # Arguments
+    /// * `fixture_context` - A reference to the `HolonsContextBehavior`, which provides access to the space manager.
+    /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
+    ///
+    /// This function is called automatically within `rs_test` and should not be used directly.
+    pub fn load_test_session_state(&mut self, fixture_context: &dyn HolonsContextBehavior) {
+        let space_manager = fixture_context.get_space_manager();
+        let transient_holons = space_manager.export_transient_holons().unwrap();
+        self.test_session_state.set_transient_holons(transient_holons);
     }
 
     pub fn add_abandon_staged_changes_step(
         &mut self,
-        // fixture_holons: &mut FixtureHolons,
-        source: TestReference,
+        fixture_holons: &mut FixtureHolons,
+        holon_token: &TestReference,
         expected_status: ResponseStatusCode,
-    ) -> Result<(), HolonError> {
-        self.steps.push(DanceTestStep::AbandonStagedChanges { source, expected_status });
-        Ok(())
+    ) -> Result<TestReference, HolonError> {
+        self.steps.push(DanceTestStep::AbandonStagedChanges {
+            holon_token: holon_token.clone(),
+            expected_status,
+        });
+        let abandoned_token = fixture_holons.abandon_staged(holon_token)?;
+        // let staged_source_token = {
+        //     if let Some(key) = key {
+        //         // Mint a staged-intent token indexed by key.
+        //         fixture_holons.add_staged_with_key(holon_token.transient(), key)?
+        //     } else {
+        //         // Mint a staged-intent token without a key.
+        //         fixture_holons.add_staged(holon_token.transient())
+        //     }
+        // };
+        Ok(abandoned_token)
     }
 
     pub fn add_commit_step(
         &mut self,
+        fixture_holons: &mut FixtureHolons,
+        holon_tokens: Vec<TestReference>,
         expected_status: ResponseStatusCode,
-    ) -> Result<(), HolonError> {
+    ) -> Result<Vec<TestReference>, HolonError> {
         self.steps.push(DanceTestStep::Commit { expected_status });
-        Ok(())
+        let saved_tokens = fixture_holons.commit(holon_tokens)?;
+
+        Ok(saved_tokens)
     }
 
     pub fn add_database_print_step(&mut self) -> Result<(), HolonError> {
@@ -114,18 +170,22 @@ impl DancesTestCase {
 
     pub fn add_remove_related_holons_step(
         &mut self,
+        fixture_holons: &mut FixtureHolons,
         source: TestReference, // "owning" source Holon, which owns the Relationship
+        key: Option<MapString>,
         relationship_name: RelationshipName,
         holons_to_remove: Vec<TestReference>,
         expected_status: ResponseStatusCode,
-    ) -> Result<(), HolonError> {
+    ) -> Result<TestReference, HolonError> {
         self.steps.push(DanceTestStep::RemoveRelatedHolons {
-            source,
+            source: source.clone(),
             relationship_name,
             holons_to_remove,
             expected_status,
         });
-        Ok(())
+        let token = fixture_holons.add_token(source, key)?;
+
+        Ok(token)
     }
 
     pub fn add_stage_holon_step(
@@ -140,10 +200,14 @@ impl DancesTestCase {
         let staged_source_token = {
             if let Some(key) = key {
                 // Mint a staged-intent token indexed by key.
-                fixture_holons.add_staged_with_key(holon_token.transient(), key)?
+                fixture_holons.add_staged_with_key(
+                    holon_token.transient(),
+                    key,
+                    holon_token.expected_content(),
+                )?
             } else {
                 // Mint a staged-intent token without a key.
-                fixture_holons.add_staged(holon_token.transient())
+                fixture_holons.add_staged(holon_token.transient(), holon_token.expected_content())
             }
         };
 
@@ -163,8 +227,11 @@ impl DancesTestCase {
             expected_status,
         });
         // Mint a staged-intent token indexed by key.
-        let staged_source_token =
-            fixture_holons.add_staged_with_key(source.transient(), new_key)?;
+        let staged_source_token = fixture_holons.add_staged_with_key(
+            source.transient(),
+            new_key,
+            source.expected_content(),
+        )?;
 
         Ok(staged_source_token)
     }
@@ -180,10 +247,14 @@ impl DancesTestCase {
         let staged_source_token = {
             if let Some(key) = key {
                 // Mint a staged-intent token indexed by key.
-                fixture_holons.add_staged_with_key(source.transient(), key)?
+                fixture_holons.add_staged_with_key(
+                    source.transient(),
+                    key,
+                    source.expected_content(),
+                )?
             } else {
                 // Mint a staged-intent token without a key.
-                fixture_holons.add_staged(source.transient())
+                fixture_holons.add_staged(source.transient(), source.expected_content())
             }
         };
 
@@ -205,7 +276,7 @@ impl DancesTestCase {
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
     AbandonStagedChanges {
-        source: TestReference,
+        holon_token: TestReference,
         expected_status: ResponseStatusCode,
     },
     AddRelatedHolons {
@@ -268,11 +339,11 @@ pub enum DanceTestStep {
 impl core::fmt::Display for DanceTestStep {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            DanceTestStep::AbandonStagedChanges { source, expected_status } => {
+            DanceTestStep::AbandonStagedChanges { holon_token, expected_status } => {
                 write!(
                     f,
                     "Marking Holon at ({:?}) as Abandoned, expecting ({:?})",
-                    source, expected_status
+                    holon_token, expected_status
                 )
             }
             DanceTestStep::AddRelatedHolons {

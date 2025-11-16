@@ -20,7 +20,9 @@
 //!   harness internals can inspect or mutate them.
 
 use core_types::TemporaryId;
-use holons_core::reference_layer::TransientReference;
+use holons_core::{
+    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
+};
 
 /// Declarative intent for a test-scoped reference.
 ///
@@ -35,6 +37,7 @@ use holons_core::reference_layer::TransientReference;
 ///   and may also be enforced during execution when resolving tokens.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ExpectedState {
+    Abandoned,
     Transient,
     Staged,
     Saved,
@@ -56,7 +59,8 @@ pub enum ExpectedState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
     transient_reference: TransientReference, // carries the TemporaryId and snapshot
-    expected_state: ExpectedState,           // Transient | Staged | Saved
+    expected_state: ExpectedState,           // Transient | Staged | Saved | Abandoned
+    expected_content: EssentialHolonContent, // Expected essential content, used for comparing expected (fixture) to actual (resolved)
 }
 
 impl TestReference {
@@ -64,8 +68,9 @@ impl TestReference {
     pub(crate) fn new(
         transient_reference: TransientReference,
         expected_state: ExpectedState,
+        expected_content: EssentialHolonContent,
     ) -> Self {
-        Self { transient_reference, expected_state }
+        Self { transient_reference, expected_state, expected_content }
     }
 
     /// Access the underlying transient snapshot (crate-internal).
@@ -81,6 +86,11 @@ impl TestReference {
     /// Access the declarative intent (crate-internal).
     pub(crate) fn expected_state(&self) -> ExpectedState {
         self.expected_state
+    }
+
+    /// Access the declarative intent (crate-internal).
+    pub(crate) fn expected_content(&self) -> &EssentialHolonContent {
+        &self.expected_content
     }
 
     /// Mutate the expected state (crate-internal).

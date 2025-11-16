@@ -24,19 +24,20 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         "stage_new_from_clone",
         "Clone from transient, staged, and saved; mutate staged clones; assert counts+content",
     );
-
-    let fixture_context = init_fixture_context().as_ref();
-
+    let mut expected_count = MapInteger(1);
+    let fixture_context = init_fixture_context();
     let mut fixture_holons = FixtureHolons::new();
 
     // Assert DB starts with 1 (space Holon)
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(expected_count)?;
 
     // ── PHASE A — Clone FROM a fresh TRANSIENT ────────────────────────────────────
     const TRANSIENT_SOURCE_KEY: &str = "book:transient-source";
-    let transient_source = new_holon(fixture_context, MapString::from(TRANSIENT_SOURCE_KEY))?
-        .with_property_value(fixture_context, "TITLE", TRANSIENT_SOURCE_KEY)?
-        .with_property_value(fixture_context, "TYPE", "Book")?;
+    let transient_source =
+        new_holon(fixture_context.as_ref(), MapString::from(TRANSIENT_SOURCE_KEY))?;
+        // TODO: change
+            // .with_property_value(fixture_context.as_ref(), "TITLE", TRANSIENT_SOURCE_KEY)?
+            // .with_property_value(fixture_context.as_ref(), "TYPE", "Book")?;
 
     // Mint a transient-intent token and index it by key so we can refer to it later.
     let transient_source_token = fixture_holons
@@ -57,7 +58,11 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_with_properties_step(clone_from_transient_staged, p, ResponseStatusCode::OK)?;
 
     // ── PHASE B — Setup canonical holons, then clone FROM STAGED ──────────────────
-    setup_book_author_steps_with_context(fixture_context, &mut test_case, &mut fixture_holons)?;
+    setup_book_author_steps_with_context(
+        fixture_context.as_ref(),
+        &mut test_case,
+        &mut fixture_holons,
+    )?;
 
     // The helper staged the canonical Book and indexed it under BOOK_KEY.
     let book_staged_token = fixture_holons
@@ -81,9 +86,9 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // Commit the first two staged clones and flip expectations in the fixture.
-    test_case.add_commit_step(ResponseStatusCode::OK)?;
-    fixture_holons.commit();
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    let saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    expected_count.0 += saved_holons.len() as i64;
+    test_case.add_ensure_database_count_step(expected_count)?;
 
     // ── PHASE C — Clone FROM SAVED (same token, now expected Saved) ───────────────
     // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
@@ -105,13 +110,13 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // Commit the third staged clone; flip fixture expectations; assert counts again.
-    test_case.add_commit_step(ResponseStatusCode::OK)?;
-    fixture_holons.commit();
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    let saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    expected_count.0 += saved_holons.len() as i64;
+    test_case.add_ensure_database_count_step(expected_count)?;
 
     // Final saved-content match derived from fixture expectations.
     // (Executor will compare expected vs. actual for each expected-saved token.)
-    test_case.add_match_saved_content_step(fixture_holons.expected_saved_references())?;
+    test_case.add_match_saved_content_step(ResponseStatusCode::OK)?;
 
     Ok(test_case)
 }

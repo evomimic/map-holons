@@ -48,7 +48,7 @@ pub async fn execute_add_related_holons(
     );
     info!("Success! add_related_holons DanceResponse matched expected");
 
-    // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
+    // 5. ASSERT — on success, ...
     //            Compare essential content
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),

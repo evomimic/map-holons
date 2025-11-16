@@ -20,20 +20,12 @@ pub async fn execute_with_properties(
     info!("--- TEST STEP: Updating Holon with Properties ---");
 
     // 1. LOOKUP — get the input handle for the source token
-    let source_reference: HolonReference =
+    let mut source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 
     // 2. BUILD — with_properties DanceRequest
 
-    // 3. Create the expected holon by applying the property updates
-    let mut expected_holon = original_holon.clone();
-    for (property_name, base_value) in properties.clone() {
-        expected_holon
-            .with_property_value(context, property_name.clone(), base_value.clone())
-            .expect("Failed to add property value to expected holon");
-    }
-
-    let request = build_with_properties_dance_request(source_reference, properties.clone())
+    let request = build_with_properties_dance_request(source_reference.clone(), properties.clone())
         .expect("Failed to build with_properties request");
 
     debug!("Dance Request: {:#?}", request);
@@ -50,6 +42,14 @@ pub async fn execute_with_properties(
         response.description
     );
 
+    // 5. ASSERT -
+    // Create the expected holon by applying the property updates
+    for (property_name, base_value) in properties.clone() {
+        source_reference
+            .with_property_value(context, property_name.clone(), base_value.clone())
+            .expect("Failed to add property value to expected holon");
+    }
+
    let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
@@ -58,7 +58,7 @@ pub async fn execute_with_properties(
     };
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
-    // TODO: fix
+
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Updated holon's essential content matched expected");
 

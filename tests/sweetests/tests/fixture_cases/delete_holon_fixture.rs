@@ -43,7 +43,7 @@ pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, staged_tokens, ResponseStatusCode::OK)?;
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(staged_token.clone(), ResponseStatusCode::OK)?;

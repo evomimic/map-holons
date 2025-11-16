@@ -1,12 +1,16 @@
+use holons_test::{DancesTestCase, FixtureHolons, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{error, info};
 
 use holons_prelude::prelude::*;
 use rstest::*;
 
-use crate::helpers::{
-    init_fixture_context, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY,
-    PUBLISHER_KEY,
+use crate::{
+    fixture_cases::setup_book_author_steps_with_context,
+    helpers::{
+        init_fixture_context, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY,
+        PUBLISHER_KEY,
+    },
 };
 
 #[fixture]
@@ -27,7 +31,8 @@ pub async fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase
 
     // let _ = holochain_trace::test_run();
 
-    let fixture_context = init_fixture_context().await;
+    let fixture_context = init_fixture_context();
+    let mut fixture_holons = FixtureHolons::new();
 
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
     let mut expected_count: i64 = 1;
@@ -37,8 +42,11 @@ pub async fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons
-    let relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+    let relationship_name = setup_book_author_steps_with_context(
+        &*fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+    )?;
 
     // Test Holons are staged (but never committed) in the fixture_context's Nursery
     // This allows them to be assigned StagedReferences and also retrieved by either index or key
@@ -112,14 +120,14 @@ pub async fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase
     expected_count += staged_count(&*fixture_context).unwrap();
 
     //  COMMIT  //
-    test_case.add_commit_step()?;
+    test_case.add_commit_step(ResponseStatusCode::OK)?;
 
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  QUERY RELATIONSHIPS  //
     let query_expression = QueryExpression::new(relationship_name.clone());
     test_case.add_query_relationships_step(
-        MapString(BOOK_KEY.to_string()),
+        source_token,
         query_expression,
         ResponseStatusCode::OK,
     )?;
