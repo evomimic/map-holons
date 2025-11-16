@@ -159,19 +159,23 @@ async fn rstest_dance_tests(
                 execute_ensure_database_count(&mut test_state, expected_count).await
             }
             DanceTestStep::LoadHolons {
-                bundle,
+                set,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
                 expect_errors,
+                expect_total_bundles,
+                expect_total_loader_holons,
             } => {
                 execute_load_holons(
                     &mut test_state,
-                    bundle,
+                    set,
                     expect_staged,
                     expect_committed,
                     expect_links_created,
                     expect_errors,
+                    expect_total_bundles,
+                    expect_total_loader_holons,
                 )
                 .await
             }

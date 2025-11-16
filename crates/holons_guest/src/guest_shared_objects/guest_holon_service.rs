@@ -335,7 +335,7 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<TransientReference, HolonError> {
         // Construct controller and delegate to load_bundle()
         let mut controller = HolonLoaderController::new();
-        controller.load_bundle(context, bundle)
+        controller.load_set(context, bundle)
     }
 
     /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining

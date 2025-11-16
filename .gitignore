@@ -32,6 +32,7 @@ Cargo.lock
 # OS / IDE cruft
 .DS_Store
 .idea/
+.venv/
 .vscode/
 .running
 settings.json

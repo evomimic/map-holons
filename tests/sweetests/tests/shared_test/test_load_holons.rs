@@ -6,20 +6,13 @@ use holons_core::reference_layer::{
 use holons_prelude::prelude::*;
 use tracing::info;
 
-// temporary workspace workaround to ensure the holons_loader crate is linked in tests
-#[allow(dead_code)]
-fn _build_anchor_holons_loader() {
-    // Touching something stable so Cargo links the loader crate.
-    let _ = holons_loader::CRATE_LINK; // e.g., an inert constant
-}
-
 /// Read an integer property from a transient response holon.
 fn read_integer_property(
     context: &dyn HolonsContextBehavior,
     response: &TransientReference,
     property: CorePropertyTypeName,
 ) -> Result<i64, HolonError> {
-    match response.property_value(context, &property.as_property_name())? {
+    match response.property_value(context, &property)? {
         Some(PropertyValue::IntegerValue(MapInteger(i))) => Ok(i),
         other => Err(HolonError::InvalidParameter(format!(
             "Expected integer value for {:?}, got {:?}",
@@ -43,9 +36,9 @@ fn dump_full_response(
             // Sort by property name for stable diffs
             entries.sort_by(|(k1, _), (k2, _)| k1.0 .0.cmp(&k2.0 .0));
 
-            for (pname, pvalue) in entries {
-                let name = pname.0 .0;
-                let val_str = match pvalue {
+            for (p_name, p_value) in entries {
+                let name = p_name.0 .0;
+                let val_str = match p_value {
                     PropertyValue::StringValue(s) => format!("String({})", s.0),
                     PropertyValue::IntegerValue(MapInteger(i)) => format!("Int({})", i),
                     PropertyValue::BooleanValue(b) => format!("Bool({})", b.0),
@@ -61,18 +54,20 @@ fn dump_full_response(
 
     // Pull out common “loader” properties for quick eyeballing
     out.push_str("----- important (best-effort) -----\n");
-    for pname in [
+    for p_name in [
         CorePropertyTypeName::ErrorCount.as_property_name(),
         CorePropertyTypeName::HolonsStaged.as_property_name(),
         CorePropertyTypeName::HolonsCommitted.as_property_name(),
         CorePropertyTypeName::LinksCreated.as_property_name(),
         CorePropertyTypeName::DanceSummary.as_property_name(),
+        CorePropertyTypeName::TotalBundles.as_property_name(),
+        CorePropertyTypeName::TotalLoaderHolons.as_property_name(),
     ]
     .iter()
     {
-        if let Ok(val_opt) = response.property_value(context, pname) {
+        if let Ok(val_opt) = response.property_value(context, p_name) {
             if let Some(val) = val_opt {
-                out.push_str(&format!("  {} => {:?}\n", pname.0 .0, val));
+                out.push_str(&format!("  {} => {:?}\n", p_name.0 .0, val));
             }
         }
     }
@@ -91,7 +86,7 @@ fn dump_error_holons_from_response(
     let mut out = String::new();
 
     // Try to follow the relationship. If it doesn't exist, just return empty.
-    let rel_name = CoreRelationshipTypeName::HasLoadError.as_relationship_name();
+    let rel_name = CoreRelationshipTypeName::HasLoadError;
     let collection_handle = match response.related_holons(context, &rel_name) {
         Ok(c) => c,
         Err(_) => return out, // no error holons, or link not present
@@ -151,17 +146,19 @@ fn dump_error_holons_from_response(
 /// way to see *why* Pass-2 said `UnprocessableEntity`.
 pub async fn execute_load_holons(
     test_state: &mut DanceTestExecutionState,
-    bundle: TransientReference,
+    load_set_reference: TransientReference,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
     expect_errors: MapInteger,
+    expect_total_bundles: MapInteger,
+    expect_total_loader_holons: MapInteger,
 ) {
     info!("--- TEST STEP: Load Holons ---");
     let context = test_state.context();
 
     // Build the DanceRequest for the loader.
-    let request = build_load_holons_dance_request(bundle)
+    let request = build_load_holons_dance_request(load_set_reference)
         .unwrap_or_else(|e| panic!("build_load_holons_dance_request() failed: {e:?}"));
 
     // Initiate the dance using the test harness (TrustChannel-backed initiator).
@@ -193,6 +190,16 @@ pub async fn execute_load_holons(
     let actual_error_count =
         read_integer_property(context, &response_reference, CorePropertyTypeName::ErrorCount)
             .unwrap_or_else(|ev| panic!("read ErrorCount failed: {ev:?}")) as i64;
+    let actual_total_bundles =
+        read_integer_property(context, &response_reference, CorePropertyTypeName::TotalBundles)
+            .unwrap_or_else(|e| panic!("read TotalBundles failed: {e:?}")) as i64;
+    let actual_total_loader_holons = read_integer_property(
+        context,
+        &response_reference,
+        CorePropertyTypeName::TotalLoaderHolons,
+    )
+    .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}"))
+        as i64;
 
     // Always print any attached error holons if there are any.
     if actual_error_count > 0 {
@@ -208,14 +215,16 @@ pub async fn execute_load_holons(
         || actual_committed != expect_committed.0
         || actual_links_created != expect_links_created.0
         || actual_error_count != expect_errors.0
+        || actual_total_bundles != expect_total_bundles.0
+        || actual_total_loader_holons != expect_total_loader_holons.0
     {
         info!(
-            "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}",
-            expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0,
+            "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
+            expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
         );
         info!(
-            "[loader-test]   ACTUAL: staged={}, committed={}, links_created={}, errors={}",
-            actual_staged, actual_committed, actual_links_created, actual_error_count,
+            "[loader-test]   ACTUAL: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
+            actual_staged, actual_committed, actual_links_created, actual_error_count, actual_total_bundles, actual_total_loader_holons
         );
         info!("{}", dump_full_response(context, &response_reference));
         // we already printed error holons above if any existed
@@ -241,5 +250,15 @@ pub async fn execute_load_holons(
         actual_error_count, expect_errors.0,
         "Expected ErrorCount={}, got {}",
         expect_errors.0, actual_error_count
+    );
+    assert_eq!(
+        actual_total_bundles, expect_total_bundles.0,
+        "Expected TotalBundles={}, got {}",
+        expect_total_bundles.0, actual_total_bundles
+    );
+    assert_eq!(
+        actual_total_loader_holons, expect_total_loader_holons.0,
+        "Expected TotalLoaderHolons={}, got {}",
+        expect_total_loader_holons.0, actual_total_loader_holons
     );
 }

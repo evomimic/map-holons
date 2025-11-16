@@ -70,6 +70,7 @@ impl ToRelationshipName for &RelationshipName {
 pub enum CoreRelationshipTypeName {
     BundleMembers,
     ComponentOf,
+    Contains,
     Dependents,
     DependsOn,
     DescribedBy,
