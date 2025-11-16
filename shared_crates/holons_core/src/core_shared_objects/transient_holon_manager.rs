@@ -4,7 +4,7 @@ use std::{
 };
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, PropertyMap, PropertyName, TemporaryId};
+use core_types::{HolonError, PropertyMap, TemporaryId};
 // use tracing::{debug};
 use crate::{
     core_shared_objects::{

@@ -1,0 +1,32 @@
+#[profile.dev]
+#opt-level = "z"
+
+#[profile.release]
+#opt-level = "z"
+
+# WASM Workspace crates
+[workspace]
+resolver = "2"
+members = [
+    "zomes/coordinator/holons",
+    "zomes/integrity/holons_integrity",
+    "crates/holons_guest",
+    "crates/holons_guest_integrity",
+]
+
+[workspace.dependencies]
+# Happ internal dependencies
+holons = { path = "zomes/coordinator/holons" }
+holons_integrity = { path = "zomes/integrity/holons_integrity" }
+holons_guest = { path = "crates/holons_guest" }
+holons_guest_integrity = { path = "crates/holons_guest_integrity" }
+
+#IMPORTANT: no workspace dependencies allowed for WASM crates.. to avoid build breakage,
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+lto = true          # Enable link-time optimization
+codegen-units = 1   # Better optimization
+
+[profile.dev]
+opt-level = 1    # Faster WASM dev builds

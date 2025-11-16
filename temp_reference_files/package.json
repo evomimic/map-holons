@@ -1,0 +1,56 @@
+{
+  "name": "map-project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "happ",
+    "happ/tests/tryorama",
+    "runtime"
+  ],
+  "scripts": {
+    "all-tests": "cargo test && npm run sweetest",
+    "build": "npm run build:happ -w happ && npm run build -w runtime",
+    "//": "───────────────────────────────",
+    "//": "Dependency consistency checks",
+    "//": "───────────────────────────────",
+    "check:normalize": "python3 scripts/normalize_cargo_deps.py --dry-run",
+    "check:shared": "python3 scripts/normalize_shared_crates.py --dry-run",
+    "check:explicit": "python3 scripts/sync_deps_explicit.py --dry-run",
+    "check:deps": "npm run check:normalize && npm run check:shared && npm run check:explicit",
+    "//": "───────────────────────────────",
+    "//": "Build and run",
+    "//": "───────────────────────────────",
+    "build:happ": "npm run check:deps && npm run build:happ -w happ",
+    "build:runtime": "npm run check:deps && npm run build:runtime -w runtime",
+    "build:all": "npm run check:deps && npm run build:happ -w happ && npm run build -w runtime",
+    "clean": "npx rimraf 'target/**/build/*/out' target Cargo.lock flake.lock tests/**/target tests/**/Cargo.lock shared_crates/**/target shared_crates/**/Cargo.lock happ/zomes/**/target zomes/**/Cargo.lock workspaces/**/target workspaces/**/Cargo.lock && cargo clean",
+    "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/tryorama/node_modules",
+    "cb": "clear && npm run build:happ",
+    "ct": "clear && npm run sweetest",
+    "sweetest": "npm run build:happ && npm run sweet:test",
+    "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
+    "mock": "npm run mock -w ui",
+    "start": "npm run build:happ -w happ && npm run start -w runtime",
+    "local-services": "hc run-local-services -b 54000 -s 55000",
+    "network": "npm run build:happ && UI_PORT=4200 concurrently \"npm run local-services\" \"npm run start:agent\"",
+    "start:agent": "HC_PORT=$(get-port) HC_ADMIN_PORT=$(get-port) concurrently \"npm run launch:happ\" \"npm start -w ui\"",
+    "start:runtime": "npm run start -w runtime",
+    "launch:happ": "hc s clean && echo \"pass\" | RUST_LOG=warn hc launch --piped -n $AGENTS workdir/map-holons.happ --ui-port $UI_PORT network -b http://127.0.0.1:54000 webrtc ws://127.0.0.1:55000",
+    "test-happ": "npm test -w happ/tests/tryorama",
+    "test-ui-ignore": "AGENTS=1 concurrently -k \"UI_PORT=1420 npm --prefix ui run dev\" \"npm run launch -w runtime\"",
+    "set-holochain-log": "export H_LOG=holochain=warn,holochain_sqlite=warn,kitsune_p2p_types=warn,holochain::core::queue_consumer=warn",
+    "sweetest:debug": "export RUST_LOG=info && export WASM_LOG=debug && npm run build:happ && cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
+    "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && clear && npm run sweet:test",
+    "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive"
+  },
+  "devDependencies": {
+    "@holochain-playground/cli": "^0.300.1",
+    "concurrently": "^9.1.2",
+    "get-port-cli": "^3.0.0",
+    "rimraf": "^6.0.1"
+  },
+  "engines": {
+    "npm": ">=7.0.0"
+  }
+}

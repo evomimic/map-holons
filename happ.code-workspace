@@ -1,0 +1,36 @@
+{
+    "folders": [
+        {
+            "path": "."
+        },
+        {
+            "path": "happ"
+        }
+    ],
+    "settings": {
+        "terminal.integrated.cwd": "${workspaceFolder}/happ",
+        "explorer.compactFolders": false,
+		"explorer.autoReveal": false,
+        "workbench.colorCustomizations": {
+            "activityBar.activeBackground": "#7a5c07",
+            "activityBar.background": "#7a5c07",
+            "activityBar.foreground": "#e0e0e0",
+            "activityBar.inactiveForeground": "#e0e0e0c9",
+            "activityBarBadge.background": "#9a7209",
+            "activityBarBadge.foreground": "#e0e0e0",
+            "commandCenter.border": "#e0e0e099",
+            "sash.hoverBorder": "#7a5c07",
+            "statusBar.background": "#7a5c07",
+            "statusBar.foreground": "#e0e0e0",
+            "statusBarItem.hoverBackground": "#9a7209",
+            "statusBarItem.remoteBackground": "#7a5c07",
+            "statusBarItem.remoteForeground": "#e0e0e0",
+            "titleBar.activeBackground": "#5a4405",
+            "titleBar.activeForeground": "#e0e0e0",
+            "titleBar.inactiveBackground": "#7a5c0799",
+            "titleBar.inactiveForeground": "#e0e0e099"
+        },
+        "files.exclude": {
+        }
+    }
+}

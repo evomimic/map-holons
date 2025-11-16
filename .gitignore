@@ -44,6 +44,3 @@ settings.json
 # Keep Cargo config overrides
 .cargo/*
 !.cargo/config.toml
-
-# Legacy / deprecated directories
-/shared_crates/holons_core_old/

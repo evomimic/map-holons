@@ -5,8 +5,8 @@ use async_trait::async_trait;
 use std::fmt::Debug;
 use crate::dances::{DanceRequest, DanceResponse};
 
-#[async_trait(?Send)]
-pub trait ConductorDanceCaller: Debug {
+#[async_trait]
+pub trait ConductorDanceCaller: Send + Sync + Debug {
     /// Sends a `DanceRequest` and returns a `DanceResponse`.
     ///
     /// Implementations of this trait define how dance requests are executed in different

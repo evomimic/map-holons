@@ -1,0 +1,115 @@
+<div *ngIf="showForm" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+  <div
+    class="bg-white rounded-lg shadow-xl p-8 w-1/2"
+    [ngClass]="{
+      'border-blue-800': derivationOrigin === 'content',
+      'border-orange-800': derivationOrigin === 'meta'
+    }"
+    style="min-width: 500px; border-width: 4px;"
+  >
+    <h2
+      class="text-2xl font-semibold mb-6 pb-4 border-b"
+      [ngClass]="{
+        'text-blue-800': derivationOrigin === 'content',
+        'text-orange-800': derivationOrigin === 'meta',
+        'border-blue-200': derivationOrigin === 'content',
+        'border-orange-200': derivationOrigin === 'meta'
+      }"
+    >
+      Create New Space
+    </h2>
+    <form (ngSubmit)="onSubmit()" #spaceForm="ngForm" class="space-y-6">
+    
+      <!-- Space Name & Type -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2">
+          <label for="spaceName" class="block text-sm font-medium text-gray-300">Space Name</label>
+          <input
+            type="text"
+            id="spaceName"
+            placeholder="e.g., My Project Holons"
+            [(ngModel)]="newSpace.name"
+            name="name"
+            required
+            class="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-lg shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm placeholder-gray-400">
+        </div>
+        <div>
+          <label for="spaceType" class="block text-sm font-medium text-gray-300">Space Type</label>
+          <select
+            id="spaceType"
+            [(ngModel)]="newSpace.space_type"
+            name="type"
+            required
+            class="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-lg shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+            <option [ngValue]="null" disabled>Select a type...</option>
+            <option value="Content">Content Space</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label for="spaceDescription" class="block text-sm font-medium text-gray-300">Description</label>
+        <textarea
+          id="spaceDescription"
+          rows="3"
+          placeholder="A brief description of what this space is for."
+          [(ngModel)]="newSpace.description"
+          name="description"
+          required
+          class="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-lg shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm placeholder-gray-400"></textarea>
+      </div>
+
+      <!-- Origin Space ID -->
+      <div>
+        <label for="origin_space_id" class="block text-sm font-medium text-gray-300">Origin Space ID</label>
+        <input
+          type="text"
+          id="origin_space_id"
+          placeholder="Leave blank to create a new home space"
+          [(ngModel)]="newSpace.origin_space_id"
+          name="origin_space_id"
+          class="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-lg shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm placeholder-gray-400">
+      </div>
+
+      <!-- Metatype Reference & Metadata -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label for="metatype_reference" class="block text-sm font-medium text-gray-300">Metatype Reference</label>
+          <select
+            id="metatype_reference"
+            name="metatype_reference"
+            class="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-lg shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+            <option [ngValue]="null" disabled>Select a metatype...</option>
+          </select>
+        </div>
+        <div>
+          <label for="metadata" class="block text-sm font-medium text-gray-300">Metadata (JSON)</label>
+          <textarea
+            id="metadata"
+            rows="3"
+            placeholder='{ "theme": "dark" }'
+            [(ngModel)]="metadataJson"
+            name="metadata"
+            class="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-lg shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm placeholder-gray-400"></textarea>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="flex justify-end pt-4">
+        <button
+          type="button"
+          (click)="onCancel()"
+          class="mr-4 inline-flex justify-center py-2 px-4 border border-gray-600 shadow-sm text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          [disabled]="!spaceForm.form.valid"
+          class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200">
+          Create Space
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

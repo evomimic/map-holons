@@ -21,5 +21,4 @@ holochain_serialized_bytes = "*"
 
 
 # MAP Dependencies
-integrity_core_types = {path = "../../../shared_crates/type_system/integrity_core_types"}
-
+integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }

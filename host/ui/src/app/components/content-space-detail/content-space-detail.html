@@ -1,0 +1,114 @@
+<div *ngIf="space() as currentSpace" class="text-gray-200">
+  <div>
+    <h2 class="text-2xl font-semibold leading-tight">{{ currentSpace?.name }}</h2>
+    <p>{{ currentSpace?.description }}</p>
+    <p>ID: {{ currentSpace?.id }}</p>
+    <p>Type: {{ currentSpace?.space_type }}</p>
+    <p>Created At: {{ currentSpace?.created_at | date }}</p>
+  </div>
+
+  <!-- Staged Holons Table -->
+  <div class="mt-8">
+    <h3 class="text-lg font-semibold mb-2">Staged Holons ({{ displayStagedHolons().length }})</h3>
+    <div class="overflow-x-auto rounded-lg shadow mb-6 bg-blue-900">
+      <table class="min-w-full">
+        <thead class="bg-blue-800">
+          <tr>
+            <th class="p-3 text-left">ID</th>
+            <th class="p-3 text-left">Key</th>
+            <th class="p-3 text-left">Title</th>
+            <th class="p-3 text-left">Description</th>
+            <th class="p-3 text-left">Created At</th>
+            <th class="p-3 text-left">Properties</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (displayStagedHolons().length > 0) {
+            @for (holon of displayStagedHolons(); track holon.id) {
+              <tr class="border-b border-blue-700">
+                <td class="p-3">{{ holon.id }}</td>
+                <td class="p-3 font-mono text-xs text-blue-300">{{ extractKeyFromPropertyMap(holon.propertyMap) }}</td>
+                <td class="p-3">{{ holon.title }}</td>
+                <td class="p-3">{{ holon.description }}</td>
+                <td class="p-3">{{ holon.createdAt | date }}</td>
+                <td class="p-3 w-32">
+                  <div class="relative group">
+                    <div class="line-clamp-3 text-xs cursor-help text-gray-400 group-hover:text-white transition">
+                      {{ holon.propertyMap | json }}
+                    </div>
+                    <div class="invisible group-hover:visible fixed bg-gray-800 border border-gray-600 rounded p-3 z-50 w-96 shadow-2xl pointer-events-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                      <pre class="whitespace-pre-wrap text-xs text-gray-200">{{ holon.propertyMap | json }}</pre>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr>
+              <td colspan="6" class="p-3 text-center text-gray-400">No staged holons found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <button (click)="showCreateHolonForm = true" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+      Create New Holon
+    </button>
+    @if (displayStagedHolons().length > 0) {
+        <button (click)="commitStagedHolons()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+          Commit Staged Holons ({{ displayStagedHolons().length }})
+        </button>
+      }
+  </div>
+
+  <!-- Committed Holons Table -->
+  <div class="mt-10">
+    <h3 class="text-lg font-semibold mb-2">Committed Holons ({{ displayCommittedHolons().length }})</h3>
+    <div class="overflow-x-auto rounded-lg shadow bg-green-900">
+      <table class="min-w-full">
+        <thead class="bg-green-800">
+          <tr>
+            <th class="p-3 text-left">Saved ID</th>
+            <th class="p-3 text-left">Title</th>
+            <th class="p-3 text-left">Description</th>
+            <th class="p-3 text-left">Created At</th>
+            <th class="p-3 text-left">Properties</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (displayCommittedHolons().length > 0) {
+            @for (holon of displayCommittedHolons(); track holon.id) {
+              <tr class="border-b border-green-700">
+                <td class="p-3 font-mono text-xs">{{ holon.id }}</td>
+                <td class="p-3">{{ holon.title }}</td>
+                <td class="p-3">{{ holon.description }}</td>
+                <td class="p-3">{{ holon.createdAt | date }}</td>
+                <td class="p-3 w-32">
+                  <div class="group relative">
+                    <div class="line-clamp-3 text-xs cursor-help text-gray-400 group-hover:text-white transition">
+                      {{ holon.propertyMap | json }}
+                    </div>
+                    <div class="invisible group-hover:visible fixed bg-gray-800 border border-gray-600 rounded p-3 z-50 w-96 shadow-2xl pointer-events-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                      <pre class="whitespace-pre-wrap text-xs text-gray-200">{{ holon.propertyMap | json }}</pre>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr>
+              <td colspan="5" class="p-3 text-center text-gray-400">No committed holons found.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Reusable Create Holon Form -->
+<app-holon-form
+  *ngIf="showCreateHolonForm"
+  (formClosed)="showCreateHolonForm = false"
+  (holonCreated)="handleHolonCreated($event)">
+</app-holon-form>
