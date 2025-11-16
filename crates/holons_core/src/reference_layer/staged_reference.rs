@@ -72,6 +72,18 @@ impl StagedReference {
         StagedReference { id: id.clone() }
     }
 
+    /// Retrieves the underlying Holon handle for commit operations.
+    ///
+    /// This method simply delegates to the internal `get_rc_holon()` and exists
+    /// so that guest commit functions can obtain the referenced holon for
+    /// persistence.  It will later be restricted to the `guest` feature.
+    pub fn get_holon_to_commit(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
+        self.get_rc_holon(context)
+    }
+
     /// Retrieves a shared reference to the holon with interior mutability.
     ///
     /// # Arguments

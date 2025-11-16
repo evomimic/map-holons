@@ -28,11 +28,12 @@ pub async fn execute_add_related_holons(
     info!("--- TEST STEP: Add Related Holons ---");
 
     // 1. Get the context from test_state
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // 2. Build the DanceRequest (state is handled inside dance_call)
     let references_to_add = test_state
-        .resolve_test_reference_vector(&holons_to_add)
+        .resolve_test_reference_vector(context, &holons_to_add)
         .expect("Failed to resolve one or more TestReferences in execute_add_related_holons");
 
     let request = build_add_related_holons_dance_request(

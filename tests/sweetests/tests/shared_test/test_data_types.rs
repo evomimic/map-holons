@@ -1,7 +1,6 @@
 use derive_new::new;
 
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
-use holons_core::core_shared_objects::Holon;
 use holons_prelude::prelude::*;
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -60,7 +59,7 @@ pub const EDITOR_FOR: &str = "EditorFor";
 #[derive(Debug)]
 pub struct DanceTestExecutionState {
     pub context: Arc<dyn HolonsContextBehavior>,
-    pub created_holons: BTreeMap<MapString, Holon>,
+    pub created_holons: BTreeMap<MapString, HolonReference>,
 }
 
 #[derive(Clone, Debug)]
@@ -239,8 +238,8 @@ impl DanceTestExecutionState {
     pub fn new(test_context: Arc<dyn HolonsContextBehavior>) -> Self {
         DanceTestExecutionState { context: test_context, created_holons: BTreeMap::new() }
     }
-    pub fn context(&self) -> &dyn HolonsContextBehavior {
-        &*self.context
+    pub fn context(&self) -> Arc<dyn HolonsContextBehavior> {
+        self.context.clone()
     }
 
     /// Converts a vector of [`HolonReference`]s into a vector of [`TestReference`]s.
@@ -280,7 +279,7 @@ impl DanceTestExecutionState {
             })
             .collect()
     }
-    pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<Holon> {
+    pub fn get_created_holon_by_key(&self, key: &MapString) -> Option<HolonReference> {
         self.created_holons.get(key).cloned()
     }
 
@@ -331,6 +330,7 @@ impl DanceTestExecutionState {
 
     pub fn resolve_test_reference(
         &self,
+        context: &dyn HolonsContextBehavior,
         test_ref: &TestReference,
     ) -> Result<HolonReference, HolonError> {
         match test_ref {
@@ -348,14 +348,14 @@ impl DanceTestExecutionState {
                     ))
                 })?;
 
-                let holon_id = HolonId::from(holon.holon_id().map_err(|e| {
+                let holon_id = HolonId::from(holon.holon_id(context).map_err(|e| {
                     HolonError::InvalidHolonReference(format!(
                         "Couldn't resolve TestReference for SavedHolon({}): {}",
                         key, e
                     ))
                 })?);
 
-                Ok(HolonReference::from_id(holon_id))
+                Ok(holon_id.into())
             }
         }
     }
@@ -376,9 +376,10 @@ impl DanceTestExecutionState {
     ///
     pub fn resolve_test_reference_vector(
         &self,
+        context: &dyn HolonsContextBehavior,
         test_refs: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
-        test_refs.iter().map(|test_ref| self.resolve_test_reference(test_ref)).collect()
+        test_refs.iter().map(|test_ref| self.resolve_test_reference(context, test_ref)).collect()
     }
 }
 

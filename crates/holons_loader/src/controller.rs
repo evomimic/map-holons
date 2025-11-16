@@ -302,9 +302,30 @@ impl HolonLoaderController {
         // - All staged nursery holons are attempted.
         // - Abandoned are not saved; they appear in `abandoned_holons`.
         // - If saved + abandoned != commits_attempted, then errors occurred.
-        let holons_committed = commit_response.saved_holons.len() as i64;
-        let holons_abandoned = commit_response.abandoned_holons.len() as i64;
-        let commits_attempted = commit_response.commits_attempted.into();
+        // Retrieve relationships
+        let committed_refs = commit_response.related_holons(
+            context,
+            CoreRelationshipTypeName::HolonsCommitted.as_relationship_name(),
+        )?;
+        let abandoned_refs = commit_response.related_holons(
+            context,
+            CoreRelationshipTypeName::HolonsAbandoned.as_relationship_name(),
+        )?;
+
+        let holons_committed: i64 = committed_refs.read().unwrap().get_count().0;
+        let holons_abandoned: i64 = abandoned_refs.read().unwrap().get_count().0;
+
+        // Retrieve property CommitsAttempted
+        let commits_attempted_val = commit_response
+            .property_value(context, CorePropertyTypeName::CommitsAttempted.as_property_name())?;
+        let commits_attempted: i64 = match commits_attempted_val {
+            Some(BaseValue::IntegerValue(MapInteger(n))) => n,
+            Some(other) => {
+                warn!("Unexpected CommitsAttempted type: {:?}", other);
+                0
+            }
+            None => 0,
+        };
 
         let commit_ok = (holons_committed + holons_abandoned) == commits_attempted;
 

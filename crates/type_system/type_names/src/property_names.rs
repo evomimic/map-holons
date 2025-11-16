@@ -71,6 +71,8 @@ impl ToPropertyName for &PropertyName {
 #[derive(Debug, Clone, VariantNames)]
 pub enum CorePropertyTypeName {
     AllowsDuplicates,
+    CommitRequestStatus,
+    CommitsAttempted,
     DanceSummary,
     DeletionSemantic,
     Description,
@@ -82,7 +84,6 @@ pub enum CorePropertyTypeName {
     Filename,
     HolonKey,
     HolonId,
-    HolonsCommitted,
     HolonsStaged,
     InstanceTypeKind,
     IsAbstractType,
@@ -111,6 +112,7 @@ pub enum CorePropertyTypeName {
     TypeKind,
     TypeName,
     TypeNamePlural,
+    HolonsCommitted,
 }
 
 impl CorePropertyTypeName {

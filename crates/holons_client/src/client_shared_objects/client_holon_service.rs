@@ -3,12 +3,11 @@
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holon_dance_builders;
-use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
-    core_shared_objects::{CommitResponse, Holon, HolonCollection},
+    core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
-    HolonReference, ReadableHolon, RelationshipMap, SmartReference, StagedReference,
+    HolonReference, RelationshipMap, SmartReference, StagedReference,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
@@ -26,7 +25,7 @@ impl HolonServiceApi for ClientHolonService {
     fn commit_internal(
         &self,
         _context: &dyn HolonsContextBehavior,
-    ) -> Result<CommitResponse, HolonError> {
+    ) -> Result<TransientReference, HolonError> {
         //let request = build_commit_dance_request(&SessionState::default())?;
         // let response: DanceResponse = conductor.call(&cell.zome("dances"), "dance", valid_request).await;
         // _context.get_space_manager()
