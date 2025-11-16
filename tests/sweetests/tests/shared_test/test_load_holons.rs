@@ -20,6 +20,66 @@ fn read_integer_property(
         ))),
     }
 }
+/// Dump the `EssentialHolonContent` for any holon-like reference (including
+/// `TransientReference`, `StagedReference`, or `SavedReference`) in a stable,
+/// human-readable format.
+///
+/// This helper is used primarily by sweetests during holon-loader testing,
+/// where TypeDescriptors are not yet available and we cannot rely on
+/// `property_value()` calls using known property names.
+///
+/// Instead of querying individual properties, `essential_content()` returns:
+///   * the complete `property_map` (all properties discovered on the holon),
+///   * the holon’s key, if present,
+///   * accumulated read-path errors for debugging.
+///
+/// The output is alphabetically sorted for stable diffs and easy debugging.
+///
+/// This function should **never** be used by production code; it is strictly
+/// a test/sweetest debugging aid for introspecting holons before descriptors
+/// exist or during early-bootstrapping scenarios.
+fn dump_essential(
+    context: &dyn HolonsContextBehavior,
+    holon_reference: &impl ReadableHolon,
+) -> String {
+    // Attempt to get essential content (properties, key, errors)
+    let essential_content_result = holon_reference.essential_content(context);
+
+    // Early return if reading essential content failed
+    let essential_content = match essential_content_result {
+        Ok(content) => content,
+        Err(error) => {
+            return format!("<error reading essential content: {:?}>", error);
+        }
+    };
+
+    let mut output = String::new();
+    output.push_str("\n==== EssentialContent ===\n");
+
+    // Sort properties by property name
+    let mut sorted_entries: Vec<_> = essential_content.property_map.iter().collect();
+    sorted_entries.sort_by(|(name_a, _), (name_b, _)| name_a.0 .0.cmp(&name_b.0 .0));
+
+    for (property_name, property_value) in sorted_entries {
+        output.push_str(&format!("  {} = {:?}\n", property_name.0 .0, property_value));
+    }
+
+    // Include optional key
+    if let Some(key_value) = essential_content.key.clone() {
+        output.push_str(&format!("  (key) = {}\n", key_value.0));
+    }
+
+    // Include any validation or resolver errors
+    if !essential_content.errors.is_empty() {
+        output.push_str("  errors:\n");
+        for error in essential_content.errors {
+            output.push_str(&format!("    - {:?}\n", error));
+        }
+    }
+
+    output.push_str("==== end ====\n");
+    output
+}
 
 /// Utility: dump all properties (name + value) on the HolonLoadResponse holon,
 /// plus the important fields like response_status_code, error_count, etc.
@@ -30,30 +90,11 @@ fn dump_full_response(
     let mut out = String::new();
     out.push_str("\n===== HolonLoadResponse dump =====\n");
 
-    match response.get_raw_property_map(context) {
-        Ok(map) => {
-            let mut entries: Vec<_> = map.into_iter().collect();
-            // Sort by property name for stable diffs
-            entries.sort_by(|(k1, _), (k2, _)| k1.0 .0.cmp(&k2.0 .0));
+    // 1. Full essential-content dump (sorted, complete property map)
+    out.push_str(&dump_essential(context, response));
 
-            for (p_name, p_value) in entries {
-                let name = p_name.0 .0;
-                let val_str = match p_value {
-                    PropertyValue::StringValue(s) => format!("String({})", s.0),
-                    PropertyValue::IntegerValue(MapInteger(i)) => format!("Int({})", i),
-                    PropertyValue::BooleanValue(b) => format!("Bool({})", b.0),
-                    PropertyValue::EnumValue(v) => format!("Enum({})", v.0),
-                };
-                out.push_str(&format!("  {} = {}\n", name, val_str));
-            }
-        }
-        Err(e) => {
-            out.push_str(&format!("  <failed to read property map: {:?}>\n", e));
-        }
-    }
-
-    // Pull out common “loader” properties for quick eyeballing
-    out.push_str("----- important (best-effort) -----\n");
+    // 2. Pull out common loader-specific properties (best-effort)
+    out.push_str("----- important (best-effort loader fields) -----\n");
     for p_name in [
         CorePropertyTypeName::ErrorCount.as_property_name(),
         CorePropertyTypeName::HolonsStaged.as_property_name(),
@@ -65,10 +106,8 @@ fn dump_full_response(
     ]
     .iter()
     {
-        if let Ok(val_opt) = response.property_value(context, p_name) {
-            if let Some(val) = val_opt {
-                out.push_str(&format!("  {} => {:?}\n", p_name.0 .0, val));
-            }
+        if let Ok(Some(val)) = response.property_value(context, p_name) {
+            out.push_str(&format!("  {} => {:?}\n", p_name.0 .0, val));
         }
     }
 
@@ -81,61 +120,58 @@ fn dump_full_response(
 /// *actual* Pass-2 resolver error.
 fn dump_error_holons_from_response(
     context: &dyn HolonsContextBehavior,
-    response: &TransientReference,
+    response_reference: &TransientReference,
 ) -> String {
-    let mut out = String::new();
+    let mut output = String::new();
 
-    // Try to follow the relationship. If it doesn't exist, just return empty.
-    let rel_name = CoreRelationshipTypeName::HasLoadError;
-    let collection_handle = match response.related_holons(context, &rel_name) {
-        Ok(c) => c,
-        Err(_) => return out, // no error holons, or link not present
+    // Try to follow the HasLoadError relationship.
+    let relationship_name = CoreRelationshipTypeName::HasLoadError;
+    let collection_handle = match response_reference.related_holons(context, &relationship_name) {
+        Ok(collection) => collection,
+        Err(_) => return output, // No error holons present.
     };
 
-    let members = {
-        let guard = match collection_handle.read() {
-            Ok(g) => g,
-            Err(_) => {
-                out.push_str("[loader-test] <failed to read HasLoadError collection>\n");
-                return out;
-            }
-        };
-        guard.get_members().clone()
+    // Get members from the collection.
+    let members = match collection_handle.read() {
+        Ok(guard) => guard.get_members().clone(),
+        Err(_) => {
+            output.push_str("[loader-test] <failed to read HasLoadError collection>\n");
+            return output;
+        }
     };
 
     if members.is_empty() {
-        return out;
+        return output;
     }
 
-    out.push_str("\n===== Loader Error Holons (HasLoadError) =====\n");
-    for (idx, error_ref) in members.into_iter().enumerate() {
-        // Work on a detached copy so we can read its properties
-        let error_transient = match error_ref.clone_holon(context) {
-            Ok(t) => t,
-            Err(e) => {
-                out.push_str(&format!("  [{}] <failed to clone error holon: {:?}>\n", idx, e));
+    output.push_str("\n===== Loader Error Holons (HasLoadError) =====\n");
+
+    for (index, holon_reference) in members.into_iter().enumerate() {
+        // Clone the holon so we can read its properties safely.
+        let transient_reference = match holon_reference.clone_holon(context) {
+            Ok(reference) => reference,
+            Err(error) => {
+                output.push_str(&format!(
+                    "  [{}] <failed to clone error holon: {:?}>\n",
+                    index, error
+                ));
                 continue;
             }
         };
 
-        out.push_str(&format!("  --- error holon #{} ---\n", idx + 1));
+        output.push_str(&format!("  --- error holon #{} ---\n", index + 1));
 
-        match error_transient.get_raw_property_map(context) {
-            Ok(map) => {
-                let mut entries: Vec<_> = map.into_iter().collect();
-                entries.sort_by(|(k1, _), (k2, _)| k1.0 .0.cmp(&k2.0 .0));
-
-                for (pname, pvalue) in entries {
-                    out.push_str(&format!("    {} = {:?}\n", pname.0 .0, pvalue));
-                }
-            }
-            Err(e) => {
-                out.push_str(&format!("    <failed to read error holon properties: {:?}>\n", e));
-            }
+        // Use unified essential-content dump
+        let essential_dump = dump_essential(context, &transient_reference);
+        for line in essential_dump.lines() {
+            output.push_str("    ");
+            output.push_str(line);
+            output.push('\n');
         }
     }
-    out.push_str("===== end Loader Error Holons =====\n");
-    out
+
+    output.push_str("===== end Loader Error Holons =====\n");
+    output
 }
 
 /// Execute the `LoadHolons` step by initiating the LoadHolons dance (test → guest via TrustChannel),
@@ -155,7 +191,8 @@ pub async fn execute_load_holons(
     expect_total_loader_holons: MapInteger,
 ) {
     info!("--- TEST STEP: Load Holons ---");
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // Build the DanceRequest for the loader.
     let request = build_load_holons_dance_request(load_set_reference)
@@ -217,6 +254,8 @@ pub async fn execute_load_holons(
         || actual_error_count != expect_errors.0
         || actual_total_bundles != expect_total_bundles.0
         || actual_total_loader_holons != expect_total_loader_holons.0
+        || true
+    // "true" forces dump even if no missed expectations
     {
         info!(
             "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",

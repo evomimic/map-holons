@@ -1,5 +1,3 @@
-use std::sync::{Arc, RwLock};
-
 use crate::guest_shared_objects::GuestHolonService;
 use core_types::HolonError;
 use holons_core::{
@@ -11,6 +9,8 @@ use holons_core::{
     },
     reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior},
 };
+use std::sync::{Arc, RwLock};
+use tracing::{info, warn};
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations **within the Holochain guest environment**.
@@ -80,6 +80,8 @@ pub fn init_guest_context(
     staged_holons: SerializableHolonPool,
     local_space_holon: Option<HolonReference>,
 ) -> Result<Arc<dyn HolonsContextBehavior>, HolonError> {
+    info!("\n ========== Initializing GUEST CONTEXT ============");
+
     // Step 1: Create the GuestHolonService
     let mut guest_holon_service = Arc::new(GuestHolonService::new()); // Freshly created
 

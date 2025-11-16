@@ -25,7 +25,8 @@ pub async fn execute_stage_new_holon(
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
     // 1. Get context from test_state
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // 2. Build the DanceRequest
     let request = build_stage_new_holon_dance_request(transient_reference.clone())

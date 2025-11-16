@@ -32,7 +32,8 @@ pub async fn execute_abandon_staged_changes(
     info!("--- TEST STEP: Abandon Staged Changes ---");
 
     // 1. Get the context from test_state
-    let context = test_state.context();
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
 
     // 2. Build the request (state is handled inside dance_call)
     let request = build_abandon_staged_changes_dance_request(staged_reference.clone())

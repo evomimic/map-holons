@@ -21,7 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::{CommitResponse, Holon, ReadableHolonState};
+use crate::core_shared_objects::{Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
@@ -89,7 +89,7 @@ use type_names::CorePropertyTypeName;
 /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
 ///
 
-pub fn commit(context: &dyn HolonsContextBehavior) -> Result<CommitResponse, HolonError> {
+pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference, HolonError> {
     let holon_service = context.get_space_manager().get_holon_service();
     let commit_response = holon_service.commit_internal(context)?;
 

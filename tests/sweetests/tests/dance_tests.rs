@@ -118,7 +118,7 @@ async fn rstest_dance_tests(
 
     let steps_count = steps.len();
 
-    warn!("TEST SESSION STATE {:?}", test_case.test_session_state);
+    debug!("TEST SESSION STATE {:?}", test_case.test_session_state);
 
     // Initialize the DanceTestState
     let mut test_state = DanceTestExecutionState::new(test_context);

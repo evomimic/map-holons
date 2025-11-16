@@ -155,8 +155,9 @@ impl ReadableHolonState for TransientHolon {
     }
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {
-        let key =
-            self.key()?.ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+        let key = self
+            .key()?
+            .ok_or(HolonError::InvalidParameter("TransientHolon must have a key".to_string()))?;
 
         Ok(MapString(format!("{}__{}_transient", key.0, &self.version.0.to_string())))
     }

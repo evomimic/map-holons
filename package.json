@@ -11,7 +11,7 @@
     "build:native": "cargo build --manifest-path workspaces/native/Cargo.toml",
     "build:test": "cargo test --manifest-path workspaces/test/Cargo.toml",
     "sweetest": "npm run build:happ && npm run sweet:test",
-    "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
+    "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
     "mock": "npm run mock -w ui",
     "start": "AGENTS=1 npm run network",
     "local-services": "hc run-local-services -b 54000 -s 55000",

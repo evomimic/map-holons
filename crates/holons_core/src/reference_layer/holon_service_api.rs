@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::Debug;
 
 use super::{HolonReference, SmartReference, StagedReference, TransientReference};
-use crate::core_shared_objects::{CommitResponse, Holon, HolonCollection};
+use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
 use base_types::MapString;
@@ -32,7 +32,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn commit_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<CommitResponse, HolonError>;
+    ) -> Result<TransientReference, HolonError>;
 
     /// This function deletes the saved holon identified by  from the persistent store
     fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError>;
