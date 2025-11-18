@@ -15,12 +15,14 @@ use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
 /// Log a `info` level message marking the test step as Successful and return
 ///
 pub async fn execute_abandon_staged_changes(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Abandon Staged Changes ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1) LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

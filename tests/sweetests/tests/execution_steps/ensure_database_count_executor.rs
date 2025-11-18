@@ -9,10 +9,13 @@ use holons_prelude::prelude::*;
 ///
 
 pub async fn execute_ensure_database_count(
-    context: &dyn HolonsContextBehavior,
+    state: &mut TestExecutionState,
     expected_count: MapInteger,
 ) {
     info!("--- TEST STEP: Ensuring database holds {} holons ---", expected_count.0);
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. BUILD - the get_all_holons DanceRequest
     let request =

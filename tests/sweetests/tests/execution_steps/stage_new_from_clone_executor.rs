@@ -11,12 +11,14 @@ use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
 ///  4) ASSERT: check `expected_status` and essential-content equality
 ///  5) RECORD: store the realized `StagedReference` in `ExecutionHolons` for downstream steps
 pub async fn execute_stage_new_from_clone(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     new_key: MapString,
     expected_status: ResponseStatusCode,
 ) {
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
+
     // 1. LOOKUP — get the input handle for the clone source
     //    (enforces Saved ≙ Staged(Committed(LocalId)); no nursery fallback)
     let source_reference: HolonReference = state.lookup_holon_reference(context, &source_token).unwrap();
@@ -31,7 +33,7 @@ pub async fn execute_stage_new_from_clone(
     assert_eq!(response.status_code, expected_status);
 
     // 4. ASSERT — on success, the body should be a HolonReference to the newly staged holon.
-    //            Compare essential content (source vs. result) without durable fetch.
+    //            Compare essential content (source vs. resolved) without durable fetch.
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(hr) => hr,
         other => {

@@ -10,13 +10,15 @@ use tracing::{debug, info};
 ///
 
 pub async fn execute_remove_properties(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Removing Properties from Holon ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

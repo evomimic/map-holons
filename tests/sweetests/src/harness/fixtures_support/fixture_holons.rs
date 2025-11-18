@@ -17,7 +17,7 @@ use crate::harness::fixtures_support::{ExpectedState, TestReference};
 #[derive(Clone, Debug, Default)]
 pub struct FixtureHolons {
     lineage: BTreeMap<TemporaryId, Vec<TestReference>>,
-    by_key: BTreeMap<MapString, Vec<TestReference>>,
+    by_key: BTreeMap<MapString, TemporaryId>,
 }
 
 impl FixtureHolons {
@@ -26,19 +26,75 @@ impl FixtureHolons {
         Self::default()
     }
 
+    // =====  COMMIT  ======  //
+
+    /// Mint token with expected state Saved
+    pub fn commit(&mut self) -> Result<Vec<TestReference>, HolonError> {
+        let mut saved_tokens = Vec::new();
+
+        for (_id, tokens) in self.lineage.iter_mut() {
+            // Get the current (latest) token for each lineage
+            if let Some(latest_token) = tokens.last() {
+                match latest_token.expected_state() {
+                    ExpectedState::Staged => {
+                        let saved_token = TestReference::new(
+                            latest_token.transient().clone(),
+                            ExpectedState::Saved,
+                            latest_token.expected_content().clone(),
+                        );
+                        tokens.push(saved_token.clone());
+                        saved_tokens.push(saved_token);
+                    }
+                    _ => {
+                        return Err(HolonError::CommitFailure(
+                            "TestReference to be Saved must be in an ExpectedState::Staged"
+                                .to_string(),
+                        ))
+                    }
+                }
+            } else {
+                return Err(HolonError::InvalidParameter(
+                    "TestReferences in lineage cannot be empty".to_string(),
+                ));
+            }
+        }
+        Ok(saved_tokens)
+    }
+
+    // // ==== MINTING ==== // //
+
+    /// Mint a new TestReference snapshot and push it onto the lineage.
+    ///
+    /// - `transient_ref` is the runtime pointer (identifies lineage)
+    /// - `expected_content` is a frozen snapshot from that transient holon
+    /// - `expected_state` is the lifecycle intent after the step
+    ///
+    /// Returns the newly created TestReference.
+    pub fn mint_snapshot(
+        &mut self,
+        transient_ref: &TransientReference,
+        expected_state: ExpectedState,
+        expected_content: &EssentialHolonContent,
+    ) -> TestReference {
+        let token =
+            TestReference::new(transient_ref.clone(), expected_state, expected_content.clone());
+        self.push_snapshot(transient_ref.get_temporary_id(), token.clone());
+
+        token
+    }
+
+    /// Mint an ExpectedState::Abandoned cloned from given TestReference (must be expected_state Staged)
     pub fn abandon_staged(
         &mut self,
         staged_token: &TestReference,
     ) -> Result<TestReference, HolonError> {
         match staged_token.expected_state() {
             ExpectedState::Staged => {
-                let mut abandoned_token = staged_token.clone();
-                abandoned_token.set_expected_state(ExpectedState::Abandoned);
-                // self.test_references.remove(index)
-                self.lineage
-                    .entry(staged_token.transient().get_temporary_id())
-                    .and_modify(|v| v.push(abandoned_token.clone()))
-                    .or_insert(vec![abandoned_token.clone()]);
+                let abandoned_token = self.mint_snapshot(
+                    staged_token.transient(),
+                    ExpectedState::Abandoned,
+                    staged_token.expected_content(),
+                );
                 Ok(abandoned_token)
             }
             other => Err(HolonError::InvalidTransition(format!(
@@ -88,16 +144,7 @@ impl FixtureHolons {
         transient_reference: &TransientReference,
         expected_content: &EssentialHolonContent,
     ) -> TestReference {
-        let token = TestReference::new(
-            transient_reference.clone(),
-            ExpectedState::Transient,
-            expected_content.clone(),
-        );
-        self.lineage
-            .entry(transient_reference.get_temporary_id())
-            .and_modify(|v| v.push(token.clone()))
-            .or_insert(vec![token.clone()]);
-        token
+        self.mint_snapshot(transient_reference, ExpectedState::Transient, expected_content)
     }
 
     /// Create and retain a **Staged** token from a `TransientReference`.
@@ -106,16 +153,16 @@ impl FixtureHolons {
         transient_reference: &TransientReference,
         expected_content: &EssentialHolonContent,
     ) -> TestReference {
-        let token = TestReference::new(
-            transient_reference.clone(),
-            ExpectedState::Staged,
-            expected_content.clone(),
-        );
-        self.lineage
-            .entry(transient_reference.get_temporary_id())
-            .and_modify(|v| v.push(token.clone()))
-            .or_insert(vec![token.clone()]);
-        token
+        self.mint_snapshot(transient_reference, ExpectedState::Staged, expected_content)
+    }
+
+    /// Create and retain a **Saved** token from a `TransientReference`.
+    pub fn add_saved(
+        &mut self,
+        transient_ref: &TransientReference,
+        expected_content: &EssentialHolonContent,
+    ) -> TestReference {
+        self.mint_snapshot(transient_ref, ExpectedState::Saved, expected_content)
     }
 
     // ---------- Create tokens AND index by key (preferred when you know the key) ----------
@@ -127,8 +174,9 @@ impl FixtureHolons {
         key: MapString,
         expected_content: &EssentialHolonContent,
     ) -> Result<TestReference, HolonError> {
+        self.index_by_key(key, transient_reference.get_temporary_id())?;
         let token = self.add_transient(transient_reference, expected_content);
-        self.index_by_key(token.clone(), key)?;
+
         Ok(token)
     }
 
@@ -139,80 +187,63 @@ impl FixtureHolons {
         key: MapString,
         expected_content: &EssentialHolonContent,
     ) -> Result<TestReference, HolonError> {
+        self.index_by_key(key, transient_reference.get_temporary_id())?;
         let token = self.add_staged(transient_reference, expected_content);
-        self.index_by_key(token.clone(), key)?;
+
         Ok(token)
     }
 
-    // ---------- Index management ----------
+    //  ======  INDEXING  ======  //
 
     /// Index an existing token by key. Errors if the key already exists.
-    pub fn index_by_key(
-        &mut self,
-        test_reference: TestReference,
-        key: MapString,
-    ) -> Result<(), HolonError> {
+    pub fn index_by_key(&mut self, key: MapString, id: TemporaryId) -> Result<(), HolonError> {
         if self.by_key.contains_key(&key) {
             return Err(HolonError::DuplicateError(
                 "Keys".to_string(),
                 format!("FixtureHolon with key: {:?}", key),
             ));
         }
-        self.by_key
-            .entry(key)
-            .and_modify(|v| v.push(test_reference.clone()))
-            .or_insert(vec![test_reference]);
+        self.by_key.insert(key, id.clone());
+
         Ok(())
     }
 
     /// Upsert variant: replace any existing mapping for `key`.
     /// Prefer `index_by_key` unless you *intend* to overwrite.
-    pub fn upsert_by_key(&mut self, test_reference: TestReference, key: MapString) {
-        self.by_key
-            .entry(key)
-            .and_modify(|v| v.push(test_reference.clone()))
-            .or_insert(vec![test_reference]);
+    pub fn upsert_by_key(&mut self, key: MapString, id: TemporaryId) {
+        self.by_key.insert(key, id);
     }
 
     // ---------- Retrieval by key ----------
 
-    /// Retrieve tokens by key (clone returned for convenience).
-    pub fn get_by_key(&self, key: &MapString) -> Option<Vec<TestReference>> {
+    /// Retrieve the TemporaryId associated with the given key
+    pub fn get_id_by_key(&self, key: &MapString) -> Option<TemporaryId> {
         self.by_key.get(key).cloned()
     }
 
-    // ---------- Commit + counts + views ----------
-
-    /// Mint token with expected state Saved
-    pub fn commit(
-        &mut self,
-        staged_tokens: Vec<TestReference>,
-    ) -> Result<Vec<TestReference>, HolonError> {
-        let mut saved_tokens = Vec::new();
-        for token in staged_tokens {
-            let transient = token.transient();
-            match token.expected_state() {
-                ExpectedState::Staged => {
-                    let saved_token = TestReference::new(
-                        transient.clone(),
-                        ExpectedState::Saved,
-                        token.expected_content().clone(),
-                    );
-                    self.lineage
-                        .entry(transient.get_temporary_id())
-                        .and_modify(|v| v.push(saved_token.clone()))
-                        .or_insert(vec![saved_token.clone()]);
-                    saved_tokens.push(saved_token);
-                }
-                _ => {
-                    return Err(HolonError::CommitFailure(
-                        "TestReference to be Saved must be in an ExpectedState::Staged".to_string(),
-                    ))
-                }
-            }
-        }
-        Ok(saved_tokens)
+    /// Retrieve tokens by id
+    pub fn get_tokens_by_id(&self, id: &TemporaryId) -> Option<Vec<TestReference>> {
+        self.lineage.get(id).cloned()
     }
+
+    // ---- HELPERS ---- //
+
+    /// Insert the newly minted snapshot into the lineage, as the latest token (added to end of Vec)
+    pub fn push_snapshot(&mut self, tid: TemporaryId, token: TestReference) {
+        self.lineage
+            .entry(tid)
+            .and_modify(|v| v.push(token.clone()))
+            .or_insert(vec![token.clone()]);
+    }
+
+    /// Iterate *latest* snapshots only (one per lineage).
+    pub fn latest_snapshots(&self) -> Vec<(TemporaryId, TestReference)> {
+        self.lineage
+            .iter()
+            .filter_map(|(tid, vec)| vec.last().map(|tok| (tid.clone(), tok.clone())))
+            .collect()
+    }
+
 }
 
 #[derive(Default, Debug, Clone, Copy)]

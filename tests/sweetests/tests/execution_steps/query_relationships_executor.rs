@@ -4,17 +4,17 @@ use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-use holons_core::core_shared_objects::ReadableHolonState; // TODO: Eliminate this dependency
-
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied source TestReference and QueryExpression.
 pub async fn execute_query_relationships(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     query_expression: QueryExpression,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Querying Relationships ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

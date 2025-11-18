@@ -9,7 +9,7 @@ use super::setup_book_author_steps_with_context;
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
-pub async fn simple_stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
+pub async fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Simple StageNewVersion Testcase".to_string(),
         "Tests stage_new_version dance, \n\

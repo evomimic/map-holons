@@ -80,8 +80,8 @@ impl ReadableHolonState for SavedHolon {
         ))
     }
 
-    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        Ok(EssentialHolonContent::new(self.property_map.clone(), self.key()?, Vec::new()))
+    fn essential_content(&self) -> EssentialHolonContent {
+        EssentialHolonContent::new(self.property_map.clone(), self.key(), Vec::new())
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {
@@ -100,13 +100,13 @@ impl ReadableHolonState for SavedHolon {
     }
 
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
-    fn key(&self) -> Result<Option<MapString>, HolonError> {
+    fn key(&self) -> Option<MapString> {
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
 
         if let Some(BaseValue::StringValue(s)) = self.property_map.get(&key_property_name) {
-            Ok(Some(s.clone()))
+            Some(s.clone())
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -145,7 +145,7 @@ impl ReadableHolonState for SavedHolon {
     /// - Returns `Err(HolonError::InvalidParameter)` if the Holon does not have a key.
     fn versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
-            .key()?
+            .key()
             .ok_or(HolonError::InvalidParameter("SavedHolon must have a key".to_string()))?;
 
         Ok(MapString(key.0 + &self.version.0.to_string()))
@@ -170,9 +170,8 @@ impl ReadableHolonState for SavedHolon {
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.key() {
-            Ok(Some(key)) => key.0,           // Extract the key from MapString
-            Ok(None) => "<None>".to_string(), // Key is None
-            Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
+            Some(key) => key.0,           // Extract the key from MapString
+            None => "<None>".to_string(), // Key is None
         };
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available

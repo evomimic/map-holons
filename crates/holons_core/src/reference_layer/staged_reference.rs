@@ -308,7 +308,7 @@ impl ReadableHolonImpl for StagedReference {
             ))
         })?;
 
-        borrowed_holon.essential_content()
+        Ok(borrowed_holon.essential_content())
     }
 
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {

@@ -43,7 +43,7 @@ pub struct TestHolonsContext {
 ///
 /// # Returns
 /// * A `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
-pub async fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
+pub fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
     init_tracing(); // this sets tracing level for both fixture and test client
 
     info!("\n ========== Initializing FIXTURE CONTEXT ============");
@@ -71,7 +71,7 @@ pub async fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
     ));
 
     // Wrap in `TestHolonsContext` and return as trait object
-    Box::new(TestHolonsContext::new(space_manager))
+    Arc::new(TestHolonsContext::new(space_manager))
 }
 
 /// Initializes a new test context with a fresh `HolonSpaceManager` with parameters:
@@ -110,7 +110,7 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn Holons
     ));
 
     // Wrap in `TestHolonsContext` and return as trait object
-    Box::new(TestHolonsContext::new(space_manager))
+    Arc::new(TestHolonsContext::new(space_manager))
 }
 
 impl TestHolonsContext {

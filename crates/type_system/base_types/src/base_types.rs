@@ -25,12 +25,6 @@ impl MapString {
     }
 }
 
-impl From<&str> for MapString {
-    fn from(s: &str) -> Self {
-        MapString(s.to_string())
-    }
-}
-
 // ===============================
 // 📦 MapBoolean
 // ===============================

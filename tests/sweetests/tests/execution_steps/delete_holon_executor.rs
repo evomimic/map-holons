@@ -12,12 +12,14 @@ use holons_core::core_shared_objects::ReadableHolonState;
 /// and matches the expected response
 ///
 pub async fn execute_delete_holon(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Deleting an Existing (Saved) Holon");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

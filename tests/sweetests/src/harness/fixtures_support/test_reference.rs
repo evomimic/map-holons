@@ -93,8 +93,4 @@ impl TestReference {
         &self.expected_content
     }
 
-    /// Mutate the expected state (crate-internal).
-    pub(crate) fn set_expected_state(&mut self, s: ExpectedState) {
-        self.expected_state = s;
-    }
 }
