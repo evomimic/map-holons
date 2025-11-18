@@ -7,7 +7,9 @@ opt-level = "z"
 [workspace]
 resolver = "2"
 members = [
-    # happ tests (native build) depends on happ crates and shared crates
+
+    # happ tests (native build) depends on happ crates, holons_client and other shared crates
+    # for build isolation purposes wasm crates are not included here
     "happ_tests/sweetests",
 
     # host crates (native build) depends on shared crates only
@@ -38,7 +40,7 @@ holons_integrity = { path = "happ/zomes/integrity/holons_integrity" }
 holons_guest = { path = "happ/crates/holons_guest" }
 holons_guest_integrity = { path = "happ/crates/holons_guest_integrity" }
 
-# Runtime dependencies
+# host dependencies
 conductora = { path = "host/conductora" }
 holons_client = { path = "host/crates/holons_client" }
 holochain_receptor = { path = "host/crates/holochain_receptor" }

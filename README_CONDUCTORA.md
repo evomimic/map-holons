@@ -2,9 +2,46 @@
 
 we have the following monorepo directory structure:
 
+```
+map-holons/
+│
+├── happ/# 🧬 zomes + guest(WASM) + artifacts (workdir)
+│   ├── zomes/ 
+│         ├── coordinator/
+│         ├── integrity/
+│         ├── workdir/              # dna level artifacts and yaml
+│   ├── crates/
+│         ├── holons_guest/
+│         ├── holons_guest_integrity/
+│   ├── workdir/                    # happ level artifacts and yaml
+│   └── package.json    # run build and happ_tests from here
+│   └── Cargo.toml  # only wasm crates are members (local paths)
+│
+│── happ_tests/.  #separate native build test directory for happ 
+│   ├── sweetests/
+│   ├── tryorama/
+│
+├── runtime/         # 🖥️ Native client, conductor plugins and Tauri runtime
+│   ├── conductora/         # tauri runtime + plugins
+│   ├── crates/      # receptor crates + holons_client                                                 
+│   ├── ui/          # contains tauri specific UI
+│   └── package.json  # all builds are done via scripts - cargo level build conflicts avoided
+│
+├── shared_crates/      # ⚙️ Dual-target shared crates (WASM-safe)
+├── package.json/            # root scripts to build happ and start runtime
+└── Cargo.toml                # root workspace
+```
+
+workspaces (see code-workspace files): 
+- happ-workspace for happ files and wasm crates
+- host-workspace for host files and native crates
+
 files:
- - root Cargo.toml (includes all packages from shared_crates and independent projects: happ, host)
+ - root Cargo.toml (includes all packages from shared_crates and the host packages)
+ - happ Cargo.toml (independent wasm build workspace)
  - root package.json (single level workspaces: happ, host)
+   - happ package.json for all happ scripts including tests
+   - host package.json scripts for running and testing the host
   
 directories / workspaces:
 - happ - everything for testing and building wasm and the final happ

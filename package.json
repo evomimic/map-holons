@@ -13,7 +13,6 @@
     "start:host": "npm run start -w host",
     "build:host": "npm run build -w host",
     "build:happ": "npm run build:happ -w happ",
-    "test-ui-ignore": "AGENTS=1 concurrently -k \"UI_PORT=1420 npm --prefix ui run dev\" \"npm run launch -w host\"",
     "clean:ui": "npx rimraf package-lock.json node_modules && npm run clean:ui -w host && npm run clean:ui -w happ",
     "clean:rust": "npx rimraf target .cargo Cargo.lock && npm run clean:rust -w happ && npm run clean:rust -w host"
   },
