@@ -22,7 +22,6 @@ use holons_prelude::prelude::*;
 ///     e. confirming the new holon is no longer related to the holons to remove via the specified relationship.
 ///
 pub async fn execute_remove_related_holons(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     relationship_name: RelationshipName,
@@ -30,6 +29,9 @@ pub async fn execute_remove_related_holons(
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Removing Related Holons ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
      // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

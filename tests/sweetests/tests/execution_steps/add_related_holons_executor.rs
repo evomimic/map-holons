@@ -11,7 +11,6 @@ use holons_prelude::prelude::*;
 ///
 
 pub async fn execute_add_related_holons(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     relationship_name: RelationshipName,
@@ -19,6 +18,9 @@ pub async fn execute_add_related_holons(
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Add Related Holons ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
@@ -48,8 +50,7 @@ pub async fn execute_add_related_holons(
     );
     info!("Success! add_related_holons DanceResponse matched expected");
 
-    // 5. ASSERT — on success, ...
-    //            Compare essential content
+    // 5. ASSERT — on success, compare essential content of expected (source) vs actual (resolved) test references
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {

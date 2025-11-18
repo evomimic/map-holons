@@ -9,11 +9,10 @@ use holons_prelude::prelude::*;
 /// `info!` -- writes only the "key" for each holon
 /// `debug!` -- writes the full json-formatted contents of the holon
 ///
-pub async fn execute_print_database(context: &dyn HolonsContextBehavior) {
+pub async fn execute_print_database(state: &mut TestExecutionState) {
     info!("--- TEST STEP: Print Database Contents ---");
 
-    // 1. Get context from test_state
-    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
 
     // 1. BUILD - the get_all_holons DanceRequest
@@ -44,6 +43,6 @@ pub async fn execute_print_database(context: &dyn HolonsContextBehavior) {
             // debug!("Holon JSON: {:?}", as_json(&holon));
         }
     } else {
-        panic!("Expected get_all_holons to return Holons response, but got {:?}", response.body);
+        panic!("Expected print_database to return Holons response, but got {:?}", response.body);
     }
 }

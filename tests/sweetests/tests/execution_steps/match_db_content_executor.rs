@@ -15,10 +15,10 @@ use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody}
 /// and for each holon: builds and dances a `get_holon_by_id` DanceRequest,
 /// then confirms that the Holon returned matches the expected
 
-pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, state: &mut TestExecutionState, expected_status: ResponseStatusCode) {
+pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
 
-    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let ctx_arc = state.context(); 
     let context = ctx_arc.as_ref();
 
     // Iterate through all created holons and verify them in the database
@@ -39,14 +39,7 @@ pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, state
 
         // 4. VALIDATE - Ensure response contains the expected Holon
         if let ResponseBody::Holon(actual_holon) = response.body {
-            assert_eq!(
-                expected_holon.key(context),
-                actual_holon.key(),
-                "Holon content mismatch for ID {:?}",
-                holon_id
-            );
-
-            resolved_reference.assert_essential_content_eq(context).unwrap();
+            assert_eq!(&actual_holon.essential_content(), resolved_reference.source_token.expected_content());
             info!(
                 "SUCCESS! DB fetched holon matched expected for: \n {:?}",
                 actual_holon.summarize()
@@ -57,24 +50,7 @@ pub async fn execute_match_db_content(context: &dyn HolonsContextBehavior, state
                 holon_id, response.body
             );
         }
-        // // 4. VALIDATE - Ensure response contains the expected Holon
-        // if let ResponseBody::Holon(actual_holon) = response.body {
-        //     assert_eq!(
-        //         expected_holon.essential_content(),
-        //         actual_holon.essential_content(),
-        //         "Holon content mismatch for ID {:?}",
-        //         holon_id
-        //     );
-        //     info!(
-        //         "SUCCESS! DB fetched holon matched expected for: \n {:?}",
-        //         actual_holon.summarize()
-        //     );
-        // } else {
-        //     panic!(
-        //         "Expected get_holon_by_id to return a Holon response for id: {:?}, but got {:?}",
-        //         holon_id, response.body
-        //     );
-        // }
+
     }
 }
 

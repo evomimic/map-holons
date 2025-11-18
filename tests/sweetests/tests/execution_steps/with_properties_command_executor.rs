@@ -11,13 +11,15 @@ use holons_prelude::prelude::*;
 ///
 
 pub async fn execute_with_properties(
-    context: &dyn HolonsContextBehavior,
     state: &mut TestExecutionState,
     source_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Updating Holon with Properties ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
     let mut source_reference: HolonReference =

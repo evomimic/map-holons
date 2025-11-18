@@ -85,11 +85,10 @@ impl DancesTestCase {
     pub fn add_commit_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
-        holon_tokens: Vec<TestReference>,
         expected_status: ResponseStatusCode,
     ) -> Result<Vec<TestReference>, HolonError> {
         self.steps.push(DanceTestStep::Commit { expected_status });
-        let saved_tokens = fixture_holons.commit(holon_tokens)?;
+        let saved_tokens = fixture_holons.commit()?;
 
         Ok(saved_tokens)
     }
@@ -114,11 +113,30 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_match_saved_content_step(
+    pub fn add_load_holons_step(
         &mut self,
-        expected_status: ResponseStatusCode,
+        set: TransientReference,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
     ) -> Result<(), HolonError> {
-        self.steps.push(DanceTestStep::MatchSavedContent { expected_status });
+        self.steps.push(DanceTestStep::LoadHolons {
+            set,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+            expect_total_bundles,
+            expect_total_loader_holons,
+        });
+        Ok(())
+    }
+
+    pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
+        self.steps.push(DanceTestStep::MatchSavedContent);
         Ok(())
     }
 
@@ -183,6 +201,7 @@ impl DancesTestCase {
             holons_to_remove,
             expected_status,
         });
+        // TODO: remove related holons from source (blocked due to requirement for relationships in EssentialHolonContent )
         let token = fixture_holons.add_token(source, key)?;
 
         Ok(token)
@@ -296,9 +315,16 @@ pub enum DanceTestStep {
     EnsureDatabaseCount {
         expected_count: MapInteger,
     },
-    MatchSavedContent {
-        expected_status: ResponseStatusCode,
+    LoadHolons {
+        set: TransientReference,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
     },
+    MatchSavedContent,
     PrintDatabase,
     QueryRelationships {
         source: TestReference,
@@ -364,8 +390,22 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::EnsureDatabaseCount { expected_count } => {
                 write!(f, "EnsureDatabaseCount = {}", expected_count.0)
             }
-
-            DanceTestStep::MatchSavedContent { expected_status: _expected_status } => {
+            DanceTestStep::LoadHolons {
+                set: _,
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+                expect_total_bundles,
+                expect_total_loader_holons,
+            } => {
+                write!(
+                    f,
+                    "LoadHolons(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
+                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
+                )
+            }
+            DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
             DanceTestStep::PrintDatabase => {

@@ -22,7 +22,7 @@ pub trait ReadableHolonState {
     ///
     /// Includes property data and key information, but excludes phase-specific metadata like
     /// `StagedState`, `HolonState`, or `SavedState`.
-    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError>;
+    fn essential_content(&self) -> EssentialHolonContent;
 
     /// Converts a Holon into a HolonCloneModel.
     ///
@@ -44,7 +44,7 @@ pub trait ReadableHolonState {
     /// # Semantics
     /// - Keys are typically defined in the `property_map` as `"key"`.
     /// - Not all Holons have keys; `None` may be returned.
-    fn key(&self) -> Result<Option<MapString>, HolonError>;
+    fn key(&self) -> Option<MapString>;
 
     /// Retrieves the `original_id` of the Holon, representing its predecessor.
     ///

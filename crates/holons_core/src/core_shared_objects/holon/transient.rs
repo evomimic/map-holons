@@ -104,12 +104,12 @@ impl ReadableHolonState for TransientHolon {
         Ok(relationship_map)
     }
 
-    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        Ok(EssentialHolonContent::new(
+    fn essential_content(&self) -> EssentialHolonContent {
+        EssentialHolonContent::new(
             self.property_map.clone(),
-            self.key()?,
+            self.key(),
             Vec::new(), // defaulting to empty
-        ))
+        )
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {
@@ -125,14 +125,14 @@ impl ReadableHolonState for TransientHolon {
         Err(HolonError::NotImplemented("TransientHolons do not have a HolonId".to_string()))
     }
 
-    fn key(&self) -> Result<Option<MapString>, HolonError> {
+    fn key(&self) -> Option<MapString> {
         // Use canonical PascalCase property name
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
 
         if let Some(BaseValue::StringValue(s)) = self.property_map.get(&key_property_name) {
-            Ok(Some(s.clone()))
+            Some(s.clone())
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -156,7 +156,7 @@ impl ReadableHolonState for TransientHolon {
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
-            .key()?
+            .key()
             .ok_or(HolonError::InvalidParameter("TransientHolon must have a key".to_string()))?;
 
         Ok(MapString(format!("{}__{}_transient", key.0, &self.version.0.to_string())))
@@ -191,9 +191,8 @@ impl ReadableHolonState for TransientHolon {
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.key() {
-            Ok(Some(key)) => key.0,           // Extract the key from MapString
-            Ok(None) => "<None>".to_string(), // Key is None
-            Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
+            Some(key) => key.0,           // Extract the key from MapString
+            None => "<None>".to_string(), // Key is None
         };
 
         // Format the summary string

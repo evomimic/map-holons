@@ -28,7 +28,6 @@ use core_types::HolonError;
 use holons_core::core_shared_objects::holon_pool::StagedHolonPool;
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
-use type_names::CorePropertyTypeName::Key;
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
 pub use type_names::CoreRelationshipTypeName::{HolonsAbandoned, HolonsCommitted};
 pub use type_names::{

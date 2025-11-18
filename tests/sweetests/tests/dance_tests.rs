@@ -39,19 +39,19 @@ use execution_steps::add_related_holons_executor::execute_add_related_holons;
 use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
-use execution_steps::load_holons::execute_load_holons;
+use execution_steps::load_holons_executor::execute_load_holons;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::query_relationships_executor::execute_query_relationships;
 use execution_steps::remove_properties_command_executor::execute_remove_properties;
 use execution_steps::remove_related_holon_executor::execute_remove_related_holons;
-use execution_steps::execute_stage_new_holon;
+use execution_steps::stage_new_holon_executor::execute_stage_new_holon;
 use execution_steps::with_properties_command_executor::execute_with_properties;
 
-use crate::load_holons_fixture::*;
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
+use fixture_cases::load_holons_fixture::*;
 use fixture_cases::simple_add_remove_related_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
 use fixture_cases::stage_new_from_clone_fixture::*;
@@ -91,13 +91,11 @@ use holons_prelude::prelude::*;
 #[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 #[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+#[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
+#[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[tokio::test(flavor = "multi_thread")]
-async fn rstest_dance_tests(
-    #[case] input: Result<DancesTestCase, HolonError>,
-) {
+async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
     // The heavy lifting for this test is in the test data set creation.
@@ -107,9 +105,9 @@ async fn rstest_dance_tests(
     use self::helpers::init_test_context;
 
     let mut test_case: DancesTestCase = input.unwrap();
-    // Initialize TestHolonsContext from test_session_state
-    let mut test_execution_state = TestExecutionState::new();
+    // Initialize test context and execution state
     let test_context = init_test_context(&mut test_case).await;
+    let mut test_execution_state = TestExecutionState::new(test_context);
 
     tracing::info!("Hello from the test!");
 
@@ -129,7 +127,6 @@ async fn rstest_dance_tests(
         match step {
             DanceTestStep::AbandonStagedChanges { holon_token, expected_status } => {
                 execute_abandon_staged_changes(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     holon_token,
                     expected_status,
@@ -144,7 +141,6 @@ async fn rstest_dance_tests(
                 expected_holon,
             } => {
                 execute_add_related_holons(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     source,
                     relationship_name,
@@ -154,15 +150,14 @@ async fn rstest_dance_tests(
                 .await
             }
             DanceTestStep::Commit { expected_status } => {
-                execute_commit(test_context.as_ref(), &mut test_execution_state, expected_status).await
+                execute_commit(test_context.as_ref(), &mut test_execution_state, expected_status)
+                    .await
             }
             DanceTestStep::DeleteHolon { holon_token, expected_status } => {
-                execute_delete_holon(test_context.as_ref(), &mut test_execution_state, holon_token, expected_status)
-                    .await
+                execute_delete_holon(&mut test_execution_state, holon_token, expected_status).await
             }
             DanceTestStep::EnsureDatabaseCount { expected_count } => {
-                execute_ensure_database_count(test_context.as_ref(), expected_count)
-                    .await
+                execute_ensure_database_count(&mut test_execution_state, expected_count).await
             }
             DanceTestStep::LoadHolons {
                 set,
@@ -174,7 +169,7 @@ async fn rstest_dance_tests(
                 expect_total_loader_holons,
             } => {
                 execute_load_holons(
-                    &mut test_state,
+                    &mut test_execution_state,
                     set,
                     expect_staged,
                     expect_committed,
@@ -186,17 +181,11 @@ async fn rstest_dance_tests(
                 .await
             }
             DanceTestStep::MatchSavedContent { expected_status } => {
-                execute_match_db_content(test_context.as_ref(), &mut test_execution_state, expected_status)
-                    .await
+                execute_match_db_content(&mut test_execution_state, expected_status).await
             }
-            DanceTestStep::PrintDatabase => execute_print_database(test_context.as_ref()).await,
-            DanceTestStep::QueryRelationships {
-                source,
-                query_expression,
-                expected_status,
-            } => {
+            DanceTestStep::PrintDatabase => execute_print_database(&mut test_execution_state).await,
+            DanceTestStep::QueryRelationships { source, query_expression, expected_status } => {
                 execute_query_relationships(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     source,
                     query_expression,
@@ -206,7 +195,6 @@ async fn rstest_dance_tests(
             }
             DanceTestStep::RemoveProperties { holon_token, properties, expected_status } => {
                 execute_remove_properties(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     holon_token,
                     properties,
@@ -221,7 +209,6 @@ async fn rstest_dance_tests(
                 expected_status,
             } => {
                 execute_remove_related_holons(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     source,
                     relationship_name,
@@ -231,14 +218,12 @@ async fn rstest_dance_tests(
                 .await
             }
             DanceTestStep::StageHolon { holon_token, expected_status } => {
-
-                execute_stage_new_holon(test_context.as_ref(), &mut test_execution_state, holon_token).await
+                execute_stage_new_holon(&mut test_execution_state, holon_token).await
             }
             DanceTestStep::StageNewFromClone { source, new_key, expected_status } => {
                 use self::execution_steps::execute_stage_new_from_clone;
 
                 execute_stage_new_from_clone(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     source,
                     new_key,
@@ -249,12 +234,10 @@ async fn rstest_dance_tests(
             DanceTestStep::StageNewVersion { source, expected_status } => {
                 use self::execution_steps::execute_stage_new_version;
 
-                execute_stage_new_version(test_context.as_ref(), &mut test_execution_state, source, expected_status)
-                    .await
+                execute_stage_new_version(&mut test_execution_state, source, expected_status).await
             }
             DanceTestStep::WithProperties { source, properties, expected_status } => {
                 execute_with_properties(
-                    test_context.as_ref(),
                     &mut test_execution_state,
                     source,
                     properties,

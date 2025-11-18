@@ -54,7 +54,7 @@ pub fn setup_book_author_steps_with_context(
     person_1_transient_reference
         .with_property_value(&*fixture_context, "first name", "Roger")?
         .with_property_value(&*fixture_context, "last name", "Briggs")?;
-    let person_1_staged_reference = test_case.add_stage_holon_step(
+    let person_1_test_reference_staged = test_case.add_stage_holon_step(
         fixture_holons,
         person_1_transient_reference,
         person_1_key,
@@ -95,28 +95,25 @@ pub fn setup_book_author_steps_with_context(
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
     let mut fixture_target_references: Vec<HolonReference> = Vec::new();
-    fixture_target_references.push(HolonReference::from_staged(person_1_staged_reference.clone()));
-    fixture_target_references.push(HolonReference::from_staged(person_2_staged_reference.clone()));
+    fixture_target_references.push(HolonReference::Transient(person_1_transient_reference.clone()));
+    fixture_target_references.push(HolonReference::Transient(person_2_transient_reference.clone()));
 
-    book_staged_reference.transient().add_related_holons(
+    book_transient_reference.add_related_holons(
         &*fixture_context,
         BOOK_TO_PERSON_RELATIONSHIP,
         fixture_target_references.clone(),
     )?;
 
     let mut target_references: Vec<TestReference> = Vec::new();
-    target_references.push(TestReference::StagedHolon(person_1_staged_reference));
-    target_references.push(TestReference::StagedHolon(person_2_staged_reference));
-
-    let expected_holon = HolonReference::Staged(book_staged_reference.clone());
+    target_references.push(person_1_test_reference_staged);
+    target_references.push(person_2_test_reference_staged);
 
     // Create the expected_holon
     test_case.add_add_related_holons_step(
-        HolonReference::Staged(book_staged_reference),
+        book_transient_reference,
         relationship_name.clone(),
         target_references,
         ResponseStatusCode::OK,
-        expected_holon,
     )?;
 
     // Load test_session_state

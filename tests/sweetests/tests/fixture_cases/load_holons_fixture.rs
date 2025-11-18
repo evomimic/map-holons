@@ -30,15 +30,12 @@
 //!
 //! Result: endpoint resolution uses consistent strings everywhere.
 
-use crate::shared_test::test_data_types::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
-    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
-    PERSON_TO_BOOK_REL_INVERSE,
-};
-use crate::shared_test::{test_context::init_fixture_context, test_data_types::DancesTestCase};
 use core_types::TypeKind;
 use holons_prelude::prelude::*;
+use holons_test::DancesTestCase;
 use rstest::*;
+
+use crate::helpers::{BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_REL_INVERSE, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, init_fixture_context};
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
 /// loader’s `IsDeclared` boolean property.
@@ -443,7 +440,7 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
     );
 
     // Create a private fixture context with its own TransientHolonManager.
-    let fixture_context_arc = init_fixture_context().await;
+    let fixture_context_arc = init_fixture_context();
     let fixture_context_ref: &dyn HolonsContextBehavior = &*fixture_context_arc;
 
     // A) Ensure DB starts with only the Space holon.

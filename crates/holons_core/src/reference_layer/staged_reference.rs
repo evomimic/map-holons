@@ -232,7 +232,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        borrowed_holon.key().clone()
+        Ok(borrowed_holon.key().clone())
     }
 
     fn related_holons_impl(
@@ -266,7 +266,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
 
-        borrowed_holon.essential_content()
+        Ok(borrowed_holon.essential_content())
     }
 
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {

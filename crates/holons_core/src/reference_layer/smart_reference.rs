@@ -181,10 +181,10 @@ impl ReadableHolonImpl for SmartReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        borrowed_holon.essential_content()
+        Ok(borrowed_holon.essential_content())
     }
 
-    fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
 
