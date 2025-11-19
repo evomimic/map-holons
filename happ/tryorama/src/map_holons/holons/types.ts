@@ -1,4 +1,5 @@
 import { HoloHash, HoloHashB64 } from "@holochain/client"
+import { Session } from "inspector";
 
 //export type MapString = {type:string, value:string}
 
@@ -137,19 +138,53 @@ export type DanceType = string | [string,HoloHashB64] | [string,StagedIndex]
 
 export type DanceRequestObject = {
   dance_name: string //MapString, // unique key within the (single) dispatch table
-  dance_type: DanceTypeObject,
-  body: RequestBodyObject,
-  state: { New: null },
-  //staging_area: StagingArea,
-  //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
+  dance_type: DanceTypeObject | string,
+  body: RequestBodyObject | string,
+  state: SessionState | null,
 }
+
+// ===========================================
+// SESSION STATE TYPES
+// ===========================================
+
+export type TemporaryId = string;
+
+export type SerializableHolonPool ={
+    holons: Record<TemporaryId, Holon>,
+    keyed_index: Array<[string, TemporaryId]>,
+}
+
+export type SessionState = {
+    transient_holons: SerializableHolonPool,
+    staged_holons: SerializableHolonPool,
+    local_holon_space?: HolonReference | null,
+}
+
+/**
+ * Creates an empty/default SessionState
+ * Useful when you need to initialize a DanceResponseObject with empty session state
+ */
+export function createEmptySessionState(): SessionState {
+    return {
+        transient_holons: {
+            holons: {},
+            keyed_index: [],
+        },
+        staged_holons: {
+            holons: {},
+            keyed_index: [],
+        },
+        local_holon_space: null,
+    }
+}
+//--------------------------------------------
 
 export type DanceResponseObject = {
   status_code: ResponseStatusCode,
   description: string,
   body: ResponseBody,
   descriptor?: HolonReference, // space_id+holon_id of DanceDescriptor
-  staging_area: StagingArea
+  state: SessionState,
 }
 
 

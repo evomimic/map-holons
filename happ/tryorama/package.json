@@ -2,15 +2,15 @@
   "name": "tests",
   "private": true,
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "clean:ui": "npx rimraf package-lock.json node_modules"
   },
   "dependencies": {
-    "@angular-devkit/build-angular": "19.2.2",
-    "@holochain/client": "^0.17.1",
-    "@holochain/tryorama": "^0.17.1",
+    "@holochain/client": "^0.19",
+    "@holochain/tryorama": "^0.18",
     "@msgpack/msgpack": "^3.1.1",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.8"
+    "vitest": "^4"
   },
   "type": "module",
   "devDependencies": {

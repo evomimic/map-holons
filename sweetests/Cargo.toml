@@ -18,14 +18,14 @@ tracing = "0.1"
 async-trait = "0.1.51"
 
 # MAP dependencies
-holons_client = { path = "../../host/crates/holons_client" }
-holons_prelude = { path = "../../shared_crates/holons_prelude" }
-holons_core = { path = "../../shared_crates/holons_core" }
-holons_trust_channel = { path = "../../shared_crates/holons_trust_channel" }
-type_names = { path = "../../shared_crates/type_system/type_names" }
-core_types = { path = "../../shared_crates/type_system/core_types" }
-base_types = { path = "../../shared_crates/type_system/base_types" }
-holons_loader = {path = "../../shared_crates/holons_loader"}
+holons_client = { path = "../host/crates/holons_client" }
+holons_prelude = { path = "../shared_crates/holons_prelude" }
+holons_core = { path = "../shared_crates/holons_core" }
+holons_trust_channel = { path = "../shared_crates/holons_trust_channel" }
+type_names = { path = "../shared_crates/type_system/type_names" }
+core_types = { path = "../shared_crates/type_system/core_types" }
+base_types = { path = "../shared_crates/type_system/base_types" }
+holons_loader = {path = "../shared_crates/holons_loader"}
 
 [dev-dependencies]
 rstest = "0.25"

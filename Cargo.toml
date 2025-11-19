@@ -10,7 +10,7 @@ members = [
 
     # happ tests (native build) depends on happ crates, holons_client and other shared crates
     # for build isolation purposes wasm crates are not included here
-    "happ_tests/sweetests",
+    "sweetests",
 
     # host crates (native build) depends on shared crates only
     "host/crates/holons_client",

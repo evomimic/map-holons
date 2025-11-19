@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "happ",
-    "host"
+    "host",
+    "happ/tryorama"
   ],
   "scripts": {
     "start": "npm run build:happ && npm run start:host",
@@ -13,6 +14,8 @@
     "start:host": "npm run start -w host",
     "build:host": "npm run build -w host",
     "build:happ": "npm run build:happ -w happ",
+    "test:tryorama": "npm run test -w happ",
+    "test:sweetest": "npm run sweetest -w happ",
     "clean:ui": "npx rimraf package-lock.json node_modules && npm run clean:ui -w host && npm run clean:ui -w happ",
     "clean:rust": "npx rimraf target .cargo Cargo.lock && npm run clean:rust -w happ && npm run clean:rust -w host"
   },
