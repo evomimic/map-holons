@@ -23,13 +23,15 @@ hdk = "0.5"
 hdi = "0.6"
 
 # MAP Dependencies
+holons_core = { path = "../../../shared_crates/holons_core" }
+holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
+base_types = { path = "../../../shared_crates/type_system/base_types" }
+core_types = { path = "../../../shared_crates/type_system/core_types" }
+type_names = { path = "../../../shared_crates/type_system/type_names" }
+integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }
+holons_loader = {path = "../../../shared_crates/holons_loader"}
+holons_guest_integrity = { path = "../holons_guest_integrity" }
+holons_integrity = { path = "../../zomes/integrity/holons_integrity" }
 
-holon_dance_builders = {path = "../../../shared_crates/holon_dance_builders"}
-holons_core = {path = "../../../shared_crates/holons_core"}
-integrity_core_types = {path = "../../../shared_crates/type_system/integrity_core_types"}
-core_types = {path = "../../../shared_crates/type_system/core_types"}
-base_types = {path = "../../../shared_crates/type_system/base_types"}
-type_names = {path = "../../../shared_crates/type_system/type_names"}
-holons_integrity = {path = "../../zomes/integrity/holons_integrity"}
-holons_guest_integrity = {path = "../holons_guest_integrity"}
-holons_loader = {path = "../holons_loader"}
+
+

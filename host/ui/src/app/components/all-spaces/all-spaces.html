@@ -1,0 +1,57 @@
+
+
+  <!-- all Spaces Table <h1 class="text-3xl font-bold mb-6">Memetic Activation</h1>-->
+  <div class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4 text-blue-800">All Spaces</h2>
+    <div class="overflow-x-auto bg-white rounded-lg shadow-md">
+      <table class="min-w-full">
+        <thead class="bg-blue-200">
+          <tr>
+            <th class="p-4 text-left">Name</th>
+            <th class="p-4 text-left">Description</th>
+            <th class="p-4 text-left">Created At</th>
+            <th class="p-4 text-left">Enabled</th>
+            <th class="p-4 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let space of contentSpaces" class="border-b">
+            <td class="p-4">
+              <a [routerLink]="['/contentspaces', space.id]" class="text-blue-600 hover:underline">{{ space.name }}</a>
+              <span *ngIf="space.id === space.origin_space_id" class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">Home Space</span>
+            </td>
+            <td class="p-4">{{ space.description }}</td>
+            <td class="p-4">{{ space.created_at | date:'short' }}</td>
+            <td class="p-4">{{ space.enabled }}</td>
+            <td class="p-4 flex items-center">
+              <button title="Modify Space" class="p-1 text-gray-500 hover:text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                  <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button title="Archive Space" class="p-1 text-gray-500 hover:text-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                  <path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button title="Derive New Space From" (click)="deriveNewSpace(space.id, 'content')" class="p-1 text-gray-500 hover:text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<app-create-space-form
+  [showForm]="showCreateSpaceForm"
+  [newSpace]="newSpace"
+  [metadataJson]="metadataJson"
+  (submit)="createSpace($event)"
+  (cancel)="cancelCreateSpace()">
+</app-create-space-form>

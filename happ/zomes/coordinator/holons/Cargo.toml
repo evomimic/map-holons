@@ -19,6 +19,11 @@ hdk = "0.5"
 
 # MAP Dependencies
 
-holons_core = {path = "../../../../shared_crates/holons_core"}
-holons_integrity = {path = "../../integrity/holons_integrity"}
-holons_guest = {path = "../../../crates/holons_guest"}
+[dependencies.holons_core]
+path = "../../../../shared_crates/holons_core"
+
+[dependencies.holons_integrity]
+path = "../../integrity/holons_integrity"
+
+[dependencies.holons_guest]
+path = "../../../crates/holons_guest"

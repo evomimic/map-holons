@@ -1,0 +1,32 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "host"
+		}
+	],
+	"settings": {
+		"terminal.integrated.cwd": "${workspaceFolder}/host",
+		"workbench.colorCustomizations": {
+			"activityBar.activeBackground": "#17a2b8",
+			"activityBar.background": "#17a2b8",
+			"activityBar.foreground": "#000000",
+			"activityBar.inactiveForeground": "#000000c9",
+			"activityBarBadge.background": "#b04fb0",
+			"activityBarBadge.foreground": "#e7e7e7",
+			"commandCenter.border": "#00000099",
+			"sash.hoverBorder": "#17a2b8",
+			"statusBar.background": "#17a2b8",
+			"statusBar.foreground": "#000000",
+			"statusBarItem.hoverBackground": "#000000",
+			"statusBarItem.remoteBackground": "#17a2b8",
+			"statusBarItem.remoteForeground": "#15202b",
+			"titleBar.activeBackground": "#1397ab",
+			"titleBar.activeForeground": "#7c8792",
+			"titleBar.inactiveBackground": "#17a2b899",
+			"titleBar.inactiveForeground": "#b6b9bd99"
+		}
+	}
+}

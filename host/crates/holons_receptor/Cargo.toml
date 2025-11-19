@@ -1,0 +1,29 @@
+[package]
+name = "holons_receptor"
+version = "0.1.0"
+edition = "2021"
+#edition = "2024"
+
+
+#[lib]
+#name = "holochain_receptor"
+#crate-type = ["rlib"]
+
+[dependencies]
+serde_bytes = "*"
+serde_json = "1"
+async-trait = "0.1"
+tracing = "0.1"
+sha2 = "0.10"
+hex = "0.4" 
+
+
+#map dependencies
+holons_client = { path = "../holons_client" }
+holons_core = { path = "../../../shared_crates/holons_core" }
+holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders"}
+holochain_receptor = { path = "../holochain_receptor" }
+holons_trust_channel = { path = "../../../shared_crates/holons_trust_channel" }
+base_types = { path = "../../../shared_crates/type_system/base_types" }
+core_types = { path = "../../../shared_crates/type_system/core_types" }
+integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <title>map_sdk</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <style>
+    .icon-carousel .carousel-item {
+      opacity: 0;
+      animation: fade 4.5s infinite;
+    }
+    .icon-carousel .carousel-item:nth-child(1) { animation-delay: 0s; }
+    .icon-carousel .carousel-item:nth-child(2) { animation-delay: 1.5s; }
+    .icon-carousel .carousel-item:nth-child(3) { animation-delay: 3s; }
+    @keyframes fade {
+      0%, 33.33%, 100% { opacity: 0; }
+      3%, 30% { opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-gray-900">
+  <div id="loading-overlay" class="fixed top-0 left-0 w-full h-full bg-black flex flex-col justify-center items-center z-50 transition-opacity duration-500 ease-in-out">
+    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+    <p class="text-gray-700 text-lg mb-4">Loading network storage options...</p>
+    <div class="icon-carousel relative h-12 w-12">
+      <!-- IPFS Icon -->
+      <div class="carousel-item absolute">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/18/Ipfs-logo-1024-ice-text.png" alt="IPFS" class="w-12 h-12">
+      </div>
+      <!-- Holochain Icon -->
+      <div class="carousel-item absolute">
+        <img src="" alt="Holochain" class="w-12 h-12">
+      </div>
+      <!-- Web3 Storage Icon -->
+      <div class="carousel-item absolute">
+        <img src="https://imgs.search.brave.com/oIUhBK85tSUcRsTNw9MM3-LKh01xPTa0iuHx08JpzpM/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9sb2dv/d2lrLmNvbS9jb250/ZW50L3VwbG9hZHMv/aW1hZ2VzL3dlYjM2/OTg0LmpwZw" alt="Web3 Storage" class="w-12 h-12">
+      </div>
+    </div>
+  </div>
+  <app-root></app-root>
+</body>
+</html>

@@ -17,3 +17,4 @@ coordinator:
       bundled: "../../target/wasm32-unknown-unknown/release/holons.wasm"
       dependencies:
         - name: holons_integrity
+

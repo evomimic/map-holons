@@ -1,0 +1,19 @@
+{
+  "name": "tests",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "clean:ui": "npx rimraf package-lock.json node_modules"
+  },
+  "dependencies": {
+    "@holochain/client": "^0.19",
+    "@holochain/tryorama": "^0.18",
+    "@msgpack/msgpack": "^3.1.1",
+    "typescript": "^5.8.2",
+    "vitest": "^4"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^22.13.10"
+  }
+}

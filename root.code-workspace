@@ -1,0 +1,32 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"rust-analyzer.linkedProjects": [
+			"Cargo.toml",
+			"happ/Cargo.toml"
+		],
+		"workbench.colorCustomizations": {
+			"activityBar.activeBackground": "#015d5d",
+			"activityBar.background": "#015d5d",
+			"activityBar.foreground": "#000000",
+			"activityBar.inactiveForeground": "#000000c9",
+			"activityBarBadge.background": "#b04fb0",
+			"activityBarBadge.foreground": "#e7e7e7",
+			"commandCenter.border": "#00000099",
+			"sash.hoverBorder": "#015d5d",
+			"statusBar.background": "#015d5d",
+			"statusBar.foreground": "#000000",
+			"statusBarItem.hoverBackground": "#000000",
+			"statusBarItem.remoteBackground": "#015d5d",
+			"statusBarItem.remoteForeground": "#15202b",
+			"titleBar.activeBackground": "#015151",
+			"titleBar.activeForeground": "#7c8792",
+			"titleBar.inactiveBackground": "#03545499",
+			"titleBar.inactiveForeground": "#b6b9bd99"
+		}
+	}
+}
