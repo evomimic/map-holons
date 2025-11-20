@@ -305,15 +305,15 @@ impl HolonLoaderController {
         // Retrieve relationships
         let committed_refs = commit_response.related_holons(
             context,
-            CoreRelationshipTypeName::HolonsCommitted.as_relationship_name(),
+            CoreRelationshipTypeName::SavedHolons.as_relationship_name(),
         )?;
         let abandoned_refs = commit_response.related_holons(
             context,
-            CoreRelationshipTypeName::HolonsAbandoned.as_relationship_name(),
+            CoreRelationshipTypeName::AbandonedHolons.as_relationship_name(),
         )?;
 
-        let holons_committed: i64 = committed_refs.read().unwrap().get_count().0;
-        let holons_abandoned: i64 = abandoned_refs.read().unwrap().get_count().0;
+        let saved_holons: i64 = committed_refs.read().unwrap().get_count().0;
+        let abandoned_holons: i64 = abandoned_refs.read().unwrap().get_count().0;
 
         // Retrieve property CommitsAttempted
         let commits_attempted_val = commit_response
@@ -327,17 +327,17 @@ impl HolonLoaderController {
             None => 0,
         };
 
-        let commit_ok = (holons_committed + holons_abandoned) == commits_attempted;
+        let commit_ok = (saved_holons + abandoned_holons) == commits_attempted;
 
         let summary = if commit_ok {
             format!(
                 "Commit successful: {} holons staged; {} committed; {} abandoned; {} attempts.",
-                total_holons_staged, holons_committed, holons_abandoned, commits_attempted
+                total_holons_staged, saved_holons, abandoned_holons, commits_attempted
             )
         } else {
             format!(
                 "Commit incomplete: {} holons staged; {} committed; {} abandoned; {} attempts.",
-                total_holons_staged, holons_committed, holons_abandoned, commits_attempted
+                total_holons_staged, saved_holons, abandoned_holons, commits_attempted
             )
         };
 
@@ -346,7 +346,7 @@ impl HolonLoaderController {
             context,
             run_id,
             total_holons_staged,
-            holons_committed,
+            saved_holons,
             links_created,
             0, // errors_encountered
             total_bundles,
