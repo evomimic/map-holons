@@ -257,7 +257,7 @@ impl TransientManagerAccessInternal for TransientHolonManager {
             .export_pool()
     }
 
-    fn import_transient_holons(&mut self, pool: SerializableHolonPool) -> () {
+    fn import_transient_holons(&self, pool: SerializableHolonPool) -> () {
         self.transient_holons.try_write().unwrap().import_pool(pool); // Mutates existing HolonPool
     }
 }

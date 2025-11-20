@@ -205,7 +205,7 @@ impl NurseryAccessInternal for Nursery {
             .export_pool()
     }
 
-    fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> () {
+    fn import_staged_holons(&self, pool: SerializableHolonPool) -> () {
         self.staged_holons
             .write()
             .expect("Failed to acquire write lock on staged_holons")

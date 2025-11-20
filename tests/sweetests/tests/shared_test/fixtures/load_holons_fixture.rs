@@ -83,10 +83,7 @@ fn build_empty_bundle(
     context: &dyn HolonsContextBehavior,
     bundle_key: &str,
 ) -> Result<TransientReference, HolonError> {
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
     // `create_empty()` sets the bundle's `Key` to the provided string.
     let bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
@@ -101,10 +98,7 @@ fn build_nodes_only_bundle(
     bundle_key: &str,
     instance_keys: &[&str],
 ) -> Result<(TransientReference, usize), HolonError> {
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
     // 1) Create the bundle container (Key = bundle_key).
     let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
@@ -116,7 +110,6 @@ fn build_nodes_only_bundle(
         let loader_holon = transient_service.create_empty(MapString((*key).to_string()))?;
         members.push(HolonReference::Transient(loader_holon));
     }
-    drop(transient_service); // release lock before mutating relationships
 
     // 3) Attach members via BUNDLE_MEMBERS.
     bundle.add_related_holons(
@@ -146,10 +139,7 @@ fn build_declared_links_bundle(
     declared_relationship_name: &str,
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create the bundle container (Key = bundle_key).
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
     // LoaderHolons created with **instance key strings** (Key set automatically).
     let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
@@ -157,7 +147,6 @@ fn build_declared_links_bundle(
         transient_service.create_empty(MapString(source_instance_key.to_string()))?;
     let target_loader =
         transient_service.create_empty(MapString(target_instance_key.to_string()))?;
-    drop(transient_service); // release lock before wiring relationships
 
     // 2) Attach both as BundleMembers.
     bundle.add_related_holons(
@@ -198,16 +187,12 @@ fn build_cross_bundle_declared_link_bundle(
     target_instance_key: &str,
     declared_relationship_name: &str,
 ) -> Result<(TransientReference, usize, usize), HolonError> {
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
     // Bundle + source LoaderHolon (target lives in a different bundle or is pre-existing)
     let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
     let mut source_loader =
         transient_service.create_empty(MapString(source_instance_key.to_string()))?;
-    drop(transient_service); // 🔓
 
     // Add source as BundleMember.
     bundle.add_related_holons(
@@ -245,15 +230,11 @@ fn build_single_loader_with_offset_bundle(
     loader_key: &str,
     offset: i64,
 ) -> Result<(TransientReference, usize), HolonError> {
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
     // Bundle + single LoaderHolon (Key = loader_key)
     let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
     let mut loader = transient_service.create_empty(MapString(loader_key.to_string()))?;
-    drop(transient_service); // 🔓
 
     // Stamp the byte offset on the loader so the controller can enrich errors.
     set_start_offset(context, &mut loader, offset)?;
@@ -278,10 +259,7 @@ fn build_inverse_with_inline_schema_bundle(
     book_instance_key: &str,   // e.g., "Emerging World (Test Edition)"
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create bundle + 6 loader holons (2 instances + 4 schema descriptors)
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
     let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
 
@@ -300,7 +278,6 @@ fn build_inverse_with_inline_schema_bundle(
         transient_service.create_empty(MapString(BOOK_TO_PERSON_RELATIONSHIP_KEY.to_string()))?;
     let mut inverse_rel_descriptor = transient_service
         .create_empty(MapString(PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY.to_string()))?;
-    drop(transient_service); // 🔓
 
     // Minimal names (helps diagnostics; not required for deref-by-key)
     for (transient_reference, name) in [
@@ -697,10 +674,7 @@ pub fn add_loader_relationship_reference(
 ) -> Result<TransientReference, HolonError> {
     // ── 1) Create LRR + endpoint containers under a short-lived write lock ──
     let (mut relationship_reference, mut source_ref, target_refs_uninitialized) = {
-        let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-        let transient_service = transient_service_handle.write().map_err(|_| {
-            HolonError::FailedToBorrow("Transient service lock was poisoned".into())
-        })?;
+        let transient_service = context.get_space_manager().get_transient_behavior_service();
 
         // LRR container: key is descriptive; endpoint resolution does not use it.
         let relationship_reference_key = format!(
@@ -724,7 +698,7 @@ pub fn add_loader_relationship_reference(
         }
 
         (relationship_reference, source_ref, target_refs)
-    }; // 🔑 lock released here
+    };
 
     // ── 2) Set properties on created transients ───────────────────────────────
 
@@ -829,10 +803,7 @@ pub fn make_load_set_from_bundles(
     bundles: Vec<BundleWithFilename>,
 ) -> Result<TransientReference, HolonError> {
     // 1) Create the set container
-    let transient_service_handle = context.get_space_manager().get_transient_behavior_service();
-    let transient_service = transient_service_handle
-        .write()
-        .map_err(|_| HolonError::FailedToBorrow("Transient service lock was poisoned".into()))?;
+    let transient_service = context.get_space_manager().get_transient_behavior_service();
     let mut set_ref = transient_service.create_empty(MapString(set_key.to_string()))?;
     drop(transient_service); // release write lock before mutating relationships
 

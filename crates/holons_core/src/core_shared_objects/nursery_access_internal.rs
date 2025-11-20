@@ -90,7 +90,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// # Arguments
     /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
-    fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> ();
+    fn import_staged_holons(&self, pool: SerializableHolonPool) -> ();
 
     /// Provides direct access to the staged Holons in the Nursery's HolonPool.
     ///
