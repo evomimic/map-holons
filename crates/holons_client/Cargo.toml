@@ -11,6 +11,10 @@ name = "holons_client"
 # General dev-dependencies (platform-agnostic)
 derive-new = "0.7"
 tracing = "0.1"
+tokio = "1.47.1"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_bytes = "*"
+async-trait = "0.1.89"
 #async-trait = "0.1.51"
 
 # MAP Dependencies

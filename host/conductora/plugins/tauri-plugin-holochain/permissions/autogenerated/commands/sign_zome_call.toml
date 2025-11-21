@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-sign-zome-call"
+description = "Enables the sign_zome_call command without any pre-configured scope."
+commands.allow = ["sign_zome_call"]
+
+[[permission]]
+identifier = "deny-sign-zome-call"
+description = "Denies the sign_zome_call command without any pre-configured scope."
+commands.deny = ["sign_zome_call"]
