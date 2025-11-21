@@ -3,9 +3,9 @@
 use crate::controller::{FileProvenance, ProvenanceIndex};
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
-use std::iter::Map;
+
 use std::sync::atomic::{AtomicU32, Ordering};
-use tracing::error;
+
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -98,7 +98,7 @@ pub fn make_error_holons_best_effort(
                     transient_reference.with_property_value(
                         context,
                         CorePropertyTypeName::StartUtf8ByteOffset,
-                        BaseValue::IntegerValue(MapInteger(*offset as i64)),
+                        BaseValue::IntegerValue(MapInteger(*offset)),
                     )?;
                 }
             }

@@ -1,12 +1,12 @@
 #![allow(unused_variables)]
 
-use base_types::{MapInteger, MapString};
+use base_types::{MapString};
 use core_types::{HolonError, HolonId};
-use holons_core::{CommitRequestStatus, ReadableHolon};
+use holons_core::{ReadableHolon};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
-    core_shared_objects::{CommitResponse, Holon, HolonCollection},
+    core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
     HolonReference, RelationshipMap, SmartReference, StagedReference,
 };

@@ -51,10 +51,10 @@ path = "../../crates/type_system/base_types"
 path = "../../crates/holons_trust_channel"
 
 [dev-dependencies]
-rstest = "0.25"
+rstest = "0.26.1"
 pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }
-tokio = { version = "1.23.1", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 async-std = "1"
 tracing-subscriber = "0.3"
 
