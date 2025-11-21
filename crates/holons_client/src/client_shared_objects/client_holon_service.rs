@@ -8,13 +8,15 @@ use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{CommitResponse, Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
-    RelationshipMap,
+    HolonReference, RelationshipMap, SmartReference, StagedReference,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
-use tokio::runtime::Handle;
-use tokio::runtime::Builder;
+use std::future::Future;
+use futures_executor::block_on;
+// use tokio::runtime::Handle;
+// use tokio::runtime::Builder;
 
 
 #[derive(Debug, Clone)]
@@ -34,7 +36,7 @@ impl HolonServiceApi for ClientHolonService {
 
         // 2. Run the dance
         let initiator = context.get_space_manager().get_dance_initiator()?;
-        let response = run_future_synchronously(initiator.initiate_dance(context, request))?;
+        let response = run_future_synchronously(initiator.initiate_dance(context, request));
 
         // 3. Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
@@ -82,7 +84,7 @@ impl HolonServiceApi for ClientHolonService {
         //let request = holon_dance_builders::=((*source_id)?)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
         //let response = run_future_synchronously(initiator.initiate_dance(context, request))?;
-        //not sure how to do this one?
+        //not sure how to do this one? 
 
         todo!()
     }
@@ -107,7 +109,7 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
         let initiator = context.get_space_manager().get_dance_initiator()?;
-        let response = run_future_synchronously(initiator.initiate_dance(context, request))?;
+        let response = run_future_synchronously(initiator.initiate_dance(context, request));
         if response.status_code != ResponseStatusCode::OK {
              return Err(HolonError::Misc(format!(
                  "commit dance failed: {:?} — {}",
@@ -135,7 +137,7 @@ impl HolonServiceApi for ClientHolonService {
         let initiator = context.get_space_manager().get_dance_initiator()?; // <- no .read()
         //
         // // 3) Bridge async → sync (keep this because the client service is sync)
-         let response = run_future_synchronously(initiator.initiate_dance(context, request))?;
+         let response = run_future_synchronously(initiator.initiate_dance(context, request));
         //
         // // 4) Check the status
          if response.status_code != ResponseStatusCode::OK {
@@ -144,7 +146,7 @@ impl HolonServiceApi for ClientHolonService {
                  response.status_code, response.description.0
              )));
          }
-
+        
         // 5) Extract the returned holon
          match response.body {
              ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
@@ -157,37 +159,52 @@ impl HolonServiceApi for ClientHolonService {
     }
 }
 
-/// Run an async future to completion from synchronous code (native only).
+/// Run an async computation to completion from a synchronous context.
 ///
-/// Behavior:
-/// - If a Tokio runtime is already running on this thread, the future is executed
-///   inside that runtime using `block_in_place` to avoid creating a nested runtime.
-/// - If no runtime is running, a lightweight current-thread runtime is created
-///   just for this call.
+/// This helper deliberately avoids Tokio runtime APIs so that
+/// `holons_client` does not depend on Tokio's internal runtime
+/// configuration (which Holochain controls).
 ///
-///
-pub fn run_future_synchronously<FutureType, OutputType>(
-    future_to_run: FutureType,
-) -> Result<OutputType, HolonError>
+/// It is intended to be called from top-level, synchronous code paths
+/// (e.g., UI handlers), not from within an async Tokio task.
+fn run_future_synchronously<F, T>(future: F) -> T
 where
-    FutureType: core::future::Future<Output = OutputType>,
+    F: Future<Output = T>,
 {
-    // Reuse an existing Tokio runtime if we are already inside one.
-    if Handle::try_current().is_ok() {
-        let output_value =
-            tokio::task::block_in_place(|| Handle::current().block_on(future_to_run));
-        return Ok(output_value);
-    }
-
-    // Otherwise, create a small current-thread runtime for this one call.
-    let runtime = Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|error| {
-            HolonError::Misc(format!(
-                "run_future_synchronously: failed to build Tokio runtime: {error}"
-            ))
-        })?;
-
-    Ok(runtime.block_on(future_to_run))
+    block_on(future)
 }
+
+// /// Run an async future to completion from synchronous code (native only).
+// ///
+// /// Behavior:
+// /// - If a Tokio runtime is already running on this thread, the future is executed
+// ///   inside that runtime using `block_in_place` to avoid creating a nested runtime.
+// /// - If no runtime is running, a lightweight current-thread runtime is created
+// ///   just for this call.
+// ///
+// ///
+// pub fn run_future_synchronously<FutureType, OutputType>(
+//     future_to_run: FutureType,
+// ) -> Result<OutputType, HolonError>
+// where
+//     FutureType: core::future::Future<Output = OutputType>,
+// {
+//     // Reuse an existing Tokio runtime if we are already inside one.
+//     if Handle::try_current().is_ok() {
+//         let output_value =
+//             tokio::task::block_in_place(|| Handle::current().block_on(future_to_run));
+//         return Ok(output_value);
+//     }
+//
+//     // Otherwise, create a small current-thread runtime for this one call.
+//     let runtime = Builder::new_current_thread()
+//         .enable_all()
+//         .build()
+//         .map_err(|error| {
+//             HolonError::Misc(format!(
+//                 "run_future_synchronously: failed to build Tokio runtime: {error}"
+//             ))
+//         })?;
+//
+//     Ok(runtime.block_on(future_to_run))
+// }

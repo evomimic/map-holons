@@ -13,7 +13,7 @@ use std::fmt::Debug;
 /// a Tauri bridge, or other runtime adapters.
 
 /// Production trait: requires Send + Sync for multi-threaded contexts
-#[async_trait]
+#[async_trait(?Send)]
 pub trait DanceInitiator: Send + Sync + Debug {
     /// Sends a `DanceRequest` and returns a `DanceResponse`.
     ///
