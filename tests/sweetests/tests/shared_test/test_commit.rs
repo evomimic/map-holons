@@ -57,7 +57,7 @@ pub async fn execute_commit(test_state: &mut DanceTestExecutionState) {
 
     // 4. Retrieve committed holons from the HolonsCommitted relationship.
     let committed_references = commit_response_body_reference
-        .related_holons(context, CoreRelationshipTypeName::HolonsCommitted)
+        .related_holons(context, CoreRelationshipTypeName::SavedHolons)
         .expect("Failed to read HolonsCommitted relationship");
 
     let committed_refs_guard = committed_references.read().unwrap();

@@ -561,14 +561,12 @@ impl HolonLoaderController {
 
         // 1) Create the transient under a short-lived write lock, then DROP the lock
         let response_reference = {
-            let transient_service_handle =
-                context.get_space_manager().get_transient_behavior_service();
-            let service = transient_service_handle
-                .write()
-                .map_err(|_| HolonError::FailedToBorrow("Transient service write".into()))?;
+            let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+
             let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
-            service.create_empty(response_key)?
-        }; // <- write lock released here
+
+            transient_behavior.create_empty(response_key)?
+        };
 
         // Mutate the holon via its reference
         let mut response_reference = response_reference;

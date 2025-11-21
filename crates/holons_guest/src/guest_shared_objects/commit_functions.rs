@@ -30,7 +30,7 @@ use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 use type_names::CorePropertyTypeName::Key;
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
-pub use type_names::CoreRelationshipTypeName::{HolonsAbandoned, HolonsCommitted};
+pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{
     CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
     ToPropertyName, ToRelationshipName,
@@ -161,8 +161,8 @@ pub fn commit(
         }
 
         // Attach results to the CommitResponse holon
-        response_reference.add_related_holons(context, HolonsCommitted, saved_holons)?;
-        response_reference.add_related_holons(context, HolonsAbandoned, abandoned_holons)?;
+        response_reference.add_related_holons(context, SavedHolons, saved_holons)?;
+        response_reference.add_related_holons(context, AbandonedHolons, abandoned_holons)?;
     }
 
     // Check if Pass 1 ended with an incomplete status
