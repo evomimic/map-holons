@@ -14,7 +14,7 @@ const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
 #[derive(Debug)]
 pub struct MockConductorConfig {
     pub conductor: SweetConductor,
-    pub _agent: AgentPubKey,
+    pub agent: AgentPubKey,
     pub cell: SweetCell,
 }
 
