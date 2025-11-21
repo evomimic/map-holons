@@ -21,7 +21,7 @@
 //!
 //! ## Key Implementation Notes
 //!
-//! - `create_empty(key: String | MapString)` **sets the holon `Key` property automatically**,
+//! - `new_holon(context, Some(key: String | MapString))` **sets the holon `Key` property automatically**,
 //!   so we simply pass the *intended instance key string* when creating LoaderHolons.
 //! - Tier-0 (declared-only) needs **no** type descriptors.
 //! - For inverse mapping, we load a **tiny micro-schema** first (two HolonTypes + DeclaredRelationshipType + InverseRelationshipType).
@@ -83,10 +83,8 @@ fn build_empty_bundle(
     context: &dyn HolonsContextBehavior,
     bundle_key: &str,
 ) -> Result<TransientReference, HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-
-    // `create_empty()` sets the bundle's `Key` to the provided string.
-    let bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    // New bundle transient holon with the provided key.
+    let bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
     Ok(bundle)
 }
 
@@ -98,16 +96,13 @@ fn build_nodes_only_bundle(
     bundle_key: &str,
     instance_keys: &[&str],
 ) -> Result<(TransientReference, usize), HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-
     // 1) Create the bundle container (Key = bundle_key).
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
 
     // 2) Create LoaderHolon containers with **consistent instance keys**.
-    //    `create_empty()` sets the Key property; no manual Key setting required.
     let mut members: Vec<HolonReference> = Vec::with_capacity(instance_keys.len());
     for key in instance_keys {
-        let loader_holon = transient_service.create_empty(MapString((*key).to_string()))?;
+        let loader_holon = new_holon(context, Some(MapString((*key).to_string())))?;
         members.push(HolonReference::Transient(loader_holon));
     }
 
@@ -126,8 +121,8 @@ fn build_nodes_only_bundle(
 ///   - One declared LoaderRelationshipReference from source → target
 ///
 /// All keys are **consistent**:
-///   - Source LoaderHolon: `create_empty(source_instance_key)`
-///   - Target LoaderHolon: `create_empty(target_instance_key)`
+///   - Source LoaderHolon: `new_holon(context, source_instance_key)`
+///   - Target LoaderHolon: `new_holon(context, target_instance_key)`
 ///   - LoaderHolonReference.holon_key values use the **same strings**
 ///
 /// RETURNS: (bundle, expected_node_count, expected_links_created)
@@ -139,14 +134,10 @@ fn build_declared_links_bundle(
     declared_relationship_name: &str,
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create the bundle container (Key = bundle_key).
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-
     // LoaderHolons created with **instance key strings** (Key set automatically).
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
-    let mut source_loader =
-        transient_service.create_empty(MapString(source_instance_key.to_string()))?;
-    let target_loader =
-        transient_service.create_empty(MapString(target_instance_key.to_string()))?;
+    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
+    let mut source_loader = new_holon(context, Some(MapString(source_instance_key.to_string())))?;
+    let target_loader = new_holon(context, Some(MapString(target_instance_key.to_string())))?;
 
     // 2) Attach both as BundleMembers.
     bundle.add_related_holons(
@@ -187,12 +178,9 @@ fn build_cross_bundle_declared_link_bundle(
     target_instance_key: &str,
     declared_relationship_name: &str,
 ) -> Result<(TransientReference, usize, usize), HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-
     // Bundle + source LoaderHolon (target lives in a different bundle or is pre-existing)
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
-    let mut source_loader =
-        transient_service.create_empty(MapString(source_instance_key.to_string()))?;
+    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
+    let mut source_loader = new_holon(context, Some(MapString(source_instance_key.to_string())))?;
 
     // Add source as BundleMember.
     bundle.add_related_holons(
@@ -230,11 +218,9 @@ fn build_single_loader_with_offset_bundle(
     loader_key: &str,
     offset: i64,
 ) -> Result<(TransientReference, usize), HolonError> {
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-
     // Bundle + single LoaderHolon (Key = loader_key)
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
-    let mut loader = transient_service.create_empty(MapString(loader_key.to_string()))?;
+    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
+    let mut loader = new_holon(context, Some(MapString(loader_key.to_string())))?;
 
     // Stamp the byte offset on the loader so the controller can enrich errors.
     set_start_offset(context, &mut loader, offset)?;
@@ -259,25 +245,22 @@ fn build_inverse_with_inline_schema_bundle(
     book_instance_key: &str,   // e.g., "Emerging World (Test Edition)"
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create bundle + 6 loader holons (2 instances + 4 schema descriptors)
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
 
-    let mut bundle = transient_service.create_empty(MapString(bundle_key.to_string()))?;
+    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
 
     // Instances
-    let mut person_loader =
-        transient_service.create_empty(MapString(person_instance_key.to_string()))?;
-    let mut book_loader =
-        transient_service.create_empty(MapString(book_instance_key.to_string()))?;
+    let mut person_loader = new_holon(context, Some(MapString(person_instance_key.to_string())))?;
+    let mut book_loader = new_holon(context, Some(MapString(book_instance_key.to_string())))?;
 
     // Schema descriptors (type + relationship types)
     let mut book_type_descriptor =
-        transient_service.create_empty(MapString(BOOK_DESCRIPTOR_KEY.to_string()))?;
+        new_holon(context, Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
     let mut person_type_descriptor =
-        transient_service.create_empty(MapString(PERSON_DESCRIPTOR_KEY.to_string()))?;
+        new_holon(context, Some(MapString(PERSON_DESCRIPTOR_KEY.to_string())))?;
     let mut declared_rel_descriptor =
-        transient_service.create_empty(MapString(BOOK_TO_PERSON_RELATIONSHIP_KEY.to_string()))?;
-    let mut inverse_rel_descriptor = transient_service
-        .create_empty(MapString(PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY.to_string()))?;
+        new_holon(context, Some(MapString(BOOK_TO_PERSON_RELATIONSHIP_KEY.to_string())))?;
+    let mut inverse_rel_descriptor =
+        new_holon(context, Some(MapString(PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY.to_string())))?;
 
     // Minimal names (helps diagnostics; not required for deref-by-key)
     for (transient_reference, name) in [
@@ -660,7 +643,7 @@ pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> 
 /// - `Ok(TransientReference)` of the created LRR container
 ///
 /// ### Notes
-/// - `create_empty(MapString(key))` automatically sets the `Key` property; no
+/// - `new_holon(context, Some(MapString(key)))` automatically sets the `Key` property; no
 ///   explicit `with_property_value(Key, ..)` needed.
 /// - Endpoint resolution in Pass-2 relies on `LoaderHolonReference.holon_key`
 ///   values matching the instance keys you use for the corresponding LoaderHolons.
@@ -674,26 +657,24 @@ pub fn add_loader_relationship_reference(
 ) -> Result<TransientReference, HolonError> {
     // ── 1) Create LRR + endpoint containers under a short-lived write lock ──
     let (mut relationship_reference, mut source_ref, target_refs_uninitialized) = {
-        let transient_service = context.get_space_manager().get_transient_behavior_service();
-
         // LRR container: key is descriptive; endpoint resolution does not use it.
         let relationship_reference_key = format!(
             "LoaderRelationshipReference.{}.{}",
             source_instance_key, relationship_name_str
         );
         let relationship_reference =
-            transient_service.create_empty(MapString(relationship_reference_key))?;
+            new_holon(context, Some(MapString(relationship_reference_key)))?;
 
         // Source LoaderHolonReference container
         let source_ref_key = format!("LoaderHolonReference.Source.{}", source_instance_key);
-        let source_ref = transient_service.create_empty(MapString(source_ref_key))?;
+        let source_ref = new_holon(context, Some(MapString(source_ref_key)))?;
 
         // Target LoaderHolonReference containers (ordered)
         let mut target_refs: Vec<TransientReference> =
             Vec::with_capacity(target_instance_keys.len());
         for (index, target_key) in target_instance_keys.iter().enumerate() {
             let target_ref_key = format!("LoaderHolonReference.Target{}.{}", index + 1, target_key);
-            let target_ref = transient_service.create_empty(MapString(target_ref_key))?;
+            let target_ref = new_holon(context, Some(MapString(target_ref_key)))?;
             target_refs.push(target_ref);
         }
 
@@ -803,9 +784,7 @@ pub fn make_load_set_from_bundles(
     bundles: Vec<BundleWithFilename>,
 ) -> Result<TransientReference, HolonError> {
     // 1) Create the set container
-    let transient_service = context.get_space_manager().get_transient_behavior_service();
-    let mut set_ref = transient_service.create_empty(MapString(set_key.to_string()))?;
-    drop(transient_service); // release write lock before mutating relationships
+    let mut set_ref = new_holon(context, Some(MapString(set_key.to_string())))?;
 
     // 2) Stamp filenames on bundles and collect references
     let mut hrefs: Vec<HolonReference> = Vec::with_capacity(bundles.len());
