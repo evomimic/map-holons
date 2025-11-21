@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-locales"
+description = "Enables the get_locales command without any pre-configured scope."
+commands.allow = ["get_locales"]
+
+[[permission]]
+identifier = "deny-get-locales"
+description = "Denies the get_locales command without any pre-configured scope."
+commands.deny = ["get_locales"]

@@ -27,6 +27,7 @@ members = [
 ]
 
 exclude = [
+    "host/*",
     "workspaces/wasm",
     "workspaces/native",
     "workspaces/test"

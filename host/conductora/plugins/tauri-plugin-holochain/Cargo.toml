@@ -1,0 +1,45 @@
+[package]
+name = "tauri-plugin-holochain"
+version = "0.0.0"
+authors = ["guillem@darksoil.studio"]
+description = ""
+edition = "2021"
+rust-version = "1.75"
+links = "tauri-plugin-holochain"
+
+[dependencies]
+tauri = { version = "2.1.1" }
+
+# Holochain dependencies
+holochain_types = "0.5.0"
+
+# Lair dependencies
+hc_seed_bundle = "0.3"
+lair_keystore_api = "0.6.0"
+
+# Holochain client
+holochain_client = "0.7.0"
+
+holochain_runtime = { path = "holochain_runtime" }
+
+tracing = "0.1"
+symlink = "0.1.0"
+nanoid = "0.4.0"
+serde = "1.0.193"
+thiserror = "1.0"
+url = "2.4.0"
+url2 = "0.0.6"
+bzip2 = { version = "0.4", features = ["static"] }
+mime_guess = "2.0.4"
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+http-body-util = "0.1"
+tls-listener = "0.8"
+futures = "0.3"
+either = "*"
+anyhow = "1"
+ctrlc = "3.4"
+
+[build-dependencies]
+tauri-plugin = { version = "2.0.3", features = ["build"] } # Updated to 2.0.3
+
