@@ -54,7 +54,7 @@ path = "../../crates/holons_trust_channel"
 rstest = "0.25"
 pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.23.1", features = ["full"] }
 async-std = "1"
 tracing-subscriber = "0.3"
 
