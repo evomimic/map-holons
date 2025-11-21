@@ -177,7 +177,7 @@ impl ReadableHolonImpl for SmartReference {
         borrowed_holon.essential_content()
     }
 
-    fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         Ok(self.holon_id.clone())
     }
 

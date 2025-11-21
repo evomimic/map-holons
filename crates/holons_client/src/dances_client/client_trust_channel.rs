@@ -1,13 +1,13 @@
-use std::sync::Arc;
-
-use derive_new::new;
-use holons_core::dances::ConductorDanceCaller;
-
-/// Handles outbound dance calls from the client to a guest via the conductor.
-#[derive(new, Debug, Clone)]
-pub struct ClientDanceCaller {
-    conductor: Arc<dyn ConductorDanceCaller>, // client-side transport type
-}
+// use std::sync::Arc;
+//
+// use derive_new::new;
+// use holons_core::dances::ConductorDanceCaller;
+//
+// /// Handles outbound dance calls from the client to a guest via the conductor.
+// #[derive(new, Debug, Clone)]
+// pub struct ClientDanceCaller {
+//     _conductor: Arc<dyn ConductorDanceCaller>, // client-side transport type
+// }
 
 // #[async_trait(?Send)]
 // impl ConductorDanceCaller for ClientDanceCaller {

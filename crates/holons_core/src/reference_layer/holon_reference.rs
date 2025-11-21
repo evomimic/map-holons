@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
@@ -17,7 +16,7 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
     RelationshipName,
 };
 use std::sync::{Arc, RwLock};
