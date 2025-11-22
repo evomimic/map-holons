@@ -6,6 +6,17 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+# NOTE:
+# This Cargo.toml does not use most dependencies directly.
+# They are required because this crate defines the WASM build boundary.
+# All crates referenced here must be included so Cargo can resolve
+# dependency graphs for holons_guest, holons_integrity, and holons.
+
+[workspace.metadata.rust-analyzer]
+# Allow unused deps inside orchestrator crates
+# (this suppresses the IDE warnings)
+unused_crate_dependencies = false
+
 [dependencies]
 # Zomes
 holons = { path = "../../zomes/coordinator/holons" }
