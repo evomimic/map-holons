@@ -12,7 +12,7 @@ path = "src/lib.rs"
 # All crates referenced here must be included so Cargo can resolve
 # dependency graphs for holons_guest, holons_integrity, and holons.
 
-[workspace.metadata.rust-analyzer]
+[package.metadata.rust-analyzer]
 # Allow unused deps inside orchestrator crates
 # (this suppresses the IDE warnings)
 unused_crate_dependencies = false
