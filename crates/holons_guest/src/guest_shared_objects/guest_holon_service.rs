@@ -71,11 +71,8 @@ impl GuestHolonService {
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
-        let transient_behavior_service_cell =
+        let transient_behavior_service =
             context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior_service = transient_behavior_service_cell
-            .try_read()
-            .map_err(|_e| HolonError::FailedToAcquireLock("lock failed".to_string()))?;
 
         // Create new (empty) TransientHolon
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
@@ -175,7 +172,7 @@ impl GuestHolonService {
     pub fn get_nursery_access(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Arc<RwLock<dyn NurseryAccess>> {
+    ) -> Arc<dyn NurseryAccess> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 

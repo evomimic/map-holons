@@ -99,15 +99,8 @@ impl StagedReference {
         // Get NurseryAccess
         let nursery_access = context.get_space_manager().get_nursery_access();
 
-        let pool = nursery_access.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on nursery: {}",
-                e
-            ))
-        })?;
-
         // Retrieve the holon by its temporaryId
-        let rc_holon = pool.get_holon_by_id(&self.id)?;
+        let rc_holon = nursery_access.get_holon_by_id(&self.id)?;
 
         Ok(rc_holon)
     }
@@ -132,9 +125,7 @@ impl ReadableHolonImpl for StagedReference {
         let rc_holon = self.get_rc_holon(context)?;
         let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
-        let transient_behavior_service =
-            context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior = transient_behavior_service.read().unwrap();
+        let transient_behavior = context.get_space_manager().get_transient_behavior_service();
 
         let cloned_holon_transient_reference =
             transient_behavior.new_from_clone_model(holon_clone_model)?;
