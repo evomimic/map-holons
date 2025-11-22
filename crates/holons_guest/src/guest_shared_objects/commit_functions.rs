@@ -49,43 +49,78 @@ pub enum CommitOutcome {
 
 /// `commit`
 ///
-/// This function attempts to persist the state of all staged_holons AND their relationships.
-/// It is not completely Atomic - since successfully committed holons will get saved to the Holochain persistence store,
-/// however, the CommitResponse is only considered 'Complete' if ALL the attempts are successful , as well as,
-/// the space_manager's staged_holons are only cleared IF this is the case. Otherwise, the failed holons StagedState will remain unchanged
-/// and their data objects will contain the associated errors that were returned.
+/// Executes a two-pass commit of all staged holons and their relationships,
+/// returning a **`TransientReference` to a CommitResponseType holon** that
+/// reports the outcome of the operation.
 ///
+/// ## What This Function Produces
 ///
-/// A further description of this process is detailed below:
+/// Instead of returning a Rust `CommitResponse` struct (the old behavior),
+/// this function now **constructs a CommitResponse holon instance** using the
+/// holon operations API.
 ///
-/// The commit is performed in two passes: (1) staged_holons, (2) their relationships.
+/// The returned `TransientReference` points to a `CommitResponseType` holon with:
+/// - **Property** `CommitRequestStatus` = `"Complete"` or `"Incomplete"`
+/// - **Property** `CommitsAttempted` = number of staged holons
+/// - **Relationship** `SavedHolons` → all successfully committed holons
+/// - **Relationship** `AbandonedHolons` → all holons skipped or failed
 ///
-/// In the first pass,
-/// * if a staged_holon commit succeeds,
-///     * get the LocalId from the action_address in the returned Record
-///     * StagedState variant is set to 'Committed' containing the above 'saved_id'
-///     * add the holon to the saved_holons vector in the CommitResponse
-/// * if a staged_holon commit fails,
-///     * leave holon's state unchanged
-///     * push the associated error into the holon's errors vector
-///     * do NOT add the holon to the saved_holons vector in the CommitResponse
+/// This holon is a first-class MAP holon and can be returned directly as a
+/// dance response or inspected by follow-up guest or client processes.
 ///
-/// If ANY staged_holon commit fails:
-/// * The 2nd pass (to commit the staged_holon's relationships) is SKIPPED
-/// * the overall return status in the CommitResponse is set to `Incomplete`
-/// * the function returns.
+/// ## Process Overview
 ///
-/// Otherwise, the 2nd pass is performed.
-/// * If ANY attempt to add a relationship generates an Error, the error is pushed into the
-/// source holon's `errors` vector and processing continues.
+/// The commit proceeds in **two passes**:
 ///
-/// If relationship commits succeed for ALL staged_holons,
-///     * The space_manager's staged_holons are cleared
-///     * The Commit Response returns a `Complete` status
+/// ### **Pass 1 — Commit staged holons**
 ///
-/// NOTE: The CommitResponse returns clones of any successfully
-/// committed holons, even if the response status is `Incomplete`.
+/// Each staged holon is processed according to its `StagedState`:
 ///
+/// - **ForCreate**
+///   Persist as a new HolonNode; update the staged holon to `Committed(saved_id)`
+///
+/// - **ForUpdateChanged**
+///   Update the existing HolonNode; update to `Committed(saved_id)`
+///
+/// - **Abandoned**
+///   Skipped and added to the `AbandonedHolons` relationship
+///
+/// - **ForUpdate / Already Committed**
+///   No-op
+///
+/// Any holon that fails to commit:
+/// - keeps its original staged state
+/// - receives its error in the holon’s internal error list
+/// - causes the CommitResponse holon’s `CommitRequestStatus` to be set to `"Incomplete"`
+///
+/// If **any** holon fails in pass 1, the function returns immediately after
+/// building the response holon. **Pass 2 is skipped.**
+///
+/// ### **Pass 2 — Commit relationships**
+///
+/// Only executed if pass 1 completes with no failures.
+///
+/// For each staged holon in `Committed(saved_id)` state:
+/// - iterate all staged relationship collections
+/// - create SmartLinks for each member (if the target holon has a LocalId)
+/// - record any errors into the source staged holon
+/// - update the CommitResponse holon to `"Incomplete"` if any error occurs
+///
+/// If all relationships succeed, the overall result remains `"Complete"`.
+///
+/// ## Return Value
+///
+/// Returns:
+/// Ok(TransientReference)
+/// pointing to the CommitResponse holon created during the process.
+///
+/// This holon is always returned—even if the commit is partially successful—
+/// and contains a complete summary of saved and abandoned items.
+///
+/// ## Clearing Staged Holons
+///
+/// If both passes succeed (no `Incomplete` status), the guest holon service
+/// is responsible for clearing the staged holon pool afterward.
 pub fn commit(
     context: &dyn HolonsContextBehavior,
     holon_pool: &Arc<RwLock<StagedHolonPool>>,
@@ -166,7 +201,7 @@ pub fn commit(
     }
 
     // Check if Pass 1 ended with an incomplete status
-    if let Some(status_value) = response_reference.property_value(context, "CommitRequestStatus")? {
+    if let Some(status_value) = response_reference.property_value(context, CommitRequestStatus)? {
         let status_string: String = (&status_value).into();
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
@@ -193,7 +228,7 @@ pub fn commit(
                 staged_holon.add_error(error.clone())?;
                 response_reference.with_property_value(
                     context,
-                    "CommitRequestStatus",
+                    CommitRequestStatus,
                     "Incomplete",
                 )?;
 

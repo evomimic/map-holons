@@ -254,8 +254,7 @@ pub async fn execute_load_holons(
         || actual_error_count != expect_errors.0
         || actual_total_bundles != expect_total_bundles.0
         || actual_total_loader_holons != expect_total_loader_holons.0
-        || true
-    // "true" forces dump even if no missed expectations
+    // || true // "true" forces dump even if no missed expectations
     {
         info!(
             "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
