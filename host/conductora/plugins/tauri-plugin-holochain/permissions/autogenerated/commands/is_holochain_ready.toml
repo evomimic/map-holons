@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-is-holochain-ready"
+description = "Enables the is_holochain_ready command without any pre-configured scope."
+commands.allow = ["is_holochain_ready"]
+
+[[permission]]
+identifier = "deny-is-holochain-ready"
+description = "Denies the is_holochain_ready command without any pre-configured scope."
+commands.deny = ["is_holochain_ready"]

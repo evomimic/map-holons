@@ -22,7 +22,7 @@
 
 use std::collections::HashSet;
 use std::rc::Rc;
-use tracing::{debug, warn};
+use tracing::{debug};
 
 use core_types::type_kinds::TypeKind;
 use holons_prelude::prelude::*;

@@ -3,10 +3,10 @@ use crate::client_shared_objects::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::{Nursery, ServiceRoutingPolicy, TransientHolonManager};
 
+use holons_core::dances::DanceInitiator;
 use holons_core::reference_layer::{HolonServiceApi, HolonSpaceBehavior, HolonsContextBehavior};
-use std::fmt::Debug;
+
 use std::sync::Arc;
-use tracing::warn;
 
 /// The client-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations in a local (non-guest) environment.
@@ -34,10 +34,8 @@ pub struct ClientHolonsContext {
 ///
 /// # Returns
 /// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
-pub async fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
-    warn!("\n ========== Initializing CLIENT CONTEXT ============");
+pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<dyn HolonsContextBehavior + Send + Sync> {
     // Step 1: Create the ClientHolonService
-    // temporarily create with injected DanceCallService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
     // Step 2: Create an empty Nursery for the client
@@ -56,7 +54,7 @@ pub async fn init_client_context() -> Arc<dyn HolonsContextBehavior> {
 
     // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        None,
+        initiator, // Dance initiator for conductor calls
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
