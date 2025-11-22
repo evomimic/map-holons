@@ -170,8 +170,17 @@ impl NurseryAccessInternal for Nursery {
         self
     }
 
-    fn clear_stage(&mut self) {
-        self.staged_holons.write().expect("Failed to acquire write lock on staged_holons").clear();
+    /// Clears all staged holons.
+    fn clear_stage(&self) -> Result<(), HolonError> {
+        // Failure to acquire the lock is propagated as an error rather than panicking.
+        let mut guard = self.staged_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        guard.clear();
+        Ok(())
     }
 
     // fn keyed_index(&self) -> BTreeMap<MapString, usize> {
@@ -205,22 +214,30 @@ impl NurseryAccessInternal for Nursery {
             .export_pool()
     }
 
-    fn import_staged_holons(&self, pool: SerializableHolonPool) -> () {
-        self.staged_holons
-            .write()
-            .expect("Failed to acquire write lock on staged_holons")
-            .import_pool(pool); // Mutates existing HolonPool
+    /// Replaces the current staged holons with those from the provided `SerializableHolonPool`.
+    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError> {
+        let mut guard = self.staged_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        guard.import_pool(pool); // Mutates the existing pool
+        Ok(())
     }
 
     /// Returns the staged Holons in the `HolonPool`,
     /// ensuring that commit functions can access the actual Holon instances.
     // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
     /// Retrieves the staged Holon instances for commit, using thread-safe handles
-    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>> {
-        self.staged_holons
-            .read()
-            .expect("Failed to acquire read lock on staged_holons")
-            .get_all_holons()
+    fn get_holons_to_commit(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError> {
+        let guard = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        Ok(guard.get_all_holons())
     }
 
     // fn stage_holon(&self, holon: Holon) -> usize {

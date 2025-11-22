@@ -36,7 +36,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// **This method is ONLY intended for use by the GuestHolonService**
     ///
     /// Clears the Nursery's staged holons
-    fn clear_stage(&mut self);
+    fn clear_stage(&self) -> Result<(), HolonError>;
 
     /// Returns a reference to the current (single) `HolonPool`.
     ///
@@ -90,7 +90,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// # Arguments
     /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
-    fn import_staged_holons(&self, pool: SerializableHolonPool) -> ();
+    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
 
     /// Provides direct access to the staged Holons in the Nursery's HolonPool.
     ///
@@ -100,7 +100,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// # Returns
     ///
     /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
-    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>>;
+    fn get_holons_to_commit(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>;
 }
 
 #[cfg(test)]

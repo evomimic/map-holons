@@ -13,79 +13,91 @@ use crate::{
     reference_layer::TransientHolonBehavior,
 };
 
-/// Provides **internal management** of transient holons in the TransientHolonManager.
+/// Internal interface for **direct management** of transient holons.
 ///
-/// This trait is used **only by the TransientHolonManager itself and HolonSpaceManager**.
-/// It defines methods for:
-/// - **Clearing transient holons**
-/// - **Retrieving holons by key**
+/// This trait is implemented **only by `TransientHolonManager`** and is used internally
+/// by the **HolonSpaceManager** (and occasionally subsystem code) that needs privileged,
+/// low-level access to the transient holon pool.
+///
+/// ## Responsibilities
+/// - Clearing all transient holons  
+/// - Importing/exporting transient holon state  
+/// - Retrieving holons by versioned key  
+/// - Providing internal access to the underlying holon pool
+///
+/// ## Concurrency Model
+/// The `TransientHolonManager` owns an **internal** `RwLock<TransientHolonPool>`.  
+/// All lock acquisition is handled **inside the manager**, and all errors are surfaced as
+/// `HolonError::FailedToAcquireLock`.  
+///
+/// **Callers must never acquire their own locks**—this trait abstracts that away entirely.
+///
+/// ## Notes
+/// - These methods are *not* part of the public reference-layer API.  
+/// - They provide privileged control over transient lifecycle and are not intended for
+///   general application-level use.
 pub trait TransientManagerAccessInternal:
     TransientManagerAccess + TransientHolonBehavior + Send + Sync
 {
-    /// Enables safe downcasting of `TransientManagerAccessInternal` trait objects to their concrete type.
+    /// Enables safe downcasting of `TransientManagerAccessInternal` trait objects to their
+    /// concrete type (`TransientHolonManager`).
     ///
-    /// This method is useful when working with `TransientManagerAccessInternal` as a trait object (`dyn TransientManagerAccessInternal`)
-    /// but needing to recover its underlying concrete type (e.g., `TransientHolonManager`). It allows casting
-    /// through `Any`, which is required because Rust does not support direct downcasting of trait objects.
+    /// This is needed when working with boxed trait objects and is consistent with how other
+    /// internal management traits (e.g., staging) expose their concrete instance.
     fn as_any(&self) -> &dyn Any;
 
-    /// # CAUTION!!!
+    /// Clears the TransientHolonManager’s pool of transient holons.
     ///
-    /// **This method is ONLY intended for use by the GuestHolonService**
+    /// # Errors
+    /// Returns `HolonError::FailedToAcquireLock` if the internal write lock cannot be acquired.
     ///
-    /// Clears the TransientHolonManager's pool of transient holons.
-    fn clear_pool(&mut self);
+    /// # Important
+    /// This method fully wipes all transient holons and is used by the guest runtime during
+    /// synchronization or reset operations. It is *not* part of the public holon operations API.
+    fn clear_pool(&self) -> Result<(), HolonError>;
 
-    /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
+    /// Finds a holon by its unique **versioned key** and returns its `TemporaryId`.
     ///
-    /// # Arguments
-    /// * `key` - The key to search for.
-    ///
-    /// # Returns
-    /// `Ok(TemporaryId)` containing the index if the key exists, or an `Err` if the key is not found.
+    /// # Errors
+    /// - `HolonError::FailedToAcquireLock` if the pool's internal lock cannot be acquired  
+    /// - Any key lookup errors from the underlying pool
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
 
-    /// Exports the current transient 'HolonPool' as a `SerializableHolonPool`.
+    /// Exports the transient holon pool as a `SerializableHolonPool`.
     ///
-    /// This method creates a **deep clone** of the current `HolonPool`, including all holons
-    /// and the keyed index. The returned `SerializableHolonPool` is **independent** of the original,
-    /// meaning any modifications to it will **not affect** the actual `TransientHolonManager` state.
+    /// This is a **deep clone** of the current transient state, suitable for:
+    /// - Client ↔ Guest synchronization  
+    /// - Serialization  
+    /// - Snapshots for debugging  
     ///
-    /// # Use Cases
-    /// - **Client-Guest Syncing:** Intended for **ping-ponging TransientHolonManager state** between the client and guest.
-    /// - **Serialization:** Facilitates serialization for storage, transmission, or debugging.
-    ///
-    /// # Notes
-    /// - The cloning process is **optimized** but may have a cost if holons contain large data.
-    /// - **Internal references within the exported data remain consistent**, ensuring accurate reconstruction upon import.
-    ///
-    /// # Returns
-    /// A `SerializableHolonPool` containing a **deep clone** of the current transient holons and their keyed index.
+    /// # Errors
+    /// Returns `HolonError::FailedToAcquireLock` if the internal read lock cannot be acquired.
     fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
-    /// Imports a `SerializableHolonPool`, replacing the current transient holons.
+    /// Imports a transient holon pool, **replacing the current one entirely**.
     ///
-    /// This method **completely replaces** the current transient holons with the provided `SerializableHolonPool`.
-    /// Any existing transient holons will be **discarded** in favor of the imported data.
-    ///
-    /// # Use Cases
-    /// - **Client-Guest Syncing:** Allows the client to **restore** a TransientHolonManager state previously exported.
-    /// - **State Restoration:** Enables reloading transient holons from a saved state.
+    /// All existing transient holons are discarded in favor of the provided pool.
     ///
     /// # Notes
-    /// - The method ensures that **holons are correctly wrapped in `Arc<RwLock<Holon>>`** upon import.
-    /// - If the provided pool is empty, the `TransientHolonManager` will also be cleared.
+    /// The imported data is wrapped with fresh `Arc<RwLock<Holon>>` handles to preserve
+    /// thread-safe interior mutability.
     ///
-    /// # Arguments
-    /// - `pool` - A `SerializableHolonPool` containing the transient holons and their keyed index.
-    fn import_transient_holons(&self, pool: SerializableHolonPool) -> ();
+    /// # Errors
+    /// Returns `HolonError::FailedToAcquireLock` if the internal write lock cannot be acquired.
+    fn import_transient_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
 
-    /// Provides direct access to the transient Holons in the TransientHolonManager's HolonPool.
+    /// Provides direct access to the underlying transient holon instances.
     ///
-    /// This method returns a reference to the underlying collection of transient Holons,
-    /// allowing functions to operate on the actual Holon instances without cloning.
+    /// This returns the actual `Arc<RwLock<Holon>>` objects stored inside the manager.
+    /// It is used internally by commit routines and sync mechanisms that need to mutate or
+    /// inspect holons *in place*.
     ///
-    /// # Returns
-    /// A `Vec<Arc<RwLock<Holon>>>` containing all transient Holons.
+    /// # Warning
+    /// This is **not** part of the public reference-layer API.  
+    /// External code should interact through `TransientHolonBehavior` instead of touching
+    /// raw handles.
+    ///
+    /// # Errors
+    /// Returns `HolonError::FailedToAcquireLock` if the internal read lock cannot be acquired.
     fn get_transient_holons_pool(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>;
 }
