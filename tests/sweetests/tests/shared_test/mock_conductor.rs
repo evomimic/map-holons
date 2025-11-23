@@ -46,14 +46,15 @@ pub struct MockConductorConfig {
 ///
 /// ```rust
 /// let request = DanceRequest::new("SomeDance", payload);
-/// let response = mock_conductor.initiate_dance(&context, request).await;
+/// let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+/// let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
 /// assert_eq!(response.status_code(), ResponseStatusCode::Ok);
 /// ```
-#[async_trait(?Send)]
+#[async_trait]
 impl DanceInitiator for MockConductorConfig {
     async fn initiate_dance(
         &self,
-        _context: &dyn HolonsContextBehavior,
+        _context: &(dyn HolonsContextBehavior + Send + Sync),
         request: DanceRequest,
     ) -> DanceResponse {
         let res = self.conductor.call(&self.cell.zome("holons"), "dance", request).await;

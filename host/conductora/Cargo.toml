@@ -1,7 +1,7 @@
 [workspace]
 
 [package]
-name = "Conductora"
+name = "conductora"
 version = "0.0.0"
 description = "Conductora Tauri runtime"
 authors = ["Thomascal"]

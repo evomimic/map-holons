@@ -1,6 +1,6 @@
 use core_types::HolonError;
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
-use holons_client::shared_types::base_receptor::{BaseReceptor, Receptor as ReceptorTrait};
+use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorBehavior};
 use holons_client::{ClientHolonService, init_client_context};
 use holons_client::shared_types::map_request::MapRequest;
 use holons_client::shared_types::map_response::MapResponse;
@@ -55,7 +55,7 @@ impl LocalReceptor {
 }
 
 #[async_trait]
-impl ReceptorTrait for LocalReceptor {
+impl ReceptorBehavior for LocalReceptor {
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         tracing::warn!("LocalReceptor: handling request: {:?}", self.context);
         

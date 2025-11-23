@@ -1,7 +1,11 @@
+
 [package]
 name = "native-build"
 version = "0.1.0"
 edition = "2021"
+
+# Explicitly opt OUT of the root workspace
+[workspace]
 
 [lib]
 path = "src/lib.rs"
@@ -10,23 +14,27 @@ resolver = "2"
 
 [dependencies]
 
-# Shared Types and Validation
+# --- Shared Types & Validation (native-safe) ---
 shared_validation = { path = "../../crates/shared_validation" }
 base_types = { path = "../../crates/type_system/base_types" }
 core_types = { path = "../../crates/type_system/core_types" }
 integrity_core_types = { path = "../../crates/type_system/integrity_core_types" }
 type_names = { path = "../../crates/type_system/type_names" }
 json_schema_validation = { path = "../../crates/json_schema_validation" }
-json_schema_validate_cli = { path = "../../crates/json_schema_validate_cli" }
 
-# Shared Core & Guest Libraries
+# --- Core & Shared Libraries (native-safe) ---
 holons_core = { path = "../../crates/holons_core" }
 holon_dance_builders = { path = "../../crates/holon_dance_builders" }
 holons_prelude = { path = "../../crates/holons_prelude" }
 holons_trust_channel = { path = "../../crates/holons_trust_channel" }
 holons_client = { path = "../../crates/holons_client" }
 
+# --- Receptors (native-only, required!) ---
+holons_receptor = { path = "../../crates/holons_receptor" }
+holochain_receptor = { path = "../../crates/holochain_receptor" }
 
+# --- Conductora (native-only host runtime) ---
+conductora = { path = "../../host/conductora" }
 
 [profile.dev]
 opt-level = "z"

@@ -31,7 +31,7 @@ impl LocalClient {
 impl DanceInitiator for LocalClient {
     async fn initiate_dance(
         &self,
-        _context: &dyn HolonsContextBehavior,
+        _context: &(dyn HolonsContextBehavior + Send + Sync),
         _request: DanceRequest,
     ) -> DanceResponse {
         // Implement your local dance logic here

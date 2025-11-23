@@ -13,7 +13,7 @@ use std::fmt::Debug;
 /// a Tauri bridge, or other runtime adapters.
 
 /// Production trait: requires Send + Sync for multi-threaded contexts
-#[async_trait(?Send)]
+#[async_trait]
 pub trait DanceInitiator: Send + Sync + Debug {
     /// Sends a `DanceRequest` and returns a `DanceResponse`.
     ///
@@ -21,7 +21,7 @@ pub trait DanceInitiator: Send + Sync + Debug {
     /// the environment (e.g., native conductor, Tauri bridge, or mock testing).
     async fn initiate_dance(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &(dyn HolonsContextBehavior + Send + Sync),
         request: DanceRequest,
     ) -> DanceResponse;
 }

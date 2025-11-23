@@ -3,6 +3,9 @@ name = "wasm-build"
 version = "0.1.0"
 edition = "2021"
 
+# Explicitly opt OUT of the root workspace
+[workspace]
+
 [lib]
 path = "src/lib.rs"
 

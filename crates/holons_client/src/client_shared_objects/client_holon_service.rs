@@ -36,7 +36,8 @@ impl HolonServiceApi for ClientHolonService {
 
         // 2. Run the dance
         let initiator = context.get_space_manager().get_dance_initiator()?;
-        let response = run_future_synchronously(initiator.initiate_dance(context, request));
+        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
 
         // 3. Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
@@ -71,7 +72,8 @@ impl HolonServiceApi for ClientHolonService {
     fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         //let request = holon_dance_builders::build_delete_holon_dance_request(*local_id)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
-        //let response = run_future_synchronously(initiator.initiate_dance(context, request))?;
+        // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         // no context.. not sure what to do here
         todo!()
     }
@@ -83,7 +85,8 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<RelationshipMap, HolonError> {
         //let request = holon_dance_builders::=((*source_id)?)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
-        //let response = run_future_synchronously(initiator.initiate_dance(context, request))?;
+        // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         //not sure how to do this one? 
 
         todo!()
@@ -109,7 +112,8 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
         let initiator = context.get_space_manager().get_dance_initiator()?;
-        let response = run_future_synchronously(initiator.initiate_dance(context, request));
+        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         if response.status_code != ResponseStatusCode::OK {
              return Err(HolonError::Misc(format!(
                  "commit dance failed: {:?} — {}",
@@ -137,7 +141,8 @@ impl HolonServiceApi for ClientHolonService {
         let initiator = context.get_space_manager().get_dance_initiator()?; // <- no .read()
         //
         // // 3) Bridge async → sync (keep this because the client service is sync)
-         let response = run_future_synchronously(initiator.initiate_dance(context, request));
+        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         //
         // // 4) Check the status
          if response.status_code != ResponseStatusCode::OK {

@@ -1,15 +1,15 @@
 use async_trait::async_trait;
 use core_types::HolonError;
-//use holons_core::core_shared_objects::Holon;
+
 use std::{fmt::Debug, sync::Arc, any::Any};
 use crate::shared_types::{holon_space::SpaceInfo, map_request::MapRequest, map_response::MapResponse};
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-//use crate::ConductorDanceCaller;
+
 
 
 #[async_trait]
-pub trait Receptor: Debug + Send + Sync {
+pub trait ReceptorBehavior: Debug + Send + Sync {
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError>;
     async fn get_space_info(&self) -> Result<SpaceInfo, HolonError>;
 

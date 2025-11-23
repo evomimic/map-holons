@@ -6,7 +6,7 @@ use super::{
 };
 use core_types::HolonError;
 use holochain_receptor::{HolochainReceptor};
-use holons_client::shared_types::{holon_space::SpaceInfo, base_receptor::{BaseReceptor, Receptor as ReceptorTrait}};
+use holons_client::shared_types::{holon_space::SpaceInfo, base_receptor::{BaseReceptor, ReceptorBehavior}};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::collections::HashMap;
@@ -33,12 +33,12 @@ impl ReceptorFactory {
     }
     
     /// Create receptor from base configuration
-    async fn create_receptor_from_base(&self, base: BaseReceptor) -> Result<Arc<dyn ReceptorTrait>, Box<dyn std::error::Error>> {
+    async fn create_receptor_from_base(&self, base: BaseReceptor) -> Result<Arc<dyn ReceptorBehavior>, Box<dyn std::error::Error>> {
         match base.receptor_type.as_str() {
             "local" => { //local should always be created first
                 tracing::info!("Creating LocalReceptor from base configuration");
                 let receptor = LocalReceptor::new(base)?;
-                Ok(Arc::new(receptor) as Arc<dyn ReceptorTrait>)
+                Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }
             "holochain" => {
                 tracing::info!("Creating HolochainReceptor from base configuration");
@@ -46,13 +46,13 @@ impl ReceptorFactory {
                 //let local_receptor = self.get_receptor_by_type("local");
                 //local_receptor.add_space()//.get_space_info().await?;
                 //TODO: add home_space_holon to the local root_space
-                Ok(Arc::new(receptor) as Arc<dyn ReceptorTrait>)
+                Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }
             _ => Err(format!("Unsupported receptor type: {}", base.receptor_type).into())
         }
     }
 
-    pub fn get_receptor_by_type(&self, receptor_type: &str) -> Arc<dyn ReceptorTrait> {
+    pub fn get_receptor_by_type(&self, receptor_type: &str) -> Arc<dyn ReceptorBehavior> {
         let receptors = self.cache.get_by_type(receptor_type)
             .into_iter().collect::<Vec<_>>();
         if receptors.is_empty() {
