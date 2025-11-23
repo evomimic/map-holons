@@ -86,7 +86,7 @@ impl FixtureHolons {
     /// Mint an ExpectedState::Abandoned cloned from given TestReference (must be expected_state Staged)
     pub fn abandon_staged(
         &mut self,
-        staged_token: &TestReference,
+        staged_token: TestReference,
     ) -> Result<TestReference, HolonError> {
         match staged_token.expected_state() {
             ExpectedState::Staged => {
@@ -115,7 +115,11 @@ impl FixtureHolons {
             ExpectedState::Transient => {
                 if let Some(key) = key {
                     // Mint a transient-intent token indexed by key.
-                    Ok(self.add_transient_with_key(token.transient(), key, token.expected_content())?)
+                    Ok(self.add_transient_with_key(
+                        token.transient(),
+                        key,
+                        token.expected_content(),
+                    )?)
                 } else {
                     // Mint a transient-intent token without a key.
                     Ok(self.add_transient(token.transient(), token.expected_content()))
@@ -124,7 +128,11 @@ impl FixtureHolons {
             ExpectedState::Staged => {
                 if let Some(key) = key {
                     // Mint a staged-intent token indexed by key.
-                    Ok(self.add_staged_with_key(token.transient(), key, token.expected_content())?)
+                    Ok(self.add_staged_with_key(
+                        token.transient(),
+                        key,
+                        token.expected_content(),
+                    )?)
                 } else {
                     // Mint a staged-intent token without a key.
                     Ok(self.add_staged(token.transient(), token.expected_content()))
@@ -214,16 +222,40 @@ impl FixtureHolons {
         self.by_key.insert(key, id);
     }
 
-    // ---------- Retrieval by key ----------
+    // ---------- Retrieval ----------
 
     /// Retrieve the TemporaryId associated with the given key
-    pub fn get_id_by_key(&self, key: &MapString) -> Option<TemporaryId> {
-        self.by_key.get(key).cloned()
+    pub fn get_id_by_key(&self, key: &MapString) -> Option<&TemporaryId> {
+        self.by_key.get(key)
     }
 
     /// Retrieve tokens by id
-    pub fn get_tokens_by_id(&self, id: &TemporaryId) -> Option<Vec<TestReference>> {
-        self.lineage.get(id).cloned()
+    pub fn get_tokens_by_id(&self, id: &TemporaryId) -> Result<&Vec<TestReference>, HolonError> {
+        if let Some(tokens) = self.lineage.get(id) {
+            Ok(tokens)
+        } else {
+            Err(HolonError::InvalidParameter("Lineage not found for id".to_string()))
+        }
+    }
+
+    /// Retrieve current token for key
+    pub fn get_latest_by_key(&self, key: &MapString) -> Result<TestReference, HolonError> {
+        let id = if let Some(id) = self.get_id_by_key(key) {
+            id
+        } else {
+            return Err(HolonError::InvalidParameter(
+                "Key did not return an associated id".to_string(),
+            ));
+        };
+        self.get_latest_for_id(id)
+    }
+
+    /// Retrieve current token for id
+    pub fn get_latest_for_id(&self, id: &TemporaryId) -> Result<TestReference, HolonError> {
+        let vec = self.get_tokens_by_id(id)?;
+        vec.last().ok_or(HolonError::InvalidParameter(
+            "Lineage returned empty for id, something went wrong".to_string(),
+        )).cloned()
     }
 
     // ---- HELPERS ---- //
@@ -243,7 +275,6 @@ impl FixtureHolons {
             .filter_map(|(tid, vec)| vec.last().map(|tok| (tid.clone(), tok.clone())))
             .collect()
     }
-
 }
 
 #[derive(Default, Debug, Clone, Copy)]

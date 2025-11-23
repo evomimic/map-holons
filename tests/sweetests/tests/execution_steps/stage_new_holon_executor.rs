@@ -10,6 +10,7 @@ use holons_prelude::prelude::*;
 pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
     holon: TestReference,
+    expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
 
@@ -17,8 +18,7 @@ pub async fn execute_stage_new_holon(
     let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
-    let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &holon).unwrap();   
+    let source_reference: HolonReference = state.lookup_holon_reference(context, &holon).unwrap();
 
     // Can only stage Transient
     let transient_reference = match source_reference {
@@ -39,8 +39,7 @@ pub async fn execute_stage_new_holon(
 
     // 4. VALIDATE - response status
     assert_eq!(
-        response.status_code,
-        ResponseStatusCode::OK,
+        response.status_code, expected_status,
         "stage_new_holon request failed: {}",
         response.description
     );

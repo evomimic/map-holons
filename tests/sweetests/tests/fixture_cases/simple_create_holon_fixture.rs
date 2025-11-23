@@ -1,4 +1,4 @@
-use crate::{fixture_cases::setup_book_author_steps_with_context, helpers::init_fixture_context};
+use crate::{fixture_cases::setup_book_author_steps_with_context, helpers::{BOOK_KEY, init_fixture_context}};
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, FixtureHolons};
 use rstest::*;
@@ -6,7 +6,7 @@ use rstest::*;
 /// This function creates a set of simple (undescribed) holons
 ///
 #[fixture]
-pub async fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
+pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
     let mut test_case = DancesTestCase::new(
         "Simple Create/Get Holon Testcase".to_string(),
@@ -17,38 +17,48 @@ pub async fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError>
     let mut fixture_holons = FixtureHolons::new();
     
     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count = MapInteger(1);
+    let mut expected_count = 1;
 
     // Ensure DB count //
-    test_case.add_ensure_database_count_step(expected_count)?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
-    // TODO:
-    // const TRANSIENT_SOURCE_KEY: &str = "book:transient-source";
-    // let transient_source =
-    //     new_holon(fixture_context.as_ref(), MapString::from(TRANSIENT_SOURCE_KEY))?;
+    //  ADD STEP:  STAGE:  Book Holon  //
+    let book_key = MapString(BOOK_KEY.to_string());
+    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
+    book_transient_reference.with_property_value(
+        &*fixture_context,
+        "title".to_string(),
+        BOOK_KEY,
+    )?.with_property_value(
+            &*fixture_context,
+            "description",
+                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
+            )?;
 
-    // // Mint a transient-intent token and index it by key so we can refer to it later.
-    // let transient_source_token = fixture_holons
-    //     .add_transient_with_key(&transient_source, MapString::from(TRANSIENT_SOURCE_KEY))?;
+    // Mint a transient-intent token and index it by key.
+    let transient_source_token = fixture_holons.add_transient_with_key(
+        &book_transient_reference,
+        book_key.clone(),
+        &book_transient_reference.essential_content(&*fixture_context)?,
+    )?;
 
-    // // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
-    // // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
+    test_case.add_stage_holon_step(
+        &mut fixture_holons,
+        transient_source_token.clone(),
+        Some(book_key),
+        ResponseStatusCode::OK,
+    )?;
 
-    let _author_relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case, &mut fixture_holons)?;
-
-    // // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // // This allows them to be assigned StagedReferences and also retrieved by either index or key
-
-    //  COMMIT  // all Holons in staging_area
+    // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
-    expected_count.0 += staged_count(&*fixture_context).unwrap();
+    fixture_holons.commit();
+    expected_count += 1;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(expected_count)?;
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step(ResponseStatusCode::OK)?;
+    test_case.add_match_saved_content_step()?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

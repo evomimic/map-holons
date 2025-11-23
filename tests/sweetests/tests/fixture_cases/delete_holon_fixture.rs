@@ -6,9 +6,8 @@ use crate::helpers::{init_fixture_context, BOOK_KEY};
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
-pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
+pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    // init_tracing();
     let mut test_case = DancesTestCase::new(
         "DeleteHolon Testcase".to_string(),
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.".to_string(),
@@ -18,8 +17,8 @@ pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     let mut fixture_holons = FixtureHolons::new();
 
     //  ADD STEP:  STAGE:  Book Holon  //
-    let book_holon_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_holon_key.clone()))?;
+    let book_key = MapString(BOOK_KEY.to_string());
+    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
     book_transient_reference.with_property_value(
         &*fixture_context,
         "title".to_string(),
@@ -31,25 +30,31 @@ pub async fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
             )?;
 
     // Mint a transient-intent token and index it by key.
-    let transient_source_token =
-        fixture_holons.add_transient_with_key(&book_transient_reference, book_holon_key.clone())?;
+    let transient_source_token = fixture_holons.add_transient_with_key(
+        &book_transient_reference,
+        book_key.clone(),
+        &book_transient_reference.essential_content(&*fixture_context)?,
+    )?;
 
-    // Returns a minted staged token. 
+    // Returns a minted staged token.
     let staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
         transient_source_token.clone(),
-        Some(book_holon_key),
+        Some(book_key),
         ResponseStatusCode::OK,
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, staged_tokens, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(staged_token.clone(), ResponseStatusCode::OK)?;
 
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(staged_token, ResponseStatusCode::NotFound)?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
 
     Ok(test_case.clone())
 }

@@ -11,13 +11,13 @@ use holons_core::core_shared_objects::ReadableHolonState;
 /// and confirms a Success response
 ///
 pub async fn execute_commit(
-    context: &dyn HolonsContextBehavior,
-    test_state: &mut TestExecutionState,
+    state: &mut TestExecutionState,
+    source_tokens: &mut Vec<TestReference>,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
 
-    let ctx_arc = test_state.context();
+    let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
 
     // 1. BUILD - dance request to commit
@@ -37,7 +37,7 @@ pub async fn execute_commit(
     );
     info!("Success! commit DanceResponse matched expected");
 
-    // 3. The response body is now a HolonReference::Transient to a CommitResponseType holon.
+    // The response body is now a HolonReference::Transient to a CommitResponseType holon.
     let commit_response_body_reference = match response.body {
         ResponseBody::HolonReference(HolonReference::Transient(ref commit_ref)) => {
             commit_ref.clone()
@@ -47,7 +47,7 @@ pub async fn execute_commit(
 
     // TODO: Once TypeDescriptors are enabled, we should also check the HolonType of the ResponseBody
 
-    // 4. Retrieve committed holons from the HolonsCommitted relationship.
+    // 4. GET - committed holons from the HolonsCommitted relationship.
     let committed_references = commit_response_body_reference
         .related_holons(context, CoreRelationshipTypeName::HolonsCommitted)
         .expect("Failed to read HolonsCommitted relationship");
@@ -56,39 +56,19 @@ pub async fn execute_commit(
     let commit_count: MapInteger = committed_refs_guard.get_count();
     debug!("Discovered {:?} committed holons", commit_count.0);
 
-    // 5. Add committed holons to the test_state.created_holons map.
+    // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
+    //             so later steps can look it up with the same token.
     let committed_refs_guard =
         committed_references.read().expect("Failed to read committed holons");
-    for href in committed_refs_guard.get_members() {
-        // Extract key from the SmartReference’s cached smart properties
-        let key_string: MapString = href
-            .key(context)
-            .expect("Failed to read key from committed HolonReference")
-            .expect("Committed holon missing key");
+    for resulting_reference in committed_refs_guard.get_members() {
+        let resolved_reference = ResolvedTestReference::from_reference_parts(
+            source_tokens.pop().expect("Expected source token, vec should not be empty"),
+            resulting_reference.clone(),
+        );
 
-        // href *is already* a fully valid, saved HolonReference
-        test_state.created_holons.insert(key_string.clone(), href.clone());
-
-        info!("Committed holon: {}", key_string);
+        state.record_resolved(resolved_reference);
     }
 
     // 6. Optional: log a summary
     info!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
-
-    // // 4. Extract saved Holons from response body and add them to `created_holons`
-    // match response.body {
-    //     ResponseBody::Holon(holon) => {
-    //         let key =
-    //             holon.key().expect("Holon should have a key").expect("Key should not be None");
-    //         test_state.created_holons.insert(key, holon);
-    //     }
-    //     ResponseBody::Holons(holons) => {
-    //         for holon in holons {
-    //             let key =
-    //                 holon.key().expect("Holon should have a key").expect("Key should not be None");
-    //             test_state.created_holons.insert(key, holon);
-    //         }
-    //     }
-    //     _ => panic!("Invalid ResponseBody: {:?}", response.body),
-    // }
 }

@@ -11,7 +11,7 @@ use super::setup_book_author_steps_with_context;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
-pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
+pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
     //== INIT ==//
 
     let mut test_case = DancesTestCase::new(
@@ -32,25 +32,25 @@ pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, H
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
-    let relationship_name =
-        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+    let _relationship_name = setup_book_author_steps_with_context(
+        &*fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+    )?;
 
     expected_count += staged_count(&*fixture_context).unwrap();
 
-    let person_1_staged_reference =
-        get_staged_holon_by_base_key(&*fixture_context, &MapString(PERSON_1_KEY.to_string()))?;
-
-    let book_staged_reference =
-        get_staged_holon_by_base_key(&*fixture_context, &MapString(BOOK_KEY.to_string()))?;
+    let person_1_staged_token =
+        fixture_holons.get_latest_by_key(&MapString(PERSON_1_KEY.to_string()))?;
 
     //====//``
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
-    test_case.add_abandon_staged_changes_step(
+    let _abandoned_person_1 = test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
-        HolonReference::Staged(person_1_staged_reference.clone()),
+        person_1_staged_token.clone(),
         ResponseStatusCode::OK,
     )?;
     expected_count -= 1;
@@ -59,64 +59,71 @@ pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, H
     // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
     let holons_to_add: Vec<TestReference> = Vec::new();
     test_case.add_add_related_holons_step(
-        HolonReference::Staged(person_1_staged_reference), // source holons
+        // abandoned_person_1,
+        person_1_staged_token, // Does this need to be abandoned_person_1 token or should it be the staged snapshot ??
         "FRIENDS".to_relationship_name(),
         holons_to_add.to_vec(),
         ResponseStatusCode::Conflict,
-        HolonReference::Transient(book_staged_reference.clone_holon(&*fixture_context)?),
     )?;
 
     //  COMMIT  //  all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, staged_tokens, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     //  MATCH SAVED CONTENT
-    test_case.add_match_saved_content_step(ResponseStatusCode::OK)?;
+    test_case.add_match_saved_content_step()?;
 
     //  STAGE:  Abandoned Holon1 (H4)  //
+    let abandoned_holon_1_key = MapString("Abandon1".to_string());
     let mut abandoned_holon_1_transient_reference =
-        new_holon(&*fixture_context, Some(MapString("Abandon1".to_string())))?;
+        new_holon(&*fixture_context, Some(abandoned_holon_1_key.clone()))?;
     abandoned_holon_1_transient_reference.with_property_value(
         &*fixture_context,
         "example abandon1",
         "test1",
     )?;
-    test_case.add_stage_holon_step(
+    // Mint a transient-intent token
+    let abandoned_holon_1_transient_token = fixture_holons.add_transient_with_key(
+        &abandoned_holon_1_transient_reference,
+        abandoned_holon_1_key,
+        &abandoned_holon_1_transient_reference.essential_content(&*fixture_context)?,
+    )?;
+    let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
-        abandoned_holon_1_transient_reference.clone(),
+        abandoned_holon_1_transient_token,
         Some(MapString("Abandon1".to_string())),
         ResponseStatusCode::OK,
     )?;
-
-    let abandoned_holon_1_staged_reference =
-        stage_new_holon(&*fixture_context, abandoned_holon_1_transient_reference)?;
     expected_count += 1;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
+    let abandoned_holon_2_key = MapString("Abandon2".to_string());
     let mut abandoned_holon_2_transient_reference =
-        new_holon(&*fixture_context, Some(MapString("Abandon2".to_string())))?;
+        new_holon(&*fixture_context, Some(abandoned_holon_2_key.clone()))?;
     abandoned_holon_2_transient_reference.with_property_value(
         &*fixture_context,
         "example abandon2",
         "test2",
     )?;
-    test_case.add_stage_holon_step(
+    let abandoned_holon_2_transient_token = fixture_holons.add_transient_with_key(
+        &abandoned_holon_2_transient_reference,
+        abandoned_holon_2_key,
+        &abandoned_holon_2_transient_reference.essential_content(&*fixture_context)?,
+    )?;
+    let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
-        abandoned_holon_2_transient_reference.clone(),
+        abandoned_holon_2_transient_token,
         Some(MapString("Abandon1".to_string())),
         ResponseStatusCode::OK,
     )?;
-
-    let abandoned_holon_2_staged_reference =
-        stage_new_holon(&*fixture_context, abandoned_holon_2_transient_reference)?;
     expected_count += 1;
 
     // ABANDON:  H4
     test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
-        HolonReference::Staged(abandoned_holon_1_staged_reference),
+        abandoned_holon_1_staged_token,
         ResponseStatusCode::OK,
     )?;
     expected_count -= 1;
@@ -124,28 +131,28 @@ pub async fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, H
     // ABANDON:  H5
     test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
-        HolonReference::Staged(abandoned_holon_2_staged_reference),
+        abandoned_holon_2_staged_token,
         ResponseStatusCode::OK,
     )?;
     expected_count -= 1;
 
     // COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, next_staged_tokens, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
 
     // MATCH SAVED CONTENT
-    test_case.add_match_saved_content_step(ResponseStatusCode::OK)?;
+    test_case.add_match_saved_content_step()?;
 
-    // ADD STEP: QUERY RELATIONSHIPS //
-    let query_expression = QueryExpression::new(relationship_name.clone());
-    test_case.add_query_relationships_step(
-        &mut fixture_holons,
-        book_token,
-        query_expression,
-        ResponseStatusCode::OK,
-    )?;
+    // TODO: add support for relationships (waiting for essential_content issue)
+    // // ADD STEP: QUERY RELATIONSHIPS //
+    // let query_expression = QueryExpression::new(relationship_name.clone());
+    // test_case.add_query_relationships_step(
+    //     book_token,
+    //     query_expression,
+    //     ResponseStatusCode::OK,
+    // )?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);
