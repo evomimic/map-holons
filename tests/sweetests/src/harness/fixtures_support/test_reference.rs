@@ -73,24 +73,19 @@ impl TestReference {
         Self { transient_reference, expected_state, expected_content }
     }
 
-    /// Access the underlying transient snapshot (crate-internal).
-    pub(crate) fn transient(&self) -> &TransientReference {
+    pub fn transient(&self) -> &TransientReference {
         &self.transient_reference
     }
 
-    /// Access the unique TemporaryId (crate-internal).
-    pub(crate) fn temporary_id(&self) -> TemporaryId {
+    pub fn temporary_id(&self) -> TemporaryId {
         self.transient_reference.get_temporary_id()
     }
 
-    /// Access the declarative intent (crate-internal).
-    pub(crate) fn expected_state(&self) -> ExpectedState {
+    pub fn expected_state(&self) -> ExpectedState {
         self.expected_state
     }
 
-    /// Access the declarative intent (crate-internal).
-    pub(crate) fn expected_content(&self) -> &EssentialHolonContent {
+    pub fn expected_content(&self) -> &EssentialHolonContent {
         &self.expected_content
     }
-
 }

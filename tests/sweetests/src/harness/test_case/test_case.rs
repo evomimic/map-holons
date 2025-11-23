@@ -62,7 +62,7 @@ impl DancesTestCase {
     pub fn add_abandon_staged_changes_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
-        holon_token: &TestReference,
+        holon_token: TestReference,
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
         self.steps.push(DanceTestStep::AbandonStagedChanges {
@@ -70,15 +70,7 @@ impl DancesTestCase {
             expected_status,
         });
         let abandoned_token = fixture_holons.abandon_staged(holon_token)?;
-        // let staged_source_token = {
-        //     if let Some(key) = key {
-        //         // Mint a staged-intent token indexed by key.
-        //         fixture_holons.add_staged_with_key(holon_token.transient(), key)?
-        //     } else {
-        //         // Mint a staged-intent token without a key.
-        //         fixture_holons.add_staged(holon_token.transient())
-        //     }
-        // };
+
         Ok(abandoned_token)
     }
 
@@ -87,8 +79,8 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         expected_status: ResponseStatusCode,
     ) -> Result<Vec<TestReference>, HolonError> {
-        self.steps.push(DanceTestStep::Commit { expected_status });
         let saved_tokens = fixture_holons.commit()?;
+        self.steps.push(DanceTestStep::Commit { source_tokens: saved_tokens.clone(), expected_status });
 
         Ok(saved_tokens)
     }
@@ -160,14 +152,12 @@ impl DancesTestCase {
         relationship_name: RelationshipName,
         holons_to_add: Vec<TestReference>,
         expected_status: ResponseStatusCode,
-        expected_holon: TestReference,
     ) -> Result<(), HolonError> {
         self.steps.push(DanceTestStep::AddRelatedHolons {
             source,
             relationship_name,
             holons_to_add,
             expected_status,
-            expected_holon,
         });
         Ok(())
     }
@@ -303,9 +293,9 @@ pub enum DanceTestStep {
         relationship_name: RelationshipName,
         holons_to_add: Vec<TestReference>,
         expected_status: ResponseStatusCode,
-        expected_holon: TestReference,
     },
     Commit {
+        source_tokens: Vec<TestReference>,
         expected_status: ResponseStatusCode,
     },
     DeleteHolon {
@@ -377,12 +367,11 @@ impl core::fmt::Display for DanceTestStep {
                 relationship_name,
                 holons_to_add,
                 expected_status,
-                expected_holon,
             } => {
-                write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}, holon: {:?}", source, relationship_name, holons_to_add.len(), expected_status, expected_holon)
+                write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", source, relationship_name, holons_to_add.len(), expected_status)
             }
-            DanceTestStep::Commit { expected_status } => {
-                write!(f, "Commit, expecting: {:?})", expected_status)
+            DanceTestStep::Commit {source_tokens, expected_status } => {
+                write!(f, "Committing {:#?}, expecting: {:?})", source_tokens, expected_status)
             }
             DanceTestStep::DeleteHolon { holon_token, expected_status } => {
                 write!(f, "DeleteHolon({:?}, expecting: {:?},)", holon_token, expected_status)

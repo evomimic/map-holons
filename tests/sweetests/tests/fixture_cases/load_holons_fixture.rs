@@ -375,7 +375,7 @@ fn build_inverse_with_inline_schema_bundle(
 /// - Inverse bundle stages only a Person and references the existing Book by key.
 /// - We export the fixture’s transient pool into the test case session state exactly once at the end.
 #[fixture]
-pub async fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
+pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     let mut test_case = DancesTestCase::new(
         "Loader Incremental Fixture".to_string(),
         "1) Ensure DB starts with only the Space holon,\n\
