@@ -5,7 +5,7 @@ use std::{
 
 use super::{holon_pool::SerializableHolonPool, Holon};
 use crate::core_shared_objects::holon_pool::StagedHolonPool;
-use crate::{HolonStagingBehavior, NurseryAccess};
+use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
@@ -37,14 +37,6 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// Clears the Nursery's staged holons
     fn clear_stage(&self) -> Result<(), HolonError>;
-
-    /// Returns a reference to the current (single) `HolonPool`.
-    ///
-    /// This method abstracts over whether the Nursery manages one pool or many.
-    /// In a future transaction-aware model, it can be adapted to accept a transaction ID
-    /// and return the corresponding pool. Existing callers (like commit_internal)
-    /// will remain unchanged.
-    fn get_holon_pool(&self) -> Arc<RwLock<StagedHolonPool>>;
 
     /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
     ///
@@ -101,6 +93,12 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
     fn get_holons_to_commit(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>;
+
+    /// Returns a reference-layer view of all staged holons as `StagedReference`s.
+    ///
+    /// This hides the underlying HolonPool and lock details from callers and is the
+    /// entry point for the commit path.
+    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError>;
 }
 
 #[cfg(test)]

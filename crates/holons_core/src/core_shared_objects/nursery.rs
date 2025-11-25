@@ -183,14 +183,6 @@ impl NurseryAccessInternal for Nursery {
         Ok(())
     }
 
-    // fn keyed_index(&self) -> BTreeMap<MapString, usize> {
-    //     self.holon_store.borrow().keyed_index.clone()
-    // }
-
-    fn get_holon_pool(&self) -> Arc<RwLock<StagedHolonPool>> {
-        Arc::clone(&self.staged_holons)
-    }
-
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
         let pool = self.staged_holons.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
@@ -228,7 +220,6 @@ impl NurseryAccessInternal for Nursery {
 
     /// Returns the staged Holons in the `HolonPool`,
     /// ensuring that commit functions can access the actual Holon instances.
-    // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
     /// Retrieves the staged Holon instances for commit, using thread-safe handles
     fn get_holons_to_commit(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError> {
         let guard = self.staged_holons.read().map_err(|e| {
@@ -240,7 +231,17 @@ impl NurseryAccessInternal for Nursery {
         Ok(guard.get_all_holons())
     }
 
-    // fn stage_holon(&self, holon: Holon) -> usize {
-    //     self.staged_holons.borrow_mut().insert_holon(holon)
-    // }
+    /// Returns a reference-layer view of all staged holons as `StagedReference`s.
+    ///
+    /// This is the main entry for the commit pipeline and avoids exposing
+    /// the underlying HolonPool or `Arc<RwLock<Holon>>` handles.
+    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError> {
+        let guard = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        Ok(guard.get_staged_references())
+    }
 }

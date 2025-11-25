@@ -127,11 +127,15 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Retrieves a reference to the space holon if it exists.
-    fn get_space_holon(&self) -> Option<HolonReference> {
-        self.local_holon_space
-            .read()
-            .expect("Failed to acquire read lock on local_holon_space")
-            .clone()
+    fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
+        let guard = self.local_holon_space.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on local_holon_space: {}",
+                e
+            ))
+        })?;
+
+        Ok(guard.clone())
     }
 
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
@@ -164,13 +168,20 @@ impl HolonSpaceBehavior for HolonSpaceManager {
         self.transient_manager.import_transient_holons(transient_holons);
     }
 
-    fn set_space_holon(&self, holon: HolonReference) {
-        *self
-            .local_holon_space
-            .write()
-            .expect("Failed to acquire write lock on local_holon_space") = Some(holon);
+    /// Updates the local space holon reference.
+    fn set_space_holon(&self, holon: HolonReference) -> Result<(), HolonError> {
+        let mut guard = self.local_holon_space.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on local_holon_space: {}",
+                e
+            ))
+        })?;
+
+        *guard = Some(holon);
+        Ok(())
     }
 }
+
 impl Debug for HolonSpaceManager {
     /// Implements custom `Debug` formatting for `HolonSpaceManager`.
     ///

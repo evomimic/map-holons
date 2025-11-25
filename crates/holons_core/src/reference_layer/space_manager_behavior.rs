@@ -82,10 +82,12 @@ pub trait HolonSpaceBehavior {
     /// The **space holon** represents the current holon space and serves as an anchor
     /// for all holon operations within this space.
     ///
-    /// # Returns
-    /// - `Some(HolonReference)` if the local space holon is set.
-    /// - `None` if the space holon is not available.
-    fn get_space_holon(&self) -> Option<HolonReference>;
+    /// The space holon:
+    /// - Is `None` only during a brief initialization window.
+    /// - Is `Some(HolonReference)` in steady state.
+    /// - Returns `Err(HolonError::FailedToAcquireLock(_))` if the internal lock
+    ///   cannot be acquired, indicating possible corruption or poisoning.
+    fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError>;
 
     /// Provides access to a **component that implements the `HolonStagingBehavior` API**.
     ///
@@ -169,5 +171,8 @@ pub trait HolonSpaceBehavior {
     ///
     /// # Arguments
     /// - `space` - The new `HolonReference` for the space.
-    fn set_space_holon(&self, space: HolonReference);
+    /// # Errors
+    /// Returns `HolonError::FailedToAcquireLock` if the internal write lock
+    /// on `local_holon_space` cannot be acquired.
+    fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError>;
 }

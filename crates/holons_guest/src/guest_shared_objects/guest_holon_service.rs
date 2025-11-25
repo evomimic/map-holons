@@ -193,13 +193,18 @@ impl HolonServiceApi for GuestHolonService {
         let internal_nursery = self.get_internal_nursery_access()?;
 
         // Step 1: Borrow the nursery immutably and clone its HolonPool reference
-        let holon_pool = {
-            let nursery_read = internal_nursery.read().unwrap();
-            nursery_read.get_holon_pool() // Returns Arc<RwLock<StagedHolonPool>>
+        let staged_references = {
+            let nursery_read = internal_nursery.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on internal NurseryAccess: {}",
+                    e
+                ))
+            })?;
+            nursery_read.get_staged_references()?
         }; // `nursery_read` is dropped immediately after this block
 
         // Step 2: Commit the staged holons
-        let commit_response = commit_functions::commit(context, &holon_pool)?;
+        let commit_response = commit_functions::commit(context, &staged_references)?;
 
         // Step 3: Borrow mutably to clear the stage
         internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
