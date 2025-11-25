@@ -222,34 +222,28 @@ pub fn get_transient_holon_by_versioned_key(
 /// Stages a new holon as a clone of the original holon.
 ///
 /// This function creates a new holon in the staging area by cloning the `original_holon`,
-/// while retaining a lineage relationship back to the `original_holon`. Use this function
-/// when you want to create a new instance based on an existing holon while preserving its
-/// ancestral link.
+/// while retaining or discarding lineage according to the staging policy. For this
+/// helper, the cloned holon is treated as a *new* holon with a new key and no
+/// predecessor link.
 ///
-/// For staging a new version of an existing holon (i.e., where the original is a predecessor),
-/// use [`stage_new_version`].
+/// For staging a new version of an existing holon (i.e., where the original is a
+/// predecessor), use [`stage_new_version`].
 ///
 /// # Arguments
 /// - `context`: The context to retrieve holon services.
 /// - `original_holon`: A reference to the holon to be cloned.
+/// - `new_key`: The canonical key to assign to the cloned holon.
 ///
 /// # Returns
 /// - `Ok(StagedReference)` pointing to the newly staged holon.
 /// - `Err(HolonError)` if staging fails.
-///
-/// # Errors
-/// - Returns a `HolonError` if the staging operation cannot complete.
-///
 pub fn stage_new_from_clone(
     context: &dyn HolonsContextBehavior,
     original_holon: HolonReference,
     new_key: MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_holon_service();
-    let staged_reference =
-        staging_service.stage_new_from_clone_internal(context, original_holon, new_key)?;
-
-    Ok(staged_reference)
+    let staging_service = context.get_space_manager().get_staging_service();
+    staging_service.stage_new_from_clone(context, original_holon, new_key)
 }
 
 /// Stages a new holon in the holon space.
@@ -282,11 +276,13 @@ pub fn stage_new_holon(
 
 /// Stages a new holon as a version of the current holon.
 ///
-/// This function creates a new holon in the staging area by cloning the `current_version`
-/// and marking it as its predecessor. Use this function when creating a **new version**
-/// of an existing holon with a clear lineage relationship.
+/// This function creates a new holon in the staging area by cloning the
+/// `current_version` and marking it as its predecessor. Use this function when
+/// creating a **new version** of an existing holon with a clear lineage
+/// relationship.
 ///
-/// For creating a clone without retaining a lineage relationship, use [`stage_new_from_clone`].
+/// For creating a clone without retaining a lineage relationship, use
+/// [`stage_new_from_clone`].
 ///
 /// # Arguments
 /// - `context`: The context to retrieve holon services.
@@ -295,19 +291,12 @@ pub fn stage_new_holon(
 /// # Returns
 /// - `Ok(StagedReference)` pointing to the newly staged holon.
 /// - `Err(HolonError)` if staging fails.
-///
-/// # Errors
-/// - Returns a `HolonError` if the staging operation cannot complete.
-///
 pub fn stage_new_version(
     context: &dyn HolonsContextBehavior,
     current_version: SmartReference,
 ) -> Result<StagedReference, HolonError> {
-    let holon_service = context.get_space_manager().get_holon_service();
-
-    let staged_reference = holon_service.stage_new_version_internal(context, current_version)?;
-
-    Ok(staged_reference)
+    let staging_service = context.get_space_manager().get_staging_service();
+    staging_service.stage_new_version(context, current_version)
 }
 
 // ======

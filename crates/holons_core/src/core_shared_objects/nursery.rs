@@ -11,7 +11,7 @@ use super::{
 use crate::{
     core_shared_objects::StagedHolon,
     reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
-    HolonsContextBehavior,
+    HolonReference, HolonsContextBehavior, ReadableHolon, SmartReference, WritableHolon,
 };
 use crate::{
     core_shared_objects::{
@@ -19,8 +19,9 @@ use crate::{
     },
     NurseryAccess,
 };
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, TemporaryId};
+use type_names::CorePropertyTypeName;
 
 #[derive(Clone, Debug)]
 pub struct Nursery {
@@ -162,6 +163,51 @@ impl HolonStagingBehavior for Nursery {
             StagedHolon::new_from_clone_model(transient_reference.holon_clone_model(context)?)?;
         let new_id = self.stage_holon(staged_holon)?;
         self.to_validated_staged_reference(&new_id)
+    }
+
+    /// Stage a new holon by cloning an existing holon, with a new key and
+    /// *without* maintaining lineage to the original.
+    fn stage_new_from_clone(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        original_holon: HolonReference,
+        new_key: MapString,
+    ) -> Result<StagedReference, HolonError> {
+        // Clone into a transient holon
+        let mut cloned_transient = original_holon.clone_holon(context)?;
+
+        // Overwrite the Key property on the clone
+        let key_prop = CorePropertyTypeName::Key.as_property_name();
+        cloned_transient.with_property_value(context, key_prop, BaseValue::StringValue(new_key))?;
+
+        // Reset original_id (this is a new clone, not a new version)
+        cloned_transient.reset_original_id(context)?;
+
+        // Stage the cloned holon
+        let mut cloned_staged = self.stage_new_holon(context, cloned_transient)?;
+
+        // Explicitly clear predecessor for "from clone" semantics
+        cloned_staged.with_predecessor(context, None)?;
+
+        Ok(cloned_staged)
+    }
+
+    /// Stage a new holon as a *version* of the current holon, keeping lineage.
+    fn stage_new_version(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        current_version: SmartReference,
+    ) -> Result<StagedReference, HolonError> {
+        // Clone current version into a transient holon
+        let cloned_transient = current_version.clone_holon(context)?;
+
+        // Stage it as a new holon
+        let mut cloned_staged = self.stage_new_holon(context, cloned_transient)?;
+
+        // Set predecessor back to the current version
+        cloned_staged.with_predecessor(context, Some(HolonReference::Smart(current_version)))?;
+
+        Ok(cloned_staged)
     }
 }
 

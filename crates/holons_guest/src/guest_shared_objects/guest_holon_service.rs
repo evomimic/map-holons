@@ -28,7 +28,7 @@ use holons_core::{
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
-        StagedReference, WritableHolon,
+        WritableHolon,
     },
 };
 use holons_integrity::LinkTypes;
@@ -326,84 +326,16 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    /// Execute a Holon import from a `HolonLoaderBundle`.
+    /// Execute a Holon import from a `HolonLoadSet`.
     /// Delegates to the `HolonLoaderController` and returns a transient `HolonLoadResponse`.
     fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-        bundle: TransientReference,
+        set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
-        // Construct controller and delegate to load_bundle()
+        // Construct controller and delegate to load_set()
         let mut controller = HolonLoaderController::new();
-        controller.load_set(context, bundle)
-    }
-
-    /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
-    /// lineage to the Holon its cloned from.
-    fn stage_new_from_clone_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: HolonReference,
-        new_key: MapString,
-    ) -> Result<StagedReference, HolonError> {
-        let mut cloned_transient_reference = original_holon.clone_holon(context)?;
-
-        // Update Key (canonical PascalCase)
-        let key_prop = CorePropertyTypeName::Key.as_property_name();
-        cloned_transient_reference.with_property_value(
-            context,
-            key_prop,
-            BaseValue::StringValue(new_key),
-        )?;
-
-        // Reset the OriginalId to None
-        cloned_transient_reference.reset_original_id(context)?;
-
-        // match original_holon {
-        //     HolonReference::Transient(_) => {}
-        //     HolonReference::Staged(_) => {}
-        //     HolonReference::Smart(_) => cloned_transient_reference.update_relationship_map(
-        //         context,
-        //         self.clone_existing_relationships_into_transient_map(
-        //             context,
-        //             original_holon.get_holon_id(context)?,ß
-        //         )?,
-        //     )?,
-        // }
-
-        let mut cloned_staged_reference = self
-            .get_internal_nursery_access()?
-            .read()
-            .unwrap()
-            .stage_new_holon(context, cloned_transient_reference)?;
-
-        // Reset the PREDECESSOR to None
-        cloned_staged_reference.with_predecessor(context, None)?;
-
-        Ok(cloned_staged_reference)
-    }
-
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the keyed_index to allow the staged holon
-    /// to be retrieved by key.
-    fn stage_new_version_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        let cloned_holon_transient_reference = original_holon.clone_holon(context)?;
-
-        let mut cloned_staged_reference = self
-            .get_internal_nursery_access()?
-            .read()
-            .unwrap()
-            .stage_new_holon(context, cloned_holon_transient_reference)?;
-
-        // Reset the PREDECESSOR to the original Holon being cloned from.
-        cloned_staged_reference
-            .with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
-
-        Ok(cloned_staged_reference)
+        controller.load_set(context, set)
     }
 }
 

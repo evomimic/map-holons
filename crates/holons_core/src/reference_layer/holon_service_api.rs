@@ -64,22 +64,4 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         ctx: &dyn HolonsContextBehavior,
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError>;
-
-    /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
-    /// lineage to the Holon its cloned from.
-    fn stage_new_from_clone_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: HolonReference,
-        new_key: MapString,
-    ) -> Result<StagedReference, HolonError>;
-
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the keyed_index to allow the staged holon
-    /// to be retrieved by key
-    fn stage_new_version_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError>;
 }
