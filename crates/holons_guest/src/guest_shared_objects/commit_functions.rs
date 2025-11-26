@@ -27,7 +27,7 @@ use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
-use type_names::CorePropertyTypeName::Key;
+
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
 pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{

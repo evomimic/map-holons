@@ -11,15 +11,17 @@ use std::fmt::Debug;
 /// a [`DanceRequest`] and returns a [`DanceResponse`].
 /// Implementations may delegate to a Holochain conductor,
 /// a Tauri bridge, or other runtime adapters.
-#[async_trait(?Send)]
-pub trait DanceInitiator: Debug {
+
+/// Production trait: requires Send + Sync for multi-threaded contexts
+#[async_trait]
+pub trait DanceInitiator: Send + Sync + Debug {
     /// Sends a `DanceRequest` and returns a `DanceResponse`.
     ///
     /// Implementations define how Dances are initiated based on
     /// the environment (e.g., native conductor, Tauri bridge, or mock testing).
     async fn initiate_dance(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &(dyn HolonsContextBehavior + Send + Sync),
         request: DanceRequest,
     ) -> DanceResponse;
 }
