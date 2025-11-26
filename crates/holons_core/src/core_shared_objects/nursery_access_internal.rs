@@ -1,10 +1,6 @@
-use std::{
-    any::Any,
-    sync::{Arc, RwLock},
-};
+use std::any::Any;
 
-use super::{holon_pool::SerializableHolonPool, Holon};
-use crate::core_shared_objects::holon_pool::StagedHolonPool;
+use super::holon_pool::SerializableHolonPool;
 use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
