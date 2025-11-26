@@ -84,16 +84,6 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
     fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
 
-    /// Provides direct access to the staged Holons in the Nursery's HolonPool.
-    ///
-    /// This method returns a reference to the underlying collection of staged Holons,
-    /// allowing commit functions to operate on the actual Holon instances without cloning.
-    ///
-    /// # Returns
-    ///
-    /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
-    fn get_holons_to_commit(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError>;
-
     /// Returns a reference-layer view of all staged holons as `StagedReference`s.
     ///
     /// This hides the underlying HolonPool and lock details from callers and is the

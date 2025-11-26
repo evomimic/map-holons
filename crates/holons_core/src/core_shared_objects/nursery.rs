@@ -264,19 +264,6 @@ impl NurseryAccessInternal for Nursery {
         Ok(())
     }
 
-    /// Returns the staged Holons in the `HolonPool`,
-    /// ensuring that commit functions can access the actual Holon instances.
-    /// Retrieves the staged Holon instances for commit, using thread-safe handles
-    fn get_holons_to_commit(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError> {
-        let guard = self.staged_holons.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on staged_holons: {}",
-                e
-            ))
-        })?;
-        Ok(guard.get_all_holons())
-    }
-
     /// Returns a reference-layer view of all staged holons as `StagedReference`s.
     ///
     /// This is the main entry for the commit pipeline and avoids exposing

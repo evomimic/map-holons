@@ -309,18 +309,18 @@ pub fn summarize_holons(holons: &Vec<Holon>) -> String {
 
 // Gets total count of Staged Holons present in the Nursery
 pub fn staged_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
-    return context.get_space_manager().get_staging_service().staged_count();
+    context.get_space_manager().get_staging_service().staged_count()
 }
 
 // Gets total count of Transient Holons present in the TransientHolonManager
 pub fn transient_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
-    return context.get_space_manager().get_transient_behavior_service().transient_count();
+    context.get_space_manager().get_transient_behavior_service().transient_count()
 }
 
 pub fn load_holons(
     context: &dyn HolonsContextBehavior,
     bundle: TransientReference,
-) -> Result<TransientReference, core_types::HolonError> {
+) -> Result<TransientReference, HolonError> {
     let service = context.get_space_manager().get_holon_service();
     service.load_holons_internal(context, bundle)
 }
