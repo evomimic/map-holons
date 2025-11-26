@@ -1,13 +1,12 @@
 #![allow(unused_variables)]
 
-use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holon_dance_builders;
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
-    HolonReference, RelationshipMap, SmartReference, StagedReference,
+    RelationshipMap,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
@@ -93,23 +92,6 @@ impl HolonServiceApi for ClientHolonService {
         //         "LoadHolons: expected ResponseBody::HolonReference".into(),
         //     )),
         // }
-        todo!()
-    }
-
-    fn stage_new_from_clone_internal(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: HolonReference,
-        _new_key: MapString,
-    ) -> Result<StagedReference, HolonError> {
-        todo!()
-    }
-
-    fn stage_new_version_internal(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError> {
         todo!()
     }
 }

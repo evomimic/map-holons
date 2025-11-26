@@ -23,7 +23,7 @@ impl SessionStateEnvelope {
 
         session_state.set_staged_holons(space_manager.export_staged_holons()?);
         session_state.set_transient_holons(space_manager.export_transient_holons()?);
-        session_state.set_local_holon_space(space_manager.get_space_holon());
+        session_state.set_local_holon_space(space_manager.get_space_holon()?);
 
         request.state = Some(session_state);
         debug!("SessionStateEnvelope::attach_to_request() — {}", request.summarize());
@@ -47,7 +47,7 @@ impl SessionStateEnvelope {
         space_manager.import_transient_holons(state.get_transient_holons().clone());
 
         if let Some(space_ref) = state.get_local_holon_space() {
-            space_manager.set_space_holon(space_ref);
+            space_manager.set_space_holon(space_ref.clone())?;
         }
 
         debug!("SessionStateEnvelope::hydrate_from_response() — {}", state.summarize());

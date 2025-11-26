@@ -25,12 +25,11 @@ use holons_core::{
 
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
-use holons_core::core_shared_objects::holon_pool::StagedHolonPool;
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 use type_names::CorePropertyTypeName::Key;
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
-pub use type_names::CoreRelationshipTypeName::{HolonsAbandoned, HolonsCommitted};
+pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{
     CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
     ToPropertyName, ToRelationshipName,
@@ -49,60 +48,86 @@ pub enum CommitOutcome {
 
 /// `commit`
 ///
-/// This function attempts to persist the state of all staged_holons AND their relationships.
-/// It is not completely Atomic - since successfully committed holons will get saved to the Holochain persistence store,
-/// however, the CommitResponse is only considered 'Complete' if ALL the attempts are successful , as well as,
-/// the space_manager's staged_holons are only cleared IF this is the case. Otherwise, the failed holons StagedState will remain unchanged
-/// and their data objects will contain the associated errors that were returned.
+/// Executes a two-pass commit of all staged holons and their relationships,
+/// returning a **`TransientReference` to a CommitResponseType holon** that
+/// reports the outcome of the operation.
 ///
+/// ## What This Function Produces
 ///
-/// A further description of this process is detailed below:
+/// Instead of returning a Rust `CommitResponse` struct (the old behavior),
+/// this function now **constructs a CommitResponse holon instance** using the
+/// holon operations API.
 ///
-/// The commit is performed in two passes: (1) staged_holons, (2) their relationships.
+/// The returned `TransientReference` points to a `CommitResponseType` holon with:
+/// - **Property** `CommitRequestStatus` = `"Complete"` or `"Incomplete"`
+/// - **Property** `CommitsAttempted` = number of staged holons
+/// - **Relationship** `SavedHolons` → all successfully committed holons
+/// - **Relationship** `AbandonedHolons` → all holons skipped or failed
 ///
-/// In the first pass,
-/// * if a staged_holon commit succeeds,
-///     * get the LocalId from the action_address in the returned Record
-///     * StagedState variant is set to 'Committed' containing the above 'saved_id'
-///     * add the holon to the saved_holons vector in the CommitResponse
-/// * if a staged_holon commit fails,
-///     * leave holon's state unchanged
-///     * push the associated error into the holon's errors vector
-///     * do NOT add the holon to the saved_holons vector in the CommitResponse
+/// This holon is a first-class MAP holon and can be returned directly as a
+/// dance response or inspected by follow-up guest or client processes.
 ///
-/// If ANY staged_holon commit fails:
-/// * The 2nd pass (to commit the staged_holon's relationships) is SKIPPED
-/// * the overall return status in the CommitResponse is set to `Incomplete`
-/// * the function returns.
+/// ## Process Overview
 ///
-/// Otherwise, the 2nd pass is performed.
-/// * If ANY attempt to add a relationship generates an Error, the error is pushed into the
-/// source holon's `errors` vector and processing continues.
+/// The commit proceeds in **two passes**:
 ///
-/// If relationship commits succeed for ALL staged_holons,
-///     * The space_manager's staged_holons are cleared
-///     * The Commit Response returns a `Complete` status
+/// ### **Pass 1 — Commit staged holons**
 ///
-/// NOTE: The CommitResponse returns clones of any successfully
-/// committed holons, even if the response status is `Incomplete`.
+/// Each staged holon is processed according to its `StagedState`:
 ///
+/// - **ForCreate**
+///   Persist as a new HolonNode; update the staged holon to `Committed(saved_id)`
+///
+/// - **ForUpdateChanged**
+///   Update the existing HolonNode; update to `Committed(saved_id)`
+///
+/// - **Abandoned**
+///   Skipped and added to the `AbandonedHolons` relationship
+///
+/// - **ForUpdate / Already Committed**
+///   No-op
+///
+/// Any holon that fails to commit:
+/// - keeps its original staged state
+/// - receives its error in the holon’s internal error list
+/// - causes the CommitResponse holon’s `CommitRequestStatus` to be set to `"Incomplete"`
+///
+/// If **any** holon fails in pass 1, the function returns immediately after
+/// building the response holon. **Pass 2 is skipped.**
+///
+/// ### **Pass 2 — Commit relationships**
+///
+/// Only executed if pass 1 completes with no failures.
+///
+/// For each staged holon in `Committed(saved_id)` state:
+/// - iterate all staged relationship collections
+/// - create SmartLinks for each member (if the target holon has a LocalId)
+/// - record any errors into the source staged holon
+/// - update the CommitResponse holon to `"Incomplete"` if any error occurs
+///
+/// If all relationships succeed, the overall result remains `"Complete"`.
+///
+/// ## Return Value
+///
+/// Returns:
+/// Ok(TransientReference)
+/// pointing to the CommitResponse holon created during the process.
+///
+/// This holon is always returned—even if the commit is partially successful—
+/// and contains a complete summary of saved and abandoned items.
+///
+/// ## Clearing Staged Holons
+///
+/// If both passes succeed (no `Incomplete` status), the guest holon service
+/// is responsible for clearing the staged holon pool afterward.
 pub fn commit(
     context: &dyn HolonsContextBehavior,
-    holon_pool: &Arc<RwLock<StagedHolonPool>>,
+    staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
     info!("Entering commit...");
 
-    // Initialize the request_status to Complete, assuming all commits will succeed
-    // If any commit errors are encountered, reset request_status to `Incomplete`
-    // let mut response = CommitResponse {
-    //     status: CommitRequestStatus::Complete,
-    //     commits_attempted: MapInteger(0), // staged_holons.len() as i64,
-    //     saved_holons: Vec::new(),
-    //     abandoned_holons: Vec::new(),
-    // };
-
-    // Get the staged holons count from the HolonPool
-    let stage_count = holon_pool.read().unwrap().len() as i64;
+    // Number of staged holons is derived from the provided references.
+    let stage_count = staged_references.len() as i64;
 
     let mut response_reference =
         new_holon(context, Some(MapString("Commit Response".to_string())))?;
@@ -119,11 +144,6 @@ pub fn commit(
     {
         info!("\n\nStarting FIRST PASS... commit staged holons...");
 
-        let staged_references = {
-            let pool = holon_pool.read().unwrap();
-            pool.get_staged_references()
-        };
-
         let mut saved_holons: Vec<HolonReference> = Vec::new();
         let mut abandoned_holons: Vec<HolonReference> = Vec::new();
 
@@ -132,7 +152,7 @@ pub fn commit(
 
             trace!("Committing {:?}", staged_reference.temporary_id());
 
-            match commit_holon(&staged_reference, context) {
+            match commit_holon(staged_reference, context) {
                 Ok(CommitOutcome::Saved) => {
                     let holon_id = staged_reference.holon_id(context)?;
                     let key_string: MapString =
@@ -143,7 +163,8 @@ pub fn commit(
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::Abandoned) => {
-                    abandoned_holons.push((&staged_reference).into());
+                    // StagedReference → HolonReference via From<&StagedReference>
+                    abandoned_holons.push(staged_reference.into());
                 }
                 Ok(CommitOutcome::NoAction) => {
                     trace!("No action required for {:?}", staged_reference.temporary_id());
@@ -154,19 +175,19 @@ pub fn commit(
                         CommitRequestStatus,
                         "Incomplete",
                     )?;
-                    abandoned_holons.push((&staged_reference).into());
+                    abandoned_holons.push(staged_reference.into());
                     warn!("Commit failed for {:?}: {:?}", staged_reference.temporary_id(), error);
                 }
             }
         }
 
         // Attach results to the CommitResponse holon
-        response_reference.add_related_holons(context, HolonsCommitted, saved_holons)?;
-        response_reference.add_related_holons(context, HolonsAbandoned, abandoned_holons)?;
+        response_reference.add_related_holons(context, SavedHolons, saved_holons)?;
+        response_reference.add_related_holons(context, AbandonedHolons, abandoned_holons)?;
     }
 
     // Check if Pass 1 ended with an incomplete status
-    if let Some(status_value) = response_reference.property_value(context, "CommitRequestStatus")? {
+    if let Some(status_value) = response_reference.property_value(context, CommitRequestStatus)? {
         let status_string: String = (&status_value).into();
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
@@ -174,18 +195,19 @@ pub fn commit(
         }
     }
 
-    //  SECOND PASS: Commit relationships
+    // === SECOND PASS: Commit relationships ===
+    //
     // We can iterate all staged references again; `commit_relationships` is a no-op
     // unless the holon is in `StagedState::Committed(_)`.
-    let staged_references = {
-        let pool = holon_pool.read().unwrap();
-        pool.get_staged_references()
-    };
-
     for staged_reference in staged_references {
         // Resolve the holon and take a write lock so we can attach an error if needed
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
-        let mut holon_write = rc_holon.write().unwrap();
+        let mut holon_write = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon during relationship commit: {}",
+                e
+            ))
+        })?;
 
         if let Holon::Staged(staged_holon) = &mut *holon_write {
             if let Err(error) = commit_relationships(context, staged_holon) {
@@ -193,7 +215,7 @@ pub fn commit(
                 staged_holon.add_error(error.clone())?;
                 response_reference.with_property_value(
                     context,
-                    "CommitRequestStatus",
+                    CommitRequestStatus,
                     "Incomplete",
                 )?;
 
@@ -233,7 +255,12 @@ fn commit_holon(
 ) -> Result<CommitOutcome, HolonError> {
     // Resolve the staged holon from the pool
     let rc_holon = staged_reference.get_holon_to_commit(context)?;
-    let mut holon_write = rc_holon.write().unwrap();
+    let mut holon_write = rc_holon.write().map_err(|e| {
+        HolonError::FailedToAcquireLock(format!(
+            "Failed to acquire write lock on staged holon during commit: {}",
+            e
+        ))
+    })?;
 
     if let Holon::Staged(staged_holon) = &mut *holon_write {
         let staged_state = staged_holon.get_staged_state();
@@ -320,7 +347,12 @@ fn commit_relationships(
         StagedState::Committed(local_id) => {
             for (name, holon_collection_rc) in holon.get_staged_relationship_map()?.map.iter() {
                 debug!("COMMITTING {:#?} relationship", name.0.clone());
-                let holon_collection = holon_collection_rc.read().unwrap();
+                let holon_collection = holon_collection_rc.read().map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on relationship collection for {}: {}",
+                        name.0 .0, e
+                    ))
+                })?;
                 commit_relationship(context, local_id.clone(), name.clone(), &holon_collection)?;
             }
 

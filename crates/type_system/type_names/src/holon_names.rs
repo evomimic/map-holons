@@ -5,6 +5,7 @@ use strum_macros::VariantNames;
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreHolonTypeName {
     Collection,
+    CommitResponseType,
     Dance,
     DanceType,
     Holon,
