@@ -5,6 +5,8 @@ use core_types::{HolonError, TemporaryId};
 use holons_core::{
     core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
 };
+use tracing::debug;
+// use tracing::warn;
 
 use crate::harness::fixtures_support::{ExpectedState, TestReference};
 
@@ -42,15 +44,21 @@ impl FixtureHolons {
                             ExpectedState::Saved,
                             latest_token.expected_content().clone(),
                         );
+                        // Update lineage
                         tokens.push(saved_token.clone());
+                        // Return tokens for passing to executor used for building ResolvedTestReference
                         saved_tokens.push(saved_token);
                     }
-                    _ => {
+                    ExpectedState::Abandoned => {
+                        debug!("Skipping commit on Abandoned Holon: {:#?}", latest_token)
+                    }
+                    ExpectedState::Transient => {
                         return Err(HolonError::CommitFailure(
-                            "TestReference to be Saved must be in an ExpectedState::Staged"
-                                .to_string(),
+                            "TestReference to be Saved must be in an ExpectedState::Staged, got: Transient".to_string()
                         ))
                     }
+                    ExpectedState::Saved => {debug!("Holon already saved : {:#?}", latest_token)}
+                    ExpectedState::Deleted => {debug!("Holon marked as deleted : {:#?}", latest_token)}
                 }
             } else {
                 return Err(HolonError::InvalidParameter(
@@ -103,6 +111,27 @@ impl FixtureHolons {
             ))),
         }
     }
+
+    // /// Mint an ExpectedState::Deleted cloned from given TestReference (must be expected_state Saved)
+    // pub fn delete_saved(
+    //     &mut self,
+    //     saved_token: TestReference,
+    // ) -> Result<TestReference, HolonError> {
+    //     match saved_token.expected_state() {
+    //         ExpectedState::Staged => {
+    //             let deleted_token = self.mint_snapshot(
+    //                 saved_token.transient(),
+    //                 ExpectedState::Deleted,
+    //                 saved_token.expected_content(),
+    //             );
+    //             Ok(deleted_token)
+    //         }
+    //         other => Err(HolonError::InvalidTransition(format!(
+    //             "Can only delte tokens in ExpectedState::Saved, got {:?}",
+    //             other
+    //         ))),
+    //     }
+    // }
 
     // ---------- Create tokens based on matching conditions ----------
 
@@ -201,21 +230,26 @@ impl FixtureHolons {
         Ok(token)
     }
 
-    //  ======  INDEXING  ======  //
-
-    /// Index an existing token by key. Errors if the key already exists.
-    pub fn index_by_key(&mut self, key: MapString, id: TemporaryId) -> Result<(), HolonError> {
-        if self.by_key.contains_key(&key) {
-            return Err(HolonError::DuplicateError(
-                "Keys".to_string(),
-                format!("FixtureHolon with key: {:?}", key),
-            ));
+    /// Index an existing token by key. Errors if the key is present and change is attempted for the corresponding TemporaryId .
+    fn index_by_key(&mut self, key: MapString, given_id: TemporaryId) -> Result<(), HolonError> {
+        if let Some(current_id) = self.by_key.get(&key) {
+            if current_id != &given_id {
+                Err(HolonError::InvalidUpdate(format!(
+                    "upsert_by_key, since a TemporaryId already exists for key: {:?}, the lineage cannot be changed by this function call.",
+                    key
+                )))
+            } else {
+                Ok(())
+            }
+        } else {
+            self.by_key.insert(key, given_id.clone());
+            Ok(())
         }
-        self.by_key.insert(key, id.clone());
-
-        Ok(())
     }
 
+    //  ======  INDEXING  ======  //
+
+    /// Use with Caution...
     /// Upsert variant: replace any existing mapping for `key`.
     /// Prefer `index_by_key` unless you *intend* to overwrite.
     pub fn upsert_by_key(&mut self, key: MapString, id: TemporaryId) {
@@ -253,9 +287,11 @@ impl FixtureHolons {
     /// Retrieve current token for id
     pub fn get_latest_for_id(&self, id: &TemporaryId) -> Result<TestReference, HolonError> {
         let vec = self.get_tokens_by_id(id)?;
-        vec.last().ok_or(HolonError::InvalidParameter(
-            "Lineage returned empty for id, something went wrong".to_string(),
-        )).cloned()
+        vec.last()
+            .ok_or(HolonError::InvalidParameter(
+                "Lineage returned empty for id, something went wrong".to_string(),
+            ))
+            .cloned()
     }
 
     // ---- HELPERS ---- //
@@ -275,11 +311,46 @@ impl FixtureHolons {
             .filter_map(|(tid, vec)| vec.last().map(|tok| (tid.clone(), tok.clone())))
             .collect()
     }
+
+    // Gets number of Holons per type of ExpectedState for current (latest) in lineage
+    pub fn counts(&self) -> FixtureHolonCounts {
+        let mut counts = FixtureHolonCounts::default();
+        for (_id, token) in &self.latest_snapshots() {
+            match token.expected_state() {
+                ExpectedState::Transient => counts.transient += 1,
+                ExpectedState::Staged => counts.staged += 1,
+                ExpectedState::Saved => counts.saved += 1,
+                ExpectedState::Abandoned => counts.staged -= 1,
+                ExpectedState::Deleted => counts.saved -= 1,
+            }
+        }
+        counts
+    }
+
+    pub fn count_transient(&self) -> i64 {
+        self.counts().transient
+    }
+    pub fn count_staged(&self) -> i64 {
+        self.counts().staged
+    }
+    pub fn count_saved(&self) -> i64 {
+        self.counts().saved
+    }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct FixtureHolonCounts {
     pub transient: i64,
     pub staged: i64,
     pub saved: i64,
+}
+
+impl Default for FixtureHolonCounts {
+    fn default() -> Self {
+        Self {
+            transient: 0,
+            staged: 0,
+            saved: 1, // Accounts for initial HolonSpace Holon
+        }
+    }
 }

@@ -18,7 +18,7 @@ use crate::helpers::{
 /// *Publisher Holon with PUBLISHER_KEY*
 /// *BOOK_TO_PERSON_RELATIONSHIP from Book Holon to person 1 and person 2
 /// The Nursery within the supplied context is used as the test data setup area
-/// 
+///
 /// FixtureHolons contains the minted token TestReferences that are used to track a lineage of state to mirror in parallel the ExecutionHolons.
 /// This parallel reflects 'expected' (Fixture) vs 'actual' (Mock DHT).
 pub fn setup_book_author_steps_with_context(
@@ -64,7 +64,7 @@ pub fn setup_book_author_steps_with_context(
         .with_property_value(&*fixture_context, "first name", "Roger")?
         .with_property_value(&*fixture_context, "last name", "Briggs")?;
     // Mint
-     let person_1_transient_token = fixture_holons.add_transient_with_key(
+    let person_1_transient_token = fixture_holons.add_transient_with_key(
         &person_1_transient_reference,
         person_1_key.clone(),
         &person_1_transient_reference.essential_content(fixture_context)?,

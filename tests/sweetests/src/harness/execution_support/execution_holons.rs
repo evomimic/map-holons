@@ -21,6 +21,8 @@ use core_types::{LocalId, TemporaryId};
 use holons_core::core_shared_objects::holon::StagedState;
 use holons_prelude::prelude::*;
 
+use super::ResultingReference;
+
 #[derive(Clone, Debug, Default)]
 pub struct ExecutionHolons {
     pub by_temporary_id: BTreeMap<TemporaryId, ResolvedTestReference>,
@@ -49,7 +51,7 @@ impl ExecutionHolons {
     pub fn record_from_parts(
         &mut self,
         source_token: TestReference,
-        resulting_reference: HolonReference,
+        resulting_reference: ResultingReference,
     ) -> ResolvedTestReference {
         let resolved =
             ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
@@ -68,6 +70,7 @@ impl ExecutionHolons {
     /// - `ExpectedState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `ExpectedState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `ExpectedState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
+    /// - `ExpectedState::Deleted`  → return Error, caller should use `get_resulting_reference_for` instead
     ///
     /// No Nursery/DHT fallback is performed. Missing entries are treated as authoring/ordering errors.
     pub fn lookup_holon_reference(
@@ -76,9 +79,11 @@ impl ExecutionHolons {
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
         let expected_state = token.expected_state();
+
         match expected_state {
+            ExpectedState::Deleted => Err(HolonError::InvalidParameter("Holon marked as deleted, to get ResultingReference, use get_resulting_reference_for function instead".to_string())),
             ExpectedState::Transient => Ok(HolonReference::Transient(token.transient().clone())),
-            ExpectedState::Staged | ExpectedState::Saved | ExpectedState::Abandoned => {
+            expected_state => {
                 let resolved = self
                     .by_temporary_id
                     .get(&token.temporary_id())
@@ -87,56 +92,36 @@ impl ExecutionHolons {
                         token.temporary_id(),
                         token.expected_state()
                     )))?;
-
-                match &resolved.resulting_reference {
-                    HolonReference::Staged(staged_reference) => {
-                        let is_committed = staged_reference
-                            .is_in_state(context, StagedState::Committed(LocalId(Vec::new())))?;
-
-                        if expected_state == ExpectedState::Abandoned {
-                            let is_abandoned =
-                                staged_reference.is_in_state(context, StagedState::Abandoned)?;
-                            if is_abandoned {
-                                Ok(HolonReference::Staged(staged_reference.clone()))
-                            } else {
-                                Err(HolonError::InvalidHolonReference(
-                                    "ExecutionHolons::lookup: expected ABANDONED".to_string(),
-                                ))
-                            }
+                let holon_reference = &resolved.resulting_reference.get_holon_reference()?;
+                match (expected_state, holon_reference) {
+                    (
+                        ExpectedState::Staged | ExpectedState::Abandoned,
+                        HolonReference::Staged(staged_reference),
+                    ) => {
+                        if !staged_reference
+                            .is_in_state(context, StagedState::Committed(LocalId(Vec::new())))?
+                        {
+                            Ok(HolonReference::Staged(staged_reference.clone()))
                         } else {
-                            if expected_state == ExpectedState::Staged {
-                                if !is_committed {
-                                    Ok(HolonReference::Staged(staged_reference.clone()))
-                                } else {
-                                    Err(HolonError::InvalidHolonReference(
-                                        "ExecutionHolons::lookup: expected STAGED (not committed)"
-                                            .to_string(),
-                                    ))
-                                }
-                            } else {
-                                if expected_state == ExpectedState::Saved {
-                                    if is_committed {
-                                        Ok(HolonReference::Staged(staged_reference.clone()))
-                                    } else {
-                                        Err(HolonError::InvalidHolonReference(
-                                            "ExecutionHolons::lookup: expected SAVED (committed)"
-                                                .to_string(),
-                                        ))
-                                    }
-                                } else {
-                                    Err(HolonError::InvalidHolonReference(
-                                        "ExecutionHolons::lookup: expected SAVED (committed)"
-                                            .to_string(),
-                                    ))
-                                }
-                            }
+                            Err(HolonError::InvalidHolonReference(
+                                    format!("ExecutionHolons::lookup for: {:?}, expected STAGED (not committed) got StagedReference but in StagedState::Committed", expected_state),
+                                ))
                         }
                     }
-                    other => Err(HolonError::InvalidHolonReference(format!(
-                        "ExecutionHolons::lookup: expected a StagedReference for {:?}, found {:?}",
-                        token.expected_state(),
-                        other
-                    ))),
+                    (ExpectedState::Staged | ExpectedState::Abandoned, other) => {
+                        Err(HolonError::InvalidHolonReference(format!(
+                            "ExecutionHolons::lookup for: {:?}, expected STAGED, got: {:?}",
+                            expected_state, other
+                        )))
+                    }
+                    (ExpectedState::Saved, HolonReference::Smart(smart_reference)) => {
+                        Ok(HolonReference::Smart(smart_reference.clone()))
+                    }
+                    (ExpectedState::Saved, other) => Err(HolonError::InvalidHolonReference(
+                        format!("ExecutionHolons::lookup: expected SAVED, got: {:?}", other),
+                    )),
+                    (ExpectedState::Transient, _) => unreachable!("handled on first match arm"),
+                    (ExpectedState::Deleted, _) => unreachable!("handled on first match arm"),
                 }
             }
         }
@@ -168,7 +153,7 @@ impl ExecutionHolons {
     /// Directly fetch the **resulting** `HolonReference` for a token, if recorded.
     ///
     /// Use `lookup_holon_reference` if you also need expected-state validation.
-    pub fn get_resulting_reference_for(&self, token: &TestReference) -> Option<HolonReference> {
+    pub fn get_resulting_reference_for(&self, token: &TestReference) -> Option<ResultingReference> {
         self.by_temporary_id.get(&token.temporary_id()).map(|r| r.resulting_reference.clone())
     }
 

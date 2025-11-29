@@ -24,16 +24,16 @@ pub async fn execute_abandon_staged_changes(
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
 
-    // 1) LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 
-    // 2) BUILD — dance request to abandon holon
+    // 2. BUILD — dance request to abandon holon
     let request = build_abandon_staged_changes_dance_request(source_reference)
         .expect("Failed to build abandon_staged_changes request");
     debug!("Dance Request: {:#?}", request);
 
-    // 3) CALL — use the context-owned call service
+    // 3. CALL — use the context-owned call service
     let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
 
@@ -50,7 +50,7 @@ pub async fn execute_abandon_staged_changes(
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+            panic!("expected ResponseBody::HolonReference, got {:?}", other);
         }
     };
     let resolved_reference =

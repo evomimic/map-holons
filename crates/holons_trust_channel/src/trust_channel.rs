@@ -45,6 +45,8 @@ impl DanceInitiator for TrustChannel {
             response.annotate_error(err);
         }
 
+        debug!("TrustChannel::initiate_dance() — got response: {:?}", response.summarize());
+
         response
     }
 }

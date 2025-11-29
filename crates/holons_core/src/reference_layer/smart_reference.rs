@@ -7,7 +7,7 @@ use std::{
 use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::reference_layer::readable_impl::ReadableHolonImpl;
+use crate::{core_shared_objects::holon::EssentialRelationshipMap, reference_layer::readable_impl::ReadableHolonImpl};
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
@@ -181,7 +181,13 @@ impl ReadableHolonImpl for SmartReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        Ok(borrowed_holon.essential_content())
+        let mut essential_content= borrowed_holon.essential_content();
+        // Need to get relationships from the cache since they are not stored in SavedHolon
+        let relationships = self.all_related_holons_impl(context)?;
+        // convert to EssentialRelationship
+        essential_content.relationships = EssentialRelationshipMap::from(relationships);
+
+        Ok(essential_content)
     }
 
     fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {

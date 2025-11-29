@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 derive-new = "0.7"
+hex = "0.4"
 thiserror = "2"
 [dependencies.base_types]
 path = "../base_types"

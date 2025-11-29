@@ -18,6 +18,8 @@ use crate::harness::execution_support::{ExecutionHolons, ResolvedTestReference};
 use crate::harness::fixtures_support::TestReference;
 use holons_prelude::prelude::*;
 
+use super::ResultingReference;
+
 #[derive(Clone, Debug)]
 pub struct TestExecutionState {
     pub context: Arc<dyn HolonsContextBehavior>,
@@ -78,7 +80,7 @@ impl TestExecutionState {
     pub fn record_from_parts(
         &mut self,
         source_token: TestReference,
-        resulting_reference: HolonReference,
+        resulting_reference: ResultingReference,
     ) -> ResolvedTestReference {
         self.execution_holons.record_from_parts(source_token, resulting_reference)
     }

@@ -34,11 +34,9 @@
 //     let fixture_context = init_fixture_context();
 //     let mut fixture_holons = FixtureHolons::new();
 
-//     // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-//     let mut expected_count: i64 = 1;
 
 //     // Ensure DB count //
-//     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+//     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
 //     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
 //     // from the book to the two persons
@@ -135,7 +133,7 @@
 //     //  COMMIT  //
 //     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
-//     test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+//     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
 //     //  QUERY RELATIONSHIPS  //
 //     let query_expression = QueryExpression::new(relationship_name.clone());

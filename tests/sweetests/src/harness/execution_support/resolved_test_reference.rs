@@ -13,37 +13,64 @@
 //! ⚠ Important: **Do not confuse source and result.**
 //! A “Staged” token may resolve to a *new* staged holon, not the one
 //! embedded in the token. The token is intent; the result is reality.
-
 use crate::harness::fixtures_support::TestReference;
-use core_types::LocalId;
-use holons_core::core_shared_objects::holon::StagedState;
+use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
+use pretty_assertions::assert_eq;
 
 #[derive(Clone, Debug)]
 pub struct ResolvedTestReference {
     /// Fixture-declared identity + intent of the source holon.
     pub source_token: TestReference,
     /// Runtime handle produced by executing the step.
-    pub resulting_reference: HolonReference,
+    pub resulting_reference: ResultingReference,
 }
+
+#[derive(Clone, Debug)]
+pub enum ResultingReference {
+    LiveReference(HolonReference),
+    Deleted,
+}
+
+impl ResultingReference {
+    pub fn essential_content(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        match self {
+            Self::LiveReference(holon_reference) => holon_reference.essential_content(context),
+            Self::Deleted => Err(HolonError::InvalidParameter(
+                "Holon is marked as deleted, there is no content to compare".to_string(),
+            )),
+        }
+    }
+
+    pub fn get_holon_reference(&self) -> Result<HolonReference, HolonError> {
+        match self {
+            Self::LiveReference(holon_reference) => Ok(holon_reference.clone()),
+            Self::Deleted => Err(HolonError::InvalidParameter(
+                "Holon is marked as deleted, there is no associated HolonReference".to_string(),
+            )),
+        }
+    }
+}
+
+// #[derive(Clone, Debug)]
+// pub enum ResultingReference {
+//     Transient(HolonReference),
+//     Staged(HolonReference),
+//     Saved(HolonReference),
+//     Abandoned(HolonReference), // Still a StagedReference but marked as 'Abandoned'
+//     Deleted,
+// }
 
 impl ResolvedTestReference {
     /// Build from a fixture token and the resulting runtime handle.
     pub fn from_reference_parts(
         source_token: TestReference,
-        resulting_reference: HolonReference,
+        resulting_reference: ResultingReference,
     ) -> Self {
         Self { source_token, resulting_reference }
-    }
-
-    /// True if the resulting handle is a staged holon in committed state.
-    pub fn result_is_committed(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<bool, HolonError> {
-        Ok(matches!(
-            &self.resulting_reference,
-            HolonReference::Staged(staged) if staged.is_in_state(context, StagedState::Committed(LocalId(Vec::new())))?))
     }
 
     /// Assert that the essential content of the fixture-declared source
@@ -59,13 +86,7 @@ impl ResolvedTestReference {
         let expected_content = expected_ref.essential_content(context)?;
         let actual_content = self.resulting_reference.essential_content(context)?;
 
-        if expected_content == actual_content {
-            Ok(())
-        } else {
-            Err(HolonError::Misc(format!(
-                "Essential content mismatch.\nExpected: {:#?}\nActual:   {:#?}",
-                expected_content, actual_content
-            )))
-        }
+        assert_eq!(expected_content, actual_content);
+        Ok(())
     }
 }

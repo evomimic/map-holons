@@ -160,8 +160,8 @@ pub fn commit(
         }
 
         // Attach results to the CommitResponse holon
-        response_reference.add_related_holons(context, HolonsCommitted, saved_holons)?;
-        response_reference.add_related_holons(context, HolonsAbandoned, abandoned_holons)?;
+        response_reference.add_related_holons(context, HolonsCommitted, saved_holons)?; // TODO: point to CommitMap
+        response_reference.add_related_holons(context, HolonsAbandoned, abandoned_holons)?; // will be combining
     }
 
     // Check if Pass 1 ended with an incomplete status

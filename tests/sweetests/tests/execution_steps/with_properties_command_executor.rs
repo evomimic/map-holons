@@ -52,7 +52,7 @@ pub async fn execute_with_properties(
             .expect("Failed to add property value to expected holon");
     }
 
-   let resulting_reference = match response.body {
+    let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
             panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
