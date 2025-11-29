@@ -34,13 +34,9 @@ pub async fn execute_ensure_database_count(
             expected_count, actual_count.0
         );
 
-    // 4. ASSERT - that the expected count matches actual count
-    assert_eq!(
-        expected_count, actual_count,
-        "ensure_database_count request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! DB count matched expected");
+        // 4. ASSERT - that the expected count matches actual count
+        assert_eq!(expected_count, actual_count);
+        info!("Success! DB count matched expected");
     } else {
         panic!(
             "Expected ensure_database_count to return {} holons, but it returned an unexpected response: {:?}",

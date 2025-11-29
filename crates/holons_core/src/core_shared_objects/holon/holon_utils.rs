@@ -1,9 +1,14 @@
 use derive_new::new;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 use base_types::MapString;
-use core_types::{HolonError, PropertyMap};
+use core_types::{HolonError, PropertyMap, RelationshipName};
+
+use crate::{
+    core_shared_objects::TransientRelationshipMap, HolonCollection, RelationshipMap,
+    StagedRelationshipMap,
+};
 
 use super::state::{HolonState, ValidationState};
 
@@ -15,9 +20,54 @@ use super::state::{HolonState, ValidationState};
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
-    // pub relationship_map: RelationshipMap,
+    pub relationships: EssentialRelationshipMap,
     pub key: Option<MapString>,
     pub errors: Vec<HolonError>,
+}
+
+// ==== TESTING PURPOSES ==== //
+
+#[derive(new, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct EssentialRelationshipMap {
+    map: BTreeMap<RelationshipName, HolonCollection>,
+}
+
+impl From<RelationshipMap> for EssentialRelationshipMap {
+    fn from(map: RelationshipMap) -> Self {
+        let mut essential = BTreeMap::new();
+
+        for (name, arc_lock) in map.iter() {
+            let collection = arc_lock.read().unwrap();
+            essential.insert(name.clone(), collection.clone());
+        }
+        Self::new(essential)
+    }
+}
+
+impl From<TransientRelationshipMap> for EssentialRelationshipMap {
+    fn from(map: TransientRelationshipMap) -> Self {
+        let mut essential = BTreeMap::new();
+
+        for (name, arc_lock) in map.iter() {
+            let collection = arc_lock.read().unwrap();
+            essential.insert(name.clone(), collection.clone());
+        }
+        Self::new(essential)
+    }
+}
+
+impl From<StagedRelationshipMap> for EssentialRelationshipMap {
+    fn from(map: StagedRelationshipMap) -> Self {
+        let mut essential = BTreeMap::new();
+
+        for (name, arc_lock) in map.iter() {
+            let collection = arc_lock.read().unwrap();
+            // TODO: figure out how best to change this conversion to CollectionState::Transient so that this implementation is friendly
+            // to purposes outside of testing.
+            essential.insert(name.clone(), collection.clone_for_new_source().unwrap());
+        }
+        Self::new(essential)
+    }
 }
 
 #[derive(Debug, Clone)]

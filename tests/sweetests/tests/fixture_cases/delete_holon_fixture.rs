@@ -40,18 +40,27 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     let staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
         transient_source_token.clone(),
-        Some(book_key),
+        Some(book_key.clone()),
         ResponseStatusCode::OK,
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    let saved_token = fixture_holons.get_latest_by_key(&book_key)?;
+
+    // Mint deleted token
+    let deleted_token = fixture_holons.delete_saved(
+        &saved_token,
+    )?;
 
     // ADD STEP: DELETE HOLON - Valid //
-    test_case.add_delete_holon_step(staged_token.clone(), ResponseStatusCode::OK)?;
+    test_case.add_delete_holon_step(deleted_token.clone(), ResponseStatusCode::OK)?;
 
     // ADD STEP: DELETE HOLON - Invalid //
-    test_case.add_delete_holon_step(staged_token, ResponseStatusCode::NotFound)?;
+    test_case.add_delete_holon_step(deleted_token, ResponseStatusCode::NotFound)?;
+
+    // ADD STEP:  ENSURE DATABASE COUNT
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;    
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

@@ -88,3 +88,19 @@ impl HolonError {
         combined
     }
 }
+
+// impl fmt::Display for HolonError {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             HolonError::Misc(msg) => write!(f, "{msg}"),
+//             // ...
+//         }
+//     }
+// }
+
+// impl fmt::Debug for HolonError {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         // Forward Debug to Display to avoid escaping
+//         write!(f, "{self}")
+//     }
+// }

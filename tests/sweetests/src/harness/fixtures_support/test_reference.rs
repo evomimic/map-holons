@@ -37,10 +37,11 @@ use holons_core::{
 ///   and may also be enforced during execution when resolving tokens.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ExpectedState {
-    Abandoned,
     Transient,
     Staged,
     Saved,
+    Abandoned,
+    Deleted,
 }
 
 /// An **opaque fixture token** that identifies a holon by [`TransientReference`]
@@ -59,7 +60,7 @@ pub enum ExpectedState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
     transient_reference: TransientReference, // carries the TemporaryId and snapshot
-    expected_state: ExpectedState,           // Transient | Staged | Saved | Abandoned
+    expected_state: ExpectedState,           // Transient | Staged | Saved | Abandoned | Deleted
     expected_content: EssentialHolonContent, // Expected essential content, used for comparing expected (fixture) to actual (resolved)
 }
 
@@ -73,19 +74,20 @@ impl TestReference {
         Self { transient_reference, expected_state, expected_content }
     }
 
-    pub fn transient(&self) -> &TransientReference {
-        &self.transient_reference
-    }
-
-    pub fn temporary_id(&self) -> TemporaryId {
-        self.transient_reference.get_temporary_id()
+    pub fn expected_content(&self) -> &EssentialHolonContent {
+        &self.expected_content
     }
 
     pub fn expected_state(&self) -> ExpectedState {
         self.expected_state
     }
 
-    pub fn expected_content(&self) -> &EssentialHolonContent {
-        &self.expected_content
+    pub fn temporary_id(&self) -> TemporaryId {
+        self.transient_reference.get_temporary_id()
     }
+
+    pub fn transient(&self) -> &TransientReference {
+        &self.transient_reference
+    }
+    
 }

@@ -9,8 +9,8 @@ use std::sync::{Arc, RwLock};
 
 use crate::{
     core_shared_objects::{
-        holon::HolonCloneModel, holon_behavior::ReadableHolonState, TransientRelationshipMap,
-        WriteableHolonState,
+        holon::HolonCloneModel, holon_behavior::ReadableHolonState,
+        TransientRelationshipMap, WriteableHolonState,
     },
     HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
 };
@@ -23,7 +23,7 @@ use type_names::CorePropertyTypeName;
 
 use super::{
     state::{AccessType, HolonState, ValidationState},
-    EssentialHolonContent,
+    EssentialHolonContent, EssentialRelationshipMap,
 };
 
 /// Represents a Holon that exists only in-memory and cannot be persisted unless it becomes a StagedHolon.
@@ -107,6 +107,7 @@ impl ReadableHolonState for TransientHolon {
     fn essential_content(&self) -> EssentialHolonContent {
         EssentialHolonContent::new(
             self.property_map.clone(),
+            EssentialRelationshipMap::from(self.transient_relationships.clone()),
             self.key(),
             Vec::new(), // defaulting to empty
         )

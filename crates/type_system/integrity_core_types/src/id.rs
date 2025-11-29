@@ -1,3 +1,4 @@
+use hex::encode;
 use serde::{Deserialize, Serialize};
 use std::{fmt, string::FromUtf8Error};
 
@@ -20,7 +21,7 @@ use std::{fmt, string::FromUtf8Error};
 /// # Invariants
 /// - Must always contain exactly 39 bytes (Holochain’s canonical hash length)
 ///   if you intend to convert back into `ActionHash`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LocalId(pub Vec<u8>);
 
 impl LocalId {
@@ -42,6 +43,14 @@ impl fmt::Display for LocalId {
             Ok(s) => write!(f, "{}", s),
             Err(_) => write!(f, "<invalid utf-8>"),
         }
+    }
+}
+
+impl fmt::Debug for LocalId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LocalId")
+            .field("bytes", &hex::encode(&self.0)) // or base64, or custom
+            .finish()
     }
 }
 

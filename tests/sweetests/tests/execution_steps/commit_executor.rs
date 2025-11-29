@@ -1,18 +1,14 @@
 use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 use holons_prelude::prelude::*;
 
-// TODO: Remove this import, direct access to HolonState should not be allowed from test layer.
-// The need for this will go away once Holon is removed from ResponseBody
-use holons_core::core_shared_objects::ReadableHolonState;
-
-/// This function builds and dances a `commit` DanceRequest for the supplied Holon
-/// and confirms a Success response
+/// This function builds and dances a `commit` DanceRequest and confirms a Success response.
 ///
+/// Source tokens are needed for this step in order to build a ResolvedTestReference.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
-    source_tokens: &mut Vec<TestReference>,
+    source_tokens: &mut Vec<TestReference>, // list of expected tokens to resolve
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
@@ -58,17 +54,16 @@ pub async fn execute_commit(
 
     // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
-    let committed_refs_guard =
-        committed_references.read().expect("Failed to read committed holons");
-    for resulting_reference in committed_refs_guard.get_members() {
+    let holon_collection = committed_references.read().expect("Failed to read committed holons");
+    // TODO: key based lookup to get correct source_token per resulting_reference
+    for resulting_reference in holon_collection.get_members() {
         let resolved_reference = ResolvedTestReference::from_reference_parts(
-            source_tokens.pop().expect("Expected source token, vec should not be empty"),
-            resulting_reference.clone(),
+            ResultingReference::LiveReference(resulting_reference.clone()),
         );
 
         state.record_resolved(resolved_reference);
     }
 
     // 6. Optional: log a summary
-    info!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
+    trace!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
 }

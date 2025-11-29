@@ -6,8 +6,6 @@ use tracing::{debug, info};
 
 use holochain::sweettest::*;
 
-use holons_core::core_shared_objects::ReadableHolonState;
-
 /// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
 /// and matches the expected response
 ///
@@ -24,7 +22,9 @@ pub async fn execute_delete_holon(
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
-    let HolonId::Local(local_id) = source_reference.holon_id(context).expect("Failed to get HolonId") else {
+    let HolonId::Local(local_id) =
+        source_reference.holon_id(context).expect("Failed to get HolonId")
+    else {
         panic!("Expected LocalId");
     };
 
@@ -58,8 +58,8 @@ pub async fn execute_delete_holon(
         "Holon should be deleted but was found"
     );
     info!("Confirmed Holon deletion!");
-    
-    // 6) RECORD — tie the new staged handle to the **source token’s TemporaryId**
+
+    // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     let resulting_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),

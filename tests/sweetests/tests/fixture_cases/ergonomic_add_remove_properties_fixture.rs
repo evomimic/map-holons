@@ -27,103 +27,84 @@
 //     // each through both parameters of PropertyName and BaseValue
 
 //     // TEST FIXTURE //
+//     //
+//     // Flexes ToPropertyName and ToBaseValue trait combinations
 
 //     let book_key = MapString(BOOK_KEY.to_string());
-//     let mut book_source_token =
-//         fixture_holons.get_latest_by_key(&book_key)?;
-
-//     // Mint transient token for mutation
-//     let mut book_mod_token = fixture_holons.add_transient_with_key(
-//         &book_source_token.transient(),
-//         book_key,
-//         ,
-//     )?;
+//     let mut book_source_token = fixture_holons.get_latest_by_key(&book_key)?;
+//     let book_transient_reference = book_source_token.transient();
 
 //     let mut properties = PropertyMap::new();
-//     properties.insert("TITLE".to_property_name(), "Dune (Transient Clone)".to_base_value());
-//     properties.insert("EDITION".to_property_name(), 1.to_base_value());
-//     test_case.add_with_properties_step(clone_from_transient_staged, properties, ResponseStatusCode::OK)?;
-//     book_mod_token
+//     properties
+//         .insert(Description.to_property_name(), "Changed description".to_string().to_base_value()); // enum, String
+//     properties
+//         .insert("New Property".to_property_name(), "This is another property".to_base_value()); // str, str
+//     test_case.add_with_properties_step(book_source_token, properties, ResponseStatusCode::OK)?;
+
+//     book_transient_reference
+//         .with_property_value(&*fixture_context, "Description", "Changed description")
 //         .with_property_value(
 //             &*fixture_context,
 //             "New Property".to_string(),
 //             "This is another property".to_string(),
-//         )?
-//         .with_property_value(&*fixture_context, "Description", "Changed Description")?;
-
-//     let mut publisher_staged_reference =
-//         get_staged_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;
-//     publisher_staged_reference
-//         .with_property_value(
-//             &*fixture_context,
-//             MapString("Publisher Property".to_string()),
-//             BaseValue::StringValue(MapString("Adding a property".to_string())),
-//         )?
-//         .with_property_value(
-//             &*fixture_context,
-//             Description,
-//             MapString("New Publisher Description".to_string()),
 //         )?;
 
-//     // EXECUTOR STEP - to ensure expected //
-//     //
-//     // Flexes ToPropertyName and ToBaseValue trait combinations
-
-//     let mut expected_book_property_map = BTreeMap::new();
-//     expected_book_property_map.insert(
-//         Description.to_property_name(),
-//         MapString("Changed Description".to_string()).to_base_value(),
-//     );
-//     expected_book_property_map.insert(
-//         "New Property".to_property_name(),
-//         "This is another property".to_string().to_base_value(),
-//     );
-
-//     test_case.add_with_properties_step(
-//         HolonReference::Transient(book_transient_reference.clone()),
-//         expected_book_property_map.clone(),
-//         ResponseStatusCode::OK,
+//     // Mint transient token to reflect expected_content
+//     let book_mod_token = fixture_holons.add_transient_with_key(
+//         book_transient_reference,
+//         book_key,
+//         book_transient_reference.essential_content(fixture_context)?,
 //     )?;
 
-//     let mut expected_publisher_property_map = BTreeMap::new();
-//     expected_publisher_property_map.insert(
-//         MapString("Description".to_string()).to_property_name(),
-//         "New Publisher Description".to_base_value(),
-//     );
-//     expected_publisher_property_map.insert(
-//         PropertyName(MapString("Publisher Property".to_string())).to_property_name(),
-//         BaseValue::StringValue(MapString("Adding a property".to_string())).to_base_value(),
-//     );
+//     let publisher_key = MapString(publisher_KEY.to_string());
+//     let mut publisher_source_token = fixture_holons.get_latest_by_key(&publisher_key)?;
+//     let publisher_transient_reference = publisher_source_token.transient();
 
-//     test_case.add_with_properties_step(
-//         HolonReference::Staged(publisher_staged_reference.clone()),
-//         expected_publisher_property_map.clone(),
-//         ResponseStatusCode::OK,
+//     let mut properties = PropertyMap::new();
+//     properties
+//         .insert(Description.to_property_name(), "Changed description".to_string().to_base_value()); // enum, String
+//     properties
+//         .insert("New Property".to_property_name(), "This is another property".to_base_value()); // str, str
+//     test_case.add_with_properties_step(publisher_source_token, properties, ResponseStatusCode::OK)?;
+
+//     publisher_transient_reference
+//         .with_property_value(&*fixture_context, "Description", "Changed description")
+//         .with_property_value(
+//             &*fixture_context,
+//             "New Property".to_string(),
+//             "This is another property".to_string(),
+//         )?;
+
+//     // Mint transient token to reflect expected_content
+//     let publisher_mod_token = fixture_holons.add_transient_with_key(
+//         publisher_transient_reference,
+//         publisher_key,
+//         publisher_transient_reference.essential_content(fixture_context)?,
 //     )?;
 
 //     // REMOVE STEP //
 
 //     let mut transient_holon_properties_to_remove = BTreeMap::new();
 //     transient_holon_properties_to_remove.insert(
-//         "New Property".to_property_name(),
-//         "This is another property".to_string().to_base_value(),
-//     );
+//         MapString("New Property".to_string().to_property_name()),
+//         MapString("This is another property".to_string()).to_base_value(),
+//     ); // MapString, Mapstring
 //     test_case.add_remove_properties_step(
 //         HolonReference::Transient(book_transient_reference),
 //         transient_holon_properties_to_remove,
 //         ResponseStatusCode::OK,
 //     )?;
 
-//     let mut staged_holon_properties_to_remove = BTreeMap::new();
-//     staged_holon_properties_to_remove.insert(
-//         "Publisher Property".to_property_name(),
-//         "Adding a property".to_string().to_base_value(),
-//     );
-//     test_case.add_remove_properties_step(
-//         HolonReference::Staged(publisher_staged_reference),
-//         staged_holon_properties_to_remove,
-//         ResponseStatusCode::OK,
-//     )?;
+//     // let mut staged_holon_properties_to_remove = BTreeMap::new();
+//     // staged_holon_properties_to_remove.insert(
+//     //     "Publisher Property".to_property_name(),
+//     //     "Adding a property".to_string().to_base_value(),
+//     // );
+//     // test_case.add_remove_properties_step(
+//     //     HolonReference::Staged(publisher_staged_reference),
+//     //     staged_holon_properties_to_remove,
+//     //     ResponseStatusCode::OK,
+//     // )?;
 
 //     // Load test_session_state
 //     test_case.load_test_session_state(&*fixture_context);

@@ -12,6 +12,7 @@ publish = false
 # General deps
 #base64ct = "=1.7.3"
 derive-new = "0.7"
+pretty_assertions = "1.4.0"
 serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"

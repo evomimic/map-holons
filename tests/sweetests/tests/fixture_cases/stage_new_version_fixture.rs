@@ -26,11 +26,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let fixture_context = init_fixture_context();
     let mut fixture_holons = FixtureHolons::new();
 
-    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
-    let mut expected_count: i64 = 1;
-
     //  ENSURE DATABASE COUNT -- Empty  //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
@@ -39,8 +36,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         &mut test_case,
         &mut fixture_holons,
     )?;
-
-    expected_count += staged_count(&*fixture_context).unwrap();
 
     // Get and set the various Holons data.
     let book_key = MapString(BOOK_KEY.to_string());
@@ -57,7 +52,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT  //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
@@ -69,14 +64,12 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         Some(book_key),
         ResponseStatusCode::OK,
     )?;
-    // NOTE: Assume this test step executor actually stages TWO new versions from original
-    expected_count += 2;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

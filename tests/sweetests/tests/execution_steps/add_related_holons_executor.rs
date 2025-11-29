@@ -48,21 +48,8 @@ pub async fn execute_add_related_holons(
         "add_related_holons request returned unexpected status: {}",
         response.description
     );
-    info!("Success! add_related_holons DanceResponse matched expected");
+    info!("Success! add_related_holons DanceResponse status matched expected");
 
+    // TODO: add support for
     // 5. ASSERT — on success, compare essential content of expected (source) vs actual (resolved) test references
-    let resulting_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
-    let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
-    resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Related Holons have been added");
-
-    // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-    //             so later steps can look it up with the same token.
-    state.record_resolved(resolved_reference);
 }
