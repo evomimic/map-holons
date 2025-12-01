@@ -1,6 +1,6 @@
 use core_types::LocalId;
 use holons_prelude::prelude::*;
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
+use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -61,12 +61,7 @@ pub async fn execute_delete_holon(
 
     // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
-    let resulting_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
+    let resulting_reference = ResultingReference::Deleted;
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
 

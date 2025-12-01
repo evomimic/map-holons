@@ -1,4 +1,5 @@
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
+use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use std::collections::BTreeMap;
 use tracing::{debug, info, trace};
 
 use holons_prelude::prelude::*;
@@ -8,7 +9,7 @@ use holons_prelude::prelude::*;
 /// Source tokens are needed for this step in order to build a ResolvedTestReference.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
-    source_tokens: &mut Vec<TestReference>, // list of expected tokens to resolve
+    source_tokens: Vec<TestReference>, // list of expected tokens to resolve
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
@@ -55,10 +56,25 @@ pub async fn execute_commit(
     // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     let holon_collection = committed_references.read().expect("Failed to read committed holons");
-    // TODO: key based lookup to get correct source_token per resulting_reference
-    for resulting_reference in holon_collection.get_members() {
+    // Temporary workaround for matching source token (expected) to resulting reference (actual).
+    // TODO: solve or migrate issue 352
+    let mut index: usize = 0;
+    let mut keyed_index = BTreeMap::new();
+    for token in &source_tokens {
+        let key = token
+            .key(context)
+            .unwrap()
+            .expect("For these testing purposes, source token (TestReference) must have a key");
+        keyed_index.insert(key, index);
+        index += 1;
+    }
+    for holon_reference in holon_collection.get_members() {
+        let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
+            "For these testing purposes, resulting reference (HolonReference) must have a key",
+        )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
         let resolved_reference = ResolvedTestReference::from_reference_parts(
-            ResultingReference::LiveReference(resulting_reference.clone()),
+            source_tokens[*source_index].clone(),
+            ResultingReference::from(holon_reference.clone()),
         );
 
         state.record_resolved(resolved_reference);

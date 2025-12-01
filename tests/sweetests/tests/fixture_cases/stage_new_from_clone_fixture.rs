@@ -94,7 +94,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // COMMIT - the first two staged clones and flip expectations in the fixture.
-    let saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    let _saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // ── PHASE C — Clone FROM SAVED (same token, now expected Saved) ───────────────
@@ -117,7 +117,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // COMMIT - the third staged clone; flip fixture expectations; assert counts again.
-    let saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    let _saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // Final saved-content match derived from fixture expectations.

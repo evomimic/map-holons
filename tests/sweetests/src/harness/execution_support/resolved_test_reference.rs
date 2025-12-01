@@ -55,6 +55,12 @@ impl ResultingReference {
     }
 }
 
+impl From<HolonReference> for ResultingReference {
+    fn from(reference: HolonReference) -> Self {
+        Self::LiveReference(reference)
+    }
+}
+
 // #[derive(Clone, Debug)]
 // pub enum ResultingReference {
 //     Transient(HolonReference),

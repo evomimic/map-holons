@@ -19,9 +19,10 @@
 //! - All fields are private; constructors and accessors are `pub(crate)` so only
 //!   harness internals can inspect or mutate them.
 
-use core_types::TemporaryId;
+use base_types::MapString;
+use core_types::{HolonError, TemporaryId};
 use holons_core::{
-    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
+    HolonsContextBehavior, ReadableHolon, core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference
 };
 
 /// Declarative intent for a test-scoped reference.
@@ -80,6 +81,10 @@ impl TestReference {
 
     pub fn expected_state(&self) -> ExpectedState {
         self.expected_state
+    }
+
+    pub fn key(&self, context: &dyn HolonsContextBehavior) -> Result<Option<MapString>, HolonError> {
+        self.transient_reference.key(context)
     }
 
     pub fn temporary_id(&self) -> TemporaryId {

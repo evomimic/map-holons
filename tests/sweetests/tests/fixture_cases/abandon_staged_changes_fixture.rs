@@ -69,76 +69,76 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
 
-    // //  STAGE:  Abandoned Holon1 (H4)  //
-    // let abandoned_holon_1_key = MapString("Abandon1".to_string());
-    // let mut abandoned_holon_1_transient_reference =
-    //     new_holon(&*fixture_context, Some(abandoned_holon_1_key.clone()))?;
-    // abandoned_holon_1_transient_reference.with_property_value(
-    //     &*fixture_context,
-    //     "example abandon1",
-    //     "test1",
-    // )?;
-    // // Mint a transient-intent token
-    // let abandoned_holon_1_transient_token = fixture_holons.add_transient_with_key(
-    //     &abandoned_holon_1_transient_reference,
-    //     abandoned_holon_1_key,
-    //     &abandoned_holon_1_transient_reference.essential_content(&*fixture_context)?,
-    // )?;
-    // let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
-    //     &mut fixture_holons,
-    //     abandoned_holon_1_transient_token,
-    //     Some(MapString("Abandon1".to_string())),
-    //     ResponseStatusCode::OK,
-    // )?;
+    //  STAGE:  Abandoned Holon1 (H4)  //
+    let abandoned_holon_1_key = MapString("Abandon1".to_string());
+    let mut abandoned_holon_1_transient_reference =
+        new_holon(&*fixture_context, Some(abandoned_holon_1_key.clone()))?;
+    abandoned_holon_1_transient_reference.with_property_value(
+        &*fixture_context,
+        "example abandon1",
+        "test1",
+    )?;
+    // Mint a transient-intent token
+    let abandoned_holon_1_transient_token = fixture_holons.add_transient_with_key(
+        &abandoned_holon_1_transient_reference,
+        abandoned_holon_1_key,
+        &abandoned_holon_1_transient_reference.essential_content(&*fixture_context)?,
+    )?;
+    let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
+        &mut fixture_holons,
+        abandoned_holon_1_transient_token,
+        Some(MapString("Abandon1".to_string())),
+        ResponseStatusCode::OK,
+    )?;
 
-    // //  STAGE:  Abandoned Holon2 (H5)  //
-    // let abandoned_holon_2_key = MapString("Abandon2".to_string());
-    // let mut abandoned_holon_2_transient_reference =
-    //     new_holon(&*fixture_context, Some(abandoned_holon_2_key.clone()))?;
-    // abandoned_holon_2_transient_reference.with_property_value(
-    //     &*fixture_context,
-    //     "example abandon2",
-    //     "test2",
-    // )?;
-    // let abandoned_holon_2_transient_token = fixture_holons.add_transient_with_key(
-    //     &abandoned_holon_2_transient_reference,
-    //     abandoned_holon_2_key,
-    //     &abandoned_holon_2_transient_reference.essential_content(&*fixture_context)?,
-    // )?;
-    // let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
-    //     &mut fixture_holons,
-    //     abandoned_holon_2_transient_token,
-    //     Some(MapString("Abandon1".to_string())),
-    //     ResponseStatusCode::OK,
-    // )?;
+    //  STAGE:  Abandoned Holon2 (H5)  //
+    let abandoned_holon_2_key = MapString("Abandon2".to_string());
+    let mut abandoned_holon_2_transient_reference =
+        new_holon(&*fixture_context, Some(abandoned_holon_2_key.clone()))?;
+    abandoned_holon_2_transient_reference.with_property_value(
+        &*fixture_context,
+        "example abandon2",
+        "test2",
+    )?;
+    let abandoned_holon_2_transient_token = fixture_holons.add_transient_with_key(
+        &abandoned_holon_2_transient_reference,
+        abandoned_holon_2_key,
+        &abandoned_holon_2_transient_reference.essential_content(&*fixture_context)?,
+    )?;
+    let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
+        &mut fixture_holons,
+        abandoned_holon_2_transient_token,
+        Some(MapString("Abandon2".to_string())),
+        ResponseStatusCode::OK,
+    )?;
 
-    // // ABANDON:  H4
-    // test_case.add_abandon_staged_changes_step(
-    //     &mut fixture_holons,
-    //     abandoned_holon_1_staged_token,
-    //     ResponseStatusCode::OK,
-    // )?;
+    // ABANDON:  H4
+    test_case.add_abandon_staged_changes_step(
+        &mut fixture_holons,
+        abandoned_holon_1_staged_token,
+        ResponseStatusCode::OK,
+    )?;
 
-    // // ABANDON:  H5
-    // test_case.add_abandon_staged_changes_step(
-    //     &mut fixture_holons,
-    //     abandoned_holon_2_staged_token,
-    //     ResponseStatusCode::OK,
-    // )?;
+    // ABANDON:  H5
+    test_case.add_abandon_staged_changes_step(
+        &mut fixture_holons,
+        abandoned_holon_2_staged_token,
+        ResponseStatusCode::OK,
+    )?;
 
-    // // COMMIT  // all Holons in staging_area
-    // test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    // COMMIT  // all Holons in staging_area
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
-    // // ADD STEP:  ENSURE DATABASE COUNT
-    // test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    // ADD STEP:  ENSURE DATABASE COUNT
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
-    // // MATCH SAVED CONTENT
-    // test_case.add_match_saved_content_step()?;
+    // MATCH SAVED CONTENT
+    test_case.add_match_saved_content_step()?;
 
-    // // ADD STEP: QUERY RELATIONSHIPS //
-    // let query_expression = QueryExpression::new(relationship_name.clone());
-    // let book_token = fixture_holons.get_latest_by_key(&MapString(BOOK_KEY.to_string()))?;
-    // test_case.add_query_relationships_step(book_token, query_expression, ResponseStatusCode::OK)?;
+    // ADD STEP: QUERY RELATIONSHIPS //
+    let query_expression = QueryExpression::new(relationship_name.clone());
+    let book_token = fixture_holons.get_latest_by_key(&MapString(BOOK_KEY.to_string()))?;
+    test_case.add_query_relationships_step(book_token, query_expression, ResponseStatusCode::OK)?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

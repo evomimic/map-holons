@@ -1,6 +1,6 @@
 use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use holons_prelude::prelude::*;
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
+use holons_test::{ResolvedTestReference, TestExecutionState, TestReference, ResultingReference};
 use tracing::{debug, info};
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
@@ -42,12 +42,13 @@ pub async fn execute_remove_properties(
     );
 
     // 5. ASSERT - updated holon's essential content matches expected
-    let resulting_reference = match response.body {
+    let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
             panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
         }
     };
+    let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();

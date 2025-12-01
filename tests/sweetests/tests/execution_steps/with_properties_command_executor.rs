@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
+use holons_test::{ResolvedTestReference, TestExecutionState, TestReference, ResultingReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -52,12 +52,13 @@ pub async fn execute_with_properties(
             .expect("Failed to add property value to expected holon");
     }
 
-    let resulting_reference = match response.body {
+    let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
             panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
         }
     };
+    let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
 

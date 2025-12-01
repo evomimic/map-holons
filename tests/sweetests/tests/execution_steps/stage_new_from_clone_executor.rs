@@ -2,7 +2,7 @@ use base_types::MapString;
 use core_types::HolonError;
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 use holons_core::{HolonReference, HolonsContextBehavior, dances::{ResponseBody, ResponseStatusCode}};
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
+use holons_test::{ResolvedTestReference, TestExecutionState, TestReference, ResultingReference};
 
 /// Execute the StageNewFromClone step:
 ///  1) LOOKUP: convert the fixture `TestReference` into a runtime `HolonReference`
@@ -34,12 +34,13 @@ pub async fn execute_stage_new_from_clone(
 
     // 4. ASSERT — on success, the body should be a HolonReference to the newly staged holon.
     //            Compare essential content (source vs. resolved) without durable fetch.
-    let resulting_reference = match response.body {
+    let response_holon_reference = match response.body {
         ResponseBody::HolonReference(hr) => hr,
         other => {
             panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
         }
     };
+    let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();
