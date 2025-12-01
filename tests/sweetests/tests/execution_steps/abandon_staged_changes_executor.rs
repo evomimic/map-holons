@@ -4,7 +4,7 @@ use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference};
+use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,
 /// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test
@@ -47,12 +47,13 @@ pub async fn execute_abandon_staged_changes(
 
     // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
     //            Compare essential content
-    let resulting_reference = match response.body {
+    let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
             panic!("expected ResponseBody::HolonReference, got {:?}", other);
         }
     };
+    let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();

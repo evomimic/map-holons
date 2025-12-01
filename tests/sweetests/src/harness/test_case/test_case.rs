@@ -69,7 +69,7 @@ impl DancesTestCase {
             holon_token: holon_token.clone(),
             expected_status,
         });
-        let abandoned_token = fixture_holons.abandon_staged(holon_token)?;
+        let abandoned_token = fixture_holons.abandon_staged(&holon_token)?;
 
         Ok(abandoned_token)
     }
@@ -80,7 +80,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
     ) -> Result<Vec<TestReference>, HolonError> {
         let saved_tokens = fixture_holons.commit()?;
-        self.steps.push(DanceTestStep::Commit { source_tokens: saved_tokens.clone(), expected_status });
+        self.steps
+            .push(DanceTestStep::Commit { source_tokens: saved_tokens.clone(), expected_status });
 
         Ok(saved_tokens)
     }
@@ -91,11 +92,16 @@ impl DancesTestCase {
     }
     pub fn add_delete_holon_step(
         &mut self,
-        holon_token: TestReference,
+        fixture_holons: &mut FixtureHolons,
+        saved_token: TestReference,
         expected_status: ResponseStatusCode,
-    ) -> Result<(), HolonError> {
-        self.steps.push(DanceTestStep::DeleteHolon { holon_token, expected_status });
-        Ok(())
+    ) -> Result<TestReference, HolonError> {
+        self.steps
+            .push(DanceTestStep::DeleteHolon { saved_token: saved_token.clone(), expected_status });
+
+        let deleted_holon = fixture_holons.delete_saved(&saved_token)?;
+
+        Ok(deleted_holon)
     }
     pub fn add_ensure_database_count_step(
         &mut self,
@@ -299,7 +305,7 @@ pub enum DanceTestStep {
         expected_status: ResponseStatusCode,
     },
     DeleteHolon {
-        holon_token: TestReference,
+        saved_token: TestReference,
         expected_status: ResponseStatusCode,
     },
     EnsureDatabaseCount {
@@ -370,11 +376,11 @@ impl core::fmt::Display for DanceTestStep {
             } => {
                 write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", source, relationship_name, holons_to_add.len(), expected_status)
             }
-            DanceTestStep::Commit {source_tokens, expected_status } => {
+            DanceTestStep::Commit { source_tokens, expected_status } => {
                 write!(f, "Committing {:#?}, expecting: {:?})", source_tokens, expected_status)
             }
-            DanceTestStep::DeleteHolon { holon_token, expected_status } => {
-                write!(f, "DeleteHolon({:?}, expecting: {:?},)", holon_token, expected_status)
+            DanceTestStep::DeleteHolon { saved_token, expected_status } => {
+                write!(f, "DeleteHolon({:?}, expecting: {:?},)", saved_token, expected_status)
             }
             DanceTestStep::EnsureDatabaseCount { expected_count } => {
                 write!(f, "EnsureDatabaseCount = {}", expected_count.0)

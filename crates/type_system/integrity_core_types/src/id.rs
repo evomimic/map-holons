@@ -1,4 +1,3 @@
-use hex::encode;
 use serde::{Deserialize, Serialize};
 use std::{fmt, string::FromUtf8Error};
 

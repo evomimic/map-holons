@@ -3,9 +3,7 @@
 use crate::controller::{FileProvenance, ProvenanceIndex};
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
-use std::iter::Map;
 use std::sync::atomic::{AtomicU32, Ordering};
-use tracing::error;
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);

@@ -94,7 +94,7 @@ impl FixtureHolons {
     /// Mint an ExpectedState::Abandoned cloned from given TestReference (must be expected_state Staged)
     pub fn abandon_staged(
         &mut self,
-        staged_token: TestReference,
+        staged_token: &TestReference,
     ) -> Result<TestReference, HolonError> {
         match staged_token.expected_state() {
             ExpectedState::Staged => {
@@ -112,26 +112,26 @@ impl FixtureHolons {
         }
     }
 
-    // /// Mint an ExpectedState::Deleted cloned from given TestReference (must be expected_state Saved)
-    // pub fn delete_saved(
-    //     &mut self,
-    //     saved_token: TestReference,
-    // ) -> Result<TestReference, HolonError> {
-    //     match saved_token.expected_state() {
-    //         ExpectedState::Staged => {
-    //             let deleted_token = self.mint_snapshot(
-    //                 saved_token.transient(),
-    //                 ExpectedState::Deleted,
-    //                 saved_token.expected_content(),
-    //             );
-    //             Ok(deleted_token)
-    //         }
-    //         other => Err(HolonError::InvalidTransition(format!(
-    //             "Can only delte tokens in ExpectedState::Saved, got {:?}",
-    //             other
-    //         ))),
-    //     }
-    // }
+    /// Mint an ExpectedState::Deleted cloned from given TestReference (must be expected_state Saved)
+    pub fn delete_saved(
+        &mut self,
+        saved_token: &TestReference,
+    ) -> Result<TestReference, HolonError> {
+        match saved_token.expected_state() {
+            ExpectedState::Saved => {
+                let deleted_token = self.mint_snapshot(
+                    saved_token.transient(),
+                    ExpectedState::Deleted,
+                    saved_token.expected_content(),
+                );
+                Ok(deleted_token)
+            }
+            other => Err(HolonError::InvalidTransition(format!(
+                "Can only delete tokens in ExpectedState::Saved, got {:?}",
+                other
+            ))),
+        }
+    }
 
     // ---------- Create tokens based on matching conditions ----------
 
@@ -321,7 +321,7 @@ impl FixtureHolons {
                 ExpectedState::Staged => counts.staged += 1,
                 ExpectedState::Saved => counts.saved += 1,
                 ExpectedState::Abandoned => counts.staged -= 1,
-                ExpectedState::Deleted => counts.saved -= 1,
+                ExpectedState::Deleted => {}
             }
         }
         counts
@@ -334,23 +334,13 @@ impl FixtureHolons {
         self.counts().staged
     }
     pub fn count_saved(&self) -> i64 {
-        self.counts().saved
+        self.counts().saved + 1 // Accounts for initial LocalHolonSpace
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct FixtureHolonCounts {
     pub transient: i64,
     pub staged: i64,
     pub saved: i64,
-}
-
-impl Default for FixtureHolonCounts {
-    fn default() -> Self {
-        Self {
-            transient: 0,
-            staged: 0,
-            saved: 1, // Accounts for initial HolonSpace Holon
-        }
-    }
 }

@@ -26,7 +26,11 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     // Iterate through all created holons and verify them in the database, panic if resolved reference does not match expected state
     for (id, resolved_reference) in state.holons().by_temporary_id.clone() {
         if resolved_reference.source_token.expected_state() == ExpectedState::Saved {
-            if !matches!(resolved_reference.resulting_reference, HolonReference::Smart(_)) {
+            let holon_reference = resolved_reference
+                .resulting_reference
+                .get_holon_reference()
+                .expect("HolonReference must be Live, cannot be in a deleted state");
+            if !matches!(holon_reference, HolonReference::Smart(_)) {
                 panic!(
                     "Expected resulting_reference for id: {:?} to be Smart, but got {:?}",
                     id, resolved_reference.resulting_reference
