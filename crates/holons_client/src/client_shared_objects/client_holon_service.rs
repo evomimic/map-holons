@@ -1,10 +1,11 @@
 #![allow(unused_variables)]
 
-use base_types::{MapString};
+use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use holons_core::{ReadableHolon};
+use futures_executor::block_on;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
+use holons_core::ReadableHolon;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
@@ -14,10 +15,8 @@ use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
-use futures_executor::block_on;
 // use tokio::runtime::Handle;
 // use tokio::runtime::Builder;
-
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -68,7 +67,6 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
-
     fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         //let request = holon_dance_builders::build_delete_holon_dance_request(*local_id)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
@@ -87,13 +85,13 @@ impl HolonServiceApi for ClientHolonService {
         //let initiator = context.get_space_manager().get_dance_initiator()?;
         // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        //not sure how to do this one? 
+        //not sure how to do this one?
 
         todo!()
     }
 
     fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
-     // no context.. not sure what to do here
+        // no context.. not sure what to do here
         todo!()
     }
 
@@ -115,51 +113,50 @@ impl HolonServiceApi for ClientHolonService {
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         if response.status_code != ResponseStatusCode::OK {
-             return Err(HolonError::Misc(format!(
-                 "commit dance failed: {:?} — {}",
-                 response.status_code, response.description.0
-             )));
-         }
+            return Err(HolonError::Misc(format!(
+                "commit dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
         match response.body {
             ResponseBody::HolonCollection(collection) => Ok(collection),
             _ => Err(HolonError::InvalidParameter(
                 "GetAllHolons: expected ResponseBody::HolonCollection".into(),
             )),
         }
-
     }
 
     fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-        bundle: TransientReference,
+        set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
         // // 1) Build the dance request for the loader.
-        let request = holon_dance_builders::build_load_holons_dance_request(bundle)?;
+        let request = holon_dance_builders::build_load_holons_dance_request(set)?;
         //
         // // 2) Get the DanceInitiator from the Space Manager.
         let initiator = context.get_space_manager().get_dance_initiator()?; // <- no .read()
-        //
-        // // 3) Bridge async → sync (keep this because the client service is sync)
+                                                                            //
+                                                                            // // 3) Bridge async → sync (keep this because the client service is sync)
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         //
         // // 4) Check the status
-         if response.status_code != ResponseStatusCode::OK {
-             return Err(HolonError::Misc(format!(
-                 "LoadHolons dance failed: {:?} — {}",
-                 response.status_code, response.description.0
-             )));
-         }
-        
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "LoadHolons dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
         // 5) Extract the returned holon
-         match response.body {
-             ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
-             ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(context),
-             _ => Err(HolonError::InvalidParameter(
-                 "LoadHolons: expected ResponseBody::HolonReference".into(),
-             )),
-         }
+        match response.body {
+            ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
+            ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(context),
+            _ => Err(HolonError::InvalidParameter(
+                "LoadHolons: expected ResponseBody::HolonReference".into(),
+            )),
+        }
         //todo!()
     }
 }

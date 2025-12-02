@@ -57,7 +57,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError>;
 
-    /// Execute a Holon Loader import using a HolonLoaderBundle (transient) reference.
+    /// Execute a Holon Loader import using a HolonLoadSet (transient) reference.
     /// Returns a transient reference to a HolonLoadResponse holon.
     fn load_holons_internal(
         &self,

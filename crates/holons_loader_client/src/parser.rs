@@ -1,141 +1,168 @@
-use crate::types::ImportFileParsingIssue;
+//! Parsing entrypoints for the Holons Loader Client.
+//!
+//! This module is responsible for:
+//! - Reading loader import JSON files from disk.
+//! - Validating them against the Holon Loader JSON Schema.
+//! - Deserializing into lightweight raw structures that borrow from the
+//!   original buffer and expose per-holon UTF-8 byte offsets.
+//! - Orchestrating per-file bundle construction via the `builder` module
+//!   and wiring everything into a single `HolonLoadSet`.
 
-use base_types::MapString;
-use core_types::HolonError;
-use holons_core::{HolonReference, HolonsContextBehavior};
-
-use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-/// Raw JSON representation of a loader import file as defined by the loader schema.
-#[derive(Debug, Deserialize)]
-pub struct RawLoaderFile {
-    pub meta: Option<RawLoaderMeta>,
-    pub holons: Vec<RawLoaderHolon>,
-}
+use holons_prelude::prelude::*;
+use serde::Deserialize;
+use serde_json::value::RawValue;
 
-#[derive(Debug, Deserialize)]
-pub struct RawLoaderMeta {
-    /// Optional explicit bundle key override.
-    pub bundle_key: Option<String>,
+use crate::builder::{RawLoaderHolon, RawLoaderMeta};
 
-    /// Additional metadata fields (e.g., filename, notes, etc.).
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
-}
-
-/// Raw JSON representation of a single loader holon record.
-#[derive(Debug, Deserialize)]
-pub struct RawLoaderHolon {
-    /// Loader holon key used as `LoaderHolon.key`.
-    pub key: String,
-
-    /// Domain properties for this holon instance.
-    #[serde(default)]
-    pub properties: HashMap<String, serde_json::Value>,
-
-    /// Optional type descriptor key, e.g., "Book.HolonType".
-    #[serde(default)]
-    pub r#type: Option<String>,
-
-    /// Declared relationships (forward side in JSON).
-    #[serde(default)]
-    pub relationships: Vec<RawRelationshipEndpoints>,
-
-    /// Inverse (“embedded”) relationships.
-    #[serde(default)]
-    pub embedded_inverse_relationships: Vec<RawRelationshipEndpoints>,
-}
-
-/// Shared endpoints shape for declared and inverse relationships in the JSON.
-#[derive(Debug, Deserialize)]
-pub struct RawRelationshipEndpoints {
-    pub name: String,
-    pub targets: Vec<String>,
-}
-
-/// Internal unified representation of a loader relationship, with an explicit
-/// `is_declared` flag used to set `LoaderRelationshipReference.is_declared`.
-pub struct RawRelationshipSpec {
-    pub name: String,
-    pub targets: Vec<String>,
-    /// `true` for declared relationships, `false` for inverse ones.
-    pub is_declared: bool,
-}
-
-/// High-level entrypoint for parsing all import files into a single `HolonLoadSet`.
+/// Canonical on-disk path to the Holon Loader JSON Schema.
 ///
-/// - Creates a `HolonLoadSet` holon.
-/// - For each file:
-///   - Creates a `HolonLoaderBundle`.
-///   - Attaches the bundle to the load set via `Contains`.
-///   - Parses `LoaderHolon`s and their relationships.
+/// In the initial implementation this is a constant; a later iteration may
+/// load this from configuration or a per-space registry.
+pub const BOOTSTRAP_IMPORT_SCHEMA_PATH: &str = "import_files/bootstrap-import.schema.json";
+
+/// High-level classification of a per-file parsing issue.
+///
+/// This allows the caller (and UI) to distinguish between simple I/O failures,
+/// schema violations, JSON decoding problems, and internal holon construction
+/// failures.
+#[derive(Debug)]
+pub enum ImportFileParsingIssueKind {
+    /// Any failure to read or open the import file.
+    IoFailure,
+
+    /// JSON Schema validation errors (structure or type mismatches).
+    SchemaValidationFailure,
+
+    /// Raw JSON decoding errors (malformed JSON or unexpected shape).
+    JsonDecodingFailure,
+
+    /// Errors that occur while constructing transient holons and their
+    /// relationships inside the loader graph.
+    HolonConstructionFailure,
+}
+
+/// Represents a single problem encountered while processing one import file.
+///
+/// The parser never panics on a single bad file; instead it aggregates these
+/// issues so the UI can report them alongside any successful bundles.
+#[derive(Debug)]
+pub struct ImportFileParsingIssue {
+    /// The path of the import file that failed.
+    pub file_path: PathBuf,
+
+    /// High-level classification of the failure.
+    pub kind: ImportFileParsingIssueKind,
+
+    /// Human-readable explanation suitable for logs or UI.
+    pub message: String,
+
+    /// Optional underlying HolonError when the failure originates from
+    /// the loader / holon layer rather than raw I/O / JSON.
+    pub source_error: Option<HolonError>,
+}
+
+/// Raw JSON representation of a loader import file as defined by the loader
+/// schema, using borrowed `RawValue` slices for holons.
+///
+/// This first-pass wrapper allows us to compute per-holon byte offsets
+/// relative to the original JSON buffer, and then re-parse each holon slice
+/// into `RawLoaderHolon` for graph construction.
+#[derive(Debug, Deserialize)]
+pub struct RawLoaderFileWithSlices<'a> {
+    /// Optional metadata block attached to this bundle.
+    pub meta: Option<RawLoaderMeta>,
+
+    /// Borrowed raw JSON fragments for each loader holon record.
+    ///
+    /// Each `&RawValue` is a view into the original file buffer; we use this
+    /// to compute `start_utf8_byte_offset` via pointer arithmetic.
+    #[serde(borrow)]
+    pub holons: Vec<&'a RawValue>,
+}
+
+/// High-level entrypoint for parsing all import files into a single
+/// `HolonLoadSet` holon graph.
+///
+/// Behavior:
+/// - Creates (or reuses) a `HolonLoadSet` holon.
+/// - For each import file:
+///   - Validates the JSON against the loader schema.
+///   - Deserializes into `RawLoaderFileWithSlices<'_>`.
+///   - Computes UTF-8 byte offsets per holon.
+///   - Delegates to the builder module to construct:
+///       - a `HolonLoaderBundle` per file, and
+///       - `LoaderHolon` + relationship references per record.
 /// - Returns a `HolonReference` pointing to the `HolonLoadSet` on success.
-/// - Returns `Err(Vec<ImportFileParsingIssue>)` if any parsing error occurs.
+/// - Returns `Err(Vec<ImportFileParsingIssue>)` if any file fails.
+///
+/// The caller decides whether a single-file failure should abort the entire
+/// load or allow partial success; this function simply reports all issues.
 pub fn parse_files_into_load_set(
     context: &dyn HolonsContextBehavior,
     load_set_key: Option<MapString>,
     import_file_paths: &[PathBuf],
-) -> Result<HolonReference, Vec<ImportFileParsingIssue>>;
+) -> Result<HolonReference, Vec<ImportFileParsingIssue>> {
+    todo!()
+}
 
 /// Create an empty `HolonLoadSet` holon and return its reference.
+///
+/// The returned holon acts as the container for all `HolonLoaderBundle`
+/// instances created during a single loader invocation.
 pub fn create_holon_load_set(
     context: &dyn HolonsContextBehavior,
     load_set_key: Option<MapString>,
-) -> Result<HolonReference, HolonError>;
+) -> Result<HolonReference, HolonError> {
+    todo!()
+}
 
-/// Parse a single import file and attach its bundle + loader holons
-/// to the existing `HolonLoadSet`.
+/// Parse a single import file and attach its `HolonLoaderBundle` and
+/// member `LoaderHolon`s to the existing `HolonLoadSet`.
 ///
-/// Returns `Ok(())` on success; `Err(ImportFileParsingIssue)` for a per-file failure.
+/// This function is responsible for:
+/// - Reading the file into memory.
+/// - Validating the JSON instance against the loader schema.
+/// - Deserializing into `RawLoaderFileWithSlices<'_>`.
+/// - Computing `start_utf8_byte_offset` for each holon record.
+/// - Delegating bundle + holon construction to the builder module.
+///
+/// On success, the `HolonLoadSet` now contains a new bundle for this file.
+/// On failure, a single `ImportFileParsingIssue` is returned.
 pub fn parse_single_import_file_into_bundle(
     context: &dyn HolonsContextBehavior,
     load_set_ref: &HolonReference,
     import_file_path: &PathBuf,
-) -> Result<(), ImportFileParsingIssue>;
+) -> Result<(), ImportFileParsingIssue> {
+    todo!()
+}
 
-/// Create a `HolonLoaderBundle` holon for a single import file and
-/// attach it to the `HolonLoadSet` via `Contains`.
-pub fn create_loader_bundle_for_file(
-    context: &dyn HolonsContextBehavior,
-    load_set_ref: &HolonReference,
-    import_file_path: &Path,
-    raw_meta: &Option<RawLoaderMeta>,
-) -> Result<HolonReference, HolonError>;
-
-/// Create a `LoaderHolon` for a single `RawLoaderHolon`, set its properties
-/// (including `start_utf8_byte_offset`), and attach it to the bundle via `BundleMembers`.
-pub fn create_loader_holon_from_raw(
-    context: &dyn HolonsContextBehavior,
-    bundle_ref: &HolonReference,
-    raw_holon: &RawLoaderHolon,
-    start_utf8_byte_offset: i64,
-) -> Result<HolonReference, HolonError>;
-
-/// Convert the declared and embedded inverse relationship arrays from a `RawLoaderHolon`
-/// into a unified list of `RawRelationshipSpec` values annotated with `is_declared`.
-pub fn collect_relationship_specs_for_loader_holon(
-    raw_holon: &RawLoaderHolon,
-) -> Vec<RawRelationshipSpec>;
-
-/// Create `LoaderRelationshipReference` holons and their endpoint `LoaderHolonReference`
-/// holons for all specified relationships (both declared and inverse).
+/// Validate a raw JSON buffer against the Holon Loader JSON Schema and
+/// deserialize it into a `RawLoaderFileWithSlices<'a>` wrapper.
 ///
-/// Each `RawRelationshipSpec` determines the value of `is_declared` on the
-/// resulting `LoaderRelationshipReference`.
-pub fn attach_relationships_for_loader_holon(
-    context: &dyn HolonsContextBehavior,
-    loader_holon_ref: &HolonReference,
-    source_holon_key: &str,
-    relationship_specs: &[RawRelationshipSpec],
-) -> Result<(), HolonError>;
+/// This helper centralizes the call into the `json_schema_validation` crate
+/// so that callers do not have to directly depend on its API surface.
+///
+/// # Errors
+/// - Returns `HolonError::ValidationError` on schema violations.
+/// - May return other `HolonError` variants on internal failures.
+pub fn validate_and_deserialize_loader_file<'a>(
+    raw_json: &'a str,
+) -> Result<RawLoaderFileWithSlices<'a>, HolonError> {
+    todo!()
+}
 
-/// Create a `LoaderRelationshipReference` of type `DescribedBy` for the
-/// given loader holon and attach it correctly if a `type` is specified.
-pub fn attach_described_by_relationship(
-    context: &dyn HolonsContextBehavior,
-    loader_holon_ref: &HolonReference,
-    holon_key: &str,
-    type_descriptor_key: &str,
-) -> Result<(), HolonError>;
+/// Convenience helper for computing a 0-based UTF-8 byte offset into a file
+/// for a given holon slice.
+///
+/// The caller is expected to pass:
+/// - `file_buffer`: the complete JSON file contents, and
+/// - `holon_slice`: the `&str` backing a `RawValue` that is guaranteed to be
+///   a slice into `file_buffer`.
+///
+/// This function encapsulates the pointer arithmetic so that any future
+/// change to offset computation (e.g., using `serde_spanned`) is localized.
+pub fn compute_holon_start_offset(file_buffer: &str, holon_slice: &str) -> i64 {
+    todo!()
+}

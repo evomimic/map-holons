@@ -320,6 +320,7 @@ fn extract_error_message(error: &HolonError) -> String {
         | HolonError::InvalidTransition(_)
         | HolonError::InvalidType(_)
         | HolonError::InvalidUpdate(_)
+        | HolonError::LoaderParsingError(_)
         | HolonError::Misc(_)
         | HolonError::MissingStagedCollection(_)
         | HolonError::NotAccessible(_, _)
