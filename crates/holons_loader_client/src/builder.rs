@@ -58,21 +58,19 @@ pub struct RawLoaderHolon {
     #[serde(default)]
     pub r#type: Option<String>,
 
-    /// Declared relationships (forward side in JSON).
+    /// Relationships for this holon instance.
     ///
-    /// These correspond to relationship types such as `"AuthoredBy"`.
+    /// The `name` is the relationship type name (`type_name`), and
+    /// `targets` are the endpoint holon keys. Directionality (declared vs
+    /// inverse) will ultimately be derived from the relationship type
+    /// definition (Extends → DeclaredRelationshipType / InverseRelationshipType)
+    /// when constructing `LoaderRelationshipReference` holons. In the initial
+    /// implementation we treat all relationships as declared (`is_declared = true`).
     #[serde(default)]
     pub relationships: Vec<RawRelationshipEndpoints>,
-
-    /// Inverse (“embedded”) relationships.
-    ///
-    /// These are expressed on the inverse side in JSON, but still resolved
-    /// to the declared relationship type by the loader resolver.
-    #[serde(default)]
-    pub embedded_inverse_relationships: Vec<RawRelationshipEndpoints>,
 }
 
-/// Shared endpoints shape for declared and inverse relationships in the JSON.
+/// Shared endpoints shape for relationships in the JSON.
 ///
 /// This mirrors the structure used in the loader schema:
 /// ```json
@@ -87,22 +85,18 @@ pub struct RawRelationshipEndpoints {
     pub targets: Vec<String>,
 }
 
-/// Internal unified representation of a loader relationship, with an explicit
-/// `is_declared` flag used to set `LoaderRelationshipReference.is_declared`.
+/// Internal unified representation of a loader relationship.
 ///
-/// The parser flattens both the `"relationships"` and
-/// `"embedded_inverse_relationships"` arrays into this neutral shape so that
-/// the builder logic only needs to handle a single list.
+/// The parser converts `RawLoaderHolon.relationships` into this neutral shape
+/// so that the builder logic can operate over a single collection. Polarity
+/// (`is_declared`) is *not* stored here; it will be derived from the
+/// relationship type definitions in a later phase.
 pub struct RawRelationshipSpec {
     /// Relationship name, as declared in the JSON.
     pub name: String,
 
     /// Ordered list of holon keys that should be used as targets.
     pub targets: Vec<String>,
-
-    /// `true` for declared relationships (forward side),
-    /// `false` for inverse ones (embedded).
-    pub is_declared: bool,
 }
 
 /// Create a `HolonLoaderBundle` holon for a single import file and attach it
@@ -140,13 +134,12 @@ pub fn create_loader_holon_from_raw(
     todo!()
 }
 
-/// Convert the declared and embedded inverse relationship arrays from a
-/// `RawLoaderHolon` into a unified list of `RawRelationshipSpec` values,
-/// each annotated with its `is_declared` flag.
+/// Convert the relationships array from a `RawLoaderHolon` into a unified
+/// list of `RawRelationshipSpec` values.
 ///
 /// This allows the rest of the builder logic to operate over a single
-/// collection regardless of whether a relationship originated from the
-/// forward or inverse JSON arrays.
+/// collection regardless of how the JSON was produced. Directionality
+/// (`is_declared`) is computed later from relationship type definitions.
 pub fn collect_relationship_specs_for_loader_holon(
     raw_holon: &RawLoaderHolon,
 ) -> Vec<RawRelationshipSpec> {
@@ -154,13 +147,13 @@ pub fn collect_relationship_specs_for_loader_holon(
 }
 
 /// Create `LoaderRelationshipReference` holons and their endpoint
-/// `LoaderHolonReference` holons for all specified relationships
-/// (both declared and inverse).
+/// `LoaderHolonReference` holons for all specified relationships.
 ///
 /// For each `RawRelationshipSpec`:
 /// - Create a `LoaderRelationshipReference` and set:
 ///   - `relationship_name`
-///   - `is_declared`
+///   - `is_declared` (currently always `true`; a later phase will derive this
+///     from relationship type definitions).
 /// - Create a `LoaderHolonReference` for the source holon key.
 /// - Create one `LoaderHolonReference` per target holon key (in order).
 /// - Wire relationships:
