@@ -369,7 +369,7 @@ pub fn validate_and_deserialize_loader_file<'a>(
         }
     }
 
-    // 2. Schema is valid; now deserialize *borrowed* RawValue slices.
+    // 2. JSON is valid; now deserialize *borrowed* RawValue slices.
     serde_json::from_str::<RawLoaderFileWithSlices<'a>>(raw_json).map_err(|err| {
         HolonError::InvalidParameter(format!(
             "Failed to decode loader import JSON after schema validation: {}",

@@ -2,16 +2,16 @@ use std::sync::{Arc, Mutex};
 
 use holochain_types::prelude::{FunctionName, ZomeName};
 
-use holons_core::{
-    HolonsContextBehavior,
-    dances::{DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode},
-};
+use crate::conductor_dance_caller::ConductorDanceCaller;
 use async_trait::async_trait;
-use holochain_client::{AdminWebsocket, AgentPubKey, AppWebsocket, ExternIO, ZomeCallTarget};
 use base_types::MapString;
 use core_types::HolonError;
+use holochain_client::{AdminWebsocket, AgentPubKey, AppWebsocket, ExternIO, ZomeCallTarget};
 use holons_client::shared_types::holon_space::SpaceInfo;
-use crate::conductor_dance_caller::ConductorDanceCaller;
+use holons_core::{
+    dances::{DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode},
+    HolonsContextBehavior,
+};
 
 /// Minimal conductor client for POC.
 /// Most functionality is stubbed or simplified.
@@ -30,7 +30,6 @@ impl HolochainConductorClient {
         // TODO: needs implementation
         Ok(SpaceInfo::default())
     }
-
 }
 
 #[async_trait]
@@ -65,12 +64,14 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         // --- Make zome call ---
-        let result = app_ws.call_zome(
-            ZomeCallTarget::RoleName(self.rolename.clone()),
-            ZomeName::from(self.zomename.clone()),
-            FunctionName::from(self.zomefunction.clone()),
-            payload,
-        ).await;
+        let result = app_ws
+            .call_zome(
+                ZomeCallTarget::RoleName(self.rolename.clone()),
+                ZomeName::from(self.zomename.clone()),
+                FunctionName::from(self.zomefunction.clone()),
+                payload,
+            )
+            .await;
 
         let Ok(extern_io) = result else {
             return server_error_response("Zome call failed".into());

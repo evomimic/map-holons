@@ -16,8 +16,7 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
-    RelationshipName,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 use std::sync::{Arc, RwLock};
 use type_names::CorePropertyTypeName;
