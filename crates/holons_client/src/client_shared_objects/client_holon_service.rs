@@ -1,3 +1,37 @@
+//! ClientHolonService
+//! ------------------
+//! This module provides the *client-side* implementation of the `HolonServiceApi`.
+//!
+//! The guest-side (`holons_guest`) implementation performs persistence directly on the
+//! Holochain DHT. The client-side version cannot do so; instead, *every operation that
+//! interacts with saved holons must be executed as an asynchronous Dance* via the
+//! DanceInitiator.
+//!
+//! Because `HolonServiceApi` is intentionally **synchronous** (shared by both guest and
+//! client builds), this file implements the **sync → async → sync bridge** for all
+//! dance-based operations:
+//!
+//!   1. A synchronous API function (e.g., `commit_internal`, `load_holons_internal`)
+//!      constructs a dance request.
+//!   2. It invokes the DanceInitiator's async `initiate_dance(...)` method.
+//!   3. The returned `Future` is executed to completion using
+//!      `run_future_synchronously`, ensuring that callers never need to be async.
+//!   4. The resulting `DanceResponse` is interpreted and converted back into a
+//!      `HolonReference`, `HolonCollection`, or a `HolonError`.
+//!
+//! This makes the client holon service a **pure request/response layer**: it never touches
+//! persistence, never owns a runtime, and remains compatible with synchronous application
+//! environments (Tauri, desktop/native, CLI tools, etc.).
+//!
+//! Key architectural notes:
+//!   • This module must *not* assume the presence of a Tokio runtime.
+//!   • The async runtime used to execute dances is entirely owned by the
+//!     DanceInitiator / hosting layer (e.g., Conductora).
+//!   • All concurrency concerns are isolated inside the dance initiation logic.
+//!
+//! As such, `ClientHolonService` is the canonical boundary between synchronous client
+//! code and the asynchronous, choreography-driven MAP backend.
+
 #![allow(unused_variables)]
 
 use base_types::MapString;
@@ -114,7 +148,7 @@ impl HolonServiceApi for ClientHolonService {
         let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
-                "commit dance failed: {:?} — {}",
+                "get all holons dance failed: {:?} — {}",
                 response.status_code, response.description.0
             )));
         }
@@ -129,19 +163,19 @@ impl HolonServiceApi for ClientHolonService {
     fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-        set: TransientReference,
+        set: TransientReference, // HolonLoadSet
     ) -> Result<TransientReference, HolonError> {
-        // // 1) Build the dance request for the loader.
+        // 1) Build the dance request for the loader.
         let request = holon_dance_builders::build_load_holons_dance_request(set)?;
-        //
-        // // 2) Get the DanceInitiator from the Space Manager.
-        let initiator = context.get_space_manager().get_dance_initiator()?; // <- no .read()
-                                                                            //
-                                                                            // // 3) Bridge async → sync (keep this because the client service is sync)
+
+        // 2) Get the DanceInitiator from the Space Manager.
+        let initiator = context.get_space_manager().get_dance_initiator()?;
+
+        // 3) Bridge async → sync (ClientHolonService is synchronous)
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        //
-        // // 4) Check the status
+
+        // 4) Check the status
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
                 "LoadHolons dance failed: {:?} — {}",
@@ -157,18 +191,25 @@ impl HolonServiceApi for ClientHolonService {
                 "LoadHolons: expected ResponseBody::HolonReference".into(),
             )),
         }
-        //todo!()
     }
 }
 
-/// Run an async computation to completion from a synchronous context.
+/// Runs an async Future to completion from synchronous client code.
 ///
-/// This helper deliberately avoids Tokio runtime APIs so that
-/// `holons_client` does not depend on Tokio's internal runtime
-/// configuration (which Holochain controls).
+/// `HolonServiceApi` is intentionally synchronous, but client-side operations such
+/// as `commit_internal` and `load_holons_internal` must invoke async Dances.
+/// This helper bridges that gap by executing the returned Future using
+/// `futures_executor::block_on`, without requiring a Tokio runtime.
 ///
-/// It is intended to be called from top-level, synchronous code paths
-/// (e.g., UI handlers), not from within an async Tokio task.
+/// Key points:
+/// - Keeps `holons_client` free of Tokio dependencies and avoids conflicts with
+///   Holochain’s internal runtime.
+/// - Assumes the DanceInitiator provides any async runtime it needs internally.
+/// - Should be called only from *top-level synchronous code* (e.g., Tauri commands),
+///   not from inside async tasks.
+///
+/// In short: use this to synchronously await a dance when implementing the
+/// client-side HolonService.
 fn run_future_synchronously<F, T>(future: F) -> T
 where
     F: Future<Output = T>,
