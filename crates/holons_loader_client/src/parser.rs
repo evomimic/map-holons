@@ -26,7 +26,10 @@ use crate::builder::{
 ///
 /// In the initial implementation this is a constant; a later iteration may
 /// load this from configuration or a per-space registry.
-pub const BOOTSTRAP_IMPORT_SCHEMA_PATH: &str = "import_files/bootstrap-import.schema.json";
+pub const BOOTSTRAP_IMPORT_SCHEMA_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../import_files/map-schema/bootstrap-import.schema.json"
+);
 
 /// High-level classification of a per-file parsing issue.
 ///
@@ -163,10 +166,11 @@ pub fn create_holon_load_set(
     context: &dyn HolonsContextBehavior,
     load_set_key: Option<MapString>,
 ) -> Result<HolonReference, HolonError> {
-    // Allocate a new transient holon in the current context, using the
-    // provided key (if any). The type semantics (`HolonLoadSet`) are
-    // inferred later by how the loader controller treats this container.
-    let transient_ref = new_holon(context, load_set_key)?;
+    // Allocate a new transient holon in the current context.
+    // The loader flow expects this holon to have a key; if none is provided,
+    // fall back to a deterministic default.
+    let key = load_set_key.unwrap_or_else(|| MapString("HolonLoadSet".to_string()));
+    let transient_ref = new_holon(context, Some(key))?;
 
     Ok(HolonReference::Transient(transient_ref))
 }

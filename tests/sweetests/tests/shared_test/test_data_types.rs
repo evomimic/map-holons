@@ -6,6 +6,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     fmt,
     fmt::{Debug, Display},
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -39,6 +40,25 @@ pub const PERSON_TO_BOOK_REL_INVERSE: &str = "Authors";
 pub const PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY: &str =
     "(Person.HolonType)-[Authors]->(Book.HolonType)";
 pub const EDITOR_FOR: &str = "EditorFor";
+
+/// Absolute paths to all core schema import files used for loader-client testing.
+pub fn map_core_schema_paths() -> Vec<PathBuf> {
+    // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,
+    // so we need to walk back to the repo root before joining the import_files path.
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+
+    let rels = [
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
+    ];
+
+    rels.iter().map(|rel| repo_root.join(rel)).collect()
+}
 
 // #[derive(new, Clone, Debug)]
 // pub struct TestHolonData {
@@ -115,6 +135,15 @@ pub enum DanceTestStep {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
     },
+    LoadHolonsClient {
+        import_files: Vec<PathBuf>,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
+    },
     MatchSavedContent, // Ensures data committed to persistent store (DHT) matches expected
     QueryRelationships(MapString, QueryExpression, ResponseStatusCode),
     RemoveProperties(HolonReference, PropertyMap, ResponseStatusCode),
@@ -171,6 +200,26 @@ impl Display for DanceTestStep {
                     f,
                     "LoadHolons(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
                     expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
+                )
+            }
+            DanceTestStep::LoadHolonsClient {
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+                expect_total_bundles,
+                expect_total_loader_holons,
+                ..
+            } => {
+                write!(
+                    f,
+                    "LoadHolonsClient(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
+                    expect_staged.0,
+                    expect_committed.0,
+                    expect_links_created.0,
+                    expect_errors.0,
+                    expect_total_bundles.0,
+                    expect_total_loader_holons.0
                 )
             }
             DanceTestStep::MatchSavedContent => {

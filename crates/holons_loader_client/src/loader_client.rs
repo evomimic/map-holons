@@ -68,7 +68,7 @@ pub async fn load_holons_from_files(
     // For now we allow the parser to choose its own load-set key; a later
     // iteration may derive a deterministic key (e.g., from filenames or
     // a UI-provided identifier).
-    let load_set_key: Option<MapString> = None;
+    let load_set_key: Option<MapString> = Some(MapString("HolonLoadSet".to_string()));
 
     let load_set_reference: HolonReference =
         match parse_files_into_load_set(context.as_ref(), load_set_key, import_file_paths) {

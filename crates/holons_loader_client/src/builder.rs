@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use holons_prelude::prelude::*;
-use serde::Deserialize;
+use serde::{de, Deserialize};
 use serde_json::Value;
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
@@ -77,7 +77,7 @@ pub struct RawLoaderHolon {
 ///
 /// This mirrors the structure used in the loader schema:
 /// ```json
-/// { "name": "AuthoredBy", "targets": ["Person:Alice", "Person:Bob"] }
+/// { "name": "AuthoredBy", "target": ["Person:Alice", "Person:Bob"] }
 /// ```
 #[derive(Debug, Deserialize)]
 pub struct RawRelationshipEndpoints {
@@ -85,6 +85,7 @@ pub struct RawRelationshipEndpoints {
     pub name: String,
 
     /// Ordered list of holon keys that participate as targets.
+    #[serde(rename = "target", deserialize_with = "deserialize_targets")]
     pub targets: Vec<String>,
 }
 
@@ -331,6 +332,7 @@ fn apply_json_properties(
     Ok(())
 }
 
+// We could add impl ToBaseValue for serde_json::Value, but that seems too broad for now.
 /// Convert a `serde_json::Value` into a `BaseValue` understood by the holon layer.
 fn json_value_to_base_value(property_name: &str, value: &Value) -> Result<BaseValue, HolonError> {
     match value {
@@ -355,10 +357,60 @@ fn json_value_to_base_value(property_name: &str, value: &Value) -> Result<BaseVa
                 )))
             }
         }
+        // For loader meta fields we occasionally receive arrays/objects; serialize them
+        // to a JSON string to preserve the content without rejecting the file.
+        Value::Array(_) | Value::Object(_) | Value::Null => {
+            Ok(BaseValue::StringValue(MapString(value.to_string())))
+        }
         other => Err(HolonError::InvalidParameter(format!(
-            "Property '{}' uses unsupported JSON value '{}'; only string, boolean, or integer values are supported",
+            "Property '{}' uses unsupported JSON value '{}'; only string, boolean, integer, array, object, or null values are supported",
             property_name, other
         ))),
+    }
+}
+
+/// Accepts relationship targets in several forms:
+/// - single string
+/// - array of strings
+/// - single object with `$ref`
+/// - array of `$ref` objects
+fn deserialize_targets<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let value: Value = Deserialize::deserialize(deserializer)?;
+
+    fn normalize_ref_key(raw: &str) -> String {
+        if let Some(stripped) = raw.strip_prefix('#') {
+            stripped.to_string()
+        } else if let Some(stripped) = raw.strip_prefix("id:") {
+            stripped.to_string()
+        } else {
+            raw.to_string()
+        }
+    }
+
+    fn convert_target(val: Value) -> Result<String, String> {
+        match val {
+            Value::String(s) => Ok(normalize_ref_key(&s)),
+            Value::Object(map) => map
+                .get("$ref")
+                .and_then(|v| v.as_str())
+                .map(|s| normalize_ref_key(s))
+                .ok_or_else(|| format!("target object missing '$ref': {map:?}")),
+            other => Err(format!("unsupported target value: {other}")),
+        }
+    }
+
+    match value {
+        Value::Array(items) => {
+            let mut out = Vec::with_capacity(items.len());
+            for item in items {
+                out.push(convert_target(item).map_err(de::Error::custom)?);
+            }
+            Ok(out)
+        }
+        other => Ok(vec![convert_target(other).map_err(de::Error::custom)?]),
     }
 }
 

@@ -16,6 +16,7 @@ serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
 async-trait = "0.1.51"
+panic = "0.4.0"
 
 [dependencies.holons_prelude]
 path = "../../crates/holons_prelude"
@@ -34,6 +35,9 @@ path = "../../crates/holons_client"
 
 [dependencies.holons_loader]
 path = "../../crates/holons_loader"
+
+[dependencies.holons_loader_client]
+path = "../../crates/holons_loader_client"
 
 [dependencies.holons_trust_channel]
 path = "../../crates/holons_trust_channel"
