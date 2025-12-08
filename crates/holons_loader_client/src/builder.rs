@@ -369,6 +369,18 @@ fn json_value_to_base_value(property_name: &str, value: &Value) -> Result<BaseVa
     }
 }
 
+/// Normalize a relationship target reference string into a canonical holon key.
+/// Currently strips local-ref style prefixes like `#` or `id:`; extend as needed.
+pub fn normalize_ref_key(raw: &str) -> String {
+    if let Some(stripped) = raw.strip_prefix('#') {
+        stripped.to_string()
+    } else if let Some(stripped) = raw.strip_prefix("id:") {
+        stripped.to_string()
+    } else {
+        raw.to_string()
+    }
+}
+
 /// Accepts relationship targets in several forms:
 /// - single string
 /// - array of strings
@@ -379,16 +391,6 @@ where
     D: de::Deserializer<'de>,
 {
     let value: Value = Deserialize::deserialize(deserializer)?;
-
-    fn normalize_ref_key(raw: &str) -> String {
-        if let Some(stripped) = raw.strip_prefix('#') {
-            stripped.to_string()
-        } else if let Some(stripped) = raw.strip_prefix("id:") {
-            stripped.to_string()
-        } else {
-            raw.to_string()
-        }
-    }
 
     fn convert_target(val: Value) -> Result<String, String> {
         match val {

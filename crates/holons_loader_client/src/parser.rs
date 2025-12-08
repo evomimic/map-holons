@@ -19,7 +19,7 @@ use serde_json::value::RawValue;
 use crate::builder::{
     attach_described_by_relationship, attach_relationships_for_loader_holon,
     collect_relationship_specs_for_loader_holon, create_loader_bundle_for_file,
-    create_loader_holon_from_raw, RawLoaderHolon, RawLoaderMeta,
+    create_loader_holon_from_raw, normalize_ref_key, RawLoaderHolon, RawLoaderMeta,
 };
 
 /// Canonical on-disk path to the Holon Loader JSON Schema.
@@ -324,11 +324,12 @@ pub fn parse_single_import_file_into_bundle(
 
         // Attach the DescribedBy relationship if a type is present.
         if let Some(ref type_key) = raw_holon.r#type {
+            let normalized_type_key = normalize_ref_key(type_key);
             if let Err(err) = attach_described_by_relationship(
                 context,
                 &loader_holon_ref,
                 &raw_holon.key,
-                type_key,
+                &normalized_type_key,
             ) {
                 return Err(ImportFileParsingIssue {
                     file_path: import_file_path.clone(),

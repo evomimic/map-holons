@@ -232,6 +232,11 @@ impl LoaderRefResolver {
         debug!("Pass 2A: Processing {} DescribedBy relationships", described_by_refs.len());
 
         for relationship_reference in described_by_refs {
+            debug!(
+                "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+                Self::brief_lrr_summary(context, relationship_reference),
+                Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+            );
             match Self::resolve_endpoints(context, relationship_reference) {
                 Ok((source_endpoint, mut target_endpoints)) => {
                     // Enforce exactly one target for DescribedBy
@@ -316,6 +321,11 @@ impl LoaderRefResolver {
         debug!("Pass 2B: Processing {} InverseOf relationships", inverse_of_refs.len());
 
         for relationship_reference in inverse_of_refs {
+            debug!(
+                "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+                Self::brief_lrr_summary(context, relationship_reference),
+                Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+            );
             match Self::resolve_endpoints(context, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
                     let staged_source =
@@ -1010,6 +1020,11 @@ impl LoaderRefResolver {
             return Ok(0);
         }
 
+        debug!(
+            "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+            Self::brief_lrr_summary(context, relationship_reference),
+            Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+        );
         let (source_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, relationship_reference)?;
 
@@ -1053,6 +1068,11 @@ impl LoaderRefResolver {
 
         let (inverse_name, _flag) =
             Self::extract_relationship_metadata(context, relationship_reference)?;
+        debug!(
+            "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+            Self::brief_lrr_summary(context, relationship_reference),
+            Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+        );
         let (src_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, relationship_reference)?;
 
