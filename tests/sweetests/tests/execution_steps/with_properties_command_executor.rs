@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference, ResultingReference};
+use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -22,7 +22,7 @@ pub async fn execute_with_properties(
     let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
-    let mut source_reference: HolonReference =
+    let source_reference: HolonReference =
         state.lookup_holon_reference(context, &source_token).unwrap();
 
     // 2. BUILD — with_properties DanceRequest
@@ -44,14 +44,7 @@ pub async fn execute_with_properties(
         response.description
     );
 
-    // 5. ASSERT -
-    // Create the expected holon by applying the property updates
-    for (property_name, base_value) in properties.clone() {
-        source_reference
-            .with_property_value(context, property_name.clone(), base_value.clone())
-            .expect("Failed to add property value to expected holon");
-    }
-
+    // 5. ASSERT - essential content matches expected
     let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {

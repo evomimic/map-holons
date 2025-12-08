@@ -6,7 +6,7 @@ use std::{
 };
 
 use super::{ReadableRelationship, TransientRelationshipMap};
-use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
+use crate::{core_shared_objects::HolonCollection, HolonsContextBehavior, StagedRelationshipMap};
 use core_types::{HolonError, RelationshipName};
 
 /// Custom RelationshipMap is only used for caching and will never be serialized
@@ -21,7 +21,10 @@ impl RelationshipMap {
     }
 
     /// Converts to a StagedRelationshipMap.
-    pub fn clone_for_staged(&self) -> Result<StagedRelationshipMap, HolonError> {
+    pub fn clone_for_staged(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<StagedRelationshipMap, HolonError> {
         let mut cloned_map = BTreeMap::new();
         for (name, arc_lock) in self.map.iter() {
             let collection = arc_lock
@@ -32,7 +35,7 @@ impl RelationshipMap {
                         e
                     ))
                 })?
-                .clone_for_staged()?;
+                .clone_for_staged(context)?; // Skips any TransientReference members
             cloned_map.insert(name.clone(), Arc::new(RwLock::new(collection)));
         }
         Ok(StagedRelationshipMap::new(cloned_map))

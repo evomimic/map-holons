@@ -135,6 +135,27 @@ impl HolonReference {
         }
     }
 
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Transient(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_staged(&self) -> bool {
+        match self {
+            Self::Staged(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_saved(&self) -> bool {
+        match self {
+            Self::Smart(_) => true,
+            _ => false
+        }
+    }
+
     pub fn predecessor(
         &self,
         context: &dyn HolonsContextBehavior,

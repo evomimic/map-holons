@@ -1,4 +1,6 @@
-use holons_test::{harness::prelude::TestExecutionState, ResolvedTestReference, TestReference};
+use holons_test::{
+    harness::prelude::TestExecutionState, ResolvedTestReference, ResultingReference, TestReference,
+};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -50,6 +52,23 @@ pub async fn execute_add_related_holons(
     );
     info!("Success! add_related_holons DanceResponse status matched expected");
 
-    // TODO: add support for
-    // 5. ASSERT — on success, compare essential content of expected (source) vs actual (resolved) test references
+    // 5. ASSERT - if Ok response expected, confirm essential content matches expected
+    if response.status_code == ResponseStatusCode::OK {
+        let response_holon_reference = match response.body {
+            ResponseBody::HolonReference(ref hr) => hr.clone(),
+            other => {
+                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+            }
+        };
+        let resulting_reference = ResultingReference::from(response_holon_reference);
+        let resolved_reference =
+            ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+
+        resolved_reference.assert_essential_content_eq(context).unwrap();
+        info!("Success! Updated holon's essential content matched expected");
+
+        // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
+        //             so later steps can look it up with the same token.
+        state.record_resolved(resolved_reference);
+    }
 }

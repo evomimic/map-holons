@@ -159,7 +159,7 @@ impl HolonStagingBehavior for Nursery {
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
         let staged_holon =
-            StagedHolon::new_from_clone_model(transient_reference.holon_clone_model(context)?)?;
+            StagedHolon::new_from_clone_model(context, transient_reference.holon_clone_model(context)?)?;
         let new_id = self.stage_holon(staged_holon)?;
         self.to_validated_staged_reference(&new_id)
     }

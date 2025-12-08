@@ -6,7 +6,8 @@ use base_types::MapString;
 use core_types::{HolonError, PropertyMap, RelationshipName};
 
 use crate::{
-    core_shared_objects::TransientRelationshipMap, HolonCollection, RelationshipMap,
+    core_shared_objects::TransientRelationshipMap, CollectionState, HolonCollection,
+    HolonCollectionApi, HolonReference, HolonsContextBehavior, RelationshipMap,
     StagedRelationshipMap,
 };
 
@@ -30,6 +31,73 @@ pub struct EssentialHolonContent {
 #[derive(new, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialRelationshipMap {
     map: BTreeMap<RelationshipName, HolonCollection>,
+}
+
+impl EssentialRelationshipMap {
+    pub fn add_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        collection_state: CollectionState,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        let collection = match collection_state {
+            CollectionState::Transient => {
+                if holons.iter().any(|hr| !hr.is_transient()) {
+                    return Err(HolonError::InvalidParameter(
+                        "Holons to be added are not all Transient".to_string(),
+                    ));
+                } else {
+                    self.map.entry(relationship_name).or_insert(HolonCollection::new_transient())
+                }
+            }
+            CollectionState::Staged => {
+                if holons.iter().any(|hr| !hr.is_staged()) {
+                    return Err(HolonError::InvalidParameter(
+                        "Holons to be added are not all Staged".to_string(),
+                    ));
+                } else {
+                    self.map.entry(relationship_name).or_insert(HolonCollection::new_staged())
+                }
+            }
+            CollectionState::Saved => {
+                if holons.iter().any(|hr| !hr.is_saved()) {
+                    return Err(HolonError::InvalidParameter(
+                        "Holons to be added are not all Saved".to_string(),
+                    ));
+                } else {
+                    self.map.entry(relationship_name).or_insert(HolonCollection::new_saved())
+                }
+            }
+            _ => {
+                return Err(HolonError::NotImplemented(
+                    "Abandoned or Fetched not yet implemented".to_string(),
+                ))
+            }
+        };
+
+        collection.add_references(context, holons)?;
+
+        Ok(())
+    }
+
+    pub fn remove_related_holons(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        relationship_name: &RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        if let Some(collection) = self.map.get_mut(relationship_name) {
+            collection.remove_references(context, holons)?;
+
+            Ok(())
+        } else {
+            Err(HolonError::InvalidRelationship(
+                format!("Invalid relationship: {}", relationship_name),
+                "No matching collection found in map".to_string(),
+            ))
+        }
+    }
 }
 
 impl From<RelationshipMap> for EssentialRelationshipMap {

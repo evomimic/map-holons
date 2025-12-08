@@ -53,10 +53,13 @@ impl StagedHolon {
     }
 
     /// Creates a new StagedHolon in the `ForCreate` state.   
-    pub fn new_from_clone_model(model: HolonCloneModel) -> Result<Self, HolonError> {
+    pub fn new_from_clone_model(
+        context: &dyn HolonsContextBehavior,
+        model: HolonCloneModel,
+    ) -> Result<Self, HolonError> {
         let staged_relationships: StagedRelationshipMap = {
             if let Some(relationship_map) = model.relationships {
-                relationship_map.clone_for_staged()?
+                relationship_map.clone_for_staged(context)? // Skips any TransientReference members
             } else {
                 return Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()));
             }
@@ -213,7 +216,12 @@ impl ReadableHolonState for StagedHolon {
     }
 
     fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent::new(self.property_map.clone(), EssentialRelationshipMap::from(self.staged_relationships.clone()) ,self.key(), self.errors.clone())
+        EssentialHolonContent::new(
+            self.property_map.clone(),
+            EssentialRelationshipMap::from(self.staged_relationships.clone()),
+            self.key(),
+            self.errors.clone(),
+        )
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {

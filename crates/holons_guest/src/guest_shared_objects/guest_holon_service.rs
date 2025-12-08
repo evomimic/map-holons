@@ -357,6 +357,7 @@ impl HolonServiceApi for GuestHolonService {
         // Reset the OriginalId to None
         cloned_transient_reference.reset_original_id(context)?;
 
+        
         // match original_holon {
         //     HolonReference::Transient(_) => {}
         //     HolonReference::Staged(_) => {}
@@ -364,7 +365,7 @@ impl HolonServiceApi for GuestHolonService {
         //         context,
         //         self.clone_existing_relationships_into_transient_map(
         //             context,
-        //             original_holon.get_holon_id(context)?,ß
+        //             original_holon.get_holon_id(context)?,
         //         )?,
         //     )?,
         // }
