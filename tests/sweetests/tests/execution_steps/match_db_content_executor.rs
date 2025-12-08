@@ -1,6 +1,6 @@
 use holons_test::{ExpectedState, TestExecutionState};
 use pretty_assertions::assert_eq;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
@@ -21,8 +21,6 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
 
-    // warn!("LINEAGE :: {:#?} \n", state.holons().by_temporary_id);
-
     // Iterate through all created holons and verify them in the database, panic if resolved reference does not match expected state
     for (id, resolved_reference) in state.holons().by_temporary_id.clone() {
         if resolved_reference.source_token.expected_state() == ExpectedState::Saved {
@@ -36,8 +34,6 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
                     id, resolved_reference.resulting_reference
                 );
             }
-
-            warn!("SAVED EXECUTION ...\n ID: {:?} \n Resolved: {:#?}", id, resolved_reference);
 
             // 1. LOOKUP — get the input handle for the source token
             let source_reference =

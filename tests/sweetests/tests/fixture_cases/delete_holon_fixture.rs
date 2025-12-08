@@ -4,8 +4,6 @@ use rstest::*;
 
 use crate::helpers::{init_fixture_context, BOOK_KEY};
 
-use tracing::warn;
-
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
 pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
@@ -50,6 +48,8 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
     let saved_token = fixture_holons.get_latest_by_key(&book_key)?;
 
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
         &mut fixture_holons,
@@ -57,13 +57,15 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         ResponseStatusCode::OK,
     )?;
 
-    warn!("Fixture Holons :: {:#?}", fixture_holons);
+    // ADD STEP: DELETE HOLON - Invalid //
+    test_case.add_delete_holon_step(
+        &mut fixture_holons,
+        saved_token,
+        ResponseStatusCode::NotFound,
+    )?;
 
-    // // ADD STEP: DELETE HOLON - Invalid //
-    // test_case.add_delete_holon_step(saved_token, ResponseStatusCode::NotFound)?;
-
-    // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    // // ADD STEP:  ENSURE DATABASE COUNT
+    // test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

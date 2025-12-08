@@ -56,7 +56,7 @@ pub async fn execute_commit(
     // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     let holon_collection = committed_references.read().expect("Failed to read committed holons");
-    // Temporary workaround for matching source token (expected) to resulting reference (actual).
+    // Temporary 'key' workaround for matching source token (expected) to resulting reference (actual).
     // TODO: solve or migrate issue 352
     let mut index: usize = 0;
     let mut keyed_index = BTreeMap::new();

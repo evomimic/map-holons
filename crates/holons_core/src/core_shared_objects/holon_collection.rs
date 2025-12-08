@@ -50,6 +50,14 @@ impl HolonCollection {
         }
     }
 
+    pub fn new_saved() -> Self {
+        HolonCollection {
+            state: CollectionState::Saved,
+            members: Vec::new(),
+            keyed_index: BTreeMap::new(),
+        }
+    }
+
     pub fn new_staged() -> Self {
         HolonCollection {
             state: CollectionState::Staged,
@@ -74,10 +82,23 @@ impl HolonCollection {
         Ok(collection)
     }
 
-    pub fn clone_for_staged(&self) -> Result<Self, HolonError> {
+    /// Does not retain members that are TransientReference.
+    pub fn clone_for_staged(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Self, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let mut collection = self.clone();
-        collection.state = CollectionState::Staged;
+        let mut collection = HolonCollection::new_staged();
+        let mut index = 0;
+        for holon_reference in self.members.clone() {
+            if !holon_reference.is_transient() {
+                if let Some(key) = holon_reference.key(context)? {
+                    collection.keyed_index.insert(key, index);
+                    index += 1;
+                }
+                collection.members.push(holon_reference);
+            }
+        }
 
         Ok(collection)
     }
