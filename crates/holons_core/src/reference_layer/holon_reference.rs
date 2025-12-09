@@ -59,77 +59,44 @@ impl HolonReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
+
+        fn from_collection_arc(
+            collection_arc: Arc<RwLock<HolonCollection>>,
+        ) -> Result<Option<HolonReference>, HolonError> {
+            let collection = collection_arc.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on holon collection: {}",
+                    e
+                ))
+            })?;
+            collection.is_accessible(AccessType::Read)?;
+            let members = collection.get_members();
+
+            if members.len() > 1 {
+                return Err(HolonError::Misc(format!(
+                    "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
+                    members
+                )));
+            }
+
+            Ok(members.get(0).cloned())
+        }
+
         match self {
             HolonReference::Transient(transient_reference) => {
                 let collection_arc = transient_reference
                     .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
-                let collection = collection_arc.read().map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire read lock on holon collection: {}",
-                        e
-                    ))
-                })?;
-                collection.is_accessible(AccessType::Read)?;
-                let members = collection.get_members();
-                if members.len() > 1 {
-                    return Err(HolonError::Misc(format!(
-                        "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
-                        members
-                    )));
-                }
-                if members.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(members[0].clone()))
-                }
+                from_collection_arc(collection_arc)
             }
             HolonReference::Staged(staged_reference) => {
                 let collection_arc = staged_reference
                     .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
-                let collection = collection_arc.read().map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire read lock on holon collection: {}",
-                        e
-                    ))
-                })?;
-                collection.is_accessible(AccessType::Read)?;
-                let members = collection.get_members();
-                if members.len() > 1 {
-                    return Err(HolonError::Misc(format!(
-                        "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
-                        members
-                    )));
-                }
-                if members.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(members[0].clone()))
-                }
+                from_collection_arc(collection_arc)
             }
             HolonReference::Smart(smart_reference) => {
-                let collection_arc = smart_reference.related_holons(
-                    context,
-                    CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                )?;
-                let collection = collection_arc.read().map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire read lock on holon collection: {}",
-                        e
-                    ))
-                })?;
-                collection.is_accessible(AccessType::Read)?;
-                let members = collection.get_members();
-                if members.len() > 1 {
-                    return Err(HolonError::Misc(format!(
-                        "related_holons for DESCRIBED_BY returned multiple members: {:#?}",
-                        members
-                    )));
-                }
-                if members.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(members[0].clone()))
-                }
+                let collection_arc = smart_reference
+                    .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                from_collection_arc(collection_arc)
             }
         }
     }
