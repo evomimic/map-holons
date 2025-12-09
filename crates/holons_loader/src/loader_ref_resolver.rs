@@ -285,7 +285,10 @@ impl LoaderRefResolver {
                         &described_by,
                         target_endpoints.split_off(0), // exactly one
                     ) {
-                        Ok(n) => outcome.links_created += n,
+                        Ok(n) => {
+                            outcome.links_created += n;
+                            debug!("[resolver] AFTER write_relationship(DescribedBy): links_created={}", n);
+                        }
                         Err(e) => outcome.errors.push(Self::error_with_context(
                             context,
                             relationship_reference,

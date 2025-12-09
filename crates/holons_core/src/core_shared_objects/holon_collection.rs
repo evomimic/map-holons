@@ -225,7 +225,9 @@ impl HolonCollectionApi for HolonCollection {
         reference: &HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let index = self.members.len() - 1;
+
+        // The new element will be appended at this index.
+        let index = self.members.len();
         self.members.push(reference.clone());
         if let Some(key) = key {
             self.keyed_index.insert(key.clone(), index);

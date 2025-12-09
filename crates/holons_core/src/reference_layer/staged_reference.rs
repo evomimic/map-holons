@@ -192,9 +192,14 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
-        borrowed_holon.key().clone()
+        borrowed_holon.key()
     }
 
     fn related_holons_impl(
@@ -204,7 +209,12 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.read().unwrap();
+        let holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         holon.related_holons(relationship_name)
     }
@@ -271,9 +281,14 @@ impl WritableHolonImpl for StagedReference {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_mut = rc_holon.write().unwrap();
-        holon_mut.add_related_holons(context, relationship_name, holons)?;
+        let mut holon_mut = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
 
+        holon_mut.add_related_holons(context, relationship_name, holons)?;
         Ok(self)
     }
 
