@@ -123,7 +123,15 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<TransientReference, HolonError> {
         self.is_accessible(context, AccessType::Clone)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
+        let holon_clone_model = rc_holon
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged holon: {}",
+                    e
+                ))
+            })?
+            .holon_clone_model();
 
         let transient_behavior = context.get_space_manager().get_transient_behavior_service();
 
@@ -139,7 +147,12 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         borrowed_holon.all_related_holons()
     }
@@ -147,7 +160,12 @@ impl ReadableHolonImpl for StagedReference {
     fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         borrowed_holon.holon_id()
     }
@@ -158,7 +176,12 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let collection_arc = self.related_holons(context, CoreRelationshipTypeName::Predecessor)?;
-        let collection = collection_arc.read().unwrap();
+        let collection = collection_arc.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on holon collection: {}",
+                e
+            ))
+        })?;
         collection.is_accessible(AccessType::Read)?;
         let members = collection.get_members();
         if members.len() > 1 {
@@ -181,7 +204,12 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<Option<PropertyValue>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         borrowed_holon.property_value(property_name)
     }
@@ -225,7 +253,15 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<MapString, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let holon = self.get_rc_holon(context)?;
-        let key = holon.read().unwrap().versioned_key()?;
+        let key = holon
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged holon: {}",
+                    e
+                ))
+            })?
+            .versioned_key()?;
 
         Ok(key)
     }
@@ -236,7 +272,12 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<EssentialHolonContent, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         borrowed_holon.essential_content()
     }
@@ -244,7 +285,12 @@ impl ReadableHolonImpl for StagedReference {
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
         Ok(borrowed_holon.summarize())
     }
 
@@ -254,7 +300,12 @@ impl ReadableHolonImpl for StagedReference {
     ) -> Result<HolonNodeModel, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let borrowed_holon = rc_holon.read().unwrap();
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         Ok(borrowed_holon.into_node_model())
     }
@@ -265,7 +316,12 @@ impl ReadableHolonImpl for StagedReference {
         access_type: AccessType,
     ) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon(context)?;
-        let holon = rc_holon.read().unwrap();
+        let holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
         holon.is_accessible(access_type)?;
 
         Ok(())
@@ -305,7 +361,12 @@ impl WritableHolonImpl for StagedReference {
             relationship_name
         );
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_mut = rc_holon.write().unwrap();
+        let mut holon_mut = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
         holon_mut.remove_related_holons(context, relationship_name, holons)?;
 
         Ok(self)
@@ -319,7 +380,12 @@ impl WritableHolonImpl for StagedReference {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_mut = rc_holon.write().unwrap();
+        let mut holon_mut = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
 
         holon_mut.with_property_value(property, value)?;
 
@@ -333,7 +399,12 @@ impl WritableHolonImpl for StagedReference {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let mut holon_mut = rc_holon.write().unwrap();
+        let mut holon_mut = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
         holon_mut.remove_property_value(&name)?;
 
         Ok(self)
@@ -402,7 +473,15 @@ impl ToHolonCloneModel for StagedReference {
     ) -> Result<HolonCloneModel, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
-        let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
+        let holon_clone_model = rc_holon
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged holon: {}",
+                    e
+                ))
+            })?
+            .holon_clone_model();
 
         Ok(holon_clone_model)
     }
