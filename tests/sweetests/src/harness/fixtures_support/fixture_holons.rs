@@ -315,13 +315,19 @@ impl FixtureHolons {
     // Gets number of Holons per type of ExpectedState for current (latest) in lineage
     pub fn counts(&self) -> FixtureHolonCounts {
         let mut counts = FixtureHolonCounts::default();
-        for (_id, token) in &self.latest_snapshots() {
-            match token.expected_state() {
-                ExpectedState::Transient => counts.transient += 1,
-                ExpectedState::Staged => counts.staged += 1,
-                ExpectedState::Saved => counts.saved += 1,
-                ExpectedState::Abandoned => counts.staged -= 1,
-                ExpectedState::Deleted => {}
+        for (_id, snapshots) in &self.lineage {
+            counts.saved += snapshots
+                .iter()
+                .filter(|t| matches!(t.expected_state(), ExpectedState::Saved))
+                .count() as i64;
+            for token in snapshots {
+                match token.expected_state() {
+                    ExpectedState::Transient => counts.transient += 1,
+                    ExpectedState::Staged => counts.staged += 1,
+                    ExpectedState::Saved => {} // handled above
+                    ExpectedState::Abandoned => counts.staged -= 1,
+                    ExpectedState::Deleted => {}
+                }
             }
         }
         counts

@@ -267,14 +267,14 @@ impl DancesTestCase {
         });
         let staged_token = {
             if let Some(key) = key {
-                // Mint a staged-intent token indexed by key.
+                // Mint a staged-intent token for a new lineage, indexed by key.
                 fixture_holons.add_staged_with_key(
                     source_token.transient(),
                     key,
                     source_token.expected_content(),
                 )?
             } else {
-                // Mint a staged-intent token without a key.
+                // Mint a staged-intent token for a new lineage, without a key.
                 fixture_holons.add_staged(source_token.transient(), source_token.expected_content())
             }
         };
