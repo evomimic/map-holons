@@ -321,29 +321,28 @@ impl WritableHolonImpl for TransientReference {
         descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-        let existing_descriptor_option = descriptor_reference.get_descriptor(context)?;
-        if let Some(descriptor) = existing_descriptor_option {
+
+        // Get the descriptor of the current holon, if any
+        let self_ref = HolonReference::Transient(self.clone());
+        let existing_descriptor_option = self_ref.get_descriptor(context)?;
+
+        if let Some(existing_descriptor) = existing_descriptor_option {
+            // Remove the current descriptor edge from this holon
             self.remove_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                vec![descriptor.clone()],
+                vec![existing_descriptor],
             )?;
-            self.add_related_holons_impl(
-                context,
-                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                vec![descriptor_reference],
-            )?;
-
-            Ok(())
-        } else {
-            self.add_related_holons_impl(
-                context,
-                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                vec![descriptor_reference.clone()],
-            )?;
-
-            Ok(())
         }
+
+        // Attach the new descriptor edge
+        self.add_related_holons_impl(
+            context,
+            CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+            vec![descriptor_reference],
+        )?;
+
+        Ok(())
     }
 
     fn with_predecessor_impl(
