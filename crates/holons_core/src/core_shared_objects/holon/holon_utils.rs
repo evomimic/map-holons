@@ -28,7 +28,7 @@ pub struct EssentialHolonContent {
 
 // ==== TESTING PURPOSES ==== //
 
-#[derive(new, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(new, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct EssentialRelationshipMap {
     map: BTreeMap<RelationshipName, HolonCollection>,
 }

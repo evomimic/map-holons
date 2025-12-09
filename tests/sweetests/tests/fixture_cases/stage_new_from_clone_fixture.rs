@@ -13,8 +13,6 @@ use crate::{
     helpers::{init_fixture_context, BOOK_KEY},
 };
 
-// ?TODO: attempt add_properties steps after each stage_new_from_clone_step (required minting expected)
-
 /// Demonstrates cloning a Book three ways using the new harness:
 ///   A) from a fresh **Transient**
 ///   B) from the **Staged** Book produced by the setup helper
@@ -50,29 +48,13 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     expected_clone_properties
         .insert("TITLE".to_property_name(), TRANSIENT_SOURCE_KEY.to_base_value());
     expected_clone_properties.insert("TYPE".to_property_name(), "Book".to_base_value());
-    // let mut book_clone_expected_content = transient_source.essential_content(&*fixture_context)?;
-    // book_clone_expected_content.property_map = expected_clone_properties.clone();
-    // book_clone_expected_content.key = Some(MapString("book:clone:from-transient".to_string()));
-    // // Mint a transient-intent token and index it by key so we can refer to it later.
-    // let transient_source_token = fixture_holons.add_transient_with_key(
-    //     &transient_source,
-    //     MapString::from(TRANSIENT_SOURCE_KEY),
-    //     &book_clone_expected_content,
-    // )?;
-    // // Stage a new holon cloned from that transient source (returns a staged-intent token).
+
+    // TODO: expected response ResponseStatuseCode::BadRequest
+
     // let clone_from_transient_staged = test_case.add_stage_new_from_clone_step(
     //     &mut fixture_holons,
     //     transient_source_token.clone(),
     //     MapString::from("book:clone:from-transient"),
-    //     ResponseStatusCode::OK,
-    // )?;
-    // // Mutate the staged clone (as separate step).
-    // let mut properties = PropertyMap::new();
-    // properties.insert("TITLE".to_property_name(), "Dune (Transient Clone)".to_base_value());
-    // properties.insert("EDITION".to_property_name(), 1.to_base_value());
-    // test_case.add_with_properties_step(
-    //     clone_from_transient_staged,
-    //     properties,
     //     ResponseStatusCode::OK,
     // )?;
 
@@ -92,7 +74,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // Mint a staged-intent token
     let book_staged_token = fixture_holons.add_staged_with_key(
         &transient_source,
-        MapString::from(TRANSIENT_SOURCE_KEY),
+        MapString::from("book:clone:from-staged"),
         &book_staged_clone_expected_content,
     )?;
     // Stage
