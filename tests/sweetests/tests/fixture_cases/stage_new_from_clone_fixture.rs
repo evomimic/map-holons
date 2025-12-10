@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use base_types::{MapInteger, MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
 use holons_core::{
-    dances::ResponseStatusCode, new_holon, HolonsContextBehavior, ReadableHolon, WritableHolon,
+    dances::ResponseStatusCode, new_holon, reference_layer::TransientReference,
+    HolonsContextBehavior, ReadableHolon, WritableHolon,
 };
 use holons_test::{fixture_holons::FixtureHolons, test_case::DancesTestCase};
 use type_names::ToPropertyName;
@@ -35,25 +36,25 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // // ── PHASE A — Clone FROM a fresh TRANSIENT ────────────────────────────────────
-    const TRANSIENT_SOURCE_KEY: &str = "book:transient-source";
-    let mut transient_source =
-        new_holon(fixture_context.as_ref(), Some(MapString::from(TRANSIENT_SOURCE_KEY)))?;
-    transient_source
-        .with_property_value(fixture_context.as_ref(), "TITLE", TRANSIENT_SOURCE_KEY)?
-        .with_property_value(fixture_context.as_ref(), "TYPE", "Book")?;
-    // Set expected
-    let mut expected_clone_properties = PropertyMap::new();
-    expected_clone_properties
-        .insert("Key".to_property_name(), "book:clone:from-transient".to_base_value());
-    expected_clone_properties
-        .insert("TITLE".to_property_name(), TRANSIENT_SOURCE_KEY.to_base_value());
-    expected_clone_properties.insert("TYPE".to_property_name(), "Book".to_base_value());
+    // const TRANSIENT_SOURCE_KEY: &str = "book:transient-source";
+    // let mut fresh_transient_source =
+    //     new_holon(fixture_context.as_ref(), Some(MapString::from(TRANSIENT_SOURCE_KEY)))?;
+    // fresh_transient_source
+    //     .with_property_value(fixture_context.as_ref(), "TITLE", TRANSIENT_SOURCE_KEY)?
+    //     .with_property_value(fixture_context.as_ref(), "TYPE", "Book")?;
+    // // Set expected
+    // let mut expected_clone_properties = PropertyMap::new();
+    // expected_clone_properties
+    //     .insert("Key".to_property_name(), "book:clone:from-transient".to_base_value());
+    // expected_clone_properties
+    //     .insert("TITLE".to_property_name(), TRANSIENT_SOURCE_KEY.to_base_value());
+    // expected_clone_properties.insert("TYPE".to_property_name(), "Book".to_base_value());
 
     // TODO: expected response ResponseStatuseCode::BadRequest
 
     // let clone_from_transient_staged = test_case.add_stage_new_from_clone_step(
     //     &mut fixture_holons,
-    //     transient_source_token.clone(),
+    //     fresh_transient_source_token.clone(),
     //     MapString::from("book:clone:from-transient"),
     //     ResponseStatusCode::OK,
     // )?;
@@ -64,24 +65,17 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &mut test_case,
         &mut fixture_holons,
     )?;
-    // Set expected
-    expected_clone_properties
-        .insert("Key".to_property_name(), "book:clone:from-staged".to_base_value());
-    let mut book_staged_clone_expected_content =
-        transient_source.essential_content(&*fixture_context)?;
-    book_staged_clone_expected_content.property_map = expected_clone_properties.clone();
-    book_staged_clone_expected_content.key = Some(MapString("book:clone:from-staged".to_string()));
-    // Mint a staged-intent token
-    let book_staged_token = fixture_holons.add_staged_with_key(
-        &transient_source,
-        MapString::from("book:clone:from-staged"),
-        &book_staged_clone_expected_content,
-    )?;
+    let book_key = MapString(BOOK_KEY.to_string());
+    let from_staged_key = MapString("book:clone:from-staged".to_string());
+    let mut book_staged_token = fixture_holons.get_latest_by_key(&book_key)?;
+
+    book_staged_token.set_key(from_staged_key.clone());
+
     // Stage
     let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
         &mut fixture_holons,
         book_staged_token.clone(),
-        MapString::from("book:clone:from-staged"),
+        from_staged_key.clone(),
         ResponseStatusCode::OK,
     )?;
 
@@ -139,8 +133,8 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // (Executor will compare expected vs. actual for each expected-saved token.)
     test_case.add_match_saved_content_step()?;
 
-    // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    // // Load test_session_state
+    // test_case.load_test_session_state(&*fixture_context);
 
     Ok(test_case)
 }

@@ -358,19 +358,6 @@ impl HolonServiceApi for GuestHolonService {
         // Reset the OriginalId to None
         cloned_transient_reference.reset_original_id(context)?;
 
-        
-        // match original_holon {
-        //     HolonReference::Transient(_) => {}
-        //     HolonReference::Staged(_) => {}
-        //     HolonReference::Smart(_) => cloned_transient_reference.update_relationship_map(
-        //         context,
-        //         self.clone_existing_relationships_into_transient_map(
-        //             context,
-        //             original_holon.get_holon_id(context)?,
-        //         )?,
-        //     )?,
-        // }
-
         let mut cloned_staged_reference = self
             .get_internal_nursery_access()?
             .read()

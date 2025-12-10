@@ -221,36 +221,45 @@ pub fn get_transient_holon_by_versioned_key(
 
 /// Stages a new holon as a clone of the original holon.
 ///
-/// This function creates a new holon in the staging area by cloning the `original_holon`,
-/// while retaining or discarding lineage according to the staging policy. For this
-/// helper, the cloned holon is treated as a *new* holon with a new key and no
-/// predecessor link.
+/// This function creates a new holon (from either Staged or Smart) in the staging area by cloning the `original_holon`,
+/// without retaining a lineage relationship back to the original.
 ///
 /// For staging a new version of an existing holon (i.e., where the original is a
 /// predecessor), use [`stage_new_version`].
 ///
 /// # Arguments
 /// - `context`: The context to retrieve holon services.
-/// - `original_holon`: A reference to the holon to be cloned.
-/// - `new_key`: The canonical key to assign to the cloned holon.
+/// - `original_holon`: A Staged or Smart reference to the holon to be cloned.
 ///
 /// # Returns
 /// - `Ok(StagedReference)` pointing to the newly staged holon.
 /// - `Err(HolonError)` if staging fails.
+///
+/// # Errors
+/// - If trying to pass a TransientReference, returns error directing to use 'stage_new_holon' instead.
+/// - Returns a `HolonError` if the staging operation cannot complete.
+///
 pub fn stage_new_from_clone(
     context: &dyn HolonsContextBehavior,
     original_holon: HolonReference,
     new_key: MapString,
 ) -> Result<StagedReference, HolonError> {
-    let staging_service = context.get_space_manager().get_staging_service();
-    staging_service.stage_new_from_clone(context, original_holon, new_key)
+    if original_holon.is_transient() {
+        return Err(HolonError::InvalidHolonReference(
+            "Must use stage_new_holon for staging from a TransientReference".to_string(),
+        ));
+    }
+    let staging_service = context.get_space_manager().get_holon_service();
+    let staged_reference =
+        staging_service.stage_new_from_clone_internal(context, original_holon, new_key)?;
+
+    Ok(staged_reference)
 }
 
 /// Stages a new holon in the holon space.
 ///
-/// This function creates a new holon in the staging area without any lineage
-/// relationship to an existing holon. Use this function for creating entirely
-/// new holons that are not tied to any predecessor.
+/// This function creates a new holon in the staging area, from a clone model of a TransientReference.
+/// Use this function as the 2nd step in the 'Holon Life Cycle'.
 ///
 /// # Arguments
 /// - `context`: The context to retrieve holon services.
