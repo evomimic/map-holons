@@ -71,7 +71,7 @@ pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
         "Retrieved {:?} links for 'all_holon_nodes' path, converting to SmartLinks..",
         links.len()
     );
-    debug!("Links: {:?}", links);
+
     for link in links {
         let holon_id = HolonId::Local(local_id_from_action_hash(
             link.target.clone().into_action_hash().ok_or(HolonError::HashConversion(

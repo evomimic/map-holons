@@ -294,6 +294,20 @@ impl FixtureHolons {
             .cloned()
     }
 
+    // Useful for getting the saved id for a holon that has been marked as deleted
+    //
+    /// Retrieve the most recent snapshot in an ExpectedState::Saved
+    pub fn get_last_save(&self, id: &TemporaryId) -> Result<TestReference, HolonError> {
+        let vec = self.get_tokens_by_id(id)?;
+        if let Some(token) =
+            vec.iter().rfind(|t| matches!(t.expected_state(), ExpectedState::Saved)).cloned()
+        {
+            Ok(token)
+        } else {
+            Err(HolonError::HolonNotFound("No snapshots are expected as saved".to_string()))
+        }
+    }
+
     // ---- HELPERS ---- //
 
     /// Insert the newly minted snapshot into the lineage, as the latest token (added to end of Vec)
@@ -326,7 +340,7 @@ impl FixtureHolons {
                     ExpectedState::Staged => counts.staged += 1,
                     ExpectedState::Saved => {} // handled above
                     ExpectedState::Abandoned => counts.staged -= 1,
-                    ExpectedState::Deleted => {}
+                    ExpectedState::Deleted => counts.saved -= 1,
                 }
             }
         }

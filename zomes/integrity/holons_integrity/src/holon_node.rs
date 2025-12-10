@@ -91,7 +91,9 @@ pub fn validate_delete_link_all_holon_nodes(
     _target: AnyLinkableHash,
     _tag: LinkTag,
 ) -> ExternResult<ValidateCallbackResult> {
-    Ok(ValidateCallbackResult::Invalid(String::from("AllHolonNodes links cannot be deleted")))
+    // TODO: validation logic
+    // Ok(ValidateCallbackResult::Invalid(String::from("AllHolonNodes links cannot be deleted")))
+    Ok(ValidateCallbackResult::Valid)
 }
 
 pub fn validate_create_link_local_holon_space(
