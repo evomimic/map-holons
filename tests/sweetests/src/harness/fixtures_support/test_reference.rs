@@ -19,11 +19,13 @@
 //! - All fields are private; constructors and accessors are `pub(crate)` so only
 //!   harness internals can inspect or mutate them.
 
-use base_types::MapString;
+use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, TemporaryId};
 use holons_core::{
-    HolonsContextBehavior, ReadableHolon, core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference
+    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
+    HolonsContextBehavior, ReadableHolon,
 };
+use holons_prelude::prelude::ToPropertyName;
 
 /// Declarative intent for a test-scoped reference.
 ///
@@ -83,7 +85,10 @@ impl TestReference {
         self.expected_state
     }
 
-    pub fn key(&self, context: &dyn HolonsContextBehavior) -> Result<Option<MapString>, HolonError> {
+    pub fn key(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Option<MapString>, HolonError> {
         self.transient_reference.key(context)
     }
 
@@ -94,5 +99,10 @@ impl TestReference {
     pub fn transient(&self) -> &TransientReference {
         &self.transient_reference
     }
-    
+
+    // Needed for setting expected when changing key for stage_new_from_clone
+    pub fn set_key(&mut self, key: MapString) {
+        self.expected_content.key = Some(key.clone());
+        self.expected_content.property_map.insert("Key".to_property_name(), key.to_base_value());
+    }
 }
