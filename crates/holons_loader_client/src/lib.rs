@@ -13,16 +13,16 @@ mod builder;
 mod errors;
 pub mod loader_client;
 mod parser;
-mod types;
+pub mod types;
 
 // Public re-exports for the main entrypoint.
 pub use loader_client::load_holons_from_files;
 
 // Re-export key raw types + parsing diagnostics so tests and future
 // tooling can use them without reaching into private modules.
+pub use builder::{RawLoaderHolon, RawLoaderMeta, RawRelationshipEndpoints, RawRelationshipSpec};
 pub use parser::{
     ImportFileParsingIssue, ImportFileParsingIssueKind, RawLoaderFileWithSlices,
     BOOTSTRAP_IMPORT_SCHEMA_PATH,
 };
-
-pub use builder::{RawLoaderHolon, RawLoaderMeta, RawRelationshipEndpoints, RawRelationshipSpec};
+pub use types::{ContentSet, FileData};

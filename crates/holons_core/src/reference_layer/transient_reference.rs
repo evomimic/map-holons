@@ -265,9 +265,16 @@ impl WritableHolonImpl for TransientReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key(context)?;
+                Ok((h, key))
+            })
+            .collect::<Result<_, HolonError>>()?;
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().unwrap();
-        holon_mut.add_related_holons(context, relationship_name, holons)?;
+        holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
 
         Ok(self)
     }
@@ -279,9 +286,16 @@ impl WritableHolonImpl for TransientReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key(context)?;
+                Ok((h, key))
+            })
+            .collect::<Result<_, HolonError>>()?;
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().unwrap();
-        holon_mut.remove_related_holons(context, relationship_name, holons)?;
+        holon_mut.remove_related_holons_with_keys(&relationship_name, holons_with_keys)?;
 
         Ok(self)
     }

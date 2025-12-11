@@ -152,6 +152,67 @@ impl HolonCollection {
         self.keyed_index.clone()
     }
 
+    /// Adds references using precomputed keys, avoiding any key lookups during mutation.
+    pub fn add_references_with_keys(
+        &mut self,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        for (reference, key_opt) in entries {
+            let index = self.members.len();
+            self.members.push(reference.clone());
+
+            if let Some(key) = key_opt {
+                if let Some(&_existing) = self.keyed_index.get(&key) {
+                    warn!("Duplicate holons with key {:#?}", key.0.clone());
+                } else {
+                    self.keyed_index.insert(key, index);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Removes references using precomputed keys, rebuilding the keyed index without holon lookups.
+    pub fn remove_references_with_keys(
+        &mut self,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        // Build a lookup of existing keys to their holon references so we can
+        // rebuild the keyed index without calling `key(context)`.
+        let mut reference_keys: Vec<(HolonReference, MapString)> = Vec::new();
+        for (key, idx) in &self.keyed_index {
+            if let Some(member) = self.members.get(*idx) {
+                reference_keys.push((member.clone(), key.clone()));
+            }
+        }
+
+        // Remove the specified references and drop keyed entries for them.
+        for (holon, key_opt) in entries {
+            self.members.retain(|x| x != &holon);
+            if let Some(key) = key_opt {
+                self.keyed_index.remove(&key);
+            } else if let Some((_, k)) = reference_keys.iter().find(|(h, _)| h == &holon) {
+                // If no key was provided, try to remove by matching the reference.
+                self.keyed_index.remove(k);
+            }
+        }
+
+        // Rebuild keyed_index to reflect the new ordering.
+        self.keyed_index.clear();
+        for (new_idx, member) in self.members.iter().enumerate() {
+            if let Some((_, key)) = reference_keys.iter().find(|(h, _)| h == member) {
+                self.keyed_index.insert(key.clone(), new_idx);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Returns the current state of the HolonCollection.
     ///
     /// # Semantics

@@ -871,16 +871,26 @@ impl LoaderRefResolver {
 
         // Try base key as a secondary staged lookup.
         if let Ok(Some(base_key)) = write_source_endpoint.key(context) {
-            // Read lock just long enough to fetch the list
-            let staged_matches = { get_staged_holons_by_base_key(context, &base_key)? };
+            let staged_matches = get_staged_holons_by_base_key(context, &base_key)?;
 
             match staged_matches.len() {
-                1 => return Ok(staged_matches.into_iter().next().unwrap()),
+                1 => {
+                    // Extra defensive check to avoid panics if the vector is somehow empty.
+                    let mut iter = staged_matches.into_iter();
+                    return if let Some(single) = iter.next() {
+                        Ok(single)
+                    } else {
+                        Err(HolonError::Misc(
+                            "Internal error: staged_matches reported len() == 1 but contained no elements"
+                                .into(),
+                        ))
+                    };
+                }
                 n if n > 1 => {
                     return Err(HolonError::DuplicateError(
                         "write source by base key".into(),
                         n.to_string(),
-                    ))
+                    ));
                 }
                 _ => {
                     // not staged by base key; try promotion next

@@ -1,11 +1,10 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use super::{HolonReference, SmartReference, StagedReference, TransientReference};
+use super::TransientReference;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
-use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 
 /// The HolonServiceApi trait defines the public service interface for Holon operations

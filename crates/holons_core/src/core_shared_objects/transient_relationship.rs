@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{HolonCollection, ReadableRelationship, WritableRelationship};
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
+use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
 
 /// Represents a map of transient relationships, where the keys are relationship names and the values
@@ -101,6 +102,27 @@ impl TransientRelationshipMap {
             .add_references(context, holons)?;
         Ok(())
     }
+
+    /// Adds holons using precomputed keys to avoid key lookups during mutation.
+    pub fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        let lock = self
+            .map
+            .entry(relationship_name)
+            .or_insert_with(|| Arc::new(RwLock::new(HolonCollection::new_transient())));
+        lock.write()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on holon collection: {}",
+                    e
+                ))
+            })?
+            .add_references_with_keys(entries)?;
+        Ok(())
+    }
     /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
     ///
     /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
@@ -149,6 +171,30 @@ impl TransientRelationshipMap {
                     ))
                 })?
                 .remove_references(context, holons)?;
+            Ok(())
+        } else {
+            Err(HolonError::InvalidRelationship(
+                format!("Invalid relationship: {}", relationship_name),
+                "No matching collection found in the map.".to_string(),
+            ))
+        }
+    }
+
+    /// Removes holons using precomputed keys to avoid key lookups during mutation.
+    pub fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        if let Some(lock) = self.map.get(relationship_name) {
+            lock.write()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire write lock on holon collection: {}",
+                        e
+                    ))
+                })?
+                .remove_references_with_keys(entries)?;
             Ok(())
         } else {
             Err(HolonError::InvalidRelationship(

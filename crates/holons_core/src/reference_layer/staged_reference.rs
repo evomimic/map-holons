@@ -336,6 +336,16 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+
+        // Precompute keys before taking the holon write lock to avoid re-entrant locking on self-edges.
+        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key(context)?;
+                Ok((h, key))
+            })
+            .collect::<Result<_, HolonError>>()?;
+
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
@@ -344,7 +354,7 @@ impl WritableHolonImpl for StagedReference {
             ))
         })?;
 
-        holon_mut.add_related_holons(context, relationship_name, holons)?;
+        holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
         Ok(self)
     }
 
@@ -355,9 +365,16 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key(context)?;
+                Ok((h, key))
+            })
+            .collect::<Result<_, HolonError>>()?;
         info!(
             "Removing {:?} related holons from relationship: {:?}",
-            holons.len(),
+            holons_with_keys.len(),
             relationship_name
         );
         let rc_holon = self.get_rc_holon(context)?;
@@ -367,7 +384,7 @@ impl WritableHolonImpl for StagedReference {
                 e
             ))
         })?;
-        holon_mut.remove_related_holons(context, relationship_name, holons)?;
+        holon_mut.remove_related_holons_with_keys(&relationship_name, holons_with_keys)?;
 
         Ok(self)
     }

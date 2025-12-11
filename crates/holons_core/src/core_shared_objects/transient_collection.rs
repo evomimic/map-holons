@@ -40,6 +40,58 @@ impl TransientCollection {
     pub fn get_members(&self) -> &Vec<HolonReference> {
         &self.members
     }
+
+    /// Adds references using precomputed keys, avoiding key lookups.
+    pub fn add_references_with_keys(
+        &mut self,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        for (reference, key_opt) in entries {
+            let index = self.members.len();
+            self.members.push(reference.clone());
+            if let Some(key) = key_opt {
+                if let Some(&_existing) = self.keyed_index.get(&key) {
+                    warn!("Duplicate holons with key {:#?}", key.0.clone());
+                } else {
+                    self.keyed_index.insert(key, index);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Removes references using precomputed keys and rebuilds the keyed index without holon lookups.
+    pub fn remove_references_with_keys(
+        &mut self,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        // Capture existing key associations up front.
+        let mut reference_keys: Vec<(HolonReference, MapString)> = Vec::new();
+        for (key, idx) in &self.keyed_index {
+            if let Some(member) = self.members.get(*idx) {
+                reference_keys.push((member.clone(), key.clone()));
+            }
+        }
+
+        for (holon, key_opt) in entries {
+            self.members.retain(|x| x != &holon);
+            if let Some(key) = key_opt {
+                self.keyed_index.remove(&key);
+            } else if let Some((_, k)) = reference_keys.iter().find(|(h, _)| h == &holon) {
+                self.keyed_index.remove(k);
+            }
+        }
+
+        // Rebuild keyed_index for remaining members with preserved keys.
+        self.keyed_index.clear();
+        for (new_idx, member) in self.members.iter().enumerate() {
+            if let Some((_, key)) = reference_keys.iter().find(|(h, _)| h == member) {
+                self.keyed_index.insert(key.clone(), new_idx);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl HolonCollectionApi for TransientCollection {

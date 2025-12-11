@@ -34,7 +34,6 @@
 
 #![allow(unused_variables)]
 
-use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
@@ -43,7 +42,7 @@ use holons_core::ReadableHolon;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
-    HolonReference, RelationshipMap, SmartReference, StagedReference,
+    HolonReference, RelationshipMap,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
