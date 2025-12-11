@@ -1,18 +1,16 @@
 //! Parsing entrypoints for the Holons Loader Client.
 //!
 //! This module is responsible for:
-//! - Reading loader import JSON files from disk.
-//! - Validating them against the Holon Loader JSON Schema.
+//! - Validating loader import JSON files against the Holon Loader JSON Schema.
 //! - Deserializing into lightweight raw structures that borrow from the
 //!   original buffer and expose per-holon UTF-8 byte offsets.
 //! - Orchestrating per-file bundle construction via the `builder` module
 //!   and wiring everything into a single `HolonLoadSet`.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use holons_prelude::prelude::*;
-use json_schema_validation::json_schema_validator::validate_json_against_schema;
+use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
@@ -21,15 +19,7 @@ use crate::builder::{
     collect_relationship_specs_for_loader_holon, create_loader_bundle_for_file,
     create_loader_holon_from_raw, normalize_ref_key, RawLoaderHolon, RawLoaderMeta,
 };
-
-/// Canonical on-disk path to the Holon Loader JSON Schema.
-///
-/// In the initial implementation this is a constant; a later iteration may
-/// load this from configuration or a per-space registry.
-pub const BOOTSTRAP_IMPORT_SCHEMA_PATH: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../import_files/map-schema/bootstrap-import.schema.json"
-);
+use crate::types::{ContentSet, FileData};
 
 /// High-level classification of a per-file parsing issue.
 ///
@@ -112,7 +102,7 @@ pub struct RawLoaderFileWithSlices<'a> {
 pub fn parse_files_into_load_set(
     context: &dyn HolonsContextBehavior,
     load_set_key: Option<MapString>,
-    import_file_paths: &[PathBuf],
+    content_set: &ContentSet,
 ) -> Result<HolonReference, Vec<ImportFileParsingIssue>> {
     // 1) Create the HolonLoadSet container holon.
     //
@@ -138,10 +128,13 @@ pub fn parse_files_into_load_set(
     // can report a comprehensive summary to the user.
     let mut issues: Vec<ImportFileParsingIssue> = Vec::new();
 
-    for import_path in import_file_paths {
-        if let Err(issue) =
-            parse_single_import_file_into_bundle(context, &load_set_ref, import_path)
-        {
+    for import_file in &content_set.files_to_load {
+        if let Err(issue) = parse_single_import_file_into_bundle(
+            context,
+            &load_set_ref,
+            import_file,
+            &content_set.schema.raw_contents,
+        ) {
             issues.push(issue);
         }
     }
@@ -190,64 +183,49 @@ pub fn create_holon_load_set(
 pub fn parse_single_import_file_into_bundle(
     context: &dyn HolonsContextBehavior,
     load_set_ref: &HolonReference,
-    import_file_path: &PathBuf,
+    import_file: &FileData,
+    schema_json: &str,
 ) -> Result<(), ImportFileParsingIssue> {
-    // 1) Read the entire file into memory as a UTF-8 string.
-    let raw_json = match fs::read_to_string(import_file_path) {
-        Ok(text) => text,
-        Err(io_err) => {
-            return Err(ImportFileParsingIssue {
-                file_path: import_file_path.clone(),
-                kind: ImportFileParsingIssueKind::IoFailure,
-                message: format!(
-                    "Failed to read import file '{}': {}",
-                    import_file_path.display(),
-                    io_err
-                ),
-                source_error: None,
-            });
-        }
-    };
+    let raw_json = import_file.raw_contents.as_str();
+    let file_path = PathBuf::from(import_file.filename.clone());
 
     // 2) Validate against the loader JSON Schema and deserialize into
     //    `RawLoaderFileWithSlices<'_>`.
-    let raw_file_with_slices =
-        match validate_and_deserialize_loader_file(&raw_json, import_file_path.as_path()) {
-            Ok(wrapper) => wrapper,
-            Err(err) => {
-                // Treat *any* HolonError from validation/deserialization as
-                // a schema validation failure at this layer. The underlying
-                // cause is preserved on the issue.
-                return Err(ImportFileParsingIssue {
-                    file_path: import_file_path.clone(),
-                    kind: ImportFileParsingIssueKind::SchemaValidationFailure,
-                    message: format!(
+    let raw_file_with_slices = match validate_and_deserialize_loader_file(
+        raw_json,
+        schema_json,
+        &import_file.filename,
+    ) {
+        Ok(wrapper) => wrapper,
+        Err(err) => {
+            return Err(ImportFileParsingIssue {
+                file_path: file_path.clone(),
+                kind: ImportFileParsingIssueKind::SchemaValidationFailure,
+                message: format!(
                     "Loader import file '{}' failed schema validation or top-level decoding: {}",
-                    import_file_path.display(),
-                    err
+                    import_file.filename, err
                 ),
-                    source_error: Some(err),
-                });
-            }
-        };
+                source_error: Some(err),
+            });
+        }
+    };
 
     // 3) Create the HolonLoaderBundle for this file and attach it to
     //    the HolonLoadSet.
     let bundle_ref = match create_loader_bundle_for_file(
         context,
         load_set_ref,
-        import_file_path.as_path(),
+        Path::new(&import_file.filename),
         &raw_file_with_slices.meta,
     ) {
         Ok(bundle) => bundle,
         Err(err) => {
             return Err(ImportFileParsingIssue {
-                file_path: import_file_path.clone(),
+                file_path: file_path.clone(),
                 kind: ImportFileParsingIssueKind::HolonConstructionFailure,
                 message: format!(
                     "Failed to create HolonLoaderBundle for file '{}': {}",
-                    import_file_path.display(),
-                    err
+                    import_file.filename, err
                 ),
                 source_error: Some(err),
             });
@@ -261,19 +239,18 @@ pub fn parse_single_import_file_into_bundle(
     for raw_value in raw_file_with_slices.holons {
         // Compute the 0-based UTF-8 byte offset for this holon slice.
         let holon_slice_str = raw_value.get();
-        let start_offset = compute_holon_start_offset(&raw_json, holon_slice_str);
+        let start_offset = compute_holon_start_offset(raw_json, holon_slice_str);
 
         // Decode the slice into our structured RawLoaderHolon.
         let raw_holon: RawLoaderHolon = match serde_json::from_str(holon_slice_str) {
             Ok(h) => h,
             Err(json_err) => {
                 return Err(ImportFileParsingIssue {
-                    file_path: import_file_path.clone(),
+                    file_path: file_path.clone(),
                     kind: ImportFileParsingIssueKind::JsonDecodingFailure,
                     message: format!(
                         "Failed to decode loader holon JSON in file '{}': {}",
-                        import_file_path.display(),
-                        json_err
+                        import_file.filename, json_err
                     ),
                     source_error: None,
                 });
@@ -286,13 +263,11 @@ pub fn parse_single_import_file_into_bundle(
                 Ok(r) => r,
                 Err(err) => {
                     return Err(ImportFileParsingIssue {
-                        file_path: import_file_path.clone(),
+                        file_path: file_path.clone(),
                         kind: ImportFileParsingIssueKind::HolonConstructionFailure,
                         message: format!(
                             "Failed to construct LoaderHolon '{}' from file '{}': {}",
-                            raw_holon.key,
-                            import_file_path.display(),
-                            err
+                            raw_holon.key, import_file.filename, err
                         ),
                         source_error: Some(err),
                     });
@@ -310,13 +285,11 @@ pub fn parse_single_import_file_into_bundle(
             &relationship_specs,
         ) {
             return Err(ImportFileParsingIssue {
-                file_path: import_file_path.clone(),
+                file_path: file_path.clone(),
                 kind: ImportFileParsingIssueKind::HolonConstructionFailure,
                 message: format!(
                     "Failed to attach relationships for LoaderHolon '{}' in file '{}': {}",
-                    raw_holon.key,
-                    import_file_path.display(),
-                    err
+                    raw_holon.key, import_file.filename, err
                 ),
                 source_error: Some(err),
             });
@@ -332,12 +305,12 @@ pub fn parse_single_import_file_into_bundle(
                 &normalized_type_key,
             ) {
                 return Err(ImportFileParsingIssue {
-                    file_path: import_file_path.clone(),
+                    file_path: file_path.clone(),
                     kind: ImportFileParsingIssueKind::HolonConstructionFailure,
                     message: format!(
                         "Failed to attach DescribedBy relationship for LoaderHolon '{}' in file '{}': {}",
                         raw_holon.key,
-                        import_file_path.display(),
+                        import_file.filename,
                         err
                     ),
                     source_error: Some(err),
@@ -358,15 +331,11 @@ pub fn parse_single_import_file_into_bundle(
 /// - On failure, return `HolonError::ValidationError`.
 pub fn validate_and_deserialize_loader_file<'a>(
     raw_json: &'a str,
-    import_file_path: &Path,
+    schema_json: &str,
+    filename: &str,
 ) -> Result<RawLoaderFileWithSlices<'a>, HolonError> {
-    // 1. First run schema validation using the on-disk schema file.
-    // NOTE: If BOOTSTRAP_IMPORT_SCHEMA_PATH is relative, it must be relative
-    //       to the working directory where the host is run, usually the
-    //       Conductora root.
-    let schema_path = Path::new(BOOTSTRAP_IMPORT_SCHEMA_PATH);
-
-    match validate_json_against_schema(schema_path, import_file_path) {
+    // 1. First run schema validation using in-memory schema + instance JSON.
+    match validate_json_str_against_schema_str(schema_json, raw_json) {
         Ok(()) => { /* schema validation succeeded */ }
         Err(validation_err) => {
             // Convert ValidationError into HolonError::ValidationError
@@ -377,8 +346,8 @@ pub fn validate_and_deserialize_loader_file<'a>(
     // 2. JSON is valid; now deserialize *borrowed* RawValue slices.
     serde_json::from_str::<RawLoaderFileWithSlices<'a>>(raw_json).map_err(|err| {
         HolonError::InvalidParameter(format!(
-            "Failed to decode loader import JSON after schema validation: {}",
-            err
+            "Failed to decode loader import JSON after schema validation (file '{}'): {}",
+            filename, err
         ))
     })
 }

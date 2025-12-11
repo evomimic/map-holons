@@ -231,7 +231,6 @@ impl WritableRelationship for StagedRelationshipMap {
             ))
         }
     }
-
 }
 
 impl Serialize for StagedRelationshipMap {

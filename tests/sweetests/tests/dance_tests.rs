@@ -182,7 +182,7 @@ async fn rstest_dance_tests(
                 .await
             }
             DanceTestStep::LoadHolonsClient {
-                import_files,
+                content_set,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
@@ -192,7 +192,7 @@ async fn rstest_dance_tests(
             } => {
                 shared_test::test_load_holons_client::execute_load_holons_client(
                     &mut test_state,
-                    import_files,
+                    content_set,
                     expect_staged,
                     expect_committed,
                     expect_links_created,

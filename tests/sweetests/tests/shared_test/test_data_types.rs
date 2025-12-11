@@ -1,6 +1,7 @@
 use derive_new::new;
 
 use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
+use holons_loader_client::ContentSet;
 use holons_prelude::prelude::*;
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -136,7 +137,7 @@ pub enum DanceTestStep {
         expect_total_loader_holons: MapInteger,
     },
     LoadHolonsClient {
-        import_files: Vec<PathBuf>,
+        content_set: ContentSet,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,

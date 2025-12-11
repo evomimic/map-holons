@@ -1,6 +1,5 @@
 use holons_loader_client::load_holons_from_files;
 use holons_prelude::prelude::*;
-use std::path::PathBuf;
 use tracing::info;
 
 use crate::shared_test::test_data_types::DanceTestExecutionState;
@@ -22,7 +21,7 @@ fn read_int_property(
 /// and assert loader response properties.
 pub async fn execute_load_holons_client(
     test_state: &mut DanceTestExecutionState,
-    import_files: Vec<PathBuf>,
+    content_set: holons_loader_client::ContentSet,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
@@ -32,7 +31,7 @@ pub async fn execute_load_holons_client(
 ) {
     let context = test_state.context();
 
-    let response_reference = load_holons_from_files(context.clone(), &import_files)
+    let response_reference = load_holons_from_files(context.clone(), content_set)
         .await
         .unwrap_or_else(|e| panic!("loader_client failed: {e:?}"));
 
@@ -77,23 +76,6 @@ fn dump_full_response(
 
     // Full essential-content dump (sorted, complete property map)
     out.push_str(&dump_essential(context, response));
-
-    out.push_str("----- important (best-effort loader fields) -----\n");
-    for p_name in [
-        CorePropertyTypeName::ErrorCount.as_property_name(),
-        CorePropertyTypeName::HolonsStaged.as_property_name(),
-        CorePropertyTypeName::HolonsCommitted.as_property_name(),
-        CorePropertyTypeName::LinksCreated.as_property_name(),
-        CorePropertyTypeName::DanceSummary.as_property_name(),
-        CorePropertyTypeName::TotalBundles.as_property_name(),
-        CorePropertyTypeName::TotalLoaderHolons.as_property_name(),
-    ]
-    .iter()
-    {
-        if let Ok(Some(val)) = response.property_value(context, p_name) {
-            out.push_str(&format!("  {} => {:?}\n", p_name.0 .0, val));
-        }
-    }
 
     out.push_str("===== end HolonLoadResponse dump =====\n");
     out

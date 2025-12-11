@@ -15,7 +15,6 @@
 //! The TypeScript side remains stateless and will later use lightweight
 //! dances/commands to navigate the response graph via references.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use base_types::MapString;
@@ -25,6 +24,7 @@ use holons_core::HolonReference;
 
 use crate::errors::map_parsing_issues_to_holon_error;
 use crate::parser::parse_files_into_load_set;
+use crate::types::ContentSet;
 
 /// Primary entry point for the host-side Holon Loader.
 ///
@@ -54,12 +54,17 @@ use crate::parser::parse_files_into_load_set;
 ///   inside the `HolonServiceApi` implementation.
 pub async fn load_holons_from_files(
     context: Arc<dyn HolonsContextBehavior>,
-    import_file_paths: &[PathBuf],
+    content_set: ContentSet,
 ) -> Result<TransientReference, HolonError> {
-    // Guard against an empty file list; this is almost certainly a caller bug.
-    if import_file_paths.is_empty() {
+    // Guard against missing content; this is almost certainly a caller bug.
+    if content_set.files_to_load.is_empty() {
         return Err(HolonError::InvalidParameter(
-            "load_holons_from_files: no import file paths provided".into(),
+            "load_holons_from_files: no import files provided".into(),
+        ));
+    }
+    if content_set.schema.raw_contents.trim().is_empty() {
+        return Err(HolonError::InvalidParameter(
+            "load_holons_from_files: schema contents are empty".into(),
         ));
     }
 
@@ -71,7 +76,7 @@ pub async fn load_holons_from_files(
     let load_set_key: Option<MapString> = Some(MapString("HolonLoadSet".to_string()));
 
     let load_set_reference: HolonReference =
-        match parse_files_into_load_set(context.as_ref(), load_set_key, import_file_paths) {
+        match parse_files_into_load_set(context.as_ref(), load_set_key, &content_set) {
             Ok(reference) => reference,
             Err(issues) => {
                 let error = map_parsing_issues_to_holon_error(&issues);

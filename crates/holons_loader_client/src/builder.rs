@@ -362,10 +362,6 @@ fn json_value_to_base_value(property_name: &str, value: &Value) -> Result<BaseVa
         Value::Array(_) | Value::Object(_) | Value::Null => {
             Ok(BaseValue::StringValue(MapString(value.to_string())))
         }
-        other => Err(HolonError::InvalidParameter(format!(
-            "Property '{}' uses unsupported JSON value '{}'; only string, boolean, integer, array, object, or null values are supported",
-            property_name, other
-        ))),
     }
 }
 
