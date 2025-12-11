@@ -36,10 +36,9 @@ pub fn setup_book_author_steps_with_context(
     let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
     book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
             &*fixture_context,
-            PropertyName(MapString("Description".to_string())),
-            BaseValue::StringValue(MapString(
-                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_string(),
-            )))?;
+            "Description",
+            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
+            )?;
 
     // Mint TestReferences (tokens)
     let book_transient_token = fixture_holons.add_transient_with_key(
@@ -108,7 +107,7 @@ pub fn setup_book_author_steps_with_context(
         .with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?
         .with_property_value(
             &*fixture_context,
-            Description,
+            "Description",
             "We publish Holons for testing purposes",
         )?;
     // Mint
