@@ -90,6 +90,7 @@ use holons_prelude::prelude::*;
 #[rstest]
 // #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 // #[case::delete_holon(delete_holon_fixture())]
+<<<<<<< HEAD
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 #[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
@@ -98,6 +99,16 @@ use holons_prelude::prelude::*;
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
+=======
+// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+// #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
+// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+// #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+// #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
+// #[case::stage_new_version_test(stage_new_version_fixture())]
+// #[case::load_holons_test(loader_incremental_fixture())]
+>>>>>>> 2c612f9 (ergonomic properties passing)
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup

@@ -92,7 +92,7 @@ impl ResolvedTestReference {
         let expected_content = self.source_token.expected_content();
         let actual_content = &self.resulting_reference.essential_content(context)?;
 
-        // = // HACK -> TODO: REMOVE! // = //
+        // = // HACK -> TODO: REMOVE! // = //  -- pending harness support for comparing essential relationship content for holon variants other than TransientReference
         //
         let mut hack = actual_content.clone();
         hack.relationships = expected_content.relationships.clone();
