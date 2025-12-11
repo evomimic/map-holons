@@ -106,51 +106,6 @@ impl StagedRelationshipMap {
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
-
-    /// Adds holon references with precomputed keys, avoiding key lookups during mutation.
-    pub fn add_related_holons_with_keys(
-        &mut self,
-        relationship_name: RelationshipName,
-        entries: Vec<(HolonReference, Option<MapString>)>,
-    ) -> Result<(), HolonError> {
-        let lock = self
-            .map
-            .entry(relationship_name)
-            .or_insert_with(|| Arc::new(RwLock::new(HolonCollection::new_staged())));
-        lock.write()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire write lock on holon collection: {}",
-                    e
-                ))
-            })?
-            .add_references_with_keys(entries)?;
-        Ok(())
-    }
-
-    /// Removes holon references with precomputed keys, avoiding key lookups during mutation.
-    pub fn remove_related_holons_with_keys(
-        &mut self,
-        relationship_name: &RelationshipName,
-        entries: Vec<(HolonReference, Option<MapString>)>,
-    ) -> Result<(), HolonError> {
-        if let Some(lock) = self.map.get(relationship_name) {
-            lock.write()
-                .map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire write lock on holon collection: {}",
-                        e
-                    ))
-                })?
-                .remove_references_with_keys(entries)?;
-            Ok(())
-        } else {
-            Err(HolonError::InvalidRelationship(
-                format!("Invalid relationship: {}", relationship_name),
-                "No matching collection found in map".to_string(),
-            ))
-        }
-    }
 }
 
 impl ReadableRelationship for StagedRelationshipMap {
@@ -207,6 +162,27 @@ impl WritableRelationship for StagedRelationshipMap {
         Ok(())
     }
 
+    /// Adds holon references with precomputed keys, avoiding key lookups during mutation.
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        let lock = self
+            .map
+            .entry(relationship_name)
+            .or_insert_with(|| Arc::new(RwLock::new(HolonCollection::new_staged())));
+        lock.write()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on holon collection: {}",
+                    e
+                ))
+            })?
+            .add_references_with_keys(entries)?;
+        Ok(())
+    }
+
     /// Removes holon references from a staged relationship, erroring if the relationship is absent.
     fn remove_related_holons(
         &mut self,
@@ -223,6 +199,30 @@ impl WritableRelationship for StagedRelationshipMap {
                     ))
                 })?
                 .remove_references(context, holons)?;
+            Ok(())
+        } else {
+            Err(HolonError::InvalidRelationship(
+                format!("Invalid relationship: {}", relationship_name),
+                "No matching collection found in map".to_string(),
+            ))
+        }
+    }
+
+    /// Removes holon references with precomputed keys, avoiding key lookups during mutation.
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        if let Some(lock) = self.map.get(relationship_name) {
+            lock.write()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire write lock on holon collection: {}",
+                        e
+                    ))
+                })?
+                .remove_references_with_keys(entries)?;
             Ok(())
         } else {
             Err(HolonError::InvalidRelationship(

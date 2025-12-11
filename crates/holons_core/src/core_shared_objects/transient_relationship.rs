@@ -123,6 +123,7 @@ impl TransientRelationshipMap {
             .add_references_with_keys(entries)?;
         Ok(())
     }
+
     /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
     ///
     /// If the `relationship_name` exists in the `TransientRelationshipMap`, this method returns the
@@ -257,6 +258,14 @@ impl WritableRelationship for TransientRelationshipMap {
         TransientRelationshipMap::add_related_holons(self, context, relationship_name, holons)
     }
 
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        TransientRelationshipMap::add_related_holons_with_keys(self, relationship_name, entries)
+    }
+
     fn remove_related_holons(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -264,6 +273,14 @@ impl WritableRelationship for TransientRelationshipMap {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         TransientRelationshipMap::remove_related_holons(self, context, relationship_name, holons)
+    }
+
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError> {
+        TransientRelationshipMap::remove_related_holons_with_keys(self, relationship_name, entries)
     }
 }
 
