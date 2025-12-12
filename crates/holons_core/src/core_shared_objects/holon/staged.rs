@@ -245,6 +245,13 @@ impl ReadableHolonState for StagedHolon {
         }
     }
 
+    fn into_node_model(&self) -> HolonNodeModel {
+        HolonNodeModel {
+            original_id: self.original_id.clone(),
+            property_map: self.property_map.clone(),
+        }
+    }
+
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn key(&self) -> Result<Option<MapString>, HolonError> {
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
@@ -280,13 +287,6 @@ impl ReadableHolonState for StagedHolon {
             .ok_or(HolonError::InvalidParameter("StagedHolon must have a key".to_string()))?;
 
         Ok(MapString(format!("{}__{}_staged", key.0, &self.version.0.to_string())))
-    }
-
-    fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel {
-            original_id: self.original_id.clone(),
-            property_map: self.property_map.clone(),
-        }
     }
 
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {

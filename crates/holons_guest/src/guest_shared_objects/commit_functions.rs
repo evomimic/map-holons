@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
-
 use hdk::prelude::*;
 use holons_guest_integrity::type_conversions::*;
 use holons_guest_integrity::HolonNode;
+use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
 
 // use crate::{
 //     create_holon_node, save_smartlink, update_holon_node, SmartLink, UpdateHolonNodeInput,
@@ -194,40 +194,110 @@ pub fn commit(
 
     // === SECOND PASS: Commit relationships ===
     //
-    // We can iterate all staged references again; `commit_relationships` is a no-op
-    // unless the holon is in `StagedState::Committed(_)`.
+    // Snapshot the committed LocalId + relationship collections under a short-lived read lock,
+    // then drop the lock before resolving targets / computing keys / saving smartlinks.
+    // This avoids re-entrant locking when a relationship includes a self-edge.
     for staged_reference in staged_references {
-        // Resolve the holon and take a write lock so we can attach an error if needed
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
-        let mut holon_write = rc_holon.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire write lock on staged holon during relationship commit: {}",
-                e
-            ))
-        })?;
 
-        if let Holon::Staged(staged_holon) = &mut *holon_write {
-            if let Err(error) = commit_relationships(context, staged_holon) {
-                // Record the error on the holon and mark the overall response incomplete
-                staged_holon.add_error(error.clone())?;
-                response_reference.with_property_value(
-                    context,
-                    CommitRequestStatus,
-                    "Incomplete",
-                )?;
+        // 1) Snapshot what we need while holding only a read lock.
+        //
+        // NOTE: This must NOT early-return from `commit()`; non-staged holons are simply skipped
+        // in Pass 2 (relationship persistence is only for staged holons in Committed state).
+        let snapshot: Option<(LocalId, Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>)> = {
+            let holon_read = rc_holon.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged holon during relationship commit snapshot: {}",
+                    e
+                ))
+            })?;
 
-                warn!(
-                    "Attempt to commit relationships failed for {:?}: {:?}",
-                    staged_reference.temporary_id(),
-                    error
-                );
+            match &*holon_read {
+                Holon::Staged(staged_holon) => match staged_holon.get_staged_state() {
+                    StagedState::Committed(local_id) => {
+                        // Clone the relationship map out (cloning Arcs is cheap).
+                        let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
+                        let pairs = staged_relationship_map
+                            .map
+                            .iter()
+                            .map(|(name, collection_rc)| (name.clone(), collection_rc.clone()))
+                            .collect::<Vec<_>>();
+
+                        Some((local_id.clone(), pairs))
+                    }
+                    // Only committed holons participate in relationship persistence.
+                    _ => None,
+                },
+                other => {
+                    trace!(
+                        "Skipping relationship commit for {:?} (not a staged holon: {:?}).",
+                        staged_reference.temporary_id(),
+                        other
+                    );
+                    None
+                }
             }
+        };
+
+        let Some((source_local_id, relationship_collections)) = snapshot else {
+            continue;
+        };
+
+        // 2) Commit relationships with NO source-holon lock held.
+        //
+        // We stop at the first relationship error for a given source holon, record it on the holon,
+        // and mark the overall response incomplete. This keeps failure handling bounded and avoids
+        // cascading secondary errors.
+        let mut first_error: Option<HolonError> = None;
+
+        for (name, holon_collection_rc) in relationship_collections {
+            debug!("COMMITTING {:#?} relationship", name.0.clone());
+
+            let holon_collection = holon_collection_rc.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on relationship collection for {}: {}",
+                    name.0 .0, e
+                ))
+            })?;
+
+            if let Err(err) = commit_relationship(
+                context,
+                source_local_id.clone(),
+                name.clone(),
+                &holon_collection,
+            ) {
+                first_error = Some(err);
+                break;
+            }
+        }
+
+        // 3) If anything failed, re-lock only to attach the error and mark the response incomplete.
+        if let Some(error) = first_error {
+            let mut holon_write = rc_holon.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on staged holon for relationship error writeback: {}",
+                    e
+                ))
+            })?;
+
+            if let Holon::Staged(staged_holon) = &mut *holon_write {
+                staged_holon.add_error(error.clone())?;
+            }
+
+            response_reference.with_property_value(context, CommitRequestStatus, "Incomplete")?;
+
+            warn!(
+                "Attempt to commit relationships failed for {:?}: {:?}",
+                staged_reference.temporary_id(),
+                error
+            );
         }
     }
 
-    info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
+    //info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
     // Optionally dump here if you have a helper like `as_json` for references/ids.
 
+    info!("Commit completed: all staged holons processed and commit response constructed.");
     // Done — return the CommitResponse holon reference
     Ok(response_reference)
 }

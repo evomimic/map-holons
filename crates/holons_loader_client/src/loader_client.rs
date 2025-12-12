@@ -15,12 +15,12 @@
 //! The TypeScript side remains stateless and will later use lightweight
 //! dances/commands to navigate the response graph via references.
 
-use std::sync::Arc;
-
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::reference_layer::{load_holons, HolonsContextBehavior, TransientReference};
 use holons_core::HolonReference;
+use std::sync::Arc;
+use tracing::debug;
 
 use crate::errors::map_parsing_issues_to_holon_error;
 use crate::parser::parse_files_into_load_set;
@@ -56,6 +56,7 @@ pub async fn load_holons_from_files(
     context: Arc<dyn HolonsContextBehavior>,
     content_set: ContentSet,
 ) -> Result<TransientReference, HolonError> {
+    debug!("[loader-client] start load_holons_from_files");
     // Guard against missing content; this is almost certainly a caller bug.
     if content_set.files_to_load.is_empty() {
         return Err(HolonError::InvalidParameter(
@@ -101,9 +102,11 @@ pub async fn load_holons_from_files(
     // Phase 3: Invoke the LoadHolons dance via the reference-layer helper.
     //
     // This delegates to the client holon service (`HolonServiceApi`) which
-    // builds the dance request, calls into the guest (Holochain), and
+    // builds the dance request, calls into the guest, and
     // returns a `TransientReference` to the `HolonLoadResponse` holon.
+    debug!("[loader-client] invoking load_holons dance");
     let response_reference = load_holons(context.as_ref(), load_set_transient)?;
+    debug!("[loader-client] load_holons dance returned");
 
     Ok(response_reference)
 }

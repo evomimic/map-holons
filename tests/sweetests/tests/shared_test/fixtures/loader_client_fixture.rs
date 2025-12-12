@@ -40,7 +40,7 @@ pub async fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
         content_set,
         expect_staged: MapInteger(182),
         expect_committed: MapInteger(182),
-        expect_links_created: MapInteger(741),
+        expect_links_created: MapInteger(1060),
         expect_errors: MapInteger(0),
         expect_total_bundles: MapInteger(7),
         expect_total_loader_holons: MapInteger(182),
