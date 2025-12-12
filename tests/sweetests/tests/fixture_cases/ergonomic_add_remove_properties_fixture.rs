@@ -1,5 +1,5 @@
 use holons_core::core_shared_objects::holon::{EssentialHolonContent, EssentialRelationshipMap};
-use holons_test::{DancesTestCase, FixtureHolons};
+use holons_test::DancesTestCase;
 use pretty_assertions::assert_eq;
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::{error, info};
@@ -18,7 +18,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),
     );
     let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
     // == //
 
     // Modifies an existing property and adds a new property, passing Enum, MapString, String, and string literal

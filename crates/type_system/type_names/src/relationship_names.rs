@@ -30,15 +30,13 @@ impl ToRelationshipName for String {
 
 impl ToRelationshipName for MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        // Assume already canonical; pass through unchanged
-        RelationshipName(self)
+        canonical_relationship_name(self.0)
     }
 }
 
 impl ToRelationshipName for &MapString {
     fn to_relationship_name(self) -> RelationshipName {
-        // Assume already canonical; pass through unchanged (clone)
-        RelationshipName(self.clone())
+        canonical_relationship_name(self.0.clone())
     }
 }
 

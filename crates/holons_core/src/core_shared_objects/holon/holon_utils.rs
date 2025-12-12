@@ -130,9 +130,7 @@ impl From<StagedRelationshipMap> for EssentialRelationshipMap {
 
         for (name, arc_lock) in map.iter() {
             let collection = arc_lock.read().unwrap();
-            // TODO: figure out how best to change this conversion to CollectionState::Transient so that this implementation is friendly
-            // to purposes outside of testing.
-            essential.insert(name.clone(), collection.clone_for_new_source().unwrap());
+            essential.insert(name.clone(), collection.clone());
         }
         Self::new(essential)
     }
