@@ -598,8 +598,8 @@ impl LoaderRefResolver {
         context: &dyn HolonsContextBehavior,
         relationship_reference: &TransientReference,
     ) -> Result<(HolonReference, Vec<HolonReference>), HolonError> {
-        let source_relationship = CoreRelationshipTypeName::ReferenceSource.as_relationship_name();
-        let target_relationship = CoreRelationshipTypeName::ReferenceTarget.as_relationship_name();
+        let source_relationship = CoreRelationshipTypeName::ReferenceSource;
+        let target_relationship = CoreRelationshipTypeName::ReferenceTarget;
 
         // Get LoaderHolonReference wrappers (not the actual holons yet)
         let source_refs_handle =

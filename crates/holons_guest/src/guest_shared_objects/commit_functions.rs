@@ -392,33 +392,63 @@ fn save_smartlinks_for_collection(
 
     let key_prop = CorePropertyTypeName::Key.as_property_name();
 
-    for holon_reference in collection.get_members() {
-        // Only commit references to holons with ids (i.e., Saved)
-        if let Ok(target_id) = holon_reference.holon_id(context) {
-            let key_option = holon_reference.key(context)?;
-            let smartlink: SmartLink = if let Some(key) = key_option {
-                let mut prop_vals: PropertyMap = BTreeMap::new();
-                prop_vals.insert(key_prop.clone(), BaseValue::StringValue(key));
-                SmartLink {
-                    from_address: source_id.clone(),
-                    to_address: target_id,
-                    relationship_name: name.clone(),
-                    smart_property_values: Some(prop_vals),
-                }
-            } else {
-                SmartLink {
-                    from_address: source_id.clone(),
-                    to_address: target_id,
-                    relationship_name: name.clone(),
-                    smart_property_values: None,
-                }
-            };
+    let members = collection.get_members();
+    debug!("Relationship {:?} has {} members to commit", name.0 .0, members.len());
 
-            debug!("saving smartlink: {:#?}", smartlink);
-            save_smartlink(smartlink)?;
+    for (idx, holon_reference) in members.iter().enumerate() {
+        debug!("Target index={} holon_reference={:#?}", idx, holon_reference);
+
+        // 1) Narrow down: do we get through holon_id?
+        let target_id = match holon_reference.holon_id(context) {
+            Ok(id) => {
+                debug!("Resolved holon_id for index {}: {:?}", idx, id);
+                id
+            }
+            Err(err) => {
+                warn!(
+                    "Failed to get holon_id for relationship {:?} at index {}: {:?}",
+                    name.0 .0, idx, err
+                );
+                continue;
+            }
+        };
+
+        // 2) Narrow down: do we get through key()?
+        let key_option = match holon_reference.key(context) {
+            Ok(k) => {
+                debug!("Resolved key for index {}: {:?}", idx, k);
+                k
+            }
+            Err(err) => {
+                error!(
+                    "Error getting key for relationship {:?} at index {}: {:?}",
+                    name.0 .0, idx, err
+                );
+                return Err(err);
+            }
+        };
+
+        let smartlink: SmartLink = if let Some(key) = key_option {
+            let mut prop_vals: PropertyMap = BTreeMap::new();
+            prop_vals.insert(key_prop.clone(), BaseValue::StringValue(key));
+            SmartLink {
+                from_address: source_id.clone(),
+                to_address: target_id,
+                relationship_name: name.clone(),
+                smart_property_values: Some(prop_vals),
+            }
         } else {
-            warn!("Tried to commit target : {:#?} without HolonId", holon_reference);
-        }
+            SmartLink {
+                from_address: source_id.clone(),
+                to_address: target_id,
+                relationship_name: name.clone(),
+                smart_property_values: None,
+            }
+        };
+
+        debug!("saving smartlink (idx={}): {:#?}", idx, smartlink);
+        save_smartlink(smartlink)?;
     }
+
     Ok(())
 }
