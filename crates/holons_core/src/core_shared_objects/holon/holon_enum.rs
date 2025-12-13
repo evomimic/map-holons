@@ -183,6 +183,26 @@ impl WriteableHolonState for Holon {
         }
     }
 
+    /// Adds related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError> {
+        match self {
+            Holon::Transient(h) => {
+                h.add_related_holons_with_keys(relationship_name, entries)?;
+            }
+            Holon::Staged(h) => {
+                h.add_related_holons_with_keys(relationship_name, entries)?;
+            }
+            Holon::Saved(_) => {
+                return Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
+            }
+        }
+        Ok(self)
+    }
+
     fn increment_version(&mut self) -> Result<(), HolonError> {
         match self {
             Holon::Transient(h) => h.increment_version(),
@@ -236,6 +256,26 @@ impl WriteableHolonState for Holon {
                 Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
             }
         }
+    }
+
+    /// Removes related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError> {
+        match self {
+            Holon::Transient(h) => {
+                h.remove_related_holons_with_keys(relationship_name, entries)?;
+            }
+            Holon::Staged(h) => {
+                h.remove_related_holons_with_keys(relationship_name, entries)?;
+            }
+            Holon::Saved(_) => {
+                return Err(HolonError::NotAccessible("Write".to_string(), "Saved".to_string()))
+            }
+        }
+        Ok(self)
     }
 
     fn update_original_id(&mut self, id: Option<LocalId>) -> Result<(), HolonError> {

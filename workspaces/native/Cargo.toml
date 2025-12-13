@@ -1,4 +1,3 @@
-
 [package]
 name = "native-build"
 version = "0.1.0"
@@ -6,6 +5,9 @@ edition = "2021"
 
 # Explicitly opt OUT of the root workspace
 [workspace]
+
+[workspace.dependencies]
+tokio = { version = "1.48", features = ["rt", "rt-multi-thread"] }
 
 [lib]
 path = "src/lib.rs"
@@ -30,6 +32,7 @@ holons_trust_channel = { path = "../../crates/holons_trust_channel" }
 holons_client = { path = "../../crates/holons_client" }
 
 # --- Receptors (native-only, required!) ---
+holons_loader_client = { path = "../../crates/holons_loader_client" }
 holons_receptor = { path = "../../crates/holons_receptor" }
 holochain_receptor = { path = "../../crates/holochain_receptor" }
 

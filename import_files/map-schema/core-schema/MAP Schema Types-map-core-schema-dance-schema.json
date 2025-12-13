@@ -1,24 +1,24 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-10-08T11:06:19",
+    "generated_at": "2025-12-08T13:09:06",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json",
-      "MAP Schema Types-map-core-schema-concrete-value-types.json"
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
   },
   "holons": [
     {
-      "key": "MAP Dance Schema-v0.0.2",
+      "key": "MAP Dance Schema-v0.0.3",
       "type": "#SchemaType",
       "properties": {
-        "type_name": "MAP Dance Schema-v0.0.2",
-        "display_name": "MAP Dance Schema-v0.0.2",
+        "type_name": "MAP Dance Schema-v0.0.3",
+        "display_name": "MAP Dance Schema-v0.0.3",
         "instance_type_kind": "Holon",
         "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema.",
         "is_abstract_type": false,
@@ -64,7 +64,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -121,7 +121,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -145,7 +145,48 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(DanceResponseType)-[ResponseBody]->(HolonType)"
+            "$ref": "#(DanceResponseType)-[ResponseBody]->(ResponseBodyType)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ResponseBodyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ResponseBodyType",
+        "type_name_plural": "ResponseBodyTypes",
+        "display_name": "Response Body Type",
+        "display_name_plural": "Response Body Types",
+        "instance_type_kind": "Holon",
+        "description": "Abstract holon type for structured response bodies returned from dances.",
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "#(ResponseBodyType)-[ResponseBodyFor]->(DanceResponseType)"
           }
         }
       ]
@@ -168,7 +209,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -239,7 +280,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -289,7 +330,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -343,7 +384,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -391,7 +432,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -447,7 +488,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -497,7 +538,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -553,7 +594,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -603,7 +644,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -659,7 +700,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -709,7 +750,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -745,7 +786,7 @@
       ]
     },
     {
-      "key": "(DanceResponseType)-[ResponseBody]->(HolonType)",
+      "key": "(DanceResponseType)-[ResponseBody]->(ResponseBodyType)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "ResponseBody",
@@ -753,7 +794,7 @@
         "display_name": "ResponseBody",
         "display_name_plural": "ResponseBody Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Links a DanceResponseType to the HolonType that will serve as the response body.",
+        "description": "Links a DanceResponseType to the ResponseBodyType that will serve as the structured response body.",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -765,7 +806,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -789,13 +830,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "#ResponseBodyType"
           }
         }
       ]
     },
     {
-      "key": "(HolonType)-[ResponseBodyFor]->(DanceResponseType)",
+      "key": "(ResponseBodyType)-[ResponseBodyFor]->(DanceResponseType)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "ResponseBodyFor",
@@ -803,7 +844,7 @@
         "display_name": "ResponseBodyFor",
         "display_name_plural": "ResponseBodyFor Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Inverse of ResponseBody, from HolonType to ResponseBodyType.",
+        "description": "Inverse of ResponseBody, from ResponseBodyType to DanceResponseType.",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -815,7 +856,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -833,13 +874,13 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(DanceResponseType)-[ResponseBody]->(HolonType)"
+            "$ref": "#(DanceResponseType)-[ResponseBody]->(ResponseBodyType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "#ResponseBodyType"
           }
         },
         {
@@ -866,7 +907,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -905,7 +946,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -944,7 +985,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -983,7 +1024,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1022,7 +1063,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1061,7 +1102,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1100,7 +1141,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1139,7 +1180,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1178,7 +1219,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1217,7 +1258,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1256,7 +1297,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1289,7 +1330,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1328,7 +1369,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1367,7 +1408,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1406,7 +1447,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1445,7 +1486,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1484,7 +1525,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1523,7 +1564,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1562,7 +1603,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1601,7 +1642,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1640,7 +1681,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1679,7 +1720,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1718,7 +1759,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1751,7 +1792,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1790,7 +1831,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1829,7 +1870,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1868,7 +1909,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Dance Schema-v0.0.2"
+            "$ref": "#MAP Dance Schema-v0.0.3"
           }
         },
         {
@@ -1887,6 +1928,457 @@
           "name": "VariantOf",
           "target": {
             "$ref": "#DanceEngine"
+          }
+        }
+      ]
+    },
+    {
+      "key": "CommitResponse.ResponseBodyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "CommitResponse",
+        "type_name_plural": "CommitResponses",
+        "display_name": "Commit Response",
+        "display_name_plural": "Commit Responses",
+        "instance_type_kind": "Holon",
+        "description": "Response body summarizing the result of a commit request.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ResponseBodyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#CommitsAttempted.PropertyType"
+            },
+            {
+              "$ref": "#CommitRequestStatus.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitsAttempted.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "CommitsAttempted",
+        "type_name_plural": "CommitsAttempteds",
+        "display_name": "commits_attempted",
+        "display_name_plural": "commits_attempted",
+        "instance_type_kind": "Property",
+        "description": "Number of holons the commit operation attempted to save.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "CommitRequestStatus",
+        "type_name_plural": "CommitRequestStatus",
+        "display_name": "CommitRequestStatus",
+        "display_name_plural": "CommitRequestStatus",
+        "instance_type_kind": "Value.Enum",
+        "description": "Enum value type for commit request outcomes (Complete, Incomplete).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.Complete",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Complete",
+        "type_name_plural": "Completes",
+        "display_name": "Complete",
+        "display_name_plural": "Completes",
+        "instance_type_kind": "EnumVariant",
+        "description": "All staged holons committed; no staged holons remain.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#CommitRequestStatus"
+          }
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.Incomplete",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Incomplete",
+        "type_name_plural": "Incompletes",
+        "display_name": "Incomplete",
+        "display_name_plural": "Incompletes",
+        "instance_type_kind": "EnumVariant",
+        "description": "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#CommitRequestStatus"
+          }
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "CommitRequestStatus",
+        "type_name_plural": "CommitRequestStatuses",
+        "display_name": "commit_request_status",
+        "display_name_plural": "commit_request_statuses",
+        "instance_type_kind": "Property",
+        "description": "Overall status of the commit request (Complete or Incomplete).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#CommitRequestStatus"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(CommitResponse.ResponseBodyType)-[SavedHolons]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SavedHolons",
+        "type_name_plural": "SavedHolonsRelationships",
+        "display_name": "SavedHolons",
+        "display_name_plural": "SavedHolons Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a CommitResponse to each holon successfully saved by this commit.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#CommitResponse.ResponseBodyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[SavedByCommit]->(CommitResponse.ResponseBodyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SavedByCommit",
+        "type_name_plural": "SavedByCommitRelationships",
+        "display_name": "SavedByCommit",
+        "display_name_plural": "SavedByCommit Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(CommitResponse.ResponseBodyType)-[SavedHolons]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#CommitResponse.ResponseBodyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(CommitResponse.ResponseBodyType)-[AbandonedHolons]->(HolonType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "AbandonedHolons",
+        "type_name_plural": "AbandonedHolonsRelationships",
+        "display_name": "AbandonedHolons",
+        "display_name_plural": "AbandonedHolons Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#CommitResponse.ResponseBodyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[AbandonedByCommit]->(CommitResponse.ResponseBodyType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "AbandonedByCommit",
+        "type_name_plural": "AbandonedByCommitRelationships",
+        "display_name": "AbandonedByCommit",
+        "display_name_plural": "AbandonedByCommit Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(CommitResponse.ResponseBodyType)-[AbandonedHolons]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#CommitResponse.ResponseBodyType"
           }
         }
       ]

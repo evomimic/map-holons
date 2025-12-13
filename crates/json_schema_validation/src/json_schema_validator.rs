@@ -36,3 +36,26 @@ pub fn validate_json_against_schema(
         Err(ValidationError::JsonSchemaError(errors.join("\n")))
     }
 }
+
+/// Validate JSON strings against a schema string (in-memory).
+pub fn validate_json_str_against_schema_str(
+    schema_json: &str,
+    instance_json: &str,
+) -> Result<(), ValidationError> {
+    let schema: Value = serde_json::from_str(schema_json)
+        .map_err(|e| ValidationError::JsonSchemaError(format!("Invalid schema JSON: {e}")))?;
+
+    let validator = validator_for(&schema)
+        .map_err(|e| ValidationError::JsonSchemaError(format!("Schema compile error: {e}")))?;
+
+    let instance: Value = serde_json::from_str(instance_json)
+        .map_err(|e| ValidationError::JsonSchemaError(format!("Invalid input JSON: {e}")))?;
+
+    let errors: Vec<String> = validator.iter_errors(&instance).map(|e| e.to_string()).collect();
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(ValidationError::JsonSchemaError(errors.join("\n")))
+    }
+}

@@ -20,7 +20,7 @@ use super::{fetch_links_to_all_holons, get_all_relationship_links};
 use crate::guest_shared_objects::{commit_functions, get_relationship_links};
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
 use crate::{create_local_path, get_holon_by_path, try_from_record};
-use base_types::{BaseValue, MapString};
+use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
@@ -34,7 +34,6 @@ use holons_core::{
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
-use type_names::CorePropertyTypeName;
 
 #[derive(Clone)]
 pub struct GuestHolonService {

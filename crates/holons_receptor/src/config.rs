@@ -1,13 +1,11 @@
+use crate::local_receptor::LocalReceptor;
 use async_trait::async_trait;
 use core_types::HolonError;
 use holochain_receptor::HolochainReceptor;
 use holons_client::shared_types::{
-    holon_space::SpaceInfo,
-    map_request::MapRequest,
+    base_receptor::ReceptorBehavior, holon_space::SpaceInfo, map_request::MapRequest,
     map_response::MapResponse,
-    base_receptor::ReceptorBehavior,
 };
-use crate::local_receptor::LocalReceptor;
 
 #[derive(Debug)]
 pub enum Receptor {
@@ -17,11 +15,7 @@ pub enum Receptor {
 
 #[async_trait]
 impl ReceptorBehavior for Receptor {
-    async fn handle_map_request(
-        &self,
-        request: MapRequest,
-    ) -> Result<MapResponse, HolonError> {
-
+    async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         match self {
             Receptor::Holochain(h) => h.handle_map_request(request).await,
             Receptor::Local(l) => l.handle_map_request(request).await,

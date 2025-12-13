@@ -43,6 +43,8 @@ pub enum HolonError {
     InvalidRelationship(String, String), // TODO: move this error to ValidationError
     #[error("Updates requires: {0}")]
     InvalidUpdate(String),
+    #[error("Loader import file parsing failed: {0}")]
+    LoaderParsingError(String),
     #[error("Miscellaneous error: {0}")]
     Misc(String),
     #[error("{0} relationship is missing StagedCollection")]

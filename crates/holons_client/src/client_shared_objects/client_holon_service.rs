@@ -1,23 +1,55 @@
+//! ClientHolonService
+//! ------------------
+//! This module provides the *client-side* implementation of the `HolonServiceApi`.
+//!
+//! The guest-side (`holons_guest`) implementation performs persistence directly on the
+//! Holochain DHT. The client-side version cannot do so; instead, *every operation that
+//! interacts with saved holons must be executed as an asynchronous Dance* via the
+//! DanceInitiator.
+//!
+//! Because `HolonServiceApi` is intentionally **synchronous** (shared by both guest and
+//! client builds), this file implements the **sync → async → sync bridge** for all
+//! dance-based operations:
+//!
+//!   1. A synchronous API function (e.g., `commit_internal`, `load_holons_internal`)
+//!      constructs a dance request.
+//!   2. It invokes the DanceInitiator's async `initiate_dance(...)` method.
+//!   3. The returned `Future` is executed to completion using
+//!      `run_future_synchronously`, ensuring that callers never need to be async.
+//!   4. The resulting `DanceResponse` is interpreted and converted back into a
+//!      `HolonReference`, `HolonCollection`, or a `HolonError`.
+//!
+//! This makes the client holon service a **pure request/response layer**: it never touches
+//! persistence, never owns a runtime, and remains compatible with synchronous application
+//! environments (Tauri, desktop/native, CLI tools, etc.).
+//!
+//! Key architectural notes:
+//!   • This module must *not* assume the presence of a Tokio runtime.
+//!   • The async runtime used to execute dances is entirely owned by the
+//!     DanceInitiator / hosting layer (e.g., Conductora).
+//!   • All concurrency concerns are isolated inside the dance initiation logic.
+//!
+//! As such, `ClientHolonService` is the canonical boundary between synchronous client
+//! code and the asynchronous, choreography-driven MAP backend.
+
 #![allow(unused_variables)]
 
-use base_types::{MapString};
 use core_types::{HolonError, HolonId};
-use holons_core::{ReadableHolon};
+use futures_executor::block_on;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
+use holons_core::ReadableHolon;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
-    HolonReference, RelationshipMap, SmartReference, StagedReference,
+    HolonReference, RelationshipMap,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
-use futures_executor::block_on;
-// use tokio::runtime::Handle;
-// use tokio::runtime::Builder;
-
+use tokio::runtime::Handle;
+use tokio::task::block_in_place;
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -37,7 +69,8 @@ impl HolonServiceApi for ClientHolonService {
         // 2. Run the dance
         let initiator = context.get_space_manager().get_dance_initiator()?;
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
+        let response =
+            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
 
         // 3. Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
@@ -68,7 +101,6 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
-
     fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         //let request = holon_dance_builders::build_delete_holon_dance_request(*local_id)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
@@ -87,13 +119,13 @@ impl HolonServiceApi for ClientHolonService {
         //let initiator = context.get_space_manager().get_dance_initiator()?;
         // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        //not sure how to do this one? 
+        //not sure how to do this one?
 
         todo!()
     }
 
     fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
-     // no context.. not sure what to do here
+        // no context.. not sure what to do here
         todo!()
     }
 
@@ -113,103 +145,81 @@ impl HolonServiceApi for ClientHolonService {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
         let initiator = context.get_space_manager().get_dance_initiator()?;
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
+        let response =
+            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
         if response.status_code != ResponseStatusCode::OK {
-             return Err(HolonError::Misc(format!(
-                 "commit dance failed: {:?} — {}",
-                 response.status_code, response.description.0
-             )));
-         }
+            return Err(HolonError::Misc(format!(
+                "get all holons dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
         match response.body {
             ResponseBody::HolonCollection(collection) => Ok(collection),
             _ => Err(HolonError::InvalidParameter(
                 "GetAllHolons: expected ResponseBody::HolonCollection".into(),
             )),
         }
-
     }
 
     fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-        bundle: TransientReference,
+        set: TransientReference, // HolonLoadSet
     ) -> Result<TransientReference, HolonError> {
-        // // 1) Build the dance request for the loader.
-        let request = holon_dance_builders::build_load_holons_dance_request(bundle)?;
-        //
-        // // 2) Get the DanceInitiator from the Space Manager.
-        let initiator = context.get_space_manager().get_dance_initiator()?; // <- no .read()
-        //
-        // // 3) Bridge async → sync (keep this because the client service is sync)
+        // 1) Build the dance request for the loader.
+        let request = holon_dance_builders::build_load_holons_dance_request(set)?;
+
+        // 2) Get the DanceInitiator from the Space Manager.
+        let initiator = context.get_space_manager().get_dance_initiator()?;
+
+        // 3) Bridge async → sync (ClientHolonService is synchronous)
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        //
-        // // 4) Check the status
-         if response.status_code != ResponseStatusCode::OK {
-             return Err(HolonError::Misc(format!(
-                 "LoadHolons dance failed: {:?} — {}",
-                 response.status_code, response.description.0
-             )));
-         }
-        
+        let response =
+            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
+
+        // 4) Check the status
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "LoadHolons dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
         // 5) Extract the returned holon
-         match response.body {
-             ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
-             ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(context),
-             _ => Err(HolonError::InvalidParameter(
-                 "LoadHolons: expected ResponseBody::HolonReference".into(),
-             )),
-         }
-        //todo!()
+        match response.body {
+            ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
+            ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(context),
+            _ => Err(HolonError::InvalidParameter(
+                "LoadHolons: expected ResponseBody::HolonReference".into(),
+            )),
+        }
     }
 }
 
-/// Run an async computation to completion from a synchronous context.
+/// Run an async future to completion from synchronous code (native only).
+/// Drive an async future to completion from synchronous host/client code, aware of Tokio.
 ///
-/// This helper deliberately avoids Tokio runtime APIs so that
-/// `holons_client` does not depend on Tokio's internal runtime
-/// configuration (which Holochain controls).
+/// Behavior:
+/// - If a Tokio runtime is already running on this thread, the future is executed
+///   inside that runtime using `block_in_place` to avoid creating a nested runtime.
+/// - If no runtime is running, a lightweight current-thread runtime is created
+///   just for this call.
 ///
-/// It is intended to be called from top-level, synchronous code paths
-/// (e.g., UI handlers), not from within an async Tokio task.
-fn run_future_synchronously<F, T>(future: F) -> T
+/// This helper intentionally returns `T` (and will panic if runtime setup fails or the
+/// future panics) to keep the surrounding sync APIs unchanged.
+pub fn run_future_synchronously<F, T>(future: F) -> T
 where
     F: Future<Output = T>,
 {
+    // Choice: return T to avoid widening the sync API surface; if we want to propagate
+    // runtime setup errors instead of panicking, we can change the signature to
+    // -> Result<T, HolonError> later.
+
+    // If already inside a Tokio runtime, drive the future there without requiring 'static.
+    if Handle::try_current().is_ok() {
+        return block_in_place(|| block_on(future));
+    }
+
+    // Otherwise, create a small current-thread runtime for this call (futures_executor).
     block_on(future)
 }
-
-// /// Run an async future to completion from synchronous code (native only).
-// ///
-// /// Behavior:
-// /// - If a Tokio runtime is already running on this thread, the future is executed
-// ///   inside that runtime using `block_in_place` to avoid creating a nested runtime.
-// /// - If no runtime is running, a lightweight current-thread runtime is created
-// ///   just for this call.
-// ///
-// ///
-// pub fn run_future_synchronously<FutureType, OutputType>(
-//     future_to_run: FutureType,
-// ) -> Result<OutputType, HolonError>
-// where
-//     FutureType: core::future::Future<Output = OutputType>,
-// {
-//     // Reuse an existing Tokio runtime if we are already inside one.
-//     if Handle::try_current().is_ok() {
-//         let output_value =
-//             tokio::task::block_in_place(|| Handle::current().block_on(future_to_run));
-//         return Ok(output_value);
-//     }
-//
-//     // Otherwise, create a small current-thread runtime for this one call.
-//     let runtime = Builder::new_current_thread()
-//         .enable_all()
-//         .build()
-//         .map_err(|error| {
-//             HolonError::Misc(format!(
-//                 "run_future_synchronously: failed to build Tokio runtime: {error}"
-//             ))
-//         })?;
-//
-//     Ok(runtime.block_on(future_to_run))
-// }

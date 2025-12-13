@@ -16,6 +16,7 @@ serde_bytes = "*"
 async-trait = "0.1.89"
 #async-trait = "0.1.51"
 futures-executor = "0.3"
+tokio = { version = "1.48", features = ["rt", "rt-multi-thread"] }
 
 # MAP Dependencies
 

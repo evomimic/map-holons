@@ -1,11 +1,10 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use super::{HolonReference, SmartReference, StagedReference, TransientReference};
+use super::TransientReference;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
-use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 
 /// The HolonServiceApi trait defines the public service interface for Holon operations
@@ -57,7 +56,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError>;
 
-    /// Execute a Holon Loader import using a HolonLoaderBundle (transient) reference.
+    /// Execute a Holon Loader import using a HolonLoadSet (transient) reference.
     /// Returns a transient reference to a HolonLoadResponse holon.
     fn load_holons_internal(
         &self,

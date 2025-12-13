@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "bundle_key": "Bundle.LoaderClientMinimal"
+  },
+  "holons": [
+    {
+      "key": "MiniType.HolonType",
+      "type": "HolonType.HolonType",
+      "properties": {
+        "type_name": "MiniType",
+        "type_name_plural": "MiniTypes",
+        "display_name": "MiniType",
+        "instance_type_kind": "Holon",
+        "is_abstract_type": false
+      }
+    },
+    {
+      "key": "MiniInstance:001",
+      "type": "MiniType.HolonType",
+      "properties": {
+        "title": "Loader Client Minimal Example"
+      }
+    }
+  ]
+}
