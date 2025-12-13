@@ -52,8 +52,8 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
             // 4. VALIDATE - Ensure response contains the expected Holon
             if let ResponseBody::Holon(actual_holon) = response.body {
                 assert_eq!(
-                    &actual_holon.essential_content(),
-                    resolved_reference.source_token.expected_content()
+                    resolved_reference.source_token.expected_content(),
+                        &actual_holon.essential_content(),
                 );
                 info!(
                     "SUCCESS! DB fetched holon matched expected for: \n {:?}",
