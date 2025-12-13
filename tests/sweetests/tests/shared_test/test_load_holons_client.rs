@@ -50,13 +50,13 @@ pub async fn execute_load_holons_client(
     // If the guest reported errors, dump error holons + full response for quick diagnosis.
     if errors > 0 {
         let error_dump = dump_error_holons_from_response(ctx, &response_reference);
-        let full_dump = dump_full_response(ctx, &response_reference);
+
         // Use both tracing and stderr so we see this even if tracing filter is tight.
         info!("[loader-client] response_error_dump:\n{}", error_dump);
-        info!("[loader-client] response_full_dump:\n{}", full_dump);
-        eprintln!("[loader-client] response_error_dump:\n{error_dump}");
-        eprintln!("[loader-client] response_full_dump:\n{full_dump}");
     }
+
+    let full_dump = dump_full_response(ctx, &response_reference);
+    info!("[loader-client] response_full_dump:\n{}", full_dump);
 
     assert_eq!(staged, expect_staged.0);
     assert_eq!(committed, expect_committed.0);

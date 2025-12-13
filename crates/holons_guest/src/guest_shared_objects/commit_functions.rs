@@ -454,8 +454,8 @@ fn save_smartlinks_for_collection(
     name: RelationshipName,
     collection: &HolonCollection,
 ) -> Result<(), HolonError> {
-    info!(
-        "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:#?}]->{:#?}.",
+    debug!(
+        "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
         source_id,
         name.0 .0.clone()
     );
