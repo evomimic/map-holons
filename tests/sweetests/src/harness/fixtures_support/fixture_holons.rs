@@ -35,36 +35,58 @@ impl FixtureHolons {
         let mut saved_tokens = Vec::new();
 
         for (_id, tokens) in self.lineage.iter_mut() {
-            // Get the current (latest) token for each lineage
-            if let Some(latest_token) = tokens.last() {
-                match latest_token.expected_state() {
-                    ExpectedState::Staged => {
-                        let saved_token = TestReference::new(
-                            latest_token.transient().clone(),
-                            ExpectedState::Saved,
-                            latest_token.expected_content().clone(),
-                        );
-                        // Update lineage
-                        tokens.push(saved_token.clone());
-                        // Return tokens for passing to executor used for building ResolvedTestReference
-                        saved_tokens.push(saved_token);
-                    }
-                    ExpectedState::Abandoned => {
-                        debug!("Skipping commit on Abandoned Holon: {:#?}", latest_token)
-                    }
-                    ExpectedState::Transient => {
-                        return Err(HolonError::CommitFailure(
-                            "TestReference to be Saved must be in an ExpectedState::Staged, got: Transient".to_string()
-                        ))
-                    }
-                    ExpectedState::Saved => {debug!("Holon already saved : {:#?}", latest_token)}
-                    ExpectedState::Deleted => {debug!("Holon marked as deleted : {:#?}", latest_token)}
-                }
-            } else {
-                return Err(HolonError::InvalidParameter(
-                    "TestReferences in lineage cannot be empty".to_string(),
-                ));
+            // Once a lineage has recorded an Abandoned or Saved state, then a commit for any previous Staged token is ignored
+            let staged_since_last_abandoned: Vec<TestReference> = tokens
+                .iter()
+                .rev()
+                .take_while(|tr| tr.expected_state() != ExpectedState::Abandoned || tr.expected_state() != ExpectedState::Saved)
+                .filter(|tr| tr.expected_state() == ExpectedState::Staged)
+                .cloned()
+                .collect();
+            for token in staged_since_last_abandoned {
+                let saved_token = TestReference::new(
+                    token.transient().clone(),
+                    ExpectedState::Saved,
+                    token.expected_content().clone(),
+                );
+                // Update lineage
+                tokens.push(saved_token.clone());
+                // Return tokens for passing to executor used for building ResolvedTestReference
+                saved_tokens.push(saved_token);
             }
+            // Old way of taking the last token, which became problematic when trying to stage a clone from the same transient source
+            //
+            // // Get the current (latest) token for each lineage
+            // if let Some(latest_token) = tokens.last() {
+            //     match latest_token.expected_state() {
+            //         ExpectedState::Staged => {
+            //             let saved_token = TestReference::new(
+            //                 latest_token.transient().clone(),
+            //                 ExpectedState::Saved,
+            //                 latest_token.expected_content().clone(),
+            //             );
+            //             // Update lineage
+            //             tokens.push(saved_token.clone());
+            //             // Return tokens for passing to executor used for building ResolvedTestReference
+            //             saved_tokens.push(saved_token);
+            //         }
+            //         ExpectedState::Abandoned => {
+            //             debug!("Skipping commit on Abandoned Holon: {:#?}", latest_token)
+            //         }
+            //         ExpectedState::Transient => {
+            //             return Err(HolonError::CommitFailure(
+            //                 "TestReference to be Saved must be in an ExpectedState::Staged, got: Transient".to_string()
+            //             ))
+            //         }
+            //         ExpectedState::Saved => {debug!("Holon already saved : {:#?}", latest_token)}
+            //         ExpectedState::Deleted => {debug!("Holon marked as deleted : {:#?}", latest_token)}
+            //     }
+            // } else {
+            //     return Err(HolonError::InvalidParameter(
+            //         "TestReferences in lineage cannot be empty".to_string(),
+            //     ));
+            // }
+            //
         }
         Ok(saved_tokens)
     }

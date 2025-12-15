@@ -91,6 +91,7 @@ impl DancesTestCase {
 
         Ok(())
     }
+    
     pub fn add_delete_holon_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -104,6 +105,7 @@ impl DancesTestCase {
 
         Ok(deleted_holon)
     }
+    
     pub fn add_ensure_database_count_step(
         &mut self,
         expected_count: MapInteger,

@@ -20,10 +20,9 @@
 //!   harness internals can inspect or mutate them.
 
 use base_types::{MapString, ToBaseValue};
-use core_types::{HolonError, TemporaryId};
+use core_types::TemporaryId;
 use holons_core::{
     core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    HolonsContextBehavior, ReadableHolon,
 };
 use holons_prelude::prelude::ToPropertyName;
 
@@ -87,9 +86,8 @@ impl TestReference {
 
     pub fn key(
         &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<MapString>, HolonError> {
-        self.transient_reference.key(context)
+    ) -> Option<MapString> {
+        self.expected_content.key.clone()
     }
 
     pub fn temporary_id(&self) -> TemporaryId {
