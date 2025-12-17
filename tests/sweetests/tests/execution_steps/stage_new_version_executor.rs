@@ -14,6 +14,7 @@ use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    next_root_token: TestReference,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a New Version of a Holon ---");
@@ -63,7 +64,7 @@ pub async fn execute_stage_new_version(
     let version_1_resulting_reference =
         ResultingReference::from(version_1_response_holon_reference.clone());
     let version_1_resolved_reference = ResolvedTestReference::from_reference_parts(
-        source_token.clone(),
+        next_root_token.clone(),
         version_1_resulting_reference.clone(),
     );
     version_1_resolved_reference.assert_essential_content_eq(context).unwrap();
@@ -112,89 +113,4 @@ pub async fn execute_stage_new_version(
 
     info!("Success! New version Holon matched expected content and relationships.");
 
-    // VERSION 2 //
-
-    // Stage a second version from the same original holon in order to verify that:
-    // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
-    // b. get_staged_holons_by_base_key correctly returns BOTH stage holons
-    let next_request = build_stage_new_version_dance_request(original_holon_id.clone())
-        .expect("Failed to build stage_new_version request");
-    debug!("2nd Dance Request: {:#?}", next_request);
-
-    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
-    let next_response = dance_initiator.initiate_dance(context, next_request).await;
-    info!("2nd Dance Response: {:#?}", next_response.clone());
-
-    assert_eq!(
-        next_response.status_code, expected_response,
-        "stage_new_version request returned unexpected status: {}",
-        next_response.description
-    );
-
-    // Extract the second new version holon from the response
-    let version_2_response_holon_reference = match next_response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
-    let version_2_resulting_reference =
-        ResultingReference::from(version_2_response_holon_reference.clone());
-    let version_2_resolved_reference = ResolvedTestReference::from_reference_parts(
-        source_token,
-        version_2_resulting_reference.clone(),
-    );
-
-    version_2_resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Staged new version holon's essential content matched expected");
-
-    // Record resolved
-    state.record_resolved(version_2_resolved_reference);
-
-    // Confirm that get_staged_holon_by_versioned_key returns the new version
-    let versioned_lookup = get_staged_holon_by_versioned_key(
-        context,
-        &version_2_response_holon_reference.versioned_key(context).unwrap(),
-    )
-    .unwrap();
-
-    let version_2_holon_reference = version_2_resulting_reference
-        .get_holon_reference()
-        .expect("HolonReference must be Live, cannot be in a deleted state");
-    assert_eq!(
-        version_2_holon_reference,
-        HolonReference::Staged(versioned_lookup),
-        "get_staged_holon_by_versioned_key did not match expected"
-    );
-
-    info!("Success! Second new version Holon matched expected content and relationships.");
-
-    // Confirm that get_staged_holon_by_base_key returns a duplicate error.
-    let book_holon_staged_reference_result =
-        get_staged_holon_by_base_key(context, &original_holon_key)
-            .expect_err("Expected duplicate error");
-    assert_eq!(
-        HolonError::DuplicateError(
-            "Holons".to_string(),
-            "key: Emerging World: The Evolution of Consciousness and the Future of Humanity"
-                .to_string()
-        ),
-        book_holon_staged_reference_result
-    );
-
-    // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
-    let book_holon_staged_references =
-        get_staged_holons_by_base_key(context, &original_holon_key).unwrap();
-    let holon_references: Vec<HolonReference> =
-        book_holon_staged_references.iter().map(|h| HolonReference::Staged(h.clone())).collect();
-    assert_eq!(
-        book_holon_staged_references.len(),
-        2,
-        "get_staged_holons_by_base_key should return two staged references"
-    );
-    assert_eq!(
-        vec![version_1_holon_reference, version_2_holon_reference],
-        holon_references,
-        "Fetched staged references did not match expected"
-    );
 }

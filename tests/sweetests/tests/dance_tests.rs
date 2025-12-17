@@ -253,26 +253,37 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
-            DanceTestStep::StageHolon { holon_token, expected_status } => {
-                execute_stage_new_holon(&mut test_execution_state, holon_token, expected_status)
+            DanceTestStep::StageHolon { source_token, expected_status } => {
+                execute_stage_new_holon(&mut test_execution_state, source_token, expected_status)
                     .await
             }
-            DanceTestStep::StageNewFromClone { source_token, new_key, expected_status } => {
+            DanceTestStep::StageNewFromClone {
+                source_token,
+                next_root_token,
+                new_key,
+                expected_status,
+            } => {
                 use self::execution_steps::execute_stage_new_from_clone;
 
                 execute_stage_new_from_clone(
                     &mut test_execution_state,
                     source_token,
+                    next_root_token,
                     new_key,
                     expected_status,
                 )
                 .await
             }
-            DanceTestStep::StageNewVersion { source_token, expected_status } => {
+            DanceTestStep::StageNewVersion { source_token, next_root_token, expected_status } => {
                 use self::execution_steps::execute_stage_new_version;
 
-                execute_stage_new_version(&mut test_execution_state, source_token, expected_status)
-                    .await
+                execute_stage_new_version(
+                    &mut test_execution_state,
+                    source_token,
+                    next_root_token,
+                    expected_status,
+                )
+                .await
             }
             DanceTestStep::WithProperties { holon_token, properties, expected_status } => {
                 execute_with_properties(

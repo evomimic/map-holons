@@ -81,7 +81,7 @@ impl ExecutionHolons {
         let expected_state = token.expected_state();
 
         match expected_state {
-            ExpectedState::Deleted => Err(HolonError::InvalidParameter("Holon marked as deleted, to get ResultingReference, use get_resulting_reference_for function instead".to_string())),
+            ExpectedState::Deleted => Err(HolonError::InvalidParameter("Holon marked as deleted, there is no associated resolved HolonReference".to_string())),
             ExpectedState::Transient => Ok(HolonReference::Transient(token.transient().clone())),
             expected_state => {
                 let resolved = self

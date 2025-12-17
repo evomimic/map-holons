@@ -19,7 +19,7 @@ use crate::harness::fixtures_support::{ExpectedState, TestReference};
 #[derive(Clone, Debug, Default)]
 pub struct FixtureHolons {
     lineage: BTreeMap<TemporaryId, Vec<TestReference>>,
-    by_key: BTreeMap<MapString, TemporaryId>,
+    by_key: BTreeMap<MapString, Vec<TemporaryId>>, // Base Key, Chronological Lineage Roots
 }
 
 impl FixtureHolons {
@@ -35,58 +35,41 @@ impl FixtureHolons {
         let mut saved_tokens = Vec::new();
 
         for (_id, tokens) in self.lineage.iter_mut() {
-            // Once a lineage has recorded an Abandoned or Saved state, then a commit for any previous Staged token is ignored
-            let staged_since_last_abandoned: Vec<TestReference> = tokens
-                .iter()
-                .rev()
-                .take_while(|tr| tr.expected_state() != ExpectedState::Abandoned || tr.expected_state() != ExpectedState::Saved)
-                .filter(|tr| tr.expected_state() == ExpectedState::Staged)
-                .cloned()
-                .collect();
-            for token in staged_since_last_abandoned {
-                let saved_token = TestReference::new(
-                    token.transient().clone(),
-                    ExpectedState::Saved,
-                    token.expected_content().clone(),
-                );
-                // Update lineage
-                tokens.push(saved_token.clone());
-                // Return tokens for passing to executor used for building ResolvedTestReference
-                saved_tokens.push(saved_token);
+            // Get the current (latest) token for each lineage
+            if let Some(latest_token) = tokens.last() {
+                match latest_token.expected_state() {
+                    ExpectedState::Staged => {
+                        let saved_token = TestReference::new(
+                            latest_token.transient().clone(),
+                            ExpectedState::Saved,
+                            latest_token.expected_content().clone(),
+                        );
+                        // Update lineage
+                        tokens.push(saved_token.clone());
+                        // Return tokens for passing to executor used for building ResolvedTestReference
+                        saved_tokens.push(saved_token);
+                    }
+                    ExpectedState::Abandoned => {
+                        debug!("Skipping commit on Abandoned Holon: {:#?}", latest_token)
+                    }
+                    ExpectedState::Transient => {
+                        debug!(
+                            "Latest state is not staged, skipping commit on Transient : {:#?}",
+                            latest_token
+                        );
+                    }
+                    ExpectedState::Saved => {
+                        debug!("Holon already saved : {:#?}", latest_token);
+                    }
+                    ExpectedState::Deleted => {
+                        debug!("Holon marked as deleted : {:#?}", latest_token);
+                    }
+                }
+            } else {
+                return Err(HolonError::InvalidParameter(
+                    "TestReferences in lineage cannot be empty".to_string(),
+                ));
             }
-            // Old way of taking the last token, which became problematic when trying to stage a clone from the same transient source
-            //
-            // // Get the current (latest) token for each lineage
-            // if let Some(latest_token) = tokens.last() {
-            //     match latest_token.expected_state() {
-            //         ExpectedState::Staged => {
-            //             let saved_token = TestReference::new(
-            //                 latest_token.transient().clone(),
-            //                 ExpectedState::Saved,
-            //                 latest_token.expected_content().clone(),
-            //             );
-            //             // Update lineage
-            //             tokens.push(saved_token.clone());
-            //             // Return tokens for passing to executor used for building ResolvedTestReference
-            //             saved_tokens.push(saved_token);
-            //         }
-            //         ExpectedState::Abandoned => {
-            //             debug!("Skipping commit on Abandoned Holon: {:#?}", latest_token)
-            //         }
-            //         ExpectedState::Transient => {
-            //             return Err(HolonError::CommitFailure(
-            //                 "TestReference to be Saved must be in an ExpectedState::Staged, got: Transient".to_string()
-            //             ))
-            //         }
-            //         ExpectedState::Saved => {debug!("Holon already saved : {:#?}", latest_token)}
-            //         ExpectedState::Deleted => {debug!("Holon marked as deleted : {:#?}", latest_token)}
-            //     }
-            // } else {
-            //     return Err(HolonError::InvalidParameter(
-            //         "TestReferences in lineage cannot be empty".to_string(),
-            //     ));
-            // }
-            //
         }
         Ok(saved_tokens)
     }
@@ -155,46 +138,6 @@ impl FixtureHolons {
         }
     }
 
-    // ---------- Create tokens based on matching conditions ----------
-
-    pub fn add_token(
-        &mut self,
-        token: TestReference,
-        key: Option<MapString>,
-    ) -> Result<TestReference, HolonError> {
-        match token.expected_state() {
-            ExpectedState::Transient => {
-                if let Some(key) = key {
-                    // Mint a transient-intent token indexed by key.
-                    Ok(self.add_transient_with_key(
-                        token.transient(),
-                        key,
-                        token.expected_content(),
-                    )?)
-                } else {
-                    // Mint a transient-intent token without a key.
-                    Ok(self.add_transient(token.transient(), token.expected_content()))
-                }
-            }
-            ExpectedState::Staged => {
-                if let Some(key) = key {
-                    // Mint a staged-intent token indexed by key.
-                    Ok(self.add_staged_with_key(
-                        token.transient(),
-                        key,
-                        token.expected_content(),
-                    )?)
-                } else {
-                    // Mint a staged-intent token without a key.
-                    Ok(self.add_staged(token.transient(), token.expected_content()))
-                }
-            }
-            _ => Err(HolonError::InvalidParameter(
-                "Can only add a Transient or Staged token".to_string(),
-            )),
-        }
-    }
-
     // ---------- Create tokens (no key indexing) ----------
 
     /// Create and retain a **Transient** token from a `TransientReference`.
@@ -212,7 +155,7 @@ impl FixtureHolons {
         transient_reference: &TransientReference,
         expected_content: &EssentialHolonContent,
     ) -> TestReference {
-        self.mint_snapshot(transient_reference, ExpectedState::Staged, expected_content)
+        self.mint_snapshot(&transient_reference, ExpectedState::Staged, expected_content)
     }
 
     /// Create and retain a **Saved** token from a `TransientReference`.
@@ -229,12 +172,12 @@ impl FixtureHolons {
     /// Create a **Transient** token and index it by the holon’s key.
     pub fn add_transient_with_key(
         &mut self,
-        transient_reference: &TransientReference,
+        source_reference: &TransientReference,
         key: MapString,
         expected_content: &EssentialHolonContent,
     ) -> Result<TestReference, HolonError> {
-        self.index_by_key(key, transient_reference.get_temporary_id())?;
-        let token = self.add_transient(transient_reference, expected_content);
+        self.index_by_key(key, source_reference.get_temporary_id());
+        let token = self.add_transient(&source_reference, expected_content);
 
         Ok(token)
     }
@@ -246,44 +189,28 @@ impl FixtureHolons {
         key: MapString,
         expected_content: &EssentialHolonContent,
     ) -> Result<TestReference, HolonError> {
-        self.index_by_key(key, transient_reference.get_temporary_id())?;
-        let token = self.add_staged(transient_reference, expected_content);
+        self.index_by_key(key, transient_reference.get_temporary_id());
+        let token =
+            self.mint_snapshot(&transient_reference, ExpectedState::Staged, expected_content);
 
         Ok(token)
     }
 
-    /// Index an existing token by key. Errors if the key is present and change is attempted for the corresponding TemporaryId .
-    fn index_by_key(&mut self, key: MapString, given_id: TemporaryId) -> Result<(), HolonError> {
-        if let Some(current_id) = self.by_key.get(&key) {
-            if current_id != &given_id {
-                Err(HolonError::InvalidUpdate(format!(
-                    "upsert_by_key, since a TemporaryId already exists for key: {:?}, the lineage cannot be changed by this function call.",
-                    key
-                )))
-            } else {
-                Ok(())
-            }
-        } else {
-            self.by_key.insert(key, given_id.clone());
-            Ok(())
-        }
+    /// Index an existing token by base key.
+    fn index_by_key(&mut self, key: MapString, id: TemporaryId) {
+        self.by_key.entry(key).or_insert_with(Vec::new).push(id);
     }
 
     //  ======  INDEXING  ======  //
 
-    /// Use with Caution...
-    /// Upsert variant: replace any existing mapping for `key`.
-    /// Prefer `index_by_key` unless you *intend* to overwrite.
-    pub fn upsert_by_key(&mut self, key: MapString, id: TemporaryId) {
-        self.by_key.insert(key, id);
-    }
+    // /// Use with Caution...
+    // /// Upsert variant: replace any existing mapping for `key`.
+    // /// Prefer `index_by_key` unless you *intend* to overwrite.
+    // pub fn upsert_by_key(&mut self, key: MapString, id: TemporaryId) {
+    //     self.by_key.insert(key, id);
+    // }
 
     // ---------- Retrieval ----------
-
-    /// Retrieve the TemporaryId associated with the given key
-    pub fn get_id_by_key(&self, key: &MapString) -> Option<&TemporaryId> {
-        self.by_key.get(key)
-    }
 
     /// Retrieve tokens by id
     pub fn get_tokens_by_id(&self, id: &TemporaryId) -> Result<&Vec<TestReference>, HolonError> {
@@ -294,9 +221,9 @@ impl FixtureHolons {
         }
     }
 
-    /// Retrieve current token for key
+    /// Retrieve current token for base key
     pub fn get_latest_by_key(&self, key: &MapString) -> Result<TestReference, HolonError> {
-        let id = if let Some(id) = self.get_id_by_key(key) {
+        let id = if let Some(id) = self.by_key.get(key).and_then(|ids| ids.last()) {
             id
         } else {
             return Err(HolonError::InvalidParameter(
@@ -314,20 +241,6 @@ impl FixtureHolons {
                 "Lineage returned empty for id, something went wrong".to_string(),
             ))
             .cloned()
-    }
-
-    // Useful for getting the saved id for a holon that has been marked as deleted
-    //
-    /// Retrieve the most recent snapshot in an ExpectedState::Saved
-    pub fn get_last_save(&self, id: &TemporaryId) -> Result<TestReference, HolonError> {
-        let vec = self.get_tokens_by_id(id)?;
-        if let Some(token) =
-            vec.iter().rfind(|t| matches!(t.expected_state(), ExpectedState::Saved)).cloned()
-        {
-            Ok(token)
-        } else {
-            Err(HolonError::HolonNotFound("No snapshots are expected as saved".to_string()))
-        }
     }
 
     // ---- HELPERS ---- //
@@ -352,18 +265,13 @@ impl FixtureHolons {
     pub fn counts(&self) -> FixtureHolonCounts {
         let mut counts = FixtureHolonCounts::default();
         for (_id, snapshots) in &self.lineage {
-            counts.saved += snapshots
-                .iter()
-                .filter(|t| matches!(t.expected_state(), ExpectedState::Saved))
-                .count() as i64;
-            for token in snapshots {
-                match token.expected_state() {
-                    ExpectedState::Transient => counts.transient += 1,
-                    ExpectedState::Staged => counts.staged += 1,
-                    ExpectedState::Saved => {} // handled above
-                    ExpectedState::Abandoned => counts.staged -= 1,
-                    ExpectedState::Deleted => counts.saved -= 1,
-                }
+            let latest_token = snapshots.last().expect("Unexpected: lineage for id is empty");
+            match latest_token.expected_state() {
+                ExpectedState::Transient => counts.transient += 1,
+                ExpectedState::Staged => counts.staged += 1,
+                ExpectedState::Saved => counts.saved += 1,
+                ExpectedState::Abandoned => counts.staged -= 1,
+                ExpectedState::Deleted => counts.saved -= 1,
             }
         }
         counts

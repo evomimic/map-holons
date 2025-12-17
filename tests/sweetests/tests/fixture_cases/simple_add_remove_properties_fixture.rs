@@ -74,11 +74,12 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // BOOK (Staged) //
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_transient_reference = TransientReference::from_temporary_id(
-        fixture_holons
-            .get_id_by_key(&book_key)
-            .expect(&format!("Id must exist in FixtureHolons, for key: {:?}", book_key)),
-    );
+    let book_transient_reference = fixture_holons
+        .get_latest_by_key(&book_key)
+        .expect(&format!("Id must exist in FixtureHolons, for key: {:?}", book_key))
+        .transient()
+        .clone();
+
     let mut book_properties = PropertyMap::new();
     book_properties.insert("Key".to_property_name(), BOOK_KEY.to_base_value());
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());

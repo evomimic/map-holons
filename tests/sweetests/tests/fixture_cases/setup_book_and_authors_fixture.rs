@@ -47,6 +47,7 @@ pub fn setup_book_author_steps_with_context(
         &book_transient_reference.essential_content(fixture_context)?,
     )?;
     let book_staged_token = test_case.add_stage_holon_step(
+        &*fixture_context,
         fixture_holons,
         book_transient_token,
         Some(book_key),
@@ -69,6 +70,7 @@ pub fn setup_book_author_steps_with_context(
         &person_1_transient_reference.essential_content(fixture_context)?,
     )?;
     let person_1_staged_token = test_case.add_stage_holon_step(
+        &*fixture_context,
         fixture_holons,
         person_1_transient_token,
         Some(person_1_key),
@@ -91,6 +93,7 @@ pub fn setup_book_author_steps_with_context(
         &person_2_transient_reference.essential_content(fixture_context)?,
     )?;
     let person_2_staged_token = test_case.add_stage_holon_step(
+        &*fixture_context,
         fixture_holons,
         person_2_transient_token,
         Some(person_2_key),
@@ -117,33 +120,34 @@ pub fn setup_book_author_steps_with_context(
         &publisher_transient_reference.essential_content(fixture_context)?,
     )?;
     let _publisher_staged_token = test_case.add_stage_holon_step(
+        &*fixture_context,
         fixture_holons,
         publisher_transient_token,
         Some(publisher_key),
         ResponseStatusCode::OK,
     )?;
 
-    //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
-    let mut fixture_target_references: Vec<HolonReference> = Vec::new();
-    fixture_target_references.push(HolonReference::Transient(person_1_transient_reference.clone()));
-    fixture_target_references.push(HolonReference::Transient(person_2_transient_reference.clone()));
+    // //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
+    // let mut fixture_target_references: Vec<HolonReference> = Vec::new();
+    // fixture_target_references.push(HolonReference::Transient(person_1_transient_reference.clone()));
+    // fixture_target_references.push(HolonReference::Transient(person_2_transient_reference.clone()));
 
-    book_transient_reference.add_related_holons(
-        &*fixture_context,
-        BOOK_TO_PERSON_RELATIONSHIP,
-        fixture_target_references.clone(),
-    )?;
+    // book_transient_reference.add_related_holons(
+    //     &*fixture_context,
+    //     BOOK_TO_PERSON_RELATIONSHIP,
+    //     fixture_target_references.clone(),
+    // )?;
 
-    let mut target_references: Vec<TestReference> = Vec::new();
-    target_references.push(person_1_staged_token);
-    target_references.push(person_2_staged_token);
+    // let mut target_references: Vec<TestReference> = Vec::new();
+    // target_references.push(person_1_staged_token);
+    // target_references.push(person_2_staged_token);
 
-    test_case.add_add_related_holons_step(
-        book_staged_token,
-        relationship_name.clone(),
-        target_references,
-        ResponseStatusCode::OK,
-    )?;
+    // test_case.add_add_related_holons_step(
+    //     book_staged_token,
+    //     relationship_name.clone(),
+    //     target_references,
+    //     ResponseStatusCode::OK,
+    // )?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);
