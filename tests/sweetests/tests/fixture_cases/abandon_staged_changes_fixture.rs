@@ -85,6 +85,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &abandoned_holon_1_transient_reference.essential_content(&*fixture_context)?,
     )?;
     let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_1_transient_token,
         Some(MapString("Abandon1".to_string())),
@@ -106,6 +107,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &abandoned_holon_2_transient_reference.essential_content(&*fixture_context)?,
     )?;
     let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_2_transient_token,
         Some(MapString("Abandon2".to_string())),

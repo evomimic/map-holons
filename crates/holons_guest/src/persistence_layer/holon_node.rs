@@ -48,19 +48,6 @@ pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionH
 
 #[hdk_extern]
 pub fn delete_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<ActionHash> {
-    // delete link to all_holon_nodes anchor
-    let all_nodes_path = Path::from("all_holon_nodes");
-    let links = get_links(
-        GetLinksInputBuilder::try_new(all_nodes_path.path_entry_hash()?, LinkTypes::AllHolonNodes)?
-            .build(),
-    )?;
-    for link in links {
-        if let Some(hash) = link.target.into_action_hash() {
-            if hash == original_holon_node_hash {
-                delete_link(link.create_link_hash)?;
-            }
-        }
-    }
     // delete links to Local Holon Space
     let local_space_path = Path::from("local_holon_space");
     let links = get_links(

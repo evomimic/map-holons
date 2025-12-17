@@ -86,16 +86,16 @@ use holons_prelude::prelude::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-// #[case::delete_holon(delete_holon_fixture())]
-// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-// #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
-// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-// #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-// #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+#[case::delete_holon(delete_holon_fixture())]
+#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+#[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
+#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
-// #[case::stage_new_version_test(stage_new_version_fixture())]
-// #[case::load_holons_test(loader_incremental_fixture())]
+#[case::stage_new_version_test(stage_new_version_fixture())]
+#[case::load_holons_test(loader_incremental_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
@@ -221,26 +221,37 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
-            DanceTestStep::StageHolon { holon_token, expected_status } => {
-                execute_stage_new_holon(&mut test_execution_state, holon_token, expected_status)
+            DanceTestStep::StageHolon { source_token, expected_status } => {
+                execute_stage_new_holon(&mut test_execution_state, source_token, expected_status)
                     .await
             }
-            DanceTestStep::StageNewFromClone { source_token, new_key, expected_status } => {
+            DanceTestStep::StageNewFromClone {
+                source_token,
+                next_root_token,
+                new_key,
+                expected_status,
+            } => {
                 use self::execution_steps::execute_stage_new_from_clone;
 
                 execute_stage_new_from_clone(
                     &mut test_execution_state,
                     source_token,
+                    next_root_token,
                     new_key,
                     expected_status,
                 )
                 .await
             }
-            DanceTestStep::StageNewVersion { source_token, expected_status } => {
+            DanceTestStep::StageNewVersion { source_token, next_root_token, expected_status } => {
                 use self::execution_steps::execute_stage_new_version;
 
-                execute_stage_new_version(&mut test_execution_state, source_token, expected_status)
-                    .await
+                execute_stage_new_version(
+                    &mut test_execution_state,
+                    source_token,
+                    next_root_token,
+                    expected_status,
+                )
+                .await
             }
             DanceTestStep::WithProperties { holon_token, properties, expected_status } => {
                 execute_with_properties(

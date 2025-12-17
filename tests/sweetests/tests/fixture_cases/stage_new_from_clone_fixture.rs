@@ -46,7 +46,8 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &transient_source.essential_content(&*fixture_context)?,
     )?;
     // Expect BadRequest
-    let _clone_from_transient_staged = test_case.add_stage_new_from_clone_step(
+    test_case.add_stage_new_from_clone_step(
+        &*fixture_context,
         &mut fixture_holons,
         transient_token,
         transient_source_key.clone(),
@@ -66,79 +67,100 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     book_staged_token.set_key(from_staged_key.clone());
 
-    // Stage
-    let _clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
+    //  Stage New From Clone  //
+    let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
+        &*fixture_context,
         &mut fixture_holons,
         book_staged_token.clone(),
         from_staged_key.clone(),
         ResponseStatusCode::OK,
     )?;
-    // let mut phase_b_expected_properties = PropertyMap::new();
-    // phase_b_expected_properties
-    //     .insert("Key".to_property_name(), from_staged_key.clone().to_base_value());
-    // phase_b_expected_properties
-    //     .insert("TITLE".to_property_name(), "Dune (Staged Clone)".to_base_value());
-    // phase_b_expected_properties.insert("EDITION".to_property_name(), 2.to_base_value());
-    // let mut phase_b_expected_expected_content =
-    //     transient_source.essential_content(&*fixture_context).unwrap();
-    // phase_b_expected_expected_content.property_map = phase_b_expected_properties.clone();
-    // // Mint
-    // let staged_clone_token = fixture_holons.add_staged_with_key(
-    //     &transient_source,
-    //     from_staged_key.clone(),
-    //     &phase_b_expected_expected_content,
-    // )?;
 
-    // test_case.add_with_properties_step(
-    //     staged_clone_token.clone(),
-    //     phase_b_expected_properties,
-    //     ResponseStatusCode::OK,
-    // )?;
+    // Set expected
+    let mut phase_b_expected_properties = PropertyMap::new();
+    phase_b_expected_properties
+        .insert("Key".to_property_name(), from_staged_key.clone().to_base_value());
+    phase_b_expected_properties
+        .insert("Description".to_property_name(),
+            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
+    phase_b_expected_properties
+        .insert("TITLE".to_property_name(), "Dune (Staged Clone)".to_base_value());
+    phase_b_expected_properties.insert("EDITION".to_property_name(), 2.to_base_value());
+    let mut phase_b_expected_expected_content =
+        transient_source.essential_content(&*fixture_context).unwrap();
+    phase_b_expected_expected_content.property_map = phase_b_expected_properties.clone();
+    phase_b_expected_expected_content.key = Some(from_staged_key.clone());
 
-    // COMMIT - the first two staged clones and flip expectations in the fixture.
+    // Mint
+    let clone_mod_token = fixture_holons.add_staged_with_key(
+        &clone_from_staged_staged.transient(),
+        from_staged_key.clone(),
+        &phase_b_expected_expected_content,
+    )?;
+
+    //  Add Properties  //
+    test_case.add_with_properties_step(
+        clone_mod_token,
+        phase_b_expected_properties,
+        ResponseStatusCode::OK,
+    )?;
+
+    //  COMMIT - Round 1  //
     let _saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved() - 1))?; // Subtract 1 to account for invalid attempt
 
-    // // ── PHASE C — Clone FROM SAVED (same token, now expected Saved) ───────────────
-    // // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
-    // // have expected_state == Saved inside `fixture_holons`.
-    // // Set expected
-    // let mut phase_c_expected_properties = PropertyMap::new();
-    // phase_c_expected_properties
-    //     .insert("Key".to_property_name(), "book:clone:from-saved".to_base_value());
-    // phase_c_expected_properties
-    //     .insert("TITLE".to_property_name(), "Saved Clone of Dune".to_base_value());
-    // phase_c_expected_properties.insert("EDITION".to_property_name(), 3.to_base_value());
-    // phase_c_expected_properties.insert("TYPE".to_property_name(), "Book Clone".to_base_value());
-    // let mut book_saved_clone_expected_content =
-    //     transient_source.essential_content(&*fixture_context)?;
-    // book_saved_clone_expected_content.property_map = phase_c_expected_properties.clone();
-    // book_saved_clone_expected_content.key = Some(MapString("book:clone:from-saved".to_string()));
-    // // Retrieve saved-intent from latest in lineage
-    // let book_saved_token =
-    //     fixture_holons.get_latest_for_id(&transient_source.get_temporary_id())?;
-    // // Stage new from clone
-    // let clone_from_saved_staged = test_case.add_stage_new_from_clone_step(
-    //     &mut fixture_holons,
-    //     book_saved_token.clone(), // same token; now expected Saved by fixture intent
-    //     MapString::from("book:clone:from-saved"),
-    //     ResponseStatusCode::OK,
-    // )?;
+    // ── PHASE C — Clone FROM SAVED  ───────────────
+    // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
+    // have expected_state == Saved inside `fixture_holons`.
+    let from_saved_key = MapString("book:clone:from-saved".to_string());
+    // Set expected
+    let mut phase_c_expected_properties = PropertyMap::new();
+    phase_c_expected_properties
+        .insert("Key".to_property_name(), from_saved_key.clone().to_base_value());
+    phase_c_expected_properties
+        .insert("Description".to_property_name(),
+            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
+    phase_c_expected_properties
+        .insert("TITLE".to_property_name(), "Saved Clone of Dune".to_base_value());
+    phase_c_expected_properties.insert("EDITION".to_property_name(), 3.to_base_value());
+    phase_c_expected_properties.insert("TYPE".to_property_name(), "Book Clone".to_base_value());
+    let mut phase_c_expected_content = transient_source.essential_content(&*fixture_context)?;
+    phase_c_expected_content.property_map = phase_c_expected_properties.clone();
+    phase_c_expected_content.key = Some(from_saved_key.clone());
 
-    // test_case.add_with_properties_step(
-    //     clone_from_saved_staged.clone(),
-    //     phase_c_expected_properties,
-    //     ResponseStatusCode::OK,
-    // )?;
+    // Retrieve saved-intent from latest in lineage
+    let mut book_saved_token = fixture_holons.get_latest_by_key(&from_staged_key)?;
+    book_saved_token.set_key(from_saved_key.clone());
 
-    // TODO: Fix duplicate commits
-    // // COMMIT - the third staged clone; flip fixture expectations; assert counts again.
-    // let _saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
-    // test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved() - 1))?; // Subtract 1 to account for invalid attempt
+    //  Stage New From Clone  //
+    let clone_from_saved_staged = test_case.add_stage_new_from_clone_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        book_saved_token.clone(),
+        from_saved_key.clone(),
+        ResponseStatusCode::OK,
+    )?;
 
-    // // Final saved-content match derived from fixture expectations.
-    // // (Executor will compare expected vs. actual for each expected-saved token.)
-    // test_case.add_match_saved_content_step()?;
+    // Mint
+    let saved_clone_mod_token = fixture_holons.add_staged_with_key(
+        &clone_from_saved_staged.transient(),
+        from_staged_key.clone(),
+        &phase_c_expected_content,
+    )?;
+
+    //  Add properties  //
+    test_case.add_with_properties_step(
+        saved_clone_mod_token,
+        phase_c_expected_properties,
+        ResponseStatusCode::OK,
+    )?;
+
+    //  COMMIT - Round 2  //
+    let _saved_holons = test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved() - 1))?; // Subtract 1 to account for invalid attempt
+
+    //  MATCH SAVED CONTENT  //
+    test_case.add_match_saved_content_step()?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

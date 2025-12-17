@@ -1,7 +1,9 @@
 // sweetests/src/harness/test_case/test_case.rs (excerpt)
 
 use crate::{harness::fixtures_support::TestReference, FixtureHolons};
-use holons_core::core_shared_objects::holon_pool::SerializableHolonPool;
+use holons_core::{
+    core_shared_objects::holon_pool::SerializableHolonPool, reference_layer::ReadableHolon,
+};
 use holons_prelude::prelude::*;
 
 /// Public test case type that collects steps to be executed later.
@@ -91,7 +93,7 @@ impl DancesTestCase {
 
         Ok(())
     }
-    
+
     pub fn add_delete_holon_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -105,7 +107,7 @@ impl DancesTestCase {
 
         Ok(deleted_holon)
     }
-    
+
     pub fn add_ensure_database_count_step(
         &mut self,
         expected_count: MapInteger,
@@ -210,24 +212,40 @@ impl DancesTestCase {
 
     pub fn add_stage_holon_step(
         &mut self,
+        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
-        holon_token: TestReference,
+        source_token: TestReference,
         key: Option<MapString>, // Passing key for convenience from fixture, this is not necessary for the dance but helps with minting
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
+        // Cloning source in order to create a new lineage root
+        let transient_reference = source_token.transient().clone_holon(context)?;
+        let transient_token = {
+            if let Some(key) = key.clone() {
+                // Mint a transient-intent token indexed by key.
+                fixture_holons.add_transient_with_key(
+                    &transient_reference,
+                    key,
+                    source_token.expected_content(),
+                )?
+            } else {
+                // Mint a transient-intent token without a key.
+                fixture_holons.add_transient(&transient_reference, source_token.expected_content())
+            }
+        };
         self.steps
-            .push(DanceTestStep::StageHolon { holon_token: holon_token.clone(), expected_status });
+            .push(DanceTestStep::StageHolon { source_token: transient_token, expected_status });
         let staged_token = {
             if let Some(key) = key {
                 // Mint a staged-intent token indexed by key.
                 fixture_holons.add_staged_with_key(
-                    holon_token.transient(),
+                    &transient_reference,
                     key,
-                    holon_token.expected_content(),
+                    source_token.expected_content(),
                 )?
             } else {
                 // Mint a staged-intent token without a key.
-                fixture_holons.add_staged(holon_token.transient(), holon_token.expected_content())
+                fixture_holons.add_staged(&transient_reference, source_token.expected_content())
             }
         };
 
@@ -236,19 +254,31 @@ impl DancesTestCase {
 
     pub fn add_stage_new_from_clone_step(
         &mut self,
+        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         new_key: MapString, // Passing the key is necessary for the dance  // TODO: Change to Option
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
+        // Cloning source in order to create a new lineage root
+        let transient_reference = source_token.transient().clone_holon(context)?;
+        let transient_token = {
+            // Mint a transient-intent token indexed by key.
+            fixture_holons.add_transient_with_key(
+                &transient_reference,
+                new_key.clone(),
+                source_token.expected_content(),
+            )?
+        };
         self.steps.push(DanceTestStep::StageNewFromClone {
             source_token: source_token.clone(),
+            next_root_token: transient_token,
             new_key: new_key.clone(),
             expected_status,
         });
         // Mint a staged-intent token indexed by key.
         let staged_token = fixture_holons.add_staged_with_key(
-            source_token.transient(),
+            &transient_reference,
             new_key,
             source_token.expected_content(),
         )?;
@@ -258,26 +288,43 @@ impl DancesTestCase {
 
     pub fn add_stage_new_version_step(
         &mut self,
+        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         key: Option<MapString>, // Passing key for convenience from fixture, this is not necessary for the dance but helps with minting
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
+        // Cloning source in order to create a new lineage root
+        let transient_reference = source_token.transient().clone_holon(context)?;
+        let transient_token = {
+            if let Some(key) = key.clone() {
+                // Mint a transient-intent token indexed by key.
+                fixture_holons.add_transient_with_key(
+                    &transient_reference,
+                    key,
+                    source_token.expected_content(),
+                )?
+            } else {
+                // Mint a transient-intent token without a key.
+                fixture_holons.add_transient(&transient_reference, source_token.expected_content())
+            }
+        };
         self.steps.push(DanceTestStep::StageNewVersion {
             source_token: source_token.clone(),
+            next_root_token: transient_token,
             expected_status,
         });
         let staged_token = {
             if let Some(key) = key {
                 // Mint a staged-intent token for a new lineage, indexed by key.
                 fixture_holons.add_staged_with_key(
-                    source_token.transient(),
+                    &transient_reference,
                     key,
                     source_token.expected_content(),
                 )?
             } else {
                 // Mint a staged-intent token for a new lineage, without a key.
-                fixture_holons.add_staged(source_token.transient(), source_token.expected_content())
+                fixture_holons.add_staged(&transient_reference, source_token.expected_content())
             }
         };
 
@@ -352,16 +399,18 @@ pub enum DanceTestStep {
         expected_status: ResponseStatusCode,
     },
     StageHolon {
-        holon_token: TestReference,
+        source_token: TestReference,
         expected_status: ResponseStatusCode,
     },
     StageNewFromClone {
         source_token: TestReference,
+        next_root_token: TestReference,
         new_key: MapString,
         expected_status: ResponseStatusCode,
     },
     StageNewVersion {
         source_token: TestReference,
+        next_root_token: TestReference,
         expected_status: ResponseStatusCode,
     },
     WithProperties {
@@ -441,21 +490,26 @@ impl core::fmt::Display for DanceTestStep {
             } => {
                 write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", source_token, relationship_name, holons_to_remove.len(), expected_status)
             }
-            DanceTestStep::StageHolon { holon_token, expected_status } => {
-                write!(f, "StageHolon({:?}, expecting: {:?},)", holon_token, expected_status)
+            DanceTestStep::StageHolon { source_token, expected_status } => {
+                write!(f, "StageHolon({:?}, expecting: {:?},)", source_token, expected_status)
             }
-            DanceTestStep::StageNewVersion { source_token, expected_status } => {
+            DanceTestStep::StageNewVersion { source_token, next_root_token, expected_status } => {
                 write!(
                     f,
-                    "NewVersion for source: {:#?}, expecting response: {:#?}",
-                    source_token, expected_status
+                    "NewVersion for source: {:#?}, next lineage root: {:?}, expecting response: {:#?}",
+                    source_token, next_root_token.transient(), expected_status
                 )
             }
-            DanceTestStep::StageNewFromClone { source_token, new_key, expected_status } => {
+            DanceTestStep::StageNewFromClone {
+                source_token,
+                next_root_token,
+                new_key,
+                expected_status,
+            } => {
                 write!(
                     f,
-                    "StageNewFromClone for original_holon: {:#?}, with new key: {:?}, expecting response: {:#?}",
-                    source_token, new_key, expected_status
+                    "StageNewFromClone for original_holon: {:#?}, with new key: {:?}, for next lineage root: {:?}, expecting response: {:#?}",
+                    source_token, new_key, next_root_token.transient(), expected_status
                 )
             }
             DanceTestStep::WithProperties { holon_token, properties, expected_status } => {

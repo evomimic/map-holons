@@ -19,7 +19,6 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     let fixture_context = init_fixture_context();
     let mut fixture_holons = FixtureHolons::new();
 
-
     // Ensure DB count //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
@@ -36,6 +35,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     test_case.add_stage_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
         transient_source_token.clone(),
         Some(book_key),
