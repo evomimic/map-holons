@@ -50,6 +50,7 @@ members = [
     #  so the IDE understands the dependency graph)
     # --------------------------
     "crates/holons_client",
+    "crates/holons_loader_client",
     "crates/holons_receptor",
     "crates/holochain_receptor",
     "crates/holons_trust_channel",
@@ -58,7 +59,8 @@ members = [
     # --------------------------
     # Tests (sweetest)
     # --------------------------
-    "tests/sweetests", "crates/holons_loader_client",
+    "tests/sweetests",
+
 ]
 
 # ============================================================================

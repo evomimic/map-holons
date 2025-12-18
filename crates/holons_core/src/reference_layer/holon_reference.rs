@@ -60,6 +60,7 @@ impl HolonReference {
     ) -> Result<Option<HolonReference>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
 
+        // Locally Scoped Helper: extract a single DESCRIBED_BY reference (cardinality <= 1)
         fn from_collection_arc(
             collection_arc: Arc<RwLock<HolonCollection>>,
         ) -> Result<Option<HolonReference>, HolonError> {
