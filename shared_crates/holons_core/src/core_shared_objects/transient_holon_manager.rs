@@ -72,14 +72,21 @@ impl TransientHolonManager {
     }
 }
 
+// Do we need to implement Clone for TransientHolonManager?
+// Since the HolonSpaceManager holds an Arc<TransientHolonManager>, cloning the Arc
+// can be done directly without needing to clone the manager itself.
+// Something like `let tm = Arc::clone(&self.transient_manager)`
 impl Clone for TransientHolonManager {
-    // Clone underlying pool for thread-safe manager
     fn clone(&self) -> Self {
+        // NOTE: This clone is only used in limited internal contexts.
+        // If the lock is poisoned here, we treat it as unrecoverable and panic,
+        // rather than silently returning an incorrect "clone".
         let pool = self
             .transient_holons
             .read()
-            .expect("Failed to acquire read lock on transient_holons")
+            .expect("Failed to acquire read lock on transient_holons while cloning manager")
             .clone();
+
         TransientHolonManager::new_with_pool(pool)
     }
 }
@@ -222,13 +229,27 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         self
     }
 
-    fn clear_pool(&mut self) {
-        let mut pool = self.transient_holons.write().unwrap();
+    /// Clears all transient holons from the pool.
+    fn clear_pool(&self) -> Result<(), HolonError> {
+        // Lock failure returns a HolonError instead of panicking
+        let mut pool = self.transient_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock for clear_pool: {}",
+                e
+            ))
+        })?;
         pool.clear();
+        Ok(())
     }
 
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
-        self.transient_holons.read().unwrap().get_id_by_versioned_key(key)
+        let pool = self.transient_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock for get_id_by_versioned_key: {}",
+                e
+            ))
+        })?;
+        pool.get_id_by_versioned_key(key)
     }
 
     fn get_transient_holons_pool(&self) -> Result<Vec<Arc<RwLock<Holon>>>, HolonError> {
@@ -257,8 +278,16 @@ impl TransientManagerAccessInternal for TransientHolonManager {
             .export_pool()
     }
 
-    fn import_transient_holons(&mut self, pool: SerializableHolonPool) -> () {
-        self.transient_holons.try_write().unwrap().import_pool(pool); // Mutates existing HolonPool
+    /// Imports holons into the transient pool, completely replacing existing holons.
+    fn import_transient_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError> {
+        let mut guard = self.transient_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock for import_transient_holons: {}",
+                e
+            ))
+        })?;
+        guard.import_pool(pool); // Mutates the existing pool
+        Ok(())
     }
 }
 

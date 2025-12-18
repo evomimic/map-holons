@@ -1,12 +1,32 @@
-// shared_crates/holons_loader/src/errors.rs
+// crates/holons_loader/src/errors.rs
 
+use crate::controller::{FileProvenance, ProvenanceIndex};
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
+
 use std::sync::atomic::{AtomicU32, Ordering};
-use tracing::{error};
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
+
+/// A load error with optional context that ties it to a specific LoaderHolon.
+#[derive(Debug, Clone)]
+pub struct ErrorWithContext {
+    /// The underlying HolonError.
+    pub error: HolonError,
+    /// Optional HolonLoader key related to the error.
+    pub source_loader_key: Option<MapString>,
+}
+
+impl ErrorWithContext {
+    pub fn new(error: HolonError) -> Self {
+        Self { error, source_loader_key: None }
+    }
+    pub fn with_loader_key(mut self, key: MapString) -> Self {
+        self.source_loader_key = Some(key);
+        self
+    }
+}
 
 /// Map HolonError -> stable snake_case code for response analytics/UI.
 pub fn error_type_code(err: &HolonError) -> &'static str {
@@ -31,31 +51,61 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
 }
 
 /// Build transient HolonErrorType holons for reporting load errors.
+/// - One holon per error.
+/// - If `provenance` + `source_loader_key` are available, stamp:
+///     LoaderHolonKey, Filename, StartUtf8ByteOffset.
 pub fn make_error_holons_best_effort(
     context: &dyn HolonsContextBehavior,
-    errors: &[HolonError],
+    errors: &[ErrorWithContext],
+    provenance: Option<&ProvenanceIndex>,
 ) -> Result<Vec<TransientReference>, HolonError> {
     if errors.is_empty() {
         return Ok(Vec::new());
     }
 
-    let mut out = Vec::with_capacity(errors.len());
+    let mut output = Vec::with_capacity(errors.len());
     // Try resolving the HolonErrorType descriptor once.
     let holon_error_type_descriptor = resolve_holon_error_type_descriptor(context).ok();
 
-    for load_error in errors {
-        match make_error_holon(context, holon_error_type_descriptor.clone(), load_error) {
-            Ok(transient_reference) => out.push(transient_reference),
-            Err(e) => {
-                // This indicates a system-level issue (e.g., failed to allocate transient holon).
-                // There’s no reliable way to continue building error holons.
-                error!("failed to create error holon (typed or untyped): {}", e);
-                return Err(e);
+    for contextual_error in errors {
+        let mut transient_reference = make_error_holon(
+            context,
+            holon_error_type_descriptor.clone(),
+            &contextual_error.error,
+        )?;
+
+        if let (Some(index), Some(loader_key)) =
+            (provenance, contextual_error.source_loader_key.clone())
+        {
+            // Add LoaderHolonKey
+            transient_reference.with_property_value(
+                context,
+                CorePropertyTypeName::LoaderHolonKey,
+                BaseValue::StringValue(loader_key.clone()),
+            )?;
+
+            // Attempt to enrich with provenance details
+            if let Some(FileProvenance { filename, start_utf8_byte_offset }) =
+                index.get(&loader_key)
+            {
+                transient_reference.with_property_value(
+                    context,
+                    CorePropertyTypeName::Filename,
+                    BaseValue::StringValue(filename.clone()),
+                )?;
+                if let Some(offset) = start_utf8_byte_offset {
+                    transient_reference.with_property_value(
+                        context,
+                        CorePropertyTypeName::StartUtf8ByteOffset,
+                        BaseValue::IntegerValue(MapInteger(*offset)),
+                    )?;
+                }
             }
         }
+        output.push(transient_reference);
     }
 
-    Ok(out)
+    Ok(output)
 }
 
 /// Builds a transient **HolonError** holon representing the specified `HolonError`.
@@ -105,16 +155,10 @@ fn create_empty_error_holon(
     let key = MapString(format!("loader-error-{id}"));
 
     // Obtain a handle to the TransientHolonBehavior service from the Space Manager.
-    let transient_behavior_service_handle =
-        context.get_space_manager().get_transient_behavior_service();
-
-    // Acquire a write lock for mutable access to the TransientHolonBehavior service.
-    let transient_behavior_service = transient_behavior_service_handle.write().map_err(|_| {
-        HolonError::FailedToBorrow("TransientHolonBehavior RwLock was poisoned".into())
-    })?;
+    let transient_behavior = context.get_space_manager().get_transient_behavior_service();
 
     // Create a new, empty transient holon using the generated key.
-    let transient_reference = transient_behavior_service.create_empty(key)?;
+    let transient_reference = transient_behavior.create_empty(key)?;
 
     Ok(transient_reference)
 }
@@ -142,26 +186,21 @@ fn populate_error_fields(
 }
 
 /// Descriptor resolution (best-effort):
-/// 1) Staged (Nursery) lookup by key "HolonErrorType"
+/// 1) Staged (Nursery) lookup by key "HolonLoadError.HolonErrorType"
 /// 2) Saved fallback via get_all_holons() + get_by_key()
 fn resolve_holon_error_type_descriptor(
     context: &dyn HolonsContextBehavior,
 ) -> Result<HolonReference, HolonError> {
-    // Canonical key from the enum (=> "HolonErrorType")
-    let key = CoreHolonTypeName::HolonErrorType.as_holon_name();
+    // Canonical key from the enum (=> "HolonLoadError")
+    let type_name = CoreHolonTypeName::HolonLoadError.as_holon_name();
+    let key = MapString(format!("{type_name}.HolonErrorType"));
 
     // 1) Prefer staged (Nursery) by base key
     let staged_matches = {
-        let staging_handle = context.get_space_manager().get_staging_service();
-
-        // We only need read access to query staged holons.
-        let staging_guard = staging_handle
-            .read()
-            .map_err(|_| HolonError::FailedToBorrow("Staging service lock poisoned".into()))?;
+        let staging_behavior = context.get_space_manager().get_staging_service();
 
         // Query staged holons by base key.
-        // This returns a Vec<StagedReference> without mutating state.
-        staging_guard.get_staged_holons_by_base_key(&key)?
+        staging_behavior.get_staged_holons_by_base_key(&key)?
     };
 
     match staged_matches.len() {

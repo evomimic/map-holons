@@ -7,9 +7,16 @@ edition = "2021"
 
 [dependencies]
 
-serde = {workspace = true}
+serde = { version = "1", features = ["derive"] }
 #derive-new = "0.7"
 #thiserror = "2"
 
-integrity_core_types = {workspace = true}
-uuid = {workspace = true}
+[dependencies.integrity_core_types]
+path = "../integrity_core_types"
+
+#[dependencies.base_types]
+#path = "../base_types"
+
+[dependencies.uuid]
+version = "1"
+features = ["serde"]

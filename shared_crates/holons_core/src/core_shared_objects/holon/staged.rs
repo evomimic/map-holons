@@ -245,6 +245,13 @@ impl ReadableHolonState for StagedHolon {
         }
     }
 
+    fn into_node_model(&self) -> HolonNodeModel {
+        HolonNodeModel {
+            original_id: self.original_id.clone(),
+            property_map: self.property_map.clone(),
+        }
+    }
+
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
     fn key(&self) -> Result<Option<MapString>, HolonError> {
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
@@ -275,17 +282,11 @@ impl ReadableHolonState for StagedHolon {
     }
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {
-        let key =
-            self.key()?.ok_or(HolonError::InvalidParameter("Holon must have a key".to_string()))?;
+        let key = self
+            .key()?
+            .ok_or(HolonError::InvalidParameter("StagedHolon must have a key".to_string()))?;
 
         Ok(MapString(format!("{}__{}_staged", key.0, &self.version.0.to_string())))
-    }
-
-    fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel {
-            original_id: self.original_id.clone(),
-            property_map: self.property_map.clone(),
-        }
     }
 
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -354,6 +355,17 @@ impl WriteableHolonState for StagedHolon {
         Ok(self)
     }
 
+    /// Adds related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.staged_relationships.add_related_holons_with_keys(relationship_name, entries)?;
+        Ok(self)
+    }
+
     fn increment_version(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.version.0 += 1;
@@ -380,6 +392,17 @@ impl WriteableHolonState for StagedHolon {
         self.is_accessible(AccessType::Write)?;
         self.staged_relationships.remove_related_holons(context, &relationship_name, holons)?;
 
+        Ok(self)
+    }
+
+    /// Removes related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.staged_relationships.remove_related_holons_with_keys(relationship_name, entries)?;
         Ok(self)
     }
 

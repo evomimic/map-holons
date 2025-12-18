@@ -21,7 +21,7 @@ pub trait DanceInitiator: Send + Sync + Debug {
     /// the environment (e.g., native conductor, Tauri bridge, or mock testing).
     async fn initiate_dance(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &(dyn HolonsContextBehavior + Send + Sync),
         request: DanceRequest,
     ) -> DanceResponse;
 }

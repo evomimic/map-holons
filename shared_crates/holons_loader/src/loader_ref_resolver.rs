@@ -1,4 +1,4 @@
-// shared_crates/holons_loader/src/loader_ref_resolver.rs
+// crates/holons_loader/src/loader_ref_resolver.rs
 //
 // Pass-2 (Resolver): Transform queued LoaderRelationshipReference holons into
 // concrete writes on staged holons. Implements the multi‑pass, graph‑driven
@@ -27,13 +27,15 @@ use tracing::debug;
 use core_types::type_kinds::TypeKind;
 use holons_prelude::prelude::*;
 
+use crate::errors::ErrorWithContext;
+
 /// Outcome of Pass-2: counts successful writes and collects non-fatal errors.
 #[derive(Debug, Default)]
 pub struct ResolverOutcome {
     /// Total number of links scheduled on staged holons
     pub links_created: i64,
     /// Non-fatal errors encountered during resolution
-    pub errors: Vec<HolonError>,
+    pub errors: Vec<ErrorWithContext>,
 }
 
 /// Stable identity for per-run relationship deduplication.
@@ -139,10 +141,15 @@ impl LoaderRefResolver {
 
         // Any remaining items could not resolve within the retry budget → explicit errors
         for relationship_reference in remaining {
-            outcome.errors.push(HolonError::InvalidType(format!(
+            let msg = format!(
                 "LoaderRelationshipReference could not be resolved after fixed-point retries: {}",
                 Self::brief_lrr_summary(context, &relationship_reference)
-            )));
+            );
+            outcome.errors.push(Self::error_with_context(
+                context,
+                &relationship_reference,
+                HolonError::InvalidType(msg),
+            ));
         }
 
         debug!(
@@ -225,13 +232,22 @@ impl LoaderRefResolver {
         debug!("Pass 2A: Processing {} DescribedBy relationships", described_by_refs.len());
 
         for relationship_reference in described_by_refs {
+            debug!(
+                "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+                Self::brief_lrr_summary(context, relationship_reference),
+                Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+            );
             match Self::resolve_endpoints(context, relationship_reference) {
                 Ok((source_endpoint, mut target_endpoints)) => {
                     // Enforce exactly one target for DescribedBy
                     if target_endpoints.len() != 1 {
-                        outcome.errors.push(HolonError::InvalidRelationship(
-                            described_by.to_string(),
-                            "DescribedBy requires exactly one target".into(),
+                        outcome.errors.push(Self::error_with_context(
+                            context,
+                            relationship_reference,
+                            HolonError::InvalidRelationship(
+                                described_by.to_string(),
+                                "DescribedBy relationship must have exactly one target".into(),
+                            ),
                         ));
                         continue;
                     }
@@ -241,7 +257,11 @@ impl LoaderRefResolver {
                         match Self::resolve_staged_write_source(context, &source_endpoint) {
                             Ok(s) => s,
                             Err(e) => {
-                                outcome.errors.push(e);
+                                outcome.errors.push(Self::error_with_context(
+                                    context,
+                                    relationship_reference,
+                                    e,
+                                ));
                                 continue;
                             }
                         };
@@ -265,11 +285,22 @@ impl LoaderRefResolver {
                         &described_by,
                         target_endpoints.split_off(0), // exactly one
                     ) {
-                        Ok(n) => outcome.links_created += n,
-                        Err(e) => outcome.errors.push(e),
+                        Ok(n) => {
+                            outcome.links_created += n;
+                            debug!("[resolver] AFTER write_relationship(DescribedBy): links_created={}", n);
+                        }
+                        Err(e) => outcome.errors.push(Self::error_with_context(
+                            context,
+                            relationship_reference,
+                            e,
+                        )),
                     }
                 }
-                Err(e) => outcome.errors.push(e),
+                Err(e) => outcome.errors.push(Self::error_with_context(
+                    context,
+                    relationship_reference,
+                    e,
+                )),
             }
         }
     }
@@ -293,13 +324,22 @@ impl LoaderRefResolver {
         debug!("Pass 2B: Processing {} InverseOf relationships", inverse_of_refs.len());
 
         for relationship_reference in inverse_of_refs {
+            debug!(
+                "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+                Self::brief_lrr_summary(context, relationship_reference),
+                Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+            );
             match Self::resolve_endpoints(context, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
                     let staged_source =
                         match Self::resolve_staged_write_source(context, &source_endpoint) {
                             Ok(s) => s,
                             Err(e) => {
-                                outcome.errors.push(e);
+                                outcome.errors.push(Self::error_with_context(
+                                    context,
+                                    relationship_reference,
+                                    e,
+                                ));
                                 continue;
                             }
                         };
@@ -325,10 +365,18 @@ impl LoaderRefResolver {
                         unique_targets,
                     ) {
                         Ok(n) => outcome.links_created += n,
-                        Err(e) => outcome.errors.push(e),
+                        Err(e) => outcome.errors.push(Self::error_with_context(
+                            context,
+                            relationship_reference,
+                            e,
+                        )),
                     }
                 }
-                Err(e) => outcome.errors.push(e),
+                Err(e) => outcome.errors.push(Self::error_with_context(
+                    context,
+                    relationship_reference,
+                    e,
+                )),
             }
         }
     }
@@ -344,8 +392,8 @@ impl LoaderRefResolver {
         resolver_state: &mut ResolverState,
         mut remaining_queue: Vec<TransientReference>,
         seen: &mut HashSet<RelationshipEdgeKey>,
-    ) -> (i64, Vec<HolonError>, Vec<TransientReference>) {
-        let mut errors = Vec::new();
+    ) -> (i64, Vec<ErrorWithContext>, Vec<TransientReference>) {
+        let mut errors: Vec<ErrorWithContext> = Vec::new();
         let mut total_links_created = 0i64;
         debug!("Processing REMAINING_REFERENCES");
         // Conservative upper bound; usually we break by fixed-point first.
@@ -354,7 +402,7 @@ impl LoaderRefResolver {
 
         while passes_remaining > 0 {
             let mut links_created_this_pass = 0i64;
-            let mut pass_fatal_errors = Vec::new();
+            let mut pass_fatal_errors: Vec<ErrorWithContext> = Vec::new();
 
             // Filter in place using retain() and true/false return values.
             remaining_queue.retain(|relationship_reference| {
@@ -389,7 +437,11 @@ impl LoaderRefResolver {
                     }
                     Err(e) => {
                         // fatal → record and drop
-                        pass_fatal_errors.push(e);
+                        pass_fatal_errors.push(Self::error_with_context(
+                            context,
+                            relationship_reference,
+                            e,
+                        ));
                         false
                     }
                 }
@@ -546,8 +598,8 @@ impl LoaderRefResolver {
         context: &dyn HolonsContextBehavior,
         relationship_reference: &TransientReference,
     ) -> Result<(HolonReference, Vec<HolonReference>), HolonError> {
-        let source_relationship = CoreRelationshipTypeName::ReferenceSource.as_relationship_name();
-        let target_relationship = CoreRelationshipTypeName::ReferenceTarget.as_relationship_name();
+        let source_relationship = CoreRelationshipTypeName::ReferenceSource;
+        let target_relationship = CoreRelationshipTypeName::ReferenceTarget;
 
         // Get LoaderHolonReference wrappers (not the actual holons yet)
         let source_refs_handle =
@@ -739,14 +791,8 @@ impl LoaderRefResolver {
     ) -> Result<Option<HolonReference>, HolonError> {
         debug!("[resolver] looking up RelationshipType by key '{}'", canonical_key.0);
 
-        // 1) Prefer staged (Nursery) lookup by base key.
-        let staging_service_handle = context.get_space_manager().get_staging_service();
-        let staged_candidates = {
-            let guard = staging_service_handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("Staging service read lock poisoned".into())
-            })?;
-            guard.get_staged_holons_by_base_key(canonical_key)?
-        };
+        // 1) Prefer staged (Nursery) lookup by base key through the holon operations API.
+        let staged_candidates = get_staged_holons_by_base_key(context, canonical_key)?;
 
         match staged_candidates.len() {
             1 => {
@@ -812,41 +858,39 @@ impl LoaderRefResolver {
         context: &dyn HolonsContextBehavior,
         write_source_endpoint: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
-        let staging_service_handle = context.get_space_manager().get_staging_service();
-
         // 1) If the endpoint already corresponds to a staged holon, use it (prefer versioned key).
         if let HolonReference::Staged(s) = write_source_endpoint {
             return Ok(s.clone());
         }
         if let Ok(versioned_key) = write_source_endpoint.versioned_key(context) {
             // Short read lock to check by versioned key
-            if let Ok(staged_ref) = {
-                let guard = staging_service_handle.read().map_err(|_| {
-                    HolonError::FailedToBorrow("Staging service read lock poisoned".into())
-                })?;
-                guard.get_staged_holon_by_versioned_key(&versioned_key)
-            } {
+            if let Ok(staged_ref) = { get_staged_holon_by_versioned_key(context, &versioned_key) } {
                 return Ok(staged_ref);
             }
         }
 
         // Try base key as a secondary staged lookup.
         if let Ok(Some(base_key)) = write_source_endpoint.key(context) {
-            // Read lock just long enough to fetch the list
-            let staged_matches = {
-                let guard = staging_service_handle.read().map_err(|_| {
-                    HolonError::FailedToBorrow("Staging service read lock poisoned".into())
-                })?;
-                guard.get_staged_holons_by_base_key(&base_key)?
-            };
+            let staged_matches = get_staged_holons_by_base_key(context, &base_key)?;
 
             match staged_matches.len() {
-                1 => return Ok(staged_matches.into_iter().next().unwrap()),
+                1 => {
+                    // Extra defensive check to avoid panics if the vector is somehow empty.
+                    let mut iter = staged_matches.into_iter();
+                    return if let Some(single) = iter.next() {
+                        Ok(single)
+                    } else {
+                        Err(HolonError::Misc(
+                            "Internal error: staged_matches reported len() == 1 but contained no elements"
+                                .into(),
+                        ))
+                    };
+                }
                 n if n > 1 => {
                     return Err(HolonError::DuplicateError(
                         "write source by base key".into(),
                         n.to_string(),
-                    ))
+                    ));
                 }
                 _ => {
                     // not staged by base key; try promotion next
@@ -989,6 +1033,11 @@ impl LoaderRefResolver {
             return Ok(0);
         }
 
+        debug!(
+            "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+            Self::brief_lrr_summary(context, relationship_reference),
+            Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+        );
         let (source_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, relationship_reference)?;
 
@@ -1032,6 +1081,11 @@ impl LoaderRefResolver {
 
         let (inverse_name, _flag) =
             Self::extract_relationship_metadata(context, relationship_reference)?;
+        debug!(
+            "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
+            Self::brief_lrr_summary(context, relationship_reference),
+            Self::source_loader_key_of_lrr(context, relationship_reference).map(|k| k.0),
+        );
         let (src_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, relationship_reference)?;
 
@@ -1125,5 +1179,32 @@ impl LoaderRefResolver {
             HolonError::InvalidParameter(_) => true, // e.g., write-source not staged *yet*
             _ => false,
         }
+    }
+
+    /// Extract the LoaderHolon key from the LRR's ReferenceSource (if present).
+    fn source_loader_key_of_lrr(
+        context: &dyn HolonsContextBehavior,
+        lrr: &TransientReference,
+    ) -> Option<MapString> {
+        let source_rel = CoreRelationshipTypeName::ReferenceSource.as_relationship_name();
+        let handle = lrr.related_holons(context, source_rel).ok()?;
+        let guard = handle.read().ok()?;
+        let first = guard.get_members().get(0)?;
+        // The ReferenceSource points to a LoaderHolonReference which carries HolonKey.
+        let key_prop = CorePropertyTypeName::HolonKey.as_property_name();
+        match first.property_value(context, &key_prop).ok()? {
+            Some(BaseValue::StringValue(k)) if !k.0.is_empty() => Some(k),
+            _ => None,
+        }
+    }
+
+    /// Wrap a HolonError with contextual loader key (if available).
+    fn error_with_context(
+        context: &dyn HolonsContextBehavior,
+        lrr: &TransientReference,
+        err: HolonError,
+    ) -> ErrorWithContext {
+        let key = Self::source_loader_key_of_lrr(context, lrr);
+        ErrorWithContext { error: err, source_loader_key: key }
     }
 }

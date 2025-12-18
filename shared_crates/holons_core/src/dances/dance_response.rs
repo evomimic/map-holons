@@ -69,6 +69,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidUpdate(_) => ResponseStatusCode::ServerError,
+            HolonError::LoaderParsingError(_) => ResponseStatusCode::UnprocessableEntity,
             HolonError::Misc(_) => ResponseStatusCode::ServerError,
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,

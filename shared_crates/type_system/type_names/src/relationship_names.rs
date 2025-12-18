@@ -68,8 +68,10 @@ impl ToRelationshipName for &RelationshipName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
+    AbandonedHolons,
     BundleMembers,
     ComponentOf,
+    Contains,
     Dependents,
     DependsOn,
     DescribedBy,
@@ -90,6 +92,7 @@ pub enum CoreRelationshipTypeName {
     PropertyName,
     ReferenceSource,
     ReferenceTarget,
+    SavedHolons,
     SourceOf,
     SourceType,
     Successor,

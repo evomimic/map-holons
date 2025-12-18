@@ -26,7 +26,7 @@ impl TrustChannel {
 impl DanceInitiator for TrustChannel {
     async fn initiate_dance(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &(dyn HolonsContextBehavior + Send + Sync),
         mut request: DanceRequest,
     ) -> DanceResponse {
         // --- Outbound session state encapsulation -----------------------------

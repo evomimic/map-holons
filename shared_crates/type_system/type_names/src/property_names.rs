@@ -71,6 +71,8 @@ impl ToPropertyName for &PropertyName {
 #[derive(Debug, Clone, VariantNames)]
 pub enum CorePropertyTypeName {
     AllowsDuplicates,
+    CommitRequestStatus,
+    CommitsAttempted,
     DanceSummary,
     DeletionSemantic,
     Description,
@@ -79,9 +81,9 @@ pub enum CorePropertyTypeName {
     ErrorCount,
     ErrorMessage,
     ErrorType,
+    Filename,
     HolonKey,
     HolonId,
-    HolonsCommitted,
     HolonsStaged,
     InstanceTypeKind,
     IsAbstractType,
@@ -91,6 +93,7 @@ pub enum CorePropertyTypeName {
     IsRequired,
     Key,
     LinksCreated,
+    LoaderHolonKey,
     MapBoolean,
     MapBytes,
     MapInteger,
@@ -102,10 +105,14 @@ pub enum CorePropertyTypeName {
     RelationshipName,
     ResponseStatusCode,
     SpaceName,
+    StartUtf8ByteOffset,
+    TotalBundles,
+    TotalLoaderHolons,
     Type,
     TypeKind,
     TypeName,
     TypeNamePlural,
+    HolonsCommitted,
 }
 
 impl CorePropertyTypeName {

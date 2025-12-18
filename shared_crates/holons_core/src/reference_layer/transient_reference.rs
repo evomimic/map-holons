@@ -56,16 +56,10 @@ impl TransientReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get TransientManagerAccess
-        let transient_manager_access = context.get_space_manager().get_transient_manager_access();
-        let transient_read = transient_manager_access.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on transient_manager: {}",
-                e
-            ))
-        })?;
+        let transient_behavior = context.get_space_manager().get_transient_manager_access();
 
         // Retrieve the holon by its TemporaryId
-        let rc_holon = transient_read.get_holon_by_id(&self.id)?;
+        let rc_holon = transient_behavior.get_holon_by_id(&self.id)?;
 
         Ok(rc_holon)
     }
@@ -131,9 +125,7 @@ impl ReadableHolonImpl for TransientReference {
         let rc_holon = self.get_rc_holon(context)?;
         let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
-        let transient_behavior_service =
-            context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior = transient_behavior_service.read().unwrap();
+        let transient_behavior = context.get_space_manager().get_transient_behavior_service();
 
         let cloned_holon_transient_reference =
             transient_behavior.new_from_clone_model(holon_clone_model)?;
@@ -273,9 +265,16 @@ impl WritableHolonImpl for TransientReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key(context)?;
+                Ok((h, key))
+            })
+            .collect::<Result<_, HolonError>>()?;
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().unwrap();
-        holon_mut.add_related_holons(context, relationship_name, holons)?;
+        holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
 
         Ok(self)
     }
@@ -287,9 +286,16 @@ impl WritableHolonImpl for TransientReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(context, AccessType::Write)?;
+        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key(context)?;
+                Ok((h, key))
+            })
+            .collect::<Result<_, HolonError>>()?;
         let rc_holon = self.get_rc_holon(context)?;
         let mut holon_mut = rc_holon.write().unwrap();
-        holon_mut.remove_related_holons(context, relationship_name, holons)?;
+        holon_mut.remove_related_holons_with_keys(&relationship_name, holons_with_keys)?;
 
         Ok(self)
     }
@@ -329,29 +335,28 @@ impl WritableHolonImpl for TransientReference {
         descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(context, AccessType::Write)?;
-        let existing_descriptor_option = descriptor_reference.get_descriptor(context)?;
-        if let Some(descriptor) = existing_descriptor_option {
+
+        // Get the descriptor of the current holon, if any
+        let self_ref = HolonReference::Transient(self.clone());
+        let existing_descriptor_option = self_ref.get_descriptor(context)?;
+
+        if let Some(existing_descriptor) = existing_descriptor_option {
+            // Remove the current descriptor edge from this holon
             self.remove_related_holons_impl(
                 context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                vec![descriptor.clone()],
+                vec![existing_descriptor],
             )?;
-            self.add_related_holons_impl(
-                context,
-                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                vec![descriptor_reference],
-            )?;
-
-            Ok(())
-        } else {
-            self.add_related_holons_impl(
-                context,
-                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                vec![descriptor_reference.clone()],
-            )?;
-
-            Ok(())
         }
+
+        // Attach the new descriptor edge
+        self.add_related_holons_impl(
+            context,
+            CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+            vec![descriptor_reference],
+        )?;
+
+        Ok(())
     }
 
     fn with_predecessor_impl(

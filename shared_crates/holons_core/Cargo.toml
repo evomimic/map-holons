@@ -9,19 +9,27 @@ name = "holons_core"
 
 [dependencies]
 # only used by holons_core
-quick_cache = {workspace = true}
+quick_cache = { version = "0.6.14", default-features = false }
 
 
 # General dev-dependencies (platform-agnostic)
-derive-new = {workspace = true}
-serde = {workspace = true}
-sha2 = {workspace = true}
-tracing = {workspace = true}
-uuid = {workspace = true}
-async-trait = {workspace = true}
+derive-new = "0.7"
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10.8"
+tracing = "0.1"
+uuid = { version = "1", features = ["serde"] }
+async-trait = "0.1.51"
 
 # MAP Dependencies
 
-core_types = {workspace = true}
-base_types = {workspace = true}
-type_names = {workspace = true}
+[dependencies.core_types]
+path = "../type_system/core_types"
+
+[dependencies.base_types]
+path = "../type_system/base_types"
+
+[dependencies.type_names]
+path = "../type_system/type_names"
+
+
+

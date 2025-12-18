@@ -7,9 +7,9 @@ use std::{
 
 use super::{Holon, ReadableHolonState, WriteableHolonState};
 use crate::utils::uuid::create_temporary_id_from_key;
+use crate::StagedReference;
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
-
 //
 // === HolonPool NewTypes ===
 //
@@ -169,35 +169,72 @@ impl HolonPool {
         self.keyed_index.get(key).and_then(|id| self.holons.get(id).cloned())
     }
 
-    /// Retrieves the temporary id of a Holon by its base key. Called when it is expected that there is only
-    /// one Holon with an associated base key.
+    /// Retrieves the temporary id of a Holon by its **base key**.
+    ///
+    /// Assumptions:
+    /// - Versioned keys are stored in `keyed_index` using the convention
+    ///   `"<base_key>__<version>_transient"`.
+    /// - This helper is used when the caller expects **exactly one**
+    ///   Holon for the given base key (across all versions).
+    ///
+    /// Behavior:
+    /// - If no entries match the base key → `HolonNotFound`.
+    /// - If more than one entry matches (multiple versions) → `DuplicateError`.
+    /// - Otherwise returns the single matching `TemporaryId`.
     pub fn get_id_by_base_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
-        let ids: Vec<&TemporaryId> = self
-            .keyed_index
-            .range(MapString(key.0.clone())..)
-            .take_while(|(k, _)| k.0.starts_with(&key.0))
-            .map(|(_, v)| v)
-            .collect();
+        let ids = self.get_ids_by_base_key(key)?;
 
-        if ids.is_empty() {
-            return Err(HolonError::HolonNotFound(format!("for key: {}", key)));
-        }
         if ids.len() > 1 {
             return Err(HolonError::DuplicateError("Holons".to_string(), format!("key: {}", key)));
         }
 
+        // Safe: we already know len() > 0 from get_ids_by_base_key
         Ok(ids[0].clone())
     }
 
-    /// Returns TemporaryIds for all Holons with the same base key. Called when there may be multiple Holons for
-    /// a base key.
+    /// Returns `TemporaryId`s for all Holons that share the same **base key**.
+    ///
+    /// A "base key" is the logical key stored in the Holon's `Key` property.
+    /// Versioned keys in the pool are expected to follow the convention:
+    ///
+    /// - `"<base_key>__<version>_transient"`
+    ///
+    /// This function:
+    /// - Includes an exact match for `base_key` if present.
+    /// - Includes all versioned keys whose string starts with `"<base_key>__"`.
+    ///
+    /// Examples:
+    /// - base `"TypeKind"` matches:
+    ///     - `"TypeKind"`
+    ///     - `"TypeKind__7_transient"`, `"TypeKind__8_transient"`, ...
+    /// - base `"TypeKind.Property"` matches:
+    ///     - `"TypeKind.Property__12_transient"`, ...
+    /// - base `"TypeKind"` does **not** match `"TypeKind.Property__..."`.
     pub fn get_ids_by_base_key(&self, key: &MapString) -> Result<Vec<&TemporaryId>, HolonError> {
-        let ids: Vec<&TemporaryId> = self
-            .keyed_index
-            .range(MapString(key.0.clone())..)
-            .take_while(|(k, _)| k.0.starts_with(&key.0))
-            .map(|(_, v)| v)
-            .collect();
+        // Prefix that delimits the version section of the key.
+        // This prevents collisions like "TypeKind" vs "TypeKind.Property".
+        let versioned_prefix = format!("{}__", key.0);
+        let start = MapString(versioned_prefix.clone());
+
+        let mut ids: Vec<&TemporaryId> = Vec::new();
+
+        // 1) Include an exact base-key match if one exists (defensive; not all pools
+        //    are guaranteed to only store versioned keys).
+        if let Some((_, id)) = self.keyed_index.get_key_value(key) {
+            ids.push(id);
+        }
+
+        // 2) Collect all versioned entries for this base key:
+        //    keys in the form "<base_key>__<version>_transient".
+        //
+        // Because `keyed_index` is ordered, all such keys form a contiguous range
+        // starting at `versioned_prefix`. We walk until the prefix no longer matches.
+        for (k, v) in self.keyed_index.range(start..) {
+            if !k.0.starts_with(&versioned_prefix) {
+                break;
+            }
+            ids.push(v);
+        }
 
         if ids.is_empty() {
             return Err(HolonError::HolonNotFound(format!("for key: {}", key)));
@@ -212,6 +249,15 @@ impl HolonPool {
             .get(key)
             .cloned()
             .ok_or_else(|| HolonError::HolonNotFound(format!("for key: {}", key)))
+    }
+
+    /// Returns a vector of `StagedReference`s for all holons currently staged in this pool.
+    ///
+    /// This provides a reference-layer view of the pool contents without exposing
+    /// the underlying Holon structs or locks. The references can then be passed
+    /// to higher-level commit or validation logic.
+    pub fn get_staged_references(&self) -> Vec<StagedReference> {
+        self.holons.keys().map(|temp_id| StagedReference::from_temporary_id(temp_id)).collect()
     }
 
     /// Exports the HolonPool as a `SerializableHolonPool`.
