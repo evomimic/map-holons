@@ -1,0 +1,85 @@
+use crate::mock_conductor::MockConductorConfig;
+use async_std::task;
+use holons_prelude::prelude::*;
+use pretty_assertions::assert_eq;
+use rstest::*;
+use std::collections::BTreeMap;
+use tracing::{debug, info};
+
+use holochain::sweettest::*;
+use holochain::sweettest::{SweetCell, SweetConductor};
+
+use crate::shared_test::*;
+use crate::shared_test::{
+    // mock_conductor::MockConductorConfig,
+    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase},
+};
+
+use holons_core::core_shared_objects::ReadableHolonState;
+
+/// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
+/// and matches the expected response
+///
+pub async fn execute_delete_holon(
+    test_state: &mut DanceTestExecutionState,
+    holon_to_delete_key: MapString, // key of the holon to delete
+    expected_response: ResponseStatusCode,
+) {
+    info!(
+        "--- TEST STEP: Deleting an Existing (Saved) Holon with key: {:#?}",
+        holon_to_delete_key.clone()
+    );
+
+    // 1. Get context from test_state
+    let ctx_arc = test_state.context(); // Arc lives until end of scope
+    let context = ctx_arc.as_ref();
+
+    // 2. Retrieve the Holon to delete
+    let holon_to_delete = test_state
+        .get_created_holon_by_key(&holon_to_delete_key)
+        .expect("Failed to retrieve holon from test_state's created_holons.");
+
+    let local_id = match holon_to_delete
+        .holon_id(context)
+        .expect("Unable to get HolonId from holon_to_delete")
+    {
+        HolonId::Local(id) => id,
+        HolonId::External(_) => panic!("Can only delete a Local Holon, found External"),
+    };
+
+    // 3. Build the delete Holon request
+    let request = build_delete_holon_dance_request(local_id.clone())
+        .expect("Failed to build delete_holon request");
+
+    debug!("delete_holon Dance Request: {:#?}", request);
+
+    // 4. Call the dance
+    let response = test_state.invoke_dance(request).await;
+    debug!("delete_holon Dance Response: {:#?}", response.clone());
+
+    // 5. Validate response status
+    assert_eq!(
+        response.status_code, expected_response,
+        "Returned {:?} did not match expected {:?}",
+        response.status_code, expected_response
+    );
+
+    if expected_response == ResponseStatusCode::OK {
+        info!("Success! delete_holon returned OK response, confirming deletion...");
+
+        // 6. Verify the holon no longer exists
+        let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id.clone()))
+            .expect("Failed to build get_holon_by_id request");
+
+        let get_response = test_state.invoke_dance(get_request).await;
+        assert_eq!(
+            get_response.status_code,
+            ResponseStatusCode::NotFound,
+            "Holon should be deleted but was found"
+        );
+
+        info!("Confirmed Holon deletion!");
+    } else {
+        info!("delete_holon matched expected response: {:?}", response.status_code);
+    }
+}

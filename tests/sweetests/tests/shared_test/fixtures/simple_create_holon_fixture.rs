@@ -1,0 +1,53 @@
+// #![allow(dead_code)]
+
+use crate::shared_test::{
+    setup_book_author_steps_with_context, test_context::init_fixture_context,
+    test_data_types::DancesTestCase,
+};
+
+use holons_prelude::prelude::*;
+//
+use rstest::*;
+
+/// This function creates a set of simple (undescribed) holons
+///
+#[fixture]
+pub async fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
+    // Init
+    let fixture_context = init_fixture_context().await;
+
+    let mut test_case = DancesTestCase::new(
+        "Simple Create/Get Holon Testcase".to_string(),
+        "Ensure the holons and relationships setup by book and author setup helper commit successfully".to_string(),
+    );
+
+    // Set initial expected_database_count to 1 (to account for the HolonSpace Holon)
+    let mut expected_count: i64 = 1;
+
+    // Ensure DB count //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+
+    // // Use helper function to set up a book holon, 2 persons, a publisher, and a relationship from
+    // // the book to both persons. Note that this uses the fixture's Nursery as a place to hold the test data.
+
+    let _author_relationship_name =
+        setup_book_author_steps_with_context(&*fixture_context, &mut test_case)?;
+
+    // // Test Holons are staged (but never committed) in the fixture_context's Nursery
+    // // This allows them to be assigned StagedReferences and also retrieved by either index or key
+
+    //  COMMIT  // all Holons in staging_area
+    test_case.add_commit_step()?;
+    expected_count += staged_count(&*fixture_context).unwrap();
+
+    //  ENSURE DATABASE COUNT //
+    test_case.add_ensure_database_count_step(MapInteger(expected_count))?;
+
+    //  MATCH SAVED CONTENT  //
+    test_case.add_match_saved_content_step()?;
+
+    // Load test_session_state
+    test_case.load_test_session_state(&*fixture_context);
+
+    Ok(test_case.clone())
+}

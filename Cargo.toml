@@ -10,7 +10,7 @@ members = [
 
     # happ tests (native build) depends on happ crates, holons_client and other shared crates
     # for build isolation purposes wasm crates are not included here
-    "sweetests",
+    "tests/sweetests",
 
     # host crates (native build) depends on shared crates only
     "host/crates/holons_client",
@@ -30,7 +30,8 @@ members = [
     "shared_crates/type_system/core_types",
     "shared_crates/type_system/integrity_core_types",
     "shared_crates/type_system/type_names",
-    "shared_crates/holons_loader", 
+    "shared_crates/holons_loader",
+    "shared_crates/holons_loader_client", 
 ]
 
 [workspace.dependencies]
@@ -59,6 +60,7 @@ core_types = { path = "shared_crates/type_system/core_types" }
 integrity_core_types = { path = "shared_crates/type_system/integrity_core_types" }
 type_names = { path = "shared_crates/type_system/type_names" }
 holons_loader = { path = "shared_crates/holons_loader" }
+holons_loader_client = { path = "shared_crates/holons_loader_client" }
 
 # Holochain dependencies
 hdi = "0.6"
