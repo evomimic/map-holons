@@ -128,12 +128,8 @@ fn server_error_response(msg: String) -> DanceResponse {
 pub fn convert_to_space_info(app_info: AppInfo) -> Result<SpaceInfo, HolonError> {
         let mut space_info = SpaceInfo::new();
         
-        // Assuming app_info has a method to get spaces or similar data
-        // This is a placeholder; adjust according to actual AppInfo structure
         for (role, cells) in app_info.cell_info.iter() {
             for cell_info in cells {
-                // You need to match on the cell_info enum variant, e.g. Provisioned, Cloned, etc.
-                // Adjust the match arms according to the actual enum and struct definitions in your codebase.
                 match cell_info {
                     CellInfo::Provisioned(provisioned_cell) => {
                         let sprops = HolonSpace {

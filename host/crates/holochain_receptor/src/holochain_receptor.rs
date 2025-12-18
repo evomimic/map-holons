@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use core_types::{HolonError,ContentSet};
+use core_types::{HolonError};
 
 use holons_client::{
     dances_client::ClientDanceBuilder,
@@ -15,7 +15,7 @@ use holons_client::{
     },
 };
 
-use holons_core::{HolonsContextBehavior, core_shared_objects::Holon, dances::{DanceInitiator, DanceResponse}};
+use holons_core::{HolonsContextBehavior, dances::{DanceInitiator}};
 use holons_trust_channel::TrustChannel;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
@@ -30,7 +30,7 @@ pub struct HolochainReceptor {
     properties: HashMap<String, String>,
     context: Arc<dyn HolonsContextBehavior + Send + Sync>,
     client_handler: Arc<HolochainConductorClient>,
-    home_space_holon: HolonSpace,
+    _home_space_holon: HolonSpace,
 }
 
 impl HolochainReceptor {
@@ -51,7 +51,7 @@ impl HolochainReceptor {
         let context = init_client_context(Some(initiator));
 
         // Default until we fully implement space discovery
-        let home_space_holon = HolonSpace::default();
+        let _home_space_holon = HolonSpace::default();
 
         Self {
             receptor_id: base.receptor_id.clone(),
@@ -59,7 +59,7 @@ impl HolochainReceptor {
             properties: base.properties.clone(),
             context,
             client_handler,
-            home_space_holon,
+            _home_space_holon,
         }
     }
 }

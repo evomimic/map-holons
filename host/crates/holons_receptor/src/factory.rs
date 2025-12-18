@@ -41,9 +41,6 @@ impl ReceptorFactory {
             "holochain" => {
                 tracing::info!("Creating HolochainReceptor from base configuration");
                 let receptor = HolochainReceptor::new(base);
-                //let local_receptor = self.get_receptor_by_type("local");
-                //local_receptor.add_space()//.get_space_info().await?;
-                //TODO: add home_space_holon to the local root_space
                 Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }
             _ => Err(format!("Unsupported receptor type: {}", base.receptor_type).into())
@@ -104,10 +101,6 @@ impl ReceptorFactory {
                "holochain" => return receptor.get_space_info().await,
                _ => {}
            }
-           //if let Some(conductor) = &cfg.conductor {
-             //  let spaces = HolochainConductor::get_all_spaces(conductor.as_ref(), "map_holons")?;
-             //  return Ok(spaces);
-          // }
        }
        Err(HolonError::NotImplemented("No conductor found for space".into()))
     }

@@ -2,7 +2,6 @@ use core_types::{HolonError};
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_core::{HolonsContextBehavior, core_shared_objects::{SavedHolon}};
 
-//Local client does not make conductor calls so doesnt need the DanceInitiator
 
 #[derive(Debug, Clone)]
 pub struct LocalClient;
@@ -31,22 +30,3 @@ impl LocalClient {
         todo!("Implement convert_to_space_info to convert SavedHolon to SpaceInfo");
     }
 }
-
-
-/*#[async_trait]
-impl DanceInitiator for LocalClient {
-    async fn initiate_dance(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-        _request: DanceRequest,
-    ) -> DanceResponse {
-        // Implement your local dance logic here
-        DanceResponse {
-            status_code: ResponseStatusCode::OK,
-            description: MapString("Local dance completed".into()),
-            body: ResponseBody::None,
-            descriptor: None,
-            state: None,
-        }
-    }
-}*/
