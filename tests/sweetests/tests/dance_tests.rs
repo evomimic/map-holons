@@ -49,6 +49,7 @@ use self::test_remove_related_holon::execute_remove_related_holons;
 use self::test_with_properties_command::execute_with_properties;
 
 use crate::load_holons_fixture::*;
+use crate::loader_client_fixture::*;
 use crate::shared_test::{
     // mock_conductor::*,
     test_context::init_test_context,
@@ -93,6 +94,7 @@ use shared_test::*;
 #[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
 #[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
+#[case::load_holons_client_test(loader_client_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(
     #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,
@@ -170,6 +172,27 @@ async fn rstest_dance_tests(
                 execute_load_holons(
                     &mut test_state,
                     set,
+                    expect_staged,
+                    expect_committed,
+                    expect_links_created,
+                    expect_errors,
+                    expect_total_bundles,
+                    expect_total_loader_holons,
+                )
+                .await
+            }
+            DanceTestStep::LoadHolonsClient {
+                content_set,
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+                expect_total_bundles,
+                expect_total_loader_holons,
+            } => {
+                shared_test::test_load_holons_client::execute_load_holons_client(
+                    &mut test_state,
+                    content_set,
                     expect_staged,
                     expect_committed,
                     expect_links_created,

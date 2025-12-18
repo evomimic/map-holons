@@ -1,7 +1,8 @@
-use holons_core::{dances::{DanceResponse, ResponseBody, ResponseStatusCode, SessionState}, HolonReference};
+use holons_core::{
+    dances::{DanceResponse, ResponseBody, ResponseStatusCode, SessionState},
+    HolonReference,
+};
 use serde::{Deserialize, Serialize};
-
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MapResponse {
@@ -14,7 +15,7 @@ pub struct MapResponse {
 }
 
 impl MapResponse {
-    pub fn new_from_dance_response(space_id:String, danceresponse:DanceResponse) -> Self {
+    pub fn new_from_dance_response(space_id: String, danceresponse: DanceResponse) -> Self {
         Self {
             space_id,
             status_code: danceresponse.status_code,
@@ -24,5 +25,4 @@ impl MapResponse {
             state: danceresponse.state,
         }
     }
-    
 }

@@ -268,7 +268,7 @@ pub async fn execute_load_holons(
         // we already printed error holons above if any existed
     }
 
-    // Final assertions (same as before).
+    // Final assertions
     assert_eq!(
         actual_staged, expect_staged.0,
         "Expected HolonsStaged={}, got {}",

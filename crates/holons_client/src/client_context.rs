@@ -34,7 +34,9 @@ pub struct ClientHolonsContext {
 ///
 /// # Returns
 /// * An `Arc<dyn HolonsContextBehavior>` containing the initialized client context.
-pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<dyn HolonsContextBehavior + Send + Sync> {
+pub fn init_client_context(
+    initiator: Option<Arc<dyn DanceInitiator>>,
+) -> Arc<dyn HolonsContextBehavior + Send + Sync> {
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
@@ -54,7 +56,7 @@ pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<dy
 
     // Step 4: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        initiator, // Dance initiator for conductor calls
+        initiator,     // Dance initiator for conductor calls
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,

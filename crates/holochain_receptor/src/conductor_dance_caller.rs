@@ -1,6 +1,6 @@
-use std::fmt::Debug;
 use async_trait::async_trait;
 use holons_core::dances::{DanceRequest, DanceResponse};
+use std::fmt::Debug;
 
 /// Native-only interface for executing a DanceRequest against a Holochain conductor.
 ///

@@ -151,54 +151,82 @@ pub trait ToBaseValue {
 
 // Owned wrappers → BaseValue
 impl ToBaseValue for MapString {
-    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(self) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(self)
+    }
 }
 impl ToBaseValue for MapBoolean {
-    fn to_base_value(self) -> BaseValue { BaseValue::BooleanValue(self) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::BooleanValue(self)
+    }
 }
 impl ToBaseValue for MapInteger {
-    fn to_base_value(self) -> BaseValue { BaseValue::IntegerValue(self) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::IntegerValue(self)
+    }
 }
 impl ToBaseValue for MapEnumValue {
-    fn to_base_value(self) -> BaseValue { BaseValue::EnumValue(self) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::EnumValue(self)
+    }
 }
 
 // References to wrappers → BaseValue (clone as needed)
 impl ToBaseValue for &MapString {
-    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(self.clone()) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(self.clone())
+    }
 }
 impl ToBaseValue for &MapBoolean {
-    fn to_base_value(self) -> BaseValue { BaseValue::BooleanValue(self.clone()) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::BooleanValue(self.clone())
+    }
 }
 impl ToBaseValue for &MapInteger {
-    fn to_base_value(self) -> BaseValue { BaseValue::IntegerValue(self.clone()) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::IntegerValue(self.clone())
+    }
 }
 impl ToBaseValue for &MapEnumValue {
-    fn to_base_value(self) -> BaseValue { BaseValue::EnumValue(self.clone()) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::EnumValue(self.clone())
+    }
 }
 
 // Primitives → BaseValue
 impl ToBaseValue for &str {
-    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(MapString(self.to_string())) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(MapString(self.to_string()))
+    }
 }
 impl ToBaseValue for String {
-    fn to_base_value(self) -> BaseValue { BaseValue::StringValue(MapString(self)) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::StringValue(MapString(self))
+    }
 }
 impl ToBaseValue for bool {
-    fn to_base_value(self) -> BaseValue { BaseValue::BooleanValue(MapBoolean(self)) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::BooleanValue(MapBoolean(self))
+    }
 }
 impl ToBaseValue for i64 {
-    fn to_base_value(self) -> BaseValue { BaseValue::IntegerValue(MapInteger(self)) }
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::IntegerValue(MapInteger(self))
+    }
 }
 
 // Identity conversions
 impl ToBaseValue for BaseValue {
     #[inline]
-    fn to_base_value(self) -> BaseValue { self }
+    fn to_base_value(self) -> BaseValue {
+        self
+    }
 }
 impl ToBaseValue for &BaseValue {
     #[inline]
-    fn to_base_value(self) -> BaseValue { self.clone() }
+    fn to_base_value(self) -> BaseValue {
+        self.clone()
+    }
 }
 
 // ===============================
@@ -210,25 +238,35 @@ impl ToBaseValue for &BaseValue {
 // MapString
 impl From<String> for MapString {
     #[inline]
-    fn from(value: String) -> Self { MapString(value) }
+    fn from(value: String) -> Self {
+        MapString(value)
+    }
 }
 impl From<&str> for MapString {
     #[inline]
-    fn from(value: &str) -> Self { MapString(value.to_owned()) }
+    fn from(value: &str) -> Self {
+        MapString(value.to_owned())
+    }
 }
 
 // MapBoolean
 impl From<bool> for MapBoolean {
     #[inline]
-    fn from(value: bool) -> Self { MapBoolean(value) }
+    fn from(value: bool) -> Self {
+        MapBoolean(value)
+    }
 }
 
 // MapInteger <-> i64
 impl From<i64> for MapInteger {
     #[inline]
-    fn from(value: i64) -> Self { MapInteger(value) }
+    fn from(value: i64) -> Self {
+        MapInteger(value)
+    }
 }
 impl From<MapInteger> for i64 {
     #[inline]
-    fn from(value: MapInteger) -> Self { value.0 }
+    fn from(value: MapInteger) -> Self {
+        value.0
+    }
 }

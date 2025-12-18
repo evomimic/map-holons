@@ -15,13 +15,10 @@ use holons_client::{
         holon_space::{HolonSpace, SpaceInfo},
         map_request::MapRequest,
         map_response::MapResponse,
-    }
+    },
 };
 
-use holons_core::{
-    dances::DanceInitiator,
-    HolonsContextBehavior,
-};
+use holons_core::{dances::DanceInitiator, HolonsContextBehavior};
 use holons_trust_channel::TrustChannel;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
@@ -41,10 +38,8 @@ pub struct HolochainReceptor {
 impl HolochainReceptor {
     pub fn new(base: BaseReceptor) -> Self {
         // Downcast the stored client into our concrete conductor client
-        let client_any = base.client_handler
-            .as_ref()
-            .expect("Client is required for HolochainReceptor")
-            .clone();
+        let client_any =
+            base.client_handler.as_ref().expect("Client is required for HolochainReceptor").clone();
 
         let client_handler = client_any
             .downcast::<HolochainConductorClient>()
@@ -73,11 +68,8 @@ impl HolochainReceptor {
 
 #[async_trait]
 impl ReceptorBehavior for HolochainReceptor {
-
     /// Core request → client dance pipeline
-    async fn handle_map_request(&self, request: MapRequest)
-                                -> Result<MapResponse, HolonError>
-    {
+    async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         let dance_request =
             ClientDanceBuilder::validate_and_execute(self.context.as_ref(), &request)?;
 
@@ -87,14 +79,9 @@ impl ReceptorBehavior for HolochainReceptor {
             .get_dance_initiator()
             .expect("Dance initiator must be initialized");
 
-        let dance_response = initiator
-            .initiate_dance(&*self.context, dance_request)
-            .await;
+        let dance_response = initiator.initiate_dance(&*self.context, dance_request).await;
 
-        Ok(MapResponse::new_from_dance_response(
-            request.space.id,
-            dance_response,
-        ))
+        Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
     }
 
     /// POC stub for system info

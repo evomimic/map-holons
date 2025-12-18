@@ -218,6 +218,19 @@ impl WriteableHolonState for TransientHolon {
         Ok(self)
     }
 
+    /// Adds related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        self.transient_relationships.add_related_holons_with_keys(relationship_name, entries)?;
+
+        Ok(self)
+    }
+
     fn increment_version(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.version.0 += 1;
@@ -243,6 +256,18 @@ impl WriteableHolonState for TransientHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.transient_relationships.remove_related_holons(context, &relationship_name, holons)?;
+
+        Ok(self)
+    }
+
+    /// Removes related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError> {
+        self.is_accessible(AccessType::Write)?;
+        self.transient_relationships.remove_related_holons_with_keys(relationship_name, entries)?;
 
         Ok(self)
     }

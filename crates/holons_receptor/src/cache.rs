@@ -1,6 +1,6 @@
+use holons_client::shared_types::base_receptor::ReceptorBehavior;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use holons_client::shared_types::base_receptor::ReceptorBehavior;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReceptorKey {
@@ -10,10 +10,7 @@ pub struct ReceptorKey {
 
 impl ReceptorKey {
     pub fn new(receptor_type: String, receptor_id: String) -> Self {
-        Self {
-            receptor_type,
-            receptor_id,
-        }
+        Self { receptor_type, receptor_id }
     }
 }
 
@@ -25,9 +22,7 @@ pub struct ReceptorCache {
 
 impl ReceptorCache {
     pub fn new() -> Self {
-        Self {
-            cache: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self { cache: Arc::new(Mutex::new(HashMap::new())) }
     }
 
     pub fn get(&self, key: &ReceptorKey) -> Option<Arc<dyn ReceptorBehavior>> {
@@ -36,7 +31,8 @@ impl ReceptorCache {
 
     pub fn get_by_type(&self, receptor_type: &str) -> Vec<Arc<dyn ReceptorBehavior>> {
         let cache = self.cache.lock().unwrap();
-        cache.iter()
+        cache
+            .iter()
             .filter_map(|(key, receptor)| {
                 if key.receptor_type == receptor_type {
                     Some(receptor.clone())
@@ -71,10 +67,10 @@ impl ReceptorCache {
     }
 
     // probably remove, Check if a receptor exists for the given space
-   // pub fn has_receptor_for_space(&self, space_id: &String) -> bool {
-   //     let key = ReceptorKey::from_space_holon(space_id);
-  //      self.cache.lock().unwrap().contains_key(&key)
-  //  }
+    // pub fn has_receptor_for_space(&self, space_id: &String) -> bool {
+    //     let key = ReceptorKey::from_space_holon(space_id);
+    //      self.cache.lock().unwrap().contains_key(&key)
+    //  }
 }
 
 // Custom Debug implementation since Mutex doesn't derive Debug easily
@@ -90,5 +86,4 @@ impl Default for ReceptorCache {
     fn default() -> Self {
         Self::new()
     }
-
 }
