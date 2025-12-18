@@ -70,7 +70,7 @@ export class ApiService {
     const spaceData = this.getSpacesByType(space_type);
     let result: HolonSpace | undefined = undefined;
     for (const space of spaceData) {
-      if (space.id === space.origin_space_id) {
+      if (space.id === space.origin_holon_id) {
         result = space
       }
     };

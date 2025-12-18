@@ -1,6 +1,6 @@
 use core_types::HolonError;
 use holons_receptor::factory::ReceptorFactory;
-use holons_client::shared_types::map_request::MapRequest;
+use holons_client::shared_types::map_request::{MapRequest, MapRequestBody};
 use holons_client::shared_types::map_response::MapResponse;
 use tauri::{command, State};
 
@@ -13,6 +13,13 @@ pub(crate) async fn map_request(
     tracing::debug!("[TAURI COMMAND] 'map_request' command invoked for space: {:?}", map_request);
     // a map_request is currently using "holochain" receptor type only
     let receptor = receptor_factory.get_receptor_by_type("holochain"); 
+        if map_request.name == "load_holons" {
+            tracing::info!("[TAURI COMMAND] 'map_request' handling 'load_holons' request");
+                return receptor
+                .load_holons(map_request)
+                .await
+                .map_err(HolonError::from);
+        } 
         return receptor
             .handle_map_request(map_request)
             .await

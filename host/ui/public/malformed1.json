@@ -1,0 +1,19 @@
+{
+  "holons": [
+    {
+      "type": "Book",
+      "key": "Book:BadRef",
+      "properties": {
+        "title": "Bad Reference"
+      },
+      "relationships": [
+        {
+          "name": "AuthoredBy",
+          "target": {
+            "$ref": "InvalidPrefix:Something"
+          }
+        }
+      ]
+    }
+  ]
+}

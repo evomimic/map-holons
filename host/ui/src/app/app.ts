@@ -1,4 +1,4 @@
-import { Component, effect } from '@angular/core';
+import { Component, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { ToolbarComponent } from './components/toolbar/toolbar.component';
@@ -19,7 +19,7 @@ import { ViewerComponent } from './components/viewer/viewer.component';
 
 })
 export class App {
-  protected title = 'map-app';
+  protected readonly title = signal('map-app');
   error:string | null = ""
   errorStyling:string = "text-red-500"
   status:string | null = ""

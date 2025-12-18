@@ -19,6 +19,7 @@ tauri-build = { version = "2", default-features = false, features = [
 [dependencies]
 serde = "1"
 tauri = { version = "2", features = [] }
+tauri-plugin-fs = "2"
 url2 = "0.0.6"
 app_dirs2 = "2.5.5"
 tempdir = "0.3.7"

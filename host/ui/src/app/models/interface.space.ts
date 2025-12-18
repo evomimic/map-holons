@@ -124,14 +124,14 @@ export const getTypeRef = (td?: TypeDescriptor): TypeRef | undefined =>
 // holon created on the network 
 export type HolonSpace = {
     id:string //network:branch:content_address_id_hash (created in the destination space)
-    receptor_id:string //id of the receptor holon that manages this space
-    branch_id?:string // branch id (equal to the cell in holochain)
     name:string //user defined name of the space
+    branch_id?:string // branch id (equal to the cell in holochain)
+    receptor_id:string //id of the receptor that manages this space
     space_type:SpaceType //determined from the space ontology / user defined
     description: string
     created_at: string //ISO 8601
     //parent_space_id:string //where the space was created from .. null if home space
-    origin_space_id:string //genesis space. useful for space linking
+    origin_holon_id:string //genesis space. useful for space linking
     schema?:TypeDescriptor | string, //refernce typology/ontology in a meta-space
     metadata?: Dictionary<any> //optional metadata
     enabled: boolean
@@ -141,7 +141,7 @@ export type ProtoAgentSpace = {
     name:string
     space_type:SpaceType
     description: string
-    origin_space_id:string //if this is the same as the id .. its the home space
+    origin_holon_id:string //if this is the same as the id .. its the home space
     type_descriptor?:TypeDescriptor | string, //optional reference to types in the meta space
     metadata?: Dictionary<any> //optional metadata
 }
@@ -153,7 +153,7 @@ export const mockContentSpace: HolonSpace = {
     space_type: SpaceType.Content,
     description: "home space for content",
     created_at: "2024-10-01T00:00:00Z",
-    origin_space_id: "mock_space_id1",
+    origin_holon_id: "mock_space_id1",
     //type_descriptor: ["mock_descriptor_id","9oloeieueujf7"], //example reference to a descriptor in the meta space
     metadata: {
         theme: "example theme data for content space",
@@ -169,7 +169,7 @@ export const mockMetaSpace: HolonSpace = {
     space_type: SpaceType.Meta,
     description: "home space for type data",
     created_at: "2024-10-01T00:00:00Z",
-    origin_space_id: "mock_space_id2",
+    origin_holon_id: "mock_space_id2",
    // type_descriptor: ["mock_descriptor_id","wrfgewrfgerfgjn7844"],
     metadata: {
         theme: "example theme data for meta space",

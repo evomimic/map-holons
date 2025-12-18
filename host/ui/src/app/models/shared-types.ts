@@ -24,7 +24,7 @@ export type BaseValue =
 // ===========================================
 
 // LocalId is a newtype wrapper around Vec<u8>, serializes as plain array
-export type LocalId = number[];
+export type LocalId = string |number[];
 
 // TemporaryId is a newtype wrapper around UUID, serializes as string
 export type TemporaryId = string;
@@ -260,3 +260,14 @@ export class HolonIdFactory {
     return { External: { space_id, local_id } };
   }
 }
+
+export interface FileData {
+  filename: string;
+  raw_contents: string;
+};
+
+export interface ContentSet {
+  schema: FileData;
+  files_to_load: FileData[];
+};
+

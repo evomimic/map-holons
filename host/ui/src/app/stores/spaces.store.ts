@@ -71,7 +71,7 @@ export const SpacesStore = signalStore(
     getHomeSpace(spaceType: SpaceType): HolonSpace | undefined {
     const spaces = Object.values(store.spaces()[spaceType]);
     for (const space of spaces) {
-      if (space.id === space.origin_space_id) {
+      if (space.id === space.origin_holon_id) {
         return space;
       }
     }

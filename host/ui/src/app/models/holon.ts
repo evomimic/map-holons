@@ -436,7 +436,7 @@ export class HolonUtils {
    */
   static summarize(holon: Holon): string {
     const key = this.getKey(holon) || "<None>";
-    const localId = this.getLocalId(holon)?.join('') || "<None>";
+    const localId = this.getLocalId(holon) || "<None>";
     
     let state: string;
     let validationState: ValidationState;

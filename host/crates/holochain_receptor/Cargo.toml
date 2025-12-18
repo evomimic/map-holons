@@ -19,6 +19,7 @@ holochain_nonce = { version = "0.5" }
 holons_core = { path = "../../../shared_crates/holons_core" }
 holons_client = { path = "../holons_client" }
 holons_trust_channel = { path = "../../../shared_crates/holons_trust_channel" }
+holons_loader_client = { path = "../../../shared_crates/holons_loader_client" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
 base_types = { path = "../../../shared_crates/type_system/base_types" }
 

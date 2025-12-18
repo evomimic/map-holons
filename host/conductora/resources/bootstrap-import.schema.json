@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://map.foundation/schemas/bootstrap-import.schema.json",
+  "title": "MAP Bootstrap Import Schema",
+  "description": "Validates MAP holon JSON imports with unified relationships, 'type' discrimination, and embedded holons.",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Optional metadata describing the import file.",
+      "properties": {
+        "map_schema_version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "generator": {
+          "type": "string"
+        },
+        "depends_on_files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Relative or symbolic path to another import file this one depends on."
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "holons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/holon"
+      }
+    }
+  },
+  "required": [
+    "holons"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "holon": {
+      "type": "object",
+      "required": [
+        "type",
+        "properties"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of holon: e.g., Schema, TypeDescriptor, FormatKeyRule"
+        },
+        "key": {
+          "type": "string",
+          "description": "Unique key for this holon. May be omitted for keyless holons."
+        },
+        "properties": {
+          "type": "object",
+          "description": "Holon property map. Values may be scalars or arrays.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "description": "List of outbound relationships for this holon.",
+          "items": {
+            "$ref": "#/definitions/relationship"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "relationship": {
+      "type": "object",
+      "required": [
+        "name",
+        "target"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "description": "One or more targets: reference, embedded, or both.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/target"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/target"
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "target": {
+      "description": "A relationship target (reference or embedded holon).",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/local_ref"
+        },
+        {
+          "$ref": "#/definitions/holon_id"
+        },
+        {
+          "$ref": "#/definitions/holon"
+        }
+      ]
+    },
+    "local_ref": {
+      "type": "object",
+      "required": [
+        "$ref"
+      ],
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "pattern": "^(#|id:|@|ext:).+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "holon_id": {
+      "type": "object",
+      "required": [
+        "space",
+        "id"
+      ],
+      "properties": {
+        "space": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

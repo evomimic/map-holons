@@ -11,6 +11,12 @@ impl LocalClient {
     pub fn new() -> Self {
         Self {}
     }
+
+    pub fn load_core_schemas(&self) -> Result<(), HolonError> {
+        // Implement logic to load core schemas
+        todo!("Implement load_core_schemas to load core schemas into the local receptor");
+    }
+
     pub fn fetch_or_create_root_holon(&self, _context: &dyn HolonsContextBehavior) -> Result<SavedHolon, HolonError> {
         // Implement logic to check and create root holon if it doesn't exist
         todo!("Implement fetch_or_create_root_holon to get or create root holon if it doesn't exist");

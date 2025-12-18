@@ -1,0 +1,23 @@
+
+use core_types::{HolonError,ContentSet};
+use holons_client::shared_types::{map_response::MapResponse};
+use holons_receptor::ReceptorFactory;
+use tauri::{command, State};
+
+
+#[command]
+pub(crate) async fn load_holons (
+    upload_data: ContentSet,
+    receptor_id: String,
+    receptor_factory: State<'_, ReceptorFactory>,
+) -> Result<MapResponse, HolonError> {
+    
+    tracing::debug!("[TAURI COMMAND] 'load_holons' command invoked with receptor id {}",receptor_id);
+    tracing::info!("[TAURI COMMAND] 'load_holons' using upload data: {:?}", upload_data);
+
+     let receptor = receptor_factory.get_receptor_by_type(&receptor_id); 
+        return receptor
+            .load_holons(upload_data)
+            .await
+            .map_err(HolonError::from);
+}

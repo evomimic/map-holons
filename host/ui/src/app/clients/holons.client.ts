@@ -4,9 +4,9 @@ import { SpaceClient } from './space.client';
 //import { Cell } from '../helpers/interface.cell';
 import { HolonSpace } from '../models/interface.space';
 import { StagedHolon, TransientHolon } from '../models/holon';
-import { createMapRequestForStageHolon, createMapRequestForReadAll, createMapRequestForStageCloneHolon, MapRequest, createMapRequestForUpdateHolon, createMapRequestForCommitHolon, createMapRequestForCommitAll, createMapRequestForGetHolon } from '../models/map.request';
+import { createMapRequestForStageHolon, createMapRequestForReadAll, createMapRequestForStageCloneHolon, MapRequest, createMapRequestForUpdateHolon, createMapRequestForCommitHolon, createMapRequestForCommitAll, createMapRequestForGetHolon, createMapRequestForNewHolon, createMapRequestForLoadHolons as createMapRequestForUpLoadHolons } from '../models/map.request';
 import { MapResponse, mockMapResponse } from '../models/map.response';
-import { HolonId, StagedReference, PropertyMap } from '../models/shared-types';
+import { HolonId, StagedReference, PropertyMap, ContentSet } from '../models/shared-types';
 
 const RECEPTOR_ID = "map_holons"
 
@@ -33,9 +33,25 @@ public async readAll(space:HolonSpace):Promise<MapResponse> {
     return this.dance(mro)
 }
 
+public async uploadHolons(space:HolonSpace, contentSet: ContentSet):Promise<MapResponse> {
+  const mro:MapRequest = createMapRequestForUpLoadHolons(space, contentSet)
+    if (this.mock)
+      return new Promise<MapResponse>((resolve) => {setTimeout(()=> resolve(mockMapResponse),1000)}) 
+    return this.dance(mro)
+}
+
+public async createHolon(space:HolonSpace, props:PropertyMap):Promise<MapResponse> {
+  const mro:MapRequest = createMapRequestForNewHolon(space, props)
+   if (this.mock)
+      return new Promise<MapResponse>((resolve) => {
+        setTimeout(() => resolve(mockMapResponse), 4000)
+      });    
+    return this.dance(mro)
+}
+
 /* create one using the stage request with properties */
-public async stageHolon(space:HolonSpace, data:TransientHolon):Promise<MapResponse> {
-  const mro:MapRequest = createMapRequestForStageHolon(space, data)
+public async stageHolon(space:HolonSpace, transientId:string):Promise<MapResponse> {
+  const mro:MapRequest = createMapRequestForStageHolon(space, transientId)
     if (this.mock)
       return new Promise<MapResponse>((resolve) => {
         setTimeout(() => resolve(mockMapResponse), 4000)

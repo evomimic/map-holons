@@ -1,15 +1,14 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
+  "cli": {
+    "packageManager": "npm"
+  },
   "newProjectRoot": "projects",
   "projects": {
     "map_sdk": {
       "projectType": "application",
-      "schematics": {
-        "@schematics/angular:component": {
-          "style": "css"
-        }
-      },
+      "schematics": {},
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
@@ -19,7 +18,6 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "inlineStyleLanguage": "css",
             "assets": [
               {
                 "glob": "**/*",
@@ -51,7 +49,7 @@
               "extractLicenses": false,
               "sourceMap": true
             },
-            "mock": {
+             "mock": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -77,8 +75,8 @@
           },
           "defaultConfiguration": "development"
         },
-        "extract-i18n": {
-          "builder": "@angular/build:extract-i18n"
+        "test": {
+          "builder": "@angular/build:unit-test"
         }
       }
     }

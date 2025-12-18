@@ -27,7 +27,7 @@ export class AllSpaces implements OnInit {
     name: '',
     space_type: SpaceType.Content,
     description: '',
-    origin_space_id: '',
+    origin_holon_id: '',
     //metatype_reference: {},
     metadata: {}
   };
@@ -77,7 +77,7 @@ export class AllSpaces implements OnInit {
   }
 
   deriveNewSpace(spaceId: string, origin: 'content' | 'meta') {
-    this.newSpace.origin_space_id = spaceId;
+    this.newSpace.origin_holon_id = spaceId;
     this.derivationOrigin = origin;
     this.showCreateSpaceForm = true;
   }

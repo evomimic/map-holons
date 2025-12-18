@@ -175,6 +175,24 @@ export function getSmartReferencesFromCollection(response: MapResponse): HolonRe
 }
 
 /**
+ * Convert a byte array (LocalId) to a hexadecimal string for display
+ * @param byteArray The array of bytes (typically a LocalId)
+ * @returns A hex string representation, or 'unknown' if invalid
+ */
+export function byteArrayToHex(byteArray: any): string {
+  if (!byteArray) return 'unknown';
+  
+  if (Array.isArray(byteArray)) {
+    return (byteArray as number[])
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
+  }
+  
+  return String(byteArray);
+}
+
+/**
  * Extract committed holons from the response body
  * Can come from either:
  * 1. Holons array after commit operation - returns StagedHolons with staged_state: Committed(LocalId)
@@ -196,11 +214,11 @@ export function getCommittedHolons(response: MapResponse): SavedHolon[] {
         // These have staged_state: { Committed: LocalId }
         if (item && typeof item === 'object' && 'Staged' in item) {
           const stagedHolon = item.Staged;
-          // Enhance the staged holon with saved_id extracted from staged_state
+          // Enhance the staged holon with saved_id extracted from staged_state (converted to hex)
           if (stagedHolon && stagedHolon.staged_state && typeof stagedHolon.staged_state === 'object' && 'Committed' in stagedHolon.staged_state) {
             return {
               ...stagedHolon,
-              saved_id: stagedHolon.staged_state.Committed
+              saved_id: byteArrayToHex(stagedHolon.staged_state.Committed)
             } as SavedHolon;
           }
           return stagedHolon as SavedHolon;
@@ -247,11 +265,11 @@ export function getCommittedHolons(response: MapResponse): SavedHolon[] {
             holon = holon.Transient;
           }
           
-          // Add the LocalId from the Smart reference as saved_id
+          // Add the LocalId from the Smart reference as saved_id (converted to hex)
           if (smartRef?.holon_id && typeof smartRef.holon_id === 'object' && 'Local' in smartRef.holon_id) {
             committedHolons.push({
               ...holon,
-              saved_id: smartRef.holon_id.Local
+              saved_id: byteArrayToHex(smartRef.holon_id.Local)
             } as SavedHolon);
           } else {
             committedHolons.push(holon as SavedHolon);
@@ -260,7 +278,7 @@ export function getCommittedHolons(response: MapResponse): SavedHolon[] {
           // Fallback: create a placeholder from the Smart reference
           const localId = smartRef.holon_id.Local;
           committedHolons.push({
-            saved_id: localId,
+            saved_id: byteArrayToHex(localId),
             holon_state: "Immutable" as HolonState,
             validation_state: "ValidationRequired" as ValidationState,
             version: 1 as any,
@@ -356,6 +374,41 @@ export function getTransientHolons(response: MapResponse): TransientHolon[] {
         })
         .filter((holon: any): holon is TransientHolon => holon !== null && holon !== undefined);
     }
+  }
+  return [];
+}
+
+/**
+ * Get transient holons with their IDs from the response
+ * Returns an array of [id, holon] pairs where id is the TemporaryId
+ */
+export function getTransientHolonsWithIds(response: MapResponse): Array<[string, TransientHolon]> {
+  if (response.state?.transient_holons?.holons) {
+    const holons = response.state.transient_holons.holons;
+    const result: Array<[string, TransientHolon]> = [];
+    
+    // Handle both Map and plain object formats
+    if (holons instanceof Map) {
+      holons.forEach((value, key) => {
+        const holon = value as any;
+        if (holon && typeof holon === 'object' && 'Transient' in holon) {
+          result.push([String(key), (holon as { Transient: TransientHolon }).Transient]);
+        } else {
+          result.push([String(key), holon as TransientHolon]);
+        }
+      });
+    } else if (typeof holons === 'object' && holons !== null) {
+      // holons is a plain object
+      Object.entries(holons).forEach(([key, item]: [string, any]) => {
+        if (item && typeof item === 'object' && 'Transient' in item) {
+          result.push([key, (item as { Transient: TransientHolon }).Transient]);
+        } else {
+          result.push([key, item as TransientHolon]);
+        }
+      });
+    }
+    
+    return result;
   }
   return [];
 }

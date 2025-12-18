@@ -1,51 +1,71 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { JsonDataUploader } from './json-data-uploader/json-data-uploader.component';
 
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, JsonDataUploader],
+  imports: [CommonModule, FormsModule],
   templateUrl: './settings.html',
 })
 export class Settings {
-  // Settings properties
-  rustLogLevel: string = 'info';
-  holochainLogLevel: string = 'info';
-  conductorPort: number = 8888;
-  conductorAdminPort: number = 8889;
-  appPort: number = 1420;
-  databasePath: string = './conductor_data';
-  
+  // General Settings
   enableDebugTools: boolean = false;
   enableAutoSave: boolean = true;
   theme: string = 'light';
 
+  // Holochain Provider Settings
+  holochainEnabled: boolean = true;
+  holochainLogLevel: string = 'info';
+  conductorPort: number = 8888;
+  conductorAdminPort: number = 8889;
+  conductorDataPath: string = './conductor_data';
+
+  // IPFS Provider Settings
+  ipfsEnabled: boolean = false;
+  ipfsLogLevel: string = 'warn';
+  ipfsGatewayPort: number = 5001;
+  ipfsSwarmPort: number = 4001;
+  ipfsDataPath: string = './ipfs_data';
+
   saveSettings() {
     console.log('Settings saved:', {
-      rustLogLevel: this.rustLogLevel,
-      holochainLogLevel: this.holochainLogLevel,
-      conductorPort: this.conductorPort,
-      conductorAdminPort: this.conductorAdminPort,
-      appPort: this.appPort,
-      databasePath: this.databasePath,
       enableDebugTools: this.enableDebugTools,
       enableAutoSave: this.enableAutoSave,
-      theme: this.theme
+      theme: this.theme,
+      holochain: {
+        enabled: this.holochainEnabled,
+        logLevel: this.holochainLogLevel,
+        conductorPort: this.conductorPort,
+        conductorAdminPort: this.conductorAdminPort,
+        dataPath: this.conductorDataPath
+      },
+      ipfs: {
+        enabled: this.ipfsEnabled,
+        logLevel: this.ipfsLogLevel,
+        gatewayPort: this.ipfsGatewayPort,
+        swarmPort: this.ipfsSwarmPort,
+        dataPath: this.ipfsDataPath
+      }
     });
   }
 
   resetSettings() {
-    this.rustLogLevel = 'info';
-    this.holochainLogLevel = 'info';
-    this.conductorPort = 8888;
-    this.conductorAdminPort = 8889;
-    this.appPort = 1420;
-    this.databasePath = './conductor_data';
     this.enableDebugTools = false;
     this.enableAutoSave = true;
     this.theme = 'light';
+
+    this.holochainEnabled = true;
+    this.holochainLogLevel = 'info';
+    this.conductorPort = 8888;
+    this.conductorAdminPort = 8889;
+    this.conductorDataPath = './conductor_data';
+
+    this.ipfsEnabled = false;
+    this.ipfsLogLevel = 'warn';
+    this.ipfsGatewayPort = 5001;
+    this.ipfsSwarmPort = 4001;
+    this.ipfsDataPath = './ipfs_data';
   }
 }

@@ -41,7 +41,7 @@ export class Spaces {
     name: '',
     space_type: SpaceType.Content,
     description: '',
-    origin_space_id: '',
+    origin_holon_id: '',
     metadata: {}
   };
   metadataJson = '';
@@ -67,7 +67,7 @@ export class Spaces {
   }
 
   deriveNewSpace(spaceId: string, origin: 'content' | 'meta') {
-    this.newSpace.origin_space_id = spaceId;
+    this.newSpace.origin_holon_id = spaceId;
     this.derivationOrigin.set(origin);
     this.showCreateSpaceForm = true;
   }

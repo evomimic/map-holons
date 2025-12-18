@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "map_schema_version": "1.0.0",
+    "description": "Books and authors with relationships"
+  },
+  "holons": [
+    {
+      "type": "Person",
+      "key": "Person:JohnDoe",
+      "properties": {
+        "first_name": "John",
+        "last_name": "Doe",
+        "birth_year": 1970
+      }
+    },
+    {
+      "type": "Book",
+      "key": "Book:GreatNovel",
+      "properties": {
+        "title": "A Great Novel",
+        "isbn": "978-1234567890",
+        "publication_year": 2020
+      },
+      "relationships": [
+        {
+          "name": "AuthoredBy",
+          "target": {
+            "$ref": "#Person:JohnDoe"
+          }
+        }
+      ]
+    }
+  ]
+}

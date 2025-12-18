@@ -1,20 +1,20 @@
 
-use holons_client::shared_types::map_request::MapRequest;
+use holons_client::shared_types::{map_request::MapRequest};
 use tauri::{command };
 
 #[command]
 pub(crate) async fn serde_test(
-
     request_json: String,
+    receptor_id: String,
 ) -> Result<String, String> {
 
-    tracing::warn!("[TEST] Received JSON string: {}", request_json);
+    tracing::info!("[TEST] Received JSON string: {}", receptor_id);
 
     // Try to parse the JSON into a generic Value first for debugging
     match serde_json::from_str::<serde_json::Value>(&request_json) {
         Ok(json_value) => {
-            tracing::info!("[TEST] JSON structure: {:#?}", json_value);
-            tracing::error!("[DEBUG] Available fields: {:?}", json_value.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+            tracing::debug!("[TEST] JSON structure: {:#?}", json_value);
+            tracing::debug!("[DEBUG] Available fields: {:?}", json_value.as_object().map(|o| o.keys().collect::<Vec<_>>()));
         }
         Err(e) => {
             tracing::error!("[TEST] Invalid JSON: {}", e);

@@ -4,6 +4,6 @@ pub mod dances_client;
 
 pub use client_context::init_client_context;
 pub use client_shared_objects::*;
-pub use dances_client::ClientDanceCaller;
+//pub use dances_client::ClientDanceCaller;
 pub mod shared_types;
 

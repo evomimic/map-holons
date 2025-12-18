@@ -16,7 +16,7 @@ export class CreateSpace {
     name: '',
     space_type: SpaceType.Content,
     description: '',
-    origin_space_id: ''
+    origin_holon_id: ''
   };
   @Input() metadataJson: string = '';
 

@@ -6,13 +6,12 @@ import { Holon, SavedHolon, StagedHolon, StagedHolonFactory, TransientHolon } fr
 import { HolonsClient } from '../clients/holons.client';
 import { SignalStore, StoreState } from '../models/interface.store';
 import { getCommittedHolons, getStagedHolons, getTransientHolons, MapResponse } from '../models/map.response';
-import { HolonId, PropertyMap, StagedReference } from '../models/shared-types';
+import { ContentSet, HolonId, PropertyMap, StagedReference, TransientReference } from '../models/shared-types';
 
 export interface ContentStoreState extends StoreState{
   transient_holons: TransientHolon[];
   staged_holons: StagedHolon[]; // could be derived from responsebody
   committed_holons: SavedHolon[];
-  //session_id: string | undefined;
   last_map_response: MapResponse | undefined;
 }
 
@@ -27,9 +26,6 @@ export function createContentStore(
   injector: Injector,
   initialSpace: HolonSpace
 ) {
-  // Use runInContext to ensure signalStore and its dependencies are created correctly.
-  //return runInInjectionContext(injector, () => {
-// Dependencies are safely retrieved from the injector here.
     const client = injector.get(HolonsClient);
 
     const initialState: ContentStoreState = {
@@ -37,13 +33,11 @@ export function createContentStore(
       transient_holons: [],
       staged_holons: [],
       committed_holons: [],
-      //session_id: undefined,
       last_map_response: undefined,
       loading: false,
     };
   
     const ContentStore = signalStore(
-     // { providedIn: 'root' }, // Mark as non-singleton
 
       withState(initialState),
            // --- THIS IS THE DIAGNOSTIC SPY ---
@@ -68,7 +62,7 @@ export function createContentStore(
           const staged = getStagedHolons(mapResponse)
           let committed = getCommittedHolons(mapResponse)
           
-          console.log('%c[STORE] loadall() response received:', 'color: #FF9800; font-weight: bold;', {
+          console.log('%c[STORE] loadall() response received:', 'color: #FF9800; font-weight: bold;', mapResponse, {
             transient_count: transient.length,
             staged_count: staged.length,
             committed_count: committed.length,
@@ -121,8 +115,8 @@ export function createContentStore(
           const committedToUse = committed.length > 0 ? committed : store.committed_holons();
           patchState(store, { transient_holons: transient, staged_holons: staged, committed_holons: committedToUse, last_map_response: mapResponse, loading:false})
         },
-        async createOne(holon:TransientHolon){
-          console.log('%c[STORE] createOne called with transient holon:', 'color: #4CAF50; font-weight: bold;', holon);
+        async createOne(props:PropertyMap){
+          console.log('%c[STORE] createOne called with transient holon:', 'color: #4CAF50; font-weight: bold;', props);
          // FIX: Construct the state object by calling each signal individually.
           console.log('%c[STORE] State BEFORE server call:', 'color: #FFA500;', {
             space: store.space(),
@@ -135,15 +129,15 @@ export function createContentStore(
 
           try {
             // Send the staged holon to the server and get back the response
-            const mapResponse = await client.stageHolon(store.space()!, holon);
+            const mapResponse = await client.createHolon(store.space()!, props);
 
             console.log('%c[STORE] Server response (mapResponse) received:', 'color: #03A9F4; font-weight: bold;', mapResponse);
 
-            //const transientFromServer = getTransientHolons(mapResponse);
+            const transientFromServer = getTransientHolons(mapResponse);
             const stagedFromServer = getStagedHolons(mapResponse);
             const committedFromServer = getCommittedHolons(mapResponse);
 
-            //console.log('%c[STORE] Transient data from server:', 'color: #03A9F4;', transientFromServer);
+            console.log('%c[STORE] Transient data from server:', 'color: #03A9F4;', transientFromServer);
             console.log('%c[STORE] Staged data from server:', 'color: #03A9F4;', stagedFromServer);
             console.log('%c[STORE] Committed data from server:', 'color: #03A9F4;', committedFromServer);
 
@@ -152,7 +146,7 @@ export function createContentStore(
             const committedToUse = committedFromServer.length > 0 ? committedFromServer : store.committed_holons();
             
             patchState(store, {
-              transient_holons: [],
+              transient_holons: transientFromServer,
               staged_holons: stagedFromServer,
               committed_holons: committedToUse,
               last_map_response: mapResponse,
@@ -173,6 +167,19 @@ export function createContentStore(
           // Merge newly committed holons with existing ones
           const allCommitted = [...store.committed_holons(), ...committed];
           patchState(store, { transient_holons: transient, staged_holons: staged, committed_holons: allCommitted, last_map_response: mapResponse, loading:false})
+        },
+
+        async stageOne(transientId:string){
+          patchState(store, { loading: true });
+          const mapResponse = await client.stageHolon(store.space()!, transientId)
+          console.log('%c[STORE] Server response (mapResponse) received:', 'color: #03A9F4; font-weight: bold;', mapResponse);
+
+          const transient = getTransientHolons(mapResponse)
+          const staged = getStagedHolons(mapResponse)
+          const committed = getCommittedHolons(mapResponse)
+          // Preserve existing committed holons if the server didn't return any
+          const committedToUse = committed.length > 0 ? committed : store.committed_holons();
+          patchState(store, { transient_holons: transient, staged_holons: staged, committed_holons: committedToUse, last_map_response: mapResponse, loading:false})
         },
 
         async commitAllStaged(){
@@ -210,6 +217,50 @@ export function createContentStore(
           } catch (error) {
             console.error('[STORE] Error during commitAllStaged:', error);
             patchState(store, { loading: false });
+          }
+        },
+
+        async uploadHolons(contentSet: ContentSet) {
+          console.log('%c[STORE] loadHolons called with contentSet:', 'color: #4CAF50; font-weight: bold;', contentSet);
+          patchState(store, { loading: true });
+
+          try {
+
+              const mapResponse = await client.uploadHolons(store.space()!, contentSet);
+
+            console.log('%c[STORE] load_holons response received:', 'color: #03A9F4; font-weight: bold;', mapResponse);
+
+            // Handle the MapResponse from the server
+           // const mapResponse = response as MapResponse;
+
+            const transientFromServer = getTransientHolons(mapResponse);
+            const stagedFromServer = getStagedHolons(mapResponse);
+            const committedFromServer = getCommittedHolons(mapResponse);
+
+            console.log('%c[STORE] Transient data from load_holons:', 'color: #03A9F4;', transientFromServer);
+            console.log('%c[STORE] Staged data from load_holons:', 'color: #03A9F4;', stagedFromServer);
+            console.log('%c[STORE] Committed data from load_holons:', 'color: #03A9F4;', committedFromServer);
+
+            // Merge with existing committed holons
+            const allCommitted = [...store.committed_holons(), ...committedFromServer];
+
+            patchState(store, {
+              transient_holons: transientFromServer,
+              staged_holons: stagedFromServer,
+              committed_holons: allCommitted,
+              last_map_response: mapResponse,
+              loading: false
+            });
+
+            console.log('%c[STORE] State after loadHolons:', 'color: #4CAF50;', {
+              transient_count: transientFromServer.length,
+              staged_count: stagedFromServer.length,
+              committed_count: allCommitted.length
+            });
+          } catch (error) {
+            console.error('[STORE] Error during loadHolons:', error);
+            patchState(store, { loading: false });
+            throw error;
           }
         },
 

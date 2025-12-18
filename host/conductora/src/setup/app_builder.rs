@@ -27,7 +27,7 @@ impl AppBuilder {
             .manage(ReceptorConfigRegistry::new())
             .invoke_handler(tauri::generate_handler![
                 commands::root_space,
-                commands::load_holons,
+                //commands::load_holons,
                 commands::serde_test,
                 commands::map_request,
                 commands::all_spaces,
@@ -112,6 +112,8 @@ impl AppBuilder {
     ) -> tauri::Builder<tauri::Wry> {
         tracing::debug!("[APP BUILDER] Loading provider plugins: {:?}", storage_cfg.get_enabled_providers());
         
+        builder = builder.plugin(tauri_plugin_fs::init());
+
         for (_name, provider) in storage_cfg.get_enabled_providers() {
             match provider.provider_type() {
                 "local" => {

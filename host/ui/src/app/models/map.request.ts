@@ -13,7 +13,10 @@ import {
   StagedReference,
   QueryExpression,
   NodeCollection,
-  RequestType
+  RequestType,
+  TransientReference,
+  TemporaryId,
+  ContentSet
 } from './shared-types';
 
 import { Holon, StagedHolon, TransientHolon } from './holon';
@@ -40,11 +43,12 @@ export type RequestBody =
   | "None"
   | { Holon: Holon }
   | { TargetHolons: [RelationshipName, HolonReference[]] }
-  | { TransientHolon: TransientHolon }
+  | { TransientReference: TransientReference }
   | { HolonId: HolonId }
   | { ParameterValues: PropertyMap }
   | { StagedRef: StagedReference }
-  | { QueryExpression: QueryExpression };
+  | { QueryExpression: QueryExpression }
+  | { LoadHolons: ContentSet }
 
 
 // ===========================================
@@ -63,8 +67,8 @@ export function isRequestBodyTargetHolons(body: RequestBody): body is { TargetHo
   return typeof body === "object" && body !== null && "TargetHolons" in body;
 }
 
-export function isRequestBodyTransientHolon(body: RequestBody): body is { TransientHolon: TransientHolon } {
-  return typeof body === "object" && body !== null && "TransientHolon" in body;
+export function isRequestBodyTransientHolon(body: RequestBody): body is { TransientReference: TransientReference } {
+  return typeof body === "object" && body !== null && "TransientReference" in body;
 }
 
 export function isRequestBodyHolonId(body: RequestBody): body is { HolonId: HolonId } {
@@ -100,9 +104,8 @@ export class RequestBodyFactory {
     return { TargetHolons: [relationshipName, holons] };
   }
 
-  static transientHolon(transientHolon: TransientHolon): RequestBody {
-    const holon: Holon = { Transient: transientHolon };  // Wrap in Holon union
-    return { Holon: holon };
+  static transientReference(id: TemporaryId): RequestBody {
+    return { TransientReference: { id } };
   }
 
   static stagedHolon(stagedHolon: StagedHolon): RequestBody {
@@ -124,6 +127,10 @@ export class RequestBodyFactory {
 
   static queryExpression(query: QueryExpression): RequestBody {
     return { QueryExpression: query };
+  }
+
+  static loadHolons(contentSet: ContentSet): RequestBody {
+    return { LoadHolons: contentSet };
   }
 }
 
@@ -214,10 +221,26 @@ export function extractHolonIdFromRequestBody(body: RequestBody): HolonId | null
   return null;
 }
 
-export function createMapRequestForStageHolon(space: HolonSpace, holon: TransientHolon): MapRequest {
+export function createMapRequestForNewHolon(space: HolonSpace, props: PropertyMap): MapRequest {
+  return MapRequestFactory.standalone(
+    "create_new_holon",
+    RequestBodyFactory.parameterValues(props),
+    space,
+  );
+}
+
+export function createMapRequestForLoadHolons(space: HolonSpace, contentSet: ContentSet): MapRequest {
+  return MapRequestFactory.standalone(
+    "load_holons",
+    RequestBodyFactory.loadHolons(contentSet),
+    space,
+  );
+}
+
+export function createMapRequestForStageHolon(space: HolonSpace, transientId: string): MapRequest {
   return MapRequestFactory.standalone(
     "stage_new_holon",
-    RequestBodyFactory.transientHolon(holon),
+    RequestBodyFactory.transientReference(transientId),
     space
   );
 }

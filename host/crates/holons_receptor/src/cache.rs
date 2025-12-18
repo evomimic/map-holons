@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use holons_client::shared_types::base_receptor::Receptor as ReceptorTrait;
+use holons_client::shared_types::base_receptor::ReceptorBehavior;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReceptorKey {
@@ -20,7 +20,7 @@ impl ReceptorKey {
 // Updated to be thread-safe
 #[derive(Clone)]
 pub struct ReceptorCache {
-    cache: Arc<Mutex<HashMap<ReceptorKey, Arc<dyn ReceptorTrait>>>>,
+    cache: Arc<Mutex<HashMap<ReceptorKey, Arc<dyn ReceptorBehavior>>>>,
 }
 
 impl ReceptorCache {
@@ -30,11 +30,11 @@ impl ReceptorCache {
         }
     }
 
-    pub fn get(&self, key: &ReceptorKey) -> Option<Arc<dyn ReceptorTrait>> {
+    pub fn get(&self, key: &ReceptorKey) -> Option<Arc<dyn ReceptorBehavior>> {
         self.cache.lock().unwrap().get(key).cloned()
     }
 
-    pub fn get_by_type(&self, receptor_type: &str) -> Vec<Arc<dyn ReceptorTrait>> {
+    pub fn get_by_type(&self, receptor_type: &str) -> Vec<Arc<dyn ReceptorBehavior>> {
         let cache = self.cache.lock().unwrap();
         cache.iter()
             .filter_map(|(key, receptor)| {
@@ -47,13 +47,13 @@ impl ReceptorCache {
             .collect()
     }
 
-    pub fn insert(&self, key: ReceptorKey, receptor: Arc<dyn ReceptorTrait>) {
+    pub fn insert(&self, key: ReceptorKey, receptor: Arc<dyn ReceptorBehavior>) {
         let mut cache = self.cache.lock().unwrap();
         cache.insert(key, receptor);
         tracing::debug!("Cached receptor. Total cached: {}", cache.len());
     }
 
-    pub fn remove(&self, key: &ReceptorKey) -> Option<Arc<dyn ReceptorTrait>> {
+    pub fn remove(&self, key: &ReceptorKey) -> Option<Arc<dyn ReceptorBehavior>> {
         self.cache.lock().unwrap().remove(key)
     }
 

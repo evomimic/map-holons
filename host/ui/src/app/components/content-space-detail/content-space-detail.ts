@@ -9,9 +9,19 @@ import { ContentStoreInstance } from '../../stores/content.store';
 import { Holon, HolonFactory, HolonState, StagedHolon, StagedHolonFactory, TransientHolon, TransientHolonFactory } from '../../models/holon';
 import {ValidationState, BaseValue, BaseValueFactory, PropertyMap} from '../../models/shared-types'
 import { HolonFormComponent } from '../holon-form/holon-form.component'; // Import the new component
-import { getStagedHolons, getStagedHolonsWithIds, getCommittedHolons } from '../../models/map.response';
+import { JsonDataUploader } from '../json-data-uploader/json-data-uploader.component';
+import { getStagedHolons, getStagedHolonsWithIds, getCommittedHolons, getTransientHolonsWithIds } from '../../models/map.response';
 
 // Helper interface for display
+interface DisplayTransientHolon {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  propertyMap: PropertyMap;
+  rawHolon: StagedHolon;
+}
+
 interface DisplayStagedHolon {
   id: string;
   title: string;
@@ -28,21 +38,29 @@ interface DisplayCommittedHolon {
   description: string;
   createdAt: string;
   propertyMap: PropertyMap;
-  savedId: string;
+  savedId: string; // Short display version (first 6 chars + "...")
+  savedIdFull: string; // Full hex string for tooltip
+  isDuplicate: boolean; // Flag to mark duplicate saved_ids
+  duplicateIndex: number; // Index for distinguishing duplicates
 }
 
 @Component({
   selector: 'app-content-space-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, HolonFormComponent],
+  imports: [CommonModule, FormsModule, HolonFormComponent, JsonDataUploader],
   templateUrl: './content-space-detail.html',
 })
 export class ContentSpaceDetail implements OnInit {
   space: Signal<HolonSpace | undefined> = signal(undefined);
   store: WritableSignal<ContentStoreInstance | undefined> = signal(undefined);
+  displayTransientHolons: Signal<DisplayTransientHolon[]> // Computed signal for transient holons
   displayStagedHolons: Signal<DisplayStagedHolon[]>; // Computed signal for display
   displayCommittedHolons: Signal<DisplayCommittedHolon[]>; // Computed signal for committed holons
   showCreateHolonForm = false;
+  showUploadHolonForm = false;
+  transientPanelOpen = signal(true); // Toggle state for transient holons panel
+  stagedPanelOpen = signal(true); // Toggle state for staged holons panel
+  committedPanelOpen = signal(true); // Toggle state for committed holons panel
 
 
   constructor(
@@ -50,6 +68,27 @@ export class ContentSpaceDetail implements OnInit {
     private spaceController: SpaceController,
     private contentController: ContentController
   ) {
+    // Transform transient holons from the store into displayable format
+    this.displayTransientHolons = computed(() => {
+      const storeInstance = this.store();
+      if (!storeInstance) return [];
+      
+      // Get the last_map_response from the store
+      const lastResponse = storeInstance.last_map_response();
+      if (!lastResponse) return [];
+      
+      // Use the utility function that returns both ID and holon
+      const transientHolonsWithIds = getTransientHolonsWithIds(lastResponse);
+      
+      console.log('DEBUG: getTransientHolonsWithIds returned:', transientHolonsWithIds.length, 'holons');
+      
+      const displayHolons: DisplayTransientHolon[] = transientHolonsWithIds.map(([temporaryId, transientHolon]) => {
+        return this.transformToDisplayHolon(transientHolon, temporaryId || 'unknown');
+      });
+      
+      return displayHolons;
+    });
+
     // Transform staged holons from the MapResponse state into displayable format
     this.displayStagedHolons = computed(() => {
       const storeInstance = this.store();
@@ -65,15 +104,7 @@ export class ContentSpaceDetail implements OnInit {
       console.log('DEBUG: getStagedHolonsWithIds returned:', stagedHolonsWithIds.length, 'holons');
       
       const displayHolons: DisplayStagedHolon[] = stagedHolonsWithIds.map(([temporaryId, stagedHolon]) => {
-        const propertyMap = stagedHolon.property_map || {};
-        return {
-          id: temporaryId || this.extractHolonId(stagedHolon),
-          title: this.extractPropertyValue(propertyMap, 'title'),
-          description: this.extractPropertyValue(propertyMap, 'description'),
-          createdAt: this.extractPropertyValue(propertyMap, 'created_at') || new Date().toISOString(),
-          propertyMap: propertyMap,
-          rawHolon: stagedHolon
-        };
+        return this.transformToDisplayHolon(stagedHolon, temporaryId || this.extractHolonId(stagedHolon));
       });
       
       return displayHolons;
@@ -92,33 +123,60 @@ export class ContentSpaceDetail implements OnInit {
         console.log('DEBUG: First committed holon:', committedHolons[0]);
       }
       
-      const displayHolons: DisplayCommittedHolon[] = committedHolons.map((holon) => {
+      // First pass: create display holons and count saved_id occurrences
+      const displayHolons: DisplayCommittedHolon[] = [];
+      const savedIdCounts = new Map<string, number>(); // Track occurrences of each saved_id
+      
+      committedHolons.forEach((holon) => {
         const propertyMap = holon.property_map || {};
         
-        // Extract saved_id - it should be a number[] (LocalId)
         let savedIdStr = 'unknown';
+        let savedIdShort = 'unknown';
         if (holon.saved_id) {
-          if (Array.isArray(holon.saved_id)) {
-            // Convert array of bytes to hex or keep as array for display
-            savedIdStr = `[${(holon.saved_id as number[]).slice(0, 8).join(',')}...]`;
-          } else {
-            savedIdStr = String(holon.saved_id);
-          }
+          savedIdStr = String(holon.saved_id);
+          savedIdShort = savedIdStr.length > 6 ? savedIdStr.substring(0, 6) + '...' : savedIdStr;
         }
+        
+        // Count this saved_id
+        savedIdCounts.set(savedIdStr, (savedIdCounts.get(savedIdStr) || 0) + 1);
         
         console.log('DEBUG: Processing committed holon with saved_id:', savedIdStr, 'and properties:', propertyMap);
         
-        return {
-          id: savedIdStr,
+        displayHolons.push({
+          id: savedIdStr, // Will be updated with suffix if duplicate
           title: this.extractPropertyValue(propertyMap, 'title'),
           description: this.extractPropertyValue(propertyMap, 'description'),
           createdAt: this.extractPropertyValue(propertyMap, 'created_at') || new Date().toISOString(),
           propertyMap: propertyMap,
-          savedId: savedIdStr
-        };
+          savedId: savedIdShort,
+          savedIdFull: savedIdStr,
+          isDuplicate: false, // Will be set in second pass
+          duplicateIndex: 0 // Will be set in second pass
+        });
+      });
+      
+      // Second pass: mark duplicates and add suffixes to make IDs unique
+      const duplicateCounters = new Map<string, number>(); // Track current index for duplicates
+      
+      displayHolons.forEach((displayHolon) => {
+        const count = savedIdCounts.get(displayHolon.savedIdFull) || 1;
+        
+        if (count > 1) {
+          // This is a duplicate
+          displayHolon.isDuplicate = true;
+          
+          // Get the current index for this saved_id
+          const currentIndex = duplicateCounters.get(displayHolon.savedIdFull) || 0;
+          displayHolon.duplicateIndex = currentIndex;
+          duplicateCounters.set(displayHolon.savedIdFull, currentIndex + 1);
+          
+          // Add suffix to make the ID unique for trackBy
+          displayHolon.id = `${displayHolon.savedIdFull}-dup-${currentIndex}`;
+        }
       });
       
       console.log('DEBUG: Final displayCommittedHolons count:', displayHolons.length);
+      console.log('DEBUG: Duplicates detected:', displayHolons.filter(h => h.isDuplicate).length);
       
       return displayHolons;
     });
@@ -195,21 +253,29 @@ export class ContentSpaceDetail implements OnInit {
    * Handles both old format { type, value } and new format { StringValue: value }
    */
   extractKeyFromPropertyMap(propertyMap: PropertyMap): string {
-    const keyValue = this.extractPropertyValue(propertyMap, 'key');
+    const keyValue = this.extractPropertyValue(propertyMap, 'Key');
     return keyValue || '-';
   }
 
-    handleHolonCreated(holonData: Object): void {
-      const storeInstance = this.store();
-      if (storeInstance) {
-        const holon: TransientHolon = this.holonFromHolonData(holonData);
-        console.log('%c[COMPONENT] Holon created by form, sending to store:', 'color: #9C27B0; font-weight: bold;', holon);
-        // Send the TransientHolon to the store
-        // The store will convert it to StagedHolon before sending to the server
-        storeInstance.createOne(holon);
-      }
-      this.showCreateHolonForm = false; // Close the form on successful creation
+  handleHolonCreated(holonData: Object): void {
+    const storeInstance = this.store();
+    if (storeInstance) {
+      const props: PropertyMap = this.propsFromHolonData(holonData);
+      console.log('%c[COMPONENT] Holon created by form, sending to store:', 'color: #9C27B0; font-weight: bold;', props);
+      // Send the TransientHolon to the store
+      // The store will convert it to StagedHolon before sending to the server
+      
+      storeInstance.createOne(props);
     }
+    this.showCreateHolonForm = false; // Close the form on successful creation
+  }
+
+  stageHolon(id: string): void {
+    const storeInstance = this.store();
+    if (storeInstance) {
+      storeInstance.stageOne(id);
+    }
+  }
 
   commitStagedHolons(): void {
     const storeInstance = this.store();
@@ -221,7 +287,7 @@ export class ContentSpaceDetail implements OnInit {
     }
   }
 
-  holonFromHolonData(holonData: Object): TransientHolon {
+  propsFromHolonData(holonData: Object): PropertyMap {
     // Cast to any to access properties from the form
     const data = holonData as any;
     
@@ -233,13 +299,23 @@ export class ContentSpaceDetail implements OnInit {
       ["description"]: BaseValueFactory.string(data.description || ""),
       ["key"]: BaseValueFactory.string(data.key || `holon-${Date.now()}`)
     };
+    return propertymap;
+  }
 
-    // Create a TransientHolon with the provided properties
-    const transientHolon = TransientHolonFactory.createWithProperties(propertymap);
-    
-    console.log(`%c[COMPONENT] Created transient holon:`, 'color: #9C27B0;', transientHolon);
-
-    return transientHolon;
+  /**
+   * Helper function to transform a holon (Transient or Staged) into display format
+   * Avoids code duplication across the three computed signals
+   */
+  private transformToDisplayHolon(holon: StagedHolon | TransientHolon, id: string): DisplayTransientHolon | DisplayStagedHolon {
+    const propertyMap = holon.property_map || {};
+    return {
+      id: id,
+      title: this.extractPropertyValue(propertyMap, 'name'),
+      description: this.extractPropertyValue(propertyMap, 'description'),
+      createdAt: this.extractPropertyValue(propertyMap, 'created_at') || new Date().toISOString(),
+      propertyMap: propertyMap,
+      rawHolon: holon as StagedHolon
+    };
   }
 }
 

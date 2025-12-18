@@ -101,7 +101,7 @@ export class MultiPlexService extends ApiService implements OnDestroy {
           name: rawSpace.name,
           space_type: mappedType,
           description: rawSpace.description,
-          origin_space_id: rawSpace.origin_space_id, // Map `origin_space` to `origin_space_id`
+          origin_holon_id: rawSpace.origin_holon_id, // Map `origin_space` to `origin_holon_id`
           enabled: rawSpace.enabled,
           created_at: new Date().toISOString(), // `created_at` is not in backend data, so we can generate it
         };
