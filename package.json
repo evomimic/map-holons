@@ -5,17 +5,18 @@
   "type": "module",
   "workspaces": [
     "happ",
-    "host",
-    "happ/tryorama"
+    "host"
   ],
   "scripts": {
     "start": "npm run build:happ && npm run start:host",
+    "start:info": "npm run build:happ && RUST_LOG=host=info npm run start:host",
+    "start:debug": "npm run build:happ && RUST_LOG=host=debug npm run start:host",
     "build": "npm run build:happ && npm run build:host",
     "start:host": "npm run start -w host",
     "build:host": "npm run build -w host",
     "build:happ": "npm run build:happ -w happ",
-    "test:tryorama": "npm run test -w happ",
-    "test:sweetest": "npm run sweetest -w happ",
+    "sweetest": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
+    "sweetest:info": "RUST_LOG=info cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
     "clean:ui": "npx rimraf package-lock.json node_modules && npm run clean:ui -w host && npm run clean:ui -w happ",
     "clean:rust": "npx rimraf target .cargo Cargo.lock && npm run clean:rust -w happ && npm run clean:rust -w host"
   },

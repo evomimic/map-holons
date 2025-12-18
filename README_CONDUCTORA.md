@@ -17,12 +17,12 @@ map-holons/
 │   └── package.json    # run build and happ_tests from here
 │   └── Cargo.toml  # only wasm crates are members (local paths)
 │
-│── happ_tests/.  #separate native build test directory for happ 
+│── tests/.  #separate tests directory for happ and host avoids wasm build issues (tokio etc)
 │   ├── sweetests/
 │   ├── tryorama/
 │
-├── runtime/         # 🖥️ Native client, conductor plugins and Tauri runtime
-│   ├── conductora/         # tauri runtime + plugins
+├── host/         # 🖥️ final deployment architecture with installer
+│   ├── conductora/         # tauri runtime + commands and plugins
 │   ├── crates/      # receptor crates + holons_client                                                 
 │   ├── ui/          # contains tauri specific UI
 │   └── package.json  # all builds are done via scripts - cargo level build conflicts avoided
@@ -32,9 +32,6 @@ map-holons/
 └── Cargo.toml                # root workspace
 ```
 
-workspaces (see code-workspace files): 
-- happ-workspace for happ files and wasm crates
-- host-workspace for host files and native crates
 
 files:
  - root Cargo.toml (includes all packages from shared_crates and the host packages)
@@ -44,7 +41,7 @@ files:
    - host package.json scripts for running and testing the host
   
 directories / workspaces:
-- happ - everything for testing and building wasm and the final happ
+- happ - everything for testing and building wasm and a happ
 - conductora host - everthing for deployment on tauri including the MAP UI
  
 run the commands:
@@ -65,21 +62,26 @@ host config settings are now all set in /host/conductora/src/config/storage.json
 Logging
 -------
 log levels have defaults set in /host/conductora/src/main.rs
-they can be overriden by RUST_LOG scripts
+log groups such as **host** ensure only logging from the host etc,
+log levels can be overriden by RUST_LOG scripts
 
 UI
 -------
-both the happ workspace and host have their own UI
-the host UI is tauri specific 
-currently the host UI is still in development.
+the host UI is tauri specific
 it loads all spaces and provides the ability to create new holons
 
 testing
 -------
 unit testing of tauri commands is still in development
-but will use a receptor based on SweetConductor
 commands can be found at /host/conductora/src/commands
 
-sweetests are under the happ workspace and should work from the happ dir
+sweetests and tryorama are under the tests directory and can be executed via respective package.json scripts
 - npm run sweetest
-tryorama tests are currently out of date
+
+development
+-----------
+workspaces (see .code-workspace files):
+- root.code-workspace for working with both happ and host 
+- happ.code-workspace optimised for holochain happ files and wasm crates
+- host.code-workspace optimised for host files and native crates
+by using the workspaces we are able to have the rust-analyser to work with all crate types (wasm/native)
