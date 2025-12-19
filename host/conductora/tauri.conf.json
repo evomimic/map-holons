@@ -1,6 +1,6 @@
 {
 	"$schema": "https://schema.tauri.app/config/2.0.0",
-	"productName": "Map-Holons",
+	"productName": "Map Holons",
 	"version": "1.0.0",
 	"identifier": "com.map-holons.tauri.dev",
 	"build": {
@@ -13,7 +13,7 @@
 		"withGlobalTauri": true,
 		"windows": [
 			{
-				"title": "Holons client",
+				"title": "MAP Holons client",
 				"width": 800,
 				"height": 600,
 				"resizable": true,
@@ -35,7 +35,7 @@
 			"icons/icon.icns",
 			"icons/icon.ico"
 		],
-		"resources": [],
+		"resources": ["resources/bootstrap-import.schema.json"],
 		"externalBin": [],
 		"copyright": "",
 		"category": "DeveloperTool",

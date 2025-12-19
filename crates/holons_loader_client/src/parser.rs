@@ -9,6 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
+use core_types::{ContentSet, FileData};
 use holons_prelude::prelude::*;
 use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
 use serde::Deserialize;
@@ -19,7 +20,6 @@ use crate::builder::{
     collect_relationship_specs_for_loader_holon, create_loader_bundle_for_file,
     create_loader_holon_from_raw, normalize_ref_key, RawLoaderHolon, RawLoaderMeta,
 };
-use crate::types::{ContentSet, FileData};
 
 /// High-level classification of a per-file parsing issue.
 ///

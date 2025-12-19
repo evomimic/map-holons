@@ -1,0 +1,191 @@
+
+<div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+  <div class="mt-8 p-4 sm:p-6 bg-white rounded-lg shadow-md w-full max-w-3xl mx-4 max-h-screen overflow-y-auto">
+  <div class="mb-6">
+    <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">Holon Data Validator & Uploader</h2>
+    <p class="text-sm text-gray-600">Upload and validate JSON data files against a schema</p>
+  <p class="text-sm font-semibold text-gray-900">Space: {{ spaceId }}</p>
+  </div>
+
+  <!-- Schema Status Banner -->
+  <div class="mb-6 p-4 border-l-4 rounded" [ngClass]="{
+    'bg-green-50 border-green-400': schemaJson() && !schemaError,
+    'bg-blue-50 border-blue-400': schemaLoading,
+    'bg-red-50 border-red-400': schemaError
+  }">
+    <div class="flex items-center gap-3">
+      @if (schemaLoading()) {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      }
+      @if (schemaJson() && !schemaError && !schemaLoading()) {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+      }
+      @if (schemaError) {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>
+      }
+      <div>
+        @if (schemaLoading() ) {
+          <p class="font-medium text-blue-900">Loading schema...</p>
+        }
+        @if (schemaJson() && !schemaError && !schemaLoading()) {
+          <p class="font-medium text-green-900">✓ Schema loaded: {{ schemaFilename }}</p>
+        }
+        @if (schemaError) {
+          <p class="font-medium text-red-900">{{ schemaError }}</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Schema Preview -->
+  @if (schemaJson()) {
+    <div class="mb-6 border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+        <p class="text-sm font-medium text-gray-700">Schema Preview (Read-only)</p>
+      </div>
+      <textarea
+        [value]="schemaJson()"
+        [disabled]="true"
+        rows="8"
+        class="w-full p-4 border-0 font-mono text-xs bg-white text-gray-600 cursor-not-allowed">
+      </textarea>
+    </div>
+  }
+
+  <div class="mb-6">
+    <!-- Data Upload -->
+    <div class="border-2 border-dashed border-green-300 rounded-lg p-4 sm:p-6 bg-green-50">
+      <h3 class="text-base sm:text-lg font-semibold text-green-900 mb-4">Holon Data Files</h3>
+      
+      <div class="mb-4">
+        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Upload Data Files (Multiple)</label>
+        <input
+          type="file"
+          accept=".json"
+          multiple
+          (change)="onDataFilesSelected($event)"
+          class="block w-full text-xs sm:text-sm text-gray-500
+            file:mr-2 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-2 sm:file:px-4
+            file:rounded-full file:border-0
+            file:text-xs sm:file:text-sm file:font-semibold
+            file:bg-green-50 file:text-green-700
+            hover:file:bg-green-100">
+      </div>
+
+      <!-- Data Files List -->
+      @if (dataFiles().length > 0) {
+        <div class="mb-4">
+          <div class="text-xs sm:text-sm font-medium text-gray-700 mb-2">Uploaded Files ({{ dataFiles().length }})</div>
+          <div class="space-y-2 max-h-48 overflow-y-auto">
+            @for (file of dataFiles(); let i = $index; track i) {
+              <div class="flex items-center justify-between gap-2 p-2 bg-white rounded border border-green-200">
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs sm:text-sm font-medium text-gray-800 truncate">{{ file.filename }}</p>
+                  @if (file.validationResult; as vr) {
+                    <p [ngClass]="{
+                      'text-green-600': vr.valid,
+                      'text-red-600': !vr.valid
+                    }" class="text-xs mt-1">
+                      {{ vr.valid ? '✓ Valid' : '✗ Invalid' }}
+                    </p>
+                  }
+                </div>
+                <button
+                  (click)="removeDataFile(i)"
+                  class="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors whitespace-nowrap">
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Validation Section -->
+    <!-- Validation Results for Multiple Files -->
+    @if (hasValidatedFiles()) {
+      <div class="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6">
+      <div class="mt-4 space-y-3">
+        @for (file of dataFiles(); track file.filename) {
+          @if (file.validationResult; as vr) {
+            <div class="border rounded-lg p-3 sm:p-4">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <p class="text-xs sm:text-sm font-semibold text-gray-800 truncate">{{ file.filename }}</p>
+                <span [ngClass]="{
+                  'bg-green-100 text-green-800': vr.valid,
+                  'bg-red-100 text-red-800': !vr.valid
+                }" class="px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+                  {{ vr.valid ? '✓ Valid' : '✗ Invalid' }}
+                </span>
+              </div>
+              @if (!vr.valid) {
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                  @for (error of vr.errors; track $index) {
+                    <li class="text-xs sm:text-sm text-red-700">{{ error }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        }
+      </div>
+      </div>
+    }
+
+
+  <!-- Messages -->
+  @if (successMessage) {
+    <div class="bg-green-100 border border-green-400 text-green-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 text-xs sm:text-sm">
+      {{ successMessage }}
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="bg-red-100 border border-red-400 text-red-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 text-xs sm:text-sm">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <!-- Action Buttons -->
+  <div class="flex gap-2 justify-start">
+    <button
+      (click)="validateData()"
+      [disabled]="schemaJson().length === 0 || dataFiles().length === 0 || schemaLoading()"
+      class="py-2 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+      Validate
+    </button>
+
+    <button
+      (click)="savetohost()"
+      [disabled]="getValidFilesCount() === 0 || isLoading"
+      class="py-2 px-4 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+      @if (!isLoading) {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      }
+      @if (isLoading) {
+        <span>Processing...</span>
+      }
+      @if (!isLoading) {
+        <span>Submit</span>
+      }
+    </button>
+
+    <button
+      (click)="closeForm()"
+      class="py-2 px-4 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors">
+      Close
+    </button>
+  </div>
+</div>
+</div>

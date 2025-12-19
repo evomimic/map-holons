@@ -3,5 +3,13 @@
   "identifier": "main-capability",
   "description": "Capability for the main window",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-set-title", "holochain:allow-is-holochain-ready"]
+  "permissions": [
+    "core:default", 
+    "core:window:allow-set-title", 
+    "holochain:allow-is-holochain-ready",
+    "core:resources:default",
+    "fs:allow-read-text-file",
+    "fs:scope-resource",
+    "fs:allow-resource-read-recursive"
+  ]
 }

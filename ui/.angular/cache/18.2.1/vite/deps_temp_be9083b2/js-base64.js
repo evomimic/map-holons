@@ -1,0 +1,45 @@
+import {
+  VERSION,
+  _atob,
+  _btoa,
+  atobPolyfill,
+  btoaPolyfill,
+  btou,
+  decode,
+  encode,
+  encodeURI,
+  extendBuiltins,
+  extendString,
+  extendUint8Array,
+  fromUint8Array,
+  gBase64,
+  isValid,
+  toUint8Array,
+  utob,
+  version
+} from "./chunk-JATGQ5VH.js";
+import "./chunk-46DXP6YY.js";
+export {
+  gBase64 as Base64,
+  VERSION,
+  _atob as atob,
+  atobPolyfill,
+  _btoa as btoa,
+  btoaPolyfill,
+  btou,
+  decode,
+  encode,
+  encodeURI,
+  encodeURI as encodeURL,
+  extendBuiltins,
+  extendString,
+  extendUint8Array,
+  decode as fromBase64,
+  fromUint8Array,
+  isValid,
+  encode as toBase64,
+  toUint8Array,
+  utob,
+  version
+};
+//# sourceMappingURL=js-base64.js.map

@@ -1,0 +1,40 @@
+<div class="min-h-screen bg-black text-white p-8">
+  <h1 class="text-4xl font-bold mb-12">Settings (mock)</h1>
+
+  <!-- General Settings -->
+  <div class="mb-12 border-l-4 border-blue-500 rounded-lg border p-6 bg-gray-900 hover:bg-gray-800 transition-colors cursor-default">
+    <h2 class="text-2xl font-bold mb-6">General</h2>
+    <div class="space-y-3">
+      <p class="text-gray-400 text-sm">Debug Tools: <span [ngClass]="enableDebugTools ? 'text-green-400' : 'text-red-400'" class="font-mono">{{ enableDebugTools ? 'enabled' : 'disabled' }}</span></p>
+      <p class="text-gray-400 text-sm">Auto Save: <span [ngClass]="enableAutoSave ? 'text-green-400' : 'text-red-400'" class="font-mono">{{ enableAutoSave ? 'enabled' : 'disabled' }}</span></p>
+      <p class="text-gray-400 text-sm">Theme: <span class="text-white font-mono capitalize">{{ theme }}</span></p>
+    </div>
+  </div>
+
+  <!-- Provider Panels -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Holochain Provider -->
+    <div class="border-l-4 border-purple-500 rounded-lg border p-6 bg-gray-900 hover:bg-gray-800 transition-colors cursor-default">
+      <h2 class="text-2xl font-bold mb-6">Holochain Provider</h2>
+      <div class="space-y-3">
+        <p class="text-gray-400 text-sm">Status: <span [ngClass]="holochainEnabled ? 'text-green-400' : 'text-red-400'" class="font-mono font-semibold">{{ holochainEnabled ? 'ENABLED' : 'DISABLED' }}</span></p>
+        <p class="text-gray-400 text-sm">Log Level: <span class="text-white font-mono">{{ holochainLogLevel }}</span></p>
+        <p class="text-gray-400 text-sm">Conductor Port: <span class="text-white font-mono">{{ conductorPort }}</span></p>
+        <p class="text-gray-400 text-sm">Admin Port: <span class="text-white font-mono">{{ conductorAdminPort }}</span></p>
+        <p class="text-gray-400 text-sm">Data Path: <span class="text-white font-mono">{{ conductorDataPath }}</span></p>
+      </div>
+    </div>
+
+    <!-- IPFS Provider -->
+    <div class="border-l-4 border-orange-500 rounded-lg border p-6 bg-gray-900 hover:bg-gray-800 transition-colors cursor-default">
+      <h2 class="text-2xl font-bold mb-6">IPFS Provider</h2>
+      <div class="space-y-3">
+        <p class="text-gray-400 text-sm">Status: <span [ngClass]="ipfsEnabled ? 'text-green-400' : 'text-red-400'" class="font-mono font-semibold">{{ ipfsEnabled ? 'ENABLED' : 'DISABLED' }}</span></p>
+        <p class="text-gray-400 text-sm">Log Level: <span class="text-white font-mono">{{ ipfsLogLevel }}</span></p>
+        <p class="text-gray-400 text-sm">Gateway Port: <span class="text-white font-mono">{{ ipfsGatewayPort }}</span></p>
+        <p class="text-gray-400 text-sm">Swarm Port: <span class="text-white font-mono">{{ ipfsSwarmPort }}</span></p>
+        <p class="text-gray-400 text-sm">Data Path: <span class="text-white font-mono">{{ ipfsDataPath }}</span></p>
+      </div>
+    </div>
+  </div>
+</div>

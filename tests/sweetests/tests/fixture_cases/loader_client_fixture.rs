@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, fs, path::PathBuf};
 
-use holons_loader_client::{ContentSet, FileData, BOOTSTRAP_IMPORT_SCHEMA_PATH};
+use core_types::{ContentSet, FileData};
+use holons_loader_client::{BOOTSTRAP_IMPORT_SCHEMA_PATH};
 use holons_prelude::prelude::*;
 use holons_test::{DanceTestStep, DancesTestCase, TestSessionState};
 

@@ -1,0 +1,58 @@
+{
+  "name": "map_sdk",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng --project-dir=UI",
+    "start": "npm run clean:hc && npm run tauri:serve",
+    "mock": "cd ui && ng serve --configuration mock",
+    "build": "cargo build --release --manifest-path conductora/Cargo.toml",
+    "web:serve": "cd ui && ng serve",
+    "web:build": "cd ui && ng build --base-href ./",
+    "web:dev": "npm run web:build",
+    "web:prod": "npm run web:build -- -c production",
+    "tauri": "tauri",
+    "tauri:serve": "tauri dev",
+    "clean:hc": "rm -f conductora/.hc*",
+    "clean:ui": "cd ui && npx rimraf package-lock.json node_modules",
+    "clean:rust": "cd conductora && npx rimraf target && npx rimraf .cargo && npx rimraf Cargo.lock && cargo clean",
+    "tauri:bundle": "tauri build"
+  },
+  "prettier": {
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/forms": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/router": "^21.0.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "@ngrx/signals": "^21",
+    "@tauri-apps/api": "^2.6",
+    "@tauri-apps/plugin-fs": "^2",
+    "js-base64": "^3.7.7",
+    "ajv": "^8.17.1"
+
+  },
+  "devDependencies": {
+    "@angular/build": "^21.0.1",
+    "@angular/cli": "^21.0.1",
+    "@angular/compiler-cli": "^21.0.0",
+    "@tailwindcss/postcss": "^4.1.12",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.12",
+    "typescript": "~5.9.2",
+    "@tauri-apps/cli": "^2.6",
+    "@tauri-apps/cli-darwin-arm64": "2.6"
+  }
+}

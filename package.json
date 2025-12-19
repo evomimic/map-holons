@@ -3,16 +3,16 @@
   "private": true,
   "workspaces": [
     "tests/tryorama",
-    "ui"
+    "host"
   ],
   "scripts": {
     "all-tests": "cargo test && npm run sweetest",
     "build:wasm": "cargo check --manifest-path workspaces/wasm/Cargo.toml --target wasm32-unknown-unknown",
     "build:native": "cargo build --manifest-path workspaces/native/Cargo.toml",
     "build:test": "cargo test --manifest-path workspaces/test/Cargo.toml",
+    "start:host": "RUST_LOG=host=info npm run start -w host",
     "sweetest": "npm run build:happ && npm run sweet:test",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
-    "mock": "npm run mock -w ui",
     "start": "AGENTS=1 npm run network",
     "local-services": "hc run-local-services -b 54000 -s 55000",
     "network": "npm run build:happ && UI_PORT=4200 concurrently \"npm run local-services\" \"npm run start:agent\"",

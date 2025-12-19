@@ -21,7 +21,7 @@ fn read_int_property(
 /// and assert loader response properties.
 pub async fn execute_load_holons_client(
     test_state: &mut TestExecutionState,
-    content_set: holons_loader_client::ContentSet,
+    content_set: core_types::ContentSet,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
