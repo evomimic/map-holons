@@ -2,7 +2,7 @@ use holons_loader_client::load_holons_from_files;
 use holons_prelude::prelude::*;
 use tracing::info;
 
-use crate::shared_test::test_data_types::DanceTestExecutionState;
+use holons_test::TestExecutionState;
 
 fn read_int_property(
     context: &dyn HolonsContextBehavior,
@@ -20,7 +20,7 @@ fn read_int_property(
 /// Execute the loader client end-to-end: validate/parse files, run the dance,
 /// and assert loader response properties.
 pub async fn execute_load_holons_client(
-    test_state: &mut DanceTestExecutionState,
+    test_state: &mut TestExecutionState,
     content_set: holons_loader_client::ContentSet,
     expect_staged: MapInteger,
     expect_committed: MapInteger,

@@ -4,6 +4,7 @@ use crate::{harness::fixtures_support::TestReference, FixtureHolons};
 use holons_core::{
     core_shared_objects::holon_pool::SerializableHolonPool, reference_layer::ReadableHolon,
 };
+use holons_loader_client::ContentSet;
 use holons_prelude::prelude::*;
 
 /// Public test case type that collects steps to be executed later.
@@ -380,6 +381,15 @@ pub enum DanceTestStep {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
     },
+    LoadHolonsClient {
+        content_set: ContentSet,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
+    },
     MatchSavedContent,
     PrintDatabase,
     QueryRelationships {
@@ -460,6 +470,26 @@ impl core::fmt::Display for DanceTestStep {
                     f,
                     "LoadHolons(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
                     expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
+                )
+            }
+            DanceTestStep::LoadHolonsClient {
+                expect_staged,
+                expect_committed,
+                expect_links_created,
+                expect_errors,
+                expect_total_bundles,
+                expect_total_loader_holons,
+                ..
+            } => {
+                write!(
+                    f,
+                    "LoadHolonsClient(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
+                    expect_staged.0,
+                    expect_committed.0,
+                    expect_links_created.0,
+                    expect_errors.0,
+                    expect_total_bundles.0,
+                    expect_total_loader_holons.0
                 )
             }
             DanceTestStep::MatchSavedContent => {

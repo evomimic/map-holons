@@ -336,62 +336,6 @@ impl HolonServiceApi for GuestHolonService {
         let mut controller = HolonLoaderController::new();
         controller.load_set(context, set)
     }
-
-    /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
-    /// lineage to the Holon its cloned from.
-    fn stage_new_from_clone_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: HolonReference,
-        new_key: MapString,
-    ) -> Result<StagedReference, HolonError> {
-        let mut cloned_transient_reference = original_holon.clone_holon(context)?;
-
-        // Update Key (canonical PascalCase)
-        let key_prop = CorePropertyTypeName::Key.as_property_name();
-        cloned_transient_reference.with_property_value(
-            context,
-            key_prop,
-            BaseValue::StringValue(new_key),
-        )?;
-
-        // Reset the OriginalId to None
-        cloned_transient_reference.reset_original_id(context)?;
-
-        let mut cloned_staged_reference = self
-            .get_internal_nursery_access()?
-            .read()
-            .unwrap()
-            .stage_new_holon(context, cloned_transient_reference)?;
-
-        // Reset the PREDECESSOR to None
-        cloned_staged_reference.with_predecessor(context, None)?;
-
-        Ok(cloned_staged_reference)
-    }
-
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the keyed_index to allow the staged holon
-    /// to be retrieved by key.
-    fn stage_new_version_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        let cloned_holon_transient_reference = original_holon.clone_holon(context)?;
-
-        let mut cloned_staged_reference = self
-            .get_internal_nursery_access()?
-            .read()
-            .unwrap()
-            .stage_new_holon(context, cloned_holon_transient_reference)?;
-
-        // Reset the PREDECESSOR to the original Holon being cloned from.
-        cloned_staged_reference
-            .with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
-
-        Ok(cloned_staged_reference)
-    }
 }
 
 // ✅ Manually implement Debug (exclude internal_nursery_access)

@@ -256,7 +256,7 @@ impl ReadableHolonImpl for StagedReference {
             ))
         })?;
 
-        borrowed_holon.key()
+        Ok(borrowed_holon.key())
     }
 
     fn related_holons_impl(

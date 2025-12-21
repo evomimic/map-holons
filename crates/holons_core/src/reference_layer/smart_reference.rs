@@ -188,7 +188,7 @@ impl ReadableHolonImpl for SmartReference {
                 e
             ))
         })?;
-        borrowed_holon.essential_content()
+        Ok(borrowed_holon.essential_content())
     }
 
     fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {

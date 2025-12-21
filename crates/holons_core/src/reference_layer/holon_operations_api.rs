@@ -249,11 +249,8 @@ pub fn stage_new_from_clone(
             "Must use stage_new_holon for staging from a TransientReference".to_string(),
         ));
     }
-    let staging_service = context.get_space_manager().get_holon_service();
-    let staged_reference =
-        staging_service.stage_new_from_clone_internal(context, original_holon, new_key)?;
-
-    Ok(staged_reference)
+    let staging_service = context.get_space_manager().get_staging_service();
+    staging_service.stage_new_from_clone(context, original_holon, new_key)
 }
 
 /// Stages a new holon in the holon space.

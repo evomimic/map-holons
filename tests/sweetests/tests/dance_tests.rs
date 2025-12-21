@@ -39,6 +39,7 @@ use execution_steps::add_related_holons_executor::execute_add_related_holons;
 use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
+use execution_steps::load_holons_client_executor::execute_load_holons_client;
 use execution_steps::load_holons_executor::execute_load_holons;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::query_relationships_executor::execute_query_relationships;
@@ -47,13 +48,12 @@ use execution_steps::remove_related_holon_executor::execute_remove_related_holon
 use execution_steps::stage_new_holon_executor::execute_stage_new_holon;
 use execution_steps::with_properties_command_executor::execute_with_properties;
 
-use crate::load_holons_fixture::*;
-use crate::loader_client_fixture::*;
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_holons_fixture::*;
+use fixture_cases::loader_client_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
@@ -88,27 +88,17 @@ use holons_prelude::prelude::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-// #[case::delete_holon(delete_holon_fixture())]
-<<<<<<< HEAD
+#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+#[case::delete_holon(delete_holon_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-#[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
-=======
-// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-// #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
-// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-// #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-// #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
-#[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
-// #[case::stage_new_version_test(stage_new_version_fixture())]
-// #[case::load_holons_test(loader_incremental_fixture())]
->>>>>>> 2c612f9 (ergonomic properties passing)
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
@@ -202,8 +192,8 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 expect_total_bundles,
                 expect_total_loader_holons,
             } => {
-                shared_test::test_load_holons_client::execute_load_holons_client(
-                    &mut test_state,
+                execute_load_holons_client(
+                    &mut test_execution_state,
                     content_set,
                     expect_staged,
                     expect_committed,
@@ -214,7 +204,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
-            DanceTestStep::MatchSavedContent => execute_match_db_content(&mut test_state, expected_status).await,
+            DanceTestStep::MatchSavedContent => {
+                execute_match_db_content(&mut test_execution_state).await
+            }
             DanceTestStep::PrintDatabase => execute_print_database(&mut test_execution_state).await,
             DanceTestStep::QueryRelationships {
                 source_token,

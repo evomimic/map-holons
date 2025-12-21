@@ -2,10 +2,26 @@ use std::{collections::VecDeque, fs, path::PathBuf};
 
 use holons_loader_client::{ContentSet, FileData, BOOTSTRAP_IMPORT_SCHEMA_PATH};
 use holons_prelude::prelude::*;
+use holons_test::{DanceTestStep, DancesTestCase, TestSessionState};
 
-use crate::shared_test::test_data_types::{
-    map_core_schema_paths, DanceTestStep, DancesTestCase, TestSessionState,
-};
+/// Absolute paths to all core schema import files used for loader-client testing.
+pub fn map_core_schema_paths() -> Vec<PathBuf> {
+    // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,
+    // so we need to walk back to the repo root before joining the import_files path.
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+
+    let rels = [
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
+        "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
+    ];
+
+    rels.iter().map(|rel| repo_root.join(rel)).collect()
+}
 
 /// Minimal loader-client fixture that feeds a single import JSON file into the
 /// host-side loader client entrypoint and asserts a successful load.
@@ -14,8 +30,8 @@ use crate::shared_test::test_data_types::{
 /// - One HolonLoaderBundle (implicit via filename)
 /// - One HolonType descriptor holon
 /// - One instance holon described by the type
-pub async fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
-    let mut steps = VecDeque::new();
+pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
+    let mut steps = Vec::new();
 
     let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
     let schema = FileData {
@@ -36,7 +52,7 @@ pub async fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
 
     let content_set = ContentSet { schema, files_to_load };
 
-    steps.push_back(DanceTestStep::LoadHolonsClient {
+    steps.push(DanceTestStep::LoadHolonsClient {
         content_set,
         expect_staged: MapInteger(182),
         expect_committed: MapInteger(182),
