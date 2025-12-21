@@ -20,7 +20,7 @@ use super::{fetch_links_to_all_holons, get_all_relationship_links};
 use crate::guest_shared_objects::{commit_functions, get_relationship_links};
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
 use crate::{create_local_path, get_holon_by_path, try_from_record};
-use base_types::{BaseValue, MapString};
+use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
@@ -28,13 +28,12 @@ use holons_core::{
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
-        StagedReference, WritableHolon,
+        WritableHolon,
     },
 };
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
-use type_names::CorePropertyTypeName;
 
 #[derive(Clone)]
 pub struct GuestHolonService {
@@ -71,11 +70,8 @@ impl GuestHolonService {
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
-        let transient_behavior_service_cell =
+        let transient_behavior_service =
             context.get_space_manager().get_transient_behavior_service();
-        let transient_behavior_service = transient_behavior_service_cell
-            .try_read()
-            .map_err(|_e| HolonError::FailedToAcquireLock("lock failed".to_string()))?;
 
         // Create new (empty) TransientHolon
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
@@ -175,7 +171,7 @@ impl GuestHolonService {
     pub fn get_nursery_access(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Arc<RwLock<dyn NurseryAccess>> {
+    ) -> Arc<dyn NurseryAccess> {
         // Retrieve the space manager from the context
         let space_manager = context.get_space_manager();
 
@@ -196,13 +192,18 @@ impl HolonServiceApi for GuestHolonService {
         let internal_nursery = self.get_internal_nursery_access()?;
 
         // Step 1: Borrow the nursery immutably and clone its HolonPool reference
-        let holon_pool = {
-            let nursery_read = internal_nursery.read().unwrap();
-            nursery_read.get_holon_pool() // Returns Arc<RwLock<StagedHolonPool>>
+        let staged_references = {
+            let nursery_read = internal_nursery.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on internal NurseryAccess: {}",
+                    e
+                ))
+            })?;
+            nursery_read.get_staged_references()?
         }; // `nursery_read` is dropped immediately after this block
 
         // Step 2: Commit the staged holons
-        let commit_response = commit_functions::commit(context, &holon_pool)?;
+        let commit_response = commit_functions::commit(context, &staged_references)?;
 
         // Step 3: Borrow mutably to clear the stage
         internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
@@ -324,72 +325,16 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    /// Execute a Holon import from a `HolonLoaderBundle`.
+    /// Execute a Holon import from a `HolonLoadSet`.
     /// Delegates to the `HolonLoaderController` and returns a transient `HolonLoadResponse`.
     fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-        bundle: TransientReference,
+        set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
-        // Construct controller and delegate to load_bundle()
+        // Construct controller and delegate to load_set()
         let mut controller = HolonLoaderController::new();
-        controller.load_set(context, bundle)
-    }
-
-    /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining
-    /// lineage to the Holon its cloned from.
-    fn stage_new_from_clone_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: HolonReference,
-        new_key: MapString,
-    ) -> Result<StagedReference, HolonError> {
-        let mut cloned_transient_reference = original_holon.clone_holon(context)?;
-
-        // Update Key (canonical PascalCase)
-        let key_prop = CorePropertyTypeName::Key.as_property_name();
-        cloned_transient_reference.with_property_value(
-            context,
-            key_prop,
-            BaseValue::StringValue(new_key),
-        )?;
-
-        // Reset the OriginalId to None
-        cloned_transient_reference.reset_original_id(context)?;
-
-        let mut cloned_staged_reference = self
-            .get_internal_nursery_access()?
-            .read()
-            .unwrap()
-            .stage_new_holon(context, cloned_transient_reference)?;
-
-        // Reset the PREDECESSOR to None
-        cloned_staged_reference.with_predecessor(context, None)?;
-
-        Ok(cloned_staged_reference)
-    }
-
-    /// Stages the provided holon and returns a reference-counted reference to it
-    /// If the holon has a key, update the keyed_index to allow the staged holon
-    /// to be retrieved by key.
-    fn stage_new_version_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        original_holon: SmartReference,
-    ) -> Result<StagedReference, HolonError> {
-        let cloned_holon_transient_reference = original_holon.clone_holon(context)?;
-
-        let mut cloned_staged_reference = self
-            .get_internal_nursery_access()?
-            .read()
-            .unwrap()
-            .stage_new_holon(context, cloned_holon_transient_reference)?;
-
-        // Reset the PREDECESSOR to the original Holon being cloned from.
-        cloned_staged_reference
-            .with_predecessor(context, Some(HolonReference::Smart(original_holon)))?;
-
-        Ok(cloned_staged_reference)
+        controller.load_set(context, set)
     }
 }
 

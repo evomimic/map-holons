@@ -11,7 +11,7 @@ use super::{
 use crate::{
     core_shared_objects::StagedHolon,
     reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
-    HolonsContextBehavior,
+    HolonReference, HolonsContextBehavior, ReadableHolon, SmartReference, WritableHolon,
 };
 use crate::{
     core_shared_objects::{
@@ -19,8 +19,9 @@ use crate::{
     },
     NurseryAccess,
 };
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, TemporaryId};
+use type_names::CorePropertyTypeName;
 
 #[derive(Clone, Debug)]
 pub struct Nursery {
@@ -163,6 +164,51 @@ impl HolonStagingBehavior for Nursery {
         let new_id = self.stage_holon(staged_holon)?;
         self.to_validated_staged_reference(&new_id)
     }
+
+    /// Stage a new holon by cloning an existing holon, with a new key and
+    /// *without* maintaining lineage to the original.
+    fn stage_new_from_clone(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        original_holon: HolonReference,
+        new_key: MapString,
+    ) -> Result<StagedReference, HolonError> {
+        // Clone into a transient holon
+        let mut cloned_transient = original_holon.clone_holon(context)?;
+
+        // Overwrite the Key property on the clone
+        let key_prop = CorePropertyTypeName::Key.as_property_name();
+        cloned_transient.with_property_value(context, key_prop, BaseValue::StringValue(new_key))?;
+
+        // Reset original_id (this is a new clone, not a new version)
+        cloned_transient.reset_original_id(context)?;
+
+        // Stage the cloned holon
+        let mut cloned_staged = self.stage_new_holon(context, cloned_transient)?;
+
+        // Explicitly clear predecessor for "from clone" semantics
+        cloned_staged.with_predecessor(context, None)?;
+
+        Ok(cloned_staged)
+    }
+
+    /// Stage a new holon as a *version* of the current holon, keeping lineage.
+    fn stage_new_version(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        current_version: SmartReference,
+    ) -> Result<StagedReference, HolonError> {
+        // Clone current version into a transient holon
+        let cloned_transient = current_version.clone_holon(context)?;
+
+        // Stage it as a new holon
+        let mut cloned_staged = self.stage_new_holon(context, cloned_transient)?;
+
+        // Set predecessor back to the current version
+        cloned_staged.with_predecessor(context, Some(HolonReference::Smart(current_version)))?;
+
+        Ok(cloned_staged)
+    }
 }
 
 impl NurseryAccessInternal for Nursery {
@@ -170,16 +216,17 @@ impl NurseryAccessInternal for Nursery {
         self
     }
 
-    fn clear_stage(&mut self) {
-        self.staged_holons.write().expect("Failed to acquire write lock on staged_holons").clear();
-    }
-
-    // fn keyed_index(&self) -> BTreeMap<MapString, usize> {
-    //     self.holon_store.borrow().keyed_index.clone()
-    // }
-
-    fn get_holon_pool(&self) -> Arc<RwLock<StagedHolonPool>> {
-        Arc::clone(&self.staged_holons)
+    /// Clears all staged holons.
+    fn clear_stage(&self) -> Result<(), HolonError> {
+        // Failure to acquire the lock is propagated as an error rather than panicking.
+        let mut guard = self.staged_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        guard.clear();
+        Ok(())
     }
 
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError> {
@@ -205,25 +252,29 @@ impl NurseryAccessInternal for Nursery {
             .export_pool()
     }
 
-    fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> () {
-        self.staged_holons
-            .write()
-            .expect("Failed to acquire write lock on staged_holons")
-            .import_pool(pool); // Mutates existing HolonPool
+    /// Replaces the current staged holons with those from the provided `SerializableHolonPool`.
+    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError> {
+        let mut guard = self.staged_holons.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        guard.import_pool(pool); // Mutates the existing pool
+        Ok(())
     }
 
-    /// Returns the staged Holons in the `HolonPool`,
-    /// ensuring that commit functions can access the actual Holon instances.
-    // fn get_holons_to_commit(&self) -> impl Iterator<Item = Rc<RefCell<Holon>>> + '_ {
-    /// Retrieves the staged Holon instances for commit, using thread-safe handles
-    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>> {
-        self.staged_holons
-            .read()
-            .expect("Failed to acquire read lock on staged_holons")
-            .get_all_holons()
+    /// Returns a reference-layer view of all staged holons as `StagedReference`s.
+    ///
+    /// This is the main entry for the commit pipeline and avoids exposing
+    /// the underlying HolonPool or `Arc<RwLock<Holon>>` handles.
+    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError> {
+        let guard = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        Ok(guard.get_staged_references())
     }
-
-    // fn stage_holon(&self, holon: Holon) -> usize {
-    //     self.staged_holons.borrow_mut().insert_holon(holon)
-    // }
 }

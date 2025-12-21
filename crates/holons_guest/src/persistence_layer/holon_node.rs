@@ -28,7 +28,7 @@ pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
     let record = get(holon_node_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
         WasmErrorInner::Guest(String::from("Could not find the newly created HolonNode"))
     ))?;
-    info!("HolonNode successfully created... adding all_holon_nodes link.");
+    debug!("HolonNode successfully created... adding all_holon_nodes link.");
     let path = Path::from("all_holon_nodes");
     // path.ensure()?;
     create_link(path.path_entry_hash()?, holon_node_hash.clone(), LinkTypes::AllHolonNodes, ())?;

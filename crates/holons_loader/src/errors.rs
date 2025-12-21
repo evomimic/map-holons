@@ -96,7 +96,7 @@ pub fn make_error_holons_best_effort(
                     transient_reference.with_property_value(
                         context,
                         CorePropertyTypeName::StartUtf8ByteOffset,
-                        BaseValue::IntegerValue(MapInteger(*offset as i64)),
+                        BaseValue::IntegerValue(MapInteger(*offset)),
                     )?;
                 }
             }
@@ -154,16 +154,10 @@ fn create_empty_error_holon(
     let key = MapString(format!("loader-error-{id}"));
 
     // Obtain a handle to the TransientHolonBehavior service from the Space Manager.
-    let transient_behavior_service_handle =
-        context.get_space_manager().get_transient_behavior_service();
-
-    // Acquire a write lock for mutable access to the TransientHolonBehavior service.
-    let transient_behavior_service = transient_behavior_service_handle.write().map_err(|_| {
-        HolonError::FailedToBorrow("TransientHolonBehavior RwLock was poisoned".into())
-    })?;
+    let transient_behavior = context.get_space_manager().get_transient_behavior_service();
 
     // Create a new, empty transient holon using the generated key.
-    let transient_reference = transient_behavior_service.create_empty(key)?;
+    let transient_reference = transient_behavior.create_empty(key)?;
 
     Ok(transient_reference)
 }
@@ -202,16 +196,10 @@ fn resolve_holon_error_type_descriptor(
 
     // 1) Prefer staged (Nursery) by base key
     let staged_matches = {
-        let staging_handle = context.get_space_manager().get_staging_service();
-
-        // We only need read access to query staged holons.
-        let staging_guard = staging_handle
-            .read()
-            .map_err(|_| HolonError::FailedToBorrow("Staging service lock poisoned".into()))?;
+        let staging_behavior = context.get_space_manager().get_staging_service();
 
         // Query staged holons by base key.
-        // This returns a Vec<StagedReference> without mutating state.
-        staging_guard.get_staged_holons_by_base_key(&key)?
+        staging_behavior.get_staged_holons_by_base_key(&key)?
     };
 
     match staged_matches.len() {

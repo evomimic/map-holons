@@ -18,6 +18,11 @@ workspaces/*/target/**/
 workspaces/**/target/
 workspaces/**/target/**/
 
+# Untracked Tauri generated files
+/host/conductora/gen/
+/host/conductora/target/
+/host/conductora/node_modules/
+
 # Cargo and Rust build artifacts
 Cargo.lock
 .rustc_info.json

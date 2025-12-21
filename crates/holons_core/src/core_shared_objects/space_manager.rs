@@ -30,10 +30,10 @@ pub struct HolonSpaceManager {
     local_holon_space: RwLock<Option<HolonReference>>,
 
     /// The Nursery manages **staged holons** for commit operations.
-    nursery: Arc<RwLock<Nursery>>,
+    nursery: Arc<Nursery>,
 
     /// Manages **transient holons** .
-    transient_manager: Arc<RwLock<TransientHolonManager>>,
+    transient_manager: Arc<TransientHolonManager>,
 
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
     transient_state: Arc<RwLock<TransientCollection>>,
@@ -74,11 +74,11 @@ impl HolonSpaceManager {
             cache_routing_policy,
         ));
 
-        // Step 3: Wrap the provided `Nursery` in an `Arc<RwLock<Nursery>>`
-        let nursery_lock = Arc::new(RwLock::new(nursery));
+        // Step 3: Wrap the provided `Nursery` in an `Arc<Nursery>`
+        let nursery_arc = Arc::new(nursery);
 
-        // Step 4: Wrap the provided `TransientHolonManager` in an `Arc<RwLock<TransientHolonManager>>`
-        let transient_lock = Arc::new(RwLock::new(transient_manager));
+        // Step 4: Wrap the provided `TransientHolonManager` in an `Arc<TransientHolonManager>`
+        let transient_arc = Arc::new(transient_manager);
 
         // Step 5: Initialize and return the HolonSpaceManager with thread-safe fields
         Self {
@@ -86,8 +86,8 @@ impl HolonSpaceManager {
             dance_initiator,
             holon_service,
             local_holon_space: RwLock::new(local_holon_space),
-            nursery: nursery_lock,
-            transient_manager: transient_lock,
+            nursery: nursery_arc,
+            transient_manager: transient_arc,
             transient_state: Arc::new(RwLock::new(TransientCollection::new())),
         }
     }
@@ -96,28 +96,12 @@ impl HolonSpaceManager {
 impl HolonSpaceBehavior for HolonSpaceManager {
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
     fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.nursery
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on nursery: {}",
-                    e
-                ))
-            })?
-            .export_staged_holons()
+        self.nursery.export_staged_holons()
     }
 
     /// Exports the staged holons from the nursery as a `SerializableHolonPool`.
     fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.transient_manager
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on transient_manager: {}",
-                    e
-                ))
-            })?
-            .export_transient_holons()
+        self.transient_manager.export_transient_holons()
     }
 
     /// Provides access to the cache via a reference to an implementer of `HolonCacheAccess`.
@@ -138,35 +122,35 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Provides access to the nursery.
-    fn get_nursery_access(&self) -> Arc<RwLock<dyn NurseryAccess + Send + Sync>> {
-        Arc::clone(&self.nursery) as Arc<RwLock<dyn NurseryAccess + Send + Sync>>
+    fn get_nursery_access(&self) -> Arc<dyn NurseryAccess + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn NurseryAccess + Send + Sync>
     }
 
     /// Retrieves a reference to the space holon if it exists.
-    fn get_space_holon(&self) -> Option<HolonReference> {
-        self.local_holon_space
-            .read()
-            .expect("Failed to acquire read lock on local_holon_space")
-            .clone()
+    fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
+        let guard = self.local_holon_space.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on local_holon_space: {}",
+                e
+            ))
+        })?;
+
+        Ok(guard.clone())
     }
 
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
-    fn get_staging_service(&self) -> Arc<RwLock<dyn HolonStagingBehavior + Send + Sync>> {
-        Arc::clone(&self.nursery) as Arc<RwLock<dyn HolonStagingBehavior + Send + Sync>>
+    fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
     }
 
     /// Provides access to a component that supports the `HolonStagingBehavior` API.
-    fn get_transient_behavior_service(
-        &self,
-    ) -> Arc<RwLock<dyn TransientHolonBehavior + Send + Sync>> {
-        Arc::clone(&self.transient_manager) as Arc<RwLock<dyn TransientHolonBehavior + Send + Sync>>
+    fn get_transient_behavior_service(&self) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
     }
 
     /// Provides access to the TransientHolonManager.
-    fn get_transient_manager_access(
-        &self,
-    ) -> Arc<RwLock<dyn TransientManagerAccess + Send + Sync>> {
-        Arc::clone(&self.transient_manager) as Arc<RwLock<dyn TransientManagerAccess + Send + Sync>>
+    fn get_transient_manager_access(&self) -> Arc<dyn TransientManagerAccess + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccess + Send + Sync>
     }
 
     /// Retrieves a shared reference to the transient state.
@@ -176,27 +160,28 @@ impl HolonSpaceBehavior for HolonSpaceManager {
 
     /// Imports staged holons into the nursery from a `SerializableHolonPool`.
     fn import_staged_holons(&self, staged_holons: SerializableHolonPool) {
-        self.nursery
-            .write()
-            .expect("Failed to acquire write lock on nursery")
-            .import_staged_holons(staged_holons);
+        self.nursery.import_staged_holons(staged_holons);
     }
 
     /// Imports staged holons into the nursery from a `SerializableHolonPool`.
     fn import_transient_holons(&self, transient_holons: SerializableHolonPool) {
-        self.transient_manager
-            .write()
-            .expect("Failed to acquire write lock on transient_manager")
-            .import_transient_holons(transient_holons);
+        self.transient_manager.import_transient_holons(transient_holons);
     }
 
-    fn set_space_holon(&self, holon: HolonReference) {
-        *self
-            .local_holon_space
-            .write()
-            .expect("Failed to acquire write lock on local_holon_space") = Some(holon);
+    /// Updates the local space holon reference.
+    fn set_space_holon(&self, holon: HolonReference) -> Result<(), HolonError> {
+        let mut guard = self.local_holon_space.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on local_holon_space: {}",
+                e
+            ))
+        })?;
+
+        *guard = Some(holon);
+        Ok(())
     }
 }
+
 impl Debug for HolonSpaceManager {
     /// Implements custom `Debug` formatting for `HolonSpaceManager`.
     ///

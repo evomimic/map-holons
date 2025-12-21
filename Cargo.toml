@@ -1,85 +1,148 @@
 [workspace]
 
+# ============================================================================
+# WORKSPACE MEMBERS
+# ============================================================================
+# IMPORTANT:
+#  • ALL crates appear here so that the IDE (RustRover / rust-analyzer) can
+#    see the full dependency graph.
+#  • BUILD ISOLATION IS NOT ACHIEVED USING THIS WORKSPACE.
+#    It is achieved by building ONLY through:
+#       workspaces/wasm/Cargo.toml
+#       workspaces/native/Cargo.toml
+#       workspaces/test/Cargo.toml
+# ============================================================================
+
 members = [
-    # Coordinator Zomes
+    # --------------------------
+    # Zomes (WASM)
+    # --------------------------
     "zomes/coordinator/holons",
-    # Integrity Zome
     "zomes/integrity/holons_integrity",
-    # Shared Types and Validation
+
+    # --------------------------
+    # Guest-side (WASM)
+    # --------------------------
+    "crates/holons_guest",
+    "crates/holons_guest_integrity",
+
+    # --------------------------
+    # Shared schema + validation (WASM-safe)
+    # --------------------------
     "crates/shared_validation",
     "crates/type_system/base_types",
     "crates/type_system/core_types",
     "crates/type_system/integrity_core_types",
     "crates/type_system/type_names",
     "crates/json_schema_validation",
-    # Shared Core & Guest Libraries
-    "crates/holons_client",
+
+    # --------------------------
+    # MAP core (WASM-safe)
+    # --------------------------
     "crates/holons_core",
     "crates/holon_dance_builders",
-    "crates/holons_guest",
-    "crates/holons_guest_integrity",
-    "crates/holons_holochain_adapter",
-    "crates/holons_loader",
     "crates/holons_prelude",
-    "crates/holons_tauri_adapter",
+    "crates/holons_loader",
+
+    # --------------------------
+    # Native-only crates
+    # (NOT wasm-safe, but MUST remain in workspace
+    #  so the IDE understands the dependency graph)
+    # --------------------------
+    "crates/holons_client",
+    "crates/holons_loader_client",
+    "crates/holons_receptor",
+    "crates/holochain_receptor",
     "crates/holons_trust_channel",
+    "crates/holons_tauri_adapter",
+
+    # --------------------------
+    # Tests (sweetest)
+    # --------------------------
     "tests/sweetests",
+
 ]
 
+# ============================================================================
+# WORKSPACE EXCLUDES
+# ============================================================================
+# To maintain build isolation:
+#   • We DO NOT build the root workspace directly.
+#   • Instead, wasm/native/test orchestrator manifests are used.
+#   • These orchestrator dirs should not appear as workspace members.
+#   • Conductora is an external runtime and must be excluded.
+# ============================================================================
+
 exclude = [
-    "workspaces/wasm",
-    "workspaces/native",
-    "workspaces/test"
+    "workspaces/*",
+    "host/*",
 ]
 
 resolver = "2"
 
-[workspace.dependencies]
-# Path dependencies
-holons = { path = "zomes/coordinator/holons" }
-holons_integrity = { path = "zomes/integrity/holons_integrity" }
-shared_validation = { path = "crates/shared_validation" }
-base_types = { path = "crates/type_system/base_types" }
-core_types = { path = "crates/type_system/core_types" }
-integrity_core_types = { path = "crates/type_system/integrity_core_types" }
-type_names = { path = "crates/type_system/type_names" }
-json_schema_validation = { path = "crates/json_schema_validation" }
-holons_client = { path = "crates/holons_client" }
-holons_core = { path = "crates/holons_core" }
-holon_dance_builders = { path = "crates/holon_dance_builders" }
-holons_guest = { path = "crates/holons_guest" }
-holons_guest_integrity = { path = "crates/holons_guest_integrity" }
-holons_holochain_adapter = { path = "crates/holons_holochain_adapter" }
-holons_loader = { path = "crates/holons_loader" }
-holons_prelude = { path = "crates/holons_prelude" }
-holons_tauri_adapter = { path = "crates/holons_tauri_adapter" }
-holons_trust_channel = { path = "crates/holons_trust_channel" }
+# ============================================================================
+# WORKSPACE-LEVEL DEPENDENCIES (VERSION CONSISTENCY)
+# ============================================================================
+# These DO NOT require `workspace = true` in member crates.
+# They simply centralize versions for consistency.
+# WASM-unsafe crates *may* appear here—this is OK because
+# they are not built in wasm orchestrator builds.
+# ============================================================================
 
-# External dependencies
-async-trait = "0.1.51"
-convert_case = "0.5"
-derive-new = "0.7"
-futures = { version = "0.3.1", default-features = false }
-hex = "0.4"
-hdi = "0.6"
-hdk = "0.5"
+[workspace.dependencies]
+
+# --------------------------
+# Path dependencies
+# --------------------------
+holons                   = { path = "zomes/coordinator/holons" }
+holons_integrity         = { path = "zomes/integrity/holons_integrity" }
+
+shared_validation        = { path = "crates/shared_validation" }
+base_types               = { path = "crates/type_system/base_types" }
+core_types               = { path = "crates/type_system/core_types" }
+integrity_core_types     = { path = "crates/type_system/integrity_core_types" }
+type_names               = { path = "crates/type_system/type_names" }
+json_schema_validation   = { path = "crates/json_schema_validation" }
+
+holons_client            = { path = "crates/holons_client" }
+holons_core              = { path = "crates/holons_core" }
+holon_dance_builders     = { path = "crates/holon_dance_builders" }
+holons_guest             = { path = "crates/holons_guest" }
+holons_guest_integrity   = { path = "crates/holons_guest_integrity" }
+holons_holochain_adapter = { path = "crates/holons_holochain_adapter" }
+holons_loader            = { path = "crates/holons_loader" }
+holons_prelude           = { path = "crates/holons_prelude" }
+holons_tauri_adapter     = { path = "crates/holons_tauri_adapter" }
+holons_trust_channel     = { path = "crates/holons_trust_channel" }
+
+# --------------------------
+# External dependencies (versions)
+# --------------------------
+async-trait               = "0.1.51"
+convert_case              = "0.5"
+derive-new                = "0.7"
+futures                   = { version = "0.3.1", default-features = false }
+hex                       = "0.4"
+hdi                       = "0.6"
+hdk                       = "0.5"
 holochain_integrity_types = "0.5"
 holochain_serialized_bytes = "*"
-Inflector = "0.11"
-pretty_assertions = "1.4.0"
-quick_cache = { version = "0.6.14", default-features = false }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.109"
-sha2 = "0.10.8"
-strum = "0.27"
-strum_macros = "0.27"
-thiserror = "2"
-tracing = "0.1"
-rstest = "0.25"
-uuid = { version = "1", features = ["serde"] }
+Inflector                 = "0.11"
+pretty_assertions         = "1.4.0"
+quick_cache               = { version = "0.6.14", default-features = false }
+serde                     = { version = "1", features = ["derive"] }
+serde_json                = "1.0.109"
+sha2                      = "0.10.8"
+strum                     = "0.27"
+strum_macros              = "0.27"
+thiserror                 = "2"
+tracing                   = "0.1"
+rstest                    = "0.25"
+uuid                      = { version = "1", features = ["serde"] }
 
-
-
+# ============================================================================
+# Profiles
+# ============================================================================
 [profile.dev]
 opt-level = "z"
 

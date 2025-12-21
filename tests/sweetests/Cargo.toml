@@ -17,6 +17,7 @@ serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
 async-trait = "0.1.51"
+panic = "0.4.0"
 
 [dependencies.holons_prelude]
 path = "../../crates/holons_prelude"
@@ -36,6 +37,9 @@ path = "../../crates/holons_client"
 [dependencies.holons_loader]
 path = "../../crates/holons_loader"
 
+[dependencies.holons_loader_client]
+path = "../../crates/holons_loader_client"
+
 [dependencies.holons_trust_channel]
 path = "../../crates/holons_trust_channel"
 
@@ -52,10 +56,10 @@ path = "../../crates/type_system/base_types"
 path = "../../crates/holons_trust_channel"
 
 [dev-dependencies]
-rstest = "0.25"
+rstest = "0.26.1"
 pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 async-std = "1"
 tracing-subscriber = "0.3"
 

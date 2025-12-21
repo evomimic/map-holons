@@ -10,7 +10,10 @@ use holons_core::{
     reference_layer::{HolonReference, HolonSpaceBehavior, HolonsContextBehavior},
 };
 use std::sync::{Arc, RwLock};
-use tracing::info;
+use tracing::{
+    info,
+    // warn,
+};
 
 /// The guest-side implementation of `HolonsContextBehavior`, responsible for managing
 /// holon-related operations **within the Holochain guest environment**.

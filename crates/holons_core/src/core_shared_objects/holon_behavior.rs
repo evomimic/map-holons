@@ -114,6 +114,13 @@ pub trait WriteableHolonState {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError>;
 
+    /// Adds related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<&mut Self, HolonError>;
+
     /// Called by HolonPool::insert_holon() to increment the version.
     ///
     /// Used to track ephemeral versions of Holons with the same key.
@@ -133,6 +140,13 @@ pub trait WriteableHolonState {
         context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
+    ) -> Result<&mut Self, HolonError>;
+
+    /// Removes related holons using precomputed keys to avoid key lookups while the holon is locked.
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<&mut Self, HolonError>;
 
     /// Replaces the 'OriginalId' with the provided optional 'LocalId'.

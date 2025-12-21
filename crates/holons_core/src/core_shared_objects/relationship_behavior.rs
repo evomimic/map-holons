@@ -1,8 +1,9 @@
-use std::sync::{Arc, RwLock};
-
 use super::{HolonCollection, TransientRelationshipMap};
 use crate::{HolonReference, HolonsContextBehavior};
+use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
+use std::format;
+use std::sync::{Arc, RwLock};
 
 pub trait ReadableRelationship {
     // =====================
@@ -61,6 +62,13 @@ pub trait WritableRelationship {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
 
+    /// Adds holon references with precomputed keys, avoiding key lookups during mutation.
+    fn add_related_holons_with_keys(
+        &mut self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+    ) -> Result<(), HolonError>;
+
     /// Removes the specified holons from the collection associated with the given relationship name.
     ///
     /// If the relationship exists, the supplied holons are removed from its collection.
@@ -79,5 +87,12 @@ pub trait WritableRelationship {
         context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError>;
+
+    /// Removes holon references with precomputed keys, avoiding key lookups during mutation.
+    fn remove_related_holons_with_keys(
+        &mut self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<(), HolonError>;
 }

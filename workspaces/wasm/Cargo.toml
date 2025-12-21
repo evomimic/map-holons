@@ -3,8 +3,22 @@ name = "wasm-build"
 version = "0.1.0"
 edition = "2021"
 
+# Explicitly opt OUT of the root workspace
+[workspace]
+
 [lib]
 path = "src/lib.rs"
+
+# NOTE:
+# This Cargo.toml does not use most dependencies directly.
+# They are required because this crate defines the WASM build boundary.
+# All crates referenced here must be included so Cargo can resolve
+# dependency graphs for holons_guest, holons_integrity, and holons.
+
+[package.metadata.rust-analyzer]
+# Allow unused deps inside orchestrator crates
+# (this suppresses the IDE warnings)
+unused_crate_dependencies = false
 
 [dependencies]
 # Zomes
@@ -24,7 +38,6 @@ holon_dance_builders = { path = "../../crates/holon_dance_builders" }
 holons_guest = { path = "../../crates/holons_guest" }
 holons_guest_integrity = { path = "../../crates/holons_guest_integrity" }
 holons_prelude = { path = "../../crates/holons_prelude" }
-holons_trust_channel = { path = "../../crates/holons_trust_channel" }
 holons_loader = { path = "../../crates/holons_loader" }
 
 

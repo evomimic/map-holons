@@ -1,11 +1,7 @@
-use std::{
-    any::Any,
-    sync::{Arc, RwLock},
-};
+use std::any::Any;
 
-use super::{holon_pool::SerializableHolonPool, Holon};
-use crate::core_shared_objects::holon_pool::StagedHolonPool;
-use crate::{HolonStagingBehavior, NurseryAccess};
+use super::holon_pool::SerializableHolonPool;
+use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
@@ -36,15 +32,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// **This method is ONLY intended for use by the GuestHolonService**
     ///
     /// Clears the Nursery's staged holons
-    fn clear_stage(&mut self);
-
-    /// Returns a reference to the current (single) `HolonPool`.
-    ///
-    /// This method abstracts over whether the Nursery manages one pool or many.
-    /// In a future transaction-aware model, it can be adapted to accept a transaction ID
-    /// and return the corresponding pool. Existing callers (like commit_internal)
-    /// will remain unchanged.
-    fn get_holon_pool(&self) -> Arc<RwLock<StagedHolonPool>>;
+    fn clear_stage(&self) -> Result<(), HolonError>;
 
     /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
     ///
@@ -90,17 +78,13 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// # Arguments
     /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
-    fn import_staged_holons(&mut self, pool: SerializableHolonPool) -> ();
+    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
 
-    /// Provides direct access to the staged Holons in the Nursery's HolonPool.
+    /// Returns a reference-layer view of all staged holons as `StagedReference`s.
     ///
-    /// This method returns a reference to the underlying collection of staged Holons,
-    /// allowing commit functions to operate on the actual Holon instances without cloning.
-    ///
-    /// # Returns
-    ///
-    /// A `Vec<Arc<RwLock<Holon>>>` containing all staged Holons for thread-safe access.
-    fn get_holons_to_commit(&self) -> Vec<Arc<RwLock<Holon>>>;
+    /// This hides the underlying HolonPool and lock details from callers and is the
+    /// entry point for the commit path.
+    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError>;
 }
 
 #[cfg(test)]

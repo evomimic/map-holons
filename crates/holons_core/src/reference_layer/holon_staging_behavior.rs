@@ -1,6 +1,6 @@
 use crate::{
     reference_layer::{StagedReference, TransientReference},
-    HolonsContextBehavior,
+    HolonReference, HolonsContextBehavior, SmartReference,
 };
 
 use base_types::MapString;
@@ -45,5 +45,20 @@ pub trait HolonStagingBehavior: Send + Sync {
         &self,
         context: &dyn HolonsContextBehavior,
         holon: TransientReference,
+    ) -> Result<StagedReference, HolonError>;
+
+    /// Stage a new holon as a clone of an existing holon, with a new key.
+    fn stage_new_from_clone(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        original_holon: HolonReference,
+        new_key: MapString,
+    ) -> Result<StagedReference, HolonError>;
+
+    /// Stage a new version of the current holon, maintaining lineage.
+    fn stage_new_version(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        current_version: SmartReference,
     ) -> Result<StagedReference, HolonError>;
 }

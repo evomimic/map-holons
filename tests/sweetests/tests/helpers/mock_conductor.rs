@@ -7,6 +7,7 @@ use holons_core::{HolonError, HolonsContextBehavior};
 use holons_prelude::prelude::*;
 use holons_trust_channel::TrustChannel;
 use std::sync::Arc;
+use tracing::info;
 
 const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
 
@@ -45,14 +46,15 @@ pub struct MockConductorConfig {
 ///
 /// ```rust
 /// let request = DanceRequest::new("SomeDance", payload);
-/// let response = mock_conductor.initiate_dance(&context, request).await;
+/// let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+/// let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
 /// assert_eq!(response.status_code(), ResponseStatusCode::Ok);
 /// ```
-#[async_trait(?Send)]
+#[async_trait]
 impl DanceInitiator for MockConductorConfig {
     async fn initiate_dance(
         &self,
-        _context: &dyn HolonsContextBehavior,
+        _context: &(dyn HolonsContextBehavior + Send + Sync),
         request: DanceRequest,
     ) -> DanceResponse {
         let res = self.conductor.call(&self.cell.zome("holons"), "dance", request).await;
@@ -87,7 +89,7 @@ impl DanceInitiator for MockConductorConfig {
 /// let initiator = TrustChannel::new(backend);
 /// ```
 pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
-    println!("Current working directory: {:?}", std::env::current_dir().unwrap());
+    info!("Current working directory: {:?}", std::env::current_dir().unwrap());
 
     let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
 
