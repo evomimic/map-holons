@@ -1,4 +1,41 @@
-// sweetests/src/harness/test_case/test_case.rs (excerpt)
+//! # Dance Test Language
+//!
+//! This module defines the **declarative language** used by MAP sweetests to
+//! describe integration test behavior in terms of *dance execution*.
+//!
+//! It does **not** execute tests and does **not** define any concrete test
+//! scenarios. Instead, it defines the **grammar, structure, and construction
+//! API** used by test fixtures to *author* test cases that are executed later
+//! by the sweetests harness.
+//!
+//! Specifically, this module provides:
+//!
+//! - [`DancesTestCase`], a container representing a single declarative test
+//!   program composed of an ordered sequence of steps.
+//! - [`DanceTestStep`], a closed vocabulary of test operations, each
+//!   corresponding to one or more MAP dances or assertions.
+//! - Builder-style `add_*` methods for constructing test cases in a clear,
+//!   sequential, and intention-revealing manner.
+//! - [`TestSessionState`], which captures transient holon state produced during
+//!   fixture setup and injects it into the test execution context.
+//!
+//! Test cases constructed using this language are *pure specifications*:
+//! they contain no runtime context, no concrete holon identifiers, and no
+//! execution logic. Resolution of references, state mutation, and dance
+//! invocation are handled entirely by the execution support layer at runtime.
+//!
+//! ## Architectural Role
+//!
+//! Within the sweetests harness, this module occupies a middle layer between:
+//!
+//! - **fixtures_support**, which mints symbolic [`TestReference`] tokens and
+//!   assembles test cases using this language, and
+//! - **execution_support**, which interprets and executes the resulting test
+//!   cases against client- and guest-side contexts.
+//!
+//! This separation allows test behavior to be described declaratively while
+//! remaining independent of execution order, runtime identifiers, and
+//! persistence details.
 
 use crate::{harness::fixtures_support::TestReference, FixtureHolons};
 use holons_core::{

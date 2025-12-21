@@ -1,4 +1,4 @@
-use holons_test::{test_case::DancesTestCase, test_reference::TestReference, FixtureHolons};
+use holons_test::{dance_test_language::DancesTestCase, test_reference::TestReference, FixtureHolons};
 use tracing::{debug, info};
 
 use holons_prelude::prelude::*;

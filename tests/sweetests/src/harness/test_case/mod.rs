@@ -1,3 +1,3 @@
-pub mod test_case;
+pub mod dance_test_language;
 
-pub use test_case::*;
+pub use dance_test_language::*;

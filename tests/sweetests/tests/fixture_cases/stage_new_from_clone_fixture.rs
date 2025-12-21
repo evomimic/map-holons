@@ -6,7 +6,7 @@ use holons_core::{
     dances::ResponseStatusCode, new_holon, reference_layer::TransientReference,
     HolonsContextBehavior, ReadableHolon, WritableHolon,
 };
-use holons_test::{fixture_holons::FixtureHolons, test_case::DancesTestCase};
+use holons_test::{fixture_holons::FixtureHolons, dance_test_language::DancesTestCase};
 use type_names::ToPropertyName;
 
 use crate::{
