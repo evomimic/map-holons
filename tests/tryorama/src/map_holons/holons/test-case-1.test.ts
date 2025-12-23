@@ -11,7 +11,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
   await runScenario(async scenario => {
     // Construct proper paths for your app.
     // This assumes app bundle created by the `hc app pack` command.
-    const testAppPath = process.cwd() + '/../../happ/workdir/map-holons.happ';
+    const testAppPath = process.cwd() + '/../../workdir/map-holons.happ';
 
     // Set up the app to be installed 
     const appbundlesource: AppBundleSource = {

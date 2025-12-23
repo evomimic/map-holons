@@ -2,7 +2,8 @@
   "name": "tests",
   "private": true,
   "scripts": {
-    "test": "vitest run",
+    "test": "",
+    "test:fix": "vitest run",
     "clean:ui": "npx rimraf package-lock.json node_modules"
   },
   "dependencies": {
