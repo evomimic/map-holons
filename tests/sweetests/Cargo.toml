@@ -12,6 +12,7 @@ publish = false
 # General deps
 #base64ct = "=1.7.3"
 derive-new = "0.7"
+pretty_assertions = "1.4.0"
 serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
@@ -24,8 +25,8 @@ path = "../../crates/holons_prelude"
 #[dependencies.holons_guest_integrity]
 #path = "../../crates/holons_guest_integrity"
 #
-#[dependencies.holon_dance_builders]
-#path = "../../crates/holon_dance_builders"
+[dependencies.holon_dance_builders]
+path = "../../crates/holon_dance_builders"
 
 [dependencies.holons_core]
 path = "../../crates/holons_core"

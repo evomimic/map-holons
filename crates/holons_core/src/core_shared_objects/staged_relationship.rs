@@ -39,6 +39,8 @@
 //! - Adding/removing related holons from a relationship
 //! - Cloning staged holons and their relationships into a new editing context
 //! - Serializing the current staged relationship state for syncing across boundaries
+//! 
+//!  *They cannot contain TransientRefefences, since relationsips from Staged -> Transient are not allowed.
 //!
 //! ## Relationship to `RelationshipMap`
 //!
@@ -61,7 +63,7 @@ use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
 
-/// Map of relationship names to `HolonCollection`s under construction.
+/// Map of relationship names to `HolonCollection`s that are under construction.
 #[derive(new, Clone, Debug)]
 pub struct StagedRelationshipMap {
     pub map: BTreeMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
@@ -147,6 +149,7 @@ impl WritableRelationship for StagedRelationshipMap {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
+        // TODO: Add check that holons to be added can only be StagedReferences
         let lock = self
             .map
             .entry(relationship_name)
@@ -158,7 +161,7 @@ impl WritableRelationship for StagedRelationshipMap {
                     e
                 ))
             })?
-            .add_references(context, holons)?;
+            .add_references(context, holons)?; 
         Ok(())
     }
 

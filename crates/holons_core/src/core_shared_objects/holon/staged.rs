@@ -18,6 +18,8 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
+use super::EssentialRelationshipMap;
+
 /// Represents a Holon that has been staged for persistence or updates.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StagedHolon {
@@ -51,10 +53,13 @@ impl StagedHolon {
     }
 
     /// Creates a new StagedHolon in the `ForCreate` state.   
-    pub fn new_from_clone_model(model: HolonCloneModel) -> Result<Self, HolonError> {
+    pub fn new_from_clone_model(
+        context: &dyn HolonsContextBehavior,
+        model: HolonCloneModel,
+    ) -> Result<Self, HolonError> {
         let staged_relationships: StagedRelationshipMap = {
             if let Some(relationship_map) = model.relationships {
-                relationship_map.clone_for_staged()?
+                relationship_map.clone_for_staged(context)? // Skips any TransientReference members
             } else {
                 return Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()));
             }
@@ -210,8 +215,13 @@ impl ReadableHolonState for StagedHolon {
         Ok(relationship_map)
     }
 
-    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        Ok(EssentialHolonContent::new(self.property_map.clone(), self.key()?, self.errors.clone()))
+    fn essential_content(&self) -> EssentialHolonContent {
+        EssentialHolonContent::new(
+            self.property_map.clone(),
+            EssentialRelationshipMap::from(self.staged_relationships.clone()),
+            self.key(),
+            self.errors.clone(),
+        )
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {
@@ -253,13 +263,13 @@ impl ReadableHolonState for StagedHolon {
     }
 
     /// Retrieves the Holon's primary key, if defined in its `property_map`.
-    fn key(&self) -> Result<Option<MapString>, HolonError> {
+    fn key(&self) -> Option<MapString> {
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
 
         if let Some(BaseValue::StringValue(s)) = self.property_map.get(&key_property_name) {
-            Ok(Some(s.clone()))
+            Some(s.clone())
         } else {
-            Ok(None)
+            None
         }
     }
 
@@ -283,7 +293,7 @@ impl ReadableHolonState for StagedHolon {
 
     fn versioned_key(&self) -> Result<MapString, HolonError> {
         let key = self
-            .key()?
+            .key()
             .ok_or(HolonError::InvalidParameter("StagedHolon must have a key".to_string()))?;
 
         Ok(MapString(format!("{}__{}_staged", key.0, &self.version.0.to_string())))
@@ -322,9 +332,8 @@ impl ReadableHolonState for StagedHolon {
     fn summarize(&self) -> String {
         // Attempt to extract key from the property_map (if present), default to "None" if not available
         let key = match self.key() {
-            Ok(Some(key)) => key.0,           // Extract the key from MapString
-            Ok(None) => "<None>".to_string(), // Key is None
-            Err(_) => "<Error>".to_string(),  // Error encountered while fetching key
+            Some(key) => key.0,           // Extract the key from MapString
+            None => "<None>".to_string(), // Key is None
         };
 
         // Attempt to extract local_id using get_local_id method, default to "None" if not available

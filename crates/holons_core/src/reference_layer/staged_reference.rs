@@ -5,6 +5,7 @@ use std::{fmt, sync::Arc};
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
+use crate::core_shared_objects::holon::StagedState;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -103,6 +104,34 @@ impl StagedReference {
         let rc_holon = nursery_access.get_holon_by_id(&self.id)?;
 
         Ok(rc_holon)
+    }
+
+    pub fn is_in_state(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        check_state: StagedState,
+    ) -> Result<bool, HolonError> {
+        let rc_holon = self.get_rc_holon(context)?;
+        let holon = rc_holon
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on nursery: {}",
+                    e
+                ))
+            })?
+            .clone();
+        let current_state = match holon {
+            Holon::Staged(holon) => Ok(holon.get_staged_state()),
+            _ => Err(HolonError::InvalidType(
+                "StagedReference should point to a StagedHolon".to_string(),
+            )),
+        }?;
+        if current_state == check_state {
+            return Ok(true);
+        } else {
+            Ok(false)
+        }
     }
 
     pub fn temporary_id(&self) -> TemporaryId {
@@ -227,7 +256,7 @@ impl ReadableHolonImpl for StagedReference {
             ))
         })?;
 
-        borrowed_holon.key()
+        Ok(borrowed_holon.key())
     }
 
     fn related_holons_impl(
@@ -279,7 +308,7 @@ impl ReadableHolonImpl for StagedReference {
             ))
         })?;
 
-        borrowed_holon.essential_content()
+        Ok(borrowed_holon.essential_content())
     }
 
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {

@@ -66,7 +66,7 @@ impl ReadableHolonState for Holon {
         }
     }
 
-    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
+    fn essential_content(&self) -> EssentialHolonContent {
         match self {
             Holon::Transient(h) => h.essential_content(),
             Holon::Staged(h) => h.essential_content(),
@@ -98,7 +98,7 @@ impl ReadableHolonState for Holon {
         }
     }
 
-    fn key(&self) -> Result<Option<MapString>, HolonError> {
+    fn key(&self) -> Option<MapString> {
         match self {
             Holon::Transient(h) => h.key(),
             Holon::Staged(h) => h.key(),

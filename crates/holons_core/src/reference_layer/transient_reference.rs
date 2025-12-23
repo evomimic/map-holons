@@ -151,7 +151,8 @@ impl ReadableHolonImpl for TransientReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        borrowed_holon.essential_content()
+
+        Ok(borrowed_holon.essential_content())
     }
 
     fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
@@ -188,7 +189,8 @@ impl ReadableHolonImpl for TransientReference {
         self.is_accessible(context, AccessType::Read)?;
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().unwrap();
-        borrowed_holon.key().clone()
+
+        Ok(borrowed_holon.key().clone())
     }
 
     fn predecessor_impl(

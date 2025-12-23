@@ -7,7 +7,7 @@ use std::{
 use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::reference_layer::readable_impl::ReadableHolonImpl;
+use crate::{core_shared_objects::holon::EssentialRelationshipMap, reference_layer::readable_impl::ReadableHolonImpl};
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
@@ -188,7 +188,7 @@ impl ReadableHolonImpl for SmartReference {
                 e
             ))
         })?;
-        borrowed_holon.essential_content()
+        Ok(borrowed_holon.essential_content())
     }
 
     fn holon_id_impl(&self, _context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {

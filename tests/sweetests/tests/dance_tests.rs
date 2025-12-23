@@ -19,16 +19,13 @@
 
 #![allow(unused_imports)]
 
-mod shared_test;
+mod execution_steps;
+mod fixture_cases;
+mod helpers;
 
 use async_std::prelude::Future;
-use std::collections::BTreeMap;
-use std::rc::Rc;
 
-use holochain::sweettest::*;
-use holochain::sweettest::{SweetCell, SweetConductor};
-// use holons_client::init_client_context;
-
+use holons_core::core_shared_objects::holon;
 use rstest::*;
 use serde::de::Expected;
 use std::sync::{Arc, Mutex};
@@ -37,31 +34,37 @@ use tokio::time::timeout;
 use tracing::{debug, error, info, trace, warn, Level};
 //use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, reload, registry::Registry};
 
-use self::test_abandon_staged_changes::execute_abandon_staged_changes;
-use self::test_add_related_holon::execute_add_related_holons;
-use self::test_commit::execute_commit;
-use self::test_ensure_database_count::execute_ensure_database_count;
-use self::test_load_holons::execute_load_holons;
-use self::test_match_db_content::execute_match_db_content;
-use self::test_query_relationships::execute_query_relationships;
-use self::test_remove_properties_command::execute_remove_properties;
-use self::test_remove_related_holon::execute_remove_related_holons;
-use self::test_with_properties_command::execute_with_properties;
+use execution_steps::abandon_staged_changes_executor::execute_abandon_staged_changes;
+use execution_steps::add_related_holons_executor::execute_add_related_holons;
+use execution_steps::commit_executor::execute_commit;
+use execution_steps::delete_holon_executor::execute_delete_holon;
+use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
+use execution_steps::load_holons_client_executor::execute_load_holons_client;
+use execution_steps::load_holons_executor::execute_load_holons;
+use execution_steps::match_db_content_executor::execute_match_db_content;
+use execution_steps::query_relationships_executor::execute_query_relationships;
+use execution_steps::remove_properties_command_executor::execute_remove_properties;
+use execution_steps::remove_related_holon_executor::execute_remove_related_holons;
+use execution_steps::stage_new_holon_executor::execute_stage_new_holon;
+use execution_steps::with_properties_command_executor::execute_with_properties;
 
-use crate::load_holons_fixture::*;
-use crate::loader_client_fixture::*;
-use crate::shared_test::{
-    // mock_conductor::*,
-    test_context::init_test_context,
-    test_data_types::{DanceTestExecutionState, DanceTestStep, DancesTestCase, TEST_CLIENT_PREFIX},
-    test_print_database::execute_database_print,
-    test_stage_new_holon::execute_stage_new_holon,
-};
-use crate::stage_new_from_clone_fixture::*;
-use crate::stage_new_version_fixture::*;
-use holons_client::init_client_context;
+use fixture_cases::abandon_staged_changes_fixture::*;
+use fixture_cases::delete_holon_fixture::*;
+use fixture_cases::ergonomic_add_remove_properties_fixture::*;
+use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
+use fixture_cases::load_holons_fixture::*;
+use fixture_cases::loader_client_fixture::*;
+use fixture_cases::simple_add_remove_properties_fixture::*;
+use fixture_cases::simple_add_remove_related_holons_fixture::*;
+use fixture_cases::simple_create_holon_fixture::*;
+use fixture_cases::stage_new_from_clone_fixture::*;
+use fixture_cases::stage_new_version_fixture::*;
+
+use helpers::TEST_CLIENT_PREFIX;
+use holons_test::harness::prelude::{DanceTestStep, DancesTestCase};
+
+// use holons_client::init_client_context;
 use holons_prelude::prelude::*;
-use shared_test::*;
 
 /// This function accepts a DanceTestCase created by the test fixture for that case.
 /// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.
@@ -88,29 +91,28 @@ use shared_test::*;
 #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 #[case::delete_holon(delete_holon_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-#[case::add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::simple_stage_new_from_clone_test(simple_stage_new_from_clone_fixture())]
-#[case::simple_stage_new_version_test(simple_stage_new_version_fixture())]
+#[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
+#[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
 #[tokio::test(flavor = "multi_thread")]
-async fn rstest_dance_tests(
-    #[case] input: impl Future<Output = Result<DancesTestCase, HolonError>>,
-) {
+async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
-
-    use test_stage_new_from_clone::execute_stage_new_from_clone;
-    use test_stage_new_version::execute_stage_new_version;
-
-    use test_delete_holon::execute_delete_holon;
 
     // The heavy lifting for this test is in the test data set creation.
 
-    let mut test_case: DancesTestCase = input.await.unwrap();
-    // Initialize TestHolonsContext from test_session_state
-    let test_context: Arc<dyn HolonsContextBehavior> = init_test_context(&mut test_case).await;
+    use holons_test::execution_state::TestExecutionState;
+
+    use self::helpers::init_test_context;
+
+    let mut test_case: DancesTestCase = input.unwrap();
+    // Initialize test context and execution state
+    let test_context = init_test_context(&mut test_case).await;
+    let mut test_execution_state = TestExecutionState::new(test_context);
 
     tracing::info!("Hello from the test!");
 
@@ -120,45 +122,45 @@ async fn rstest_dance_tests(
 
     let steps_count = steps.len();
 
-    debug!("TEST SESSION STATE {:?}", test_case.test_session_state);
-
-    // Initialize the DanceTestState
-    let mut test_state = DanceTestExecutionState::new(test_context);
-
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {name} TEST CASE WITH {steps_count} TEST STEPS ***************************");
     info!("\n   Test Case Description: {description}");
 
     for step in test_case.steps {
         //println!("\n\n============= STARTING NEXT STEP: {}", step);
+
+        use self::execution_steps::execute_print_database;
         match step {
-            DanceTestStep::AbandonStagedChanges(staged_reference, expected_response) => {
-                execute_abandon_staged_changes(&mut test_state, staged_reference, expected_response)
-                    .await
-            }
-            DanceTestStep::AddRelatedHolons(
-                holon_reference,
-                relationship_name,
-                holons_to_add,
-                expected_response,
-                expected_holon,
-            ) => {
-                execute_add_related_holons(
-                    &mut test_state,
-                    holon_reference,
-                    relationship_name,
-                    holons_to_add,
-                    expected_response,
-                    expected_holon,
+            DanceTestStep::AbandonStagedChanges { holon_token, expected_status } => {
+                execute_abandon_staged_changes(
+                    &mut test_execution_state,
+                    holon_token,
+                    expected_status,
                 )
                 .await
             }
-            DanceTestStep::Commit => execute_commit(&mut test_state).await,
-            DanceTestStep::DatabasePrint => execute_database_print(&mut test_state).await,
-            DanceTestStep::DeleteHolon(holon_to_delete, expected_response) => {
-                execute_delete_holon(&mut test_state, holon_to_delete, expected_response).await
+            DanceTestStep::AddRelatedHolons {
+                source_token,
+                relationship_name,
+                holons_to_add,
+                expected_status,
+            } => {
+                execute_add_related_holons(
+                    &mut test_execution_state,
+                    source_token,
+                    relationship_name,
+                    holons_to_add,
+                    expected_status,
+                )
+                .await
             }
-            DanceTestStep::EnsureDatabaseCount(expected_count) => {
-                execute_ensure_database_count(&mut test_state, expected_count).await
+            DanceTestStep::Commit { saved_tokens, expected_status } => {
+                execute_commit(&mut test_execution_state, saved_tokens, expected_status).await
+            }
+            DanceTestStep::DeleteHolon { saved_token, expected_status } => {
+                execute_delete_holon(&mut test_execution_state, saved_token, expected_status).await
+            }
+            DanceTestStep::EnsureDatabaseCount { expected_count } => {
+                execute_ensure_database_count(&mut test_execution_state, expected_count).await
             }
             DanceTestStep::LoadHolons {
                 set,
@@ -170,7 +172,7 @@ async fn rstest_dance_tests(
                 expect_total_loader_holons,
             } => {
                 execute_load_holons(
-                    &mut test_state,
+                    &mut test_execution_state,
                     set,
                     expect_staged,
                     expect_committed,
@@ -190,8 +192,8 @@ async fn rstest_dance_tests(
                 expect_total_bundles,
                 expect_total_loader_holons,
             } => {
-                shared_test::test_load_holons_client::execute_load_holons_client(
-                    &mut test_state,
+                execute_load_holons_client(
+                    &mut test_execution_state,
                     content_set,
                     expect_staged,
                     expect_committed,
@@ -202,67 +204,85 @@ async fn rstest_dance_tests(
                 )
                 .await
             }
-            DanceTestStep::MatchSavedContent => execute_match_db_content(&mut test_state).await,
-            DanceTestStep::QueryRelationships(
-                node_collection,
+            DanceTestStep::MatchSavedContent => {
+                execute_match_db_content(&mut test_execution_state).await
+            }
+            DanceTestStep::PrintDatabase => execute_print_database(&mut test_execution_state).await,
+            DanceTestStep::QueryRelationships {
+                source_token,
                 query_expression,
-                expected_response,
-            ) => {
+                expected_status,
+            } => {
                 execute_query_relationships(
-                    &mut test_state,
-                    node_collection,
+                    &mut test_execution_state,
+                    source_token,
                     query_expression,
-                    expected_response,
+                    expected_status,
                 )
                 .await
             }
-            DanceTestStep::RemoveProperties(holon_reference, properties, expected_response) => {
+            DanceTestStep::RemoveProperties { holon_token, properties, expected_status } => {
                 execute_remove_properties(
-                    &mut test_state,
-                    holon_reference,
+                    &mut test_execution_state,
+                    holon_token,
                     properties,
-                    expected_response,
+                    expected_status,
                 )
                 .await
             }
-            DanceTestStep::RemoveRelatedHolons(
-                holon_reference,
+            DanceTestStep::RemoveRelatedHolons {
+                source_token,
                 relationship_name,
                 holons_to_remove,
-                expected_response,
-            ) => {
+                expected_status,
+            } => {
                 execute_remove_related_holons(
-                    &mut test_state,
-                    holon_reference,
+                    &mut test_execution_state,
+                    source_token,
                     relationship_name,
                     holons_to_remove,
-                    expected_response,
+                    expected_status,
                 )
                 .await
             }
-
-            DanceTestStep::StageHolon(holon) => {
-                execute_stage_new_holon(&mut test_state, holon).await
-            }
-            DanceTestStep::StageNewFromClone(original_holon, new_key, expected_response) => {
-                execute_stage_new_from_clone(
-                    &mut test_state,
-                    original_holon,
-                    new_key,
-                    expected_response,
-                )
-                .await
-            }
-            DanceTestStep::StageNewVersion(original_holon_key, expected_response) => {
-                execute_stage_new_version(&mut test_state, original_holon_key, expected_response)
+            DanceTestStep::StageHolon { source_token, expected_status } => {
+                execute_stage_new_holon(&mut test_execution_state, source_token, expected_status)
                     .await
             }
-            DanceTestStep::WithProperties(holon_reference, properties, expected_response) => {
+            DanceTestStep::StageNewFromClone {
+                source_token,
+                next_root_token,
+                new_key,
+                expected_status,
+            } => {
+                use self::execution_steps::execute_stage_new_from_clone;
+
+                execute_stage_new_from_clone(
+                    &mut test_execution_state,
+                    source_token,
+                    next_root_token,
+                    new_key,
+                    expected_status,
+                )
+                .await
+            }
+            DanceTestStep::StageNewVersion { source_token, next_root_token, expected_status } => {
+                use self::execution_steps::execute_stage_new_version;
+
+                execute_stage_new_version(
+                    &mut test_execution_state,
+                    source_token,
+                    next_root_token,
+                    expected_status,
+                )
+                .await
+            }
+            DanceTestStep::WithProperties { holon_token, properties, expected_status } => {
                 execute_with_properties(
-                    &mut test_state,
-                    holon_reference,
+                    &mut test_execution_state,
+                    holon_token,
                     properties,
-                    expected_response,
+                    expected_status,
                 )
                 .await
             }
