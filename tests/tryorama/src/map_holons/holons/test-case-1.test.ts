@@ -1,24 +1,31 @@
 import { assert, test } from "vitest";
 
-import { runScenario, pause, CallableCell, dhtSync } from '@holochain/tryorama';
-import {  } from '@holochain/client';
+import { runScenario, pause, CallableCell, dhtSync, AppWithOptions } from '@holochain/tryorama';
+import { AppBundleSource } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 
-import { DanceRequest, createHolon } from './common.js';
-import { BaseTypeKindType, Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
+import { DanceRequest, createHolon, getPropertyMap } from './common.js';
+import { Holon, PropertyMap, ResponseBodyEnum, ResponseStatusCode  } from "./types.js";
 
 test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
   await runScenario(async scenario => {
     // Construct proper paths for your app.
     // This assumes app bundle created by the `hc app pack` command.
-    const testAppPath = process.cwd() + '/../workdir/map-holons.happ';
+    const testAppPath = process.cwd() + '/../../happ/workdir/map-holons.happ';
 
     // Set up the app to be installed 
-    const appSource = { appBundleSource: { path: testAppPath } };
+    const appbundlesource: AppBundleSource = {
+      type: "path",
+      value: testAppPath
+    };
+    
+    const appWithOptions: AppWithOptions = {
+      appBundleSource: appbundlesource
+    };
 
     // Add 2 players with the test app to the Scenario. The returned players
     // can be destructured.
-    const [alice] = await scenario.addPlayersWithApps([appSource]);
+    const [alice] = await scenario.addPlayersWithApps([appWithOptions]);
 
     // Shortcut peer discovery through gossip and register all agents in every
     // conductor of the scenario.
@@ -31,15 +38,15 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     //task 1 - get all holons
     console.log("---- alice gets all holons to ensure the persistent store is empty\n")
     let response = await alicerequest.readall("get_all_holons")
-    //console.log(response)
-    assert.equal(response.getStagedObjects().length, 0);
+    console.log(response)
+    assert.equal(Object.keys(response.getStagedObjects().holons).length, 0);
 
 
     //task 2 - create empty holon by not providing one
     console.log('----- Alice stages a new empty Holon for Book\n')
     response = await alicerequest.createOneEmpty("stage_new_holon")
     //assertions
-    assert.equal(response.getStagedObjects().length, 1);
+    assert.equal(Object.keys(response.getStagedObjects().holons).length, 1);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index);
     let holonindex = Object.values(response.body)[0]
     //console.log("index response:",holonindex )
@@ -48,11 +55,11 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
 
     //task 3 - add a title property to holon at index 0
     console.log(" -- -- Alice adds a title property to the Book Holon at index 0\n")
-    let properties:PropertyMap = {}
-    properties["title"] = {[BaseTypeKindType.StringValue]:"mybook"}
+    let properties:PropertyMap = {"title": { StringValue: "mybook" }}
+    //properties["title"] = {[BaseValueType.StringValue]:"mybook"}
     response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
     //assertions:
-    assert.equal(response.getStagedObjects().length, 1);
+    assert.equal(Object.keys(response.getStagedObjects().holons).length, 1);
     assert.equal(response.status_code, ResponseStatusCode.OK);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
     holonindex = Object.values(response.body)[0]
@@ -62,12 +69,12 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
 
     //task 4 - add description to existing book holon
     console.warn("---- Alice adds a description property to the book Holon at index 0\n")
-    properties = {}
-    properties["description"] = {[BaseTypeKindType.StringValue]:"some description"}
+    properties = {"description": { StringValue: "some description" }}
+    //properties["description"] = {[BaseValueType.StringValue]:"some description"}
     response = await alicerequest.updateOneWithProperties("with_properties",holonindex,properties)
     //assertions
     //console.log("property add result:",response)
-    assert.equal(response.getStagedObjects().length, 1);
+    assert.equal(Object.keys(response.getStagedObjects().holons).length, 1);
     assert.equal(response.status_code, ResponseStatusCode.OK);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
     holonindex = Object.values(response.body)[0]
@@ -77,14 +84,14 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
 
     // task 5 - build a person holon and send it in the body
     console.warn("--- Alice builds and stages a new person holon\n")
-    properties = {}
-    properties["first_name"] = {[BaseTypeKindType.StringValue]:"Thomas"}
-    properties["favourite number"] = {[BaseTypeKindType.IntegerValue]:42}
+    properties = { "first_name": { StringValue: "Thomas" }, "favourite number": { IntegerValue: 42 } }
+    //properties["first_name"] = {[BaseValueType.StringValue]:"Thomas"}
+    //properties["favourite number"] = {[BaseValueType.IntegerValue]:42}
     let holon:Holon = createHolon(properties)
     response = await alicerequest.createOne("stage_new_holon",holon)
     //assertions
     //console.log("New holon result",response)
-    assert.equal(response.getStagedObjects().length, 2);
+    assert.equal(Object.keys(response.getStagedObjects().holons).length, 2);
     assert.equal(response.status_code, ResponseStatusCode.OK);
     assert.equal(Object.keys(response.body)[0], ResponseBodyEnum.Index); 
     holonindex = Object.values(response.body)[0]
@@ -97,7 +104,7 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     response = await alicerequest.commit("commit")
     //assertions:
     console.log("commit result",response)
-    assert.equal(response.getStagedObjects().length, 0);
+    assert.equal(Object.keys(response.getStagedObjects().holons).length, 0);
     assert.equal(Object.keys(response.body)[0], "Holons");
     assert.equal(Object.values(response.body)[0].length, 2); //2 holons committed
 
@@ -112,7 +119,6 @@ test('TEST CASE 1, Stage, Add Properties, Commit Holons', async () => {
     const holons:Holon[] = Object.values(response.body)[0]
     assert.equal(holons.length, 2); //2 holons committed
     console.log(holons)
-    holons.forEach(holon => { console.log(holon.property_map) })
-  });
+    holons.forEach(holon => { console.log(getPropertyMap(holon)) })  });
 });
 

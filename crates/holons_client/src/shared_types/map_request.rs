@@ -1,6 +1,6 @@
 use base_types::MapString;
 use core_types::{ContentSet, HolonId, PropertyMap, RelationshipName};
-use holons_core::{HolonReference, StagedReference, TransientHolonBehavior, core_shared_objects::{Holon, TransientHolonManager, TransientManagerAccess}, dances::{DanceType, RequestBody}, query_layer::QueryExpression, reference_layer::TransientReference};
+use holons_core::{HolonReference, StagedReference, TransientHolonBehavior, core_shared_objects::{Holon, TransientHolonManager, TransientManagerAccess}, dances::{DanceType}, query_layer::QueryExpression, reference_layer::TransientReference};
 use serde::{Deserialize, Serialize};
 
 use crate::shared_types::holon_space::HolonSpace;

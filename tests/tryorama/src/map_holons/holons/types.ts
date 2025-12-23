@@ -1,30 +1,24 @@
 import { HoloHash, HoloHashB64 } from "@holochain/client"
+import { Session } from "inspector";
 
 //export type MapString = {type:string, value:string}
 
 type RelationshipNameType = string
 type StagedIndex = number
 
-export enum BaseTypeKindType {
-  StringValue = 'StringValue',
-  BooleanValue = 'BooleanValue',
-  IntegerValue = 'IntegerValue',
-  EnumValue = 'EnumValue'
-}
 
-export type BaseTypeKindMap = {
-  [BaseTypeKindType.StringValue]: string;
-  [BaseTypeKindType.BooleanValue]: boolean;
-  [BaseTypeKindType.IntegerValue]: number;
-  [BaseTypeKindType.EnumValue]: 'Option1' | 'Option2' | 'Option3';
-};
+export type BaseValue = 
+    | { StringValue: string }
+    | { BooleanValue: boolean }
+    | { IntegerValue: number }
+    | { EnumValue: string };
 
-export type BaseTypeKind = { [K in keyof BaseTypeKindMap]: { [key in K]: BaseTypeKindMap[K] } }[keyof BaseTypeKindMap];
-
-export type BaseTypeKindList = [BaseTypeKind]
-type PropertyValue = BaseTypeKind
+export type BaseValueList = [BaseValue]
+type PropertyValue = BaseValue
 type PropertyName = string
-export type PropertyMap = Record<PropertyName, PropertyValue>;
+export type PropertyMap = Record<string, BaseValue>;
+
+//export type PropertyMap = Record<PropertyName, PropertyValue>;
 
 type StagedReference = {
   //key?: string,
@@ -52,29 +46,48 @@ type HolonReferenceMap = {
 
 export type HolonReference = { [K in keyof HolonReferenceMap]: { type: K; value: HolonReferenceMap[K] } }[keyof HolonReferenceMap];
 
+export type HolonCollection = {
+    state: "Fetched" | "Transient" | "Staged" | "Saved" | "Abandoned",
+    members: HolonReference[],
+    // keyed_index is causing msgpack issues - skip it for now
+}
+//export type HolonCollection = {
+//    state: "Fetched" | "Transient" | "Staged" | "Saved" | "Abandoned",
+//    members: HolonReference[],
+//    keyed_index: Record<string, number>  // maps key to index in members array
+//}
+
+export enum ResponseBodyEnum {
+  None,
+  Holon = "Holon",
+  HolonCollection = "HolonCollection",
+  Holons = "Holons",
+  Index = "Index"
+}
+
+export type ResponseBodyMap = {
+  [ResponseBodyEnum.None]: null,
+  [ResponseBodyEnum.Holon]: Holon,
+  [ResponseBodyEnum.HolonCollection]: HolonCollection,
+  [ResponseBodyEnum.Holons]: Holon[],
+  [ResponseBodyEnum.Index]: number,
+}
+
+export type ResponseBody = { [K in keyof ResponseBodyMap]: { [key in K]: ResponseBodyMap[K] } }[keyof ResponseBodyMap];
+
+
+export type TargetHolons = [RelationshipNameType,PortableReference[]]
+
+export type RequestBody = string | [string,Holon] | [string,TargetHolons] | [string,HoloHashB64] | [string,PropertyMap] | [string,StagedIndex]
+
 export enum RequestBodyEnum {
   None = 'None',
   Holon = 'Holon',
-  TargetHolons = 'TargetHolons', //[RelationshipName:RelationshipNameType, Vec<PortableReference>],
+  TargetHolons = 'TargetHolons',
   HolonId = 'HolonId',
   ParameterValues = 'ParameterValues',
   Index = 'Index',
 }
-
-export type TargetHolons = [RelationshipNameType,PortableReference[]]
-
-type RequestBodyMap = {
-  [RequestBodyEnum.None]: null,
-  [RequestBodyEnum.Holon]: Holon,
-  [RequestBodyEnum.TargetHolons]: TargetHolons,
-  [RequestBodyEnum.HolonId]: HoloHashB64
-  [RequestBodyEnum.ParameterValues]: PropertyMap,
-  [RequestBodyEnum.Index]: StagedIndex,
-}
-
-export type RequestBodyObject = { [K in keyof RequestBodyMap]: { [key in K]: RequestBodyMap[K] } }[RequestBodyEnum];
-export type RequestBody = string | [string,Holon] | [string,TargetHolons] | [string,HoloHashB64] | [string,PropertyMap] | [string,StagedIndex]
-
 
 export enum ResponseStatusCode {
   OK = "OK",            
@@ -86,23 +99,6 @@ export enum ResponseStatusCode {
   NotImplemented = "NotImplemented",
   ServiceUnavailable = "ServiceUnavailable"
 }
-
-export enum ResponseBodyEnum {
-  None,
-  Holon = "Holon",
-  Holons = "HolonList", // will be replaced by SmartCollection once supported
-  // SmartCollection(SmartCollection),
-  Index = "Index" //StagedIndex"
-}
-
-export type ResponseBodyMap = {
-  [ResponseBodyEnum.None]:null,
-  [ResponseBodyEnum.Holon]: Holon,
-  [ResponseBodyEnum.Holons]: Holon[],
-  [RequestBodyEnum.Index]: StagedIndex,
-}
-
-export type ResponseBody = { [K in keyof ResponseBodyMap]: { type: K; value: ResponseBodyMap[K] } }[keyof ResponseBodyMap];
 
 export enum PortableReferenceEnum {
   Saved = 'HolonId',
@@ -137,35 +133,94 @@ export type DanceType = string | [string,HoloHashB64] | [string,StagedIndex]
 
 export type DanceRequestObject = {
   dance_name: string //MapString, // unique key within the (single) dispatch table
-  dance_type: DanceTypeObject,
-  body: RequestBodyObject,
-  staging_area: StagingArea,
-  //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
+  dance_type: DanceTypeObject | string,
+  body: RequestBody | string,
+  state: SessionState | null,
 }
+
+// ===========================================
+// SESSION STATE TYPES
+// ===========================================
+
+export type TemporaryId = string;
+
+export type SerializableHolonPool ={
+    holons: Record<TemporaryId, Holon>,
+    keyed_index: Record<string, TemporaryId> //Array<[string, TemporaryId]>,
+}
+
+export type SessionState = {
+    transient_holons: SerializableHolonPool,
+    staged_holons: SerializableHolonPool,
+    local_holon_space?: HolonReference | null,
+}
+
+/**
+ * Creates an empty/default SessionState
+ * Useful when you need to initialize a DanceResponseObject with empty session state
+ */
+export function createEmptySessionState(): SessionState {
+    return {
+        transient_holons: {
+            holons: {},
+            keyed_index: {},
+        },
+        staged_holons: {
+            holons: {},
+            keyed_index: {},
+        },
+        local_holon_space: null,
+    }
+}
+//--------------------------------------------
 
 export type DanceResponseObject = {
   status_code: ResponseStatusCode,
   description: string,
   body: ResponseBody,
   descriptor?: HolonReference, // space_id+holon_id of DanceDescriptor
-  staging_area: StagingArea
+  state: SessionState,
 }
 
-
-export type Holon = {
-    state: { New: null },
-    validation_state: { NoDescriptor: null },
-    //record: null,
-    //predecessor: null,
+export type TransientHolon = {
+    version: number,
+    holon_state: "Mutable" | "Immutable",
+    validation_state: "NoDescriptor" | "ValidationRequired" | "Validated" | "Invalid",
+    temporary_id?: string | null,
     property_map: PropertyMap,
-    relationship_map: {},
-    //key: null,
-    errors: []
+    transient_relationships: Record<string, unknown>,
+    original_id?: string | null,
 }
+
+export type StagedHolon = {
+    version: number,
+    holon_state: "Mutable" | "Immutable",
+    staged_state: "Abandoned" | "Committed" | "ForCreate" | "ForUpdate" | "ForUpdateChanged",
+    validation_state: "NoDescriptor" | "ValidationRequired" | "Validated" | "Invalid",
+    property_map: PropertyMap,
+    staged_relationships: Record<string, unknown>,
+    original_id?: string | null,
+    errors: unknown[]
+}
+
+export type SavedHolon = {
+    holon_state: "Immutable",
+    validation_state: "NoDescriptor" | "ValidationRequired" | "Validated" | "Invalid",
+    saved_id: string,
+    version: number,
+    saved_state: "Deleted" | "Fetched",
+    property_map: PropertyMap,
+    original_id?: string | null,
+}
+
+export type Holon = 
+    | { Transient: TransientHolon }
+    | { Staged: StagedHolon }
+    | { Saved: SavedHolon };
 
 
 export type WithPropertyInput = {
   holon: Holon,
   property_name: PropertyName,
-  value: BaseTypeKindList,
+  value: BaseValueList,
 }

@@ -257,7 +257,7 @@ export class JsonDataUploader implements OnInit {
         if (last_response && last_response()?.status_code !== ResponseStatusCode.OK) {
           this.errorMessage = `Error from Host: ${last_response()?.description || 'Unknown error'}`;
         } else {
-          this.successMessage = 'Operation completed successfully.';
+          this.successMessage = `Operation completed successfully, for ${validFiles.length} file(s).`;
         }
         this.clearForms();
       } catch (error) {
