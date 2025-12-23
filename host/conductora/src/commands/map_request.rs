@@ -1,6 +1,6 @@
 use core_types::HolonError;
 use holons_receptor::factory::ReceptorFactory;
-use holons_client::shared_types::map_request::{MapRequest, MapRequestBody};
+use holons_client::shared_types::map_request::{MapRequest};
 use holons_client::shared_types::map_response::MapResponse;
 use tauri::{command, State};
 
@@ -18,12 +18,18 @@ pub(crate) async fn map_request(
                 return receptor
                 .load_holons(map_request)
                 .await
-                .map_err(HolonError::from);
+                .map_err(|e| {
+                    tracing::error!("Error in load_holons: {:?}", e);
+                    HolonError::from(e)
+                });
         } 
         return receptor
             .handle_map_request(map_request)
             .await
-            .map_err(HolonError::from);
+            .map_err(|e| {
+                tracing::error!("Error in handle_map_request: {:?}", e);
+                HolonError::from(e)
+            });
 }
 
 
