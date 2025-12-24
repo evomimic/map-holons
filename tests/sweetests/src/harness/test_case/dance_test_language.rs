@@ -38,10 +38,10 @@
 //! persistence details.
 
 use crate::{harness::fixtures_support::TestReference, FixtureHolons};
+use core_types::ContentSet;
 use holons_core::{
     core_shared_objects::holon_pool::SerializableHolonPool, reference_layer::ReadableHolon,
 };
-use holons_loader_client::ContentSet;
 use holons_prelude::prelude::*;
 
 /// Public test case type that collects steps to be executed later.

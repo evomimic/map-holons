@@ -1,6 +1,6 @@
 /// Raw file contents as seen by the loader client.
 /// All filesystem access happens in the receptor layer.
-#[derive(Debug, Clone)]
+/* #[derive(Debug, Clone)]
 pub struct FileData {
     pub filename: String, // original path or logical name, used for provenance / errors
     pub raw_contents: String,
@@ -11,7 +11,7 @@ pub struct FileData {
 pub struct ContentSet {
     pub schema: FileData,
     pub files_to_load: Vec<FileData>,
-}
+} */
 
 /// Canonical on-disk path to the Holon Loader JSON Schema.
 ///

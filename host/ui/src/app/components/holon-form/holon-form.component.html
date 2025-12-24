@@ -1,0 +1,40 @@
+<!-- The *ngIf is now on the component's host element, controlled by the parent -->
+<div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center" (click)="closeForm()">
+  <!-- Added (click)="$event.stopPropagation()" to prevent clicks inside the form from closing it -->
+  <div class="bg-white rounded-lg shadow-xl p-8 w-1/2" style="min-width: 500px;" (click)="$event.stopPropagation()">
+    <h2 class="text-2xl font-semibold mb-6 pb-4 border-b">Create New Holon</h2>
+    <form (ngSubmit)="onSubmit()" #holonForm="ngForm" class="space-y-6">
+      <!-- Holon Name -->
+      <div>
+        <label for="holonTitle" class="block text-sm font-medium text-gray-700">Holon Title</label>
+        <input type="text" id="holonTitle" placeholder="e.g., My New Holon" [(ngModel)]="newHolon.title" name="title" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+      </div>
+
+      <!-- Holon Description -->
+      <div>
+        <label for="holonDescription" class="block text-sm font-medium text-gray-700">Description</label>
+        <textarea id="holonDescription" rows="3" placeholder="A brief description of the holon." [(ngModel)]="newHolon.description" name="description" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+      </div>
+
+      <!-- Holon Visibility -->
+      <div>
+        <label for="holonVisibility" class="block text-sm font-medium text-gray-700">Visibility</label>
+        <select id="holonVisibility" [(ngModel)]="newHolon.visibility" name="visibility" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <option value="private">Private</option>
+          <option value="public">Public</option>
+          <option value="domain">Domain</option>
+        </select>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="flex justify-end pt-4">
+        <button type="button" (click)="closeForm()" class="mr-4 inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" [disabled]="!holonForm.form.valid" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400">
+          Create Holon
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,7 +1,7 @@
-use holons_core::core_shared_objects::Holon;
+use std::collections::HashMap;
+use holons_core::core_shared_objects::{Holon};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
-use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum TypeDescriptor {
@@ -12,12 +12,12 @@ pub enum TypeDescriptor {
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct HolonSpace {
     pub id: String, //holon_id
-    pub receptor_id: String,
-    pub branch_id: Option<String>, // in holochain this is the cell_id / target role / clone id
-    pub name: String,
-    pub space_type: String,
+    pub name: String, // holon title
+    pub branch_id: Option<String>,  // in holochain this is the cell_id / target role / clone id 
+    pub receptor_id: String, // which receptor manages this space
+    pub space_type: String, // e.g., "content", "schema", "agent"
     pub description: String,
-    pub origin_space_id: String,
+    pub origin_holon_id: String, // if not the origin, than the derived origin holon id
     pub descriptor_id: Option<String>, // pub typedescriptor: TypeDescriptor //schema
     /// Optional metadata as raw bytes, serialized efficiently
     pub metadata: Option<ByteBuf>,
@@ -41,7 +41,9 @@ pub struct SpaceInfo {
 
 impl SpaceInfo {
     pub fn new() -> Self {
-        SpaceInfo { spaces: HashMap::new() }
+        SpaceInfo {
+            spaces: HashMap::new(),
+        }
     }
 
     pub fn add_space(&mut self, key: String, value: HolonSpace) {

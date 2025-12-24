@@ -16,7 +16,7 @@
 //! dances/commands to navigate the response graph via references.
 
 use base_types::MapString;
-use core_types::HolonError;
+use core_types::{ContentSet, HolonError};
 use holons_core::reference_layer::{load_holons, HolonsContextBehavior, TransientReference};
 use holons_core::HolonReference;
 use std::sync::Arc;
@@ -24,7 +24,6 @@ use tracing::debug;
 
 use crate::errors::map_parsing_issues_to_holon_error;
 use crate::parser::parse_files_into_load_set;
-use crate::types::ContentSet;
 
 /// Primary entry point for the host-side Holon Loader.
 ///

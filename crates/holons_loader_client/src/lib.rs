@@ -22,4 +22,4 @@ pub use loader_client::load_holons_from_files;
 // tooling can use them without reaching into private modules.
 pub use builder::{RawLoaderHolon, RawLoaderMeta, RawRelationshipEndpoints, RawRelationshipSpec};
 pub use parser::{ImportFileParsingIssue, ImportFileParsingIssueKind, RawLoaderFileWithSlices};
-pub use types::{ContentSet, FileData, BOOTSTRAP_IMPORT_SCHEMA_PATH};
+pub use types::{BOOTSTRAP_IMPORT_SCHEMA_PATH};

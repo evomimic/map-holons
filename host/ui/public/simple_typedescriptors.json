@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "map_schema_version": "1.0.0",
+    "description": "Basic type descriptors for testing",
+    "generator": "manual"
+  },
+  "holons": [
+    {
+      "type": "TypeDescriptor",
+      "key": "Person.TypeDescriptor",
+      "properties": {
+        "name": "Person",
+        "description": "A human person",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "type": "TypeDescriptor",
+      "key": "Book.TypeDescriptor",
+      "properties": {
+        "name": "Book",
+        "description": "A published book",
+        "version": "1.0.0"
+      }
+    }
+  ]
+}

@@ -8,22 +8,24 @@ fn main() {
     let env_filter = match std::env::var("RUST_LOG") {
         Ok(val) => {
             eprintln!("[MAIN] Using RUST_LOG from environment: {}", val);
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            // Expand shorthand like "host=debug" to full list
+            let expanded = expand_log_shorthand(&val);
+            eprintln!("[MAIN] Expanded to: {}", expanded);
+            EnvFilter::from_str(&expanded)
+            .unwrap_or_else(|_| EnvFilter::new("info"))
         }
         Err(_) => {
             eprintln!("[MAIN] RUST_LOG not set, using defaults");
-            EnvFilter::from_str(
-                "info,\
-                holochain_receptor=info,\
+             let default_filter =
+                "warn,\
                 tracing=warn,\
                 holochain=warn,\
                 holochain_sqlite=error,\
                 kitsune2_core=error,\
                 kitsune2_gossip=error,\
                 kitsune2_dht=error,\
-                holochain_types=warn"
-            )
+                holochain_types=warn";
+                EnvFilter::from_str(default_filter)
                 .expect("Failed to parse filter")
         }
     };
@@ -46,4 +48,37 @@ fn main() {
     tracing::info!("[MAIN] Starting Conductora runtime");
     
     conductora_lib::run();
+}
+
+fn expand_log_shorthand(input: &str) -> String {
+    let mut result = String::new();
+    
+    for part in input.split(',') {
+        if let Some((key, level)) = part.split_once('=') {
+            match key.trim() {
+                "host" => {
+                    // Expand "host=debug" to all custom crates
+                    result.push_str(&format!(
+                        "conductora_lib={},holons_client={},holons_receptor={},holochain_receptor={}",
+                        level, level, level, level
+                    ));
+                }
+                _ => {
+                    // Pass through other directives as-is
+                    result.push_str(part);
+                    result.push(',');
+                }
+            }
+        } else {
+            result.push_str(part);
+            result.push(',');
+        }
+    }
+    
+    // Add holochain baseline if not already specified
+    if !result.contains("holochain=") {
+        result.push_str("holochain=warn,holochain_sqlite=error,kitsune2_core=error,kitsune2_gossip=error,kitsune2_dht=error,holochain_types=warn");
+    }
+    
+    result
 }

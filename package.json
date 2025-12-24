@@ -3,17 +3,16 @@
   "private": true,
   "workspaces": [
     "tests/tryorama",
-    "ui"
+    "host"
   ],
   "scripts": {
     "all-tests": "cargo test && npm run sweetest",
     "build:wasm": "cargo check --manifest-path workspaces/wasm/Cargo.toml --target wasm32-unknown-unknown",
     "build:native": "cargo build --manifest-path workspaces/native/Cargo.toml",
     "build:test": "cargo test --manifest-path workspaces/test/Cargo.toml",
+    "start": "RUST_LOG=host=info npm run build:happ && npm run start -w host",
     "sweetest": "npm run build:happ && npm run sweet:test",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
-    "mock": "npm run mock -w ui",
-    "start": "AGENTS=1 npm run network",
     "local-services": "hc run-local-services -b 54000 -s 55000",
     "network": "npm run build:happ && UI_PORT=4200 concurrently \"npm run local-services\" \"npm run start:agent\"",
     "start:agent": "HC_PORT=$(get-port) HC_ADMIN_PORT=$(get-port) concurrently \"npm run launch:happ\" \"npm start -w ui\"",
@@ -28,7 +27,7 @@
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
     "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown --manifest-path workspaces/wasm/Cargo.toml -p holons_guest -p holons_integrity -p holons",
     "clean": "npx rimraf 'target/**/build/*/out' target Cargo.lock flake.lock tests/**/target tests/**/Cargo.lock crates/**/target crates/**/Cargo.lock zomes/**/target zomes/**/Cargo.lock workspaces/**/target workspaces/**/Cargo.lock && cargo clean",
-    "clean:ui": "npx --quiet rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist && npx --quiet rimraf tests/tryorama/node_modules",
+    "clean:ui": "npx --quiet rimraf package-lock.json node_modules host/node_modules && npx --quiet rimraf tests/node_modules",
     "cb": "clear && npm run build:happ",
     "ct": "clear && npm run sweetest"
   },
@@ -45,6 +44,7 @@
     "rimraf": "^6.0.1"
   },
   "engines": {
-    "npm": ">=7.0.0"
+    "node": ">=22.12.0",
+    "npm": ">=10.9.0"
   }
 }

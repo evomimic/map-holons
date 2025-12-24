@@ -1,0 +1,20 @@
+<div class=" flex flex-col h-screen">
+  <!-- Toolbar -->
+
+  <header class="w-full bg-black shadow-md z-10">
+    <div class="container mx-auto px-8 py-3  dark:bg-black">
+         <app-toolbar></app-toolbar>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-grow overflow-y-auto text-shadow-white">
+    <!-- This div provides the consistent padding and max-width for all routed components -->
+    <div class="container mx-auto p-8">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+    <div class="h-16">
+      <app-footer></app-footer>
+    </div>
+</div>

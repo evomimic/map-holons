@@ -16,7 +16,7 @@
         "zome_name": "holons",
         "zome_function": "dance"
       }],
-      "happ_path": "happ/workdir/map-holons.happ",
+      "happ_path": "workdir/map-holons.happ",
       "enabled": true
     },
     "ipfs_main": {

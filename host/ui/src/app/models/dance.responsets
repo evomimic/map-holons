@@ -1,0 +1,70 @@
+import { DanceResponseObject, Holon, HolonReference, ResponseBody, ResponseStatusCode, StagingArea, mockDanceResponseObject } from "./oldholon"
+
+/* pub struct DanceResponse {
+    pub status_code: ResponseStatusCode,
+    pub description: MapString,
+    pub body: ResponseBody,
+    pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
+    pub state: Option<SessionState>,
+}
+
+pub struct SessionState {
+    transient_holons: SerializableHolonPool,
+    staged_holons: SerializableHolonPool,
+    local_holon_space: Option<HolonReference>,
+    pub key_suffix_count: usize, // default beginning count is 0
+} */
+
+//    export type StagingArea = {
+ // staged_holons:Holon[], // Contains all holons staged for commit
+//  index: Record<string,number> // Allows lookup by key to staged holons for which keys are defined
+//}
+
+export type SerializableHolonPool {
+    holons: Map<TemporaryId, Holon>,
+    keyed_index: Map<MapString, TemporaryId>,
+}
+
+export type SessionState {
+    transient_holons: SerializableHolonPool,
+    staged_holons: SerializableHolonPool,
+    local_holon_space: Option<HolonReference>,
+}
+
+export class DanceResponse  {
+  public status_code: ResponseStatusCode
+  public description: string
+  public body: ResponseBody
+  public descriptor?: HolonReference // space_id+holon_id of DanceDescriptor
+  public state?: SessionState
+
+  constructor (private dr:DanceResponseObject){
+    this.status_code = dr.status_code
+    this.description = dr.description
+    this.body = dr.body
+    this.descriptor = dr.descriptor
+    this.state = dr.state
+  }
+
+  getCommittedHolons():Holon[]{
+    if (Object.keys(this.body)[0], "Holons")
+      return Object.values(this.body)[0]
+    else
+      return []
+  }
+
+  getSessionId(){
+    return this.session_id
+  }
+
+ // getStagedHolons(){
+ //     return this.staging_area.staged_holons
+  //}
+
+  //getStagedIndex(){
+   //   return this.staging_area.index
+  //}
+
+}
+
+export const mockDanceResponse = new DanceResponse(mockDanceResponseObject)

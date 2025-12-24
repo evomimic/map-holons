@@ -1,20 +1,15 @@
-//use crate::local_receptor;
-
 use super::{
-    cache::{ReceptorCache, ReceptorKey},
     local_receptor::LocalReceptor,
+    cache::{ReceptorCache, ReceptorKey}
 };
 use core_types::HolonError;
-use hex;
-use holochain_receptor::HolochainReceptor;
-use holons_client::shared_types::{
-    base_receptor::{BaseReceptor, ReceptorBehavior},
-    holon_space::SpaceInfo,
-};
-use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use holochain_receptor::{HolochainReceptor};
+use holons_client::shared_types::{base_receptor::{BaseReceptor, ReceptorBehavior}, holon_space::SpaceInfo};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::HashMap;
+use sha2::{Digest, Sha256};
+use hex;
 
 #[derive(Clone)]
 pub struct ReceptorFactory {
@@ -24,22 +19,21 @@ pub struct ReceptorFactory {
 
 impl ReceptorFactory {
     pub fn new() -> Self {
-        Self { cache: ReceptorCache::new(), is_loaded: Arc::new(AtomicBool::new(false)) }
+        Self {
+            cache: ReceptorCache::new(),
+            is_loaded: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     /// Check if receptors have been loaded
     pub fn are_receptors_loaded(&self) -> bool {
         self.is_loaded.load(Ordering::SeqCst)
     }
-
+    
     /// Create receptor from base configuration
-    async fn create_receptor_from_base(
-        &self,
-        base: BaseReceptor,
-    ) -> Result<Arc<dyn ReceptorBehavior>, Box<dyn std::error::Error>> {
+    async fn create_receptor_from_base(&self, base: BaseReceptor) -> Result<Arc<dyn ReceptorBehavior>, Box<dyn std::error::Error>> {
         match base.receptor_type.as_str() {
-            "local" => {
-                //local should always be created first
+            "local" => { //local should always be created first
                 tracing::info!("Creating LocalReceptor from base configuration");
                 let receptor = LocalReceptor::new(base)?;
                 Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
@@ -47,17 +41,15 @@ impl ReceptorFactory {
             "holochain" => {
                 tracing::info!("Creating HolochainReceptor from base configuration");
                 let receptor = HolochainReceptor::new(base);
-                //let local_receptor = self.get_receptor_by_type("local");
-                //local_receptor.add_space()//.get_space_info().await?;
-                //TODO: add home_space_holon to the local root_space
                 Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }
-            _ => Err(format!("Unsupported receptor type: {}", base.receptor_type).into()),
+            _ => Err(format!("Unsupported receptor type: {}", base.receptor_type).into())
         }
     }
 
     pub fn get_receptor_by_type(&self, receptor_type: &str) -> Arc<dyn ReceptorBehavior> {
-        let receptors = self.cache.get_by_type(receptor_type).into_iter().collect::<Vec<_>>();
+        let receptors = self.cache.get_by_type(receptor_type)
+            .into_iter().collect::<Vec<_>>();
         if receptors.is_empty() {
             panic!("No receptors found for type: {}", receptor_type);
         }
@@ -65,20 +57,10 @@ impl ReceptorFactory {
     }
 
     //function returns all spaces in the root space
-    pub fn get_root_spaces() -> Result<SpaceInfo, HolonError> {
+    pub fn get_root_spaces() -> Result<SpaceInfo, HolonError> { 
         todo!("Implement get_root_spaces to return all spaces in the root space")
     }
-
-    pub async fn load_holons(
-        &self,
-        _receptor_id: String,
-        _holon_paths: Vec<String>,
-    ) -> Result<(), HolonError> {
-        // Convert Vec<String> -> Vec<PathBuf> here?
-        // Call `holons_loader_client::loader_client::load_holons_from_files(...)`.
-        todo!("Implement load_holons to load holons into receptors")
-    }
-
+  
     /// Clear cache (internal use only)
     pub(crate) fn _clear_cache(&self) {
         self.cache.clear();
@@ -112,22 +94,19 @@ impl ReceptorFactory {
         Ok(count)
     }
 
+
     pub async fn all_spaces_by_type(&self, rec_type: &str) -> Result<SpaceInfo, HolonError> {
-        for receptor in self.cache.get_by_type(rec_type) {
-            match rec_type {
-                "holochain" => return receptor.get_space_info().await,
-                _ => {}
-            }
-            //if let Some(conductor) = &cfg.conductor {
-            //  let spaces = HolochainConductor::get_all_spaces(conductor.as_ref(), "map_holons")?;
-            //  return Ok(spaces);
-            // }
-        }
-        Err(HolonError::NotImplemented("No conductor found for space".into()))
+       for receptor in self.cache.get_by_type(rec_type) {
+           match rec_type {
+               "holochain" => return receptor.get_space_info().await,
+               _ => {}
+           }
+       }
+       Err(HolonError::NotImplemented("No conductor found for space".into()))
     }
 
     // These methods only called for Holochain receptors
-    /*  fn extract_cell_id_from_space(&self, space_id: &String) -> Result<CellId, Box<dyn std::error::Error>> {
+   /*  fn extract_cell_id_from_space(&self, space_id: &String) -> Result<CellId, Box<dyn std::error::Error>> {
         // Implementation remains the same
         todo!("Parse CellId from space holon property_map")
     }
@@ -140,9 +119,7 @@ impl ReceptorFactory {
 }
 
 //helpers
-fn generate_receptor_id(
-    props: HashMap<String, String>,
-) -> Result<String, Box<dyn std::error::Error>> {
+fn generate_receptor_id(props: HashMap<String, String>) -> Result<String, Box<dyn std::error::Error>> {
     let json = serde_json::to_string(&props)?;
     Ok(hex::encode(Sha256::digest(json.as_bytes())))
 }

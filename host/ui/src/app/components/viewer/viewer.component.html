@@ -1,0 +1,20 @@
+<div class="h-full text-gray-200 dark:bg-gray-100">
+  <ng-content></ng-content>
+  @for (store of stores; track store.space();) {
+    <h3>network: {{store.space()?.DnaHash64}}</h3>
+    @if (store.staging_area()) {
+      @for (holon of store.staging_area().staged_holons; track holon.id) {
+      <li>
+        {{ holon | json}}
+      </li>
+      }
+    }
+    @if (store.committed_holons()) {
+      @for (holon of store.committed_holons(); track holon.id) {
+      <li>
+        {{ holon | json}}
+      </li>
+      }
+    }
+  }
+</div>

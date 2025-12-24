@@ -1,0 +1,272 @@
+@if (space(); as currentSpace) {
+  <div class="text-gray-200">
+    <div>
+      <h2 class="text-2xl font-semibold leading-tight">{{ currentSpace?.name }}</h2>
+      <p>{{ currentSpace?.description }}</p>
+      <p>ID: {{ currentSpace?.id }}</p>
+      <p>Type: {{ currentSpace?.space_type }}</p>
+      <p>Provider: {{ currentSpace?.receptor_id }}</p>
+      <p>Created At: {{ currentSpace?.created_at | date }}</p>
+    </div>
+
+    <!-- Space Holon Table -->
+    <div class="mt-8">
+      <div class="flex items-center justify-between cursor-pointer p-3 bg-amber-900 rounded-t-lg hover:bg-amber-800 transition" (click)="transientPanelOpen.set(!transientPanelOpen())">
+        <div class="flex items-center gap-2">
+          <span [class.rotate-180]="!transientPanelOpen()" class="inline-block transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </span>
+          <h3 class="text-lg font-semibold">Transient Holons ({{ displayTransientHolons().length }})</h3>
+        </div>
+      </div>
+      @if (transientPanelOpen()) {
+        <div class="rounded-b-lg shadow mb-6 bg-gray-900">
+        <table class="w-full table-fixed border-collapse">
+          <thead class="bg-amber-900">
+            <tr>
+              <th class="p-3 text-left w-24">ID</th>
+              <th class="p-3 text-left flex-1 min-w-16">Key</th>
+              <th class="p-3 text-left w-32">Created At</th>
+              <th class="p-3 text-left flex-1 min-w-20">Properties</th>
+              <th class="p-3 text-center w-20">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (displayTransientHolons().length > 0) {
+              @for (holon of displayTransientHolons(); track holon.id) {
+                <tr class="border-b border-blue-700">
+                  <td class="p-3 font-mono text-xs group relative cursor-help">
+                    <span class="truncate inline-block max-w-full">{{ holon.id }}</span>
+                    <div class="invisible group-hover:visible absolute bottom-full left-0 mb-2 bg-gray-800 border border-gray-600 rounded px-2 py-1 z-10 whitespace-nowrap text-xs text-blue-300 shadow-lg">
+                      {{ holon.id }}
+                    </div>
+                  </td>
+                  <td class="p-3 truncate font-mono text-xs text-blue-300">{{ extractKeyFromPropertyMap(holon.propertyMap) }}</td>
+                  <td class="p-3 truncate text-sm">{{ holon.createdAt | date }}</td>
+                  <td class="p-3">
+                    <div class="relative group">
+                      <div class="truncate text-xs cursor-help text-gray-400 group-hover:text-white transition">
+                        {{ holon.propertyMap | json }}
+                      </div>
+                      <div class="invisible group-hover:visible fixed bg-gray-800 border border-gray-600 rounded p-3 z-50 w-96 shadow-2xl pointer-events-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <pre class="whitespace-pre-wrap text-xs text-gray-200">{{ holon.propertyMap | json }}</pre>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="p-3 flex items-center justify-center gap-1">
+                    <button title="Stage Holon" (click)="stageHolon(holon.id)" class="p-1 text-gray-500 hover:text-green-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                    <button title="Cancel Holon" class="p-1 text-gray-500 hover:text-red-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="5" class="p-3 text-center text-gray-400">No transient holons found.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        </div>
+      }
+    </div>
+
+    <!-- Staged Holons Table -->
+    <div class="mt-8">
+      <div class="flex items-center justify-between cursor-pointer p-3 bg-blue-900 rounded-t-lg hover:bg-blue-800 transition" (click)="stagedPanelOpen.set(!stagedPanelOpen())">
+        <div class="flex items-center gap-2">
+          <span [class.rotate-180]="!stagedPanelOpen()" class="inline-block transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </span>
+          <h3 class="text-lg font-semibold">Staged Holons ({{ displayStagedHolons().length }})</h3>
+        </div>
+      </div>
+      @if (stagedPanelOpen()) {
+        <div class="rounded-b-lg shadow mb-6 bg-blue-900">
+        <table class="w-full table-fixed border-collapse">
+          <thead class="bg-blue-800">
+            <tr>
+              <th class="p-3 text-left w-24">ID</th>
+              <th class="p-3 text-left flex-1 min-w-16">Key</th>
+              <th class="p-3 text-left w-32">Created At</th>
+              <th class="p-3 text-left flex-1 min-w-20">Properties</th>
+              <th class="p-3 text-center w-20">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (displayStagedHolons().length > 0) {
+              @for (holon of displayStagedHolons(); track holon.id) {
+                <tr class="border-b border-blue-700">
+                  <td class="p-3 font-mono text-xs group relative cursor-help">
+                    <span class="truncate inline-block max-w-full">{{ holon.id }}</span>
+                    <div class="invisible group-hover:visible absolute bottom-full left-0 mb-2 bg-gray-800 border border-gray-600 rounded px-2 py-1 z-10 whitespace-nowrap text-xs text-blue-300 shadow-lg">
+                      {{ holon.id }}
+                    </div>
+                  </td>
+                  <td class="p-3 truncate font-mono text-xs text-blue-300">{{ extractKeyFromPropertyMap(holon.propertyMap) }}</td>
+                  <td class="p-3 truncate text-sm">{{ holon.createdAt | date }}</td>
+                  <td class="p-3">
+                    <div class="relative group">
+                      <div class="truncate text-xs cursor-help text-gray-400 group-hover:text-white transition">
+                        {{ holon.propertyMap | json }}
+                      </div>
+                      <div class="invisible group-hover:visible fixed bg-gray-800 border border-gray-600 rounded p-3 z-50 w-96 shadow-2xl pointer-events-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <pre class="whitespace-pre-wrap text-xs text-gray-200">{{ holon.propertyMap | json }}</pre>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="p-3 flex items-center justify-center gap-1">
+                    <button title="Commit Holon" class="p-1 text-gray-500 hover:text-green-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                    <button title="Modify Holon" class="p-1 text-gray-500 hover:text-blue-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                        <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                    <button title="Unstage Holon" class="p-1 text-gray-500 hover:text-red-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="5" class="p-3 text-center text-gray-400">No staged holons found.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        </div>
+      }
+    </div>
+
+    <!-- Committed Holons Table -->
+    <div class="mt-8">
+      <div class="flex items-center justify-between cursor-pointer p-3 bg-green-900 rounded-t-lg hover:bg-green-800 transition" (click)="committedPanelOpen.set(!committedPanelOpen())">
+        <div class="flex items-center gap-2">
+          <span [class.rotate-180]="!committedPanelOpen()" class="inline-block transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </span>
+          <h3 class="text-lg font-semibold">Committed Holons ({{ displayCommittedHolons().length }})</h3>
+        </div>
+      </div>
+      @if (committedPanelOpen()) {
+        <div class="rounded-b-lg shadow bg-green-900">
+        <table class="w-full table-fixed border-collapse">
+          <thead class="bg-green-800">
+            <tr>
+              <th class="p-3 text-left w-24">Saved ID</th>
+              <th class="p-3 text-left flex-1 min-w-16">Key</th>
+              <th class="p-3 text-left w-32">Created At</th>
+              <th class="p-3 text-left flex-1 min-w-20">Properties</th>
+              <th class="p-3 text-center w-20">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (displayCommittedHolons().length > 0) {
+              @for (holon of displayCommittedHolons(); track holon.id) {
+                <tr class="border-b border-green-700">
+                  <td class="p-3 font-mono text-xs group relative cursor-help">
+                    <div class="flex items-center gap-2">
+                      <span class="truncate inline-block max-w-full">{{ holon.savedId }}</span>
+                      @if (holon.isDuplicate) {
+                        <span class="px-1.5 py-0.5 text-xs bg-red-600 text-white rounded font-semibold flex-shrink-0">
+                          DUP {{ holon.duplicateIndex + 1 }}
+                        </span>
+                      }
+                    </div>
+                    <div class="invisible group-hover:visible absolute bottom-full left-0 mb-2 bg-gray-800 border border-gray-600 rounded px-2 py-1 z-10 whitespace-nowrap text-xs text-blue-300 shadow-lg">
+                      {{ holon.savedIdFull }}
+                    </div>
+                  </td>
+                  <td class="p-3 truncate font-mono text-xs text-blue-300">{{ extractKeyFromPropertyMap(holon.propertyMap) }}</td>
+                  <td class="p-3 truncate text-sm">{{ holon.createdAt | date }}</td>
+                  <td class="p-3">
+                    <div class="group relative">
+                      <div class="truncate text-xs cursor-help text-gray-400 group-hover:text-white transition">
+                        {{ holon.propertyMap | json }}
+                      </div>
+                      <div class="invisible group-hover:visible fixed bg-gray-800 border border-gray-600 rounded p-3 z-50 w-96 shadow-2xl pointer-events-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <pre class="whitespace-pre-wrap text-xs text-gray-200">{{ holon.propertyMap | json }}</pre>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="p-3 flex items-center justify-center gap-1">
+                    <button title="Modify Holon" class="p-1 text-gray-500 hover:text-blue-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                        <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                    <button title="Archive Holon" class="p-1 text-gray-500 hover:text-red-600 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                        <path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="5" class="p-3 text-center text-gray-400">No committed holons found.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        </div>
+      }
+    </div>
+    <div class="mt-8 flex gap-2 justify-start">
+      <button (click)="showUploadHolonForm = true" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
+        Upload Holons
+      </button>
+      <button (click)="showCreateHolonForm = true" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        Create New Holon
+      </button>
+      @if (displayStagedHolons().length > 0) {
+        <button (click)="commitStagedHolons()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+          Commit All Staged Holons ({{ displayStagedHolons().length }})
+        </button>
+      }
+    </div>
+  </div>
+
+<!-- Reusable Create Holon Form -->
+ @if (showCreateHolonForm) {
+  <app-holon-form
+    (formClosed)="showCreateHolonForm = false"
+    (holonCreated)="handleHolonCreated($event)">
+  </app-holon-form>
+ }
+
+ <!-- Reusable Create Holon Form -->
+ @if (showUploadHolonForm) {
+  <app-json-data-uploader
+    [spaceId]="currentSpace.id"
+    (formClosed)="showUploadHolonForm = false"
+    (holonCreated)="handleHolonCreated($event)">
+  </app-json-data-uploader>
+ }
+} @else {
+  <p class="text-gray-400">No content space selected.</p>
+}

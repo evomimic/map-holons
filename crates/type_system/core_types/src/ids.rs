@@ -100,3 +100,15 @@ impl fmt::Display for HolonId {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct FileData {
+    pub filename: String,
+    pub raw_contents: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct ContentSet {
+   pub schema: FileData,
+   pub files_to_load: Vec<FileData>,
+}
