@@ -42,7 +42,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
@@ -53,7 +53,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
     let book_saved_token = fixture_holons.get_latest_by_key(&book_key)?;
-    let mut book_transient_reference = book_saved_token.transient().clone();
+    let book_transient_reference = book_saved_token.expected_content().clone();
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let staged_clone = test_case.add_stage_new_version_step(
@@ -64,7 +64,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         ResponseStatusCode::OK,
     )?;
 
-    // Set expected
+    // Add properties
     let mut expected_clone_properties = PropertyMap::new();
     expected_clone_properties.insert("Key".to_property_name(), book_key.clone().to_base_value());
     expected_clone_properties.insert(
@@ -72,21 +72,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         "This is a different description".to_base_value(),
     );
     expected_clone_properties.insert("title".to_property_name(), "Changed".to_base_value());
-    let mut book_clone_expected_content =
-        book_transient_reference.essential_content(&*fixture_context)?;
-    book_clone_expected_content.property_map = expected_clone_properties.clone();
-    // book_clone_expected_content.relationships = EssentialRelationshipMap::default();
 
-    // Mint
-    let book_staged_token = fixture_holons.add_staged_with_key(
-        &staged_clone.transient(),
-        book_key.clone(),
-        &book_clone_expected_content,
-    )?;
-
-    // Add properties
     test_case.add_with_properties_step(
-        book_staged_token,
+        &*fixture_context,
+        &mut fixture_holons,
+        staged_clone,
         expected_clone_properties.clone(),
         ResponseStatusCode::OK,
     )?;
@@ -95,7 +85,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;

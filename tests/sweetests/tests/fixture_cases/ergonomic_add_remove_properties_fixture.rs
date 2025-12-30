@@ -55,7 +55,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     expected_properties.insert("Bool".to_property_name(), true.to_base_value()); // str, bool
     let essential = EssentialHolonContent::new(
         expected_properties.clone(),
-        EssentialRelationshipMap::default(),
         Some(book_key.clone()),
         Vec::new(),
     );
@@ -81,7 +80,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     expected_properties_after_remove.remove(&"Bool".to_property_name());
     let essential_after_remove = EssentialHolonContent::new(
         expected_properties_after_remove,
-        EssentialRelationshipMap::default(),
         Some(book_key.clone()),
         Vec::new(),
     );
@@ -113,7 +111,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     );
     let staged_essential = EssentialHolonContent::new(
         staged_expected_properties.clone(),
-        EssentialRelationshipMap::default(),
         Some(book_key.clone()),
         Vec::new(),
     );
@@ -138,7 +135,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     staged_expected_properties_after_remove.remove(&"AnotherProperty".to_property_name());
     let staged_essential_after_remove = EssentialHolonContent::new(
         staged_expected_properties_after_remove,
-        EssentialRelationshipMap::default(),
         Some(book_key.clone()),
         Vec::new(),
     );

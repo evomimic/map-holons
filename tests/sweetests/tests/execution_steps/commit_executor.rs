@@ -62,7 +62,9 @@ pub async fn execute_commit(
     let mut keyed_index = BTreeMap::new();
     for token in &source_tokens {
         let key = token
-            .key()
+            .expected_content()
+            .key(context)
+            .unwrap()
             .expect("For these testing purposes, source token (TestReference) must have a key");
         keyed_index.insert(key, index);
         index += 1;

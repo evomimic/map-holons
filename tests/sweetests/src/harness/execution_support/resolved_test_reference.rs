@@ -62,15 +62,6 @@ impl From<HolonReference> for ResultingReference {
     }
 }
 
-// #[derive(Clone, Debug)]
-// pub enum ResultingReference {
-//     Transient(HolonReference),
-//     Staged(HolonReference),
-//     Saved(HolonReference),
-//     Abandoned(HolonReference), // Still a StagedReference but marked as 'Abandoned'
-//     Deleted,
-// }
-
 impl ResolvedTestReference {
     /// Build from a fixture token and the resulting runtime handle.
     pub fn from_reference_parts(
@@ -89,17 +80,12 @@ impl ResolvedTestReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
-        let expected_content = self.source_token.expected_content();
-        let actual_content = &self.resulting_reference.essential_content(context)?;
+        let expected_content = self.source_token.expected_content().essential_content(context)?;
+        let actual_content = self.resulting_reference.essential_content(context)?;
 
-        // = // HACK -> TODO: REMOVE! // = //  -- pending harness support for comparing essential relationship content for holon variants other than TransientReference
-        //
-        let mut hack = actual_content.clone();
-        hack.relationships = expected_content.relationships.clone();
-        assert_eq!(expected_content, &hack);
-        // == //
-
-        // assert_eq!(expected_content, actual_content);
+        // TODO: find a way to compare relationships
+        
+        assert_eq!(expected_content, actual_content);
 
         Ok(())
     }

@@ -61,7 +61,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
 
     //  COMMIT  //  all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
@@ -80,10 +80,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
     // Mint a transient-intent token
     let abandoned_holon_1_transient_token = fixture_holons.add_transient_with_key(
-        &abandoned_holon_1_transient_reference,
+        &abandoned_holon_1_transient_reference.clone(),
         abandoned_holon_1_key,
-        &abandoned_holon_1_transient_reference.essential_content(&*fixture_context)?,
-    )?;
+        abandoned_holon_1_transient_reference.clone(),
+    );
     let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
@@ -102,10 +102,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         "test2",
     )?;
     let abandoned_holon_2_transient_token = fixture_holons.add_transient_with_key(
-        &abandoned_holon_2_transient_reference,
+        &abandoned_holon_2_transient_reference.clone(),
         abandoned_holon_2_key,
-        &abandoned_holon_2_transient_reference.essential_content(&*fixture_context)?,
-    )?;
+        abandoned_holon_2_transient_reference.clone(),
+    );
     let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
@@ -129,7 +129,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
 
     // COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;

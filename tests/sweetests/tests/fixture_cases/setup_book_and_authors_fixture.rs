@@ -1,4 +1,6 @@
-use holons_test::{dance_test_language::DancesTestCase, test_reference::TestReference, FixtureHolons};
+use holons_test::{
+    dance_test_language::DancesTestCase, test_reference::TestReference, FixtureHolons,
+};
 use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
@@ -42,10 +44,10 @@ pub fn setup_book_author_steps_with_context(
 
     // Mint TestReferences (tokens)
     let book_transient_token = fixture_holons.add_transient_with_key(
-        &book_transient_reference,
+        &book_transient_reference.clone(),
         book_key.clone(),
-        &book_transient_reference.essential_content(fixture_context)?,
-    )?;
+        book_transient_reference.clone(),
+    );
     let book_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
@@ -65,10 +67,10 @@ pub fn setup_book_author_steps_with_context(
         .with_property_value(&*fixture_context, "last name", "Briggs")?;
     // Mint
     let person_1_transient_token = fixture_holons.add_transient_with_key(
-        &person_1_transient_reference,
+        &person_1_transient_reference.clone(),
         person_1_key.clone(),
-        &person_1_transient_reference.essential_content(fixture_context)?,
-    )?;
+        person_1_transient_reference.clone(),
+    );
     let person_1_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
@@ -88,10 +90,10 @@ pub fn setup_book_author_steps_with_context(
         .with_property_value(&*fixture_context, "last name", "Smith")?;
     // Mint
     let person_2_transient_token = fixture_holons.add_transient_with_key(
-        &person_2_transient_reference,
+        &person_2_transient_reference.clone(),
         person_2_key.clone(),
-        &person_2_transient_reference.essential_content(fixture_context)?,
-    )?;
+        person_2_transient_reference.clone(),
+    );
     let person_2_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
@@ -115,10 +117,10 @@ pub fn setup_book_author_steps_with_context(
         )?;
     // Mint
     let publisher_transient_token = fixture_holons.add_transient_with_key(
-        &publisher_transient_reference,
+        &publisher_transient_reference.clone(),
         publisher_key.clone(),
-        &publisher_transient_reference.essential_content(fixture_context)?,
-    )?;
+        publisher_transient_reference.clone(),
+    );
     let _publisher_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,

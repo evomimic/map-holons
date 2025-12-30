@@ -21,7 +21,6 @@ use super::state::{HolonState, ValidationState};
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,
-    pub relationships: EssentialRelationshipMap,
     pub key: Option<MapString>,
     pub errors: Vec<HolonError>,
 }

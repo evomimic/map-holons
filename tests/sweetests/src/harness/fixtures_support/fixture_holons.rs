@@ -4,6 +4,7 @@ use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 use holons_core::{
     core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
+    HolonsContextBehavior, ReadableHolon,
 };
 use tracing::debug;
 // use tracing::warn;
@@ -31,7 +32,10 @@ impl FixtureHolons {
     // =====  COMMIT  ======  //
 
     /// Mint token with expected state Saved
-    pub fn commit(&mut self) -> Result<Vec<TestReference>, HolonError> {
+    pub fn commit(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<Vec<TestReference>, HolonError> {
         let mut saved_tokens = Vec::new();
 
         for (_id, tokens) in self.lineage.iter_mut() {
@@ -39,10 +43,14 @@ impl FixtureHolons {
             if let Some(latest_token) = tokens.last() {
                 match latest_token.expected_state() {
                     ExpectedState::Staged => {
+                        // Cloning source in order to create a new uid
+                        let expected_content =
+                            latest_token.expected_content().clone_holon(context)?;
+
                         let saved_token = TestReference::new(
-                            latest_token.transient().clone(),
-                            ExpectedState::Saved,
                             latest_token.expected_content().clone(),
+                            ExpectedState::Saved,
+                            expected_content,
                         );
                         // Update lineage
                         tokens.push(saved_token.clone());
@@ -78,20 +86,19 @@ impl FixtureHolons {
 
     /// Mint a new TestReference snapshot and push it onto the lineage.
     ///
-    /// - `transient_ref` is the runtime pointer (identifies lineage)
-    /// - `expected_content` is a frozen snapshot from that transient holon
+    /// - `root` is the runtime pointer (identifies lineage)
+    /// - `expected_content` is a frozen snapshot from the next fixture holon within the lineage
     /// - `expected_state` is the lifecycle intent after the step
     ///
     /// Returns the newly created TestReference.
     pub fn mint_snapshot(
         &mut self,
-        transient_ref: &TransientReference,
+        root: &TransientReference,
         expected_state: ExpectedState,
-        expected_content: &EssentialHolonContent,
+        expected_content: TransientReference,
     ) -> TestReference {
-        let token =
-            TestReference::new(transient_ref.clone(), expected_state, expected_content.clone());
-        self.push_snapshot(transient_ref.get_temporary_id(), token.clone());
+        let token = TestReference::new(root.clone(), expected_state, expected_content);
+        self.push_snapshot(root.temporary_id(), token.clone());
 
         token
     }
@@ -104,9 +111,9 @@ impl FixtureHolons {
         match staged_token.expected_state() {
             ExpectedState::Staged => {
                 let abandoned_token = self.mint_snapshot(
-                    staged_token.transient(),
-                    ExpectedState::Abandoned,
                     staged_token.expected_content(),
+                    ExpectedState::Abandoned,
+                    staged_token.expected_content().clone(),
                 );
                 Ok(abandoned_token)
             }
@@ -125,9 +132,9 @@ impl FixtureHolons {
         match saved_token.expected_state() {
             ExpectedState::Saved => {
                 let deleted_token = self.mint_snapshot(
-                    saved_token.transient(),
-                    ExpectedState::Deleted,
                     saved_token.expected_content(),
+                    ExpectedState::Deleted,
+                    saved_token.expected_content().clone(),
                 );
                 Ok(deleted_token)
             }
@@ -138,33 +145,50 @@ impl FixtureHolons {
         }
     }
 
+    // ----- Creates and adds a new token (the chronological next) in lineage without changing root, based on matching source type -----
+
+    pub fn create_next_snapshot(
+        &mut self,
+        root: &TransientReference,
+        expected_state: ExpectedState,
+        next_snapshot: TransientReference,
+    ) -> Result<TestReference, HolonError> {
+        match expected_state {
+            ExpectedState::Transient => Ok(self.add_transient(root, next_snapshot)),
+            ExpectedState::Staged => Ok(self.add_staged(root, next_snapshot)),
+            _ => Err(HolonError::InvalidParameter(
+                "Can only add a Transient or Staged token".to_string(),
+            )),
+        }
+    }
+
     // ---------- Create tokens (no key indexing) ----------
 
     /// Create and retain a **Transient** token from a `TransientReference`.
     pub fn add_transient(
         &mut self,
-        transient_reference: &TransientReference,
-        expected_content: &EssentialHolonContent,
+        root: &TransientReference,
+        expected_content: TransientReference,
     ) -> TestReference {
-        self.mint_snapshot(transient_reference, ExpectedState::Transient, expected_content)
+        self.mint_snapshot(root, ExpectedState::Transient, expected_content)
     }
 
     /// Create and retain a **Staged** token from a `TransientReference`.
     pub fn add_staged(
         &mut self,
-        transient_reference: &TransientReference,
-        expected_content: &EssentialHolonContent,
+        root: &TransientReference,
+        expected_content: TransientReference,
     ) -> TestReference {
-        self.mint_snapshot(&transient_reference, ExpectedState::Staged, expected_content)
+        self.mint_snapshot(&root, ExpectedState::Staged, expected_content)
     }
 
     /// Create and retain a **Saved** token from a `TransientReference`.
     pub fn add_saved(
         &mut self,
-        transient_ref: &TransientReference,
-        expected_content: &EssentialHolonContent,
+        root: &TransientReference,
+        expected_content: TransientReference,
     ) -> TestReference {
-        self.mint_snapshot(transient_ref, ExpectedState::Saved, expected_content)
+        self.mint_snapshot(root, ExpectedState::Saved, expected_content)
     }
 
     // ---------- Create tokens AND index by key (preferred when you know the key) ----------
@@ -174,26 +198,25 @@ impl FixtureHolons {
         &mut self,
         source_reference: &TransientReference,
         key: MapString,
-        expected_content: &EssentialHolonContent,
-    ) -> Result<TestReference, HolonError> {
-        self.index_by_key(key, source_reference.get_temporary_id());
+        expected_content: TransientReference,
+    ) -> TestReference {
+        self.index_by_key(key, source_reference.temporary_id());
         let token = self.add_transient(&source_reference, expected_content);
 
-        Ok(token)
+        token
     }
 
     /// Create a **Staged** token and index it by the holon’s key.
     pub fn add_staged_with_key(
         &mut self,
-        transient_reference: &TransientReference,
+        source_reference: &TransientReference,
         key: MapString,
-        expected_content: &EssentialHolonContent,
-    ) -> Result<TestReference, HolonError> {
-        self.index_by_key(key, transient_reference.get_temporary_id());
-        let token =
-            self.mint_snapshot(&transient_reference, ExpectedState::Staged, expected_content);
+        expected_content: TransientReference,
+    ) -> TestReference {
+        self.index_by_key(key, source_reference.temporary_id());
+        let token = self.mint_snapshot(&source_reference, ExpectedState::Staged, expected_content);
 
-        Ok(token)
+        token
     }
 
     /// Index an existing token by base key.

@@ -29,10 +29,10 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Mint a transient-intent token and index it by key.
     let transient_source_token = fixture_holons.add_transient_with_key(
-        &book_transient_reference,
+        &book_transient_reference.clone(),
         book_key.clone(),
-        &book_transient_reference.essential_content(&*fixture_context)?,
-    )?;
+        book_transient_reference,
+    );
 
     test_case.add_stage_holon_step(
         &*fixture_context,
@@ -43,7 +43,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;

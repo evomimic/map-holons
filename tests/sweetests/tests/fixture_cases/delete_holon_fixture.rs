@@ -30,23 +30,23 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
             )?;
 
     // Mint a transient-intent token and index it by key.
-    let transient_source_token = fixture_holons.add_transient_with_key(
-        &book_transient_reference,
+    let book_source_token = fixture_holons.add_transient_with_key(
+        &book_transient_reference.clone(),
         book_key.clone(),
-        &book_transient_reference.essential_content(&*fixture_context)?,
-    )?;
+        book_transient_reference.clone(),
+    );
 
     // Stage
     test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
-        transient_source_token.clone(),
+        book_source_token.clone(),
         Some(book_key.clone()),
         ResponseStatusCode::OK,
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
     let saved_token = fixture_holons.get_latest_by_key(&book_key)?;
 
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
@@ -58,14 +58,12 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         ResponseStatusCode::OK,
     )?;
 
-    // TODO: Figure out how to do this in a future issue..
-    // the complication is that lookup_holonrefernce does not resolve and therefore cannot pass to the dance.
-    // // ADD STEP: DELETE HOLON - Invalid //
-    // test_case.add_delete_holon_step(
-    //     &mut fixture_holons,
-    //     saved_token,
-    //     ResponseStatusCode::NotFound,
-    // )?;
+    // ADD STEP: DELETE HOLON - Invalid //
+    test_case.add_delete_holon_step(
+        &mut fixture_holons,
+        saved_token,
+        ResponseStatusCode::NotFound,
+    )?;
 
     // TODO: more robust handling of the implication of deletes on links needs to be implemented before this step will work
     // // ADD STEP:  ENSURE DATABASE COUNT

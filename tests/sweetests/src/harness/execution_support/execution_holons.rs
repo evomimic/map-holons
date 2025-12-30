@@ -66,7 +66,7 @@ impl ExecutionHolons {
     /// Turn a fixture token into the **current** runtime `HolonReference` to use as executor input.
     ///
     /// Lookup strategy:
-    /// - `ExpectedState::Transient`  → return `HolonReference::Transient(token.transient().clone())`.
+    /// - `ExpectedState::Transient`  → return `HolonReference::Transient(token.expected_content().clone())`.
     /// - `ExpectedState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `ExpectedState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `ExpectedState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
@@ -81,8 +81,13 @@ impl ExecutionHolons {
         let expected_state = token.expected_state();
 
         match expected_state {
-            ExpectedState::Deleted => Err(HolonError::InvalidParameter("Holon marked as deleted, there is no associated resolved HolonReference".to_string())),
-            ExpectedState::Transient => Ok(HolonReference::Transient(token.transient().clone())),
+            ExpectedState::Deleted => Err(HolonError::InvalidParameter(
+                "Holon marked as deleted, there is no associated resolved HolonReference"
+                    .to_string(),
+            )),
+            ExpectedState::Transient => {
+                Ok(HolonReference::Transient(token.expected_content().clone()))
+            }
             expected_state => {
                 let resolved = self
                     .by_temporary_id

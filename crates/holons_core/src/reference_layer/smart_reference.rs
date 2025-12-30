@@ -7,7 +7,7 @@ use std::{
 use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::{core_shared_objects::holon::EssentialRelationshipMap, reference_layer::readable_impl::ReadableHolonImpl};
+use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
