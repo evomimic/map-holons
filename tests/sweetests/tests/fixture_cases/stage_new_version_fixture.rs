@@ -53,7 +53,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
     let book_saved_token = fixture_holons.get_latest_by_key(&book_key)?;
-    let book_transient_reference = book_saved_token.expected_content().clone();
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let staged_clone = test_case.add_stage_new_version_step(

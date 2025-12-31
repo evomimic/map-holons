@@ -17,10 +17,16 @@ use crate::harness::fixtures_support::{ExpectedState, TestReference};
 /// - Optional lookup by **key** (`MapString`) for fixtures that stage well-known holons
 ///   and want to retrieve their tokens later by key.
 /// - `commit()` flips all *Staged* intents to *Saved* for **expectation** purposes only.
+/// 
+///  A new root only gets created when a new HolonReference type is created: Transient -> Staged -> Smart
+///  otherwise just a "next snapshot" token gets minted, each with its own unique TransientReference identifier serving to hold
+///  the "frozen" expected content.
+/// 
+///  Each root maps to an ExecutionHolon, where the last snapshot token is the expected runtime resolution.
 #[derive(Clone, Debug, Default)]
 pub struct FixtureHolons {
     lineage: BTreeMap<TemporaryId, Vec<TestReference>>,
-    by_key: BTreeMap<MapString, Vec<TemporaryId>>, // Base Key, Chronological Lineage Roots
+    by_key: BTreeMap<MapString, Vec<TemporaryId>>, // Base Key, Lineage Roots
 }
 
 impl FixtureHolons {
@@ -43,14 +49,14 @@ impl FixtureHolons {
             if let Some(latest_token) = tokens.last() {
                 match latest_token.expected_state() {
                     ExpectedState::Staged => {
-                        // Cloning source in order to create a new uid
-                        let expected_content =
+                        // Cloning source in order to create a new fixture holon, and a new root
+                        let new_root =
                             latest_token.expected_content().clone_holon(context)?;
 
                         let saved_token = TestReference::new(
-                            latest_token.expected_content().clone(),
+                            new_root.clone(),
                             ExpectedState::Saved,
-                            expected_content,
+                            new_root,
                         );
                         // Update lineage
                         tokens.push(saved_token.clone());
@@ -111,7 +117,7 @@ impl FixtureHolons {
         match staged_token.expected_state() {
             ExpectedState::Staged => {
                 let abandoned_token = self.mint_snapshot(
-                    staged_token.expected_content(),
+                    staged_token.root(),
                     ExpectedState::Abandoned,
                     staged_token.expected_content().clone(),
                 );
@@ -132,7 +138,7 @@ impl FixtureHolons {
         match saved_token.expected_state() {
             ExpectedState::Saved => {
                 let deleted_token = self.mint_snapshot(
-                    saved_token.expected_content(),
+                    saved_token.root(),
                     ExpectedState::Deleted,
                     saved_token.expected_content().clone(),
                 );
@@ -235,15 +241,6 @@ impl FixtureHolons {
 
     // ---------- Retrieval ----------
 
-    /// Retrieve tokens by id
-    pub fn get_tokens_by_id(&self, id: &TemporaryId) -> Result<&Vec<TestReference>, HolonError> {
-        if let Some(tokens) = self.lineage.get(id) {
-            Ok(tokens)
-        } else {
-            Err(HolonError::InvalidParameter("Lineage not found for id".to_string()))
-        }
-    }
-
     /// Retrieve current token for base key
     pub fn get_latest_by_key(&self, key: &MapString) -> Result<TestReference, HolonError> {
         let id = if let Some(id) = self.by_key.get(key).and_then(|ids| ids.last()) {
@@ -264,6 +261,15 @@ impl FixtureHolons {
                 "Lineage returned empty for id, something went wrong".to_string(),
             ))
             .cloned()
+    }
+
+    /// Retrieve tokens by id
+    pub fn get_tokens_by_id(&self, id: &TemporaryId) -> Result<&Vec<TestReference>, HolonError> {
+        if let Some(tokens) = self.lineage.get(id) {
+            Ok(tokens)
+        } else {
+            Err(HolonError::InvalidParameter("Lineage not found for id".to_string()))
+        }
     }
 
     // ---- HELPERS ---- //

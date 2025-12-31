@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use holons_test::{
     dance_test_language::DancesTestCase, test_reference::TestReference, FixtureHolons,
 };
@@ -36,22 +38,31 @@ pub fn setup_book_author_steps_with_context(
     // Create fresh holon
     let book_key = MapString(BOOK_KEY.to_string());
     let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
-            &*fixture_context,
-            "Description",
-            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-            )?;
+    // book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
+    //         &*fixture_context,
+    //         "Description",
+    //         "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
+    //         )?;
 
     // Mint TestReferences (tokens)
-    let book_transient_token = fixture_holons.add_transient_with_key(
+    let book_fresh_token = fixture_holons.add_transient_with_key(
         &book_transient_reference.clone(),
         book_key.clone(),
         book_transient_reference.clone(),
     );
+    let mut book_properties = BTreeMap::new();
+    book_properties.insert("Description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
+    let book_source_token = test_case.add_with_properties_step(
+        &*fixture_context,
+        fixture_holons,
+        book_fresh_token,
+        book_properties,
+        ResponseStatusCode::OK,
+    )?;
     let book_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
-        book_transient_token,
+        book_source_token,
         Some(book_key),
         ResponseStatusCode::OK,
     )?;

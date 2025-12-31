@@ -1,6 +1,6 @@
 use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use holons_prelude::prelude::*;
-use holons_test::{ResolvedTestReference, TestExecutionState, TestReference, ResultingReference};
+use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
 use tracing::{debug, info};
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
@@ -12,6 +12,7 @@ use tracing::{debug, info};
 pub async fn execute_remove_properties(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    next_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
 ) {
@@ -28,7 +29,7 @@ pub async fn execute_remove_properties(
     let request = build_remove_properties_dance_request(source_reference, properties.clone())
         .expect("Failed to build remove_properties request");
     debug!("Dance Request: {:#?}", request);
-    
+
     // 3. CALL - the dance
     let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
@@ -50,12 +51,11 @@ pub async fn execute_remove_properties(
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+        ResolvedTestReference::from_reference_parts(next_token, resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Updated holon's essential content matched expected");
 
     // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
     //             so later steps can look it up with the same token.
     state.record_resolved(resolved_reference);
-
 }

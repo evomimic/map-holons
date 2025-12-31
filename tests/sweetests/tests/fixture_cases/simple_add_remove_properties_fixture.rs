@@ -35,24 +35,17 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // EXAMPLE (Transient) //
     let example_key = MapString("EXAMPLE_KEY".to_string());
+    let example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
+    // Mint transient source token
+    let example_transient_token = fixture_holons.add_transient_with_key(
+        &example_transient_reference,
+        example_key.clone(),
+        example_transient_reference.clone(),
+    );
+    // Add properties
     let mut example_properties = PropertyMap::new();
     example_properties
         .insert("Description".to_property_name(), "This is an example description".to_base_value());
-    example_properties.insert("Key".to_property_name(), "EXAMPLE_KEY".to_base_value());
-    // Create transient reference
-    let mut example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
-    example_transient_reference.with_property_value(
-        &*fixture_context,
-        "Description",
-        "This is an example description",
-    )?;
-    // Mint transient source token
-    let example_transient_token = fixture_holons.add_transient_with_key(
-        &example_transient_reference.clone(),
-        example_key.clone(),
-        example_transient_reference,
-    );
-    // Add properties
     example_properties
         .insert("ExampleProperty".to_property_name(), "Adding a property".to_base_value());
     example_properties.insert("Integer".to_property_name(), (-1).to_base_value());
@@ -73,7 +66,6 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         .expect(&format!("Id must exist in FixtureHolons, for key: {:?}", book_key));
     // Add
     let mut book_properties = PropertyMap::new();
-    book_properties.insert("Key".to_property_name(), BOOK_KEY.to_base_value());
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());
     book_properties.insert("title".to_property_name(), BOOK_KEY.to_base_value());
     book_properties

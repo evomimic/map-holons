@@ -85,11 +85,15 @@ impl TestReference {
         self.expected_state
     }
 
-    pub fn temporary_id(&self) -> TemporaryId {
-        self.expected_content.temporary_id()
+    pub fn root_id(&self) -> TemporaryId {
+        self.root.temporary_id()
     }
 
     pub fn root(&self) -> &TransientReference {
         &self.root
+    }
+
+    pub fn token_id(&self) -> TemporaryId {
+        self.expected_content.temporary_id()
     }
 }

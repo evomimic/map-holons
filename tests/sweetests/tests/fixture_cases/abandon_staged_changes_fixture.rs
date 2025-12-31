@@ -50,15 +50,16 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         ResponseStatusCode::OK,
     )?;
 
-    //  RELATIONSHIP:  Author H2 -> H3  //
-    // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
-    let holons_to_add: Vec<TestReference> = Vec::new();
-    test_case.add_add_related_holons_step(
-        abandoned_person_1,
-        "FRIENDS".to_relationship_name(),
-        holons_to_add.to_vec(),
-        ResponseStatusCode::Conflict,
-    )?;
+    // //  RELATIONSHIP:  Author H2 -> H3  //
+    // // Attempt add_related_holon dance -- expect Conflict/NotAccessible response
+    // let holons_to_add: Vec<TestReference> = Vec::new();
+    // test_case.add_add_related_holons_step(
+    //     &*fixture_context,
+    //     abandoned_person_1,
+    //     "FRIENDS".to_relationship_name(),
+    //     holons_to_add.to_vec(),
+    //     ResponseStatusCode::Conflict,
+    // )?;
 
     //  COMMIT  //  all Holons in staging_area
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;

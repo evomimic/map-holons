@@ -14,6 +14,7 @@ use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    next_root_token: TestReference,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a New Version of a Holon ---");
@@ -63,7 +64,7 @@ pub async fn execute_stage_new_version(
     let version_1_resulting_reference =
         ResultingReference::from(version_1_response_holon_reference.clone());
     let version_1_resolved_reference = ResolvedTestReference::from_reference_parts(
-        source_token.clone(),
+        next_root_token.clone(),
         version_1_resulting_reference.clone(),
     );
     version_1_resolved_reference.assert_essential_content_eq(context).unwrap();

@@ -62,7 +62,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     let book_key = MapString(BOOK_KEY.to_string());
     let from_staged_key = MapString("book:clone:from-staged".to_string());
-    let mut book_staged_token = fixture_holons.get_latest_by_key(&book_key)?;
+    let book_staged_token = fixture_holons.get_latest_by_key(&book_key)?;
 
     //  Stage New From Clone  //
     let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
@@ -76,12 +76,8 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // Add Properties
     let mut phase_b_expected_properties = PropertyMap::new();
     phase_b_expected_properties
-        .insert("Key".to_property_name(), from_staged_key.clone().to_base_value());
-    phase_b_expected_properties
-        .insert("Description".to_property_name(),
-            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
-    phase_b_expected_properties
-        .insert("TITLE".to_property_name(), "Dune (Staged Clone)".to_base_value());
+        .insert("Description".to_property_name(), "Cloning from staged".to_base_value());
+    phase_b_expected_properties.insert("TITLE".to_property_name(), "Dune".to_base_value());
     phase_b_expected_properties.insert("EDITION".to_property_name(), 2.to_base_value());
 
     test_case.add_with_properties_step(
@@ -106,7 +102,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let from_saved_key = MapString("book:clone:from-saved".to_string());
 
     // Retrieve saved-intent from latest in lineage
-    let mut book_saved_token = fixture_holons.get_latest_by_key(&from_staged_key)?;
+    let book_saved_token = fixture_holons.get_latest_by_key(&from_staged_key)?;
 
     //  Stage New From Clone  //
     let clone_from_saved_staged = test_case.add_stage_new_from_clone_step(
@@ -120,10 +116,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     //  Add properties  //
     let mut phase_c_expected_properties = PropertyMap::new();
     phase_c_expected_properties
-        .insert("Key".to_property_name(), from_saved_key.clone().to_base_value());
-    phase_c_expected_properties
-        .insert("Description".to_property_name(),
-            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
+        .insert("Description".to_property_name(), "Cloning from saved".to_base_value());
     phase_c_expected_properties
         .insert("TITLE".to_property_name(), "Saved Clone of Dune".to_base_value());
     phase_c_expected_properties.insert("EDITION".to_property_name(), 3.to_base_value());

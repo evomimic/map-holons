@@ -21,7 +21,7 @@ use pretty_assertions::assert_eq;
 
 #[derive(Clone, Debug)]
 pub struct ResolvedTestReference {
-    /// Fixture-declared identity + intent of the source holon, aka 'snapshot' (in lineage) which includes expected content
+    /// Fixture-declared identity + intent of the source holon, aka last 'snapshot' (in lineage) which includes expected content
     pub source_token: TestReference,
     /// Runtime handle produced by executing the step.
     pub resulting_reference: ResultingReference,
@@ -30,7 +30,9 @@ pub struct ResolvedTestReference {
 #[derive(Clone, Debug)]
 pub enum ResultingReference {
     LiveReference(HolonReference),
-    Deleted,
+    // stores previous save before being marked as deleted,
+    // useful for testing attempted operations that are meant to fail
+    Deleted(HolonReference),
 }
 
 impl ResultingReference {
@@ -40,7 +42,7 @@ impl ResultingReference {
     ) -> Result<EssentialHolonContent, HolonError> {
         match self {
             Self::LiveReference(holon_reference) => holon_reference.essential_content(context),
-            Self::Deleted => Err(HolonError::InvalidParameter(
+            Self::Deleted(_) => Err(HolonError::InvalidParameter(
                 "Holon is marked as deleted, there is no content to compare".to_string(),
             )),
         }
@@ -49,9 +51,16 @@ impl ResultingReference {
     pub fn get_holon_reference(&self) -> Result<HolonReference, HolonError> {
         match self {
             Self::LiveReference(holon_reference) => Ok(holon_reference.clone()),
-            Self::Deleted => Err(HolonError::InvalidParameter(
-                "Holon is marked as deleted, there is no associated HolonReference".to_string(),
-            )),
+            Self::Deleted(holon_reference) => {
+                if !holon_reference.is_saved() {
+                    Err(HolonError::InvalidParameter(
+                        "Holon is marked as deleted, there is no associated HolonReference"
+                            .to_string(),
+                    ))
+                } else {
+                    Ok(holon_reference.clone())
+                }
+            }
         }
     }
 }
@@ -84,7 +93,7 @@ impl ResolvedTestReference {
         let actual_content = self.resulting_reference.essential_content(context)?;
 
         // TODO: find a way to compare relationships
-        
+
         assert_eq!(expected_content, actual_content);
 
         Ok(())

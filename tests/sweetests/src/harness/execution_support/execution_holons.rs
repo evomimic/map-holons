@@ -42,7 +42,7 @@ impl ExecutionHolons {
     ///
     /// Overwrites any previous entry for the same `TemporaryId` (most recent wins).
     pub fn record_resolved(&mut self, resolved: ResolvedTestReference) {
-        self.by_temporary_id.insert(resolved.source_token.temporary_id(), resolved);
+        self.by_temporary_id.insert(resolved.source_token.root_id(), resolved);
     }
 
     /// Convenience: construct and record from a source token + resulting handle.
@@ -91,10 +91,10 @@ impl ExecutionHolons {
             expected_state => {
                 let resolved = self
                     .by_temporary_id
-                    .get(&token.temporary_id())
+                    .get(&token.root_id())
                     .ok_or_else(|| HolonError::InvalidHolonReference(format!(
                         "ExecutionHolons::lookup: no realization recorded for TemporaryId {:?} (expected {:?})",
-                        token.temporary_id(),
+                        token.root_id(),
                         token.expected_state()
                     )))?;
                 let holon_reference = &resolved.resulting_reference.get_holon_reference()?;
@@ -159,7 +159,7 @@ impl ExecutionHolons {
     ///
     /// Use `lookup_holon_reference` if you also need expected-state validation.
     pub fn get_resulting_reference_for(&self, token: &TestReference) -> Option<ResultingReference> {
-        self.by_temporary_id.get(&token.temporary_id()).map(|r| r.resulting_reference.clone())
+        self.by_temporary_id.get(&token.root_id()).map(|r| r.resulting_reference.clone())
     }
 
     /// True if no realized entries have been recorded yet.
