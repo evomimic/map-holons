@@ -112,5 +112,4 @@ pub async fn execute_stage_new_version(
     );
 
     info!("Success! New version Holon matched expected content and relationships.");
-
 }

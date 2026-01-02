@@ -23,7 +23,7 @@ use base_types::{MapString, ToBaseValue};
 use core_types::TemporaryId;
 use holons_core::{
     core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-
+    HolonsContextBehavior,
 };
 use holons_prelude::prelude::ToPropertyName;
 
@@ -62,22 +62,22 @@ pub enum ExpectedState {
 /// - Update intent (e.g., bulk flip staged → saved in fixtures).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
-    transient_reference: TransientReference, // carries the TemporaryId and snapshot
-    expected_state: ExpectedState,           // Transient | Staged | Saved | Abandoned | Deleted
-    expected_content: EssentialHolonContent, // Expected essential content, used for comparing expected (fixture) to actual (resolved)
+    root: TransientReference, // carries the TemporaryId used to resolve the ExecutionHolon
+    expected_state: ExpectedState, // Transient | Staged | Saved | Abandoned | Deleted
+    expected_content: TransientReference, // FixtureHolon pointer with expected essential content, used for comparing expected (fixture) to actual (resolved)
 }
 
 impl TestReference {
     /// Crate-internal constructor. Only [`FixtureHolons`] may mint tokens.
     pub(crate) fn new(
-        transient_reference: TransientReference,
+        root: TransientReference,
         expected_state: ExpectedState,
-        expected_content: EssentialHolonContent,
+        expected_content: TransientReference,
     ) -> Self {
-        Self { transient_reference, expected_state, expected_content }
+        Self { root, expected_state, expected_content }
     }
 
-    pub fn expected_content(&self) -> &EssentialHolonContent {
+    pub fn expected_content(&self) -> &TransientReference {
         &self.expected_content
     }
 
@@ -85,23 +85,15 @@ impl TestReference {
         self.expected_state
     }
 
-    pub fn key(
-        &self,
-    ) -> Option<MapString> {
-        self.expected_content.key.clone()
+    pub fn root_id(&self) -> TemporaryId {
+        self.root.temporary_id()
     }
 
-    pub fn temporary_id(&self) -> TemporaryId {
-        self.transient_reference.get_temporary_id()
+    pub fn root(&self) -> &TransientReference {
+        &self.root
     }
 
-    pub fn transient(&self) -> &TransientReference {
-        &self.transient_reference
-    }
-
-    // Needed for setting expected when changing key for stage_new_from_clone
-    pub fn set_key(&mut self, key: MapString) {
-        self.expected_content.key = Some(key.clone());
-        self.expected_content.property_map.insert("Key".to_property_name(), key.to_base_value());
+    pub fn token_id(&self) -> TemporaryId {
+        self.expected_content.temporary_id()
     }
 }

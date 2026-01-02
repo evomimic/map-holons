@@ -21,7 +21,7 @@ use pretty_assertions::assert_eq;
 
 #[derive(Clone, Debug)]
 pub struct ResolvedTestReference {
-    /// Fixture-declared identity + intent of the source holon, aka 'snapshot' (in lineage) which includes expected content
+    /// Fixture-declared identity + intent of the source holon, aka last 'snapshot' (in lineage) which includes expected content
     pub source_token: TestReference,
     /// Runtime handle produced by executing the step.
     pub resulting_reference: ResultingReference,
@@ -30,7 +30,9 @@ pub struct ResolvedTestReference {
 #[derive(Clone, Debug)]
 pub enum ResultingReference {
     LiveReference(HolonReference),
-    Deleted,
+    // stores previous save before being marked as deleted,
+    // useful for testing attempted operations that are meant to fail
+    Deleted(HolonReference),
 }
 
 impl ResultingReference {
@@ -40,7 +42,7 @@ impl ResultingReference {
     ) -> Result<EssentialHolonContent, HolonError> {
         match self {
             Self::LiveReference(holon_reference) => holon_reference.essential_content(context),
-            Self::Deleted => Err(HolonError::InvalidParameter(
+            Self::Deleted(_) => Err(HolonError::InvalidParameter(
                 "Holon is marked as deleted, there is no content to compare".to_string(),
             )),
         }
@@ -49,9 +51,16 @@ impl ResultingReference {
     pub fn get_holon_reference(&self) -> Result<HolonReference, HolonError> {
         match self {
             Self::LiveReference(holon_reference) => Ok(holon_reference.clone()),
-            Self::Deleted => Err(HolonError::InvalidParameter(
-                "Holon is marked as deleted, there is no associated HolonReference".to_string(),
-            )),
+            Self::Deleted(holon_reference) => {
+                if !holon_reference.is_saved() {
+                    Err(HolonError::InvalidParameter(
+                        "Holon is marked as deleted, there is no associated HolonReference"
+                            .to_string(),
+                    ))
+                } else {
+                    Ok(holon_reference.clone())
+                }
+            }
         }
     }
 }
@@ -61,15 +70,6 @@ impl From<HolonReference> for ResultingReference {
         Self::LiveReference(reference)
     }
 }
-
-// #[derive(Clone, Debug)]
-// pub enum ResultingReference {
-//     Transient(HolonReference),
-//     Staged(HolonReference),
-//     Saved(HolonReference),
-//     Abandoned(HolonReference), // Still a StagedReference but marked as 'Abandoned'
-//     Deleted,
-// }
 
 impl ResolvedTestReference {
     /// Build from a fixture token and the resulting runtime handle.
@@ -89,17 +89,12 @@ impl ResolvedTestReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
-        let expected_content = self.source_token.expected_content();
-        let actual_content = &self.resulting_reference.essential_content(context)?;
+        let expected_content = self.source_token.expected_content().essential_content(context)?;
+        let actual_content = self.resulting_reference.essential_content(context)?;
 
-        // = // HACK -> TODO: REMOVE! // = //  -- pending harness support for comparing essential relationship content for holon variants other than TransientReference
-        //
-        let mut hack = actual_content.clone();
-        hack.relationships = expected_content.relationships.clone();
-        assert_eq!(expected_content, &hack);
-        // == //
+        // TODO: find a way to compare relationships
 
-        // assert_eq!(expected_content, actual_content);
+        assert_eq!(expected_content, actual_content);
 
         Ok(())
     }

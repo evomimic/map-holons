@@ -116,7 +116,7 @@ impl LoaderHolonMapper {
         let properties: PropertyMap = loader_transient.get_raw_property_map(context)?;
 
         // Identify this loader in error messages using its TemporaryId (stable within this call).
-        let loader_id = loader_transient.get_temporary_id();
+        let loader_id = loader_transient.temporary_id();
 
         // Ensure key exists (but do NOT remove it—leave it to be staged).
         let key_prop: PropertyName = Key.as_property_name();

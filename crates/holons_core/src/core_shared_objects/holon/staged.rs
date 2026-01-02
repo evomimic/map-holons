@@ -18,8 +18,6 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
-use super::EssentialRelationshipMap;
-
 /// Represents a Holon that has been staged for persistence or updates.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StagedHolon {
@@ -218,7 +216,6 @@ impl ReadableHolonState for StagedHolon {
     fn essential_content(&self) -> EssentialHolonContent {
         EssentialHolonContent::new(
             self.property_map.clone(),
-            EssentialRelationshipMap::from(self.staged_relationships.clone()),
             self.key(),
             self.errors.clone(),
         )

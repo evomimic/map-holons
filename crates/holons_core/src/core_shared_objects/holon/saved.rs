@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::{Arc, RwLock}};
+use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +14,7 @@ use core_types::{
 use type_names::CorePropertyTypeName;
 
 use super::{
-    EssentialHolonContent, EssentialRelationshipMap, state::{AccessType, HolonState, SavedState, ValidationState}
+    EssentialHolonContent, state::{AccessType, HolonState, SavedState, ValidationState}
 };
 
 /// Represents a Holon that has been persisted in the DHT.
@@ -81,7 +81,7 @@ impl ReadableHolonState for SavedHolon {
 
     // Populates empty relationship map since relationships are stored in the cache via SmartReference
     fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent::new(self.property_map.clone(), EssentialRelationshipMap::new(BTreeMap::new()), self.key(), Vec::new())
+        EssentialHolonContent::new(self.property_map.clone(), self.key(), Vec::new())
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {

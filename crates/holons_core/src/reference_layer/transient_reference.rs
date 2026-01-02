@@ -64,7 +64,7 @@ impl TransientReference {
         Ok(rc_holon)
     }
 
-    pub fn get_temporary_id(&self) -> TemporaryId {
+    pub fn temporary_id(&self) -> TemporaryId {
         self.id.clone()
     }
 

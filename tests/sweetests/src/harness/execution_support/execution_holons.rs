@@ -42,7 +42,7 @@ impl ExecutionHolons {
     ///
     /// Overwrites any previous entry for the same `TemporaryId` (most recent wins).
     pub fn record_resolved(&mut self, resolved: ResolvedTestReference) {
-        self.by_temporary_id.insert(resolved.source_token.temporary_id(), resolved);
+        self.by_temporary_id.insert(resolved.source_token.root_id(), resolved);
     }
 
     /// Convenience: construct and record from a source token + resulting handle.
@@ -66,7 +66,7 @@ impl ExecutionHolons {
     /// Turn a fixture token into the **current** runtime `HolonReference` to use as executor input.
     ///
     /// Lookup strategy:
-    /// - `ExpectedState::Transient`  → return `HolonReference::Transient(token.transient().clone())`.
+    /// - `ExpectedState::Transient`  → return `HolonReference::Transient(token.expected_content().clone())`.
     /// - `ExpectedState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `ExpectedState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `ExpectedState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
@@ -81,15 +81,20 @@ impl ExecutionHolons {
         let expected_state = token.expected_state();
 
         match expected_state {
-            ExpectedState::Deleted => Err(HolonError::InvalidParameter("Holon marked as deleted, there is no associated resolved HolonReference".to_string())),
-            ExpectedState::Transient => Ok(HolonReference::Transient(token.transient().clone())),
+            ExpectedState::Deleted => Err(HolonError::InvalidParameter(
+                "Holon marked as deleted, there is no associated resolved HolonReference"
+                    .to_string(),
+            )),
+            ExpectedState::Transient => {
+                Ok(HolonReference::Transient(token.expected_content().clone()))
+            }
             expected_state => {
                 let resolved = self
                     .by_temporary_id
-                    .get(&token.temporary_id())
+                    .get(&token.root_id())
                     .ok_or_else(|| HolonError::InvalidHolonReference(format!(
                         "ExecutionHolons::lookup: no realization recorded for TemporaryId {:?} (expected {:?})",
-                        token.temporary_id(),
+                        token.root_id(),
                         token.expected_state()
                     )))?;
                 let holon_reference = &resolved.resulting_reference.get_holon_reference()?;
@@ -154,7 +159,7 @@ impl ExecutionHolons {
     ///
     /// Use `lookup_holon_reference` if you also need expected-state validation.
     pub fn get_resulting_reference_for(&self, token: &TestReference) -> Option<ResultingReference> {
-        self.by_temporary_id.get(&token.temporary_id()).map(|r| r.resulting_reference.clone())
+        self.by_temporary_id.get(&token.root_id()).map(|r| r.resulting_reference.clone())
     }
 
     /// True if no realized entries have been recorded yet.

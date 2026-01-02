@@ -13,6 +13,7 @@ use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 use super::setup_book_author_steps_with_context;
 
 // TODO: enhance test capabilities, ie trying to remove a property that doesnt exist, etc trying to add invalid property
+// Add again after removing
 
 /// For both Transient and Staged references:
 /// modifies an existing property, adds new properties, removes properties, then changes a property again and adds properties again.
@@ -34,80 +35,55 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // EXAMPLE (Transient) //
     let example_key = MapString("EXAMPLE_KEY".to_string());
-    let mut example_properties = PropertyMap::new();
-    example_properties
-        .insert("Description".to_property_name(), "This is an example description".to_base_value());
-    example_properties.insert("Key".to_property_name(), "EXAMPLE_KEY".to_base_value());
-    // Create transient reference
-    let mut example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
-    example_transient_reference.with_property_value(
-        &*fixture_context,
-        "Description",
-        "This is an example description",
-    )?;
+    let example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
     // Mint transient source token
     let example_transient_token = fixture_holons.add_transient_with_key(
         &example_transient_reference,
         example_key.clone(),
-        &example_transient_reference.essential_content(&*fixture_context)?,
-    )?;
-    // Set expected
+        example_transient_reference.clone(),
+    );
+    // Add properties
+    let mut example_properties = PropertyMap::new();
+    example_properties
+        .insert("Description".to_property_name(), "This is an example description".to_base_value());
     example_properties
         .insert("ExampleProperty".to_property_name(), "Adding a property".to_base_value());
     example_properties.insert("Integer".to_property_name(), (-1).to_base_value());
     example_properties.insert("Boolean".to_property_name(), false.to_base_value());
-    let mut example_expected_content =
-        example_transient_reference.essential_content(&*fixture_context).unwrap();
-    example_expected_content.property_map = example_properties.clone();
-    // Mint transient token with the expected_content
-    let source_example_token = fixture_holons.add_transient_with_key(
-        &example_transient_reference,
-        example_key.clone(),
-        &example_expected_content,
-    )?;
-    // Add
-    test_case.add_with_properties_step(
-        source_example_token,
+
+    let modified_example_token = test_case.add_with_properties_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        example_transient_token,
         example_properties.clone(),
         ResponseStatusCode::OK,
     )?;
 
     // BOOK (Staged) //
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_transient_reference = fixture_holons
+    let book_source_token = fixture_holons
         .get_latest_by_key(&book_key)
-        .expect(&format!("Id must exist in FixtureHolons, for key: {:?}", book_key))
-        .transient()
-        .clone();
-
+        .expect(&format!("Id must exist in FixtureHolons, for key: {:?}", book_key));
+    // Add
     let mut book_properties = PropertyMap::new();
-    book_properties.insert("Key".to_property_name(), BOOK_KEY.to_base_value());
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());
     book_properties.insert("title".to_property_name(), BOOK_KEY.to_base_value());
     book_properties
         .insert("NewProperty".to_property_name(), "This is another property".to_base_value());
     book_properties.insert("Int".to_property_name(), 42.to_base_value());
     book_properties.insert("Bool".to_property_name(), true.to_base_value());
-    // Set expected
-    let mut book_expected_content =
-        book_transient_reference.essential_content(&*fixture_context)?;
-    book_expected_content.property_map = book_properties.clone();
-    // Mint staged token with the expected_content
-    let source_book_token = fixture_holons.add_staged_with_key(
-        &book_transient_reference,
-        book_key.clone(),
-        &book_expected_content,
-    )?;
-    // Add step with the new mint to properly reflect expected
-    test_case.add_with_properties_step(
-        source_book_token,
+
+    let modified_book_token = test_case.add_with_properties_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        book_source_token,
         book_properties.clone(),
         ResponseStatusCode::OK,
     )?;
 
     // -- REMOVE STEP -- //
 
-    // TRANSIENT
+    // TRANSIENT //
     let mut transient_holon_properties_to_remove = BTreeMap::new();
     // Note: Technically for a remove_property_value call, a value is not required, however the RequestBody for the Dance
     // takes a ParameterValues(PropertyMap) and thus a full map is populated for the step.
@@ -116,46 +92,38 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     transient_holon_properties_to_remove
         .insert("Boolean".to_property_name(), false.to_base_value());
     transient_holon_properties_to_remove.insert("Integer".to_property_name(), (-1).to_base_value());
-    // Set expected
+    // Remove
     example_properties.remove(&"Integer".to_property_name());
     example_properties.remove(&"Boolean".to_property_name());
-    example_expected_content.property_map = example_properties.clone();
-    // Mint transient token with the expected_content
-    let modified_example_token = fixture_holons.add_transient_with_key(
-        &example_transient_reference,
-        example_key.clone(),
-        &example_expected_content,
-    )?;
-    test_case.add_remove_properties_step(
+
+    let _modified_book_token_after_remove = test_case.add_remove_properties_step(
+        &*fixture_context,
+        &mut fixture_holons,
         modified_example_token,
         transient_holon_properties_to_remove,
         ResponseStatusCode::OK,
     )?;
 
-    // STAGED
+    // STAGED //
     let mut staged_holon_properties_to_remove = BTreeMap::new();
     staged_holon_properties_to_remove
         .insert("NewProperty".to_property_name(), "This is another property".to_base_value());
     staged_holon_properties_to_remove.insert("Int".to_property_name(), 42.to_base_value());
     staged_holon_properties_to_remove.insert("Bool".to_property_name(), true.to_base_value());
-    // Set expected
+    // Remove
     book_properties.remove(&"NewProperty".to_property_name());
     book_properties.remove(&"Int".to_property_name());
     book_properties.remove(&"Bool".to_property_name());
-    book_expected_content.property_map = book_properties.clone();
-    // Mint staged token with the expected_content
-    let modified_book_token = fixture_holons.add_staged_with_key(
-        &book_transient_reference,
-        book_key.clone(),
-        &book_expected_content,
-    )?;
-    // Add
-    test_case.add_remove_properties_step(
+
+    let _modified_example_token_after_remove = test_case.add_remove_properties_step(
+        &*fixture_context,
+        &mut fixture_holons,
         modified_book_token,
         staged_holon_properties_to_remove,
         ResponseStatusCode::OK,
     )?;
 
+    // TODO:
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Load test_session_state

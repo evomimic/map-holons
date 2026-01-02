@@ -77,7 +77,7 @@ pub struct MapRequest {
         let req_type = DanceType::Standalone;
         let manager = TransientHolonManager::new_empty();
         let transient_ref = manager.create_empty(MapString("my_key".to_string())).unwrap();
-        let locked_holon = manager.get_holon_by_id(&transient_ref.get_temporary_id()).unwrap();
+        let locked_holon = manager.get_holon_by_id(&transient_ref.temporary_id()).unwrap();
         let actualholon = locked_holon.clone().read().unwrap().clone();
         let body = MapRequestBody::new_holon(actualholon);
          //holon.with_property_value(property_name, value)?;
