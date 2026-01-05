@@ -1,0 +1,30 @@
+# happ/Cargo.toml
+
+[workspace]
+resolver = "2"
+members = [
+    "zomes/coordinator/holons",
+    "zomes/integrity/holons_integrity",
+    "crates/holons_guest",
+    "crates/holons_guest_integrity",
+]
+
+# Note: workspace.dependencies are NOT actually inherited by member shared_crates by default,
+# but listing them can help IDEs and simplify relative paths in local dependencies.
+[workspace.dependencies]
+holons = { path = "zomes/coordinator/holons" }
+holons_integrity = { path = "zomes/integrity/holons_integrity" }
+holons_guest = { path = "crates/holons_guest" }
+holons_guest_integrity = { path = "crates/holons_guest_integrity" }
+
+# 🔥 IMPORTANT: WASM builds must avoid including native-only shared_crates
+# Make sure none of these shared_crates or their dependencies pull in native code.
+
+[profile.release]
+opt-level = "z"         # Optimize for size (important for WASM)
+lto = true              # Link-time optimization
+codegen-units = 1       # Slower compile, but better size
+
+[profile.dev]
+opt-level = 1           # Reasonable compromise for dev build time vs perf
+# You could also use "z" here if you're very size-conscious during dev

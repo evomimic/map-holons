@@ -9,7 +9,7 @@ use holons_trust_channel::TrustChannel;
 use std::sync::Arc;
 use tracing::info;
 
-const DNA_FILEPATH: &str = "../../workdir/map_holons.dna";
+const DNA_FILEPATH: &str = "../../happ/workdir/map_holons.dna";
 
 #[derive(Debug)]
 pub struct MockConductorConfig {

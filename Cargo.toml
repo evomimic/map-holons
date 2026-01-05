@@ -1,148 +1,95 @@
 [workspace]
-
-# ============================================================================
-# WORKSPACE MEMBERS
-# ============================================================================
-# IMPORTANT:
-#  • ALL crates appear here so that the IDE (RustRover / rust-analyzer) can
-#    see the full dependency graph.
-#  • BUILD ISOLATION IS NOT ACHIEVED USING THIS WORKSPACE.
-#    It is achieved by building ONLY through:
-#       workspaces/wasm/Cargo.toml
-#       workspaces/native/Cargo.toml
-#       workspaces/test/Cargo.toml
-# ============================================================================
-
-members = [
-    # --------------------------
-    # Zomes (WASM)
-    # --------------------------
-    "zomes/coordinator/holons",
-    "zomes/integrity/holons_integrity",
-
-    # --------------------------
-    # Guest-side (WASM)
-    # --------------------------
-    "crates/holons_guest",
-    "crates/holons_guest_integrity",
-
-    # --------------------------
-    # Shared schema + validation (WASM-safe)
-    # --------------------------
-    "crates/shared_validation",
-    "crates/type_system/base_types",
-    "crates/type_system/core_types",
-    "crates/type_system/integrity_core_types",
-    "crates/type_system/type_names",
-    "crates/json_schema_validation",
-
-    # --------------------------
-    # MAP core (WASM-safe)
-    # --------------------------
-    "crates/holons_core",
-    "crates/holon_dance_builders",
-    "crates/holons_prelude",
-    "crates/holons_loader",
-
-    # --------------------------
-    # Native-only crates
-    # (NOT wasm-safe, but MUST remain in workspace
-    #  so the IDE understands the dependency graph)
-    # --------------------------
-    "crates/holons_client",
-    "crates/holons_loader_client",
-    "crates/holons_receptor",
-    "crates/holochain_receptor",
-    "crates/holons_trust_channel",
-    "crates/holons_tauri_adapter",
-
-    # --------------------------
-    # Tests (sweetest)
-    # --------------------------
-    "tests/sweetests",
-
-]
-
-# ============================================================================
-# WORKSPACE EXCLUDES
-# ============================================================================
-# To maintain build isolation:
-#   • We DO NOT build the root workspace directly.
-#   • Instead, wasm/native/test orchestrator manifests are used.
-#   • These orchestrator dirs should not appear as workspace members.
-#   • Conductora is an external runtime and must be excluded.
-# ============================================================================
-
-exclude = [
-    "workspaces/*",
-    "host/*",
-]
-
 resolver = "2"
 
-# ============================================================================
-# WORKSPACE-LEVEL DEPENDENCIES (VERSION CONSISTENCY)
-# ============================================================================
-# These DO NOT require `workspace = true` in member crates.
-# They simply centralize versions for consistency.
-# WASM-unsafe crates *may* appear here—this is OK because
-# they are not built in wasm orchestrator builds.
-# ============================================================================
+members = [
+    # Host
+#    "host/conductora",
+#    "host/crates/holons_client",
+#    "host/crates/holochain_receptor",
+#    "host/crates/holons_receptor",
+#    "host/crates/holons_loader_client",
 
+    # Happ
+    "happ/zomes/coordinator/holons",
+    "happ/zomes/integrity/holons_integrity",
+    "happ/crates/holons_guest",
+    "happ/crates/holons_guest_integrity",
+
+    # Shared
+    "shared_crates/holon_dance_builders",
+    "shared_crates/holons_core",
+    "shared_crates/holons_prelude",
+    "shared_crates/shared_validation",
+    "shared_crates/json_schema_validation",
+    "shared_crates/type_system/base_types",
+    "shared_crates/type_system/core_types",
+    "shared_crates/type_system/integrity_core_types",
+    "shared_crates/type_system/type_names",
+    "shared_crates/holons_loader",
+    "shared_crates/holons_trust_channel",
+
+    # Tests
+    "tests/sweetests"
+]
+
+# -------------------------------------------------------------------
+# Unified dependency versions (optional but helpful for consistency)
+# -------------------------------------------------------------------
 [workspace.dependencies]
+# Happ
+holons = { path = "happ/zomes/coordinator/holons" }
+holons_integrity = { path = "happ/zomes/integrity/holons_integrity" }
+holons_guest = { path = "happ/crates/holons_guest" }
+holons_guest_integrity = { path = "happ/crates/holons_guest_integrity" }
 
-# --------------------------
-# Path dependencies
-# --------------------------
-holons                   = { path = "zomes/coordinator/holons" }
-holons_integrity         = { path = "zomes/integrity/holons_integrity" }
+# Host
+#conductora = { path = "host/conductora" }
+#holons_client = { path = "host/crates/holons_client" }
+#holochain_receptor = { path = "host/crates/holochain_receptor" }
+#holons_receptor = { path = "host/crates/holons_receptor" }
+#holons_loader_client = { path = "host/crates/holons_loader_client" }
 
-shared_validation        = { path = "crates/shared_validation" }
-base_types               = { path = "crates/type_system/base_types" }
-core_types               = { path = "crates/type_system/core_types" }
-integrity_core_types     = { path = "crates/type_system/integrity_core_types" }
-type_names               = { path = "crates/type_system/type_names" }
-json_schema_validation   = { path = "crates/json_schema_validation" }
 
-holons_client            = { path = "crates/holons_client" }
-holons_core              = { path = "crates/holons_core" }
-holon_dance_builders     = { path = "crates/holon_dance_builders" }
-holons_guest             = { path = "crates/holons_guest" }
-holons_guest_integrity   = { path = "crates/holons_guest_integrity" }
-holons_holochain_adapter = { path = "crates/holons_holochain_adapter" }
-holons_loader            = { path = "crates/holons_loader" }
-holons_prelude           = { path = "crates/holons_prelude" }
-holons_tauri_adapter     = { path = "crates/holons_tauri_adapter" }
-holons_trust_channel     = { path = "crates/holons_trust_channel" }
+# Shared
+holon_dance_builders = { path = "shared_crates/holon_dance_builders" }
+holons_core = { path = "shared_crates/holons_core" }
+holons_prelude = { path = "shared_crates/holons_prelude" }
+shared_validation = { path = "shared_crates/shared_validation" }
+json_schema_validation = { path = "shared_crates/json_schema_validation" }
+base_types = { path = "shared_crates/type_system/base_types" }
+core_types = { path = "shared_crates/type_system/core_types" }
+integrity_core_types = { path = "shared_crates/type_system/integrity_core_types" }
+type_names = { path = "shared_crates/type_system/type_names" }
+holons_loader = { path = "shared_crates/holons_loader" }
+holons_trust_channel = { path = "shared_crates/holons_trust_channel" }
 
-# --------------------------
-# External dependencies (versions)
-# --------------------------
-async-trait               = "0.1.51"
-convert_case              = "0.5"
-derive-new                = "0.7"
-futures                   = { version = "0.3.1", default-features = false }
-hex                       = "0.4"
-hdi                       = "0.6"
-hdk                       = "0.5"
-holochain_integrity_types = "0.5"
+# Holochain
+hdi = "0.6"
+hdk = "0.5"
 holochain_serialized_bytes = "*"
-Inflector                 = "0.11"
-pretty_assertions         = "1.4.0"
-quick_cache               = { version = "0.6.14", default-features = false }
-serde                     = { version = "1", features = ["derive"] }
-serde_json                = "1.0.109"
-sha2                      = "0.10.8"
-strum                     = "0.27"
-strum_macros              = "0.27"
-thiserror                 = "2"
-tracing                   = "0.1"
-rstest                    = "0.25"
-uuid                      = { version = "1", features = ["serde"] }
 
-# ============================================================================
+# External libs
+async-trait = "0.1"
+convert_case = "0.6"
+derive-new = "0.7"
+futures = { version = "0.3", default-features = false }
+hex = "0.4"
+Inflector = "*"
+pretty_assertions = "1"
+quick_cache = { version = "0.6.14", default-features = false }
+rstest = "0.26"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0"
+strum = "0.27"
+strum_macros = "0.27"
+thiserror = "2"
+tracing = "0.1"
+uuid = { version = "1", features = ["serde"] }
+
+# -------------------------------------------------------------------
 # Profiles
-# ============================================================================
+# -------------------------------------------------------------------
 [profile.dev]
 opt-level = "z"
 

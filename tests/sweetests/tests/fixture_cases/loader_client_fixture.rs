@@ -9,7 +9,10 @@ use holons_test::{DanceTestStep, DancesTestCase, TestSessionState};
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
     // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,
     // so we need to walk back to the repo root before joining the import_files path.
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("host");
 
     let rels = [
         "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",

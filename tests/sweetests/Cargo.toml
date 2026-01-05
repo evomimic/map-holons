@@ -7,7 +7,7 @@ publish = false
 # (You can omit [lib] entirely unless you need a custom crate-type or name)
 
 [dependencies]
-# Workspace crates (prefer workspace deps over path for consistency)
+# Workspace shared_crates (prefer workspace deps over path for consistency)
 
 # General deps
 #base64ct = "=1.7.3"
@@ -20,40 +20,40 @@ async-trait = "0.1.51"
 panic = "0.4.0"
 
 [dependencies.holons_prelude]
-path = "../../crates/holons_prelude"
+path = "../../shared_crates/holons_prelude"
 
 #[dependencies.holons_guest_integrity]
-#path = "../../crates/holons_guest_integrity"
+#path = "../../shared_crates/holons_guest_integrity"
 #
 [dependencies.holon_dance_builders]
-path = "../../crates/holon_dance_builders"
+path = "../../shared_crates/holon_dance_builders"
 
 [dependencies.holons_core]
-path = "../../crates/holons_core"
+path = "../../shared_crates/holons_core"
 
 [dependencies.holons_client]
-path = "../../crates/holons_client"
+path = "../../host/crates/holons_client"
 
 [dependencies.holons_loader]
-path = "../../crates/holons_loader"
+path = "../../shared_crates/holons_loader"
 
 [dependencies.holons_loader_client]
-path = "../../crates/holons_loader_client"
+path = "../../host/crates/holons_loader_client"
 
 [dependencies.holons_trust_channel]
-path = "../../crates/holons_trust_channel"
+path = "../../shared_crates/holons_trust_channel"
 
 [dependencies.type_names]
-path = "../../crates/type_system/type_names"
+path = "../../shared_crates/type_system/type_names"
 
 [dependencies.core_types]
-path = "../../crates/type_system/core_types"
+path = "../../shared_crates/type_system/core_types"
 
 [dependencies.base_types]
-path = "../../crates/type_system/base_types"
+path = "../../shared_crates/type_system/base_types"
 
 [dev-dependencies.holons_trust_channel]
-path = "../../crates/holons_trust_channel"
+path = "../../shared_crates/holons_trust_channel"
 
 [dev-dependencies]
 rstest = "0.26.1"

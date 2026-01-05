@@ -1,47 +1,33 @@
 {
-  "name": "map-holons-dev",
+  "name": "map-project",
   "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "workspaces": [
-    "tests/tryorama",
+    "happ",
     "host"
   ],
   "scripts": {
-    "all-tests": "cargo test && npm run sweetest",
-    "build:wasm": "cargo check --manifest-path workspaces/wasm/Cargo.toml --target wasm32-unknown-unknown",
-    "build:native": "cargo build --manifest-path workspaces/native/Cargo.toml",
-    "build:test": "cargo test --manifest-path workspaces/test/Cargo.toml",
-    "start": "RUST_LOG=host=info npm run build:happ && npm run start -w host",
-    "sweetest": "npm run build:happ && npm run sweet:test",
+    "start": "npm run build:happ && npm run start:host",
+    "start:info": "npm run build:happ && RUST_LOG=host=info npm run start:host",
+    "start:debug": "npm run build:happ && RUST_LOG=host=debug npm run start:host",
+    "start:host": "npm run start -w host",
+
+    "build": "npm run build:happ && npm run build:host",
+    "build:host": "npm run build -w host",
+    "build:happ": "npm run build:happ -w happ",
+
+    "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
-    "local-services": "hc run-local-services -b 54000 -s 55000",
-    "network": "npm run build:happ && UI_PORT=4200 concurrently \"npm run local-services\" \"npm run start:agent\"",
-    "start:agent": "HC_PORT=$(get-port) HC_ADMIN_PORT=$(get-port) concurrently \"npm run launch:happ\" \"npm start -w ui\"",
-    "launch:happ": "hc s clean && echo \"pass\" | RUST_LOG=warn hc launch --piped -n $AGENTS workdir/map-holons.happ --ui-port $UI_PORT network -b http://127.0.0.1:54000 webrtc ws://127.0.0.1:55000",
-    "test": "npm run build:zomes && hc app pack workdir --recursive && npm t -w tests",
-    "set-holochain-log": "export H_LOG=holochain=warn,holochain_sqlite=warn,kitsune_p2p_types=warn,holochain::core::queue_consumer=warn",
-    "sweetest:quiet": "npm run build:happ && export WASM_LOG=$H_LOG,dances=info,holons=info,descriptors=info && export RUST_LOG=$H_LOG,dances=info,holons=info,descriptors=info && npm run sweet:test",
-    "sweetest:info": "export RUST_LOG=info && export WASM_LOG=info && npm run build:happ && npm run sweet:test",
-    "sweetest:debug": "export RUST_LOG=info && export WASM_LOG=debug && npm run build:happ && cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
-    "sweetest:custom": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && clear && npm run sweet:test",
-    "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir --recursive",
-    "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
-    "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown --manifest-path workspaces/wasm/Cargo.toml -p holons_guest -p holons_integrity -p holons",
-    "clean": "npx rimraf 'target/**/build/*/out' target Cargo.lock flake.lock tests/**/target tests/**/Cargo.lock crates/**/target crates/**/Cargo.lock zomes/**/target zomes/**/Cargo.lock workspaces/**/target workspaces/**/Cargo.lock && cargo clean",
-    "clean:ui": "npx --quiet rimraf package-lock.json node_modules host/node_modules && npx --quiet rimraf tests/node_modules",
-    "cb": "clear && npm run build:happ",
-    "ct": "clear && npm run sweetest"
-  },
-  "_comments": {
-    "sweetest:quiet": "Script to run tests with minimal tracing (warn level)",
-    "sweetest:info": "Script to run tests with moderate tracing (info level)",
-    "sweetest:debug": "Script to run tests with detailed tracing (debug level)",
-    "sweetest:custom": "Script to run tests with custom tracing levels. Defaults to 'warn' if env variables not already set"
+
+    "clean": "npm run clean:rust && npm run clean:ui",
+    "clean:rust": "npx rimraf 'target' '.cargo' 'Cargo.lock' 'flake.lock' && npm run clean:rust -w happ && npm run clean:rust -w host",
+    "clean:ui": "npx rimraf 'package-lock.json' 'node_modules' && npm run clean:ui -w host && npm run clean:ui -w happ"
   },
   "devDependencies": {
-    "@holochain-playground/cli": "^0.300.1",
-    "concurrently": "^9.1.0",
-    "get-port-cli": "^3.0.0",
-    "rimraf": "^6.0.1"
+    "autoprefixer": "^10.4",
+    "concurrently": "^9",
+    "rimraf": "^6"
   },
   "engines": {
     "node": ">=22.12.0",
