@@ -9,7 +9,7 @@
         {
           "name": "InvalidRef",
           "target": {
-            "$ref": "foo-bar-baz"  // <- not #, id:, @, or ext:
+            "$ref": "foo-bar-baz"
           }
         }
       ]
