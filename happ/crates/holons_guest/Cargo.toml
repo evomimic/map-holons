@@ -45,4 +45,4 @@ path = "../../zomes/integrity/holons_integrity"
 path = "../holons_guest_integrity"
 
 [dependencies.holons_loader]
-path = "../../../shared_crates/holons_loader"
+path = "../holons_loader"

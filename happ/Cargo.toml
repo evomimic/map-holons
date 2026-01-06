@@ -11,14 +11,18 @@ members = [
 
 [workspace.dependencies]
 #holons = { path = "zomes/coordinator/holons" }
+holons_core = { path = "../shared_crates/holons_core" }
+core_types = { path = "../shared_crates/type_system/core_types" }
 holons_integrity = { path = "zomes/integrity/holons_integrity" }
 holons_guest = { path = "crates/holons_guest" }
 holons_guest_integrity = { path = "crates/holons_guest_integrity" }
+holons_prelude = { path = "../shared_crates/holons_prelude" }
 
 # 🔥 IMPORTANT: happ builds must avoid including host-only shared_crates
 # Make sure none of these shared_crates or their dependencies pull in native code.
 
 serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
 
 [profile.release]
 opt-level = "z"         # Optimize for size (important for WASM)

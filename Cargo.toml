@@ -25,7 +25,7 @@ members = [
     "shared_crates/type_system/core_types",
     "shared_crates/type_system/integrity_core_types",
     "shared_crates/type_system/type_names",
-    "shared_crates/holons_loader",
+    "happ/crates/holons_loader",
     "shared_crates/holons_trust_channel",
 
     # Tests
@@ -60,7 +60,7 @@ base_types = { path = "shared_crates/type_system/base_types" }
 core_types = { path = "shared_crates/type_system/core_types" }
 integrity_core_types = { path = "shared_crates/type_system/integrity_core_types" }
 type_names = { path = "shared_crates/type_system/type_names" }
-holons_loader = { path = "shared_crates/holons_loader" }
+holons_loader = { path = "happ/crates/holons_loader" }
 holons_trust_channel = { path = "shared_crates/holons_trust_channel" }
 
 # Holochain

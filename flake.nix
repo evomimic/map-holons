@@ -20,11 +20,13 @@
             # Pull in holonix dev shell
             inputsFrom = [ inputs'.holonix.devShells.default ];
 
-            # Extra native tools (cmake explicit helps the CMake deps)
+            # Extra native tools (incl. libclang + libstdc++ for CI)
             nativeBuildInputs = [
               pkgs.libsodium
               pkgs.pkg-config
               pkgs.llvmPackages.libunwind
+              pkgs.llvmPackages.libclang          # 👈 Required for bindgen
+              pkgs.stdenv.cc.cc.lib               # 👈 libstdc++.so.6 for linking
               pkgs.cmake
             ];
 
@@ -35,7 +37,7 @@
 
             shellHook =
               ''
-                export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
+                export PS1='$begin:math:display$\\033\[1\;34m$end:math:display$[holonix:\w]\$$begin:math:display$\\033\[0m$end:math:display$ '
 
                 # Cross-platform: modern CMake policy + reduce configure flakiness
                 export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
