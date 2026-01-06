@@ -17,6 +17,8 @@
     "build:host": "npm run build -w host",
     "build:happ": "npm run build:happ -w happ",
 
+    "test": "npm run sweetest",
+
     "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
 
