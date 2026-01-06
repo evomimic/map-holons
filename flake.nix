@@ -22,13 +22,14 @@
 
             # Extra native tools (incl. libclang + libstdc++ for CI)
             nativeBuildInputs = [
-              pkgs.libsodium
-              pkgs.pkg-config
-              pkgs.llvmPackages.libunwind
-              pkgs.llvmPackages.libclang          # 👈 Required for bindgen
-              pkgs.stdenv.cc.cc.lib               # 👈 libstdc++.so.6 for linking
-              pkgs.cmake
-            ];
+                          pkgs.libsodium
+                          pkgs.pkg-config
+                          pkgs.llvmPackages.libunwind
+                          pkgs.llvmPackages.libclang        # ✅ Required by bindgen
+                          pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
+                          pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
+                          pkgs.cmake
+                        ];
 
             packages = with pkgs; [
               nodejs_22
