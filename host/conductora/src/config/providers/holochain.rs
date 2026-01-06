@@ -1,8 +1,10 @@
 use std::path::PathBuf;
-use crate::config::{StorageConfig, StorageProvider};
+// use map_commands::{StorageConfig, StorageProvider};
 use serde::{Deserialize, Serialize};
+use tauri_plugin_holochain::{vec_to_locked, AppBundle, HolochainPluginConfig, NetworkConfig};
+use crate::config::{StorageConfig, StorageProvider};
 //use crate::config::app_config::APP_ID;
-use tauri_plugin_holochain::{HolochainPluginConfig, vec_to_locked, NetworkConfig, AppBundle};
+// use tauri_plugin_holochain::{HolochainPluginConfig, vec_to_locked, NetworkConfig, AppBundle};
 //use tauri_plugin_holochain::HolochainExt;
 
 pub type CellDetails = Vec<CellDetail>;
@@ -27,7 +29,7 @@ pub struct HolochainConfig {
     pub enabled: bool,
 }
 
-//DONT USE THIS.. config is all in storage.json
+//DON'T USE THIS! config is all in storage.json
 impl Default for HolochainConfig {
     fn default() -> Self {
         HolochainConfig {
@@ -162,7 +164,7 @@ pub fn holochain_dir(hc_cfg: &HolochainConfig) -> PathBuf {
             app_dirs2::AppDataType::UserData,
             &app_dirs2::AppInfo {
                 name: app_name,
-                author: std::env!("CARGO_PKG_AUTHORS"),
+                author: env!("CARGO_PKG_AUTHORS"),
             },
         )
         .expect("Could not get app root")

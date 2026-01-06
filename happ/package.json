@@ -1,0 +1,16 @@
+{
+  "name": "map-happ",
+  "private": true,
+  "scripts": {
+    "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
+    "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown",
+    "clean:rust": "npx rimraf target .cargo Cargo.lock && cargo clean",
+    "clean:ui": "npx rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1"
+  },
+  "engines": {
+    "npm": ">=7.0.0"
+  }
+}

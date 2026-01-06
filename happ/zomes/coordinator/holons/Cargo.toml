@@ -1,0 +1,27 @@
+[package]
+name = "holons"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+# WASM and non-WASM compatible
+crate-type = ["cdylib", "rlib"]
+name = "holons"
+
+[dependencies]
+# General Dependencies
+serde = { workspace = true}
+# Holochain Dependencies
+hdk = "0.5"
+
+
+# MAP Dependencies
+
+[dependencies.holons_core]
+path = "../../../../shared_crates/holons_core"
+
+[dependencies.holons_integrity]
+path = "../../integrity/holons_integrity"
+
+[dependencies.holons_guest]
+path = "../../../crates/holons_guest"

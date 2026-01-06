@@ -1,6 +1,7 @@
 use tauri::{AppHandle, Manager};
-use crate::{config::{LocalConfig, StorageProvider}, setup::receptor_config_registry::ReceptorConfigRegistry};
 use holons_client::shared_types::base_receptor::BaseReceptor;
+use crate::config::{LocalConfig, StorageProvider};
+use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
 
 pub struct LocalSetup;
 

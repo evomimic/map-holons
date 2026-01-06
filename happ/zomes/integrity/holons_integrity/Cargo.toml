@@ -1,0 +1,27 @@
+[package]
+name = "holons_integrity"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+# WASM and non-WASM compatible
+crate-type = ["cdylib", "rlib"]
+name = "holons_integrity"
+
+[dependencies]
+
+
+serde = { version = "1", features = ["derive"] }
+
+
+# Holochain dependencies
+hdi = "0.6"
+
+[dependencies.holons_guest_integrity]
+path = "../../../crates/holons_guest_integrity"
+
+[dependencies.shared_validation]
+path = "../../../../shared_crates/shared_validation"
+
+[dependencies.integrity_core_types]
+path = "../../../../shared_crates/type_system/integrity_core_types"

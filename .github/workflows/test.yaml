@@ -1,8 +1,7 @@
 name: "test"
+
 on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
-  push: 
+  push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
@@ -10,8 +9,16 @@ on:
 jobs:
   testbuild:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
+      # 🔴 REQUIRED: minimal system bootstrap so bindgen/libclang can start
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libstdc++6 clang libclang-common-18-d
 
       - name: Install nix
         uses: cachix/install-nix-action@v27
@@ -27,4 +34,3 @@ jobs:
       - name: Install and test
         run: |
           nix develop --command bash -c "npm i && npm t"
-

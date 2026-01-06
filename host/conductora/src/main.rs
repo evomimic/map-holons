@@ -3,20 +3,24 @@
 use tracing_subscriber::EnvFilter;
 use std::str::FromStr;
 
+
+pub mod config;
+pub mod setup;
+mod map_commands;
+
 fn main() {
     // Initialize logger ONCE (like your tests do)
     let env_filter = match std::env::var("RUST_LOG") {
         Ok(val) => {
             eprintln!("[MAIN] Using RUST_LOG from environment: {}", val);
-            // Expand shorthand like "host=debug" to full list
             let expanded = expand_log_shorthand(&val);
             eprintln!("[MAIN] Expanded to: {}", expanded);
             EnvFilter::from_str(&expanded)
-            .unwrap_or_else(|_| EnvFilter::new("info"))
+                .unwrap_or_else(|_| EnvFilter::new("info"))
         }
         Err(_) => {
             eprintln!("[MAIN] RUST_LOG not set, using defaults");
-             let default_filter =
+            let default_filter =
                 "warn,\
                 tracing=warn,\
                 holochain=warn,\
@@ -25,7 +29,7 @@ fn main() {
                 kitsune2_gossip=error,\
                 kitsune2_dht=error,\
                 holochain_types=warn";
-                EnvFilter::from_str(default_filter)
+            EnvFilter::from_str(default_filter)
                 .expect("Failed to parse filter")
         }
     };
@@ -41,30 +45,31 @@ fn main() {
         .pretty()
         .finish();
 
-    // Set as global default - this prevents Holochain from overriding it
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set subscriber");
 
     tracing::info!("[MAIN] Starting Conductora runtime");
-    
+
+    // // ✅ Generate context *here* — this ensures build.rs is correctly scoped
+    // let context = tauri::generate_context!();
+
+    // ✅ Pass the context into your runtime orchestrator
     conductora_lib::run();
 }
 
 fn expand_log_shorthand(input: &str) -> String {
     let mut result = String::new();
-    
+
     for part in input.split(',') {
         if let Some((key, level)) = part.split_once('=') {
             match key.trim() {
                 "host" => {
-                    // Expand "host=debug" to all custom crates
                     result.push_str(&format!(
                         "conductora_lib={},holons_client={},holons_receptor={},holochain_receptor={}",
                         level, level, level, level
                     ));
                 }
                 _ => {
-                    // Pass through other directives as-is
                     result.push_str(part);
                     result.push(',');
                 }
@@ -74,11 +79,10 @@ fn expand_log_shorthand(input: &str) -> String {
             result.push(',');
         }
     }
-    
-    // Add holochain baseline if not already specified
+
     if !result.contains("holochain=") {
         result.push_str("holochain=warn,holochain_sqlite=error,kitsune2_core=error,kitsune2_gossip=error,kitsune2_dht=error,holochain_types=warn");
     }
-    
+
     result
 }

@@ -1,0 +1,24 @@
+[package]
+name = "holons_client"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+name = "holons_client"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_bytes = "*"
+async-trait = "0.1"
+#tracing = "0.1"
+futures-executor = "0.3"
+tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+
+# MAP Dependencies
+holons_core = { path = "../../../shared_crates/holons_core" }
+base_types = { path = "../../../shared_crates/type_system/base_types" }
+core_types = { path = "../../../shared_crates/type_system/core_types" }
+integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }
+holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
+

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::config::providers::holochain::{HolochainConfig};
+use crate::config::providers::holochain::HolochainConfig;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageConfig {
@@ -84,7 +85,7 @@ impl StorageConfig {
         );
 
         Self {
-            default_storage: "holochain_main".to_string(),
+            default_storage: "holochain".to_string(),
             storage_providers,
         }
     }

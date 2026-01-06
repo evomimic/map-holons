@@ -1,5 +1,5 @@
 // Module declarations
-mod commands;
+mod map_commands;
 mod config;
 mod setup;
 //mod utils;

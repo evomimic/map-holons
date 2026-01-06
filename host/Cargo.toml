@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = [
+    "conductora",
+    "crates/holons_client",
+    "crates/holochain_receptor",
+    "crates/holons_receptor",
+    "crates/holons_loader_client",
+    "conductora/plugins/tauri-plugin-holochain"
+]
+
+[workspace.dependencies]
+
+# Shared crates
+base_types = { path = "../shared_crates/type_system/base_types" }
+core_types = { path = "../shared_crates/type_system/core_types" }
+integrity_core_types = { path = "../shared_crates/type_system/integrity_core_types" }
+type_names = { path = "../shared_crates/type_system/type_names" }
+
+holons_core = { path = "../shared_crates/holons_core" }
+holons_prelude = { path = "../shared_crates/holons_prelude" }
+holon_dance_builders = { path = "../shared_crates/holon_dance_builders" }
+shared_validation = { path = "../shared_crates/shared_validation" }
+json_schema_validation = { path = "../shared_crates/json_schema_validation" }
+
+holochain_client = { version = "0.7.0"}
+tauri = { version = "2", features = ["macros"] }
+tauri-build = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+tracing = "0.1"
+thiserror = "1"
+async-trait = "0.1"
+#uuid = { version = "1", features = ["serde"] }
+app_dirs2 = "2.5.5"
+tempdir = "0.3.7"
+url2 = "0.0.6"
+
+# Internal crate paths (optional for IDE support)
+holons_client = { path = "crates/holons_client" }
+holons_receptor = { path = "crates/holons_receptor" }
+holochain_receptor = { path = "crates/holochain_receptor" }
+holons_loader_client = { path = "crates/holons_loader_client" }
+tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
