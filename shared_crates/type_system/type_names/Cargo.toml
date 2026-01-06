@@ -9,7 +9,7 @@ edition = "2021"
 convert_case = "0.5"
 strum = "0.27"
 strum_macros = "0.27"
-tracing = "0.1"
+#tracing = "0.1"
 [dependencies.integrity_core_types]
 path = "../integrity_core_types"
 

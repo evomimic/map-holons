@@ -11,13 +11,11 @@ publish = false
 
 # General deps
 #base64ct = "=1.7.3"
-derive-new = "0.7"
 pretty_assertions = "1.4.0"
 serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
 async-trait = "0.1.51"
-panic = "0.4.0"
 
 [dependencies.holons_prelude]
 path = "../../shared_crates/holons_prelude"
@@ -33,9 +31,6 @@ path = "../../shared_crates/holons_core"
 
 [dependencies.holons_client]
 path = "../../host/crates/holons_client"
-
-[dependencies.holons_loader]
-path = "../../shared_crates/holons_loader"
 
 [dependencies.holons_loader_client]
 path = "../../host/crates/holons_loader_client"

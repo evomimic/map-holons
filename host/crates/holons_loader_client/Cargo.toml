@@ -12,17 +12,15 @@ name = "holons_loader_client"
 serde = { workspace = true }
 serde_json = { version = "1.0", features = ["raw_value"] }
 tracing = { workspace = true }
-async-trait = { workspace = true } # only if you actually need async traits
 
 # --- Shared types & validation ---
 base_types = { workspace = true }
 core_types = { workspace = true }
-integrity_core_types = { workspace = true }
-type_names = { workspace = true }
+
 json_schema_validation = { workspace = true }
-shared_validation = { workspace = true }
+
 
 # --- Holons core / prelude ---
 holons_core = { workspace = true }
-holon_dance_builders = { workspace = true }
+
 holons_prelude = { workspace = true }

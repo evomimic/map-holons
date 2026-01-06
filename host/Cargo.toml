@@ -33,7 +33,7 @@ anyhow = "1"
 tracing = "0.1"
 thiserror = "1"
 async-trait = "0.1"
-uuid = { version = "1", features = ["serde"] }
+#uuid = { version = "1", features = ["serde"] }
 app_dirs2 = "2.5.5"
 tempdir = "0.3.7"
 url2 = "0.0.6"

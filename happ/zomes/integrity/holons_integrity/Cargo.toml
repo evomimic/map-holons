@@ -16,7 +16,6 @@ serde = { version = "1", features = ["derive"] }
 
 # Holochain dependencies
 hdi = "0.6"
-holochain_integrity_types = "0.5"
 
 [dependencies.holons_guest_integrity]
 path = "../../../crates/holons_guest_integrity"

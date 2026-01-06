@@ -11,7 +11,7 @@ name = "holons_client"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "*"
 async-trait = "0.1"
-tracing = "0.1"
+#tracing = "0.1"
 futures-executor = "0.3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 

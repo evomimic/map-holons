@@ -12,8 +12,8 @@ async-trait = "0.1"
 #holochain dependencies
 holochain_client = { version = "0.7.0"}
 holochain_types = "0.5"
-holochain_conductor_api = { version = "0.5" }
-holochain_nonce = { version = "0.5" }
+#holochain_conductor_api = { version = "0.5" }
+#holochain_nonce = { version = "0.5" }
 
 #map dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
