@@ -4,6 +4,7 @@ use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
+use crate::core_shared_objects::transactions::TransactionManager;
 use crate::core_shared_objects::{
     HolonCacheAccess, HolonCacheManager, Nursery, ServiceRoutingPolicy, TransientHolonManager,
     TransientManagerAccess,
@@ -37,6 +38,9 @@ pub struct HolonSpaceManager {
 
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
     transient_state: Arc<RwLock<TransientCollection>>,
+
+    /// Per-space transaction manager for opening and tracking transactions.
+    transaction_manager: Arc<TransactionManager>,
 }
 
 impl HolonSpaceManager {
@@ -80,7 +84,10 @@ impl HolonSpaceManager {
         // Step 4: Wrap the provided `TransientHolonManager` in an `Arc<TransientHolonManager>`
         let transient_arc = Arc::new(transient_manager);
 
-        // Step 5: Initialize and return the HolonSpaceManager with thread-safe fields
+        // Step 5: Initialize the per-space transaction manager.
+        let transaction_manager = Arc::new(TransactionManager::new());
+
+        // Step 6: Initialize and return the HolonSpaceManager with thread-safe fields
         Self {
             cache_request_router,
             dance_initiator,
@@ -89,7 +96,14 @@ impl HolonSpaceManager {
             nursery: nursery_arc,
             transient_manager: transient_arc,
             transient_state: Arc::new(RwLock::new(TransientCollection::new())),
+            transaction_manager,
         }
+    }
+
+    /// Provides access to the per-space transaction manager.
+    pub fn get_transaction_manager(&self) -> Arc<TransactionManager> {
+        // Step 1: Clone the Arc for the caller.
+        Arc::clone(&self.transaction_manager)
     }
 }
 
@@ -194,6 +208,7 @@ impl Debug for HolonSpaceManager {
             .field("nursery", &self.nursery) // ✅ Print only once
             .field("cache_request_router", &"<CacheRequestRouter>")
             .field("transient_state", &"<TransientCollection>")
+            .field("transaction_manager", &"<TransactionManager>")
             .field("internal_nursery_access", &"Hidden") // ✅ Avoid duplicate printing
             .finish()
     }

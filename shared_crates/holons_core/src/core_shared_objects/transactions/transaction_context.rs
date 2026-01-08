@@ -1,4 +1,4 @@
-//! Transaction-scoped execution context (structure only).
+//! Transaction-scoped execution context shell for staging and transient pools.
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -12,7 +12,7 @@ use crate::core_shared_objects::{Nursery, TransientHolonManager};
 
 use super::TxId;
 
-/// Transaction-scoped execution context.
+/// Transaction-scoped execution context holding mutable transaction state.
 #[derive(Debug)]
 pub struct TransactionContext {
     tx_id: TxId,
@@ -24,7 +24,9 @@ pub struct TransactionContext {
 
 impl TransactionContext {
     /// Creates a new transaction context with its own staging and transient pools.
-    pub fn new(tx_id: TxId, space_manager: Weak<HolonSpaceManager>) -> Self {
+    pub(super) fn new(tx_id: TxId, space_manager: Weak<HolonSpaceManager>) -> Self {
+        // Store transaction identity and space linkage.
+        // Construct the transaction-owned staging and transient pools.
         Self {
             tx_id,
             is_open: AtomicBool::new(true),
@@ -46,6 +48,7 @@ impl TransactionContext {
 
     /// Returns a strong reference to the space manager, if it is still alive.
     pub fn space_manager(&self) -> Result<Arc<HolonSpaceManager>, HolonError> {
+        // Upgrade the weak reference.
         self.space_manager
             .upgrade()
             .ok_or_else(|| HolonError::ServiceNotAvailable("HolonSpaceManager".into()))
