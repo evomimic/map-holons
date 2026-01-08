@@ -17,7 +17,9 @@
     "build:host": "npm run build -w host",
     "build:happ": "npm run build:happ -w happ",
 
-    "check": "cargo check --manifest-path happ/Cargo.toml --workspace --target wasm32-unknown-unknown && cargo check --manifest-path host/Cargo.toml --workspace",
+    "check": "npm run check:host && npm run check:happ",
+    "check:host": "cargo check --manifest-path host/Cargo.toml --workspace",
+    "check:happ": "cargo check --manifest-path happ/Cargo.toml --workspace --target wasm32-unknown-unknown",
 
     "test": "npm run sweetest",
 
