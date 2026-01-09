@@ -60,8 +60,7 @@ pub async fn execute_remove_related_holons(
     );
     info!("Success! Related Holons have been removed");
    
-    // 4. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-    //             so later steps can look it up with the same token.
+    // 4. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
     let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {

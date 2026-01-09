@@ -38,11 +38,12 @@
 //! persistence details.
 
 use crate::{harness::fixtures_support::TestReference, FixtureHolons};
-use core_types::{ContentSet, TemporaryId};
+use core_types::ContentSet;
 use holons_core::{
     core_shared_objects::holon_pool::SerializableHolonPool, reference_layer::ReadableHolon,
 };
 use holons_prelude::prelude::*;
+use integrity_core_types::PropertyMap;
 
 /// Public test case type that collects steps to be executed later.
 #[derive(Default, Clone, Debug)]
@@ -162,7 +163,6 @@ impl DancesTestCase {
     // === Exectution Steps with === //
     // ==== Token Minting ==== //
 
-    // Same root
     pub fn add_abandon_staged_changes_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -179,7 +179,6 @@ impl DancesTestCase {
         Ok(abandoned_token)
     }
 
-    // Same root
     pub fn add_delete_holon_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -194,7 +193,6 @@ impl DancesTestCase {
         Ok(deleted_holon)
     }
 
-    // Creates new roots for each fixture holon
     pub fn add_commit_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -208,7 +206,28 @@ impl DancesTestCase {
         Ok(saved_tokens)
     }
 
-    // Same root, next snapshot
+    pub fn add_new_holon_step(
+        &mut self,
+        context: &dyn HolonsContextBehavior,
+        fixture_holons: &mut FixtureHolons,
+        source_reference: TransientReference,
+        properties: PropertyMap,
+        key: Option<MapString>,
+        expected_status: ResponseStatusCode,
+    ) -> Result<TestReference, HolonError> {
+        let expected_content = source_reference.clone_holon(context)?;
+        let source_token = fixture_holons.add_transient(expected_content);
+
+        self.steps.push(DanceTestStep::NewHolon {
+            source_token: source_token.clone(),
+            properties,
+            key,
+            expected_status,
+        });
+
+        Ok(source_token)
+    }
+
     pub fn add_add_related_holons_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -230,7 +249,7 @@ impl DancesTestCase {
         // // Update expected
         // expected_content.add_related_holons(context, relationship_name, holons_to_add)?;
         // // Mint next
-        // let next_token = fixture_holons.create_next_snapshot(
+        // let source_token = fixture_holons.add_token(
         //     source_token.root(),
         //     source_token.expected_state(),
         //     expected_content,
@@ -241,7 +260,6 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // Same root, next snapshot
     pub fn add_remove_properties_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -257,23 +275,18 @@ impl DancesTestCase {
             expected_content.remove_property_value(context, property)?;
         }
         // Mint next
-        let next_token = fixture_holons.create_next_snapshot(
-            source_token.root(),
-            source_token.expected_state(),
-            expected_content,
-        )?;
+        let new_source_token =
+            fixture_holons.add_token(source_token.expected_state(), expected_content)?;
 
         self.steps.push(DanceTestStep::RemoveProperties {
             source_token: source_token.clone(),
-            next_token: next_token.clone(),
             properties: properties.clone(),
             expected_status,
         });
 
-        Ok(next_token)
+        Ok(new_source_token)
     }
 
-    // Same root, next snapshot
     pub fn add_remove_related_holons_step(
         &mut self,
         source_token: TestReference, // "owning" source Holon, which owns the Relationship
@@ -294,66 +307,53 @@ impl DancesTestCase {
         // // Update expected
         // expected_content.remove_related_holons(context, relationship_name, holons_to_remove)?;
         // // Mint next
-        // let next_token = fixture_holons.create_next_snapshot(
+        // let source_token = fixture_holons.add_token(
         //     source_token.root(),
         //     source_token.expected_state(),
         //     expected_content,
         // )?;
 
-        // Ok(next_token)
+        // Ok(source_token)
 
         Ok(())
     }
 
-    // Creates a new root
     pub fn add_stage_holon_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
-        key: Option<MapString>, // Passing key for convenience from fixture, this is not necessary for the dance but helps with minting
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        // Cloning source in order to create a new fixture holon, and a new root
-        let new_root = source_token.expected_content().clone_holon(context)?;
-        let staged_token = {
-            if let Some(key) = key {
-                // Mint a staged-intent token indexed by key.
-                fixture_holons.add_staged_with_key(&new_root, key, new_root.clone())
-            } else {
-                // Mint a staged-intent token without a key.
-                fixture_holons.add_staged(&new_root, new_root.clone())
-            }
-        };
+        // Cloning source in order to create a new fixture holon
+        let expected_content = source_token.expected_content().clone_holon(context)?;
+        // Mint a staged-intent token
+        let staged_token = fixture_holons.add_staged(expected_content);
 
         self.steps.push(DanceTestStep::StageHolon {
-            source_token: source_token.clone(),
-            next_root_token: staged_token.clone(),
+            source_token: staged_token.clone(),
             expected_status,
         });
 
         Ok(staged_token)
     }
 
-    // Creates a new root
     pub fn add_stage_new_from_clone_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
-        new_key: MapString, // Passing the key is necessary for the dance  // TODO: Change to Option
+        new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        // Cloning source in order to create a new fixture holon, and a new root
-        let mut new_root = source_token.expected_content().clone_holon(context)?;
-        new_root.with_property_value(context, "Key", new_key.clone());
-        // Mint a staged-intent token indexed by key.
-        let staged_token =
-            fixture_holons.add_staged_with_key(&new_root, new_key.clone(), new_root.clone());
+        // Cloning source in order to create a new fixture holon
+        let mut expected_content = source_token.expected_content().clone_holon(context)?;
+        expected_content.with_property_value(context, "Key", new_key.clone())?;
+        // Mint a staged-intent token
+        let staged_token = fixture_holons.add_staged(expected_content);
 
         self.steps.push(DanceTestStep::StageNewFromClone {
-            source_token: source_token.clone(),
-            next_root_token: staged_token.clone(),
+            source_token: staged_token.clone(),
             new_key: new_key.clone(),
             expected_status,
         });
@@ -361,37 +361,26 @@ impl DancesTestCase {
         Ok(staged_token)
     }
 
-    // Creates a new root
     pub fn add_stage_new_version_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
-        key: Option<MapString>, // Passing key for convenience from fixture, this is not necessary for the dance but helps with minting
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
         // Cloning source in order to create a new fixture holon, and a new root
-        let new_root = source_token.expected_content().clone_holon(context)?;
-        let staged_token = {
-            if let Some(key) = key {
-                // Mint a staged-intent token for a new lineage, indexed by key.
-                fixture_holons.add_staged_with_key(&new_root, key, new_root.clone())
-            } else {
-                // Mint a staged-intent token for a new lineage, without a key.
-                fixture_holons.add_staged(&new_root, new_root.clone())
-            }
-        };
+        let expected_content = source_token.expected_content().clone_holon(context)?;
+        // Mint a staged-intent token
+        let staged_token = fixture_holons.add_staged(expected_content);
 
         self.steps.push(DanceTestStep::StageNewVersion {
-            source_token: source_token.clone(),
-            next_root_token: staged_token.clone(),
+            source_token: staged_token.clone(),
             expected_status,
         });
 
         Ok(staged_token)
     }
 
-    // Same root, next snapshot
     pub fn add_with_properties_step(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -407,20 +396,16 @@ impl DancesTestCase {
             expected_content.with_property_value(context, property, value)?;
         }
         // Mint next
-        let next_token = fixture_holons.create_next_snapshot(
-            source_token.root(),
-            source_token.expected_state(),
-            expected_content,
-        )?;
+        let new_source_token =
+            fixture_holons.add_token(source_token.expected_state(), expected_content)?;
 
         self.steps.push(DanceTestStep::WithProperties {
             source_token: source_token.clone(),
-            next_token: next_token.clone(),
             properties: properties.clone(),
             expected_status,
         });
 
-        Ok(next_token)
+        Ok(new_source_token)
     }
 }
 
@@ -467,6 +452,12 @@ pub enum DanceTestStep {
         expect_total_loader_holons: MapInteger,
     },
     MatchSavedContent,
+    NewHolon {
+        source_token: TestReference,
+        properties: PropertyMap,
+        key: Option<MapString>,
+        expected_status: ResponseStatusCode,
+    },
     PrintDatabase,
     QueryRelationships {
         source_token: TestReference,
@@ -475,7 +466,6 @@ pub enum DanceTestStep {
     },
     RemoveProperties {
         source_token: TestReference,
-        next_token: TestReference,
         properties: PropertyMap,
         expected_status: ResponseStatusCode,
     },
@@ -487,23 +477,19 @@ pub enum DanceTestStep {
     },
     StageHolon {
         source_token: TestReference,
-        next_root_token: TestReference,
         expected_status: ResponseStatusCode,
     },
     StageNewFromClone {
         source_token: TestReference,
-        next_root_token: TestReference,
         new_key: MapString,
         expected_status: ResponseStatusCode,
     },
     StageNewVersion {
         source_token: TestReference,
-        next_root_token: TestReference,
         expected_status: ResponseStatusCode,
     },
     WithProperties {
         source_token: TestReference,
-        next_token: TestReference,
         properties: PropertyMap,
         expected_status: ResponseStatusCode,
     },
@@ -574,6 +560,18 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")
             }
+            DanceTestStep::NewHolon {
+                source_token,
+                properties: _properties,
+                key,
+                expected_status,
+            } => {
+                write!(
+                    f,
+                    "NewHolon({:?}, with key: {:?}, expecting: {:?},)",
+                    source_token, key, expected_status
+                )
+            }
             DanceTestStep::PrintDatabase => {
                 write!(f, "PrintDatabase")
             }
@@ -584,12 +582,7 @@ impl core::fmt::Display for DanceTestStep {
             } => {
                 write!(f, "QueryRelationships for source:{:#?}, with query expression: {:#?}, expecting {:#?}", source_token, query_expression, expected_status)
             }
-            DanceTestStep::RemoveProperties {
-                source_token,
-                next_token: _next_token,
-                properties,
-                expected_status,
-            } => {
+            DanceTestStep::RemoveProperties { source_token, properties, expected_status } => {
                 write!(
                     f,
                     "RemoveProperties {:#?} for Holon {:#?}, expecting {:#?} ",
@@ -604,42 +597,24 @@ impl core::fmt::Display for DanceTestStep {
             } => {
                 write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", source_token, relationship_name, holons_to_remove.len(), expected_status)
             }
-            DanceTestStep::StageHolon {
-                source_token,
-                next_root_token: _next_root_token,
-                expected_status,
-            } => {
+            DanceTestStep::StageHolon { source_token, expected_status } => {
                 write!(f, "StageHolon({:?}, expecting: {:?},)", source_token, expected_status)
             }
-            DanceTestStep::StageNewVersion {
-                source_token,
-                next_root_token: _next_root_token,
-                expected_status,
-            } => {
+            DanceTestStep::StageNewVersion { source_token, expected_status } => {
                 write!(
                     f,
                     "NewVersion for source: {:#?}, expecting response: {:#?}",
                     source_token, expected_status
                 )
             }
-            DanceTestStep::StageNewFromClone {
-                source_token,
-                next_root_token: _next_root_token,
-                new_key,
-                expected_status,
-            } => {
+            DanceTestStep::StageNewFromClone { source_token, new_key, expected_status } => {
                 write!(
                     f,
                     "StageNewFromClone for original_holon: {:#?}, with new key: {:?}, expecting response: {:#?}",
                     source_token, new_key, expected_status
                 )
             }
-            DanceTestStep::WithProperties {
-                source_token,
-                next_token: _next_token,
-                properties,
-                expected_status,
-            } => {
+            DanceTestStep::WithProperties { source_token, properties, expected_status } => {
                 write!(
                     f,
                     "WithProperties for Holon {:#?} with properties: {:#?}, expecting {:#?} ",

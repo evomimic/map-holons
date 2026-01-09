@@ -75,7 +75,6 @@ pub async fn execute_abandon_staged_changes(
         panic!("Expected abandon_staged_changes to return a StagedRef response, but it didn't");
     }
 
-    // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-    //             so later steps can look it up with the same token.
+    // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
     state.record_resolved(resolved_reference);
 }

@@ -59,9 +59,8 @@ pub async fn execute_delete_holon(
     );
     info!("Confirmed Holon deletion!");
 
-    // 6. RECORD — tie the new handle to the **source token’s TemporaryId**
-    //             so later steps can look it up with the same token.
-    let resulting_reference = ResultingReference::Deleted(source_reference);
+    // 6. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
+    let resulting_reference = ResultingReference::Deleted;
     let resolved_reference =
         ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
 

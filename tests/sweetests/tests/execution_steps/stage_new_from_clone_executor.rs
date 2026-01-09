@@ -16,7 +16,6 @@ use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState,
 pub async fn execute_stage_new_from_clone(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    next_root_token: TestReference,
     new_key: MapString,
     expected_status: ResponseStatusCode,
 ) {
@@ -48,11 +47,10 @@ pub async fn execute_stage_new_from_clone(
         };
         let resulting_reference = ResultingReference::from(response_holon_reference);
         let resolved_reference =
-            ResolvedTestReference::from_reference_parts(next_root_token, resulting_reference);
+            ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
         resolved_reference.assert_essential_content_eq(context).unwrap();
 
-        // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-        //             so later steps can look it up with the same token.
+        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
         state.record_resolved(resolved_reference);
     }
 }

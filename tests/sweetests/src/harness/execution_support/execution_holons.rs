@@ -42,7 +42,7 @@ impl ExecutionHolons {
     ///
     /// Overwrites any previous entry for the same `TemporaryId` (most recent wins).
     pub fn record_resolved(&mut self, resolved: ResolvedTestReference) {
-        self.by_temporary_id.insert(resolved.source_token.root_id(), resolved);
+        self.by_temporary_id.insert(resolved.source_token.token_id(), resolved);
     }
 
     /// Convenience: construct and record from a source token + resulting handle.
@@ -70,7 +70,7 @@ impl ExecutionHolons {
     /// - `ExpectedState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `ExpectedState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `ExpectedState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
-    /// - `ExpectedState::Deleted`  → return Error, caller should use `get_resulting_reference_for` instead
+    /// - `ExpectedState::Deleted`  → return Error
     ///
     /// No Nursery/DHT fallback is performed. Missing entries are treated as authoring/ordering errors.
     pub fn lookup_holon_reference(
@@ -91,10 +91,10 @@ impl ExecutionHolons {
             expected_state => {
                 let resolved = self
                     .by_temporary_id
-                    .get(&token.root_id())
+                    .get(&token.token_id())
                     .ok_or_else(|| HolonError::InvalidHolonReference(format!(
                         "ExecutionHolons::lookup: no realization recorded for TemporaryId {:?} (expected {:?})",
-                        token.root_id(),
+                        token.token_id(),
                         token.expected_state()
                     )))?;
                 let holon_reference = &resolved.resulting_reference.get_holon_reference()?;
@@ -153,13 +153,6 @@ impl ExecutionHolons {
     /// Lookup the full resolved entry by source token’s `TemporaryId`.
     pub fn get_resolved(&self, temporary_id: &TemporaryId) -> Option<&ResolvedTestReference> {
         self.by_temporary_id.get(temporary_id)
-    }
-
-    /// Directly fetch the **resulting** `HolonReference` for a token, if recorded.
-    ///
-    /// Use `lookup_holon_reference` if you also need expected-state validation.
-    pub fn get_resulting_reference_for(&self, token: &TestReference) -> Option<ResultingReference> {
-        self.by_temporary_id.get(&token.root_id()).map(|r| r.resulting_reference.clone())
     }
 
     /// True if no realized entries have been recorded yet.

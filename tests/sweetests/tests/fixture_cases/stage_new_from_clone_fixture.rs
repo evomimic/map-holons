@@ -6,7 +6,9 @@ use holons_core::{
     dances::ResponseStatusCode, new_holon, reference_layer::TransientReference,
     HolonsContextBehavior, ReadableHolon, WritableHolon,
 };
-use holons_test::{dance_test_language::DancesTestCase, fixture_holons::FixtureHolons};
+use holons_test::{
+    dance_test_language::DancesTestCase, fixture_holons::FixtureHolons, TestReference,
+};
 use type_names::ToPropertyName;
 
 use crate::{
@@ -39,11 +41,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let transient_source_key = MapString("book:transient-source".to_string());
     let transient_source = new_holon(fixture_context.as_ref(), Some(transient_source_key.clone()))?;
     // Mint transient source token
-    let transient_token = fixture_holons.add_transient_with_key(
-        &transient_source.clone(),
-        transient_source_key.clone(),
-        transient_source,
-    );
+    let transient_token = fixture_holons.add_transient(transient_source);
     // Expect BadRequest
     test_case.add_stage_new_from_clone_step(
         &*fixture_context,
@@ -55,14 +53,18 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // TODO:  Find a better way to attempt a non-OK expected response for this step without minting a token and having to subtract from fixture holons saved count
 
     // ── PHASE B — Setup canonical holons, then clone FROM STAGED ──────────────────
-    setup_book_author_steps_with_context(
-        fixture_context.as_ref(),
+    let fixture_tuple = setup_book_author_steps_with_context(
+        &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
     )?;
+
+    let _relationship_name = fixture_tuple.0;
+    let fixture_bindings = fixture_tuple.1;
+
     let book_key = MapString(BOOK_KEY.to_string());
     let from_staged_key = MapString("book:clone:from-staged".to_string());
-    let book_staged_token = fixture_holons.get_latest_by_key(&book_key)?;
+    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  Stage New From Clone  //
     let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
@@ -89,7 +91,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 1  //
-    let _saved_holons = test_case.add_commit_step(
+    let saved_tokens = test_case.add_commit_step(
         &*fixture_context,
         &mut fixture_holons,
         ResponseStatusCode::OK,
@@ -101,14 +103,21 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // have expected_state == Saved inside `fixture_holons`.
     let from_saved_key = MapString("book:clone:from-saved".to_string());
 
-    // Retrieve saved-intent from latest in lineage
-    let book_saved_token = fixture_holons.get_latest_by_key(&from_staged_key)?;
+    // Retrieve book saved-intent token
+    let book_saved_token: TestReference = saved_tokens
+        .iter()
+        .filter(|t| {
+            t.expected_content().essential_content(&*fixture_context).unwrap().key.unwrap()
+                == book_key
+        })
+        .collect::<Vec<&TestReference>>()[0]
+        .clone();
 
     //  Stage New From Clone  //
     let clone_from_saved_staged = test_case.add_stage_new_from_clone_step(
         &*fixture_context,
         &mut fixture_holons,
-        book_saved_token.clone(),
+        book_saved_token,
         from_saved_key.clone(),
         ResponseStatusCode::OK,
     )?;
@@ -131,7 +140,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 2  //
-    let _saved_holons = test_case.add_commit_step(
+    let _saved_tokens = test_case.add_commit_step(
         &*fixture_context,
         &mut fixture_holons,
         ResponseStatusCode::OK,

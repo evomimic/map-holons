@@ -67,8 +67,7 @@ pub async fn execute_add_related_holons(
         resolved_reference.assert_essential_content_eq(context).unwrap();
         info!("Success! Updated holon's essential content matched expected");
 
-        // 6. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-        //             so later steps can look it up with the same token.
+        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
         state.record_resolved(resolved_reference);
     }
 }
