@@ -39,4 +39,5 @@ jobs:
       # ✅ Step 3: Run your tests inside Nix shell
       - name: Install and test
         run: |
+          export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
           nix develop --command bash -c "npm install && npm test"
