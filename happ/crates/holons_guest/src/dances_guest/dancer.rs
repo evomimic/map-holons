@@ -224,7 +224,7 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
     let space_manager = context.get_space_manager();
 
     // Export staged holons as a single SerializableHolonPool
-    let serializable_staged_pool = match space_manager.export_staged_holons() {
+    let serializable_staged_pool = match context.export_staged_holons() {
         Ok(pool) => pool,
         Err(error) => {
             warn!("Failed to export staged holons while restoring session state: {:?}", error);
@@ -233,7 +233,7 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
     };
 
     // Export transient holons as a single SerializableHolonPool
-    let serializable_transient_pool = match space_manager.export_transient_holons() {
+    let serializable_transient_pool = match context.export_transient_holons() {
         Ok(pool) => pool,
         Err(error) => {
             warn!("Failed to export transient holons while restoring session state: {:?}", error);

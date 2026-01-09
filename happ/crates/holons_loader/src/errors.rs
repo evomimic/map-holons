@@ -154,7 +154,7 @@ fn create_empty_error_holon(
     let key = MapString(format!("loader-error-{id}"));
 
     // Obtain a handle to the TransientHolonBehavior service from the Space Manager.
-    let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+    let transient_behavior = context.get_transient_behavior_service();
 
     // Create a new, empty transient holon using the generated key.
     let transient_reference = transient_behavior.create_empty(key)?;
@@ -196,7 +196,7 @@ fn resolve_holon_error_type_descriptor(
 
     // 1) Prefer staged (Nursery) by base key
     let staged_matches = {
-        let staging_behavior = context.get_space_manager().get_staging_service();
+        let staging_behavior = context.get_staging_service();
 
         // Query staged holons by base key.
         staging_behavior.get_staged_holons_by_base_key(&key)?

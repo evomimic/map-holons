@@ -56,7 +56,7 @@ impl TransientReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get TransientManagerAccess
-        let transient_behavior = context.get_space_manager().get_transient_manager_access();
+        let transient_behavior = context.get_transient_manager_access();
 
         // Retrieve the holon by its TemporaryId
         let rc_holon = transient_behavior.get_holon_by_id(&self.id)?;
@@ -125,7 +125,7 @@ impl ReadableHolonImpl for TransientReference {
         let rc_holon = self.get_rc_holon(context)?;
         let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
-        let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior = context.get_transient_behavior_service();
 
         let cloned_holon_transient_reference =
             transient_behavior.new_from_clone_model(holon_clone_model)?;

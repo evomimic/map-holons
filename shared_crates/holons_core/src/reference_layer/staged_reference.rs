@@ -98,7 +98,7 @@ impl StagedReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
-        let nursery_access = context.get_space_manager().get_nursery_access();
+        let nursery_access = context.get_nursery_access();
 
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_access.get_holon_by_id(&self.id)?;
@@ -162,7 +162,7 @@ impl ReadableHolonImpl for StagedReference {
             })?
             .holon_clone_model();
 
-        let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior = context.get_transient_behavior_service();
 
         let cloned_holon_transient_reference =
             transient_behavior.new_from_clone_model(holon_clone_model)?;

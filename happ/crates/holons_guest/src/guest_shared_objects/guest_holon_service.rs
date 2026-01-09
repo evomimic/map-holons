@@ -70,8 +70,7 @@ impl GuestHolonService {
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
-        let transient_behavior_service =
-            context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior_service = context.get_transient_behavior_service();
 
         // Create new (empty) TransientHolon
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
@@ -172,10 +171,7 @@ impl GuestHolonService {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Arc<dyn NurseryAccess> {
-        // Retrieve the space manager from the context
-        let space_manager = context.get_space_manager();
-
-        space_manager.get_nursery_access()
+        context.get_nursery_access()
     }
 }
 
