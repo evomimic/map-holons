@@ -15,17 +15,12 @@
 //!
 //! ## Construction and visibility
 //! - Fixtures **cannot** construct `TestReference` directly.
-//! - Tokens are minted **only** by `FixtureHolons` (the factory/registry).
-//! - All fields are private; constructors and accessors are `pub(crate)` so only
-//!   harness internals can inspect or mutate them.
+//! - Tokens are minted **only** by `FixtureHolons` (the factory/registry) via pub(crate) exposure only.
+//! - All fields are private.
+//! - Tokens are immutable, representing a frozen "snapshot".
 
-use base_types::{MapString, ToBaseValue};
 use core_types::TemporaryId;
-use holons_core::{
-    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    HolonsContextBehavior,
-};
-use holons_prelude::prelude::ToPropertyName;
+use holons_core::{ reference_layer::TransientReference};
 
 /// Declarative intent for a test-scoped reference.
 ///
@@ -62,19 +57,17 @@ pub enum ExpectedState {
 /// - Update intent (e.g., bulk flip staged → saved in fixtures).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
-    root: TransientReference, // carries the TemporaryId used to resolve the ExecutionHolon
     expected_state: ExpectedState, // Transient | Staged | Saved | Abandoned | Deleted
-    expected_content: TransientReference, // FixtureHolon pointer with expected essential content, used for comparing expected (fixture) to actual (resolved)
+    expected_content: TransientReference, // carries the TemporaryId used to resolve the ExecutionHolon and expected essential content
 }
 
 impl TestReference {
     /// Crate-internal constructor. Only [`FixtureHolons`] may mint tokens.
-    pub(crate) fn new(
-        root: TransientReference,
+    pub fn new(
         expected_state: ExpectedState,
         expected_content: TransientReference,
     ) -> Self {
-        Self { root, expected_state, expected_content }
+        Self { expected_state, expected_content }
     }
 
     pub fn expected_content(&self) -> &TransientReference {
@@ -83,14 +76,6 @@ impl TestReference {
 
     pub fn expected_state(&self) -> ExpectedState {
         self.expected_state
-    }
-
-    pub fn root_id(&self) -> TemporaryId {
-        self.root.temporary_id()
-    }
-
-    pub fn root(&self) -> &TransientReference {
-        &self.root
     }
 
     pub fn token_id(&self) -> TemporaryId {

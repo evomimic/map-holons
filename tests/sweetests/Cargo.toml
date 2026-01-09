@@ -44,6 +44,9 @@ path = "../../shared_crates/type_system/type_names"
 [dependencies.core_types]
 path = "../../shared_crates/type_system/core_types"
 
+[dependencies.integrity_core_types]
+path = "../../shared_crates/type_system/integrity_core_types"
+
 [dependencies.base_types]
 path = "../../shared_crates/type_system/base_types"
 

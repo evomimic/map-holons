@@ -1,6 +1,6 @@
 // #![allow(dead_code)]
 
-use holons_test::{DancesTestCase, FixtureHolons, TestReference};
+use holons_test::{fixture_bindings, DancesTestCase, FixtureHolons, TestReference};
 use rstest::*;
 
 use holons_prelude::prelude::*;
@@ -30,14 +30,17 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
-    let relationship_name = setup_book_author_steps_with_context(
+    let fixture_tuple = setup_book_author_steps_with_context(
         &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
     )?;
 
+    let relationship_name = fixture_tuple.0;
+    let fixture_bindings = fixture_tuple.1;
+
     let person_1_staged_token =
-        fixture_holons.get_latest_by_key(&MapString(PERSON_1_KEY.to_string()))?;
+        fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Person1' label").clone();
 
     //====//``
 
@@ -46,7 +49,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // abandoned Holon return NotAccessible Errors
     let abandoned_person_1 = test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
-        person_1_staged_token.clone(),
+        person_1_staged_token,
         ResponseStatusCode::OK,
     )?;
 
@@ -79,17 +82,14 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         "example abandon1",
         "test1",
     )?;
-    // Mint a transient-intent token
-    let abandoned_holon_1_transient_token = fixture_holons.add_transient_with_key(
-        &abandoned_holon_1_transient_reference.clone(),
-        abandoned_holon_1_key,
-        abandoned_holon_1_transient_reference.clone(),
-    );
+    // Mint a transient-intent token to be used as a source for the stage step
+    let abandoned_holon_1_transient_token =
+        fixture_holons.add_transient(abandoned_holon_1_transient_reference);
+    // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_1_transient_token,
-        Some(MapString("Abandon1".to_string())),
         ResponseStatusCode::OK,
     )?;
 
@@ -102,16 +102,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         "example abandon2",
         "test2",
     )?;
-    let abandoned_holon_2_transient_token = fixture_holons.add_transient_with_key(
-        &abandoned_holon_2_transient_reference.clone(),
-        abandoned_holon_2_key,
-        abandoned_holon_2_transient_reference.clone(),
-    );
+    let abandoned_holon_2_transient_token =
+        fixture_holons.add_transient(abandoned_holon_2_transient_reference);
     let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_2_transient_token,
-        Some(MapString("Abandon2".to_string())),
         ResponseStatusCode::OK,
     )?;
 
@@ -140,8 +136,13 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // ADD STEP: QUERY RELATIONSHIPS //
     let query_expression = QueryExpression::new(relationship_name.clone());
-    let book_token = fixture_holons.get_latest_by_key(&MapString(BOOK_KEY.to_string()))?;
-    test_case.add_query_relationships_step(book_token, query_expression, ResponseStatusCode::OK)?;
+    let book_staged_token =
+        fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
+    test_case.add_query_relationships_step(
+        book_staged_token,
+        query_expression,
+        ResponseStatusCode::OK,
+    )?;
 
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);

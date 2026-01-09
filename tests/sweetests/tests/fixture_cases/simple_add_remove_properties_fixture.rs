@@ -28,7 +28,13 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     );
     let fixture_context = init_fixture_context();
     let mut fixture_holons = FixtureHolons::new();
-    setup_book_author_steps_with_context(&*fixture_context, &mut test_case, &mut fixture_holons)?;
+    let fixture_tuple = setup_book_author_steps_with_context(
+        &*fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+    )?;
+
+    let fixture_bindings = fixture_tuple.1;
     // == //
 
     // -- ADD STEP -- //
@@ -37,11 +43,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     let example_key = MapString("EXAMPLE_KEY".to_string());
     let example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
     // Mint transient source token
-    let example_transient_token = fixture_holons.add_transient_with_key(
-        &example_transient_reference,
-        example_key.clone(),
-        example_transient_reference.clone(),
-    );
+    let example_transient_token = fixture_holons.add_transient(example_transient_reference);
     // Add properties
     let mut example_properties = PropertyMap::new();
     example_properties
@@ -60,10 +62,8 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     )?;
 
     // BOOK (Staged) //
-    let book_key = MapString(BOOK_KEY.to_string());
-    let book_source_token = fixture_holons
-        .get_latest_by_key(&book_key)
-        .expect(&format!("Id must exist in FixtureHolons, for key: {:?}", book_key));
+    let _book_key = MapString(BOOK_KEY.to_string());
+    let book_source_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
     // Add
     let mut book_properties = PropertyMap::new();
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());

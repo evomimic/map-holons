@@ -1,5 +1,5 @@
 use holons_core::core_shared_objects::holon::EssentialRelationshipMap;
-use holons_test::{DancesTestCase, FixtureHolons};
+use holons_test::{DancesTestCase, FixtureHolons, TestReference};
 use rstest::*;
 
 use holons_prelude::prelude::*;
@@ -32,17 +32,24 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
-    let _relationship_name = setup_book_author_steps_with_context(
+    let fixture_tuple = setup_book_author_steps_with_context(
         &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
     )?;
 
+    let _relationship_name = fixture_tuple.0;
+    let _fixture_bindings = fixture_tuple.1;
+
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    let saved_tokens = test_case.add_commit_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+    )?;
 
     //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
@@ -52,14 +59,20 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_saved_token = fixture_holons.get_latest_by_key(&book_key)?;
+    let book_saved_token: TestReference = saved_tokens
+        .iter()
+        .filter(|t| {
+            t.expected_content().essential_content(&*fixture_context).unwrap().key.unwrap()
+                == book_key
+        })
+        .collect::<Vec<&TestReference>>()[0]
+        .clone();
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let staged_clone = test_case.add_stage_new_version_step(
         &*fixture_context,
         &mut fixture_holons,
         book_saved_token,
-        Some(book_key.clone()),
         ResponseStatusCode::OK,
     )?;
 
