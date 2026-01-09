@@ -13,13 +13,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 🔴 REQUIRED: minimal system bootstrap so bindgen/libclang can start
-
+      # ✅ Step 1: Ensure system has dynamic libs for libclang and C++
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-14-dev libstdc++6 clang
+          sudo apt-get install -y \
+            libclang-dev \
+            libstdc++6 \
+            clang \
+            cmake \
+            pkg-config
 
+      # ✅ Step 2: Setup Nix (used for Holochain/holonix)
       - name: Install nix
         uses: cachix/install-nix-action@v27
         with:
@@ -31,6 +36,7 @@ jobs:
         with:
           name: holochain-ci
 
+      # ✅ Step 3: Run your tests inside Nix shell
       - name: Install and test
         run: |
-          nix develop --command bash -c "npm i && npm t"
+          nix develop --command bash -c "npm install && npm test"
