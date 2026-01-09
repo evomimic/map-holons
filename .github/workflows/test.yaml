@@ -2,18 +2,17 @@ name: "test"
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   testbuild:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
 
-      # ✅ Step 1: Ensure system has dynamic libs for libclang and C++
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -24,19 +23,16 @@ jobs:
             cmake \
             pkg-config
 
-      # ✅ Step 2: Setup Nix (used for Holochain/holonix)
-      - name: Install nix
+      - name: Install Nix
         uses: cachix/install-nix-action@v27
         with:
           extra_nix_config: |
-            experimental-features = flakes nix-command
+            experimental-features = nix-command flakes
 
       - uses: cachix/cachix-action@v15
         with:
           name: holochain-ci
 
-      # ✅ Step 3: Run your tests inside Nix shell
       - name: Install and test
         run: |
-          export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
           nix develop --command bash -c "npm install && npm test"
