@@ -18,7 +18,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libstdc++6 clang libclang-common-18-d
+          sudo apt-get install -y libclang-14-dev libstdc++6 clang
 
       - name: Install nix
         uses: cachix/install-nix-action@v27
