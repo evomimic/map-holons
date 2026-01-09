@@ -176,3 +176,4 @@ If you’re unsure where code belongs, ask:
 If the answer is **no**, it does not belong in `shared/` or `happ/`.
 
 That single heuristic will prevent most architectural violations.
+
