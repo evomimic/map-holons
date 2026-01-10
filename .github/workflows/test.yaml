@@ -2,30 +2,32 @@ name: "test"
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   testbuild:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v4
 
-      # 🔴 REQUIRED: minimal system bootstrap so bindgen/libclang can start
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-14-dev libstdc++6 clang
+          sudo apt-get install -y \
+            libclang-dev \
+            libstdc++6 \
+            clang \
+            cmake \
+            pkg-config
 
-      - name: Install nix
+      - name: Install Nix
         uses: cachix/install-nix-action@v27
         with:
-          install_url: https://releases.nixos.org/nix/nix-2.23.3/install
           extra_nix_config: |
-            experimental-features = flakes nix-command
+            experimental-features = nix-command flakes
 
       - uses: cachix/cachix-action@v15
         with:
@@ -33,4 +35,4 @@ jobs:
 
       - name: Install and test
         run: |
-          nix develop --command bash -c "npm i && npm t"
+          nix develop --command bash -c "npm install && npm test"
