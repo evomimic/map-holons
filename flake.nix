@@ -40,6 +40,10 @@
             shellHook = ''
               export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
 
+              # ✅ Make sure system headers like stdlib.h are found
+              export NIX_CFLAGS_COMPILE="-isystem ${pkgs.glibc.dev}/include $NIX_CFLAGS_COMPILE"
+              export NIX_LDFLAGS="-L${pkgs.glibc}/lib $NIX_LDFLAGS"
+
               # Use nix-provided libclang + LLVM runtime
               export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
               export LD_LIBRARY_PATH="${pkgs.llvmPackages.llvm}/lib:$LD_LIBRARY_PATH"
