@@ -22,14 +22,14 @@
 
             # Extra native tools (incl. libclang + libstdc++ for CI)
             nativeBuildInputs = [
-                          pkgs.libsodium
-                          pkgs.pkg-config
-                          pkgs.llvmPackages.libunwind
-                          pkgs.llvmPackages.libclang        # ✅ Required by bindgen
-                          pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
-                          pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
-                          pkgs.cmake
-                        ];
+              pkgs.libsodium
+              pkgs.pkg-config
+              pkgs.llvmPackages.libunwind
+              pkgs.llvmPackages.libclang        # ✅ Required by bindgen
+              pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
+              pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
+              pkgs.cmake
+            ];
 
             packages = with pkgs; [
               nodejs_22
@@ -41,12 +41,12 @@
 
               # Use nix-provided libclang + LLVM runtime
               export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-              export LD_LIBRARY_PATH="${pkgs.llvmPackages.llvm.lib}/lib:$LD_LIBRARY_PATH"
+              export LD_LIBRARY_PATH="${pkgs.llvmPackages.llvm}/lib:$LD_LIBRARY_PATH"
 
               export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
               export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
             '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
-              ...
+              # macOS-specific build settings go here
             '';
           };
         };
