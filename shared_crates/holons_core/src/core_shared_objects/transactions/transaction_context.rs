@@ -28,14 +28,14 @@ use super::TxId;
 pub struct TransactionContext {
     tx_id: TxId,
     is_open: AtomicBool,
-    space_manager: Weak<HolonSpaceManager>,
+    space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
 }
 
 impl TransactionContext {
     /// Creates a new transaction context with its own staging and transient pools.
-    pub(super) fn new(tx_id: TxId, space_manager: Weak<HolonSpaceManager>) -> Self {
+    pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Self {
         // Store transaction identity and space linkage.
         // Construct the transaction-owned staging and transient pools.
         Self {
@@ -57,12 +57,9 @@ impl TransactionContext {
         self.is_open.load(Ordering::Acquire)
     }
 
-    /// Returns a strong reference to the space manager, if it is still alive.
-    pub fn space_manager(&self) -> Result<Arc<HolonSpaceManager>, HolonError> {
-        // Upgrade the weak reference.
-        self.space_manager
-            .upgrade()
-            .ok_or_else(|| HolonError::ServiceNotAvailable("HolonSpaceManager".into()))
+    /// Returns a strong reference to the space manager.
+    pub fn space_manager(&self) -> Arc<HolonSpaceManager> {
+        Arc::clone(&self.space_manager)
     }
 
     /// Provides access to the transaction-owned nursery.
@@ -76,9 +73,8 @@ impl TransactionContext {
     }
 
     fn require_space_manager(&self) -> Arc<HolonSpaceManager> {
-        // Space managers are expected to outlive their transactions.
-        self.space_manager()
-            .expect("HolonSpaceManager unavailable for TransactionContext")
+        // Space manager lifetime is guaranteed by the strong Arc stored on the context.
+        Arc::clone(&self.space_manager)
     }
 }
 
@@ -134,15 +130,15 @@ impl HolonsContextBehavior for TransactionContext {
     }
 
     fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {
-        self.space_manager()?.get_dance_initiator()
+        self.require_space_manager().get_dance_initiator()
     }
 
     fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
-        self.space_manager()?.get_space_holon()
+        self.require_space_manager().get_space_holon()
     }
 
     fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError> {
-        self.space_manager()?.set_space_holon(space)
+        self.require_space_manager().set_space_holon(space)
     }
 
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
