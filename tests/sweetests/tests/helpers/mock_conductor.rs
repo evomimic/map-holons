@@ -131,8 +131,6 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
 ///     holon_service,
 ///     None,
 ///     ServiceRoutingPolicy::Combined,
-///     nursery,
-///     transient_manager,
 /// );
 /// ```
 ///

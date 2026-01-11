@@ -122,9 +122,7 @@ impl Default for TransactionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core_shared_objects::holon_pool::SerializableHolonPool;
-    use crate::core_shared_objects::{Holon, HolonCollection, Nursery, ServiceRoutingPolicy};
-    use crate::core_shared_objects::{RelationshipMap, TransientHolonManager};
+    use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
     use crate::reference_layer::{HolonServiceApi, HolonsContextBehavior, TransientReference};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
     use std::any::Any;
@@ -192,17 +190,12 @@ mod tests {
     fn build_space_manager() -> Arc<HolonSpaceManager> {
         // Step 1: Create the minimal Holon service stub.
         let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
-        // Step 2: Construct an empty nursery and transient manager (legacy space-manager constructor).
-        let nursery = Nursery::new();
-        let transient_manager = TransientHolonManager::new_empty();
-        // Step 3: Build the space manager with a restrictive cache policy.
+        // Step 2: Build the space manager with a restrictive cache policy.
         Arc::new(HolonSpaceManager::new_with_managers(
             None,
             holon_service,
             None,
             ServiceRoutingPolicy::BlockExternal,
-            nursery,
-            transient_manager,
         ))
     }
 

@@ -2,8 +2,8 @@ use crate::guest_shared_objects::GuestHolonService;
 use core_types::HolonError;
 use holons_core::{
     core_shared_objects::{
-        holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager, Nursery,
-        ServiceRoutingPolicy, TransientHolonManager,
+        holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager,
+        ServiceRoutingPolicy,
     },
     reference_layer::{HolonReference, HolonsContextBehavior},
     HolonServiceApi,
@@ -59,8 +59,6 @@ pub fn init_guest_context(
         guest_holon_service,
         local_space_holon,
         ServiceRoutingPolicy::Combined,
-        Nursery::new(),
-        TransientHolonManager::new_empty(),
     ));
 
     // Step 3: Open the default transaction for this space.
@@ -73,10 +71,6 @@ pub fn init_guest_context(
     transaction_context.import_transient_holons(transient_holons);
 
     // Step 5: Register internal nursery access for commit.
-    //
-    // NOTE: This uses your existing GuestHolonService API which expects
-    // Arc<RwLock<dyn NurseryAccessInternal>>.
-    // Nursery::clone() is shallow (it shares the underlying Arc<RwLock<...>>).
     let nursery_for_internal_access = transaction_context.nursery();
     guest_holon_service_concrete.register_internal_access(Arc::new(RwLock::new(
         nursery_for_internal_access.as_ref().clone(),

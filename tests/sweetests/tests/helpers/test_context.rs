@@ -5,10 +5,8 @@ use holons_client::ClientHolonService;
 use holons_prelude::prelude::*;
 
 use holons_core::{
-    core_shared_objects::{
-        holon_pool::TransientHolonPool, space_manager::HolonSpaceManager, TransientHolonManager,
-    },
-    {HolonPool, HolonServiceApi, Nursery, ServiceRoutingPolicy},
+    core_shared_objects::space_manager::HolonSpaceManager,
+    {HolonServiceApi, ServiceRoutingPolicy},
 };
 
 use holons_test::{TestExecutionState, TestSessionState, dance_test_language::DancesTestCase};
@@ -51,23 +49,15 @@ pub fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
-    // Step 2: Create an empty Nursery for the client
-    let nursery = Nursery::new();
-
-    // Step 3: Create an empty TransientHolonManager for the client
-    let transient_manager = TransientHolonManager::new_empty();
-
-    // Step 4: Setup trust channel and Inject DanceInitiator
+    // Step 2: Setup trust channel and Inject DanceInitiator
     // SKIP -- Fixtures cannot initiate dances!
 
-    // Step 5: Create a new `HolonSpaceManager` wrapped in `Arc`
+    // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
-        nursery,
-        transient_manager,
     ));
 
     // Wrap in `TestHolonsContext` and return as trait object
@@ -76,8 +66,6 @@ pub fn init_fixture_context() -> Arc<dyn HolonsContextBehavior> {
 
 /// Initializes a new test context with a fresh `HolonSpaceManager` with parameters:
 /// - A default `HolonServiceApi` implementation (`ClientHolonService`).
-/// - An **empty nursery** (no staged holons).
-/// - A populated transient_manager from the test_session_state.
 /// - A space manager configured with guest-specific routing policies.
 ///
 /// # Returns
@@ -88,25 +76,15 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<dyn Holons
     // Step 1: Create the ClientHolonService
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
-    // Step 2: Create an empty Nursery for the client
-    let nursery = Nursery::new();
-
-    // Step 3: Set transient holons in client TransientManager
-    let transient_manager = TransientHolonManager::new_with_pool(TransientHolonPool(
-        HolonPool::from(test_case.test_session_state.get_transient_holons().clone()),
-    ));
-
-    // Step 4: Setup DanceInitiator
+    // Step 2: Setup DanceInitiator
     let dance_initiator = create_test_dance_initiator().await;
 
-    // Step 5: Create a new `HolonSpaceManager` wrapped in `Arc`
+    // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         Some(dance_initiator),
         holon_service, // Service for holons
         None,          // No local space holon initially
         ServiceRoutingPolicy::Combined,
-        nursery,
-        transient_manager,
     ));
 
     // Wrap in `TestHolonsContext` and return as trait object

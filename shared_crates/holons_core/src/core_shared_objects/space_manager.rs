@@ -2,9 +2,7 @@ use core_types::HolonError;
 
 use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
 use crate::core_shared_objects::transactions::TransactionManager;
-use crate::core_shared_objects::{
-    HolonCacheAccess, HolonCacheManager, Nursery, ServiceRoutingPolicy, TransientHolonManager,
-};
+use crate::core_shared_objects::{HolonCacheAccess, HolonCacheManager, ServiceRoutingPolicy};
 use crate::reference_layer::{HolonReference, HolonServiceApi, HolonSpaceBehavior};
 use crate::TransientCollection;
 
@@ -26,12 +24,6 @@ pub struct HolonSpaceManager {
     /// Optional reference to the space holon (authoritative context for other holons).
     local_holon_space: RwLock<Option<HolonReference>>,
 
-    /// The Nursery manages **staged holons** for commit operations.
-    nursery: Arc<Nursery>,
-
-    /// Manages **transient holons** .
-    transient_manager: Arc<TransientHolonManager>,
-
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
     transient_state: Arc<RwLock<TransientCollection>>,
 
@@ -43,17 +35,12 @@ impl HolonSpaceManager {
     /// Creates a new `HolonSpaceManager` from the given session data.
     ///
     /// This function initializes the `HolonSpaceManager` with:
-    /// - A **pre-initialized Nursery** (empty if no staged holons exist).
-    /// - A **pre-initialized TransientHolonManager** (empty if no transient holons exist).
     /// - A configured cache request router.
     ///
     /// # Parameters
     /// - `holon_service`: The holon service used for accessing and managing holons.
     /// - `local_holon_space`: An optional reference to the local holon space.
     /// - `cache_routing_policy`: Specifies how cache requests should be routed.
-    /// - 'nursery': Initiliazed either empty or containing staged holons.
-    /// - 'transient_manager': Initiliazed either empty or containing transient holons.
-    ///
     /// # Returns
     /// A new instance of `HolonSpaceManager`
     pub fn new_with_managers(
@@ -61,8 +48,6 @@ impl HolonSpaceManager {
         holon_service: Arc<dyn HolonServiceApi>,
         local_holon_space: Option<HolonReference>,
         cache_routing_policy: ServiceRoutingPolicy,
-        nursery: Nursery,
-        transient_manager: TransientHolonManager,
     ) -> Self {
         // Step 1: Initialize the Local Cache Manager inside Arc<RwLock>
         let local_cache_manager =
@@ -74,23 +59,15 @@ impl HolonSpaceManager {
             cache_routing_policy,
         ));
 
-        // Step 3: Wrap the provided `Nursery` in an `Arc<Nursery>`
-        let nursery_arc = Arc::new(nursery);
-
-        // Step 4: Wrap the provided `TransientHolonManager` in an `Arc<TransientHolonManager>`
-        let transient_arc = Arc::new(transient_manager);
-
-        // Step 5: Initialize the per-space transaction manager.
+        // Step 3: Initialize the per-space transaction manager.
         let transaction_manager = Arc::new(TransactionManager::new());
 
-        // Step 6: Initialize and return the HolonSpaceManager with thread-safe fields
+        // Step 4: Initialize and return the HolonSpaceManager with thread-safe fields
         Self {
             cache_request_router,
             dance_initiator,
             holon_service,
             local_holon_space: RwLock::new(local_holon_space),
-            nursery: nursery_arc,
-            transient_manager: transient_arc,
             transient_state: Arc::new(RwLock::new(TransientCollection::new())),
             transaction_manager,
         }
@@ -160,17 +137,14 @@ impl HolonSpaceBehavior for HolonSpaceManager {
 impl Debug for HolonSpaceManager {
     /// Implements custom `Debug` formatting for `HolonSpaceManager`.
     ///
-    /// This method ensures that the `internal_nursery_access` field is **not printed** to avoid
-    /// redundant logging, as it holds a **second reference** to the same `Nursery` instance.
+    /// This method avoids printing non-essential internals to keep logs readable.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HolonSpaceManager")
             .field("holon_service", &"<HolonServiceApi>")
             .field("local_holon_space", &self.local_holon_space)
-            .field("nursery", &self.nursery) // ✅ Print only once
             .field("cache_request_router", &"<CacheRequestRouter>")
             .field("transient_state", &"<TransientCollection>")
             .field("transaction_manager", &"<TransactionManager>")
-            .field("internal_nursery_access", &"Hidden") // ✅ Avoid duplicate printing
             .finish()
     }
 }
