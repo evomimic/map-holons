@@ -60,11 +60,7 @@ impl SmartReference {
     // *************** UTILITY METHODS ***************
 
     fn get_cache_access(&self, context: &dyn HolonsContextBehavior) -> Arc<dyn HolonCacheAccess> {
-        // Retrieve the space manager from the context
-        let space_manager = context.get_space_manager();
-
-        // Get CacheAccess
-        space_manager.get_cache_access()
+        context.get_cache_access()
     }
 
     fn get_rc_holon(

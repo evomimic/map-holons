@@ -90,7 +90,7 @@ use type_names::CorePropertyTypeName;
 ///
 
 pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference, HolonError> {
-    let holon_service = context.get_space_manager().get_holon_service();
+    let holon_service = context.get_holon_service();
     let commit_response = holon_service.commit_internal(context)?;
 
     Ok(commit_response)
@@ -139,14 +139,14 @@ pub fn delete_holon(
     context: &dyn HolonsContextBehavior,
     local_id: LocalId,
 ) -> Result<(), HolonError> {
-    let holon_service = context.get_space_manager().get_holon_service();
+    let holon_service = context.get_holon_service();
     holon_service.delete_holon_internal(&local_id)
 }
 
 // == GETTERS == //
 
 pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
-    let holon_service = context.get_space_manager().get_holon_service();
+    let holon_service = context.get_holon_service();
     holon_service.get_all_holons_internal(context)
 }
 
@@ -327,6 +327,6 @@ pub fn load_holons(
     context: &dyn HolonsContextBehavior,
     bundle: TransientReference,
 ) -> Result<TransientReference, HolonError> {
-    let service = context.get_space_manager().get_holon_service();
+    let service = context.get_holon_service();
     service.load_holons_internal(context, bundle)
 }

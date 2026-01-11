@@ -1,5 +1,5 @@
 use holochain::prelude::DbKind::Test;
-use holons_client::client_context::ClientHolonsContext;
+use holons_client::client_context;
 use holons_client::ClientHolonService;
 
 use holons_prelude::prelude::*;
@@ -9,7 +9,7 @@ use holons_core::{
     {HolonServiceApi, ServiceRoutingPolicy},
 };
 
-use holons_test::{TestExecutionState, TestSessionState, dance_test_language::DancesTestCase};
+use holons_test::{dance_test_language::DancesTestCase, TestExecutionState, TestSessionState};
 use holons_trust_channel::TrustChannel;
 
 use std::cell::RefCell;

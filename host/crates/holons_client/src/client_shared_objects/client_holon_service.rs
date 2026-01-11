@@ -67,7 +67,7 @@ impl HolonServiceApi for ClientHolonService {
         let request = holon_dance_builders::build_commit_dance_request()?;
 
         // 2. Run the dance
-        let initiator = context.get_space_manager().get_dance_initiator()?;
+        let initiator = context.get_dance_initiator()?;
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         let response =
             run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
@@ -143,7 +143,7 @@ impl HolonServiceApi for ClientHolonService {
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
-        let initiator = context.get_space_manager().get_dance_initiator()?;
+        let initiator = context.get_dance_initiator()?;
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         let response =
             run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
@@ -170,7 +170,7 @@ impl HolonServiceApi for ClientHolonService {
         let request = holon_dance_builders::build_load_holons_dance_request(set)?;
 
         // 2) Get the DanceInitiator from the Space Manager.
-        let initiator = context.get_space_manager().get_dance_initiator()?;
+        let initiator = context.get_dance_initiator()?;
 
         // 3) Bridge async → sync (ClientHolonService is synchronous)
         let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;

@@ -207,11 +207,10 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    debug!("getting space_manager from context");
-    let space_manager = context.get_space_manager();
-    let holon_service = space_manager.get_holon_service();
+    debug!("getting holon_service from context");
+    let holon_service = context.get_holon_service();
 
-    debug!("asking space_manager to get rc_holon");
+    debug!("asking holon_service to get rc_holon");
     let holon = holon_service.fetch_holon_internal(&holon_id)?;
 
     let holon = holon.clone();

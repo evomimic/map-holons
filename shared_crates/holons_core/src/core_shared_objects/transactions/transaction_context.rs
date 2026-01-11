@@ -8,7 +8,9 @@ use std::sync::{
 use core_types::HolonError;
 
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
+use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
+use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
 use crate::core_shared_objects::{
     HolonCacheAccess, Nursery, NurseryAccess, TransientCollection, TransientHolonManager,
     TransientManagerAccess,
@@ -141,9 +143,5 @@ impl HolonsContextBehavior for TransactionContext {
 
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
         self.require_space_manager().get_transient_state()
-    }
-
-    fn get_space_manager(&self) -> Arc<dyn HolonSpaceBehavior> {
-        self.require_space_manager() as Arc<dyn HolonSpaceBehavior>
     }
 }

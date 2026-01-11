@@ -66,7 +66,4 @@ pub trait HolonsContextBehavior: Debug + Send + Sync {
 
     /// Provides access to the transient state collection.
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>>;
-
-    /// Transitional shim for legacy call sites.
-    fn get_space_manager(&self) -> Arc<dyn HolonSpaceBehavior>;
 }

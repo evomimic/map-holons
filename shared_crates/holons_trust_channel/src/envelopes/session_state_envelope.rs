@@ -40,12 +40,11 @@ impl SessionStateEnvelope {
         let Some(state) = &response.state else {
             return Err(HolonError::InvalidParameter("DanceResponse missing SessionState".into()));
         };
-        let space_manager = context.get_space_manager();
         context.import_staged_holons(state.get_staged_holons().clone());
         context.import_transient_holons(state.get_transient_holons().clone());
 
         if let Some(space_ref) = state.get_local_holon_space() {
-            space_manager.set_space_holon(space_ref.clone())?;
+            context.set_space_holon(space_ref.clone())?;
         }
 
         debug!("SessionStateEnvelope::hydrate_from_response() — {}", state.summarize());
