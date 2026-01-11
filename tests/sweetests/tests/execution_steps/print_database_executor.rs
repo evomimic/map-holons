@@ -22,7 +22,7 @@ pub async fn execute_print_database(state: &mut TestExecutionState) {
     debug!("Dance Request: {:#?}", request);
 
     // 2. CALL - the dance
-    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
+    let dance_initiator = context.get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 

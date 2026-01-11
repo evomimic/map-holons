@@ -33,7 +33,7 @@ pub async fn execute_stage_new_from_clone(
         .expect("Failed to build stage_new_from_clone request");
 
     // 3. CALL — use the context-owned call service
-    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
+    let dance_initiator = context.get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
     assert_eq!(response.status_code, expected_status);
 
