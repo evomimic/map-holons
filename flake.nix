@@ -20,13 +20,12 @@
             # Pull in holonix dev shell
             inputsFrom = [ inputs'.holonix.devShells.default ];
 
-            # ✅ ALL required tooling goes here (CI + local)
             packages = with pkgs; [
-              # C/C++ toolchain and headers
+              # ✅ Native build toolchain + headers required on CI (Ubuntu)
               stdenv.cc
               glibc.dev
 
-              # Build dependencies for Rust + bindgen + cmake crates
+              # ✅ For crates like bindgen / cmake / datachannel-sys
               llvmPackages.libclang
               llvmPackages.clang-unwrapped
               llvmPackages.libunwind
@@ -43,13 +42,13 @@
               ''
                 export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
 
-                # Cross-platform: safe defaults for CMake-based crates
+                # 🛠 For CMake-based crates and general safety
                 export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
                 export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
 
-              # 🩹 Ensure standard C headers (like stdlib.h) are found
+                # ✅ Critical for CI (Ubuntu) to find stdlib headers + libs
                 export NIX_CFLAGS_COMPILE="-isystem ${pkgs.glibc.dev}/include"
-
+                export NIX_LDFLAGS="-L${pkgs.glibc}/lib -L${pkgs.stdenv.cc.cc.lib}/lib"
               ''
               + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
                 # macOS-only: use Apple's toolchain
