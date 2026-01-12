@@ -28,6 +28,7 @@
                           pkgs.llvmPackages.libclang        # ✅ Required by bindgen
                           pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
                           pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
+                          pkgs.glibc.dev
                           pkgs.cmake
                         ];
 

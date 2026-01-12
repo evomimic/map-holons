@@ -35,4 +35,8 @@ jobs:
 
       - name: Install and test
         run: |
+          export LIBCLANG_PATH=$(nix eval --raw .#devShells.x86_64-linux.default.buildInputs | grep libclang | head -1)/lib
+          export LD_LIBRARY_PATH=$(nix eval --raw .#devShells.x86_64-linux.default.buildInputs | grep llvm | head -1)/lib:$LD_LIBRARY_PATH
+          export NIX_CFLAGS_COMPILE="-isystem $(nix eval --raw .#devShells.x86_64-linux.default.buildInputs | grep glibc | grep dev | head -1)/include"
+          export NIX_LDFLAGS="-L$(nix eval --raw .#devShells.x86_64-linux.default.buildInputs | grep glibc | grep -v dev | head -1)/lib"
           nix develop --command bash -c "npm install && npm test"
