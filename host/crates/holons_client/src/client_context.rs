@@ -22,18 +22,10 @@ use std::sync::Arc;
 pub fn init_client_context(
     initiator: Option<Arc<dyn DanceInitiator>>,
 ) -> Arc<dyn HolonsContextBehavior + Send + Sync> {
-    // Step 1: Create the ClientHolonService.
+    // Create the ClientHolonService.
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 
-    // Step 2: Setup Conductor and Construct the DanceInitiator.
-    // let conductor_config = setup_conductor().await; // Temporarily using mock conductor
-    // let dance_initiator: Arc<dyn DanceInitiatorApi> =
-    //     Arc::new(DanceInitiator::new(Arc::new(conductor_config)));
-    // let client_dance_caller = ClientDanceCaller::new(Arc::new(conductor));
-    // let dance_initiator: Arc<dyn DanceInitiatorApi> =
-    //     Arc::new(DanceInitiator::new(Arc::new(client_dance_caller)));
-
-    // Step 3: Create a new `HolonSpaceManager` wrapped in `Arc`.
+    // Create a new `HolonSpaceManager` wrapped in `Arc`.
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         initiator,     // Dance initiator for conductor calls
         holon_service, // Service for holons
@@ -41,7 +33,7 @@ pub fn init_client_context(
         ServiceRoutingPolicy::Combined,
     ));
 
-    // Step 4: Open the default transaction for this space.
+    // Open the default transaction for this space.
     let transaction_context = space_manager
         .get_transaction_manager()
         .open_default_transaction(Arc::clone(&space_manager))
