@@ -1,0 +1,44 @@
+name: Debug nix develop environment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-nix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+
+      - name: Enter nix develop shell
+        run: |
+          nix develop --command bash -c '
+            echo "🔧 Nix develop shell entered"
+
+            echo
+            echo "🔍 Checking for stdlib.h"
+            find /nix/store -name "stdlib.h" || echo "❌ stdlib.h not found"
+
+            echo
+            echo "📂 Checking expected glibc include path"
+            ls -l /nix/store/*glibc*/include/stdlib.h || echo "❌ /glibc*/include/stdlib.h not found"
+
+            echo
+            echo "🧠 C compiler version and paths:"
+            gcc --version
+            echo
+
+            echo "📤 GCC include paths:"
+            echo | gcc -E -x c -v -
+
+            echo
+            echo "📤 g++ include paths:"
+            echo | g++ -E -x c++ -v -
+
+            echo
+            echo "✅ Diagnostic complete"
+          '
