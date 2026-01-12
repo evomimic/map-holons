@@ -46,6 +46,10 @@
                 # Cross-platform: safe defaults for CMake-based crates
                 export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
                 export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+
+              # 🩹 Ensure standard C headers (like stdlib.h) are found
+                export NIX_CFLAGS_COMPILE="-isystem ${pkgs.glibc.dev}/include"
+
               ''
               + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
                 # macOS-only: use Apple's toolchain
