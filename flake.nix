@@ -22,37 +22,42 @@
 
             # Extra native tools (incl. libclang + libstdc++ for CI)
             nativeBuildInputs = [
-              pkgs.libsodium
-              pkgs.pkg-config
-              pkgs.llvmPackages.libunwind
-              pkgs.llvmPackages.libclang        # ✅ Required by bindgen
-              pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
-              pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
-              pkgs.cmake
-              pkgs.glibc.dev
-            ];
+                          pkgs.libsodium
+                          pkgs.pkg-config
+                          pkgs.llvmPackages.libunwind
+                          pkgs.llvmPackages.libclang        # ✅ Required by bindgen
+                          pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
+                          pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
+                          pkgs.cmake
+                        ];
 
             packages = with pkgs; [
               nodejs_22
               binaryen
             ];
 
-            shellHook = ''
-              export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
+            shellHook =
+              ''
+                export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
 
-              # ✅ Make sure system headers like stdlib.h are found
-              export NIX_CFLAGS_COMPILE="-isystem ${pkgs.glibc.dev}/include $NIX_CFLAGS_COMPILE"
-              export NIX_LDFLAGS="-L${pkgs.glibc}/lib $NIX_LDFLAGS"
+                # Cross-platform: modern CMake policy + reduce configure flakiness
+                export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
+                export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+              ''
+              # macOS-only: use Apple's toolchain for native deps
+              + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+                # Requires Xcode CLT: xcode-select --install
+                export CC="$(xcrun -f clang)"
+                export CXX="$(xcrun -f clang++)"
+                export AR="$(xcrun -f ar)"
+                export SDKROOT="$(xcrun --show-sdk-path)"
+                : ''${MACOSX_DEPLOYMENT_TARGET:=12.0}
 
-              # Use nix-provided libclang + LLVM runtime
-              export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-              export LD_LIBRARY_PATH="${pkgs.llvmPackages.llvm}/lib:$LD_LIBRARY_PATH"
-
-              export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
-              export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
-            '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
-              # macOS-specific build settings go here
-            '';
+                export CMAKE_C_COMPILER="$CC"
+                export CMAKE_CXX_COMPILER="$CXX"
+                export CMAKE_GENERATOR="Unix Makefiles"
+                export CMAKE_OSX_ARCHITECTURES="${if pkgs.stdenv.isAarch64 then "arm64" else "x86_64"}"
+              '';
           };
         };
       };
