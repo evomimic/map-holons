@@ -34,14 +34,19 @@ impl FixtureHolons {
         for token in self.tokens.iter() {
             match token.intended_resolved_state() {
                 IntendedResolvedState::Staged => {
+                    // check to make sure the token_id is not associated with an abandoned or commit step
+                    // or is not the result of a mint from a modification step on a staged
                     let skip = self.tokens.iter().any(|tr| {
-                        matches!(
-                            tr.intended_resolved_state(),
-                            IntendedResolvedState::Saved | IntendedResolvedState::Abandoned
-                        ) && tr.previous() == token.token_id()
+                        tr.previous() == token.token_id()
+                            && matches!(
+                                tr.intended_resolved_state(),
+                                IntendedResolvedState::Saved
+                                    | IntendedResolvedState::Abandoned
+                                    | IntendedResolvedState::Staged
+                            )
                     });
                     if skip {
-                        debug!("Skipping commit on Holon :{:#?}, where previous was either Abandoned or Saved", token)
+                        debug!("Skipping commit on Holon :{:#?}, where previous was either Abandoned or Saved", token);
                     } else {
                         // Cloning source in order to create a new fixture holon
                         let token_id = token.token_id().clone_holon(context)?;
@@ -56,7 +61,7 @@ impl FixtureHolons {
                     }
                 }
                 IntendedResolvedState::Abandoned => {
-                    debug!("Skipping commit on Abandoned Holon: {:#?}", token)
+                    debug!("Skipping commit on Abandoned Holon: {:#?}", token);
                 }
                 IntendedResolvedState::Transient => {
                     debug!(

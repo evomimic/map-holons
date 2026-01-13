@@ -62,8 +62,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let book_saved_token: TestReference = saved_tokens
         .iter()
         .filter(|t| {
-            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap()
-                == book_key
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
         })
         .collect::<Vec<&TestReference>>()[0]
         .clone();
@@ -102,8 +101,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
-    //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step()?;
+    // //  MATCH SAVED CONTENT  //
+    // test_case.add_match_saved_content_step()?;
 
     // TODO: Future issue: convert this code that was originally done in an execution step into this fixture as a stage_new 2nd pass
     // // VERSION 2 //

@@ -41,7 +41,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let transient_source_key = MapString("book:transient-source".to_string());
     let transient_source = new_holon(fixture_context.as_ref(), Some(transient_source_key.clone()))?;
     // Mint transient source token
-    let transient_token = fixture_holons.add_transient(transient_source.clone(), transient_source);
+    let transient_token = fixture_holons.add_transient(transient_source.clone(),transient_source);
     // Expect BadRequest
     test_case.add_stage_new_from_clone_step(
         &*fixture_context,
@@ -107,7 +107,8 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let book_saved_token: TestReference = saved_tokens
         .iter()
         .filter(|t| {
-            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap()
+                == book_key
         })
         .collect::<Vec<&TestReference>>()[0]
         .clone();

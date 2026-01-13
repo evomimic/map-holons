@@ -38,7 +38,7 @@ pub fn setup_book_author_steps_with_context(
     //
     // Create fresh holon
     let book_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
+    let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
 
     // Mint
     let mut book_properties = BTreeMap::new();
@@ -66,7 +66,7 @@ pub fn setup_book_author_steps_with_context(
     //
     // Create
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let mut person_1_transient_reference =
+    let person_1_transient_reference =
         new_holon(&*fixture_context, Some(person_1_key.clone()))?;
 
     let mut person_1_properties = BTreeMap::new();
@@ -94,7 +94,7 @@ pub fn setup_book_author_steps_with_context(
     //
     // Create
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let mut person_2_transient_reference =
+    let person_2_transient_reference =
         new_holon(&*fixture_context, Some(person_2_key.clone()))?;
 
     let mut person_2_properties = BTreeMap::new();
@@ -122,7 +122,7 @@ pub fn setup_book_author_steps_with_context(
     //
     // Create
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let mut publisher_transient_reference =
+    let publisher_transient_reference =
         new_holon(&*fixture_context, Some(publisher_key.clone()))?;
 
     let mut publisher_properties = BTreeMap::new();

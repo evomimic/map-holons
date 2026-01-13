@@ -359,10 +359,6 @@ impl DancesTestCase {
         new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        tracing::warn!(
-            "ADD_STAGE_NEW_FROM_CLONE_STEP # for source saved Holon :: {:#?}",
-            source_token.clone()
-        );
         // Cloning source in order to create a new fixture holon
         let mut expected_content = source_token.token_id().clone_holon(context)?;
         expected_content.with_property_value(context, "Key", new_key.clone())?;

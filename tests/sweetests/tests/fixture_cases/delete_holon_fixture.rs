@@ -19,7 +19,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
+    let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
 
     // Mint
     let mut book_properties = BTreeMap::new();

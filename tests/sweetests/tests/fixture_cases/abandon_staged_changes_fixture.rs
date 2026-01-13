@@ -76,7 +76,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  STAGE:  Abandoned Holon1 (H4)  //
     let abandoned_holon_1_key = MapString("Abandon1".to_string());
-    let mut abandoned_holon_1_transient_reference =
+    let abandoned_holon_1_transient_reference =
         new_holon(&*fixture_context, Some(abandoned_holon_1_key.clone()))?;
 
     // Mint
@@ -101,7 +101,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     //  STAGE:  Abandoned Holon2 (H5)  //
     let abandoned_holon_2_key = MapString("Abandon2".to_string());
-    let mut abandoned_holon_2_transient_reference =
+    let abandoned_holon_2_transient_reference =
         new_holon(&*fixture_context, Some(abandoned_holon_2_key.clone()))?;
     // Mint
     let mut abandon2_properties = BTreeMap::new();
