@@ -12,6 +12,7 @@ use holochain::sweettest::*;
 pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Deleting an Existing (Saved) Holon");
@@ -20,8 +21,14 @@ pub async fn execute_delete_holon(
     let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
-    let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+    let source_reference: HolonReference = {
+        if expected_status == ResponseStatusCode::BadRequest {
+            state.lookup_previous(source_token.previous().temporary_id()).unwrap()
+        } else {
+            state.lookup_holon_reference(context, &source_token).unwrap()
+        }
+    };
+
     let HolonId::Local(local_id) =
         source_reference.holon_id(context).expect("Failed to get HolonId")
     else {
@@ -62,7 +69,7 @@ pub async fn execute_delete_holon(
     // 6. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
     let resulting_reference = ResultingReference::Deleted;
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
 
     state.record_resolved(resolved_reference);
 }

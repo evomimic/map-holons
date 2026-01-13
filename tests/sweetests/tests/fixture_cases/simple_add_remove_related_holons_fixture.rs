@@ -171,7 +171,7 @@
 //     //     book_holon_staged_reference.related_holons(&*fixture_context, &relationship_name)?;
 
 //     // // let authors =
-//     // //     book_staged_token.expected_content().relationship_map.get(&relationship_name).expect("No collection found for relationship_name");
+//     // //     book_staged_token.token_id().relationship_map.get(&relationship_name).expect("No collection found for relationship_name");
 
 //     // // debug!("authors retrieved for book: {:?}", authors_reference);
 //     // let person_1_option =

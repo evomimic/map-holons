@@ -20,15 +20,6 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
     let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    book_transient_reference.with_property_value(
-        &*fixture_context,
-        "Title".to_string(),
-        BOOK_KEY,
-    )?.with_property_value(
-            &*fixture_context,
-            "description",
-                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-            )?;
 
     // Mint
     let mut book_properties = BTreeMap::new();
@@ -62,8 +53,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     let book_saved_token: TestReference = saved_tokens
         .iter()
         .filter(|t| {
-            t.expected_content().essential_content(&*fixture_context).unwrap().key.unwrap()
-                == book_key
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
         })
         .collect::<Vec<&TestReference>>()[0]
         .clone();
@@ -72,6 +62,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
         book_saved_token.clone(),
         ResponseStatusCode::OK,
@@ -79,6 +70,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
         book_saved_token,
         ResponseStatusCode::NotFound,

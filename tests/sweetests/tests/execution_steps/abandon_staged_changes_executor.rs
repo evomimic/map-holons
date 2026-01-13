@@ -17,6 +17,7 @@ use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState,
 pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Abandon Staged Changes ---");
@@ -55,7 +56,7 @@ pub async fn execute_abandon_staged_changes(
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();
     // Confirm that operations on the abandoned Holon fail as expected
     if let ResponseBody::HolonReference(mut abandoned_holon) = response.body {

@@ -3,7 +3,7 @@ use holons_core::{reference_layer::TransientReference, HolonsContextBehavior, Re
 use tracing::debug;
 // use tracing::warn;
 
-use crate::harness::fixtures_support::{ExpectedState, TestReference};
+use crate::harness::fixtures_support::{IntendedResolvedState, TestReference};
 
 /// Fixture-time factory + registry for [`TestReference`]s.
 ///
@@ -32,28 +32,42 @@ impl FixtureHolons {
         let mut saved_tokens = Vec::new();
 
         for token in self.tokens.iter() {
-            match token.expected_state() {
-                ExpectedState::Staged => {
-                    // Cloning source in order to create a new fixture holon
-                    let expected_content = token.expected_content().clone_holon(context)?;
-                    // Mint saved
-                    let saved_token = TestReference::new(ExpectedState::Saved, expected_content);
-                    // Return tokens for passing to executor used for building ResolvedTestReference
-                    saved_tokens.push(saved_token);
+            match token.intended_resolved_state() {
+                IntendedResolvedState::Staged => {
+                    let skip = self.tokens.iter().any(|tr| {
+                        matches!(
+                            tr.intended_resolved_state(),
+                            IntendedResolvedState::Saved | IntendedResolvedState::Abandoned
+                        ) && tr.previous() == token.token_id()
+                    });
+                    if skip {
+                        debug!("Skipping commit on Holon :{:#?}, where previous was either Abandoned or Saved", token)
+                    } else {
+                        // Cloning source in order to create a new fixture holon
+                        let token_id = token.token_id().clone_holon(context)?;
+                        // Mint saved
+                        let saved_token = TestReference::new(
+                            token.token_id(),
+                            IntendedResolvedState::Saved,
+                            token_id,
+                        );
+                        // Return tokens for passing to executor used for building ResolvedTestReference
+                        saved_tokens.push(saved_token);
+                    }
                 }
-                ExpectedState::Abandoned => {
+                IntendedResolvedState::Abandoned => {
                     debug!("Skipping commit on Abandoned Holon: {:#?}", token)
                 }
-                ExpectedState::Transient => {
+                IntendedResolvedState::Transient => {
                     debug!(
                         "Latest state is not staged, skipping commit on Transient : {:#?}",
                         token
                     );
                 }
-                ExpectedState::Saved => {
+                IntendedResolvedState::Saved => {
                     debug!("Holon already saved : {:#?}", token);
                 }
-                ExpectedState::Deleted => {
+                IntendedResolvedState::Deleted => {
                     debug!("Holon marked as deleted : {:#?}", token);
                 }
             }
@@ -68,54 +82,61 @@ impl FixtureHolons {
 
     /// Mint a new TestReference snapshot and push it onto FixtureHolons
     ///
-    /// - `expected_content` is a frozen snapshot of the fixture holon
-    /// - `expected_state` is the lifecycle intent after the step
+    /// - `token_id` is used to identify the token and contains a frozen snapshot of the fixture holon's essential content
+    /// - `intended_resolved_state` is the lifecycle intent after the step
     ///
     /// Returns the newly created TestReference.
     pub fn mint_snapshot(
         &mut self,
-        expected_state: ExpectedState,
-        expected_content: TransientReference,
+        previous: TransientReference,
+        intended_resolved_state: IntendedResolvedState,
+        token_id: TransientReference,
     ) -> TestReference {
-        let token = TestReference::new(expected_state, expected_content);
+        let token = TestReference::new(previous, intended_resolved_state, token_id);
         self.tokens.push(token.clone());
 
         token
     }
 
-    /// Mint an ExpectedState::Abandoned cloned from given TestReference (must be expected_state Staged)
+    /// Mint an IntendedResolvedState::Abandoned cloned from given TestReference (must be intended_resolved_state Staged)
     pub fn abandon_staged(
         &mut self,
-        staged_token: &TestReference,
+        source_token: &TestReference,
+        new_id: TransientReference,
     ) -> Result<TestReference, HolonError> {
-        match staged_token.expected_state() {
-            ExpectedState::Staged => {
+        match source_token.intended_resolved_state() {
+            IntendedResolvedState::Staged => {
                 let abandoned_token = self.mint_snapshot(
-                    ExpectedState::Abandoned,
-                    staged_token.expected_content().clone(),
+                    source_token.token_id(),
+                    IntendedResolvedState::Abandoned,
+                    new_id,
                 );
                 Ok(abandoned_token)
             }
             other => Err(HolonError::InvalidTransition(format!(
-                "Can only abandon tokens in ExpectedState::Staged, got {:?}",
+                "Can only abandon tokens in IntendedResolvedState::Staged, got {:?}",
                 other
             ))),
         }
     }
 
-    /// Mint an ExpectedState::Deleted cloned from given TestReference (must be expected_state Saved)
+    /// Mint an IntendedResolvedState::Deleted cloned from given TestReference (must be intended_resolved_state Saved)
     pub fn delete_saved(
         &mut self,
         saved_token: &TestReference,
+        new_id: TransientReference,
     ) -> Result<TestReference, HolonError> {
-        match saved_token.expected_state() {
-            ExpectedState::Saved => {
-                let deleted_token = self
-                    .mint_snapshot(ExpectedState::Deleted, saved_token.expected_content().clone());
+        match saved_token.intended_resolved_state() {
+            IntendedResolvedState::Saved => {
+                let deleted_token = self.mint_snapshot(
+                    saved_token.token_id(),
+                    IntendedResolvedState::Deleted,
+                    new_id,
+                );
                 Ok(deleted_token)
             }
             other => Err(HolonError::InvalidTransition(format!(
-                "Can only delete tokens in ExpectedState::Saved, got {:?}",
+                "Can only delete tokens in IntendedResolvedState::Saved, got {:?}",
                 other
             ))),
         }
@@ -123,15 +144,18 @@ impl FixtureHolons {
 
     // ---------- Create tokens  ----------
 
-    // Mints a new token based on matching source type 
+    // Mints a new token based on matching source type
     pub fn add_token(
         &mut self,
-        expected_state: ExpectedState,
+        previous_snapshot: TransientReference,
+        intended_resolved_state: IntendedResolvedState,
         next_snapshot: TransientReference,
     ) -> Result<TestReference, HolonError> {
-        match expected_state {
-            ExpectedState::Transient => Ok(self.add_transient(next_snapshot)),
-            ExpectedState::Staged => Ok(self.add_staged(next_snapshot)),
+        match intended_resolved_state {
+            IntendedResolvedState::Transient => {
+                Ok(self.add_transient(previous_snapshot, next_snapshot))
+            }
+            IntendedResolvedState::Staged => Ok(self.add_staged(previous_snapshot, next_snapshot)),
             _ => Err(HolonError::InvalidParameter(
                 "Can only add a Transient or Staged token".to_string(),
             )),
@@ -139,28 +163,36 @@ impl FixtureHolons {
     }
 
     /// Create and retain a **Transient** token from a `TransientReference`.
-    pub fn add_transient(&mut self, expected_content: TransientReference) -> TestReference {
-        self.mint_snapshot(ExpectedState::Transient, expected_content)
+    pub fn add_transient(
+        &mut self,
+        previous: TransientReference,
+        token_id: TransientReference,
+    ) -> TestReference {
+        self.mint_snapshot(previous, IntendedResolvedState::Transient, token_id)
     }
 
     /// Create and retain a **Staged** token from a `TransientReference`.
-    pub fn add_staged(&mut self, expected_content: TransientReference) -> TestReference {
-        self.mint_snapshot(ExpectedState::Staged, expected_content)
+    pub fn add_staged(
+        &mut self,
+        previous: TransientReference,
+        token_id: TransientReference,
+    ) -> TestReference {
+        self.mint_snapshot(previous, IntendedResolvedState::Staged, token_id)
     }
 
     // ---- HELPERS ---- //
 
-    // Gets number of Holons per type of ExpectedState in FixtureHolons
+    // Gets number of Holons per type of IntendedResolvedState in FixtureHolons
     pub fn counts(&self) -> FixtureHolonCounts {
         let mut counts = FixtureHolonCounts::default();
         for token in &self.tokens {
-            let expected_state = token.expected_state();
-            match expected_state {
-                ExpectedState::Transient => counts.transient += 1,
-                ExpectedState::Staged => counts.staged += 1,
-                ExpectedState::Saved => counts.saved += 1,
-                ExpectedState::Abandoned => counts.staged -= 1,
-                ExpectedState::Deleted => counts.saved -= 1,
+            let intended_resolved_state = token.intended_resolved_state();
+            match intended_resolved_state {
+                IntendedResolvedState::Transient => counts.transient += 1,
+                IntendedResolvedState::Staged => counts.staged += 1,
+                IntendedResolvedState::Saved => counts.saved += 1,
+                IntendedResolvedState::Abandoned => counts.staged -= 1,
+                IntendedResolvedState::Deleted => counts.saved -= 1,
             }
         }
         counts

@@ -39,16 +39,11 @@ pub fn setup_book_author_steps_with_context(
     // Create fresh holon
     let book_key = MapString(BOOK_KEY.to_string());
     let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
-            &*fixture_context,
-            "Description",
-            "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-            )?;
 
     // Mint
     let mut book_properties = BTreeMap::new();
-    book_properties.insert("title".to_property_name(), BOOK_KEY.to_base_value());
-    book_properties.insert("description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
+    book_properties.insert("Title".to_property_name(), BOOK_KEY.to_base_value());
+    book_properties.insert("Description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
 
     let book_transient_token = test_case.add_new_holon_step(
         &*fixture_context,
@@ -73,9 +68,6 @@ pub fn setup_book_author_steps_with_context(
     let person_1_key = MapString(PERSON_1_KEY.to_string());
     let mut person_1_transient_reference =
         new_holon(&*fixture_context, Some(person_1_key.clone()))?;
-    person_1_transient_reference
-        .with_property_value(&*fixture_context, "first name", "Roger")?
-        .with_property_value(&*fixture_context, "last name", "Briggs")?;
 
     let mut person_1_properties = BTreeMap::new();
     person_1_properties.insert("first name".to_property_name(), "Roger".to_base_value());
@@ -104,9 +96,6 @@ pub fn setup_book_author_steps_with_context(
     let person_2_key = MapString(PERSON_2_KEY.to_string());
     let mut person_2_transient_reference =
         new_holon(&*fixture_context, Some(person_2_key.clone()))?;
-    person_2_transient_reference
-        .with_property_value(&*fixture_context, "first name", "George")?
-        .with_property_value(&*fixture_context, "last name", "Smith")?;
 
     let mut person_2_properties = BTreeMap::new();
     person_2_properties.insert("first name".to_property_name(), "George".to_base_value());
@@ -135,16 +124,9 @@ pub fn setup_book_author_steps_with_context(
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
     let mut publisher_transient_reference =
         new_holon(&*fixture_context, Some(publisher_key.clone()))?;
-    publisher_transient_reference
-        .with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?
-        .with_property_value(
-            &*fixture_context,
-            "Description",
-            "We publish Holons for testing purposes",
-        )?;
 
     let mut publisher_properties = BTreeMap::new();
-    publisher_properties.insert("name".to_property_name(), "PUBLISHER_KEY".to_base_value());
+    publisher_properties.insert("name".to_property_name(), PUBLISHER_KEY.to_base_value());
     publisher_properties.insert(
         "Description".to_property_name(),
         "We publish Holons for testing purposes".to_base_value(),

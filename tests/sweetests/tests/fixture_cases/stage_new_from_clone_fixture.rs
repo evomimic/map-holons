@@ -37,11 +37,11 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     // Assert DB starts with 1 (space Holon)
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
-    // ── PHASE A — Clone FROM a fresh TRANSIENT ────────────────────────────────────
+    // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("book:transient-source".to_string());
     let transient_source = new_holon(fixture_context.as_ref(), Some(transient_source_key.clone()))?;
     // Mint transient source token
-    let transient_token = fixture_holons.add_transient(transient_source);
+    let transient_token = fixture_holons.add_transient(transient_source.clone(), transient_source);
     // Expect BadRequest
     test_case.add_stage_new_from_clone_step(
         &*fixture_context,
@@ -100,15 +100,14 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
     // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
-    // have expected_state == Saved inside `fixture_holons`.
+    // have intended_resolved_state == Saved inside `fixture_holons`.
     let from_saved_key = MapString("book:clone:from-saved".to_string());
 
     // Retrieve book saved-intent token
     let book_saved_token: TestReference = saved_tokens
         .iter()
         .filter(|t| {
-            t.expected_content().essential_content(&*fixture_context).unwrap().key.unwrap()
-                == book_key
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
         })
         .collect::<Vec<&TestReference>>()[0]
         .clone();

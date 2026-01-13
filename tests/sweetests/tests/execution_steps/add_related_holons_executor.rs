@@ -15,6 +15,7 @@ use holons_prelude::prelude::*;
 pub async fn execute_add_related_holons(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    expected_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
     expected_status: ResponseStatusCode,
@@ -62,7 +63,7 @@ pub async fn execute_add_related_holons(
         };
         let resulting_reference = ResultingReference::from(response_holon_reference);
         let resolved_reference =
-            ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+            ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
 
         resolved_reference.assert_essential_content_eq(context).unwrap();
         info!("Success! Updated holon's essential content matched expected");

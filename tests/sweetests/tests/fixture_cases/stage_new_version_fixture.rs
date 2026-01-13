@@ -62,7 +62,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let book_saved_token: TestReference = saved_tokens
         .iter()
         .filter(|t| {
-            t.expected_content().essential_content(&*fixture_context).unwrap().key.unwrap()
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap()
                 == book_key
         })
         .collect::<Vec<&TestReference>>()[0]
