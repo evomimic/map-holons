@@ -5,16 +5,22 @@
     "ng": "ng --project-dir=UI",
     "start": "npm run clean:hc && npm run tauri:serve",
     "mock": "cd ui && ng serve --configuration mock",
-    "build": "cargo build --release --manifest-path conductora/Cargo.toml",
+    "build": "cargo build --release",
+    "check": "cargo check --workspace",
+    "test:unit": "cargo test --workspace",
+    "test:unit:no-run": "cargo test --workspace --no-run",
     "web:serve": "cd ui && ng serve",
     "web:build": "cd ui && ng build --base-href ./",
     "web:dev": "npm run web:build",
     "web:prod": "npm run web:build -- -c production",
     "tauri": "tauri",
     "tauri:serve": "tauri dev",
-    "clean:hc": "rm -f conductora/.hc*",
-    "clean:ui": "cd ui && npx rimraf package-lock.json node_modules",
-    "clean:rust": "cd conductora && npx rimraf target && npx rimraf .cargo && npx rimraf Cargo.lock && cargo clean",
+
+    "clean": "npm run clean:rust:deep && npm run clean:ui",
+    "clean:rust": "cargo clean",
+    "clean:rust:deep": "npx rimraf target .cargo Cargo.lock && cargo clean",
+    "clean:ui": "npx rimraf ../node_modules ../package-lock.json",
+
     "tauri:bundle": "tauri build"
   },
   "prettier": {

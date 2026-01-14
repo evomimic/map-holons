@@ -38,7 +38,7 @@
 
             shellHook =
               ''
-                export PS1='$begin:math:display$\\033\[1\;34m$end:math:display$[holonix:\w]\$$begin:math:display$\\033\[0m$end:math:display$ '
+                export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
 
                 # Cross-platform: modern CMake policy + reduce configure flakiness
                 export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"

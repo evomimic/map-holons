@@ -17,22 +17,18 @@
     "build:host": "npm run build -w host",
     "build:happ": "npm run build:happ -w happ",
 
-    "check": "npm run check:host && npm run check:happ",
-    "check:host": "cargo check --manifest-path host/Cargo.toml --workspace",
-    "check:happ": "cargo check --manifest-path happ/Cargo.toml --workspace --target wasm32-unknown-unknown",
+    "check": "npm run check -w host && npm run check -w happ",
 
     "test": "npm run test:unit && npm run sweetest",
-
-    "test:unit": "npm run test:unit:host && npm run test:unit:happ",
-    "test:unit:host": "cargo test --manifest-path host/Cargo.toml --workspace",
-    "test:unit:happ": "cargo test --manifest-path happ/Cargo.toml --workspace --target wasm32-unknown-unknown --no-run",
+    "test:unit": "npm run test:unit -w host && npm run test:unit:no-run -w happ",
 
     "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
 
-    "clean": "npm run clean:rust && npm run clean:ui",
-    "clean:rust": "npx rimraf 'target' '.cargo' 'Cargo.lock' 'flake.lock' && npm run clean:rust -w happ && npm run clean:rust -w host",
-    "clean:ui": "npx rimraf 'package-lock.json' 'node_modules' && npm run clean:ui -w host && npm run clean:ui -w happ"
+    "clean": "npm run clean:rust:deep && npm run clean:ui",
+    "clean:rust": "npm run clean:rust -w host && npm run clean:rust -w happ",
+    "clean:rust:deep": "npm run clean:rust:deep -w host && npm run clean:rust:deep -w happ",
+    "clean:ui": "npm run clean:ui -w host"
   },
   "devDependencies": {
     "autoprefixer": "^10.4",
