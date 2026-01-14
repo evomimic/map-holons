@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng --project-dir=UI",
     "start": "npm run clean:hc && npm run tauri:serve",
+    "clean:hc": "rm -f conductora/.hc*",
     "mock": "cd ui && ng serve --configuration mock",
     "build": "cargo build --release",
     "check": "cargo check --workspace",
