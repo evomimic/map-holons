@@ -9,7 +9,7 @@ use crate::core_shared_objects::transient_manager_access::TransientManagerAccess
 use crate::core_shared_objects::{HolonCacheAccess, TransientCollection};
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
+    HolonReference, HolonServiceApi, HolonStagingBehavior,
     TransientHolonBehavior,
 };
 use crate::NurseryAccess;

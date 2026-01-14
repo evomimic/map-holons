@@ -34,6 +34,7 @@ pub fn init_client_context(
     ));
 
     // Open the default transaction for this space.
+    // TransactionContext becomes the sole execution root and owns the space.
     let transaction_context = space_manager
         .get_transaction_manager()
         .open_default_transaction(Arc::clone(&space_manager))
