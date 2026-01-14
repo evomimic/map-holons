@@ -22,6 +22,11 @@ impl FixtureHolons {
         Self::default()
     }
 
+    /// Removes the last token and returns it, or `None` if empty.
+    pub fn remove_last(&mut self) -> Option<TestReference> {
+        self.tokens.pop()
+    }
+
     // =====  COMMIT  ======  //
 
     /// Mint tokens with expected state Saved

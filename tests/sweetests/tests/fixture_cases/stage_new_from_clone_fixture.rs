@@ -41,7 +41,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let transient_source_key = MapString("book:transient-source".to_string());
     let transient_source = new_holon(fixture_context.as_ref(), Some(transient_source_key.clone()))?;
     // Mint transient source token
-    let transient_token = fixture_holons.add_transient(transient_source.clone(),transient_source);
+    let transient_token = fixture_holons.add_transient(transient_source.clone(), transient_source);
     // Expect BadRequest
     test_case.add_stage_new_from_clone_step(
         &*fixture_context,
@@ -96,7 +96,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_holons,
         ResponseStatusCode::OK,
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved() - 1))?; // Subtract 1 to account for invalid attempt
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
     // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
@@ -104,11 +104,10 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let from_saved_key = MapString("book:clone:from-saved".to_string());
 
     // Retrieve book saved-intent token
-    let book_saved_token: TestReference = saved_tokens
+    let book_saved_token = saved_tokens
         .iter()
         .filter(|t| {
-            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap()
-                == book_key
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
         })
         .collect::<Vec<&TestReference>>()[0]
         .clone();
@@ -145,7 +144,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_holons,
         ResponseStatusCode::OK,
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved() - 1))?; // Subtract 1 to account for invalid attempt
+    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
