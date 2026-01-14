@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use core_types::HolonError;
 use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
@@ -9,12 +8,10 @@ use crate::core_shared_objects::transient_manager_access::TransientManagerAccess
 use crate::core_shared_objects::{HolonCacheAccess, TransientCollection};
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonStagingBehavior,
-    TransientHolonBehavior,
+    HolonReference, HolonServiceApi, HolonStagingBehavior, TransientHolonBehavior,
 };
 use crate::NurseryAccess;
 
-#[async_trait]
 /// Defines the execution surface for a single transaction within a space.
 pub trait HolonsContextBehavior: Debug + Send + Sync {
     /// Returns the transaction id for this context.
