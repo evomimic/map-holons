@@ -34,7 +34,7 @@ pub async fn execute_stage_new_holon(
     debug!("Dance Request: {:#?}", request);
 
     // 3. CALL - the dance
-    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
+    let dance_initiator = context.get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
     info!("Dance Response: {:#?}", response.clone());
 

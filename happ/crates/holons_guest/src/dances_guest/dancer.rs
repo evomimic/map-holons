@@ -66,8 +66,6 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     let dispatch_result = dancer.dispatch(&*context, request.clone());
     let result = process_dispatch_result(&*context, dispatch_result);
 
-    // assert_eq!(result.staging_area.staged_holons.len(), context.get_space_manager().staged_holons.len());
-
     info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
     Ok(result)
@@ -188,8 +186,7 @@ fn initialize_context_from_request(
     let context = init_guest_context(transient_holons, staged_holons, local_space_holon.clone())
         .map_err(|error| create_error_response(error, request))?;
 
-    let space_manager = context.get_space_manager();
-    let holon_service = space_manager.get_holon_service();
+    let holon_service = context.get_holon_service();
     let guest = {
         if let Some(guest) = holon_service.as_any().downcast_ref::<GuestHolonService>() {
             Ok(guest)
@@ -206,7 +203,7 @@ fn initialize_context_from_request(
             .map_err(|error| create_error_response(error, request))?, // get space_holon from DHT, creating it if necessary
     };
     // Update space manager with it
-    space_manager
+    context
         .set_space_holon(ensured_local_space_holon)
         .map_err(|error| create_error_response(error, request))?;
 
@@ -221,10 +218,8 @@ fn initialize_context_from_request(
 /// or reading the local space holon fails (e.g., due to lock acquisition errors),
 /// this function logs the error and returns `None` instead of panicking.
 fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Option<SessionState> {
-    let space_manager = context.get_space_manager();
-
     // Export staged holons as a single SerializableHolonPool
-    let serializable_staged_pool = match space_manager.export_staged_holons() {
+    let serializable_staged_pool = match context.export_staged_holons() {
         Ok(pool) => pool,
         Err(error) => {
             warn!("Failed to export staged holons while restoring session state: {:?}", error);
@@ -233,7 +228,7 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
     };
 
     // Export transient holons as a single SerializableHolonPool
-    let serializable_transient_pool = match space_manager.export_transient_holons() {
+    let serializable_transient_pool = match context.export_transient_holons() {
         Ok(pool) => pool,
         Err(error) => {
             warn!("Failed to export transient holons while restoring session state: {:?}", error);
@@ -242,7 +237,7 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
     };
 
     // Get the local space holon (now returns Result<Option<HolonReference>, HolonError>)
-    let local_space_holon = match space_manager.get_space_holon() {
+    let local_space_holon = match context.get_space_holon() {
         Ok(space_opt) => space_opt,
         Err(error) => {
             warn!("Failed to read local_holon_space while restoring session state: {:?}", error);

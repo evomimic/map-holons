@@ -4,8 +4,13 @@
   "scripts": {
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
     "build:zomes": "RUSTFLAGS='' CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown",
-    "clean:rust": "npx rimraf target .cargo Cargo.lock && cargo clean",
-    "clean:ui": "npx rimraf package-lock.json node_modules ui/node_modules ui/.angular ui/dist"
+    "check": "cargo check --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown",
+
+    "clean": "npm run clean:rust:deep",
+    "clean:rust": "cargo clean",
+    "clean:rust:deep": "npx rimraf target .cargo Cargo.lock && cargo clean",
+
+    "test:unit:no-run": "cargo test --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown --no-run"
   },
   "devDependencies": {
     "rimraf": "^6.0.1"

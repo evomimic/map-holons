@@ -5,17 +5,20 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use core_types::{HolonError};
+use core_types::HolonError;
 
 use holons_client::{
     dances_client::ClientDanceBuilder,
     init_client_context,
     shared_types::{
-        base_receptor::{BaseReceptor, ReceptorBehavior}, holon_space::{HolonSpace, SpaceInfo}, map_request::{MapRequest, MapRequestBody}, map_response::MapResponse
+        base_receptor::{BaseReceptor, ReceptorBehavior},
+        holon_space::{HolonSpace, SpaceInfo},
+        map_request::{MapRequest, MapRequestBody},
+        map_response::MapResponse,
     },
 };
 
-use holons_core::{HolonsContextBehavior, dances::{DanceInitiator}};
+use holons_core::{dances::DanceInitiator, HolonsContextBehavior};
 use holons_trust_channel::TrustChannel;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
@@ -71,11 +74,8 @@ impl ReceptorBehavior for HolochainReceptor {
         let dance_request =
             ClientDanceBuilder::validate_and_execute(self.context.as_ref(), &request)?;
 
-        let initiator = self
-            .context
-            .get_space_manager()
-            .get_dance_initiator()
-            .expect("Dance initiator must be initialized");
+        let initiator =
+            self.context.get_dance_initiator().expect("Dance initiator must be initialized");
 
         let dance_response = initiator.initiate_dance(&*self.context, dance_request).await;
 
@@ -87,27 +87,23 @@ impl ReceptorBehavior for HolochainReceptor {
         // Call stubbed conductor client
         self.client_handler.get_all_spaces().await
     }
-    
+
     //todo: integrate this into the map_request handling flow,  this is a PoC hack
     async fn load_holons(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         if let MapRequestBody::LoadHolons(content_set) = request.body {
-            let reference = load_holons_from_files(self.context.clone(),content_set).await?;
+            let reference = load_holons_from_files(self.context.clone(), content_set).await?;
             tracing::info!("HolochainReceptor: loaded holons with reference: {:?}", reference);
-        
+
             //temporary hack to get a DanceResponse after loading holons
-            let dance_request =
-                ClientDanceBuilder::get_all_holons_dance()?;//self.context.as_ref(), &request)?;
-            let initiator = self
-                .context
-                .get_space_manager()
-                .get_dance_initiator()
-                .expect("Dance initiator must be initialized");
+            let dance_request = ClientDanceBuilder::get_all_holons_dance()?; //self.context.as_ref(), &request)?;
+            let initiator =
+                self.context.get_dance_initiator().expect("Dance initiator must be initialized");
             let dance_response = initiator.initiate_dance(&*self.context, dance_request).await;
             Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
         } else {
             Err(HolonError::InvalidParameter(
                 "Expected LoadHolons body for load_holons request".into(),
-            ))  
+            ))
         }
     }
 }

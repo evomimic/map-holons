@@ -77,7 +77,7 @@ If it requires native capabilities, it belongs here.
 ---
 
 ### 4.3 Shared Crates
-- Live under `shared/`
+- Live under `shared_crates/`
 - **Not their own workspace**
 - Compiled into both hApp and Host
 - Must obey the **strictest common denominator** of runtime constraints (hApp-safe)
@@ -173,6 +173,6 @@ If you’re unsure where code belongs, ask:
 
 **“Could this run inside Holochain WASM?”**
 
-If the answer is **no**, it does not belong in `shared/` or `happ/`.
+If the answer is **no**, it does not belong in `shared_crates/` or `happ/`.
 
 That single heuristic will prevent most architectural violations.

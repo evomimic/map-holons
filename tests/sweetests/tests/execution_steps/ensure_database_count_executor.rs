@@ -22,7 +22,7 @@ pub async fn execute_ensure_database_count(
         build_get_all_holons_dance_request().expect("Failed to build get_all_holons request");
 
     // 2. CALL - the dance
-    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
+    let dance_initiator = context.get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 

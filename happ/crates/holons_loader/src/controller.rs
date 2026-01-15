@@ -561,7 +561,7 @@ impl HolonLoaderController {
 
         // 1) Create the transient under a short-lived write lock, then DROP the lock
         let response_reference = {
-            let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+            let transient_behavior = context.get_transient_behavior_service();
 
             let response_key = MapString(format!("HolonLoadResponse.{}", run_id));
 

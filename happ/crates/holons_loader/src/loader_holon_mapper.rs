@@ -132,7 +132,7 @@ impl LoaderHolonMapper {
 
         // ── Create the empty transient under a short write lock, then immediately release it.
         let mut target_transient: TransientReference = {
-            let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+            let transient_behavior = context.get_transient_behavior_service();
             debug!(
                 "Pass-1: staging instance from LoaderHolon temp_id={:?}, key_prop_raw={:?}, create_empty_key=\"{}\"",
                 loader_id,

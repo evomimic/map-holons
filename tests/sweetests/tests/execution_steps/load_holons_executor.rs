@@ -208,7 +208,7 @@ pub async fn execute_load_holons(
         .unwrap_or_else(|e| panic!("build_load_holons_dance_request() failed: {e:?}"));
 
     // Initiate the dance using the test harness (TrustChannel-backed initiator).
-    let dance_initiator = context.get_space_manager().get_dance_initiator().unwrap();
+    let dance_initiator = context.get_dance_initiator().unwrap();
     let dance_response = dance_initiator.initiate_dance(context, request).await;
 
     // Convert the DanceResponse into a TransientReference for property assertions.

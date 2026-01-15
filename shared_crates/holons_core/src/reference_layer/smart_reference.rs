@@ -60,11 +60,7 @@ impl SmartReference {
     // *************** UTILITY METHODS ***************
 
     fn get_cache_access(&self, context: &dyn HolonsContextBehavior) -> Arc<dyn HolonCacheAccess> {
-        // Retrieve the space manager from the context
-        let space_manager = context.get_space_manager();
-
-        // Get CacheAccess
-        space_manager.get_cache_access()
+        context.get_cache_access()
     }
 
     fn get_rc_holon(
@@ -129,7 +125,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<TransientReference, HolonError> {
         self.is_accessible(context, AccessType::Clone)?;
-        let transient_behavior = context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior = context.get_transient_behavior_service();
 
         let rc_holon = self.get_rc_holon(context)?;
         let borrowed_holon = rc_holon.read().map_err(|e| {

@@ -35,28 +35,37 @@ use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyName, RelationshipName};
 
-#[derive(Clone)]
 pub struct GuestHolonService {
     /// Holds the internal nursery access after registration
-    pub internal_nursery_access: Option<Arc<RwLock<dyn NurseryAccessInternal>>>,
+    pub internal_nursery_access: RwLock<Option<Arc<RwLock<dyn NurseryAccessInternal>>>>,
 }
 
 impl GuestHolonService {
     pub fn new() -> Self {
         GuestHolonService {
-            internal_nursery_access: None, // Initially, no privileged access
+            internal_nursery_access: RwLock::new(None), // Initially, no privileged access
         }
     }
     /// ✅ HolonSpaceManager explicitly grants internal access at registration
-    pub fn register_internal_access(&mut self, access: Arc<RwLock<dyn NurseryAccessInternal>>) {
-        self.internal_nursery_access = Some(access);
+    pub fn register_internal_access(&self, access: Arc<RwLock<dyn NurseryAccessInternal>>) {
+        let mut guard = self
+            .internal_nursery_access
+            .write()
+            .expect("Failed to acquire write lock on internal nursery access");
+        *guard = Some(access);
     }
 
     /// Retrieves the stored internal access (set during registration)
     pub fn get_internal_nursery_access(
         &self,
     ) -> Result<Arc<RwLock<dyn NurseryAccessInternal>>, HolonError> {
-        self.internal_nursery_access.clone().ok_or(HolonError::Misc(
+        let guard = self.internal_nursery_access.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on internal nursery access: {}",
+                e
+            ))
+        })?;
+        guard.clone().ok_or(HolonError::Misc(
             "GuestHolonService does not have internal nursery access.".to_string(),
         ))
     }
@@ -70,8 +79,7 @@ impl GuestHolonService {
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
         // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
-        let transient_behavior_service =
-            context.get_space_manager().get_transient_behavior_service();
+        let transient_behavior_service = context.get_transient_behavior_service();
 
         // Create new (empty) TransientHolon
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
@@ -155,27 +163,11 @@ impl GuestHolonService {
             })
     }
 
-    // fn get_internal_nursery_access(
-    //     &self,
-    //     context: &dyn HolonsContextBehavior,
-    // ) -> Result<Arc<RefCell<dyn NurseryAccessInternal>>, HolonError> {
-    //     // Retrieve the registered internal access from the space manager
-    //     let space_manager = context.get_space_manager();
-    //     match space_manager.get_registered_internal_nursery_access() {
-    //         Some(internal_access) => Ok(internal_access),
-    //         None => Err(HolonError::Misc(
-    //             "GuestHolonService does not have internal nursery access.".to_string(),
-    //         )),
-    //     }
-    // }
     pub fn get_nursery_access(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Arc<dyn NurseryAccess> {
-        // Retrieve the space manager from the context
-        let space_manager = context.get_space_manager();
-
-        space_manager.get_nursery_access()
+        context.get_nursery_access()
     }
 }
 
