@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use crate::{
     fixture_cases::setup_book_author_steps_with_context,
     helpers::{init_fixture_context, BOOK_KEY},
 };
+use holochain::conductor::conductor::hdk::prelude::holochain_zome_types::properties;
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, FixtureHolons};
 use rstest::*;
@@ -24,21 +27,25 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    book_transient_reference.with_property_value(&*fixture_context, "title".to_string(), BOOK_KEY,)?.with_property_value(&*fixture_context, "description", "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?")?;
+    let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
 
-    // Mint a transient-intent token and index it by key.
-    let transient_source_token = fixture_holons.add_transient_with_key(
-        &book_transient_reference.clone(),
-        book_key.clone(),
+    let mut properties = BTreeMap::new();
+    properties.insert("itle".to_property_name(), BOOK_KEY.to_base_value());
+    properties.insert("description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
+    // Mint
+    let book_source_token = test_case.add_new_holon_step(
+        &*fixture_context,
+        &mut fixture_holons,
         book_transient_reference,
-    );
+        properties,
+        Some(book_key),
+        ResponseStatusCode::OK,
+    )?;
 
     test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
-        transient_source_token.clone(),
-        Some(book_key),
+        book_source_token.clone(),
         ResponseStatusCode::OK,
     )?;
 

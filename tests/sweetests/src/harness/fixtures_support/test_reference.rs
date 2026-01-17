@@ -1,10 +1,10 @@
 //! Fixture-time tokens for referring to holons in test cases.
 //!
 //! # Overview
-//! - [`ExpectedState`] expresses the **intended lifecycle** of a holon at a
+//! - [`IntendedResolvedState`] expresses the **intended lifecycle** of a holon at a
 //!   specific point in a test case: `Transient`, `Staged`, or `Saved`.
 //! - [`TestReference`] is an **opaque fixture-time token** that contains a
-//!   portable [`TransientReference`] plus an [`ExpectedState`].
+//!   portable [`TransientReference`] plus an [`IntendedResolvedState`].
 //!
 //! ## Why a token?
 //! Fixtures declare *intent* but must not couple themselves to runtime handles
@@ -15,17 +15,11 @@
 //!
 //! ## Construction and visibility
 //! - Fixtures **cannot** construct `TestReference` directly.
-//! - Tokens are minted **only** by `FixtureHolons` (the factory/registry).
-//! - All fields are private; constructors and accessors are `pub(crate)` so only
-//!   harness internals can inspect or mutate them.
+//! - Tokens are minted **only** by `FixtureHolons` (the factory/registry) via pub(crate) exposure only.
+//! - All fields are private.
+//! - Tokens are immutable, representing a frozen "snapshot".
 
-use base_types::{MapString, ToBaseValue};
-use core_types::TemporaryId;
-use holons_core::{
-    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    HolonsContextBehavior,
-};
-use holons_prelude::prelude::ToPropertyName;
+use holons_core::reference_layer::TransientReference;
 
 /// Declarative intent for a test-scoped reference.
 ///
@@ -34,12 +28,10 @@ use holons_prelude::prelude::ToPropertyName;
 /// - `Saved`: the holon is expected to be committed (post-commit).
 ///
 /// Notes:
-/// - Fixtures generally create `Transient` or `Staged` intents.
-/// - “Saved” is usually derived by a **fixture-time** commit flip (via
-///   [`FixtureHolons::commit`](super::fixture_holons::FixtureHolons::commit)),
-///   and may also be enforced during execution when resolving tokens.
+/// - A new token is minted with a unique id for each snapshot representation of a state change.
+/// - FixtureHolons::commit() will mint a saved-intent (ie saved state) token for each staged-intent token who's previous snapshot is not either Abandoned or Saved.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum ExpectedState {
+pub enum IntendedResolvedState {
     Transient,
     Staged,
     Saved,
@@ -48,7 +40,7 @@ pub enum ExpectedState {
 }
 
 /// An **opaque fixture token** that identifies a holon by [`TransientReference`]
-/// and expresses its intended lifecycle via [`ExpectedState`].
+/// and expresses its intended lifecycle via [`IntendedResolvedState`].
 ///
 /// From a fixture’s perspective, this is just a *token*:
 /// - No direct construction or mutation (use [`FixtureHolons`](super::fixture_holons::FixtureHolons)
@@ -59,41 +51,33 @@ pub enum ExpectedState {
 /// Internally, harness code can access identity and intent in order to:
 /// - Resolve the token into a `HolonReference`.
 /// - Verify and assert state transitions.
-/// - Update intent (e.g., bulk flip staged → saved in fixtures).
+/// - Update intent by minting a new token that points back to the previous snapshot token_id.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
-    root: TransientReference, // carries the TemporaryId used to resolve the ExecutionHolon
-    expected_state: ExpectedState, // Transient | Staged | Saved | Abandoned | Deleted
-    expected_content: TransientReference, // FixtureHolon pointer with expected essential content, used for comparing expected (fixture) to actual (resolved)
+    previous: TransientReference, // back pointer to previous snapshot
+    intended_resolved_state: IntendedResolvedState, // Transient | Staged | Saved | Abandoned | Deleted
+    token_id: TransientReference, // carries the TemporaryId used to resolve the ExecutionHolon and expected essential content
 }
 
 impl TestReference {
     /// Crate-internal constructor. Only [`FixtureHolons`] may mint tokens.
-    pub(crate) fn new(
-        root: TransientReference,
-        expected_state: ExpectedState,
-        expected_content: TransientReference,
+    pub fn new(
+        previous: TransientReference,
+        intended_resolved_state: IntendedResolvedState,
+        token_id: TransientReference,
     ) -> Self {
-        Self { root, expected_state, expected_content }
+        Self { previous, intended_resolved_state, token_id }
     }
 
-    pub fn expected_content(&self) -> &TransientReference {
-        &self.expected_content
+    pub fn previous(&self) -> TransientReference {
+        self.previous.clone()
     }
 
-    pub fn expected_state(&self) -> ExpectedState {
-        self.expected_state
+    pub fn intended_resolved_state(&self) -> IntendedResolvedState {
+        self.intended_resolved_state
     }
 
-    pub fn root_id(&self) -> TemporaryId {
-        self.root.temporary_id()
-    }
-
-    pub fn root(&self) -> &TransientReference {
-        &self.root
-    }
-
-    pub fn token_id(&self) -> TemporaryId {
-        self.expected_content.temporary_id()
+    pub fn token_id(&self) -> TransientReference {
+        self.token_id.clone()
     }
 }

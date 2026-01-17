@@ -53,8 +53,7 @@ pub async fn execute_commit(
     let commit_count: MapInteger = committed_refs_guard.get_count();
     debug!("Discovered {:?} committed holons", commit_count.0);
 
-    // 5. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-    //             so later steps can look it up with the same token.
+    // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
     let holon_collection = committed_references.read().expect("Failed to read committed holons");
     // Temporary 'key' workaround for matching source token (expected) to resulting reference (actual).
     // TODO: solve or migrate issue 352
@@ -62,7 +61,7 @@ pub async fn execute_commit(
     let mut keyed_index = BTreeMap::new();
     for token in &source_tokens {
         let key = token
-            .expected_content()
+            .token_id()
             .key(context)
             .unwrap()
             .expect("For these testing purposes, source token (TestReference) must have a key");

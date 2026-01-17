@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
+use holons_prelude::prelude::*;
+use holons_test::FixtureBindings;
 use holons_test::{
     dance_test_language::DancesTestCase, test_reference::TestReference, FixtureHolons,
 };
 use tracing::{debug, info};
-
-use holons_prelude::prelude::*;
 use type_names::CorePropertyTypeName::Description;
 
 use crate::helpers::{
@@ -15,7 +15,7 @@ use crate::helpers::{
 
 /// This function updates the supplied test_case with a set of steps that establish some basic
 /// data the different test cases can then extend for different purposes.
-/// Specifically, this function stages 4 Holons (but does NOT commit) and creates 1 Relationship, with the following test data:
+/// Specifically, this function adds test steps that will stage 4 Holons (but NOT commit):
 /// *Book Holon* with BOOK_KEY title
 /// *Person Holon with PERSON_1_KEY*
 /// *Person Holon with PERSON_2_KEY*
@@ -29,116 +29,125 @@ pub fn setup_book_author_steps_with_context(
     fixture_context: &dyn HolonsContextBehavior,
     test_case: &mut DancesTestCase,
     fixture_holons: &mut FixtureHolons,
-) -> Result<RelationshipName, HolonError> {
+) -> Result<(RelationshipName, FixtureBindings), HolonError> {
     // Set relationship
     let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
+    let mut bindings = FixtureBindings::default();
 
     //  STAGE:  Book Holon  //
     //
     // Create fresh holon
     let book_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    // book_transient_reference.with_property_value(&*fixture_context, "title", BOOK_KEY)?.with_property_value(
-    //         &*fixture_context,
-    //         "Description",
-    //         "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-    //         )?;
+    let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
 
-    // Mint TestReferences (tokens)
-    let book_fresh_token = fixture_holons.add_transient_with_key(
-        &book_transient_reference.clone(),
-        book_key.clone(),
-        book_transient_reference.clone(),
-    );
+    // Mint
     let mut book_properties = BTreeMap::new();
+    book_properties.insert("Title".to_property_name(), BOOK_KEY.to_base_value());
     book_properties.insert("Description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
-    let book_source_token = test_case.add_with_properties_step(
+
+    let book_transient_token = test_case.add_new_holon_step(
         &*fixture_context,
         fixture_holons,
-        book_fresh_token,
+        book_transient_reference,
         book_properties,
+        Some(book_key.clone()),
         ResponseStatusCode::OK,
     )?;
+    // Stage & bind with label
     let book_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
-        book_source_token,
-        Some(book_key),
+        book_transient_token,
         ResponseStatusCode::OK,
     )?;
+    bindings.insert_token(MapString("Book".to_string()), book_staged_token.clone());
 
     // //  STAGE:  Person 1 //
     //
     // Create
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let mut person_1_transient_reference =
+    let person_1_transient_reference =
         new_holon(&*fixture_context, Some(person_1_key.clone()))?;
-    person_1_transient_reference
-        .with_property_value(&*fixture_context, "first name", "Roger")?
-        .with_property_value(&*fixture_context, "last name", "Briggs")?;
-    // Mint
-    let person_1_transient_token = fixture_holons.add_transient_with_key(
-        &person_1_transient_reference.clone(),
-        person_1_key.clone(),
-        person_1_transient_reference.clone(),
-    );
+
+    let mut person_1_properties = BTreeMap::new();
+    person_1_properties.insert("first name".to_property_name(), "Roger".to_base_value());
+    person_1_properties.insert("last name".to_property_name(), "Briggs".to_base_value());
+
+    let person_1_transient_token = test_case.add_new_holon_step(
+        &*fixture_context,
+        fixture_holons,
+        person_1_transient_reference,
+        person_1_properties,
+        Some(person_1_key.clone()),
+        ResponseStatusCode::OK,
+    )?;
+
     let person_1_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
         person_1_transient_token,
-        Some(person_1_key),
         ResponseStatusCode::OK,
     )?;
+    bindings.insert_token(MapString("Person1".to_string()), person_1_staged_token.clone());
 
     //  STAGE:  Person 2 //
     //
     // Create
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let mut person_2_transient_reference =
+    let person_2_transient_reference =
         new_holon(&*fixture_context, Some(person_2_key.clone()))?;
-    person_2_transient_reference
-        .with_property_value(&*fixture_context, "first name", "George")?
-        .with_property_value(&*fixture_context, "last name", "Smith")?;
-    // Mint
-    let person_2_transient_token = fixture_holons.add_transient_with_key(
-        &person_2_transient_reference.clone(),
-        person_2_key.clone(),
-        person_2_transient_reference.clone(),
-    );
+
+    let mut person_2_properties = BTreeMap::new();
+    person_2_properties.insert("first name".to_property_name(), "George".to_base_value());
+    person_2_properties.insert("last name".to_property_name(), "Smith".to_base_value());
+
+    let person_2_transient_token = test_case.add_new_holon_step(
+        &*fixture_context,
+        fixture_holons,
+        person_2_transient_reference,
+        person_2_properties,
+        Some(person_2_key.clone()),
+        ResponseStatusCode::OK,
+    )?;
+
     let person_2_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
         person_2_transient_token,
-        Some(person_2_key),
         ResponseStatusCode::OK,
     )?;
+    bindings.insert_token(MapString("Person2".to_string()), person_2_staged_token.clone());
 
     //  STAGE:  Publisher //
     //
     // Create
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let mut publisher_transient_reference =
+    let publisher_transient_reference =
         new_holon(&*fixture_context, Some(publisher_key.clone()))?;
-    publisher_transient_reference
-        .with_property_value(&*fixture_context, "name", PUBLISHER_KEY)?
-        .with_property_value(
-            &*fixture_context,
-            "Description",
-            "We publish Holons for testing purposes",
-        )?;
-    // Mint
-    let publisher_transient_token = fixture_holons.add_transient_with_key(
-        &publisher_transient_reference.clone(),
-        publisher_key.clone(),
-        publisher_transient_reference.clone(),
+
+    let mut publisher_properties = BTreeMap::new();
+    publisher_properties.insert("name".to_property_name(), PUBLISHER_KEY.to_base_value());
+    publisher_properties.insert(
+        "Description".to_property_name(),
+        "We publish Holons for testing purposes".to_base_value(),
     );
-    let _publisher_staged_token = test_case.add_stage_holon_step(
+
+    let publisher_transient_token = test_case.add_new_holon_step(
+        &*fixture_context,
+        fixture_holons,
+        publisher_transient_reference,
+        publisher_properties,
+        Some(publisher_key.clone()),
+        ResponseStatusCode::OK,
+    )?;
+
+    let publisher_staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         fixture_holons,
         publisher_transient_token,
-        Some(publisher_key),
         ResponseStatusCode::OK,
     )?;
+    bindings.insert_token(MapString("Publisher".to_string()), publisher_staged_token.clone());
 
     // //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
     // let mut fixture_target_references: Vec<HolonReference> = Vec::new();
@@ -165,5 +174,5 @@ pub fn setup_book_author_steps_with_context(
     // Load test_session_state
     test_case.load_test_session_state(&*fixture_context);
 
-    Ok(relationship_name)
+    Ok((relationship_name, bindings))
 }

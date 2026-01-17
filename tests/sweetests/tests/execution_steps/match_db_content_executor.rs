@@ -1,4 +1,4 @@
-use holons_test::{ExpectedState, TestExecutionState};
+use holons_test::{IntendedResolvedState, TestExecutionState};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -23,7 +23,9 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
 
     // Iterate through all created holons and verify them in the database, panic if resolved reference does not match expected state
     for (id, resolved_reference) in state.holons().by_temporary_id.clone() {
-        if resolved_reference.source_token.expected_state() == ExpectedState::Saved {
+        if resolved_reference.fixture_token.intended_resolved_state()
+            == IntendedResolvedState::Saved
+        {
             let holon_reference = resolved_reference
                 .resulting_reference
                 .get_holon_reference()
@@ -37,7 +39,7 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
 
             // 1. LOOKUP — get the input handle for the source token
             let source_reference =
-                state.lookup_holon_reference(context, &resolved_reference.source_token).unwrap();
+                state.lookup_holon_reference(context, &resolved_reference.fixture_token).unwrap();
             let holon_id = source_reference.holon_id(context).expect("Failed to get HolonId");
 
             // 2. BUILD — get_holon_by_id DanceRequest
@@ -52,11 +54,7 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
             // 4. VALIDATE - Ensure response contains the expected Holon
             if let ResponseBody::Holon(actual_holon) = response.body {
                 assert_eq!(
-                    resolved_reference
-                        .source_token
-                        .expected_content()
-                        .essential_content(context)
-                        .unwrap(),
+                    resolved_reference.fixture_token.token_id().essential_content(context).unwrap(),
                     actual_holon.essential_content(),
                 );
                 info!(
