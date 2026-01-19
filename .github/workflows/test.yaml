@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [develop, main]
+    branches: [develop, main, ci-fix]
 
 env:
   CARGO_TERM_COLOR: always
