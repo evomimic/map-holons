@@ -33,12 +33,12 @@ jobs:
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
-        run: | 
-          nix build
-          nix flake check
         with:
           extra_nix_config: |
             experimental-features = flakes nix-command
+
+      - name: flake check
+        run: nix flake check
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
