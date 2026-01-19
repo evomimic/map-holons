@@ -30,7 +30,8 @@
                           pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
                           pkgs.cmake
                           pkgs.glib              
-                          pkgs.gtk3 
+                          pkgs.gtk3
+                          pkgs.webkitgtk_4_1 
                         ];
 
             packages = with pkgs; [
