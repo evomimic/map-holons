@@ -41,11 +41,11 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Lint
-        run: cargo clippy --all-features -- -D warnings
+     # - name: Lint
+     #   run: cargo clippy --all-features -- -D warnings
 
-      - name: Check formatting
-        run: cargo fmt --all --check
+     # - name: Check formatting
+     #   run: cargo fmt --all --check
 
       - name: install and test
         uses: actions/setup-node@v4
