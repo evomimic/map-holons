@@ -29,7 +29,8 @@
                           pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
                           pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
                           pkgs.cmake
-                          pkgs.glib              # ✅ Add glib
+                          pkgs.glib              
+                          pkgs.gtk3 
                         ];
 
             packages = with pkgs; [
