@@ -24,36 +24,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v5
+      # Minimal system dependencies for Nix
+      - name: Install system dependencies
         if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-14-dev libstdc++6 clang
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        run: nix build
+        run: nix flake check
         with:
-          remove-dotnet: "true"
-          remove-android: "true"
-          remove-codeql: "true"
-          remove-docker-images: "true"
-          remove-large-packages: "true"
+          extra_nix_config: |
+            experimental-features = flakes nix-command
 
-      - name: cmake
-        uses: jwlawson/actions-setup-cmake@v2
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
         with:
-          cmake-version: '4.x'
+          name:  holochain-ci
 
-      - uses: Swatinem/rust-cache@v2
-
-     # - name: Lint
-     #   run: cargo clippy --all-features -- -D warnings
-
-     # - name: Check formatting
-     #   run: cargo fmt --all --check
-
-      - name: install and test
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm test
-        env:
-          CI: true
-        
+      - name: Build and test
+        run: |
+          nix develop --command bash -c "npm i && npm t"
