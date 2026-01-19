@@ -1,4 +1,4 @@
-# MAP Repository Architecture
+# MAP Repository Architecture 
 
 ## 1. Core Mental Model (The Headline Idea)
 
