@@ -24,6 +24,7 @@ use holons_prelude::prelude::*;
 pub async fn execute_remove_related_holons(
     state: &mut TestExecutionState,
     source_token: TestReference,
+    expected_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
     expected_response: ResponseStatusCode,
@@ -60,8 +61,7 @@ pub async fn execute_remove_related_holons(
     );
     info!("Success! Related Holons have been removed");
    
-    // 4. RECORD — tie the new staged handle to the **source token’s TemporaryId**
-    //             so later steps can look it up with the same token.
+    // 4. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
     let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
         other => {
@@ -70,6 +70,6 @@ pub async fn execute_remove_related_holons(
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
     state.record_resolved(resolved_reference);
 }

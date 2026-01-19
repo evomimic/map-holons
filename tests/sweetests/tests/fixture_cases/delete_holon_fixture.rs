@@ -1,6 +1,7 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, FixtureHolons};
+use holons_test::{DancesTestCase, FixtureHolons, TestReference};
 use rstest::*;
+use std::collections::BTreeMap;
 
 use crate::helpers::{init_fixture_context, BOOK_KEY};
 
@@ -18,50 +19,60 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    book_transient_reference.with_property_value(
-        &*fixture_context,
-        "title".to_string(),
-        BOOK_KEY,
-    )?.with_property_value(
-            &*fixture_context,
-            "description",
-                "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?",
-            )?;
+    let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
 
-    // Mint a transient-intent token and index it by key.
-    let book_source_token = fixture_holons.add_transient_with_key(
-        &book_transient_reference.clone(),
-        book_key.clone(),
-        book_transient_reference.clone(),
-    );
+    // Mint
+    let mut book_properties = BTreeMap::new();
+    book_properties.insert("Title".to_property_name(), BOOK_KEY.to_base_value());
+    book_properties.insert("description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
 
-    // Stage
-    test_case.add_stage_holon_step(
+    let book_source_token = test_case.add_new_holon_step(
         &*fixture_context,
         &mut fixture_holons,
-        book_source_token.clone(),
+        book_transient_reference,
+        book_properties,
         Some(book_key.clone()),
         ResponseStatusCode::OK,
     )?;
 
+    // Add a stage-holon step and capture its TestReference for later steps
+    test_case.add_stage_holon_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        book_source_token,
+        ResponseStatusCode::OK,
+    )?;
+
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
-    let saved_token = fixture_holons.get_latest_by_key(&book_key)?;
+    let saved_tokens = test_case.add_commit_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+    )?;
+
+    let book_saved_token: TestReference = saved_tokens
+        .iter()
+        .filter(|t| {
+            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
+        })
+        .collect::<Vec<&TestReference>>()[0]
+        .clone();
 
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
-        saved_token.clone(),
+        book_saved_token.clone(),
         ResponseStatusCode::OK,
     )?;
 
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
-        saved_token,
+        book_saved_token,
         ResponseStatusCode::NotFound,
     )?;
 

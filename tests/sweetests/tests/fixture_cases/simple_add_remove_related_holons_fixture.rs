@@ -46,11 +46,14 @@
 
 //     // // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
 //     // // from the book to the two persons
-//     // let setup_relationship_name = setup_book_author_steps_with_context(
-//     //     &*fixture_context,
-//     //     &mut test_case,
-//     //     &mut fixture_holons,
-//     // )?;
+//    // let fixture_tuple = setup_book_author_steps_with_context(
+//    //     &*fixture_context,
+//    //     &mut test_case,
+//    //     &mut fixture_holons,
+//    // )?;
+
+//    // let relationship_name = fixture_tuple.0;
+//    // let fixture_bindings = fixture_tuple.1;
 
 //     // info!("fixture: book and author setup complete.");
 
@@ -77,12 +80,12 @@
 //         )
 //         .unwrap();
 //     // Mint transient source tokens
-//     let company_transient_token = fixture_holons.add_transient_with_key(
+//     let company_transient_token = fixture_holons.add_transient(
 //         &company_transient_reference,
 //         company_key.clone(),
 //         &company_expected_content,
 //     );
-//     let website_transient_token = fixture_holons.add_transient_with_key(
+//     let website_transient_token = fixture_holons.add_transient(
 //         &website_transient_reference,
 //         website_key.clone(),
 //         &website_transient_reference.essential_content(&*fixture_context)?,
@@ -106,7 +109,7 @@
 //         )
 //         .unwrap();
 //     // Mint transient token with the expected_content
-//     let source_company_token = fixture_holons.add_transient_with_key(
+//     let source_company_token = fixture_holons.add_transient(
 //         &company_transient_reference,
 //         company_key.clone(),
 //         &company_expected_content,
@@ -123,7 +126,7 @@
 //     // let again_relationship = "AGAIN".to_relationship_name();
 //     // let example_key = MapString("EXAMPLE_KEY".to_string());
 //     // let example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
-//     // let example_transient_token = fixture_holons.add_transient_with_key(
+//     // let example_transient_token = fixture_holons.add_transient(
 //     //     &example_transient_reference,
 //     //     example_key.clone(),
 //     //     &example_transient_reference.essential_content(&*fixture_context)?,
@@ -139,7 +142,7 @@
 //     //     )
 //     //     .unwrap();
 //     // // Mint another snapshot
-//     // let another_company_token = fixture_holons.add_transient_with_key(
+//     // let another_company_token = fixture_holons.add_transient(
 //     //     &company_transient_reference,
 //     //     company_key.clone(),
 //     //     &company_expected_content,
@@ -168,7 +171,7 @@
 //     //     book_holon_staged_reference.related_holons(&*fixture_context, &relationship_name)?;
 
 //     // // let authors =
-//     // //     book_staged_token.expected_content().relationship_map.get(&relationship_name).expect("No collection found for relationship_name");
+//     // //     book_staged_token.token_id().relationship_map.get(&relationship_name).expect("No collection found for relationship_name");
 
 //     // // debug!("authors retrieved for book: {:?}", authors_reference);
 //     // let person_1_option =

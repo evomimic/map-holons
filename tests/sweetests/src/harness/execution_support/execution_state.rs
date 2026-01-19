@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use crate::harness::execution_support::{ExecutionHolons, ResolvedTestReference};
 use crate::harness::fixtures_support::TestReference;
+use core_types::TemporaryId;
 use holons_prelude::prelude::*;
 
 use super::ResultingReference;
@@ -111,5 +112,11 @@ impl TestExecutionState {
         tokens: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
         self.execution_holons.lookup_holon_references(context, tokens)
+    }
+
+    /// Lookup the HolonReference for the previous snapshot (the source token for the prior step).
+    #[inline]
+    pub fn lookup_previous(&self, id: TemporaryId) -> Result<HolonReference, HolonError> {
+        self.execution_holons.lookup_previous(id)
     }
 }
