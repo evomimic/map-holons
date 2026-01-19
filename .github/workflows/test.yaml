@@ -1,36 +1,58 @@
-name: "test"
+name: test
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
+  push:
+    branches: [develop, main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
-  testbuild:
-    runs-on: ubuntu-latest
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      # 🔴 REQUIRED: minimal system bootstrap so bindgen/libclang can start
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-14-dev libstdc++6 clang
-
-      - name: Install nix
-        uses: cachix/install-nix-action@v27
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        if: startsWith(matrix.os, 'ubuntu')
         with:
-          install_url: https://releases.nixos.org/nix/nix-2.23.3/install
-          extra_nix_config: |
-            experimental-features = flakes nix-command
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+          remove-large-packages: "true"
 
-      - uses: cachix/cachix-action@v15
+      - name: cmake
+        uses: jwlawson/actions-setup-cmake@v2
         with:
-          name: holochain-ci
+          cmake-version: '4.x'
 
-      - name: Install and test
-        run: |
-          nix develop --command bash -c "npm i && npm t"
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Lint
+        run: cargo clippy --all-features -- -D warnings
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: install and test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+        env:
+          CI: true
+        
