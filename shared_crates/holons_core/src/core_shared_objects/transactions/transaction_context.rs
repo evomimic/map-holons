@@ -134,11 +134,26 @@ impl HolonsContextBehavior for TransactionContext {
     }
 
     fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
-        self.require_space_manager().get_space_holon()
+        // Transaction-scoped mapping from stored id to runtime reference.
+        let space_holon_id = self.require_space_manager().get_space_holon_id()?;
+        Ok(space_holon_id.map(HolonReference::from))
     }
 
     fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError> {
-        self.require_space_manager().set_space_holon(space)
+        // Validation: only persisted (smart) holons may anchor the space.
+        let reference_kind = space.reference_kind_string();
+        let reference_id = space.reference_id_string();
+        let space_holon_id = match space {
+            HolonReference::Smart(smart_reference) => smart_reference.get_id()?,
+            _ => {
+                return Err(HolonError::InvalidHolonReference(format!(
+                    "Space holon must be a SmartReference; got {} ({})",
+                    reference_kind, reference_id
+                )));
+            }
+        };
+
+        self.require_space_manager().set_space_holon_id(space_holon_id)
     }
 
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
