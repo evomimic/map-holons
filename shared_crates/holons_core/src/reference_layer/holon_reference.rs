@@ -5,11 +5,11 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
+    core_shared_objects::transactions::TransactionContext,
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         HolonCollection,
     },
-    core_shared_objects::transactions::TransactionContext,
     reference_layer::{
         HolonsContextBehavior, ReadableHolon, SmartReference, SmartReferenceSerializable,
         StagedReference, StagedReferenceSerializable, TransientReference,
@@ -133,21 +133,21 @@ impl HolonReference {
     pub fn is_transient(&self) -> bool {
         match self {
             Self::Transient(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_staged(&self) -> bool {
         match self {
             Self::Staged(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_saved(&self) -> bool {
         match self {
             Self::Smart(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -227,6 +227,24 @@ impl HolonReference {
     ///   [`smart_with_key`](Self::smart_with_key) for convenience.
     pub fn smart_with_properties(holon_id: HolonId, smart_properties: PropertyMap) -> Self {
         HolonReference::Smart(SmartReference::new_with_properties(holon_id, smart_properties))
+    }
+
+    // Simple string representations for errors/logging
+
+    pub fn reference_kind_string(&self) -> String {
+        match self {
+            HolonReference::Transient(reference) => reference.reference_kind_string(),
+            HolonReference::Staged(reference) => reference.reference_kind_string(),
+            HolonReference::Smart(reference) => reference.reference_kind_string(),
+        }
+    }
+
+    pub fn reference_id_string(&self) -> String {
+        match self {
+            HolonReference::Transient(reference) => reference.reference_id_string(),
+            HolonReference::Staged(reference) => reference.reference_id_string(),
+            HolonReference::Smart(reference) => reference.reference_id_string(),
+        }
     }
 }
 

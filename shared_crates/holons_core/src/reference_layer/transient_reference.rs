@@ -136,6 +136,15 @@ impl TransientReference {
             )),
         }
     }
+
+    // Simple string representations for errors/logging
+    pub fn reference_kind_string(&self) -> String {
+        "TransientReference".to_string()
+    }
+
+    pub fn reference_id_string(&self) -> String {
+        format!("TemporaryId={}", self.id)
+    }
 }
 
 impl fmt::Display for TransientReference {
