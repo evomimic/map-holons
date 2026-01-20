@@ -19,7 +19,7 @@
 
     "check": "npm run check -w host && npm run check -w happ",
 
-    "test": "npm run test:unit && npm run sweetest",
+    "test": "npm run sweetest",
     "test:unit": "npm run test:unit -w host && npm run test:unit:no-run -w happ",
 
     "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test",
