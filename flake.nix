@@ -20,18 +20,20 @@
             # Pull in holonix dev shell
             inputsFrom = [ inputs'.holonix.devShells.default ];
 
-            # Extra native tools (incl. libclang + libstdc++ for CI)
-            nativeBuildInputs = [
-                          pkgs.libsodium
-                          pkgs.pkg-config
-                          pkgs.llvmPackages.libunwind
-                          pkgs.llvmPackages.libclang        # ✅ Required by bindgen
-                          pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
-                          pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
-                          pkgs.cmake
-                        ];
-
             packages = with pkgs; [
+              # ✅ Native build toolchain + headers required on CI (Ubuntu)
+              stdenv.cc
+              glibc.dev
+
+              # ✅ For crates like bindgen / cmake / datachannel-sys
+              llvmPackages.libclang
+              llvmPackages.clang-unwrapped
+              llvmPackages.libunwind
+              pkg-config
+              cmake
+              libsodium
+
+              # App-specific tools
               nodejs_22
               binaryen
             ];
@@ -40,13 +42,16 @@
               ''
                 export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
 
-                # Cross-platform: modern CMake policy + reduce configure flakiness
+                # 🛠 For CMake-based crates and general safety
                 export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
                 export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+
+                # ✅ Critical for CI (Ubuntu) to find stdlib headers + libs
+                export NIX_CFLAGS_COMPILE="-isystem ${pkgs.glibc.dev}/include"
+                export NIX_LDFLAGS="-L${pkgs.glibc}/lib -L${pkgs.stdenv.cc.cc.lib}/lib"
               ''
-              # macOS-only: use Apple's toolchain for native deps
               + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
-                # Requires Xcode CLT: xcode-select --install
+                # macOS-only: use Apple's toolchain
                 export CC="$(xcrun -f clang)"
                 export CXX="$(xcrun -f clang++)"
                 export AR="$(xcrun -f ar)"
