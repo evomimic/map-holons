@@ -1,10 +1,10 @@
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::transient_collection::TransientCollection;
 use crate::core_shared_objects::transactions::TransactionManager;
 use crate::dances::dance_initiator::DanceInitiator;
-use crate::reference_layer::{HolonReference, HolonServiceApi};
+use crate::reference_layer::HolonServiceApi;
 use std::sync::{Arc, RwLock};
 
 /// Defines the core behavior of a **Holon Space**, providing:
@@ -40,17 +40,17 @@ pub trait HolonSpaceBehavior {
     /// - An `Arc<dyn HolonServiceApi + Send + Sync>` for interacting with holons.
     fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync>;
 
-    /// Retrieves a reference to the **local space holon**, if it exists.
+    /// Retrieves the **local space holon id**, if it exists.
     ///
     /// The **space holon** represents the current holon space and serves as an anchor
     /// for all holon operations within this space.
     ///
     /// The space holon:
     /// - Is `None` only during a brief initialization window.
-    /// - Is `Some(HolonReference)` in steady state.
+    /// - Is `Some(HolonId)` in steady state.
     /// - Returns `Err(HolonError::FailedToAcquireLock(_))` if the internal lock
     ///   cannot be acquired, indicating possible corruption or poisoning.
-    fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError>;
+    fn get_space_holon_id(&self) -> Result<Option<HolonId>, HolonError>;
 
     /// Provides access to a **transient state collection**, initializing it if necessary.
     ///
@@ -66,14 +66,14 @@ pub trait HolonSpaceBehavior {
     ///   collections in a thread-safe context.
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>>;
 
-    /// Updates the local space holon reference.
+    /// Updates the local space holon id.
     ///
     /// # Arguments
-    /// - `space` - The new `HolonReference` for the space.
+    /// - `space` - The new `HolonId` for the space.
     /// # Errors
     /// Returns `HolonError::FailedToAcquireLock` if the internal write lock
     /// on `local_holon_space` cannot be acquired.
-    fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError>;
+    fn set_space_holon_id(&self, space: HolonId) -> Result<(), HolonError>;
 
     /// Provides access to the per-space transaction manager.
     ///
