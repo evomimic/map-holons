@@ -24,16 +24,16 @@
             nativeBuildInputs = [
                           pkgs.libsodium
                           pkgs.pkg-config
-                          pkgs.llvmPackages.libunwind
+                          #pkgs.llvmPackages.libunwind
                           pkgs.llvmPackages.libclang        # ✅ Required by bindgen
                           pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
                           pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
                           pkgs.cmake
                           pkgs.glib              
                           pkgs.gtk3
-                          pkgs.webkitgtk_4_1 
+                          #pkgs.webkitgtk_4_1
+                          pkgs.openssl         # ✅ System OpenSSL
                         ];
-
             packages = with pkgs; [
               nodejs_22
               binaryen
@@ -46,6 +46,9 @@
                 # Cross-platform: modern CMake policy + reduce configure flakiness
                 export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
                 export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+
+                # Tell datachannel-sys to use system OpenSSL
+                export OPENSSL_NO_VENDOR=1
               ''
               # macOS-only: use Apple's toolchain for native deps
               + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
