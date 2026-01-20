@@ -5,8 +5,8 @@ use std::{fmt, sync::Arc};
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::{TransactionContext, TxId};
 use crate::core_shared_objects::holon::StagedState;
+use crate::core_shared_objects::transactions::{TransactionContext, TxId};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -168,6 +168,15 @@ impl StagedReference {
 
     pub fn temporary_id(&self) -> TemporaryId {
         self.id.clone()
+    }
+
+    // Simple string representations for errors/logging
+    pub fn reference_kind_string(&self) -> String {
+        "StagedReference".to_string()
+    }
+
+    pub fn reference_id_string(&self) -> String {
+        format!("TemporaryId={}", self.id)
     }
 }
 

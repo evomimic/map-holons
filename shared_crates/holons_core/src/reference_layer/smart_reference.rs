@@ -37,11 +37,7 @@ pub struct SmartReferenceSerializable {
 }
 
 impl SmartReferenceSerializable {
-    pub fn new(
-        tx_id: TxId,
-        holon_id: HolonId,
-        smart_property_values: Option<PropertyMap>,
-    ) -> Self {
+    pub fn new(tx_id: TxId, holon_id: HolonId, smart_property_values: Option<PropertyMap>) -> Self {
         Self { tx_id, holon_id, smart_property_values }
     }
 
@@ -115,6 +111,15 @@ impl SmartReference {
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
+    }
+
+    // Simple string representations for errors/logging
+    pub fn reference_kind_string(&self) -> String {
+        "SmartReference".to_string()
+    }
+
+    pub fn reference_id_string(&self) -> String {
+        format!("HolonId={}", self.holon_id)
     }
 }
 
