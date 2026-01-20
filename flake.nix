@@ -31,7 +31,7 @@
                           pkgs.cmake
                           pkgs.glib              
                           pkgs.gtk3
-                          #pkgs.webkitgtk_4_1
+                          pkgs.webkitgtk_4_1
                           pkgs.openssl         # ✅ System OpenSSL
                         ];
             packages = with pkgs; [
