@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,9 +30,11 @@ jobs:
         run: |
           nix develop --command bash -c "npm ci"
 
-      #- name: Lint
-       # run: |
-        #  nix develop --command bash -c "npm run lint"
+      # - name: Lint
+      #  run: cargo clippy --all-features -- -D warnings
+
+      # - name: Check formatting
+      #   run: cargo fmt --all --check
 
       - name: Test
         run: |
