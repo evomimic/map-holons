@@ -9,8 +9,11 @@ use crate::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         HolonCollection,
     },
+    core_shared_objects::transactions::TransactionContext,
     reference_layer::{
-        HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientReference,
+        HolonsContextBehavior, ReadableHolon, SmartReference, SmartReferenceSerializable,
+        StagedReference, StagedReferenceSerializable, TransientReference,
+        TransientReferenceSerializable,
     },
     RelationshipMap,
 };
@@ -20,6 +23,13 @@ use core_types::{
 };
 use std::sync::{Arc, RwLock};
 use type_names::CorePropertyTypeName;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum HolonReferenceSerializable {
+    Transient(TransientReferenceSerializable),
+    Staged(StagedReferenceSerializable),
+    Smart(SmartReferenceSerializable),
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
@@ -52,6 +62,24 @@ impl HolonReference {
     /// Creates a `HolonReference::Smart` variant from a `SmartReference`.
     pub fn from_smart(smart: SmartReference) -> Self {
         HolonReference::Smart(smart)
+    }
+
+    pub fn bind(
+        wire: HolonReferenceSerializable,
+        context: Arc<TransactionContext>,
+    ) -> Result<Self, HolonError> {
+        match wire {
+            HolonReferenceSerializable::Transient(transient) => {
+                TransientReference::bind(transient, Arc::clone(&context))
+                    .map(HolonReference::Transient)
+            }
+            HolonReferenceSerializable::Staged(staged) => {
+                StagedReference::bind(staged, Arc::clone(&context)).map(HolonReference::Staged)
+            }
+            HolonReferenceSerializable::Smart(smart) => {
+                SmartReference::bind(smart, Arc::clone(&context)).map(HolonReference::Smart)
+            }
+        }
     }
 
     pub fn get_descriptor(

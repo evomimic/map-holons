@@ -13,6 +13,7 @@ use core_types::{
     RelationshipName, TemporaryId,
 };
 
+use crate::core_shared_objects::transactions::{TransactionContext, TxId};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -24,6 +25,22 @@ use crate::{
     reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon},
     HolonCollection, RelationshipMap,
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TransientReferenceSerializable {
+    tx_id: TxId,
+    id: TemporaryId,
+}
+
+impl TransientReferenceSerializable {
+    pub fn new(tx_id: TxId, id: TemporaryId) -> Self {
+        Self { tx_id, id }
+    }
+
+    pub fn tx_id(&self) -> TxId {
+        self.tx_id
+    }
+}
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransientReference {
@@ -41,6 +58,21 @@ impl TransientReference {
     ///
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
         TransientReference::new(id.clone())
+    }
+
+    pub fn bind(
+        wire: TransientReferenceSerializable,
+        context: Arc<TransactionContext>,
+    ) -> Result<Self, HolonError> {
+        if wire.tx_id != context.tx_id() {
+            return Err(HolonError::InvalidHolonReference(format!(
+                "TransientReference bind failed: wire tx_id {:?} does not match active tx_id {:?}",
+                wire.tx_id,
+                context.tx_id()
+            )));
+        }
+
+        Ok(TransientReference { id: wire.id })
     }
 
     /// Retrieves a shared reference to the holon with interior mutability.
