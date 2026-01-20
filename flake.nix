@@ -1,5 +1,5 @@
 {
-  description = "Flake for Holochain app development";
+  description = "Flake for Holochain app development with rust client and nodejs";
 
   inputs = {
     holonix.url = "github:holochain/holonix?ref=main-0.5";
@@ -13,29 +13,42 @@
     perSystem = { inputs', pkgs, ... }: {
       formatter = pkgs.nixpkgs-fmt;
 
-      devShells.default = pkgs.mkShell {
-        inputsFrom = [ inputs'.holonix.devShells.default ];
+        devShells.default = pkgs.mkShell {
+          inputsFrom = [ inputs'.holonix.devShells.default ];
 
-        # MacOS-specific fixes
-        nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
-          pkgs.libsodium
-          pkgs.pkg-config
-          pkgs.llvmPackages.libunwind
-          pkgs.llvmPackages.libclang        
-          pkgs.llvmPackages.clang-unwrapped 
-          pkgs.stdenv.cc.cc.lib             
-          pkgs.cmake
-        ];
+          # 1. Tools needed at build time (running the build)
+          nativeBuildInputs = [
+            pkgs.pkg-config # Helper to find libraries (OpenSSL)
+            pkgs.cmake      # Helper to build C dependencies
+          ] ++ (pkgs.lib.optionals pkgs.stdenv.isLinux [
+             # Linux-specific build tools
+             pkgs.libclang
+             pkgs.rustPlatform.bindgenHook
+          ]);
 
-        packages = (with pkgs; [
-          nodejs_22
-          binaryen
-        ]);
+          # 2. Libraries needed for linking (the actual code)
+          buildInputs = [
+            pkgs.openssl    # Shared: Pre-built OpenSSL (saves compilation time on Mac too)
+            pkgs.libsodium  # Shared: Holochain crypto dependency
+          ] ++ (pkgs.lib.optionals pkgs.stdenv.isDarwin [
+             # Mac-specific system frameworks
+             pkgs.bzip2
+             pkgs.libiconv
+             pkgs.llvmPackages.libunwind # Essential for wasmer (Holochain) to work properly on macOS
+          ]);
 
-        shellHook = ''
-          export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
-        '';
-      };
+          packages = with pkgs; [
+            nodejs_22
+            binaryen
+          ];
+
+          # Env vars
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+
+          shellHook = ''
+             export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
+          '';
+        };
     };
   };
 }
