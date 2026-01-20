@@ -5,6 +5,7 @@ use std::{fmt, sync::Arc};
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
+use crate::core_shared_objects::transactions::{TransactionContext, TxId};
 use crate::core_shared_objects::holon::StagedState;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
@@ -25,6 +26,22 @@ use base_types::{BaseValue, MapString};
 use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName, TemporaryId,
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StagedReferenceSerializable {
+    tx_id: TxId,
+    id: TemporaryId,
+}
+
+impl StagedReferenceSerializable {
+    pub fn new(tx_id: TxId, id: TemporaryId) -> Self {
+        Self { tx_id, id }
+    }
+
+    pub fn tx_id(&self) -> TxId {
+        self.tx_id
+    }
+}
 
 #[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StagedReference {
@@ -71,6 +88,21 @@ impl StagedReference {
     /// A new `StagedReference` wrapping the provided id.
     pub fn from_temporary_id(id: &TemporaryId) -> Self {
         StagedReference { id: id.clone() }
+    }
+
+    pub fn bind(
+        wire: StagedReferenceSerializable,
+        context: Arc<TransactionContext>,
+    ) -> Result<Self, HolonError> {
+        if wire.tx_id != context.tx_id() {
+            return Err(HolonError::InvalidHolonReference(format!(
+                "StagedReference bind failed: wire tx_id {:?} does not match active tx_id {:?}",
+                wire.tx_id,
+                context.tx_id()
+            )));
+        }
+
+        Ok(StagedReference { id: wire.id })
     }
 
     /// Retrieves the underlying Holon handle for commit operations.

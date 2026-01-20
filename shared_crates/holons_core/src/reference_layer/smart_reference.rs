@@ -7,6 +7,7 @@ use std::{
 use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
+use crate::core_shared_objects::transactions::{TransactionContext, TxId};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -28,6 +29,27 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SmartReferenceSerializable {
+    tx_id: TxId,
+    holon_id: HolonId,
+    smart_property_values: Option<PropertyMap>,
+}
+
+impl SmartReferenceSerializable {
+    pub fn new(
+        tx_id: TxId,
+        holon_id: HolonId,
+        smart_property_values: Option<PropertyMap>,
+    ) -> Self {
+        Self { tx_id, holon_id, smart_property_values }
+    }
+
+    pub fn tx_id(&self) -> TxId {
+        self.tx_id
+    }
+}
+
 #[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SmartReference {
     holon_id: HolonId,
@@ -44,6 +66,24 @@ impl SmartReference {
 
     pub fn new_with_properties(holon_id: HolonId, smart_property_values: PropertyMap) -> Self {
         SmartReference { holon_id, smart_property_values: Some(smart_property_values) }
+    }
+
+    pub fn bind(
+        wire: SmartReferenceSerializable,
+        context: Arc<TransactionContext>,
+    ) -> Result<Self, HolonError> {
+        if wire.tx_id != context.tx_id() {
+            return Err(HolonError::InvalidHolonReference(format!(
+                "SmartReference bind failed: wire tx_id {:?} does not match active tx_id {:?}",
+                wire.tx_id,
+                context.tx_id()
+            )));
+        }
+
+        Ok(SmartReference {
+            holon_id: wire.holon_id,
+            smart_property_values: wire.smart_property_values,
+        })
     }
 
     // *************** ACCESSORS ***************
