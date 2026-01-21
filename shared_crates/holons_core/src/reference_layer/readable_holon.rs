@@ -2,7 +2,6 @@ use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
-use crate::reference_layer::HolonsContextBehavior;
 use crate::{
     core_shared_objects::{
         holon::{state::AccessType, EssentialHolonContent},
@@ -19,39 +18,30 @@ use type_names::ToPropertyName;
 pub trait ReadableHolon: ReadableHolonImpl {
     // Plain forwards
     /// Generic clone for all Holon variants. Resulting clone is always a TransientReference, regardless of source phase.
-    fn clone_holon(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientReference, HolonError> {
-        ReadableHolonImpl::clone_holon_impl(self, context)
+    fn clone_holon(&self) -> Result<TransientReference, HolonError> {
+        ReadableHolonImpl::clone_holon_impl(self)
     }
     #[inline]
-    fn essential_content(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
-        ReadableHolonImpl::essential_content_impl(self, context)
+    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
+        ReadableHolonImpl::essential_content_impl(self)
     }
 
     /// Returns a String summary of the Holon.
     ///
     /// -Only used for logging. Provides a more concise message to avoid log bloat.
-    fn summarize(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
-        ReadableHolonImpl::summarize_impl(self, context)
+    fn summarize(&self) -> Result<String, HolonError> {
+        ReadableHolonImpl::summarize_impl(self)
     }
 
     /// Generally used to get a Holon id for a SmartReference, but will also return a Holon id for a StagedReference if the staged Holon has been committed.
     #[inline]
-    fn holon_id(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
-        ReadableHolonImpl::holon_id_impl(self, context)
+    fn holon_id(&self) -> Result<HolonId, HolonError> {
+        ReadableHolonImpl::holon_id_impl(self)
     }
 
     #[inline]
-    fn predecessor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        ReadableHolonImpl::predecessor_impl(self, context)
+    fn predecessor(&self) -> Result<Option<HolonReference>, HolonError> {
+        ReadableHolonImpl::predecessor_impl(self)
     }
 
     /// This function returns the primary key value for the holon or None if there is no key value
@@ -59,13 +49,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
     /// If the holon has a key, but it cannot be returned as a MapString, this function
     /// returns a HolonError::UnexpectedValueType.
     #[inline]
-    fn key(&self, context: &dyn HolonsContextBehavior) -> Result<Option<MapString>, HolonError> {
-        ReadableHolonImpl::key_impl(self, context)
+    fn key(&self) -> Result<Option<MapString>, HolonError> {
+        ReadableHolonImpl::key_impl(self)
     }
 
     #[inline]
-    fn versioned_key(&self, context: &dyn HolonsContextBehavior) -> Result<MapString, HolonError> {
-        ReadableHolonImpl::versioned_key_impl(self, context)
+    fn versioned_key(&self) -> Result<MapString, HolonError> {
+        ReadableHolonImpl::versioned_key_impl(self)
     }
     /// Populates a full RelationshipMap by retrieving all related Holons for the source HolonReference.
     /// The map returned will ONLY contain entries for relationships that have at least
@@ -76,28 +66,18 @@ pub trait ReadableHolon: ReadableHolonImpl {
     /// For a Saved Holon (SmartReference), it calls the GuestHolonService to fetch all Smartlinks.
     ///
     #[inline]
-    fn all_related_holons(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<RelationshipMap, HolonError> {
-        ReadableHolonImpl::all_related_holons_impl(self, context)
+    fn all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
+        ReadableHolonImpl::all_related_holons_impl(self)
     }
 
     #[inline]
-    fn into_model(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonNodeModel, HolonError> {
-        ReadableHolonImpl::into_model_impl(self, context)
+    fn into_model(&self) -> Result<HolonNodeModel, HolonError> {
+        ReadableHolonImpl::into_model_impl(self)
     }
 
     #[inline]
-    fn is_accessible(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        access: AccessType,
-    ) -> Result<(), HolonError> {
-        ReadableHolonImpl::is_accessible_impl(self, context, access)
+    fn is_accessible(&self, access: AccessType) -> Result<(), HolonError> {
+        ReadableHolonImpl::is_accessible_impl(self, access)
     }
 
     /// Retrieves the value of the specified property, if present.
@@ -121,11 +101,10 @@ pub trait ReadableHolon: ReadableHolonImpl {
     #[inline]
     fn property_value<T: ToPropertyName>(
         &self,
-        context: &dyn HolonsContextBehavior,
         name: T,
     ) -> Result<Option<PropertyValue>, HolonError> {
         let prop = name.to_property_name();
-        ReadableHolonImpl::property_value_impl(self, context, &prop)
+        ReadableHolonImpl::property_value_impl(self, &prop)
     }
 
     /// Retrieves the collection of holons related to this holon via the specified relationship.
@@ -160,11 +139,10 @@ pub trait ReadableHolon: ReadableHolonImpl {
     #[inline]
     fn related_holons<T: ToRelationshipName>(
         &self,
-        context: &dyn HolonsContextBehavior,
         name: T,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         let rel = name.to_relationship_name();
-        ReadableHolonImpl::related_holons_impl(self, context, &rel)
+        ReadableHolonImpl::related_holons_impl(self, &rel)
     }
 }
 
