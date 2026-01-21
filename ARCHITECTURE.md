@@ -30,12 +30,12 @@ There is no “mixed” execution context. Boundaries are strict by design.
 
 ## 3. Workspace-to-Execution-Context Mapping
 
-| Execution Context | Workspace | Purpose |
-|------------------|-----------|---------|
-| hApp (WASM) | `happ/` | Everything compiled into a Holochain App |
-| Host (Native) | `host/` | Everything running natively (CLI, Conductura, HX/UI, orchestration) |
-| Coordination | root workspace | IDE support + dependency version coordination only |
-| Test | `test/` | Sweettest, Tryorama, fixtures, executors |
+| Execution Context | Workspace      | Purpose                                                             |
+|-------------------|----------------|---------------------------------------------------------------------|
+| hApp (WASM)       | `happ/`        | Everything compiled into a Holochain App                            |
+| Host (Native)     | `host/`        | Everything running natively (CLI, Conductura, HX/UI, orchestration) |
+| Coordination      | root workspace | IDE support + dependency version coordination only                  |
+| Test              | `test/`        | Sweettest, Tryorama, fixtures, executors                            |
 
 **Important:**  
 The root workspace is *never* a build target. Builds must always be run from `happ/` or `host/`.
