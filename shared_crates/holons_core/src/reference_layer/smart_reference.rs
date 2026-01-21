@@ -7,7 +7,9 @@ use std::{
 use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::{TransactionContext, TxId};
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -46,8 +48,9 @@ impl SmartReferenceSerializable {
     }
 }
 
-#[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(new, Debug, Clone, PartialEq, Eq)]
 pub struct SmartReference {
+    context_handle: TransactionContextHandle,
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
 }
@@ -56,27 +59,34 @@ impl SmartReference {
     // *************** CONSTRUCTORS ***************
 
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
-    pub fn new_from_id(holon_id: HolonId) -> Self {
-        SmartReference { holon_id, smart_property_values: None }
+    pub fn new_from_id(context_handle: TransactionContextHandle, holon_id: HolonId) -> Self {
+        SmartReference { context_handle, holon_id, smart_property_values: None }
     }
 
-    pub fn new_with_properties(holon_id: HolonId, smart_property_values: PropertyMap) -> Self {
-        SmartReference { holon_id, smart_property_values: Some(smart_property_values) }
+    pub fn new_with_properties(
+        context_handle: TransactionContextHandle,
+        holon_id: HolonId,
+        smart_property_values: PropertyMap,
+    ) -> Self {
+        SmartReference { context_handle, holon_id, smart_property_values: Some(smart_property_values) }
     }
 
+    /// Binds a wire reference to a TransactionContext, validating tx_id.
     pub fn bind(
         wire: SmartReferenceSerializable,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         if wire.tx_id != context.tx_id() {
-            return Err(HolonError::InvalidHolonReference(format!(
-                "SmartReference bind failed: wire tx_id {:?} does not match active tx_id {:?}",
-                wire.tx_id,
-                context.tx_id()
-            )));
+            return Err(HolonError::CrossTransactionReference {
+                reference_kind: "SmartReference".to_string(),
+                reference_id: format!("HolonId={}", wire.holon_id),
+                reference_tx: wire.tx_id.value(),
+                context_tx: context.tx_id().value(),
+            });
         }
 
         Ok(SmartReference {
+            context_handle: TransactionContextHandle::new(context),
             holon_id: wire.holon_id,
             smart_property_values: wire.smart_property_values,
         })

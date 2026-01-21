@@ -13,7 +13,9 @@ use core_types::{
     RelationshipName, TemporaryId,
 };
 
-use crate::core_shared_objects::transactions::{TransactionContext, TxId};
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -42,8 +44,9 @@ impl TransientReferenceSerializable {
     }
 }
 
-#[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(new, Debug, Clone, PartialEq, Eq)]
 pub struct TransientReference {
+    context_handle: TransactionContextHandle,
     id: TemporaryId,
 }
 
@@ -56,23 +59,31 @@ impl TransientReference {
     /// # Returns
     /// A new `TransientReference` wrapping the provided id.
     ///
-    pub fn from_temporary_id(id: &TemporaryId) -> Self {
-        TransientReference::new(id.clone())
+    pub fn from_temporary_id(
+        context_handle: TransactionContextHandle,
+        id: &TemporaryId,
+    ) -> Self {
+        TransientReference::new(context_handle, id.clone())
     }
 
+    /// Binds a wire reference to a TransactionContext, validating tx_id.
     pub fn bind(
         wire: TransientReferenceSerializable,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         if wire.tx_id != context.tx_id() {
-            return Err(HolonError::InvalidHolonReference(format!(
-                "TransientReference bind failed: wire tx_id {:?} does not match active tx_id {:?}",
-                wire.tx_id,
-                context.tx_id()
-            )));
+            return Err(HolonError::CrossTransactionReference {
+                reference_kind: "TransientReference".to_string(),
+                reference_id: format!("TemporaryId={}", wire.id),
+                reference_tx: wire.tx_id.value(),
+                context_tx: context.tx_id().value(),
+            });
         }
 
-        Ok(TransientReference { id: wire.id })
+        Ok(TransientReference {
+            context_handle: TransactionContextHandle::new(context),
+            id: wire.id,
+        })
     }
 
     /// Retrieves a shared reference to the holon with interior mutability.

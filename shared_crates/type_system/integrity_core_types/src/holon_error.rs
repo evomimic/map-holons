@@ -33,6 +33,30 @@ pub enum HolonError {
     IndexOutOfRange(String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
+    #[error(
+        "Cross-transaction reference: {reference_kind}({reference_id}) belongs to tx {reference_tx}, \
+but the active transaction is tx {context_tx}."
+    )]
+    CrossTransactionReference {
+        reference_kind: String,
+        reference_id: String,
+        reference_tx: u64,
+        context_tx: u64,
+    },
+    #[error("Reference binding failed for {reference_kind}: {reason} (id: {reference_id:?})")]
+    ReferenceBindingFailed {
+        reference_kind: String,
+        reference_id: Option<String>,
+        reason: String,
+    },
+    #[error(
+        "Reference resolution failed for {reference_kind}({reference_id}): {reason}"
+    )]
+    ReferenceResolutionFailed {
+        reference_kind: String,
+        reference_id: String,
+        reason: String,
+    },
     #[error("Invalid Transition, {0}")]
     InvalidTransition(String),
     #[error("Invalid Type, {0}")]
