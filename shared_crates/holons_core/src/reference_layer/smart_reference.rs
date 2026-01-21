@@ -105,16 +105,13 @@ impl SmartReference {
 
     // *************** UTILITY METHODS ***************
 
-    fn get_cache_access(&self, context: &dyn HolonsContextBehavior) -> Arc<dyn HolonCacheAccess> {
-        context.get_cache_access()
+    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess> {
+        self.context_handle.context().get_cache_access()
     }
 
-    fn get_rc_holon(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
+    fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get CacheAccess
-        let cache_access = self.get_cache_access(context);
+        let cache_access = self.get_cache_access();
 
         // Retrieve the holon from the cache
         let rc_holon = cache_access.get_rc_holon(&self.holon_id)?;
@@ -182,7 +179,7 @@ impl ReadableHolonImpl for SmartReference {
         self.is_accessible(context, AccessType::Clone)?;
         let transient_behavior = context.get_transient_behavior_service();
 
-        let rc_holon = self.get_rc_holon(context)?;
+        let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on holon for clone_holon_impl: {}",
@@ -221,7 +218,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let cache_access = self.get_cache_access(context);
+        let cache_access = self.get_cache_access();
         let relationship_map = cache_access.get_all_related_holons(context, &self.get_id()?)?;
 
         Ok(relationship_map)
@@ -232,7 +229,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<EssentialHolonContent, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
+        let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on holon for essential_content_impl: {}",
@@ -251,7 +248,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonNodeModel, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
+        let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on holon for into_model_impl: {}",
@@ -267,7 +264,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
         access_type: AccessType,
     ) -> Result<(), HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
+        let rc_holon = self.get_rc_holon()?;
         let holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on holon for is_accessible_impl: {}",
@@ -350,7 +347,7 @@ impl ReadableHolonImpl for SmartReference {
         self.is_accessible(context, AccessType::Read)?;
 
         // Get rc_holon from HolonCacheManager
-        let holon = self.get_rc_holon(context)?;
+        let holon = self.get_rc_holon()?;
         let prop_val = holon
             .read()
             .map_err(|e| {
@@ -370,13 +367,13 @@ impl ReadableHolonImpl for SmartReference {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
         // Get CacheAccess
-        let cache_access = self.get_cache_access(context);
+        let cache_access = self.get_cache_access();
         cache_access.get_related_holons(&self.holon_id, relationship_name)
     }
 
     fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let rc_holon = self.get_rc_holon(context)?;
+        let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on holon for summarize_impl: {}",
@@ -391,7 +388,7 @@ impl ReadableHolonImpl for SmartReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<MapString, HolonError> {
         self.is_accessible(context, AccessType::Read)?;
-        let holon = self.get_rc_holon(context)?;
+        let holon = self.get_rc_holon()?;
         let key = holon
             .read()
             .map_err(|e| {
@@ -478,7 +475,7 @@ impl ToHolonCloneModel for SmartReference {
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<HolonCloneModel, HolonError> {
-        let rc_holon = self.get_rc_holon(context)?;
+        let rc_holon = self.get_rc_holon()?;
         let model = rc_holon
             .read()
             .map_err(|e| {
