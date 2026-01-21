@@ -83,11 +83,8 @@ impl HolonReference {
         }
     }
 
-    pub fn get_descriptor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
+    pub fn get_descriptor(&self) -> Result<Option<HolonReference>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
 
         // Locally Scoped Helper: extract a single DESCRIBED_BY reference (cardinality <= 1)
         fn from_collection_arc(
@@ -115,17 +112,17 @@ impl HolonReference {
         match self {
             HolonReference::Transient(transient_reference) => {
                 let collection_arc = transient_reference
-                    .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                    .related_holons(CoreRelationshipTypeName::DescribedBy)?;
                 from_collection_arc(collection_arc)
             }
             HolonReference::Staged(staged_reference) => {
                 let collection_arc = staged_reference
-                    .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                    .related_holons(CoreRelationshipTypeName::DescribedBy)?;
                 from_collection_arc(collection_arc)
             }
             HolonReference::Smart(smart_reference) => {
                 let collection_arc = smart_reference
-                    .related_holons(context, CoreRelationshipTypeName::DescribedBy)?;
+                    .related_holons(CoreRelationshipTypeName::DescribedBy)?;
                 from_collection_arc(collection_arc)
             }
         }
@@ -152,17 +149,12 @@ impl HolonReference {
         }
     }
 
-    pub fn predecessor(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        self.is_accessible(context, AccessType::Read)?;
+    pub fn predecessor(&self) -> Result<Option<HolonReference>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
         match self {
-            HolonReference::Transient(transient_reference) => {
-                transient_reference.predecessor(context)
-            }
-            HolonReference::Staged(staged_reference) => staged_reference.predecessor(context),
-            HolonReference::Smart(smart_reference) => smart_reference.predecessor(context),
+            HolonReference::Transient(transient_reference) => transient_reference.predecessor(),
+            HolonReference::Staged(staged_reference) => staged_reference.predecessor(),
+            HolonReference::Smart(smart_reference) => smart_reference.predecessor(),
         }
     }
     /// Constructs a `HolonReference::Smart` for a holon that has been
@@ -292,173 +284,146 @@ impl From<HolonId> for HolonReference {
 }
 
 impl ReadableHolonImpl for HolonReference {
-    fn clone_holon_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<TransientReference, HolonError> {
+    fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.clone_holon_impl(context)
+                transient_reference.clone_holon_impl()
             }
-            HolonReference::Staged(staged_reference) => staged_reference.clone_holon_impl(context),
-            HolonReference::Smart(smart_reference) => smart_reference.clone_holon_impl(context),
+            HolonReference::Staged(staged_reference) => staged_reference.clone_holon_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.clone_holon_impl(),
         }
     }
 
-    fn all_related_holons_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<RelationshipMap, HolonError> {
+    fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.all_related_holons_impl(context)
+                transient_reference.all_related_holons_impl()
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.all_related_holons_impl(context)
+                staged_reference.all_related_holons_impl()
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.all_related_holons_impl(context)
+                smart_reference.all_related_holons_impl()
             }
         }
     }
 
-    fn holon_id_impl(&self, context: &dyn HolonsContextBehavior) -> Result<HolonId, HolonError> {
+    fn holon_id_impl(&self) -> Result<HolonId, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.holon_id_impl(context)
+                transient_reference.holon_id_impl()
             }
-            HolonReference::Staged(staged_reference) => staged_reference.holon_id_impl(context),
-            HolonReference::Smart(smart_reference) => smart_reference.holon_id_impl(context),
+            HolonReference::Staged(staged_reference) => staged_reference.holon_id_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.holon_id_impl(),
         }
     }
 
-    fn predecessor_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<HolonReference>, HolonError> {
+    fn predecessor_impl(&self) -> Result<Option<HolonReference>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.predecessor_impl(context)
+                transient_reference.predecessor_impl()
             }
-            HolonReference::Staged(staged_reference) => staged_reference.predecessor_impl(context),
-            HolonReference::Smart(smart_reference) => smart_reference.predecessor_impl(context),
+            HolonReference::Staged(staged_reference) => staged_reference.predecessor_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.predecessor_impl(),
         }
     }
 
     fn property_value_impl(
         &self,
-        context: &dyn HolonsContextBehavior,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.property_value_impl(context, property_name)
+                transient_reference.property_value_impl(property_name)
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.property_value_impl(context, property_name)
+                staged_reference.property_value_impl(property_name)
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.property_value_impl(context, property_name)
+                smart_reference.property_value_impl(property_name)
             }
         }
     }
 
-    fn key_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Option<MapString>, HolonError> {
+    fn key_impl(&self) -> Result<Option<MapString>, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => transient_reference.key_impl(context),
-            HolonReference::Staged(staged_reference) => staged_reference.key_impl(context),
-            HolonReference::Smart(smart_reference) => smart_reference.key_impl(context),
+            HolonReference::Transient(transient_reference) => transient_reference.key_impl(),
+            HolonReference::Staged(staged_reference) => staged_reference.key_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.key_impl(),
         }
     }
 
     fn related_holons_impl(
         &self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.related_holons_impl(context, relationship_name)
+                transient_reference.related_holons_impl(relationship_name)
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.related_holons_impl(context, relationship_name)
+                staged_reference.related_holons_impl(relationship_name)
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.related_holons_impl(context, relationship_name)
+                smart_reference.related_holons_impl(relationship_name)
             }
         }
     }
 
-    fn versioned_key_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<MapString, HolonError> {
+    fn versioned_key_impl(&self) -> Result<MapString, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.versioned_key_impl(context)
+                transient_reference.versioned_key_impl()
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.versioned_key_impl(context)
+                staged_reference.versioned_key_impl()
             }
-            HolonReference::Smart(smart_reference) => smart_reference.versioned_key_impl(context),
+            HolonReference::Smart(smart_reference) => smart_reference.versioned_key_impl(),
         }
     }
 
-    fn essential_content_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<EssentialHolonContent, HolonError> {
+    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.essential_content_impl(context)
+                transient_reference.essential_content_impl()
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.essential_content_impl(context)
+                staged_reference.essential_content_impl()
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.essential_content_impl(context)
+                smart_reference.essential_content_impl()
             }
         }
     }
 
-    fn summarize_impl(&self, context: &dyn HolonsContextBehavior) -> Result<String, HolonError> {
+    fn summarize_impl(&self) -> Result<String, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.summarize_impl(context)
+                transient_reference.summarize_impl()
             }
-            HolonReference::Staged(staged_reference) => staged_reference.summarize_impl(context),
-            HolonReference::Smart(smart_reference) => smart_reference.summarize_impl(context),
+            HolonReference::Staged(staged_reference) => staged_reference.summarize_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.summarize_impl(),
         }
     }
 
-    fn into_model_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonNodeModel, HolonError> {
+    fn into_model_impl(&self) -> Result<HolonNodeModel, HolonError> {
         match self {
-            Self::Transient(reference) => reference.into_model_impl(context),
-            Self::Staged(reference) => reference.into_model_impl(context),
-            Self::Smart(reference) => reference.into_model_impl(context),
+            Self::Transient(reference) => reference.into_model_impl(),
+            Self::Staged(reference) => reference.into_model_impl(),
+            Self::Smart(reference) => reference.into_model_impl(),
         }
     }
 
-    fn is_accessible_impl(
-        &self,
-        context: &dyn HolonsContextBehavior,
-        access_type: AccessType,
-    ) -> Result<(), HolonError> {
+    fn is_accessible_impl(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.is_accessible_impl(context, access_type)
+                transient_reference.is_accessible_impl(access_type)
             }
             HolonReference::Staged(staged_reference) => {
-                staged_reference.is_accessible_impl(context, access_type)
+                staged_reference.is_accessible_impl(access_type)
             }
             HolonReference::Smart(smart_reference) => {
-                smart_reference.is_accessible_impl(context, access_type)
+                smart_reference.is_accessible_impl(access_type)
             }
         }
     }
