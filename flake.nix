@@ -30,6 +30,8 @@
           buildInputs = [
             pkgs.openssl    # Shared: Pre-built OpenSSL (saves compilation time on Mac too)
             pkgs.libsodium  # Shared: Holochain crypto dependency
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+             pkgs.glib
           ] ++ (pkgs.lib.optionals pkgs.stdenv.isDarwin [
              # Mac-specific system frameworks
              pkgs.bzip2
