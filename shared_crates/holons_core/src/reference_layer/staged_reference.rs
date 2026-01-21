@@ -6,7 +6,9 @@ use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::core_shared_objects::holon::StagedState;
-use crate::core_shared_objects::transactions::{TransactionContext, TxId};
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -43,8 +45,9 @@ impl StagedReferenceSerializable {
     }
 }
 
-#[derive(new, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(new, Debug, Clone, PartialEq, Eq)]
 pub struct StagedReference {
+    context_handle: TransactionContextHandle,
     id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
 }
 
@@ -86,23 +89,28 @@ impl StagedReference {
     ///
     /// # Returns
     /// A new `StagedReference` wrapping the provided id.
-    pub fn from_temporary_id(id: &TemporaryId) -> Self {
-        StagedReference { id: id.clone() }
+    pub fn from_temporary_id(context_handle: TransactionContextHandle, id: &TemporaryId) -> Self {
+        StagedReference { context_handle, id: id.clone() }
     }
 
+    /// Binds a wire reference to a TransactionContext, validating tx_id.
     pub fn bind(
         wire: StagedReferenceSerializable,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         if wire.tx_id != context.tx_id() {
-            return Err(HolonError::InvalidHolonReference(format!(
-                "StagedReference bind failed: wire tx_id {:?} does not match active tx_id {:?}",
-                wire.tx_id,
-                context.tx_id()
-            )));
+            return Err(HolonError::CrossTransactionReference {
+                reference_kind: "StagedReference".to_string(),
+                reference_id: format!("TemporaryId={}", wire.id),
+                reference_tx: wire.tx_id.value(),
+                context_tx: context.tx_id().value(),
+            });
         }
 
-        Ok(StagedReference { id: wire.id })
+        Ok(StagedReference {
+            context_handle: TransactionContextHandle::new(context),
+            id: wire.id,
+        })
     }
 
     /// Retrieves the underlying Holon handle for commit operations.

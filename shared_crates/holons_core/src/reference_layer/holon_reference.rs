@@ -31,7 +31,7 @@ pub enum HolonReferenceSerializable {
     Smart(SmartReferenceSerializable),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
 /// state (and therefore owned by the CacheManager) or being staged for creation/update (and therefore owned by the
 /// Nursery).
@@ -64,6 +64,7 @@ impl HolonReference {
         HolonReference::Smart(smart)
     }
 
+    /// Binds a wire reference enum to a TransactionContext, validating tx_id.
     pub fn bind(
         wire: HolonReferenceSerializable,
         context: Arc<TransactionContext>,
