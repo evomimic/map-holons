@@ -33,7 +33,7 @@ npm install
 
 Make sure your IDE is configured to support multiple independent Cargo workspaces:
 
-👉 [IDE Setup Guide](.dev/IDE_SETUP.md)
+👉 [IDE Setup Guide](IDE_SETUP.md)
 
 ---
 
@@ -76,11 +76,42 @@ npm run sweetest
 
 ---
 
+---
+
+## 🧪 Continuous Integration (CI) Checks
+
+All pull requests are automatically validated by our GitHub Actions CI workflows.
+
+### ✅ What the CI Checks Do
+
+- **Test** — Runs `npm test`, including backend integration tests (Sweetest)
+- **Format** — Runs `cargo fmt --all --check` to enforce Rust code formatting
+- **CI Pass Aggregator** — Combines and reports status of all required checks
+
+> 📝 **Note:** Unit tests are currently excluded from CI due to compatibility issues with the GitHub Actions Ubuntu environment. Run them locally before submitting PRs.
+
+```bash
+npm run test:unit
+```
+
+---
+
+### 💡 Before You Push
+
+To avoid failed checks:
+
+- Run `cargo fmt` locally or enable *format on save* in your IDE
+- Ensure integration tests pass with `npm run sweetest`
+- Keep commits clean and scoped — large formatting-only changes should be separated
+
+---
+
+
 ## 📚 Reference Docs
 
 - 🧠 [MAP Core Developer Docs](https://memetic-activation-platform.github.io/map-dev-docs/core/)
 - 🧬 [mApp Developer Docs](https://memetic-activation-platform.github.io/map-dev-docs/mapp/)
-- 🛠 [IDE Setup Guide](.dev/IDE_SETUP.md)
+- 🛠 [IDE Setup Guide](IDE_SETUP.md)
 
 ---
 

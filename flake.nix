@@ -1,5 +1,5 @@
 {
-  description = "Flake for Holochain app development";
+  description = "Flake for Holochain app development with rust client and nodejs";
 
   inputs = {
     holonix.url = "github:holochain/holonix?ref=main-0.5";
@@ -8,58 +8,52 @@
     flake-parts.follows = "holonix/flake-parts";
   };
 
-  outputs = inputs@{ flake-parts, ... }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = builtins.attrNames inputs.holonix.devShells;
+  outputs = inputs@{ flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
+    systems = builtins.attrNames inputs.holonix.devShells;
+    perSystem = { inputs', pkgs, ... }: {
+      formatter = pkgs.nixpkgs-fmt;
 
-      perSystem = { inputs', pkgs, ... }: {
-        formatter = pkgs.nixpkgs-fmt;
+        devShells.default = pkgs.mkShell {
+          inputsFrom = [ inputs'.holonix.devShells.default ];
 
-        devShells = {
-          default = pkgs.mkShell {
-            # Pull in holonix dev shell
-            inputsFrom = [ inputs'.holonix.devShells.default ];
+          # 1. Tools needed at build time (running the build)
+          nativeBuildInputs = [
+            pkgs.pkg-config # Helper to find libraries (OpenSSL)
+            pkgs.cmake      # Helper to build C dependencies
+          ] ++ (pkgs.lib.optionals pkgs.stdenv.isLinux [
+             # Linux-specific build tools
+             pkgs.libclang
+             pkgs.rustPlatform.bindgenHook
+          ]);
 
-            # Extra native tools (incl. libclang + libstdc++ for CI)
-            nativeBuildInputs = [
-                          pkgs.libsodium
-                          pkgs.pkg-config
-                          pkgs.llvmPackages.libunwind
-                          pkgs.llvmPackages.libclang        # ✅ Required by bindgen
-                          pkgs.llvmPackages.clang-unwrapped # ✅ Needed to satisfy some crates
-                          pkgs.stdenv.cc.cc.lib             # ✅ Pulls in libstdc++.so
-                          pkgs.cmake
-                        ];
+          # 2. Libraries needed for linking (the actual code)
+          buildInputs = [
+            pkgs.openssl    # Shared: Pre-built OpenSSL (saves compilation time on Mac too)
+            pkgs.libsodium  # Shared: Holochain crypto dependency
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.glib
+            pkgs.gtk3         # Fix for unit:test: gdk-3.0.pc for gdk-sys
+            pkgs.gdk-pixbuf   # Optional, safe to include
+            pkgs.webkitgtk_4_1 # Fix: provides javascriptcoregtk-4.1.pc
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+             # Mac-specific system frameworks
+             pkgs.bzip2
+             pkgs.libiconv
+             pkgs.llvmPackages.libunwind # Essential for wasmer (Holochain) to work properly on macOS
+          ];
 
-            packages = with pkgs; [
-              nodejs_22
-              binaryen
-            ];
+          packages = with pkgs; [
+            nodejs_22
+            binaryen
+          ];
 
-            shellHook =
-              ''
-                export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
+          # Env vars
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
 
-                # Cross-platform: modern CMake policy + reduce configure flakiness
-                export CMAKE_ARGS="''${CMAKE_ARGS:-} -DCMAKE_POLICY_VERSION_MINIMUM=3.10"
-                export CMAKE_BUILD_PARALLEL_LEVEL="''${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
-              ''
-              # macOS-only: use Apple's toolchain for native deps
-              + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
-                # Requires Xcode CLT: xcode-select --install
-                export CC="$(xcrun -f clang)"
-                export CXX="$(xcrun -f clang++)"
-                export AR="$(xcrun -f ar)"
-                export SDKROOT="$(xcrun --show-sdk-path)"
-                : ''${MACOSX_DEPLOYMENT_TARGET:=12.0}
-
-                export CMAKE_C_COMPILER="$CC"
-                export CMAKE_CXX_COMPILER="$CXX"
-                export CMAKE_GENERATOR="Unix Makefiles"
-                export CMAKE_OSX_ARCHITECTURES="${if pkgs.stdenv.isAarch64 then "arm64" else "x86_64"}"
-              '';
-          };
+          shellHook = ''
+             export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
+          '';
         };
-      };
     };
+  };
 }
