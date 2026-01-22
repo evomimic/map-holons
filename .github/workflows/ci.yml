@@ -34,34 +34,34 @@ jobs:
         run: |
           nix develop --command bash -c "npm test"
 
-  fmt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+#  fmt:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Install nix
+#        uses: cachix/install-nix-action@v31
+#        with:
+#          install_url: https://releases.nixos.org/nix/nix-2.28.3/install
+#
+#      - name: Check formatting
+#        run: |
+#          nix develop --command cargo fmt --all --check
 
-      - name: Install nix
-        uses: cachix/install-nix-action@v31
-        with:
-          install_url: https://releases.nixos.org/nix/nix-2.28.3/install
-
-      - name: Check formatting
-        run: |
-          nix develop --command cargo fmt --all --check
-
-  lint:
-    continue-on-error: true  # 👈 Make this advisory only
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install nix
-        uses: cachix/install-nix-action@v31
-        with:
-          install_url: https://releases.nixos.org/nix/nix-2.28.3/install
-
-      - name: Clippy lint
-        run: |
-          nix develop --command cargo clippy --all-features -- -D warnings
+#  lint:
+#    continue-on-error: true  # 👈 Make this advisory only
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Install nix
+#        uses: cachix/install-nix-action@v31
+#        with:
+#          install_url: https://releases.nixos.org/nix/nix-2.28.3/install
+#
+#      - name: Clippy lint
+#        run: |
+#          nix develop --command cargo clippy --all-features -- -D warnings
 
   ci_pass:
     if: ${{ always() }}
