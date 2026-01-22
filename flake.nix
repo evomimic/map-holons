@@ -30,12 +30,16 @@
           buildInputs = [
             pkgs.openssl    # Shared: Pre-built OpenSSL (saves compilation time on Mac too)
             pkgs.libsodium  # Shared: Holochain crypto dependency
-          ] ++ (pkgs.lib.optionals pkgs.stdenv.isDarwin [
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.glib
+            pkgs.gtk3         # Fix for unit:test: gdk-3.0.pc for gdk-sys
+            pkgs.gdk-pixbuf   # Optional, safe to include
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
              # Mac-specific system frameworks
              pkgs.bzip2
              pkgs.libiconv
              pkgs.llvmPackages.libunwind # Essential for wasmer (Holochain) to work properly on macOS
-          ]);
+          ];
 
           packages = with pkgs; [
             nodejs_22
