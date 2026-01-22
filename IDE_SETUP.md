@@ -1,15 +1,13 @@
-# IDE Setup for MAP Holons Development
+# 🧰 IDE Setup for MAP Holons Development
 
-This repository uses **multiple independent Cargo workspaces** (`native/`, `wasm/`, `test/`) to isolate code for native
-runtimes, WASM runtimes, and test execution.
+This repository uses **multiple independent Cargo workspaces** (`native/`, `wasm/`, `test/`) to isolate code for native runtimes, WASM runtimes, and test execution.
 
-To get full IntelliSense, diagnostics, and navigation across crates, you’ll need to configure your IDE to recognize all
-workspace roots.
+To get full IntelliSense, diagnostics, and navigation across crates, you’ll need to configure your IDE to recognize all workspace roots.
 
 This guide includes setup instructions for both:
 
 - [VSCode + Rust Analyzer](#vscode--rust-analyzer-setup)
-- [RustRover (JetBrains)](#rustrover--jetbrains-setup)
+- [RustRover / IntelliJ (JetBrains)](#rustrover--intellij-jetbrains-setup)
 
 ---
 
@@ -19,8 +17,7 @@ This guide includes setup instructions for both:
 
 ### 1. Open the repo root in VSCode
 
-Even though there is no top-level `Cargo.toml`, this is fine — you'll point Rust Analyzer to the actual workspace
-manifests.
+Even though there is no top-level `Cargo.toml`, this is fine — you'll point Rust Analyzer to the actual workspace manifests.
 
 ### 2. Add a `.vscode/settings.json` (or update existing)
 
@@ -36,7 +33,7 @@ manifests.
 }
 ```
 
-> If `.vscode/` doesn’t exist, create it in the repo root.
+> 📁 If `.vscode/` doesn’t exist, create it in the repo root.
 
 ### 3. Restart VSCode or the Rust Analyzer server
 
@@ -95,8 +92,7 @@ You may want to create named run/test configs:
 - 🧱 `Build (wasm)` → Build zome crates for WASM
 - 🖥 `Run (client)` → Run native `holons_client` targets
 
-> You can add these under `Run → Edit Configurations`, using the correct working directory and command for each
-> workspace.
+> You can add these under `Run → Edit Configurations`, using the correct working directory and command for each workspace.
 
 ---
 
@@ -110,6 +106,4 @@ You may want to create named run/test configs:
 
 ## Related
 
-- [Workspace Strategy Overview](./WORKSPACE_LAYOUT.md)
-- [Environment Setup](./ENVIRONMENT.md)
 - [Contributing Guide](CONTRIBUTING.md)
