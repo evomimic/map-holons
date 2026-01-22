@@ -13,7 +13,7 @@ MAP Holons is still in early proof-of-concept prototype stages.
   the MAP Holons codebase (Rust, Holochain, architecture)
 - 👉 [mApp Developer Docs](https://memetic-activation-platform.github.io/map-dev-docs/mapp/) — for developers building
   applications on top of MAP Holons
-- 🛠️ [IDE Setup Guide](.dev/IDE_SETUP.md) — how to configure RustRover or VSCode for multi-workspace support
+- 🛠️ [IDE Setup Guide](IDE_SETUP.md) — how to configure RustRover or VSCode for multi-workspace support
 - 🙌 [Contributing Guide](CONTRIBUTING.md) — environment setup, testing, and code contribution workflow
 
 > These docs replace the older [MAP Holons wiki](https://github.com/evomimic/map-holons/wiki) and provide a clearer

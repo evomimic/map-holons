@@ -1,4 +1,4 @@
-# 🧰 IDE Setup for MAP Holons Development
+# IDE Setup for MAP Holons Development
 
 This repository uses **multiple independent Cargo workspaces** (`native/`, `wasm/`, `test/`) to isolate code for native
 runtimes, WASM runtimes, and test execution.
@@ -13,7 +13,7 @@ This guide includes setup instructions for both:
 
 ---
 
-## ✅ VSCode + Rust Analyzer Setup
+## VSCode + Rust Analyzer Setup
 
 > ⚠️ Rust Analyzer **does not auto-discover multiple independent Cargo workspaces**. You must explicitly link them.
 
@@ -36,7 +36,7 @@ manifests.
 }
 ```
 
-> 📁 If `.vscode/` doesn’t exist, create it in the repo root.
+> If `.vscode/` doesn’t exist, create it in the repo root.
 
 ### 3. Restart VSCode or the Rust Analyzer server
 
@@ -49,7 +49,7 @@ You should now see:
 
 ---
 
-## 🧠 Notes for VSCode Users
+## Notes for VSCode Users
 
 - Crates that are **not listed in the linked projects** won’t be indexed.
 - You must use `path = "../../crates/..."` correctly for inter-crate dependencies.
@@ -57,7 +57,7 @@ You should now see:
 
 ---
 
-## 💡 RustRover / IntelliJ (JetBrains) Setup
+## RustRover / IntelliJ (JetBrains) Setup
 
 RustRover supports **multiple workspaces** natively, but you may need to **attach them manually**.
 
@@ -87,7 +87,7 @@ Once complete, you will have:
 
 ---
 
-## ▶️ Optional: Add Custom Run Configurations
+## Optional: Add Custom Run Configurations
 
 You may want to create named run/test configs:
 
@@ -100,7 +100,7 @@ You may want to create named run/test configs:
 
 ---
 
-## 🧠 Best Practices (Applies to All IDEs)
+## Best Practices (Applies to All IDEs)
 
 - Use relative `path = ...` in `Cargo.toml` to link internal crates
 - Avoid running `cargo build --workspace` from repo root — use per-workspace `Cargo.toml`
@@ -108,8 +108,8 @@ You may want to create named run/test configs:
 
 ---
 
-## 📚 Related
+## Related
 
 - [Workspace Strategy Overview](./WORKSPACE_LAYOUT.md)
 - [Environment Setup](./ENVIRONMENT.md)
-- [Contributing Guide](../CONTRIBUTING.md)
+- [Contributing Guide](CONTRIBUTING.md)
