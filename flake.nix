@@ -34,6 +34,7 @@
             pkgs.glib
             pkgs.gtk3         # Fix for unit:test: gdk-3.0.pc for gdk-sys
             pkgs.gdk-pixbuf   # Optional, safe to include
+            pkgs.webkitgtk_4_1 # Fix: provides javascriptcoregtk-4.1.pc
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
              # Mac-specific system frameworks
              pkgs.bzip2
