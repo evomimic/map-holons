@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use std::collections::BTreeMap;
 use tracing::{debug, info, trace};
 
@@ -6,10 +6,11 @@ use holons_prelude::prelude::*;
 
 /// This function builds and dances a `commit` DanceRequest and confirms a Success response.
 ///
-/// Source tokens are needed for this step in order to build a ResolvedTestReference.
+/// Source tokens are needed for this step in order to build a ExecutionReference.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
-    source_tokens: Vec<TestReference>, // list of expected tokens to resolve
+    // source_tokens: Vec<TestReference>, // list of expected tokens to resolve
+    // fixture_holons
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
@@ -72,7 +73,7 @@ pub async fn execute_commit(
         let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
-        let resolved_reference = ResolvedTestReference::from_reference_parts(
+        let resolved_reference = ExecutionReference::from_reference_parts(
             source_tokens[*source_index].clone(),
             ResultingReference::from(holon_reference.clone()),
         );

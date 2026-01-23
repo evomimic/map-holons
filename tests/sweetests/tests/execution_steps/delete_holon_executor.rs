@@ -1,6 +1,6 @@
 use core_types::LocalId;
 use holons_prelude::prelude::*;
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -12,7 +12,6 @@ use holochain::sweettest::*;
 pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Deleting an Existing (Saved) Holon");
@@ -25,7 +24,7 @@ pub async fn execute_delete_holon(
         if expected_status == ResponseStatusCode::BadRequest {
             state.lookup_previous(source_token.previous().temporary_id()).unwrap()
         } else {
-            state.lookup_holon_reference(context, &source_token).unwrap()
+            state.resolve_source_reference(context, &source_token).unwrap()
         }
     };
 
@@ -69,7 +68,7 @@ pub async fn execute_delete_holon(
     // 6. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
     let resulting_reference = ResultingReference::Deleted;
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
+        ExecutionReference::from_reference_parts(source_token.expected_holon(), resulting_reference);
 
     state.record_resolved(resolved_reference);
 }

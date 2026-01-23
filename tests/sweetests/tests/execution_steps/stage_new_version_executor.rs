@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -14,7 +14,6 @@ use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     expected_response: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a New Version of a Holon ---");
@@ -26,7 +25,7 @@ pub async fn execute_stage_new_version(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     // Can only stage from Saved
     let smart_reference = match source_reference {
@@ -64,8 +63,8 @@ pub async fn execute_stage_new_version(
     let version_1_resulting_reference =
         ResultingReference::from(version_1_response_holon_reference.clone());
         // TestReference::new()
-    let version_1_resolved_reference = ResolvedTestReference::from_reference_parts(
-        expected_token,
+    let version_1_resolved_reference = ExecutionReference::from_reference_parts(
+        source_token.expected_holon(),
         version_1_resulting_reference.clone(),
     );
     version_1_resolved_reference.assert_essential_content_eq(context).unwrap();

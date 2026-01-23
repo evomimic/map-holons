@@ -41,7 +41,14 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let transient_source_key = MapString("book:transient-source".to_string());
     let transient_source = new_holon(fixture_context.as_ref(), Some(transient_source_key.clone()))?;
     // Mint transient source token
-    let transient_token = fixture_holons.add_transient(transient_source.clone(), transient_source);
+    let transient_token = test_case.add_new_holon_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        transient_source,
+        BTreeMap::new(),
+        Some(transient_source_key),
+        ResponseStatusCode::OK,
+    )?;
     // Expect BadRequest
     test_case.add_stage_new_from_clone_step(
         &*fixture_context,
@@ -100,7 +107,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
     // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
-    // have intended_resolved_state == Saved inside `fixture_holons`.
+    // have state == Saved inside `fixture_holons`.
     let from_saved_key = MapString("book:clone:from-saved".to_string());
 
     // Retrieve book saved-intent token

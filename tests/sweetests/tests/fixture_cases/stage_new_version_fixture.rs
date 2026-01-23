@@ -133,7 +133,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // };
     // let version_2_resulting_reference =
     //     ResultingReference::from(version_2_response_holon_reference.clone());
-    // let version_2_resolved_reference = ResolvedTestReference::from_reference_parts(
+    // let version_2_resolved_reference = ExecutionReference::from_reference_parts(
     //     source_token,
     //     version_2_resulting_reference.clone(),
     // );

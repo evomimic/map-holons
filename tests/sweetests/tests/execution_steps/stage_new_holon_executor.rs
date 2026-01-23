@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -10,7 +10,6 @@ use holons_prelude::prelude::*;
 pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
@@ -20,7 +19,7 @@ pub async fn execute_stage_new_holon(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     // Can only stage Transient
     let transient_reference = match source_reference {
@@ -55,7 +54,7 @@ pub async fn execute_stage_new_holon(
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
+        ExecutionReference::from_reference_parts(source_token.expected_holon(), resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Staged holon's essential content matched expected");
 

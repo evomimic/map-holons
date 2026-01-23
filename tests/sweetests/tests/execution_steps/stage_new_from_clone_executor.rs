@@ -5,7 +5,7 @@ use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
     HolonReference, HolonsContextBehavior,
 };
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 
 /// Execute the StageNewFromClone step:
 ///  1) LOOKUP: convert the fixture `TestReference` into a runtime `HolonReference`
@@ -16,7 +16,6 @@ use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState,
 pub async fn execute_stage_new_from_clone(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     new_key: MapString,
     expected_status: ResponseStatusCode,
 ) {
@@ -26,7 +25,7 @@ pub async fn execute_stage_new_from_clone(
     // 1. LOOKUP — get the input handle for the clone source
     //    (enforces Saved ≙ Staged(Committed(LocalId)); no nursery fallback)
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     // 2. BUILD — dance request to stage a new holon cloned from `source_reference`
     let request = build_stage_new_from_clone_dance_request(source_reference, new_key)
@@ -48,7 +47,7 @@ pub async fn execute_stage_new_from_clone(
         };
         let resulting_reference = ResultingReference::from(response_holon_reference);
         let resolved_reference =
-            ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
+            ExecutionReference::from_reference_parts(source_token.expected_holon(), resulting_reference);
         resolved_reference.assert_essential_content_eq(context).unwrap();
 
         // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.

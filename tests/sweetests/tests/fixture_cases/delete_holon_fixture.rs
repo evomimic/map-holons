@@ -36,7 +36,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // Add a stage-holon step and capture its TestReference for later steps
-    test_case.add_stage_holon_step(
+    let staged_token = test_case.add_stage_holon_step(
         &*fixture_context,
         &mut fixture_holons,
         book_source_token,
@@ -44,35 +44,25 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    let saved_tokens = test_case.add_commit_step(
+    test_case.add_commit_step(
         &*fixture_context,
         &mut fixture_holons,
         ResponseStatusCode::OK,
     )?;
-
-    let book_saved_token: TestReference = saved_tokens
-        .iter()
-        .filter(|t| {
-            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
-        })
-        .collect::<Vec<&TestReference>>()[0]
-        .clone();
 
     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
-        book_saved_token.clone(),
+        ,   // pass the FixtureHolon
         ResponseStatusCode::OK,
     )?;
 
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
-        book_saved_token,
+        ,
         ResponseStatusCode::NotFound,
     )?;
 

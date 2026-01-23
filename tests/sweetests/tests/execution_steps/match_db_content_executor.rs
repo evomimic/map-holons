@@ -1,4 +1,4 @@
-use holons_test::{IntendedResolvedState, TestExecutionState};
+use holons_test::{TestExecutionState, TestHolonState};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -22,10 +22,8 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     let context = ctx_arc.as_ref();
 
     // Iterate through all created holons and verify them in the database, panic if resolved reference does not match expected state
-    for (id, resolved_reference) in state.holons().by_temporary_id.clone() {
-        if resolved_reference.fixture_token.intended_resolved_state()
-            == IntendedResolvedState::Saved
-        {
+    for (id, resolved_reference) in state.holons().by_token_id.clone() {
+        if resolved_reference.fixture_token.state() == TestHolonState::Saved {
             let holon_reference = resolved_reference
                 .resulting_reference
                 .get_holon_reference()
@@ -39,7 +37,7 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
 
             // 1. LOOKUP — get the input handle for the source token
             let source_reference =
-                state.lookup_holon_reference(context, &resolved_reference.fixture_token).unwrap();
+                state.resolve_source_reference(context, &resolved_reference.fixture_token).unwrap();
             let holon_id = source_reference.holon_id(context).expect("Failed to get HolonId");
 
             // 2. BUILD — get_holon_by_id DanceRequest

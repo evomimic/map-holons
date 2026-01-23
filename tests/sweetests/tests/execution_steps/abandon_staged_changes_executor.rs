@@ -4,7 +4,7 @@ use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest,
 /// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test
@@ -17,7 +17,6 @@ use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState,
 pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Abandon Staged Changes ---");
@@ -27,7 +26,7 @@ pub async fn execute_abandon_staged_changes(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     // 2. BUILD — dance request to abandon holon
     let request = build_abandon_staged_changes_dance_request(source_reference)
@@ -55,8 +54,10 @@ pub async fn execute_abandon_staged_changes(
         }
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference =
-        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
+    let resolved_reference = ExecutionReference::from_reference_parts(
+        source_token.expected_holon(),
+        resulting_reference,
+    );
     resolved_reference.assert_essential_content_eq(context).unwrap();
     // Confirm that operations on the abandoned Holon fail as expected
     if let ResponseBody::HolonReference(mut abandoned_holon) = response.body {

@@ -1,5 +1,5 @@
 use holons_prelude::prelude::*;
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use integrity_core_types::PropertyMap;
 use pretty_assertions::assert_eq;
 use serde::de::value;
@@ -47,7 +47,7 @@ pub async fn execute_new_holon(
 
     let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference =
-        ResolvedTestReference::from_reference_parts(source_token, resulting_reference);
+        ExecutionReference::from_reference_parts(source_token.expected_holon(), resulting_reference);
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Staged holon's essential content matched expected");
 
