@@ -1,4 +1,4 @@
-use crate::{HolonReference, HolonsContextBehavior};
+use crate::HolonReference;
 use base_types::BaseValue;
 use core_types::{HolonError, PropertyName, RelationshipName};
 
@@ -7,40 +7,34 @@ use core_types::{HolonError, PropertyName, RelationshipName};
 pub trait WritableHolonImpl {
     fn add_related_holons_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError>;
 
     fn remove_related_holons_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError>;
 
     fn with_property_value_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         property: PropertyName,
         value: BaseValue,
     ) -> Result<&mut Self, HolonError>;
 
     fn remove_property_value_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         property: PropertyName,
     ) -> Result<&mut Self, HolonError>;
 
     fn with_descriptor_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         descriptor: HolonReference,
     ) -> Result<(), HolonError>;
 
     fn with_predecessor_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         predecessor: Option<HolonReference>,
     ) -> Result<(), HolonError>;
 }

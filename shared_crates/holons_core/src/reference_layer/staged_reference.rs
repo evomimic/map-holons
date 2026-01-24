@@ -45,7 +45,7 @@ impl StagedReferenceSerializable {
     }
 }
 
-#[derive(new, Debug, Clone, PartialEq, Eq)]
+#[derive(new, Debug, Clone)]
 pub struct StagedReference {
     context_handle: TransactionContextHandle,
     id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
@@ -93,24 +93,14 @@ impl StagedReference {
         StagedReference { context_handle, id: id.clone() }
     }
 
-    /// Binds a wire reference to a TransactionContext, validating tx_id.
+    /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
     pub fn bind(
         wire: StagedReferenceSerializable,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
-        if wire.tx_id != context.tx_id() {
-            return Err(HolonError::CrossTransactionReference {
-                reference_kind: "StagedReference".to_string(),
-                reference_id: format!("TemporaryId={}", wire.id),
-                reference_tx: wire.tx_id.value(),
-                context_tx: context.tx_id().value(),
-            });
-        }
+        let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
 
-        Ok(StagedReference {
-            context_handle: TransactionContextHandle::new(context),
-            id: wire.id,
-        })
+        Ok(StagedReference { context_handle, id: wire.id })
     }
 
     /// Retrieves the underlying Holon handle for commit operations.
@@ -135,7 +125,7 @@ impl StagedReference {
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
-        let nursery_access = self.context_handle.context().get_nursery_access();
+        let nursery_access = self.context_handle.context().nursery_access_internal();
 
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_access.get_holon_by_id(&self.id)?;
@@ -171,8 +161,21 @@ impl StagedReference {
         }
     }
 
+    // ****** Accessors ******
+
+    /// Returns the temporary id for this staged holon.
     pub fn temporary_id(&self) -> TemporaryId {
         self.id.clone()
+    }
+
+    /// Returns the transaction id this reference is bound to.
+    pub fn tx_id(&self) -> TxId {
+        self.context_handle.tx_id()
+    }
+
+    /// Borrowed access to the runtime transaction handle (useful internally).
+    pub(crate) fn context_handle(&self) -> &TransactionContextHandle {
+        &self.context_handle
     }
 
     // Simple string representations for errors/logging
@@ -205,7 +208,7 @@ impl ReadableHolonImpl for StagedReference {
             })?
             .holon_clone_model();
 
-        let transient_behavior = self.context_handle.context().get_transient_behavior_service();
+        let transient_behavior = self.context_handle.context().transient_manager_access_internal();
 
         let cloned_holon_transient_reference =
             transient_behavior.new_from_clone_model(holon_clone_model)?;
@@ -379,7 +382,6 @@ impl ReadableHolonImpl for StagedReference {
 impl WritableHolonImpl for StagedReference {
     fn add_related_holons_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
@@ -408,7 +410,6 @@ impl WritableHolonImpl for StagedReference {
 
     fn remove_related_holons_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
@@ -439,7 +440,6 @@ impl WritableHolonImpl for StagedReference {
 
     fn with_property_value_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         property: PropertyName,
         value: BaseValue,
     ) -> Result<&mut Self, HolonError> {
@@ -457,11 +457,7 @@ impl WritableHolonImpl for StagedReference {
         Ok(self)
     }
 
-    fn remove_property_value_impl(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        name: PropertyName,
-    ) -> Result<&mut Self, HolonError> {
+    fn remove_property_value_impl(&mut self, name: PropertyName) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         let rc_holon = self.get_rc_holon()?;
         let mut holon_mut = rc_holon.write().map_err(|e| {
@@ -477,19 +473,17 @@ impl WritableHolonImpl for StagedReference {
 
     fn with_descriptor_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
 
         // Look up the existing descriptor(s) on THIS holon, not on the descriptor.
         let self_ref = HolonReference::Staged(self.clone());
-        let existing_descriptor_option = self_ref.get_descriptor(context)?;
+        let existing_descriptor_option = self_ref.get_descriptor()?;
 
         if let Some(existing_descriptor) = existing_descriptor_option {
             // Remove the current descriptor edge
             self.remove_related_holons_impl(
-                context,
                 CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![existing_descriptor.clone()],
             )?;
@@ -497,7 +491,6 @@ impl WritableHolonImpl for StagedReference {
 
         // Attach the new descriptor edge
         self.add_related_holons_impl(
-            context,
             CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
             vec![descriptor_reference],
         )?;
@@ -507,21 +500,18 @@ impl WritableHolonImpl for StagedReference {
 
     fn with_predecessor_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         predecessor_reference_option: Option<HolonReference>, // None passed just removes predecessor
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
         let existing_predecessor_option = self.clone().predecessor()?;
         if let Some(predecessor) = existing_predecessor_option {
             self.remove_related_holons_impl(
-                context,
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor.clone()],
             )?;
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
             self.add_related_holons_impl(
-                context,
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor_reference.clone()],
             )?;
@@ -549,5 +539,17 @@ impl ToHolonCloneModel for StagedReference {
             .holon_clone_model();
 
         Ok(holon_clone_model)
+    }
+}
+
+impl From<&StagedReference> for StagedReferenceSerializable {
+    fn from(reference: &StagedReference) -> Self {
+        Self::new(reference.tx_id(), reference.temporary_id())
+    }
+}
+
+impl From<StagedReference> for StagedReferenceSerializable {
+    fn from(reference: StagedReference) -> Self {
+        StagedReferenceSerializable::from(&reference)
     }
 }

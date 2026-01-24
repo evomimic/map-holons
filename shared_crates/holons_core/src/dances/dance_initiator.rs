@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::dances::{DanceRequest, DanceResponse};
-use crate::HolonsContextBehavior;
+use crate::core_shared_objects::transactions::TransactionContext;
 use std::fmt::Debug;
 
 /// Canonical trait for initiating outbound Dances.
@@ -21,7 +21,7 @@ pub trait DanceInitiator: Send + Sync + Debug {
     /// the environment (e.g., native conductor, Tauri bridge, or mock testing).
     async fn initiate_dance(
         &self,
-        context: &(dyn HolonsContextBehavior + Send + Sync),
+        context: &TransactionContext,
         request: DanceRequest,
     ) -> DanceResponse;
 }

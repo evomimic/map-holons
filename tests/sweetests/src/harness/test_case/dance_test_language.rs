@@ -40,7 +40,11 @@
 use crate::{harness::fixtures_support::TestReference, FixtureHolons};
 use core_types::ContentSet;
 use holons_core::{
-    core_shared_objects::holon_pool::SerializableHolonPool, reference_layer::ReadableHolon,
+    core_shared_objects::{
+        holon_pool::SerializableHolonPool,
+        transactions::TransactionContext,
+    },
+    reference_layer::ReadableHolon,
 };
 use holons_prelude::prelude::*;
 use integrity_core_types::PropertyMap;
@@ -89,11 +93,11 @@ impl DancesTestCase {
     /// the latest state from the local context.
     ///
     /// # Arguments
-    /// * `fixture_context` - A reference to the `HolonsContextBehavior`, which provides access to the space manager.
+    /// * `fixture_context` - A reference to the `TransactionContext`, which provides access to the space manager.
     /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
     ///
     /// This function is called automatically within `rs_test` and should not be used directly.
-    pub fn load_test_session_state(&mut self, fixture_context: &dyn HolonsContextBehavior) {
+    pub fn load_test_session_state(&mut self, fixture_context: &TransactionContext) {
         let transient_holons = fixture_context.export_transient_holons().unwrap();
         self.test_session_state.set_transient_holons(transient_holons);
     }

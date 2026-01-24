@@ -8,6 +8,7 @@ use base_types::MapString;
 use core_types::HolonError;
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::{
+    core_shared_objects::transactions::TransactionContext,
     dances::{
         descriptors_dance_adapter::load_core_schema_dance, DanceRequest, DanceResponse,
         ResponseBody, ResponseStatusCode, SessionState,
@@ -63,8 +64,8 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // }
     debug!("dispatching dance");
 
-    let dispatch_result = dancer.dispatch(&*context, request.clone());
-    let result = process_dispatch_result(&*context, dispatch_result);
+    let dispatch_result = dancer.dispatch(context.as_ref(), request.clone());
+    let result = process_dispatch_result(context.as_ref(), dispatch_result);
 
     info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
 
@@ -171,7 +172,7 @@ fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResp
 
 fn initialize_context_from_request(
     request: &DanceRequest,
-) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
+) -> Result<Arc<TransactionContext>, DanceResponse> {
     info!("==Initializing context from request==");
     debug!("request: {:#?}", request);
 
@@ -217,7 +218,7 @@ fn initialize_context_from_request(
 /// NOTE: State restoration is **best-effort**. If exporting staged/transient holons
 /// or reading the local space holon fails (e.g., due to lock acquisition errors),
 /// this function logs the error and returns `None` instead of panicking.
-fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Option<SessionState> {
+fn restore_session_state_from_context(context: &TransactionContext) -> Option<SessionState> {
     // Export staged holons as a single SerializableHolonPool
     let serializable_staged_pool = match context.export_staged_holons() {
         Ok(pool) => pool,
@@ -270,7 +271,7 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
 ///
 
 fn process_dispatch_result(
-    context: &dyn HolonsContextBehavior, // 🔄 Changed back to `&dyn`
+    context: &TransactionContext,
     dispatch_result: Result<ResponseBody, HolonError>,
 ) -> DanceResponse {
     match dispatch_result {

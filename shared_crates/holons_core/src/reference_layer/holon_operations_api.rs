@@ -21,6 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
@@ -100,7 +101,7 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference,
 /// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
 /// Returns a TransientReference to the newly created holon.
 pub fn new_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
     key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
     // Acquire transient service

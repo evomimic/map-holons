@@ -3,9 +3,9 @@ use core_types::HolonError;
 use holons_core::{
     core_shared_objects::{
         holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager,
-        ServiceRoutingPolicy,
+        transactions::TransactionContext, ServiceRoutingPolicy,
     },
-    reference_layer::{HolonReference, HolonsContextBehavior},
+    reference_layer::HolonReference,
     HolonServiceApi,
 };
 use std::sync::{Arc, RwLock};
@@ -30,7 +30,7 @@ use tracing::{
 /// * `local_space_holon` - An optional reference to the local holon space (must be saved).
 ///
 /// # Returns
-/// * `Ok(Arc<dyn HolonsContextBehavior>)` - The initialized guest context if successful.
+/// * `Ok(Arc<TransactionContext>)` - The initialized guest context if successful.
 /// * `Err(HolonError)` - If opening the default transaction fails.
 ///
 /// # Errors
@@ -43,7 +43,7 @@ pub fn init_guest_context(
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_space_holon: Option<HolonReference>,
-) -> Result<Arc<dyn HolonsContextBehavior>, HolonError> {
+) -> Result<Arc<TransactionContext>, HolonError> {
     info!("\n ========== Initializing GUEST CONTEXT ============");
 
     // Step 1: Create the GuestHolonService (keep a concrete handle for registration).
@@ -80,8 +80,8 @@ pub fn init_guest_context(
         .open_default_transaction(Arc::clone(&space_manager))?;
 
     // Step 5: Load staged and transient holons into the transaction.
-    transaction_context.import_staged_holons(staged_holons);
-    transaction_context.import_transient_holons(transient_holons);
+    transaction_context.import_staged_holons(staged_holons)?;
+    transaction_context.import_transient_holons(transient_holons)?;
 
     // Step 6: Register internal nursery access for commit.
     let nursery_for_internal_access = transaction_context.nursery();
@@ -90,5 +90,5 @@ pub fn init_guest_context(
     )));
 
     // Step 7: Return the transaction context directly.
-    Ok(transaction_context as Arc<dyn HolonsContextBehavior>)
+    Ok(transaction_context)
 }

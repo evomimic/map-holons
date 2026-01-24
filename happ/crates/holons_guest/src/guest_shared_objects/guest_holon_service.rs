@@ -24,7 +24,10 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal, Holon, HolonCollection, NurseryAccess,
+        nursery_access_internal::NurseryAccessInternal,
+        transactions::TransactionContext,
+        Holon,
+        HolonCollection,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
@@ -72,7 +75,7 @@ impl GuestHolonService {
 
     fn create_local_space_holon(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
     ) -> Result<SavedHolon, HolonError> {
         // Define the name and description for the local space holon
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
@@ -141,7 +144,7 @@ impl GuestHolonService {
     /// * `Err(HolonError)` – If any errors occur during retrieval or creation.
     pub fn ensure_local_holon_space(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
     ) -> Result<HolonReference, HolonError> {
         let space_holon_result =
             get_holon_by_path(LOCAL_HOLON_SPACE_PATH.to_string(), LinkTypes::LocalHolonSpace)?;
@@ -163,12 +166,6 @@ impl GuestHolonService {
             })
     }
 
-    pub fn get_nursery_access(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Arc<dyn NurseryAccess> {
-        context.get_nursery_access()
-    }
 }
 
 impl HolonServiceApi for GuestHolonService {
