@@ -21,10 +21,9 @@
 //!    - Read and write access to `HolonCollection`s is guarded through locking, which
 //!      gracefully fails with structured `HolonError::FailedToAcquireLock` errors.
 //!
-//! 4. **Serialization Support:**
-//!    - `StagedRelationshipMap` is fully `Serialize` and `Deserialize`.
-//!    - During deserialization, each collection is automatically wrapped in a fresh `Arc<RwLock<_>>`
-//!      to preserve its runtime mutability and thread safety.
+//! 4. **Wire Serialization Support:**
+//!    - Use [`StagedRelationshipMapWire`] to serialize/deserialize staged relationships across IPC.
+//!    - Runtime maps remain context-bound and are bound via [`StagedRelationshipMapWire::bind`].
 //!
 //! 5. **Clone for New Source:**
 //!    - The `clone_for_new_source()` method produces a deep clone of the map, creating
@@ -58,7 +57,8 @@ use std::{
 };
 
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
-use crate::core_shared_objects::HolonCollection;
+use crate::core_shared_objects::transactions::TransactionContext;
+use crate::core_shared_objects::{HolonCollection, HolonCollectionWire};
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
@@ -67,6 +67,11 @@ use core_types::{HolonError, RelationshipName};
 #[derive(new, Clone, Debug)]
 pub struct StagedRelationshipMap {
     pub map: BTreeMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StagedRelationshipMapWire {
+    pub map: BTreeMap<RelationshipName, HolonCollectionWire>,
 }
 
 // Manual PartialEq implementation to compare underlying HolonCollection values in RwLocks
@@ -107,6 +112,48 @@ impl StagedRelationshipMap {
     /// Checks if there are no staged relationships.
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
+    }
+
+    pub fn to_wire(&self) -> StagedRelationshipMapWire {
+        StagedRelationshipMapWire::from(self)
+    }
+}
+
+impl StagedRelationshipMapWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<StagedRelationshipMap, HolonError> {
+        let mut map = BTreeMap::new();
+
+        for (name, collection_wire) in self.map {
+            let collection = collection_wire.bind(Arc::clone(&context))?;
+
+            for member in collection.get_members() {
+                if member.is_transient() {
+                    return Err(HolonError::InvalidRelationship(
+                        name.to_string(),
+                        "StagedRelationshipMap cannot contain TransientReferences".to_string(),
+                    ));
+                }
+            }
+
+            map.insert(name, Arc::new(RwLock::new(collection)));
+        }
+
+        Ok(StagedRelationshipMap::new(map))
+    }
+}
+
+impl From<&StagedRelationshipMap> for StagedRelationshipMapWire {
+    fn from(map: &StagedRelationshipMap) -> Self {
+        let mut wire_map = BTreeMap::new();
+
+        for (name, lock) in map.map.iter() {
+            let collection = lock
+                .read()
+                .expect("Failed to acquire read lock on holon collection");
+            wire_map.insert(name.clone(), HolonCollectionWire::from(&*collection));
+        }
+
+        Self { map: wire_map }
     }
 }
 
@@ -233,38 +280,5 @@ impl WritableRelationship for StagedRelationshipMap {
                 "No matching collection found in map".to_string(),
             ))
         }
-    }
-}
-
-impl Serialize for StagedRelationshipMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let ser_map: BTreeMap<RelationshipName, HolonCollection> = self
-            .map
-            .iter()
-            .map(|(k, lock)| {
-                let collection = lock.read().map_err(|e| {
-                    serde::ser::Error::custom(format!(
-                        "Failed to acquire read lock on holon collection: {}",
-                        e
-                    ))
-                })?;
-                Ok((k.clone(), collection.clone()))
-            })
-            .collect::<Result<_, _>>()?;
-        ser_map.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for StagedRelationshipMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let tmp: BTreeMap<RelationshipName, HolonCollection> = BTreeMap::deserialize(deserializer)?;
-        let map = tmp.into_iter().map(|(k, v)| (k, Arc::new(RwLock::new(v)))).collect();
-        Ok(StagedRelationshipMap::new(map))
     }
 }
