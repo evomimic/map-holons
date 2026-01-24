@@ -120,7 +120,6 @@ impl<'a> Serialize for HolonIdWrapper<'a> {
 }
 
 // Wrapper for PropertyMap
-// Wrapper for PropertyMap
 struct PropertyMapWrapper<'a>(&'a PropertyMap);
 
 impl<'a> Serialize for PropertyMapWrapper<'a> {
