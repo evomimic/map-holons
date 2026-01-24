@@ -241,6 +241,22 @@ impl HolonReference {
     }
 }
 
+impl From<&HolonReference> for HolonReferenceSerializable {
+    fn from(reference: &HolonReference) -> Self {
+        match reference {
+            HolonReference::Transient(transient) => {
+                HolonReferenceSerializable::Transient(TransientReferenceSerializable::from(transient))
+            }
+            HolonReference::Staged(staged) => {
+                HolonReferenceSerializable::Staged(StagedReferenceSerializable::from(staged))
+            }
+            HolonReference::Smart(smart) => {
+                HolonReferenceSerializable::Smart(SmartReferenceSerializable::from(smart))
+            }
+        }
+    }
+}
+
 impl From<StagedReference> for HolonReference {
     fn from(staged: StagedReference) -> Self {
         HolonReference::Staged(staged)

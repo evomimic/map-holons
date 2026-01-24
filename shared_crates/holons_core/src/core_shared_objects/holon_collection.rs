@@ -2,11 +2,15 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::slice::{Iter, IterMut};
+use std::sync::Arc;
 use std::vec::IntoIter;
 use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
+use crate::core_shared_objects::transactions::TransactionContext;
+use crate::reference_layer::{
+    HolonReference, HolonReferenceSerializable, HolonsContextBehavior, ReadableHolon,
+};
 use crate::HolonCollectionApi;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
@@ -37,6 +41,33 @@ pub struct HolonCollection {
     state: CollectionState,
     members: Vec<HolonReference>,
     keyed_index: BTreeMap<MapString, usize>, // usize is an index into the members vector
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct HolonCollectionWire {
+    pub state: CollectionState,
+    pub members: Vec<HolonReferenceSerializable>,
+    pub keyed_index: BTreeMap<MapString, usize>,
+}
+
+impl HolonCollectionWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in self.members {
+            members.push(HolonReference::bind(member, Arc::clone(&context))?);
+        }
+
+        Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))
+    }
+}
+
+impl From<&HolonCollection> for HolonCollectionWire {
+    fn from(collection: &HolonCollection) -> Self {
+        let members =
+            collection.get_members().iter().map(HolonReferenceSerializable::from).collect();
+
+        Self { state: collection.get_state(), members, keyed_index: collection.keyed_index() }
+    }
 }
 
 impl HolonCollection {
@@ -102,17 +133,14 @@ impl HolonCollection {
 
     // METHODS //
 
-    pub fn from_parts(state: CollectionState, members: Vec<HolonReference>) -> Self {
-        let keyed_index = BTreeMap::new();
-
-        // TODO: This method should reconstitute the keyed_index from members -- but needs member.key to not require context first.
-        // for (index, member) in members.iter().enumerate() {
-        //     if let Some(key) = member.key() {
-        //         keyed_index.insert(key, index);
-        //     }
-        // }
+    pub fn from_parts(
+        state: CollectionState,
+        members: Vec<HolonReference>,
+        keyed_index: BTreeMap<MapString, usize>,
+    ) -> Self {
         HolonCollection { state, members, keyed_index }
     }
+
     /// Checks if requested `access_type` is acceptable given the collection's current `state`.
     /// If not, returns `NotAccessible` error
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
