@@ -12,8 +12,7 @@ use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
 use crate::core_shared_objects::{
-    HolonCacheAccess, Nursery, NurseryAccess, TransientCollection, TransientHolonManager,
-    TransientManagerAccess,
+    HolonCacheAccess, Nursery, TransientCollection, TransientHolonManager,
 };
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::{
@@ -72,6 +71,53 @@ impl TransactionContext {
         Arc::clone(&self.transient_manager)
     }
 
+    // Public accessors for staging/transient behaviors (transaction-scoped).
+    pub fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
+    }
+
+    pub fn get_transient_behavior_service(&self) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
+    }
+
+    // Internal privileged accessors for reference resolution.
+    pub(crate) fn nursery_access_internal(&self) -> Arc<dyn NurseryAccessInternal + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn NurseryAccessInternal + Send + Sync>
+    }
+
+    pub(crate) fn transient_manager_access_internal(
+        &self,
+    ) -> Arc<dyn TransientManagerAccessInternal + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccessInternal + Send + Sync>
+    }
+
+    pub(crate) fn cache_access_internal(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
+        self.require_space_manager().get_cache_access()
+    }
+
+    // Public import/export for session-state transport.
+    pub fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
+        self.nursery.export_staged_holons()
+    }
+
+    pub fn import_staged_holons(
+        &self,
+        staged_holons: SerializableHolonPool,
+    ) -> Result<(), HolonError> {
+        self.nursery.import_staged_holons(staged_holons)
+    }
+
+    pub fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
+        self.transient_manager.export_transient_holons()
+    }
+
+    pub fn import_transient_holons(
+        &self,
+        transient_holons: SerializableHolonPool,
+    ) -> Result<(), HolonError> {
+        self.transient_manager.import_transient_holons(transient_holons)
+    }
+
     fn require_space_manager(&self) -> Arc<HolonSpaceManager> {
         // Space manager lifetime is guaranteed by the strong Arc stored on the context.
         Arc::clone(&self.space_manager)
@@ -85,40 +131,6 @@ impl HolonsContextBehavior for TransactionContext {
 
     fn is_open(&self) -> bool {
         self.is_open.load(Ordering::Acquire)
-    }
-
-    fn get_nursery_access(&self) -> Arc<dyn NurseryAccess + Send + Sync> {
-        Arc::clone(&self.nursery) as Arc<dyn NurseryAccess + Send + Sync>
-    }
-
-    fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
-        Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
-    }
-
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.nursery.export_staged_holons()
-    }
-
-    fn import_staged_holons(&self, staged_holons: SerializableHolonPool) {
-        // Preserve the existing void API by discarding the internal result.
-        let _ = self.nursery.import_staged_holons(staged_holons);
-    }
-
-    fn get_transient_behavior_service(&self) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
-        Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
-    }
-
-    fn get_transient_manager_access(&self) -> Arc<dyn TransientManagerAccess + Send + Sync> {
-        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccess + Send + Sync>
-    }
-
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.transient_manager.export_transient_holons()
-    }
-
-    fn import_transient_holons(&self, transient_holons: SerializableHolonPool) {
-        // Preserve the existing void API by discarding the internal result.
-        let _ = self.transient_manager.import_transient_holons(transient_holons);
     }
 
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {

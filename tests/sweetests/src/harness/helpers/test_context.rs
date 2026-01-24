@@ -76,7 +76,8 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<Transactio
 
     // Step 5: Load transient holons from the test session state.
     transaction_context
-        .import_transient_holons(test_case.test_session_state.get_transient_holons().clone());
+        .import_transient_holons(test_case.test_session_state.get_transient_holons().clone())
+        .expect("failed to import transient holons into test context");
 
     transaction_context
 }

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use holons_core::HolonsContextBehavior;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse};
 use tracing::debug;
 
@@ -26,7 +26,7 @@ impl TrustChannel {
 impl DanceInitiator for TrustChannel {
     async fn initiate_dance(
         &self,
-        context: &(dyn HolonsContextBehavior + Send + Sync),
+        context: &TransactionContext,
         mut request: DanceRequest,
     ) -> DanceResponse {
         // --- Outbound session state encapsulation -----------------------------

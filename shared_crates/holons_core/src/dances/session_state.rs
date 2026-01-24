@@ -1,17 +1,30 @@
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 
-use crate::HolonReference;
+use crate::{HolonReference, HolonReferenceSerializable};
 use serde::{Deserialize, Serialize};
 
-/// SessionState provides a way to distinguish information associated with a specific request from
-/// state info that is just being maintained via the ping pong process. This also should make it
-/// easier to evolve to token-based state management approach where, say, the state token is
-/// actually a reference into the ephemeral store.
+/// `SessionState` represents **transaction-scoped, serializable execution state**
+/// that is explicitly transported across IPC boundaries.
+///
+/// It captures **provisional state owned by the current transaction**—such as
+/// staged and transient holons—and enough identifying information to restore
+/// that state on the receiving side.
+///
+/// `SessionState` is intentionally:
+/// - **Context-free**: it contains no runtime handles or live references
+/// - **Serializable**: suitable for host ↔ guest and UI ↔ host IPC
+/// - **Rebindable**: wire-level references are explicitly bound to the active
+///   `TransactionContext` at ingress
+///
+/// This structure is not a general-purpose context object and does not model
+/// long-lived space state. It exists solely to support **safe, explicit
+/// transfer of transaction-local state** during request/response flows, and
+/// may evolve toward token-based or indirect state transfer mechanisms in the future.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SessionState {
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
-    local_holon_space: Option<HolonReference>,
+    local_holon_space: Option<HolonReferenceSerializable>,
 }
 
 impl SessionState {
@@ -21,16 +34,20 @@ impl SessionState {
         staged_holons: SerializableHolonPool,
         local_holon_space: Option<HolonReference>,
     ) -> Self {
-        Self { transient_holons, staged_holons, local_holon_space }
+        Self {
+            transient_holons,
+            staged_holons,
+            local_holon_space: local_holon_space.map(HolonReferenceSerializable::from),
+        }
     }
 
-    pub fn get_local_holon_space(&self) -> Option<HolonReference> {
+    pub fn get_local_holon_space_wire(&self) -> Option<HolonReferenceSerializable> {
         self.local_holon_space.clone()
     }
 
     /// Sets a new local holon space reference.
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {
-        self.local_holon_space = local_holon_space;
+        self.local_holon_space = local_holon_space.map(HolonReferenceSerializable::from);
     }
 
     /// Retrieves the staged holon pool.

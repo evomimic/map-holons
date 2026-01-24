@@ -48,7 +48,7 @@ impl SmartReferenceSerializable {
     }
 }
 
-#[derive(new, Debug, Clone, PartialEq, Eq)]
+#[derive(new, Debug, Clone)]
 pub struct SmartReference {
     context_handle: TransactionContextHandle,
     holon_id: HolonId,
@@ -68,25 +68,22 @@ impl SmartReference {
         holon_id: HolonId,
         smart_property_values: PropertyMap,
     ) -> Self {
-        SmartReference { context_handle, holon_id, smart_property_values: Some(smart_property_values) }
+        SmartReference {
+            context_handle,
+            holon_id,
+            smart_property_values: Some(smart_property_values),
+        }
     }
 
-    /// Binds a wire reference to a TransactionContext, validating tx_id.
+    /// Binds a wire reference to a TransactionContext, validating tx_id and returning a SmartReference.
     pub fn bind(
         wire: SmartReferenceSerializable,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
-        if wire.tx_id != context.tx_id() {
-            return Err(HolonError::CrossTransactionReference {
-                reference_kind: "SmartReference".to_string(),
-                reference_id: format!("HolonId={}", wire.holon_id),
-                reference_tx: wire.tx_id.value(),
-                context_tx: context.tx_id().value(),
-            });
-        }
+        let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
 
         Ok(SmartReference {
-            context_handle: TransactionContextHandle::new(context),
+            context_handle,
             holon_id: wire.holon_id,
             smart_property_values: wire.smart_property_values,
         })
@@ -94,19 +91,39 @@ impl SmartReference {
 
     // *************** ACCESSORS ***************
 
-    /// Outside helper method for serialization purposes, that does not require a context.
-    pub fn get_id(&self) -> Result<HolonId, HolonError> {
-        Ok(self.holon_id.clone())
+    /// Returns the transaction id this reference is bound to.
+    pub fn tx_id(&self) -> TxId {
+        self.context_handle.tx_id()
     }
 
+    /// Returns the persistent holon id for this smart reference.
+    pub fn holon_id(&self) -> HolonId {
+        self.holon_id.clone()
+    }
+
+    /// Returns a borrowed view of the cached smart properties, if present.
+    pub fn smart_property_values(&self) -> Option<&PropertyMap> {
+        self.smart_property_values.as_ref()
+    }
+
+    /// Returns the persistent holon id (kept for backwards compatibility with existing call sites).
+    ///
+    /// Prefer `holon_id()` for new code.
+    pub fn get_id(&self) -> Result<HolonId, HolonError> {
+        Ok(self.holon_id())
+    }
+
+    /// Returns an owned clone of cached smart properties (kept for backwards compatibility).
+    ///
+    /// Prefer `smart_property_values()` for new code to avoid cloning.
     pub fn get_smart_properties(&self) -> Option<PropertyMap> {
         self.smart_property_values.clone()
     }
 
     // *************** UTILITY METHODS ***************
 
-    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess> {
-        self.context_handle.context().get_cache_access()
+    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
+        self.context_handle.context().cache_access_internal()
     }
 
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
@@ -174,7 +191,7 @@ impl fmt::Display for SmartReference {
 impl ReadableHolonImpl for SmartReference {
     fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
         self.is_accessible(AccessType::Clone)?;
-        let transient_behavior = self.context_handle.context().get_transient_behavior_service();
+        let transient_behavior = self.context_handle.context().transient_manager_access_internal();
 
         let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
@@ -204,11 +221,7 @@ impl ReadableHolonImpl for SmartReference {
                 .get_members()
                 .to_vec();
 
-            cloned_holon_transient_reference.add_related_holons(
-                self.context_handle.context().as_ref(),
-                name,
-                members,
-            )?;
+            cloned_holon_transient_reference.add_related_holons(name, members)?;
         }
 
         Ok(cloned_holon_transient_reference)
@@ -217,8 +230,8 @@ impl ReadableHolonImpl for SmartReference {
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let cache_access = self.get_cache_access();
-        let relationship_map =
-            cache_access.get_all_related_holons(self.context_handle.context().as_ref(), &self.get_id()?)?;
+        let relationship_map = cache_access
+            .get_all_related_holons(self.context_handle.context().as_ref(), &self.get_id()?)?;
 
         Ok(relationship_map)
     }
@@ -386,7 +399,6 @@ impl ReadableHolonImpl for SmartReference {
 impl WritableHolonImpl for SmartReference {
     fn add_related_holons_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         _relationship_name: RelationshipName,
         _holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
@@ -397,7 +409,6 @@ impl WritableHolonImpl for SmartReference {
 
     fn remove_related_holons_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         _relationship_name: RelationshipName,
         _holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
@@ -408,7 +419,6 @@ impl WritableHolonImpl for SmartReference {
 
     fn with_property_value_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         _property: PropertyName,
         _value: BaseValue,
     ) -> Result<&mut Self, HolonError> {
@@ -417,11 +427,7 @@ impl WritableHolonImpl for SmartReference {
         Ok(self)
     }
 
-    fn remove_property_value_impl(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        _name: PropertyName,
-    ) -> Result<&mut Self, HolonError> {
+    fn remove_property_value_impl(&mut self, _name: PropertyName) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
 
         Ok(self)
@@ -429,7 +435,6 @@ impl WritableHolonImpl for SmartReference {
 
     fn with_descriptor_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         _descriptor_reference: HolonReference,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
@@ -439,7 +444,6 @@ impl WritableHolonImpl for SmartReference {
 
     fn with_predecessor_impl(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         _predecessor_reference_option: Option<HolonReference>,
     ) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
@@ -465,5 +469,15 @@ impl ToHolonCloneModel for SmartReference {
             .holon_clone_model();
 
         Ok(model)
+    }
+}
+
+impl From<&SmartReference> for SmartReferenceSerializable {
+    fn from(reference: &SmartReference) -> Self {
+        Self::new(
+            reference.tx_id(),
+            reference.holon_id(),
+            reference.smart_property_values().cloned(),
+        )
     }
 }

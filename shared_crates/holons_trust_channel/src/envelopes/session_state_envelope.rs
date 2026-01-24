@@ -1,5 +1,6 @@
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
-use holons_core::{HolonError, HolonsContextBehavior};
+use holons_core::{HolonError, HolonReference, HolonsContextBehavior};
 use tracing::debug;
 
 /// The SessionStateEnvelope layer manages attaching and restoring SessionState
@@ -15,7 +16,7 @@ impl SessionStateEnvelope {
     ///
     /// Inject the current session state into a DanceRequest before sending.
     pub fn attach_to_request(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         request: &mut DanceRequest,
     ) -> Result<(), HolonError> {
         let mut session_state = SessionState::default();
@@ -34,17 +35,19 @@ impl SessionStateEnvelope {
     /// Hydrate the local environment (nursery, transient manager, and local holon)
     /// from the SessionState contained in a DanceResponse.
     pub fn hydrate_from_response(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         response: &DanceResponse,
     ) -> Result<(), HolonError> {
         let Some(state) = &response.state else {
             return Err(HolonError::InvalidParameter("DanceResponse missing SessionState".into()));
         };
-        context.import_staged_holons(state.get_staged_holons().clone());
-        context.import_transient_holons(state.get_transient_holons().clone());
 
-        if let Some(space_ref) = state.get_local_holon_space() {
-            context.set_space_holon(space_ref.clone())?;
+        context.import_staged_holons(state.get_staged_holons().clone())?;
+        context.import_transient_holons(state.get_transient_holons().clone())?;
+
+        if let Some(space_ref_wire) = state.get_local_space_holon_wire() {
+            let space_ref = HolonReference::bind(space_ref_wire, context.clone())?;
+            context.set_space_holon(space_ref)?;
         }
 
         debug!("SessionStateEnvelope::hydrate_from_response() — {}", state.summarize());
