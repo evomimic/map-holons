@@ -4,7 +4,8 @@ use std::sync::{Arc, RwLock};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
-use super::{HolonCollection, ReadableRelationship, WritableRelationship};
+use super::{HolonCollection, HolonCollectionWire, ReadableRelationship, WritableRelationship};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
@@ -15,6 +16,11 @@ use core_types::{HolonError, RelationshipName};
 #[derive(new, Debug, Clone)]
 pub struct TransientRelationshipMap {
     pub map: BTreeMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TransientRelationshipMapWire {
+    pub map: BTreeMap<RelationshipName, HolonCollectionWire>,
 }
 
 // Manual PartialEq implementation to compare underlying HolonCollection values in RwLocks
@@ -232,6 +238,41 @@ impl TransientRelationshipMap {
 
         Ok(staged)
     }
+
+    pub fn to_wire(&self) -> TransientRelationshipMapWire {
+        TransientRelationshipMapWire::from(self)
+    }
+}
+
+impl TransientRelationshipMapWire {
+    pub fn bind(
+        self,
+        context: Arc<TransactionContext>,
+    ) -> Result<TransientRelationshipMap, HolonError> {
+        let mut map = BTreeMap::new();
+
+        for (name, collection_wire) in self.map {
+            let collection = collection_wire.bind(Arc::clone(&context))?;
+            map.insert(name, Arc::new(RwLock::new(collection)));
+        }
+
+        Ok(TransientRelationshipMap::new(map))
+    }
+}
+
+impl From<&TransientRelationshipMap> for TransientRelationshipMapWire {
+    fn from(map: &TransientRelationshipMap) -> Self {
+        let mut wire_map = BTreeMap::new();
+
+        for (name, lock) in map.map.iter() {
+            let collection = lock
+                .read()
+                .expect("Failed to acquire read lock on holon collection");
+            wire_map.insert(name.clone(), HolonCollectionWire::from(&*collection));
+        }
+
+        Self { map: wire_map }
+    }
 }
 
 // Implement thread-safe trait versions
@@ -281,48 +322,5 @@ impl WritableRelationship for TransientRelationshipMap {
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<(), HolonError> {
         TransientRelationshipMap::remove_related_holons_with_keys(self, relationship_name, entries)
-    }
-}
-
-impl Serialize for TransientRelationshipMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        // Create a serializable version of the map by cloning the inner `HolonCollection`
-        let serializable_map: BTreeMap<_, _> = self
-            .map
-            .iter()
-            .map(|(key, value)| {
-                let collection = value.read().map_err(|e| {
-                    serde::ser::Error::custom(format!(
-                        "Failed to acquire read lock on holon collection: {}",
-                        e
-                    ))
-                })?;
-                Ok((key.clone(), collection.clone()))
-            })
-            .collect::<Result<_, _>>()?;
-
-        serializable_map.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for TransientRelationshipMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        // Deserialize into a temporary BTreeMap<RelationshipName, HolonCollection>
-        let deserialized_map: BTreeMap<RelationshipName, HolonCollection> =
-            BTreeMap::deserialize(deserializer)?;
-
-        // Wrap each value in Arc<RwLock<HolonCollection>>
-        let wrapped_map: BTreeMap<_, _> = deserialized_map
-            .into_iter()
-            .map(|(key, value)| (key, Arc::new(RwLock::new(value))))
-            .collect();
-
-        Ok(Self { map: wrapped_map })
     }
 }
