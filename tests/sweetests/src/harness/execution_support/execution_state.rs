@@ -6,7 +6,7 @@
 //!
 //! It intentionally **does not** own services; those come from the provided
 //! `context` (per Issue #308). This keeps executors focused on the loop:
-//! **lookup → call → record**.
+//! **resolve → execute → validate → record**.
 //!
 //! Despite the name, this is **not** an enum of lifecycle phases (Running, Done, …).
 //! It’s a thin container around [`ExecutionHolons`] so we can grow execution-time

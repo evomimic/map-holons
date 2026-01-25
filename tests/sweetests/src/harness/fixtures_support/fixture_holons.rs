@@ -1,6 +1,6 @@
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
-use holons_core::{reference_layer::TransientReference, HolonsContextBehavior, ReadableHolon};
+use holons_core::{HolonsContextBehavior, ReadableHolon};
 use tracing::debug;
 // use tracing::warn;
 use crate::harness::fixtures_support::{TestHolonState, TestReference};
@@ -35,14 +35,14 @@ impl FixtureHolonId {
 ///  Mutable and internal to the harness.
 #[derive(new, Clone, Debug)]
 pub struct FixtureHolon {
-    pub id: FixtureHolonId,              // Stable fixture-time identity
+    id: FixtureHolonId,                  // Stable (immutable) fixture-time identity
     pub head_snapshot: ExpectedSnapshot, // Current authoritative snapshot with TestHolonState, updated by mutations and commit
 }
 
 /// Fixture-time factory + registry for [`TestReference`]s.
 ///
 /// - **Only** `FixtureHolons` can mint tokens (it calls `TestReference::new`, which is `pub(crate)`).
-/// - `commit()` flips all *Staged* intents to *Saved* for **expectation** purposes only.
+/// - `commit()` advances head with a minted *Saved* expectation for all *Staged* intents.
 ///
 ///  Each token maps to an ExecutionHolon -- the expected runtime resolution.
 #[derive(Clone, Debug, Default)]
@@ -137,7 +137,8 @@ impl FixtureHolons {
 
     // =====  COMMIT  ======  //
 
-    /// Mint tokens with expected state Saved
+    /// Mint tokens with expected state Saved.
+    /// Returned tokens are *only* used for resolution of expected during the execution, and never passed to an add step.
     pub fn commit(
         &mut self,
         context: &dyn HolonsContextBehavior,
@@ -185,9 +186,9 @@ impl FixtureHolons {
 
     // // ==== MINTING ==== // //
 
-    /// Mint a new TestReference snapshot and push it onto FixtureHolons.
+    /// Mint a new TestReference token from the frozen snapshots and push it onto FixtureHolons.tokens.
     ///
-    /// Returns the newly created TestReference.
+    /// Returns the newly created TestReference to be used as input for the next step.
     pub fn mint_test_reference(
         &mut self,
         source: SourceSnapshot,
@@ -199,16 +200,16 @@ impl FixtureHolons {
         token
     }
 
-    /// Mint an TestHolonState::Abandoned cloned from given TestReference (must be state Staged).
-    pub fn abandon_staged(
-        &mut self,
-        source: &SourceSnapshot,
-        snapshot: TransientReference,
-    ) -> Result<TestReference, HolonError> {
+    /// Mint an TestHolonState::Abandoned cloned from given snapshot (must be state Staged).
+    pub fn abandon_staged(&mut self, source: SourceSnapshot) -> Result<TestReference, HolonError> {
         match source.state() {
             TestHolonState::Staged => {
-                let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Abandoned)?;
+                let expected = ExpectedSnapshot::new(
+                    Some(source.snapshot().clone()),
+                    TestHolonState::Abandoned,
+                )?;
                 let abandoned_token = self.mint_test_reference(source.clone(), expected);
+
                 Ok(abandoned_token)
             }
             other => Err(HolonError::InvalidTransition(format!(
@@ -218,12 +219,13 @@ impl FixtureHolons {
         }
     }
 
-    /// Mint an TestHolonState::Deleted cloned from given TestReference (must be state Saved).
+    /// Mint an TestHolonState::Deleted cloned from given Snapshot (must be state Saved).
     pub fn delete_saved(&mut self, source: &SourceSnapshot) -> Result<TestReference, HolonError> {
         match source.state() {
             TestHolonState::Saved => {
                 let expected = ExpectedSnapshot::new(None, TestHolonState::Deleted)?;
                 let deleted_token = self.mint_test_reference(source.clone(), expected);
+
                 Ok(deleted_token)
             }
             other => Err(HolonError::InvalidTransition(format!(

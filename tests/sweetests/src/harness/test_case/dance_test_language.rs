@@ -10,6 +10,8 @@
 //!
 //! Specifically, this module provides:
 //!
+//! - [`TestCaseInit`], which initializes the test_case and context, with empty mutable
+//!    fixture holons and bindings objects.
 //! - [`DancesTestCase`], a container representing a single declarative test
 //!   program composed of an ordered sequence of steps.
 //! - [`DanceTestStep`], a closed vocabulary of test operations, each

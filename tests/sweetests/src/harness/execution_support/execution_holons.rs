@@ -7,11 +7,11 @@
 //!
 //! ## Key points
 //! - **Record**: after a step realizes something, wrap it in a
-//!   `ExecutionReference` and store it under the source token’s `TemporaryId`.
+//!   `ExecutionReference` and store it under the expected_snapshot's `TemporaryId`.
 //! - **Lookup (inputs)**: executors use `resolve_source_reference(_vec)` to turn
 //!   tokens into live `HolonReference`s *without* touching the Nursery or DHT.
 //! - **Invariant**: Saved ≙ Staged(Committed(LocalId)) is enforced during lookup.
-//! - **Most recent wins**: re-recording the same `TemporaryId` overwrites the prior entry.
+//! - **Append-only**: Overwrites are not allowed.
 
 use std::collections::BTreeMap;
 
@@ -77,8 +77,6 @@ impl ExecutionHolons {
     /// - `TestHolonState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `TestHolonState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
     /// - `TestHolonState::Deleted`  → return Error
-    ///
-    /// No Nursery/DHT fallback is performed. Missing entries are treated as authoring/ordering errors.
     pub fn resolve_source_reference(
         &self,
         context: &dyn HolonsContextBehavior,

@@ -48,8 +48,13 @@ pub enum TestHolonState {
     Deleted,
 }
 
-/// An **opaque fixture token** that identifies a holon by [`TransientReference`]
+/// An **immutable, opaque fixture token** that is safe to pass and reuse, as the sole artifact executors receive.
 /// and expresses its intended lifecycle via [`TestHolonState`].
+/// Conceptually, a TestReference captures two things:
+/// Starting point — what the step should operate on
+/// Expected result — what the step should produce
+/// 
+/// These two roles travel together as a single immutable contract, where one or multiple are used for each TestStep.
 ///
 /// From a fixture’s perspective, this is just a *token*:
 /// - No direct construction or mutation (use [`FixtureHolons`](super::fixture_holons::FixtureHolons)
@@ -60,7 +65,6 @@ pub enum TestHolonState {
 /// Internally, harness code can access identity and intent in order to:
 /// - Resolve the token into a `HolonReference`.
 /// - Verify and assert state transitions.
-/// - Update intent by minting a new token that points back to the previous snapshot token_id.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
     source: SourceSnapshot,
@@ -122,7 +126,7 @@ impl SourceSnapshot {
 /// Defines what is expected after the execution step.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedSnapshot {
-    snapshot: Option<TransientReference>, // Carries expected content, None for Deleted state
+    snapshot: Option<TransientReference>, // Carries the expected content, which can be mutated. None for Deleted state.
     state: TestHolonState,                // Transient | Staged | Saved | Abandoned | Deleted
 }
 
@@ -144,7 +148,7 @@ impl ExpectedSnapshot {
         Ok(Self { snapshot, state })
     }
 
-    // Conversion helper
+    // Conversion helper when using an expected snapshot as the new source.
     pub fn as_source(&self) -> Result<SourceSnapshot, HolonError> {
         if self.state == TestHolonState::Deleted {
             return Err(HolonError::InvalidParameter("Cannot use a snapshot in deleted state as a source input".to_string()));

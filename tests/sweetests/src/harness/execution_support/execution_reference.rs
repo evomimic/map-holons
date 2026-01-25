@@ -1,18 +1,17 @@
 //! Execution-time realization of a fixture token.
 //!
-//! A [`ExecutionReference`] pairs the fixture-declared **mapping token**
+//! A [`ExecutionReference`] pairs the fixture-declared **expected snapshot**
 //! (what the fixture expected at this point in the flow) with the **runtime
 //! handle** actually produced by executing a step.
 //!
-//! - `fixture_token`: the [`TestReference`] declared by the fixture. Its
+//! - `expected_snapshot`: the [`ExpectedSnapshot`] declared by the fixture. Its
 //!   `TestHolonState` describes the lifecycle of the *mapping* holon
 //!   (Transient, Staged, or Saved).
 //! - `resulting_reference`: the [`HolonReference`] created at runtime
 //!   (often a `StagedReference`; if committed, represents “Saved”).
 //!
 //! ⚠ Important: **Do not confuse intent and result.**
-//! A “Staged” token may resolve to a *new* staged holon, not the one
-//! embedded in the token. The token is intent; the result is reality.
+//! The expected snapshot that comes from the exectuor input token is intent; the resulting reference is 'DHT' reality.
 
 use crate::ExpectedSnapshot;
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
