@@ -69,7 +69,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_bindings,
     )?;
 
-    let relationship_name = fixture_bindings.relationship_name().unwrap();
+    let _relationship_name = fixture_bindings.relationship_name().unwrap();
 
     let _book_key = MapString(BOOK_KEY.to_string());
     let from_staged_key = MapString("book:clone:from-staged".to_string());

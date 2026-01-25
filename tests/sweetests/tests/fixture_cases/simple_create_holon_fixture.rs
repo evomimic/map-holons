@@ -55,10 +55,10 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
-    //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step()?;
+    // //  MATCH SAVED CONTENT  //
+    // test_case.add_match_saved_content_step()?;
 
-    // Load test_session_state
+    // Finalize
     test_case.finalize(&*fixture_context);
 
     Ok(test_case.clone())

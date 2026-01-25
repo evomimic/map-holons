@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 #[derive(Default)]
 pub struct FixtureBindings {
     bindings: BTreeMap<MapString, TestReference>, // Label, Token
+    // allows a fixture to setup a single relationship, embedding the name..
+    // TODO: this could change in the future to a keyed index (BTreeMap) for multiple
     relationship_name: Option<RelationshipName>,
 }
 

@@ -227,7 +227,7 @@ impl DancesTestCase {
         );
         let expected = ExpectedSnapshot::new(Some(new_snapshot), TestHolonState::Staged)?;
         // Advance head snapshot for the FixtureHolon
-        fixture_holons.advance_head(&source_token.expected_id()?, expected.clone());
+        fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
         let abandoned_token = fixture_holons.mint_test_reference(source, expected);
 
@@ -300,7 +300,7 @@ impl DancesTestCase {
         }
         let source = SourceSnapshot::new(source_reference, TestHolonState::Transient);
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Transient)?;
-        fixture_holons.create_fixture_holon(expected.clone());
+        fixture_holons.create_fixture_holon(expected.clone())?;
         let new_token = fixture_holons.mint_test_reference(source, expected);
 
         self.steps.push(DanceTestStep::NewHolon {
@@ -367,7 +367,7 @@ impl DancesTestCase {
             SourceSnapshot::new(source_token.expected_reference().clone(), state.clone());
         let expected = ExpectedSnapshot::new(Some(new_snapshot), state)?;
         // Advance head snapshot for the FixtureHolon
-        fixture_holons.advance_head(&source_token.expected_id()?, expected.clone());
+        fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
         let new_token = fixture_holons.mint_test_reference(new_source, expected);
         // Add execution step
@@ -429,7 +429,7 @@ impl DancesTestCase {
         );
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Staged)?;
         // Create new FixtureHolon
-        fixture_holons.create_fixture_holon(expected.clone());
+        fixture_holons.create_fixture_holon(expected.clone())?;
         // Mint
         let new_token = fixture_holons.mint_test_reference(source, expected);
 
@@ -458,7 +458,7 @@ impl DancesTestCase {
         let source = fixture_holon.head_snapshot.as_source()?;
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Staged)?;
         // Create new FixtureHolon
-        fixture_holons.create_fixture_holon(expected.clone());
+        fixture_holons.create_fixture_holon(expected.clone())?;
         // Mint
         let new_token = fixture_holons.mint_test_reference(source, expected);
 
@@ -493,7 +493,7 @@ impl DancesTestCase {
         let source = fixture_holon.head_snapshot.as_source()?;
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Staged)?;
         // Create new FixtureHolon
-        fixture_holons.create_fixture_holon(expected.clone());
+        fixture_holons.create_fixture_holon(expected.clone())?;
         // Mint
         let new_token = fixture_holons.mint_test_reference(source, expected);
         // Add execution step
@@ -525,7 +525,7 @@ impl DancesTestCase {
             SourceSnapshot::new(source_token.expected_reference().clone(), state.clone());
         let expected = ExpectedSnapshot::new(Some(new_snapshot), state)?;
         // Advance head snapshot for the FixtureHolon
-        fixture_holons.advance_head(&source_token.expected_id()?, expected.clone());
+        fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
         let new_token = fixture_holons.mint_test_reference(new_source, expected);
         // Add execution step
