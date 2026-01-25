@@ -6,7 +6,7 @@ use crate::{
 };
 use holochain::conductor::conductor::hdk::prelude::holochain_zome_types::properties;
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, FixtureHolons};
+use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit};
 use rstest::*;
 
 /// This function creates a set of simple (undescribed) holons
@@ -14,16 +14,16 @@ use rstest::*;
 #[fixture]
 pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let mut test_case = DancesTestCase::new(
+    let fixture_context = init_fixture_context();
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _fixture_bindings } = 
+        TestCaseInit::new(
+            fixture_context,
         "Simple Create/Get Holon Testcase".to_string(),
         "Ensure the holons and relationships setup by book and author setup helper commit successfully".to_string(),
     );
 
-    let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
-
     // Ensure DB count //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
@@ -53,13 +53,13 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
     // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    test_case.finalize(&*fixture_context);
 
     Ok(test_case.clone())
 }

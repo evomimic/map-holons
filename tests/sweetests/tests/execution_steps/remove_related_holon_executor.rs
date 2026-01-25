@@ -1,4 +1,4 @@
-use holons_test::{ExecutionReference, TestExecutionState, TestReference, ResultingReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -33,7 +33,7 @@ pub async fn execute_remove_related_holons(
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
 
-     // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.resolve_source_reference(context, &source_token).unwrap();
     let holons_to_remove: Vec<HolonReference> =
@@ -54,12 +54,13 @@ pub async fn execute_remove_related_holons(
     debug!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response status
-    assert_eq!(response.status_code, expected_response,
+    assert_eq!(
+        response.status_code, expected_response,
         "remove_related_holons request returned unexpected status: {}",
         response.description
     );
     info!("Success! Related Holons have been removed");
-   
+
     // 4. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
     let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
@@ -68,7 +69,9 @@ pub async fn execute_remove_related_holons(
         }
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference =
-        ExecutionReference::from_reference_parts(source_token.expected_holon(), resulting_reference);
-    state.record_resolved(resolved_reference);
+    let resolved_reference = ExecutionReference::from_reference_parts(
+        source_token.expected_snapshot(),
+        resulting_reference,
+    );
+    state.record(source_token.expected_id().unwrap(), resolved_reference);
 }

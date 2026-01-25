@@ -62,7 +62,7 @@ pub async fn execute_add_related_holons(
         };
         let resulting_reference = ResultingReference::from(response_holon_reference);
         let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_holon(),
+            source_token.expected_snapshot(),
             resulting_reference,
         );
 
@@ -70,6 +70,6 @@ pub async fn execute_add_related_holons(
         info!("Success! Updated holon's essential content matched expected");
 
         // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record_resolved(resolved_reference);
+        state.record(source_token.expected_id().unwrap(), resolved_reference);
     }
 }

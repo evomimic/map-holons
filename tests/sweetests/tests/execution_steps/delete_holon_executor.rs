@@ -20,13 +20,8 @@ pub async fn execute_delete_holon(
     let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
-    let source_reference: HolonReference = {
-        if expected_status == ResponseStatusCode::BadRequest {
-            state.lookup_previous(source_token.previous().temporary_id()).unwrap()
-        } else {
-            state.resolve_source_reference(context, &source_token).unwrap()
-        }
-    };
+    let source_reference: HolonReference =
+        { state.resolve_source_reference(context, &source_token).unwrap() };
 
     let HolonId::Local(local_id) =
         source_reference.holon_id(context).expect("Failed to get HolonId")
@@ -67,8 +62,10 @@ pub async fn execute_delete_holon(
 
     // 6. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
     let resulting_reference = ResultingReference::Deleted;
-    let resolved_reference =
-        ExecutionReference::from_reference_parts(source_token.expected_holon(), resulting_reference);
+    let resolved_reference = ExecutionReference::from_reference_parts(
+        source_token.expected_snapshot(),
+        resulting_reference,
+    );
 
-    state.record_resolved(resolved_reference);
+    state.record(source_token.expected_id().unwrap(), resolved_reference);
 }

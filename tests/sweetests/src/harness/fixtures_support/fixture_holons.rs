@@ -35,7 +35,7 @@ impl FixtureHolonId {
 ///  Mutable and internal to the harness.
 #[derive(new, Clone, Debug)]
 pub struct FixtureHolon {
-    pub id: FixtureHolonId,                // Stable fixture-time identity
+    pub id: FixtureHolonId,              // Stable fixture-time identity
     pub head_snapshot: ExpectedSnapshot, // Current authoritative snapshot with TestHolonState, updated by mutations and commit
 }
 
@@ -47,9 +47,22 @@ pub struct FixtureHolon {
 ///  Each token maps to an ExecutionHolon -- the expected runtime resolution.
 #[derive(Clone, Debug, Default)]
 pub struct FixtureHolons {
+    /// Append-only ledger of all TestReferences minted during fixture authoring,
+    /// including tokens not returned to TestCase authors (e.g. commit-minted tokens).
+    ///
+    /// Used for commit enumeration, validation, and traceability.
+    /// Never used for identity resolution or execution-time lookup.
     pub tokens: Vec<TestReference>,
+    /// Authoritative registry of logical holons, keyed by stable fixture-time identity.
+    ///
+    /// This is the single source of truth for logical holon lifecycle state
+    /// and head snapshot tracking.
     pub holons: BTreeMap<FixtureHolonId, FixtureHolon>,
-    pub snapshot_to_fixture_holon: BTreeMap<SnapshotId, FixtureHolonId>, // keyed index 
+    /// Maps snapshot identifiers to their owning logical holon.
+    ///
+    /// Consulted exclusively when resolving SourceSnapshots at execution time.
+    /// ExpectedSnapshots are registered here only to enable future chaining.
+    pub snapshot_to_fixture_holon: BTreeMap<SnapshotId, FixtureHolonId>, // keyed index
 }
 
 impl FixtureHolons {
@@ -61,10 +74,15 @@ impl FixtureHolons {
     /// Creates and adds a new FixtureHolon from the given Expected snapshot.
     /// Only takes Transient or Staged.
     pub fn create_fixture_holon(&mut self, snapshot: ExpectedSnapshot) -> Result<(), HolonError> {
-        if matches!(snapshot.state(), TestHolonState::Saved | TestHolonState::Abandoned | TestHolonState::Deleted) {
-            return Err(HolonError::InvalidParameter("Can only create a FixtureHolon from Transient or Staged".to_string()));
+        if matches!(
+            snapshot.state(),
+            TestHolonState::Saved | TestHolonState::Abandoned | TestHolonState::Deleted
+        ) {
+            return Err(HolonError::InvalidParameter(
+                "Can only create a FixtureHolon from Transient or Staged".to_string(),
+            ));
         }
-        let snapshot_id = snapshot.id()?; 
+        let snapshot_id = snapshot.id()?;
         // Create and insert FixtureHolon
         let fixture_holon_id = FixtureHolonId::new_from_id(snapshot_id.clone()); // unique id constructor
         let holon = FixtureHolon::new(fixture_holon_id.clone(), snapshot);
@@ -102,6 +120,21 @@ impl FixtureHolons {
         }
     }
 
+    pub fn get_fixture_holon_by_snapshot(
+        &self,
+        id: &SnapshotId,
+    ) -> Result<&FixtureHolon, HolonError> {
+        let fixture_id =
+            self.snapshot_to_fixture_holon.get(&id).ok_or(HolonError::InvalidParameter(
+                "No FixtureHolon is keyed by the given SnapshotId".to_string(),
+            ))?;
+        let holon = self.holons.get(fixture_id).ok_or(HolonError::InvalidParameter(
+            "FixtureHolon not found for FixtureHolonId".to_string(),
+        ))?;
+
+        Ok(holon)
+    }
+
     // =====  COMMIT  ======  //
 
     /// Mint tokens with expected state Saved
@@ -112,20 +145,22 @@ impl FixtureHolons {
         let mut saved_tokens = Vec::new();
 
         for holon in self.holons.values_mut() {
-            match holon.state {
+            match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
-                    let snapshot = holon.head_snapshot.clone_holon(context)?;
-                    let source =
-                        SourceSnapshot::new(holon.head_snapshot.clone(), TestHolonState::Staged);
+                    let snapshot = holon
+                        .head_snapshot
+                        .snapshot().clone()
+                        .ok_or(HolonError::InvalidType("ExpectedSnaphot is malformed, this should never happen... must use custom constructor when creating them new.".to_string()))?
+                        .clone_holon(context)?;
+                    let source = holon.head_snapshot.as_source()?;
                     let expected =
-                        ExpectedSnapshot::new(Some(snapshot.clone()), TestHolonState::Saved);
+                        ExpectedSnapshot::new(Some(snapshot.clone()), TestHolonState::Saved)?;
                     // Mint saved
-                    let saved_token = TestReference::new(source, expected);
+                    let saved_token = TestReference::new(source, expected.clone());
                     // Return tokens for passing to executor used for building ExecutionReference
                     saved_tokens.push(saved_token);
-                    // Update FixtureHolon
-                    holon.state = TestHolonState::Saved;
-                    holon.head_snapshot = snapshot; // advance head
+                    // Advance head
+                    holon.head_snapshot = expected;
                 }
                 TestHolonState::Abandoned => {
                     debug!("Skipping commit on Abandoned Holon: {:#?}", holon);

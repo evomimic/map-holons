@@ -14,6 +14,7 @@
 
 use std::sync::Arc;
 
+use crate::SnapshotId;
 use crate::harness::execution_support::{ExecutionHolons, ExecutionReference};
 use crate::harness::fixtures_support::TestReference;
 use holons_prelude::prelude::*;
@@ -65,10 +66,10 @@ impl TestExecutionState {
 
     /// Record a fully-built resolved entry produced by this step.
     ///
-    /// Overwrites any previous entry for the same `TemporaryId` (most recent wins).
+    /// Append-only, cannot overwrite existing.
     #[inline]
-    pub fn record_resolved(&mut self, resolved: ExecutionReference) {
-        self.execution_holons.record_resolved(resolved);
+    pub fn record(&mut self, id: SnapshotId, resolved: ExecutionReference) {
+        self.execution_holons.record(id, resolved);
     }
 
     // ---------------------------------------------------------------------
@@ -87,6 +88,16 @@ impl TestExecutionState {
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
         self.execution_holons.resolve_source_reference(context, token)
+    }
+
+    /// Batch variant of `resolve_source_reference`.
+    #[inline]
+    pub fn resolve_source_references(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        tokens: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        self.execution_holons.resolve_source_references(context, tokens)
     }
 
 }

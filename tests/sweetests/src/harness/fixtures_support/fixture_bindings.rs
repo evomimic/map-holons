@@ -4,6 +4,7 @@
 //! - Cleaner fixture contracts: A test_label → TestReference map makes the fixture’s contract explicit, self-documenting, and stable across internal changes.
 //! - Supports keyless holons naturally: Fixtures can now return references to holons that legitimately have no key at all.
 use super::TestReference;
+use core_types::RelationshipName;
 use holons_prelude::prelude::MapString;
 use std::collections::BTreeMap;
 
@@ -14,6 +15,7 @@ use std::collections::BTreeMap;
 #[derive(Default)]
 pub struct FixtureBindings {
     bindings: BTreeMap<MapString, TestReference>, // Label, Token
+    relationship_name: Option<RelationshipName>,
 }
 
 impl FixtureBindings {
@@ -23,5 +25,13 @@ impl FixtureBindings {
 
     pub fn get_token(&self, label: &MapString) -> Option<&TestReference> {
         self.bindings.get(label)
+    }
+
+    pub fn relationship_name(&self) -> Option<RelationshipName> {
+        self.relationship_name.clone()
+    }
+
+    pub fn set_relationship_name(&mut self, name: RelationshipName) {
+        self.relationship_name = Some(name)
     }
 }

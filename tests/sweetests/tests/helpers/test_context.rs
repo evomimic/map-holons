@@ -10,6 +10,7 @@ use crate::helpers::init_tracing;
 
 use super::create_test_dance_initiator;
 
+
 /// Initializes a new fixture context with a fresh `HolonSpaceManager` with parameters:
 /// - A default `HolonServiceApi` implementation (`ClientHolonService`).
 /// - A space manager configured with guest-specific routing policies.

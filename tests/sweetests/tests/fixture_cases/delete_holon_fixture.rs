@@ -1,5 +1,5 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, FixtureHolons, TestReference};
+use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit, TestReference};
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -9,13 +9,17 @@ use crate::helpers::{init_fixture_context, BOOK_KEY};
 #[fixture]
 pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let mut test_case = DancesTestCase::new(
+    let fixture_context = init_fixture_context();
+    let TestCaseInit {
+    mut test_case,
+    fixture_context,
+    mut fixture_holons,
+    fixture_bindings: _fixture_bindings,
+} = TestCaseInit::new(
+        fixture_context,
         "DeleteHolon Testcase".to_string(),
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.".to_string(),
     );
-
-    let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
@@ -44,34 +48,30 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(
-        &*fixture_context,
-        &mut fixture_holons,
-        ResponseStatusCode::OK,
-    )?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
         &mut fixture_holons,
-        ,   // pass the FixtureHolon
+        staged_token.clone(),
         ResponseStatusCode::OK,
     )?;
 
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(
         &mut fixture_holons,
-        ,
+        staged_token,
         ResponseStatusCode::NotFound,
     )?;
 
     // TODO: more robust handling of the implication of deletes on links needs to be implemented before this step will work
     // // ADD STEP:  ENSURE DATABASE COUNT
-    // test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    // test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
-    // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    // Finalize
+    test_case.finalize(&*fixture_context);
 
     Ok(test_case.clone())
 }

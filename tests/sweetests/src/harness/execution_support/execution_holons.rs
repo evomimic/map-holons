@@ -42,12 +42,25 @@ impl ExecutionHolons {
     // Recording (Realization → Registry)
     // -------------------------------------------------------------------------
 
-    /// Record a realized result using a fully-built `ExecutionReference`.
+    /// Record the execution result for the given token.
     ///
-    /// Overwrites any previous entry for the same `SnapshotId` (most recent wins).
-    pub fn record_resolved(&mut self, resolved: ExecutionReference) -> Result<(), HolonError> {
-        let token_id = resolved.expected_snapshot.id().map_err(|_e| HolonError::InvalidParameter("ExecutionReference does not contain an expected_token, cannot record a test holon in a deleted state".to_string()))?;
-        self.by_snapshot_id.insert(token_id, resolved);
+    /// Rules:
+    /// - Must be called exactly once per executed step.
+    /// - Must record against the step’s Expected SnapshotId (never SourceSnapshot).
+    /// - Must not overwrite existing entries.
+    pub fn record(
+        &mut self,
+        id: SnapshotId,
+        resolved: ExecutionReference,
+    ) -> Result<(), HolonError> {
+        if self.by_snapshot_id.contains_key(&id) {
+            return Err(HolonError::InvalidParameter(format!(
+                "An ExecutionHolon already exists for id: {:?}, cannot overwrite.",
+                id
+            )));
+        } else {
+            self.by_snapshot_id.insert(id, resolved);
+        }
 
         Ok(())
     }
@@ -129,5 +142,19 @@ impl ExecutionHolons {
                 }
             }
         }
+    }
+
+    /// Batch variant of `resolve_source_reference`.
+    pub fn resolve_source_references(
+        &self,
+        context: &dyn HolonsContextBehavior,
+        tokens: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        let mut references = Vec::new();
+        for token in tokens {
+            let reference = self.resolve_source_reference(context, token)?;
+            references.push(reference);
+        }
+        Ok(references)
     }
 }

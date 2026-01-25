@@ -1,5 +1,5 @@
 use holons_core::core_shared_objects::holon::EssentialRelationshipMap;
-use holons_test::{DancesTestCase, FixtureHolons, TestReference};
+use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit, TestReference};
 use rstest::*;
 
 use holons_prelude::prelude::*;
@@ -14,64 +14,49 @@ use super::setup_book_author_steps_with_context;
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
-    let mut test_case = DancesTestCase::new(
-        "Simple StageNewVersion Testcase".to_string(),
-        "Tests stage_new_version dance, \n\
+    let fixture_context = init_fixture_context();
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
+        TestCaseInit::new(
+            fixture_context,
+            "Simple StageNewVersion Testcase".to_string(),
+            "Tests stage_new_version dance, \n\
         1. creates and commits a holon, clones it for staged, changes some properties, \n \
         2. adds and removes some relationships, \n\
         3. commits it and then compares essential content of existing holon and cloned holon"
-            .to_string(),
-    );
-
-    // Initialize a client context the fixture can use
-    // NOTE: This context will NOT be shared by test executors. The fixture's client context
-    // includes a TransientHolonManager that is used as a scratch pad while in the fixture.
-    // This allows them to be assigned TransientReferences and also retrieved by either index or key
-    let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
+                .to_string(),
+        );
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
-    let fixture_tuple = setup_book_author_steps_with_context(
+    setup_book_author_steps_with_context(
         &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
+        &mut fixture_bindings,
     )?;
 
-    let _relationship_name = fixture_tuple.0;
-    let _fixture_bindings = fixture_tuple.1;
+    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  COMMIT  // all Holons in staging_area
-    let saved_tokens = test_case.add_commit_step(
-        &*fixture_context,
-        &mut fixture_holons,
-        ResponseStatusCode::OK,
-    )?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT  //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_saved_token: TestReference = saved_tokens
-        .iter()
-        .filter(|t| {
-            t.token_id().essential_content(&*fixture_context).unwrap().key.unwrap() == book_key
-        })
-        .collect::<Vec<&TestReference>>()[0]
-        .clone();
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let staged_clone = test_case.add_stage_new_version_step(
         &*fixture_context,
         &mut fixture_holons,
-        book_saved_token,
+        book_staged_token,
         ResponseStatusCode::OK,
     )?;
 
@@ -93,13 +78,13 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     // //  MATCH SAVED CONTENT  //
     // test_case.add_match_saved_content_step()?;
@@ -142,7 +127,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // info!("Success! Staged new version holon's essential content matched expected");
 
     // // Record resolved
-    // state.record_resolved(version_2_resolved_reference);
+    // state.record(version_2_resolved_reference);
 
     // // Confirm that get_staged_holon_by_versioned_key returns the new version
     // let versioned_lookup = get_staged_holon_by_versioned_key(
@@ -192,7 +177,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // );
 
     // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    test_case.finalize(&*fixture_context);
 
     Ok(test_case.clone())
 }

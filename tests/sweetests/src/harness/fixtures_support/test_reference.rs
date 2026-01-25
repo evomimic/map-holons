@@ -26,10 +26,8 @@ use holons_core::{
     HolonsContextBehavior, ReadableHolon,
 };
 
-/// Alias used throughout the harness docs for readability.
-///
-/// Concretely this is the `TemporaryId` carried by `ExpectedSnapshot.snapshot`
-/// (or whatever the harness defines as the "snapshot id" for a TestReference).
+/// Stable identity for a fixture-time snapshot, used as the key for snapshot ownership and resolution.
+/// Alias for the TemporaryId extracted from the snapshot's TransientReference.
 pub type SnapshotId = TemporaryId;
 
 /// Declarative intent for a test-scoped reference.
@@ -146,6 +144,19 @@ impl ExpectedSnapshot {
         Ok(Self { snapshot, state })
     }
 
+    // Conversion helper
+    pub fn as_source(&self) -> Result<SourceSnapshot, HolonError> {
+        if self.state == TestHolonState::Deleted {
+            return Err(HolonError::InvalidParameter("Cannot use a snapshot in deleted state as a source input".to_string()));
+        }
+        if let Some(snapshot) = self.snapshot.clone() {
+            Ok(SourceSnapshot::new(snapshot, self.state))
+        }
+        else {
+            Err(HolonError::InvalidParameter("Snapshot is None, malformed ExpectedSnapshot -- this should never happen when TestHolonState::Deleted".to_string()))
+        }
+        
+    }
 
     pub fn essential_content(
         &self,
@@ -166,6 +177,10 @@ impl ExpectedSnapshot {
         } else {
             Err(HolonError::HolonNotFound("Snapshot is None, there is no id.".to_string()))
         }
+    }
+
+    pub fn snapshot(&self) -> &Option<TransientReference> {
+        &self.snapshot
     }
 
     pub fn state(&self) -> TestHolonState {

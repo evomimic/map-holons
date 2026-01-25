@@ -1,5 +1,5 @@
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
-use holons_test::{fixture_holons, DancesTestCase, FixtureHolons, TestReference};
+use holons_test::{fixture_holons, DancesTestCase, FixtureHolons, TestReference, TestCaseInit};
 use pretty_assertions::assert_eq;
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::{error, info};
@@ -22,19 +22,21 @@ use super::setup_book_author_steps_with_context;
 #[fixture]
 pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    let mut test_case = DancesTestCase::new(
+    let fixture_context = init_fixture_context();
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings, } = 
+        TestCaseInit::new(
+            fixture_context,
         "Simple Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties for both Staged and Transient references".to_string(),
     );
-    let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
-    let fixture_tuple = setup_book_author_steps_with_context(
+    
+    setup_book_author_steps_with_context(
         &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
+        &mut fixture_bindings,
     )?;
 
-    let fixture_bindings = fixture_tuple.1;
     // == //
 
     // -- ADD STEP -- //
@@ -134,7 +136,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    test_case.finalize(&*fixture_context);
 
     Ok(test_case)
 }

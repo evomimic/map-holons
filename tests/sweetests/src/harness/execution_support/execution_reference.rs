@@ -71,11 +71,8 @@ impl ExecutionReference {
         Self { expected_snapshot, resulting_reference }
     }
 
-    /// Assert that the essential content of the fixture-declared source
+    /// Assert that the essential content of the fixture-declared expected_snapshot
     /// matches the essential content of the runtime result.
-    ///
-    /// This reconstructs the expected_token 'snapshot', compares it
-    /// against the actual `resulting_reference`, and errors if they differ.
     pub fn assert_essential_content_eq(
         &self,
         context: &dyn HolonsContextBehavior,

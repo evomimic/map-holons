@@ -55,7 +55,7 @@ pub async fn execute_abandon_staged_changes(
     };
     let resulting_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_holon(),
+        source_token.expected_snapshot(),
         resulting_reference,
     );
     resolved_reference.assert_essential_content_eq(context).unwrap();
@@ -78,5 +78,5 @@ pub async fn execute_abandon_staged_changes(
     }
 
     // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record_resolved(resolved_reference);
+    state.record(source_token.expected_id().unwrap(), resolved_reference);
 }

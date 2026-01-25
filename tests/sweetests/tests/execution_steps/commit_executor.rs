@@ -9,8 +9,7 @@ use holons_prelude::prelude::*;
 /// Source tokens are needed for this step in order to build a ExecutionReference.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
-    // source_tokens: Vec<TestReference>, // list of expected tokens to resolve
-    // fixture_holons
+    source_tokens: Vec<TestReference>, // list of expected tokens to resolve
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
@@ -62,7 +61,7 @@ pub async fn execute_commit(
     let mut keyed_index = BTreeMap::new();
     for token in &source_tokens {
         let key = token
-            .token_id()
+            .expected_reference()
             .key(context)
             .unwrap()
             .expect("For these testing purposes, source token (TestReference) must have a key");
@@ -73,12 +72,13 @@ pub async fn execute_commit(
         let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
+        let expected = source_tokens[*source_index].expected_snapshot();
         let resolved_reference = ExecutionReference::from_reference_parts(
-            source_tokens[*source_index].clone(),
+            expected.clone(),
             ResultingReference::from(holon_reference.clone()),
         );
 
-        state.record_resolved(resolved_reference);
+        state.record(expected.id().unwrap(), resolved_reference);
     }
 
     // 6. Optional: log a summary

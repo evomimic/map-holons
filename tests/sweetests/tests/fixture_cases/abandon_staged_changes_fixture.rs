@@ -1,9 +1,10 @@
 // #![allow(dead_code)]
 
 use holons_prelude::prelude::*;
-use holons_test::{fixture_bindings, DancesTestCase, FixtureHolons, TestReference};
+use holons_test::{fixture_bindings, DancesTestCase, FixtureHolons, TestCaseInit, TestReference};
 use rstest::*;
 use std::collections::BTreeMap;
+use type_names::relationship_names;
 // use tracing::warn;
 
 use crate::helpers::{init_fixture_context, BOOK_KEY, PERSON_1_KEY};
@@ -14,30 +15,31 @@ use super::setup_book_author_steps_with_context;
 #[fixture]
 pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
     //== INIT ==//
-
-    let mut test_case = DancesTestCase::new(
+    let fixture_context = init_fixture_context();
+    let TestCaseInit {
+    mut test_case,
+    fixture_context,
+    mut fixture_holons,
+    mut fixture_bindings,
+} = TestCaseInit::new(
+    fixture_context,
         "Simple AbandonStagedChanges Testcase".to_string(),
         "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible".to_string(),
     );
 
-    // Test Holons are staged (but never committed) in the fixture_context's Nursery
-    // This allows them to be assigned StagedReferences and also retrieved by either key
-    let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
-
     // // Ensure DB count //
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
-    let fixture_tuple = setup_book_author_steps_with_context(
+    setup_book_author_steps_with_context(
         &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
+        &mut fixture_bindings,
     )?;
 
-    let relationship_name = fixture_tuple.0;
-    let fixture_bindings = fixture_tuple.1;
+    let _relationship_name = fixture_bindings.relationship_name().unwrap();
 
     let person_1_staged_token =
         fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Person1' label").clone();
@@ -69,7 +71,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
@@ -143,7 +145,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     // MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
@@ -158,8 +160,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //     ResponseStatusCode::OK,
     // )?;
 
-    // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    // Finalize
+    test_case.finalize(&*fixture_context);
 
     Ok(test_case.clone())
 }
