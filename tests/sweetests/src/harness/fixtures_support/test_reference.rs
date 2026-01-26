@@ -97,8 +97,8 @@ impl TestReference {
         self.expected.id()
     }
 
-    pub fn expected_reference(&self) -> &TransientReference {
-        &self.source.snapshot
+    pub fn expected_reference(&self) -> &Option<TransientReference> {
+        &self.expected.snapshot
     }
 }
 

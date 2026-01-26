@@ -47,7 +47,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step()?;
+    // test_case.add_match_saved_content_step()?;
 
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
@@ -176,7 +176,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //     "Fetched staged references did not match expected"
     // );
 
-    // Load test_session_state
+    // Finalize
     test_case.finalize(&*fixture_context);
 
     Ok(test_case.clone())

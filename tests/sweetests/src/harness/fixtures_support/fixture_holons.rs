@@ -73,6 +73,8 @@ impl FixtureHolons {
 
     /// Creates and adds a new FixtureHolon from the given Expected snapshot.
     /// Only takes Transient or Staged.
+    /// Errors if FixtureHolonId already exists, as this should never happen due to a unique TransientReference
+    /// for the snapshot being passed since it should have been created from cloning the source.
     pub fn create_fixture_holon(&mut self, snapshot: ExpectedSnapshot) -> Result<(), HolonError> {
         if matches!(
             snapshot.state(),
@@ -86,6 +88,9 @@ impl FixtureHolons {
         // Create and insert FixtureHolon
         let fixture_holon_id = FixtureHolonId::new_from_id(snapshot_id.clone()); // unique id constructor
         let holon = FixtureHolon::new(fixture_holon_id.clone(), snapshot);
+        if self.holons.contains_key(&fixture_holon_id) {
+            return Err(HolonError::Misc("Something went wrong in logic.. duplicate ids for fixture holons should never happen".to_string()));
+        }
         self.holons.insert(fixture_holon_id.clone(), holon);
         // Update keyed index
         self.snapshot_to_fixture_holon.insert(snapshot_id, fixture_holon_id);

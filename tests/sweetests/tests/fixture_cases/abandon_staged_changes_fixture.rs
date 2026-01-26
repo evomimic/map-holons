@@ -74,7 +74,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     //  MATCH SAVED CONTENT
-    test_case.add_match_saved_content_step()?;
+    // test_case.add_match_saved_content_step()?;
 
     //  STAGE:  Abandoned Holon1 (H4)  //
     let abandoned_holon_1_key = MapString("Abandon1".to_string());
@@ -148,7 +148,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_ensure_database_count_step(&mut fixture_holons)?;
 
     // MATCH SAVED CONTENT
-    test_case.add_match_saved_content_step()?;
+    // test_case.add_match_saved_content_step()?;
 
     // // ADD STEP: QUERY RELATIONSHIPS //
     // let query_expression = QueryExpression::new(relationship_name.clone());

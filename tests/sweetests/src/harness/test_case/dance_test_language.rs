@@ -211,6 +211,8 @@ impl DancesTestCase {
     // === Exectution Steps with === //
     // ==== Token Minting ==== //
 
+    // Note: adders use the expected snapshot from the source_token passed in as the new source for the execution step.
+
     // Advance head snapshot (no new logical holon).
     pub fn add_abandon_staged_changes_step(
         &mut self,
@@ -219,17 +221,20 @@ impl DancesTestCase {
         source_token: TestReference,
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
+        // Set new source and check valid state
+        let new_source = source_token.expected_snapshot().as_source()?;
+        if new_source.state() != TestHolonState::Staged {
+            return Err(HolonError::InvalidParameter(
+                "Can only abandon Holons in a Staged state".to_string(),
+            ));
+        }
+        // Clone source to create expected
         let new_snapshot = source_token.source_reference().clone_holon(context)?;
-        // Set snapshots
-        let source = SourceSnapshot::new(
-            source_token.expected_reference().clone(),
-            TestHolonState::Transient,
-        );
-        let expected = ExpectedSnapshot::new(Some(new_snapshot), TestHolonState::Staged)?;
+        let expected = ExpectedSnapshot::new(Some(new_snapshot), TestHolonState::Abandoned)?;
         // Advance head snapshot for the FixtureHolon
         fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
-        let abandoned_token = fixture_holons.mint_test_reference(source, expected);
+        let abandoned_token = fixture_holons.mint_test_reference(new_source, expected);
 
         self.steps.push(DanceTestStep::AbandonStagedChanges {
             source_token: abandoned_token.clone(),
@@ -258,7 +263,7 @@ impl DancesTestCase {
         let source = fixture_holon.head_snapshot.as_source()?;
         let expected = ExpectedSnapshot::new(None, TestHolonState::Deleted)?;
         // Advance head snapshot for the FixtureHolon
-        fixture_holons.advance_head(&snapshot_id, expected.clone());
+        fixture_holons.advance_head(&snapshot_id, expected.clone())?;
         // Mint
         let deleted_token = fixture_holons.mint_test_reference(source, expected);
 
@@ -355,17 +360,14 @@ impl DancesTestCase {
         properties: PropertyMap,
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        let source_snapshot = source_token.source_snapshot();
-        let state = source_snapshot.state();
-        // Cloning source to create the expected snapshot
-        let mut new_snapshot = source_token.expected_reference().clone_holon(context)?;
-        for (property, value) in properties.clone() {
-            new_snapshot.with_property_value(context, property, value)?;
-        }
         // Set snapshots for next token
-        let new_source =
-            SourceSnapshot::new(source_token.expected_reference().clone(), state.clone());
-        let expected = ExpectedSnapshot::new(Some(new_snapshot), state)?;
+        let new_source = source_token.expected_snapshot().as_source()?;
+        // Cloning new source to create the expected snapshot
+        let mut new_snapshot = new_source.snapshot().clone_holon(context)?;
+        for property in properties.keys() {
+            new_snapshot.remove_property_value(context, property)?;
+        }
+        let expected = ExpectedSnapshot::new(Some(new_snapshot), new_source.state())?;
         // Advance head snapshot for the FixtureHolon
         fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
@@ -420,18 +422,20 @@ impl DancesTestCase {
         source_token: TestReference,
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        // Cloning source to create the expected snapshot
-        let snapshot = source_token.expected_reference().clone_holon(context)?;
+        if source_token.source_snapshot().state() != TestHolonState::Transient {
+            return Err(HolonError::InvalidParameter(
+                "Can only stage Holons in a Transient state".to_string(),
+            ));
+        }
         // Set snapshots for next token
-        let source = SourceSnapshot::new(
-            source_token.expected_reference().clone(),
-            TestHolonState::Transient,
-        );
+        let new_source = source_token.expected_snapshot().as_source()?;
+        // Cloning new source to create the expected snapshot
+        let snapshot = new_source.snapshot().clone_holon(context)?;
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Staged)?;
         // Create new FixtureHolon
         fixture_holons.create_fixture_holon(expected.clone())?;
         // Mint
-        let new_token = fixture_holons.mint_test_reference(source, expected);
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
 
         self.steps
             .push(DanceTestStep::StageHolon { source_token: new_token.clone(), expected_status });
@@ -448,14 +452,14 @@ impl DancesTestCase {
         new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        // Cloning source to create the expected snapshot
-        let mut snapshot = source_token.expected_reference().clone_holon(context)?;
-        snapshot.with_property_value(context, "Key", new_key.clone())?;
         // Get the FixtureHolon head_snapshot
         let snapshot_id = source_token.expected_id()?;
         let fixture_holon = fixture_holons.get_fixture_holon_by_snapshot(&snapshot_id)?;
         // Set snapshots for next token
         let source = fixture_holon.head_snapshot.as_source()?;
+        // Cloning new source to create the expected snapshot
+        let mut snapshot = source.snapshot().clone_holon(context)?;
+        snapshot.with_property_value(context, "Key", new_key.clone())?;
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Staged)?;
         // Create new FixtureHolon
         fixture_holons.create_fixture_holon(expected.clone())?;
@@ -479,8 +483,6 @@ impl DancesTestCase {
         source_token: TestReference,
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        // Cloning source to create the expected snapshot
-        let snapshot = source_token.expected_reference().clone_holon(context)?;
         // Get the FixtureHolon head_snapshot
         let snapshot_id = source_token.expected_id()?;
         let fixture_holon = fixture_holons.get_fixture_holon_by_snapshot(&snapshot_id)?;
@@ -490,12 +492,14 @@ impl DancesTestCase {
             ));
         }
         // Set snapshots for next token
-        let source = fixture_holon.head_snapshot.as_source()?;
+        let new_source = fixture_holon.head_snapshot.as_source()?;
+        // Cloning new source to create the expected snapshot
+        let snapshot = new_source.snapshot().clone_holon(context)?;
         let expected = ExpectedSnapshot::new(Some(snapshot), TestHolonState::Staged)?;
         // Create new FixtureHolon
         fixture_holons.create_fixture_holon(expected.clone())?;
         // Mint
-        let new_token = fixture_holons.mint_test_reference(source, expected);
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
         // Add execution step
         self.steps.push(DanceTestStep::StageNewVersion {
             source_token: new_token.clone(),
@@ -514,16 +518,14 @@ impl DancesTestCase {
         properties: PropertyMap,
         expected_status: ResponseStatusCode,
     ) -> Result<TestReference, HolonError> {
-        let state = source_token.source_snapshot().state();
-        // Cloning source to create the expected snapshot
-        let mut new_snapshot = source_token.expected_reference().clone_holon(context)?;
+        // Set snapshots for next token
+        let new_source = source_token.expected_snapshot().as_source()?;
+        // Cloning new source to create the expected snapshot
+        let mut new_snapshot = new_source.snapshot().clone_holon(context)?;
         for (property, value) in properties.clone() {
             new_snapshot.with_property_value(context, property, value)?;
         }
-        // Set snapshots for next token
-        let new_source =
-            SourceSnapshot::new(source_token.expected_reference().clone(), state.clone());
-        let expected = ExpectedSnapshot::new(Some(new_snapshot), state)?;
+        let expected = ExpectedSnapshot::new(Some(new_snapshot), new_source.state())?;
         // Advance head snapshot for the FixtureHolon
         fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
