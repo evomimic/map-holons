@@ -51,7 +51,7 @@ pub async fn execute_new_holon(
         resulting_reference,
     );
     resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Staged holon's essential content matched expected");
+    info!("Success! Holon's essential content matched expected");
 
-    state.record(source_token.expected_id().unwrap(), resolved_reference);
+    state.record(source_token.expected_id(), resolved_reference);
 }

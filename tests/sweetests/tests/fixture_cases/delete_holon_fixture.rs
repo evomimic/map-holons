@@ -54,17 +54,19 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
+        &*fixture_context,
         &mut fixture_holons,
         staged_token.clone(),
         ResponseStatusCode::OK,
     )?;
 
-    // // ADD STEP: DELETE HOLON - Invalid //
-    // test_case.add_delete_holon_step(
-    //     &mut fixture_holons,
-    //     staged_token,
-    //     ResponseStatusCode::NotFound,
-    // )?;
+    // ADD STEP: DELETE HOLON - Invalid //
+    test_case.add_delete_holon_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        staged_token,
+        ResponseStatusCode::NotFound,
+    )?;
 
     // TODO: more robust handling of the implication of deletes on links needs to be implemented before this step will work
     // // ADD STEP:  ENSURE DATABASE COUNT

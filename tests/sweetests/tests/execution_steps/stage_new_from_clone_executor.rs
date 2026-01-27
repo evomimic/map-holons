@@ -53,6 +53,6 @@ pub async fn execute_stage_new_from_clone(
         resolved_reference.assert_essential_content_eq(context).unwrap();
 
         // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(source_token.expected_id().unwrap(), resolved_reference);
+        state.record(source_token.expected_id(), resolved_reference);
     }
 }

@@ -35,8 +35,24 @@ impl FixtureHolonId {
 ///  Mutable and internal to the harness.
 #[derive(new, Clone, Debug)]
 pub struct FixtureHolon {
-    id: FixtureHolonId,                  // Stable (immutable) fixture-time identity
-    pub head_snapshot: ExpectedSnapshot, // Current authoritative snapshot with TestHolonState, updated by mutations and commit
+    id: FixtureHolonId,                   // Stable (immutable) fixture-time identity
+    head_snapshot: ExpectedSnapshot, // Current authoritative snapshot with TestHolonState, updated by mutations and commit
+    last_live_snapshot: ExpectedSnapshot, // determines the source input for when subsequent steps intentionally target the same logical holon
+}
+
+impl FixtureHolon {
+    /// Conversion mechanism called by adders that determines which snapshot can be used as the new source and then performs the conversion.
+    pub fn resolve_snapshot_as_source(&self) -> SourceSnapshot {
+        if self.head_snapshot.state() == TestHolonState::Deleted {
+            self.last_live_snapshot.as_source()
+        } else {
+            self.head_snapshot.as_source()
+        }
+    }
+
+    pub fn state(&self) -> TestHolonState {
+        self.head_snapshot.state()
+    }
 }
 
 /// Fixture-time factory + registry for [`TestReference`]s.
@@ -84,10 +100,10 @@ impl FixtureHolons {
                 "Can only create a FixtureHolon from Transient or Staged".to_string(),
             ));
         }
-        let snapshot_id = snapshot.id()?;
+        let snapshot_id = snapshot.id();
         // Create and insert FixtureHolon
         let fixture_holon_id = FixtureHolonId::new_from_id(snapshot_id.clone()); // unique id constructor
-        let holon = FixtureHolon::new(fixture_holon_id.clone(), snapshot);
+        let holon = FixtureHolon::new(fixture_holon_id.clone(), snapshot.clone(), snapshot); // last live is the same for first creations
         if self.holons.contains_key(&fixture_holon_id) {
             return Err(HolonError::Misc("Something went wrong in logic.. duplicate ids for fixture holons should never happen".to_string()));
         }
@@ -108,8 +124,9 @@ impl FixtureHolons {
         if let Some(holon_id) = self.snapshot_to_fixture_holon.get(old_snapshot) {
             if let Some(holon) = self.holons.get_mut(holon_id) {
                 // Update keyed index unless the snapshot represents a deleted Holon
-                if let Some(snapshot_id) = new_snapshot.id().ok() {
-                    self.snapshot_to_fixture_holon.insert(snapshot_id, holon_id.clone());
+                self.snapshot_to_fixture_holon.insert(new_snapshot.id(), holon_id.clone());
+                if holon.head_snapshot.state() != TestHolonState::Deleted {
+                    holon.last_live_snapshot = holon.head_snapshot.clone();
                 }
                 holon.head_snapshot = new_snapshot;
                 Ok(())
@@ -153,14 +170,9 @@ impl FixtureHolons {
         for holon in self.holons.values_mut() {
             match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
-                    let snapshot = holon
-                        .head_snapshot
-                        .snapshot().clone()
-                        .ok_or(HolonError::InvalidType("ExpectedSnaphot is malformed, this should never happen... must use custom constructor when creating them new.".to_string()))?
-                        .clone_holon(context)?;
-                    let source = holon.head_snapshot.as_source()?;
-                    let expected =
-                        ExpectedSnapshot::new(Some(snapshot.clone()), TestHolonState::Saved)?;
+                    let snapshot = holon.head_snapshot.snapshot().clone().clone_holon(context)?;
+                    let source = holon.head_snapshot.as_source();
+                    let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Saved);
                     // Mint saved
                     let saved_token = TestReference::new(source, expected.clone());
                     // Return tokens for passing to executor used for building ExecutionReference
@@ -204,59 +216,6 @@ impl FixtureHolons {
 
         token
     }
-
-    /// Mint an TestHolonState::Abandoned cloned from given snapshot (must be state Staged).
-    pub fn abandon_staged(&mut self, source: SourceSnapshot) -> Result<TestReference, HolonError> {
-        match source.state() {
-            TestHolonState::Staged => {
-                let expected = ExpectedSnapshot::new(
-                    Some(source.snapshot().clone()),
-                    TestHolonState::Abandoned,
-                )?;
-                let abandoned_token = self.mint_test_reference(source.clone(), expected);
-
-                Ok(abandoned_token)
-            }
-            other => Err(HolonError::InvalidTransition(format!(
-                "Can only abandon tokens in TestHolonState::Staged, got {:?}",
-                other
-            ))),
-        }
-    }
-
-    /// Mint an TestHolonState::Deleted cloned from given Snapshot (must be state Saved).
-    pub fn delete_saved(&mut self, source: &SourceSnapshot) -> Result<TestReference, HolonError> {
-        match source.state() {
-            TestHolonState::Saved => {
-                let expected = ExpectedSnapshot::new(None, TestHolonState::Deleted)?;
-                let deleted_token = self.mint_test_reference(source.clone(), expected);
-
-                Ok(deleted_token)
-            }
-            other => Err(HolonError::InvalidTransition(format!(
-                "Can only delete tokens in TestHolonState::Saved, got {:?}",
-                other
-            ))),
-        }
-    }
-
-    // ---------- Create tokens  ----------
-
-    // // Mints a new token based on matching source type
-    // pub fn add_token(
-    //     &mut self,
-    //     previous_snapshot: TransientReference,
-    //     state: TestHolonState,
-    //     next_snapshot: TransientReference,
-    // ) -> Result<TestReference, HolonError> {
-    //     match state {
-    //         TestHolonState::Transient => Ok(self.add_transient(previous_snapshot, next_snapshot)),
-    //         TestHolonState::Staged => Ok(self.add_staged(previous_snapshot, next_snapshot)),
-    //         _ => Err(HolonError::InvalidParameter(
-    //             "Can only add a Transient or Staged token".to_string(),
-    //         )),
-    //     }
-    // }
 
     // ---- HELPERS ---- //
 

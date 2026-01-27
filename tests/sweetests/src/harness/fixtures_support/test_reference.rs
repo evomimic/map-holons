@@ -53,7 +53,7 @@ pub enum TestHolonState {
 /// Conceptually, a TestReference captures two things:
 /// Starting point — what the step should operate on
 /// Expected result — what the step should produce
-/// 
+///
 /// These two roles travel together as a single immutable contract, where one or multiple are used for each TestStep.
 ///
 /// From a fixture’s perspective, this is just a *token*:
@@ -93,11 +93,11 @@ impl TestReference {
         self.expected.clone()
     }
 
-    pub fn expected_id(&self) -> Result<SnapshotId, HolonError> {
+    pub fn expected_id(&self) -> SnapshotId {
         self.expected.id()
     }
 
-    pub fn expected_reference(&self) -> &Option<TransientReference> {
+    pub fn expected_reference(&self) -> &TransientReference {
         &self.expected.snapshot
     }
 }
@@ -124,66 +124,31 @@ impl SourceSnapshot {
 }
 
 /// Defines what is expected after the execution step.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedSnapshot {
-    snapshot: Option<TransientReference>, // Carries the expected content, which can be mutated. None for Deleted state.
-    state: TestHolonState,                // Transient | Staged | Saved | Abandoned | Deleted
+    snapshot: TransientReference, // Carries the expected content, which can be mutated, except for Deleted state its an ID only.
+    state: TestHolonState,        // Transient | Staged | Saved | Abandoned | Deleted
 }
 
 impl ExpectedSnapshot {
-    // Custom constructor with guards to prevent incorrect construction of object match incompatability.
-    pub fn new(
-        snapshot: Option<TransientReference>,
-        state: TestHolonState,
-    ) -> Result<Self, HolonError> {
-        if (snapshot.is_some() && state == TestHolonState::Deleted) 
-            || (snapshot.is_none() && state != TestHolonState::Deleted)
-        {
-            return Err(HolonError::InvalidParameter(
-                "Construction of ExpectedSnapshot in a deleted state cannot contain a snapshot"
-                    .to_string(),
-            ));
-        }
-
-        Ok(Self { snapshot, state })
-    }
 
     // Conversion helper when using an expected snapshot as the new source.
-    pub fn as_source(&self) -> Result<SourceSnapshot, HolonError> {
-        if self.state == TestHolonState::Deleted {
-            return Err(HolonError::InvalidParameter("Cannot use a snapshot in deleted state as a source input".to_string()));
-        }
-        if let Some(snapshot) = self.snapshot.clone() {
-            Ok(SourceSnapshot::new(snapshot, self.state))
-        }
-        else {
-            Err(HolonError::InvalidParameter("Snapshot is None, malformed ExpectedSnapshot -- this should never happen when TestHolonState::Deleted".to_string()))
-        }
-        
+    pub fn as_source(&self) -> SourceSnapshot {
+        SourceSnapshot::new(self.snapshot.clone(), self.state)
     }
 
     pub fn essential_content(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<EssentialHolonContent, HolonError> {
-        if let Some(tr) = &self.snapshot {
-            tr.essential_content(context)
-        } else {
-            Err(HolonError::HolonNotFound(
-                "Snapshot is None... cannot call essential_content".to_string(),
-            ))
-        }
+        self.snapshot.essential_content(context)
     }
 
-    pub fn id(&self) -> Result<SnapshotId, HolonError> {
-        if let Some(tr) = &self.snapshot {
-            Ok(tr.temporary_id().into())
-        } else {
-            Err(HolonError::HolonNotFound("Snapshot is None, there is no id.".to_string()))
-        }
+    pub fn id(&self) -> SnapshotId{
+        self.snapshot.temporary_id().into()
     }
 
-    pub fn snapshot(&self) -> &Option<TransientReference> {
+    pub fn snapshot(&self) -> &TransientReference {
         &self.snapshot
     }
 

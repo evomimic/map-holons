@@ -70,6 +70,6 @@ pub async fn execute_add_related_holons(
         info!("Success! Updated holon's essential content matched expected");
 
         // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(source_token.expected_id().unwrap(), resolved_reference);
+        state.record(source_token.expected_id(), resolved_reference);
     }
 }

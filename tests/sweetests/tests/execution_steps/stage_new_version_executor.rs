@@ -62,7 +62,7 @@ pub async fn execute_stage_new_version(
     };
     let version_1_resulting_reference =
         ResultingReference::from(version_1_response_holon_reference.clone());
-        // TestReference::new()
+    // TestReference::new()
     let version_1_resolved_reference = ExecutionReference::from_reference_parts(
         source_token.expected_snapshot(),
         version_1_resulting_reference.clone(),
@@ -71,7 +71,7 @@ pub async fn execute_stage_new_version(
     info!("Success! Staged new version holon's essential content matched expected");
 
     // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(source_token.expected_id().unwrap(), version_1_resolved_reference);
+    state.record(source_token.expected_id(), version_1_resolved_reference);
 
     // 7. Verify the new version as the original holon as its predecessor
     let predecessor = version_1_response_holon_reference.predecessor(context).unwrap();

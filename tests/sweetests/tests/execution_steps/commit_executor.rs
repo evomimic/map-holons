@@ -63,10 +63,6 @@ pub async fn execute_commit(
         let key = token
             .expected_reference()
             .clone()
-            .ok_or(HolonError::InvalidHolonReference(
-                "Invalid expected token, snapshot was None.. cannot be committed.".to_string(),
-            ))
-            .unwrap()
             .key(context)
             .unwrap()
             .expect("For these testing purposes, source token (TestReference) must have a key");
@@ -83,7 +79,7 @@ pub async fn execute_commit(
             ResultingReference::from(holon_reference.clone()),
         );
 
-        state.record(expected.id().unwrap(), resolved_reference);
+        state.record(expected.id(), resolved_reference);
     }
 
     // 6. Optional: log a summary
