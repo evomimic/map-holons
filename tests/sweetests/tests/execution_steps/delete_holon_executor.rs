@@ -60,12 +60,11 @@ pub async fn execute_delete_holon(
     );
     info!("Confirmed Holon deletion!");
 
-    // 6. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
-    let resulting_reference = ResultingReference::Deleted;
-    let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_snapshot(),
-        resulting_reference,
-    );
 
-    state.record(source_token.source_id(), resolved_reference);
+    // This is the only executor that does not record.
+    // Since the execution holon is not need for resolution
+    // and is not retreivable from the DHT anyway due to being
+    // marked as deleted.
+
+
 }

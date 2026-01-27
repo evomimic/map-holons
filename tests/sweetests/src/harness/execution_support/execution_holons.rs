@@ -47,7 +47,7 @@ impl ExecutionHolons {
     /// Rules:
     /// - Must be called exactly once per executed step.
     /// - Must record against the step’s Expected SnapshotId (never SourceSnapshot).
-    /// - Must not overwrite existing entries, unless the holon has been marked as deleted.
+    /// - Must not overwrite existing entries.
     pub fn record(
         &mut self,
         id: SnapshotId,

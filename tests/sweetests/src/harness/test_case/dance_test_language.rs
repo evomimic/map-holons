@@ -223,25 +223,20 @@ impl DancesTestCase {
     ) -> Result<TestReference, HolonError> {
         // Set new source and check valid state
         let new_source = source_token.expected_snapshot().as_source()?;
-        if new_source.state() != TestHolonState::Staged {
-            return Err(HolonError::InvalidParameter(
-                "Can only abandon Holons in a Staged state".to_string(),
-            ));
-        }
         // Clone source to create expected
         let new_snapshot = source_token.source_reference().clone_holon(context)?;
         let expected = ExpectedSnapshot::new(Some(new_snapshot), TestHolonState::Abandoned)?;
         // Advance head snapshot for the FixtureHolon
         fixture_holons.advance_head(&source_token.expected_id()?, expected.clone())?;
         // Mint
-        let abandoned_token = fixture_holons.mint_test_reference(new_source, expected);
+        let new_source_token = fixture_holons.mint_test_reference(new_source, expected);
 
         self.steps.push(DanceTestStep::AbandonStagedChanges {
-            source_token: abandoned_token.clone(),
+            source_token: new_source_token.clone(),
             expected_status,
         });
 
-        Ok(abandoned_token)
+        Ok(new_source_token)
     }
 
     // Advance head snapshot (no new logical holon).
@@ -254,21 +249,18 @@ impl DancesTestCase {
         // Get the FixtureHolon head_snapshot
         let snapshot_id = source_token.expected_id()?;
         let fixture_holon = fixture_holons.get_fixture_holon_by_snapshot(&snapshot_id)?;
-        if fixture_holon.head_snapshot.state() != TestHolonState::Saved {
-            return Err(HolonError::InvalidParameter(
-                "Can only delete Holons in a Saved state".to_string(),
-            ));
-        }
         // Set snapshots
-        let source = fixture_holon.head_snapshot.as_source()?;
+        let new_source = fixture_holon.head_snapshot.as_source()?;
         let expected = ExpectedSnapshot::new(None, TestHolonState::Deleted)?;
-        // Advance head snapshot for the FixtureHolon
-        fixture_holons.advance_head(&snapshot_id, expected.clone())?;
+        if expected_status == ResponseStatusCode::OK {
+            // Advance head snapshot for the FixtureHolon
+            fixture_holons.advance_head(&snapshot_id, expected.clone())?;
+        }
         // Mint
-        let deleted_token = fixture_holons.mint_test_reference(source, expected);
+        let new_source_token = fixture_holons.mint_test_reference(new_source, expected);
 
         self.steps.push(DanceTestStep::DeleteHolon {
-            source_token: deleted_token.clone(),
+            source_token: new_source_token.clone(),
             expected_status,
         });
 
