@@ -23,7 +23,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     );
 
     // Ensure DB count //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
@@ -53,7 +53,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

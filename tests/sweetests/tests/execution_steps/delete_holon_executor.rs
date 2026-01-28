@@ -45,7 +45,7 @@ pub async fn execute_delete_holon(
         "delete_holon request returned unexpected status: {}",
         response.description
     );
-    info!("Success! delete_holon returned OK response, confirming deletion...");
+    info!("Success! Confirmed DanceResponse matched expected {:?}...", expected_status);
 
     // Confirm that the Holon has been successfully deleted
     let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id))
@@ -62,9 +62,10 @@ pub async fn execute_delete_holon(
 
     // 5. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
     let resulting_reference = ResultingReference::Deleted;
-    let resolved_reference =
-        ExecutionReference::from_reference_parts(source_token.expected_snapshot(), resulting_reference);
+    let resolved_reference = ExecutionReference::from_reference_parts(
+        source_token.expected_snapshot(),
+        resulting_reference,
+    );
 
     state.record(source_token.expected_id(), resolved_reference);
-
 }

@@ -60,6 +60,7 @@ pub struct DancesTestCase {
     pub description: String,
     pub steps: Vec<DanceTestStep>,
     pub test_session_state: TestSessionState,
+    pub is_finalized: bool,
 }
 
 /// TestCaseInit provides a structured, atomic initialization context for constructing a TestCase together with all required harness-managed fixture-time state.
@@ -117,6 +118,7 @@ impl DancesTestCase {
             description: description.into(),
             steps: Vec::new(),
             test_session_state: TestSessionState::default(),
+            is_finalized: false,
         }
     }
 
@@ -125,6 +127,7 @@ impl DancesTestCase {
         fixture_context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
         self.load_test_session_state(fixture_context);
+        self.is_finalized = true;
 
         Ok(())
     }
@@ -155,11 +158,9 @@ impl DancesTestCase {
 
     pub fn add_ensure_database_count_step(
         &mut self,
-        fixture_holons: &mut FixtureHolons,
+        expected_count: MapInteger,
     ) -> Result<(), HolonError> {
-        self.steps.push(DanceTestStep::EnsureDatabaseCount {
-            expected_count: MapInteger(fixture_holons.count_saved()),
-        });
+        self.steps.push(DanceTestStep::EnsureDatabaseCount { expected_count });
 
         Ok(())
     }
@@ -457,9 +458,9 @@ impl DancesTestCase {
         let snapshot_id = source_token.expected_id();
         let fixture_holon = fixture_holons.get_fixture_holon_by_snapshot(&snapshot_id)?;
         // Set snapshots for next token
-        let source = fixture_holon.resolve_snapshot_as_source();
+        let new_source = fixture_holon.resolve_snapshot_as_source();
         // Cloning new source to create the expected snapshot
-        let mut snapshot = source.snapshot().clone_holon(context)?;
+        let mut snapshot = new_source.snapshot().clone_holon(context)?;
         snapshot.with_property_value(context, "Key", new_key.clone())?;
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
         if expected_status == ResponseStatusCode::OK {
@@ -467,7 +468,7 @@ impl DancesTestCase {
             fixture_holons.create_fixture_holon(expected.clone())?;
         }
         // Mint
-        let new_token = fixture_holons.mint_test_reference(source, expected);
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
 
         self.steps.push(DanceTestStep::StageNewFromClone {
             source_token: new_token.clone(),

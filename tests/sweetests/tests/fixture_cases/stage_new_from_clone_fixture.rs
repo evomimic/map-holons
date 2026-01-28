@@ -37,7 +37,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         );
 
     // Assert DB starts with 1 (space Holon)
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("book:transient-source".to_string());
@@ -101,7 +101,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  COMMIT - Round 1  //
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
     // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
@@ -140,7 +140,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_holons,
         ResponseStatusCode::OK,
     )?;
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

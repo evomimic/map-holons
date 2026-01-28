@@ -1,18 +1,15 @@
-use std::{collections::VecDeque, fs, path::PathBuf};
-
+use crate::helpers::init_fixture_context;
 use core_types::{ContentSet, FileData};
-use holons_loader_client::{BOOTSTRAP_IMPORT_SCHEMA_PATH};
+use holons_loader_client::BOOTSTRAP_IMPORT_SCHEMA_PATH;
 use holons_prelude::prelude::*;
 use holons_test::{DanceTestStep, DancesTestCase, TestSessionState};
+use std::{collections::VecDeque, fs, path::PathBuf};
 
 /// Absolute paths to all core schema import files used for loader-client testing.
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
     // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,
     // so we need to walk back to the repo root before joining the import_files path.
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("host");
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("host");
 
     let rels = [
         "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
@@ -35,6 +32,7 @@ pub fn map_core_schema_paths() -> Vec<PathBuf> {
 /// - One HolonType descriptor holon
 /// - One instance holon described by the type
 pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
+    let fixture_context = init_fixture_context();
     let mut steps = Vec::new();
 
     let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
@@ -66,10 +64,16 @@ pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
         expect_total_loader_holons: MapInteger(182),
     });
 
-    Ok(DancesTestCase {
+    let mut test_case = DancesTestCase {
         name: "loader_client_minimal".to_string(),
         description: "Core Schema JSON loader input via loader_client entrypoint".to_string(),
         steps,
         test_session_state: TestSessionState::default(),
-    })
+        is_finalized: false,
+    };
+
+    // Finalize
+    test_case.finalize(&*fixture_context);
+
+    Ok(test_case)
 }

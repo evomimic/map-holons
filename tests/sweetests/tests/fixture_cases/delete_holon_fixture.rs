@@ -50,7 +50,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(
@@ -70,7 +70,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // TODO: more robust handling of the implication of deletes on links needs to be implemented before this step will work
     // // ADD STEP:  ENSURE DATABASE COUNT
-    // test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    // test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // Finalize
     test_case.finalize(&*fixture_context);

@@ -38,13 +38,13 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT  //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  MATCH SAVED CONTENT  //
     // test_case.add_match_saved_content_step()?;
@@ -78,13 +78,13 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

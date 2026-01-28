@@ -1,3 +1,4 @@
+use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
 use holons_core::{HolonsContextBehavior, ReadableHolon};
@@ -235,14 +236,14 @@ impl FixtureHolons {
         counts
     }
 
-    pub fn count_transient(&self) -> i64 {
-        self.counts().transient
+    pub fn count_transient(&self) -> MapInteger {
+        MapInteger(self.counts().transient)
     }
-    pub fn count_staged(&self) -> i64 {
-        self.counts().staged
+    pub fn count_staged(&self) -> MapInteger {
+        MapInteger(self.counts().staged)
     }
-    pub fn count_saved(&self) -> i64 {
-        self.counts().saved + 1 // Accounts for initial LocalHolonSpace
+    pub fn count_saved(&self) -> MapInteger {
+        MapInteger(self.counts().saved + 1) // Accounts for initial LocalHolonSpace
     }
 }
 

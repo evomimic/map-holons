@@ -28,7 +28,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     );
 
     // // Ensure DB count //
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
@@ -71,7 +71,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  MATCH SAVED CONTENT
     // test_case.add_match_saved_content_step()?;
@@ -145,7 +145,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(&mut fixture_holons)?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     // MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;

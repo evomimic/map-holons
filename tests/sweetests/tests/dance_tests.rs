@@ -104,7 +104,7 @@ use holons_prelude::prelude::*;
 // #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
-// #[case::load_holons_test(loader_incremental_fixture())]
+#[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
