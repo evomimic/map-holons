@@ -29,12 +29,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TransientReferenceSerializable {
+pub struct TransientReferenceWire {
     tx_id: TxId,
     id: TemporaryId,
 }
 
-impl TransientReferenceSerializable {
+impl TransientReferenceWire {
     pub fn new(tx_id: TxId, id: TemporaryId) -> Self {
         Self { tx_id, id }
     }
@@ -65,7 +65,7 @@ impl TransientReference {
 
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
     pub fn bind(
-        wire: TransientReferenceSerializable,
+        wire: TransientReferenceWire,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
@@ -399,14 +399,14 @@ impl ToHolonCloneModel for TransientReference {
     }
 }
 
-impl From<&TransientReference> for TransientReferenceSerializable {
+impl From<&TransientReference> for TransientReferenceWire {
     fn from(reference: &TransientReference) -> Self {
         Self::new(reference.tx_id(), reference.temporary_id())
     }
 }
 
-impl From<TransientReference> for TransientReferenceSerializable {
+impl From<TransientReference> for TransientReferenceWire {
     fn from(reference: TransientReference) -> Self {
-        TransientReferenceSerializable::from(&reference)
+        TransientReferenceWire::from(&reference)
     }
 }

@@ -6,13 +6,13 @@ use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolo
 // use crate::HolonCollection;
 use core_types::{HolonError, RelationshipName};
 
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(new, Debug, Clone)]
 pub struct Node {
     pub source_holon: HolonReference,
     pub relationships: Option<QueryPathMap>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct NodeCollection {
     pub members: Vec<Node>,
     pub query_spec: Option<QueryExpression>,
@@ -34,14 +34,13 @@ pub struct QueryExpression {
 
 pub fn evaluate_query(
     node_collection: NodeCollection,
-    context: &dyn HolonsContextBehavior,
     relationship_name: RelationshipName,
 ) -> Result<NodeCollection, HolonError> {
     let mut result_collection = NodeCollection::new_empty();
 
     for node in node_collection.members {
         // Fetch and lock the related holon collection
-        let related_holons_lock = node.source_holon.related_holons(context, &relationship_name)?;
+        let related_holons_lock = node.source_holon.related_holons(&relationship_name)?;
         let related_holons = related_holons_lock.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on holon collection: {}",

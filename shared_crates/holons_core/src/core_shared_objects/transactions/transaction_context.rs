@@ -20,7 +20,7 @@ use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
     HolonsContextBehavior, TransientHolonBehavior,
 };
-use crate::TransientReference;
+use crate::{SmartReference, TransientReference};
 
 /// Transaction-scoped execution context holding mutable transaction state.
 #[derive(Debug)]
@@ -175,10 +175,25 @@ impl HolonsContextBehavior for TransactionContext {
         self.require_space_manager().get_dance_initiator()
     }
 
+    // NOTE: This reacquires Arc<TransactionContext> via TransactionManager because HolonsContextBehavior
+    // must remain object-safe for now. Once Phase 1.4 consolidates execution under TransactionContext,
+    // this should become a simple `self: &Arc<Self>` method using `self.handle()`.
     fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
-        // Transaction-scoped mapping from stored id to runtime reference.
-        let space_holon_id = self.require_space_manager().get_space_holon_id()?;
-        Ok(space_holon_id.map(HolonReference::from))
+        let maybe_holon_id = self.require_space_manager().get_space_holon_id()?;
+        let Some(holon_id) = maybe_holon_id else {
+            return Ok(None);
+        };
+
+        // Reacquire the Arc<TransactionContext> so we can create a TransactionContextHandle.
+        let context = self
+            .require_space_manager()
+            .get_transaction_manager()
+            .get_transaction(&self.tx_id())?
+            .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
+
+        let transaction_handle = context.handle();
+
+        Ok(Some(HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))))
     }
 
     fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError> {

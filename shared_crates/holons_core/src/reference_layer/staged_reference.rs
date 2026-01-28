@@ -30,12 +30,12 @@ use core_types::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct StagedReferenceSerializable {
+pub struct StagedReferenceWire {
     tx_id: TxId,
     id: TemporaryId,
 }
 
-impl StagedReferenceSerializable {
+impl StagedReferenceWire {
     pub fn new(tx_id: TxId, id: TemporaryId) -> Self {
         Self { tx_id, id }
     }
@@ -95,7 +95,7 @@ impl StagedReference {
 
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
     pub fn bind(
-        wire: StagedReferenceSerializable,
+        wire: StagedReferenceWire,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
@@ -539,14 +539,14 @@ impl ToHolonCloneModel for StagedReference {
     }
 }
 
-impl From<&StagedReference> for StagedReferenceSerializable {
+impl From<&StagedReference> for StagedReferenceWire {
     fn from(reference: &StagedReference) -> Self {
         Self::new(reference.tx_id(), reference.temporary_id())
     }
 }
 
-impl From<StagedReference> for StagedReferenceSerializable {
+impl From<StagedReference> for StagedReferenceWire {
     fn from(reference: StagedReference) -> Self {
-        StagedReferenceSerializable::from(&reference)
+        StagedReferenceWire::from(&reference)
     }
 }

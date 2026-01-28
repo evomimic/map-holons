@@ -32,13 +32,13 @@ use core_types::{
 use type_names::CorePropertyTypeName;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SmartReferenceSerializable {
+pub struct SmartReferenceWire {
     tx_id: TxId,
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
 }
 
-impl SmartReferenceSerializable {
+impl SmartReferenceWire {
     pub fn new(tx_id: TxId, holon_id: HolonId, smart_property_values: Option<PropertyMap>) -> Self {
         Self { tx_id, holon_id, smart_property_values }
     }
@@ -77,7 +77,7 @@ impl SmartReference {
 
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a SmartReference.
     pub fn bind(
-        wire: SmartReferenceSerializable,
+        wire: SmartReferenceWire,
         context: Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
@@ -469,7 +469,7 @@ impl ToHolonCloneModel for SmartReference {
     }
 }
 
-impl From<&SmartReference> for SmartReferenceSerializable {
+impl From<&SmartReference> for SmartReferenceWire {
     fn from(reference: &SmartReference) -> Self {
         Self::new(
             reference.tx_id(),
