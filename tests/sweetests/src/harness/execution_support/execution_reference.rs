@@ -1,28 +1,27 @@
 //! Execution-time realization of a fixture token.
 //!
-//! A [`ResolvedTestReference`] pairs the fixture-declared **mapping token**
+//! A [`ExecutionReference`] pairs the fixture-declared **expected snapshot**
 //! (what the fixture expected at this point in the flow) with the **runtime
 //! handle** actually produced by executing a step.
 //!
-//! - `fixture_token`: the [`TestReference`] declared by the fixture. Its
-//!   `IntendedResolvedState` describes the lifecycle of the *mapping* holon
+//! - `expected_snapshot`: the [`ExpectedSnapshot`] declared by the fixture. Its
+//!   `TestHolonState` describes the lifecycle of the *mapping* holon
 //!   (Transient, Staged, or Saved).
 //! - `resulting_reference`: the [`HolonReference`] created at runtime
 //!   (often a `StagedReference`; if committed, represents “Saved”).
 //!
 //! ⚠ Important: **Do not confuse intent and result.**
-//! A “Staged” token may resolve to a *new* staged holon, not the one
-//! embedded in the token. The token is intent; the result is reality.
+//! The expected snapshot that comes from the exectuor input token is intent; the resulting reference is 'DHT' reality.
 
-use crate::harness::fixtures_support::TestReference;
+use crate::ExpectedSnapshot;
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
 
 #[derive(Clone, Debug)]
-pub struct ResolvedTestReference {
-    /// Fixture-declared identity + intent of the mapping holon, which includes expected content
-    pub fixture_token: TestReference,
+pub struct ExecutionReference {
+    /// Fixture-declared intent of the expected snapshot, which includes expected content.
+    pub expected_snapshot: ExpectedSnapshot,
     /// Runtime handle produced by executing the step.
     pub resulting_reference: ResultingReference,
 }
@@ -62,25 +61,22 @@ impl From<HolonReference> for ResultingReference {
     }
 }
 
-impl ResolvedTestReference {
+impl ExecutionReference {
     /// Build from a fixture token and the resulting runtime handle.
     pub fn from_reference_parts(
-        fixture_token: TestReference,
+        expected_snapshot: ExpectedSnapshot,
         resulting_reference: ResultingReference,
     ) -> Self {
-        Self { fixture_token, resulting_reference }
+        Self { expected_snapshot, resulting_reference }
     }
 
-    /// Assert that the essential content of the fixture-declared source
+    /// Assert that the essential content of the fixture-declared expected_snapshot
     /// matches the essential content of the runtime result.
-    ///
-    /// This reconstructs the fixture_token 'snapshot', compares it
-    /// against the actual `resulting_reference`, and errors if they differ.
     pub fn assert_essential_content_eq(
         &self,
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
-        let expected_content = self.fixture_token.token_id().essential_content(context)?;
+        let expected_content = self.expected_snapshot.essential_content(context)?;
         let actual_content = self.resulting_reference.essential_content(context)?;
 
         // TODO: find a way to compare relationships

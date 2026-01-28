@@ -10,12 +10,15 @@ publish = false
 # Workspace shared_crates (prefer workspace deps over path for consistency)
 
 # General deps
+async-trait = "0.1.51"
 #base64ct = "=1.7.3"
+derive-new = "0.7"
 pretty_assertions = "1.4.0"
 serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
-async-trait = "0.1.51"
+sha2 = "0.10.8"
+uuid = { version = "1", features = ["serde"] }
 
 [dependencies.holons_prelude]
 path = "../../shared_crates/holons_prelude"

@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use std::collections::BTreeMap;
 use tracing::{debug, info, trace};
 
@@ -6,10 +6,10 @@ use holons_prelude::prelude::*;
 
 /// This function builds and dances a `commit` DanceRequest and confirms a Success response.
 ///
-/// Source tokens are needed for this step in order to build a ResolvedTestReference.
+/// Source tokens are needed for this step in order to build a ExecutionReference.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
-    source_tokens: Vec<TestReference>, // list of expected tokens to resolve
+    expected_tokens: Vec<TestReference>, // list of expected tokens to resolve
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
@@ -59,9 +59,10 @@ pub async fn execute_commit(
     // TODO: solve or migrate issue 352
     let mut index: usize = 0;
     let mut keyed_index = BTreeMap::new();
-    for token in &source_tokens {
+    for token in &expected_tokens {
         let key = token
-            .token_id()
+            .expected_reference()
+            .clone()
             .key(context)
             .unwrap()
             .expect("For these testing purposes, source token (TestReference) must have a key");
@@ -72,12 +73,13 @@ pub async fn execute_commit(
         let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
-        let resolved_reference = ResolvedTestReference::from_reference_parts(
-            source_tokens[*source_index].clone(),
+        let expected = expected_tokens[*source_index].expected_snapshot();
+        let resolved_reference = ExecutionReference::from_reference_parts(
+            expected.clone(),
             ResultingReference::from(holon_reference.clone()),
         );
 
-        state.record_resolved(resolved_reference);
+        state.record(expected.id(), resolved_reference);
     }
 
     // 6. Optional: log a summary

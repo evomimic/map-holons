@@ -15,7 +15,7 @@
 // #[fixture]
 // pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
 //     // == Init == //
-//     let test_case = DancesTestCase::new(
+//     let test_case = TestCaseInit::new(
 //         "Ergonomic Add / Remove Related Holons Testcase".to_string(),
 //         "Tests the adding and removing of related Holons, using all combinations of ergonomic relationship names, for both Transient & Staged Holons".to_string(),
 //     );

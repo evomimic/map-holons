@@ -1,6 +1,6 @@
 use core_types::LocalId;
 use holons_prelude::prelude::*;
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -12,7 +12,6 @@ use holochain::sweettest::*;
 pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Deleting an Existing (Saved) Holon");
@@ -21,13 +20,8 @@ pub async fn execute_delete_holon(
     let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the source token
-    let source_reference: HolonReference = {
-        if expected_status == ResponseStatusCode::BadRequest {
-            state.lookup_previous(source_token.previous().temporary_id()).unwrap()
-        } else {
-            state.lookup_holon_reference(context, &source_token).unwrap()
-        }
-    };
+    let source_reference: HolonReference =
+        { state.resolve_source_reference(context, &source_token).unwrap() };
 
     let HolonId::Local(local_id) =
         source_reference.holon_id(context).expect("Failed to get HolonId")
@@ -51,7 +45,7 @@ pub async fn execute_delete_holon(
         "delete_holon request returned unexpected status: {}",
         response.description
     );
-    info!("Success! delete_holon returned OK response, confirming deletion...");
+    info!("Success! Confirmed DanceResponse matched expected {:?}...", expected_status);
 
     // Confirm that the Holon has been successfully deleted
     let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id))
@@ -66,10 +60,12 @@ pub async fn execute_delete_holon(
     );
     info!("Confirmed Holon deletion!");
 
-    // 6. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
+    // 5. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
     let resulting_reference = ResultingReference::Deleted;
-    let resolved_reference =
-        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
+    let resolved_reference = ExecutionReference::from_reference_parts(
+        source_token.expected_snapshot(),
+        resulting_reference,
+    );
 
-    state.record_resolved(resolved_reference);
+    state.record(source_token.expected_id(), resolved_reference);
 }
