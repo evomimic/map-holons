@@ -3,6 +3,7 @@ use crate::{
     HolonReference, HolonsContextBehavior, SmartReference,
 };
 
+use crate::core_shared_objects::transactions::TransactionContextHandle;
 use base_types::MapString;
 use core_types::HolonError;
 
@@ -20,18 +21,24 @@ use core_types::HolonError;
 pub trait HolonStagingBehavior: Send + Sync {
     /// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
     /// Returns a duplicate error if multiple found.
-    fn get_staged_holon_by_base_key(&self, key: &MapString) -> Result<StagedReference, HolonError>;
+    fn get_staged_holon_by_base_key(
+        &self,
+        transaction_handle: &TransactionContextHandle,
+        key: &MapString,
+    ) -> Result<StagedReference, HolonError>;
 
     /// Returns StagedReference's for all Holons that have the same base key.
     /// This can be useful if multiple versions of the same Holon are being staged at the same time.
     fn get_staged_holons_by_base_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<StagedReference>, HolonError>;
 
     /// Does a lookup by full (unique) key on staged holons.
     fn get_staged_holon_by_versioned_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<StagedReference, HolonError>;
 
@@ -43,14 +50,14 @@ pub trait HolonStagingBehavior: Send + Sync {
     /// to be retrieved by key
     fn stage_new_holon(
         &self,
-        context: &dyn HolonsContextBehavior,
+        transaction_handle: &TransactionContextHandle,
         holon: TransientReference,
     ) -> Result<StagedReference, HolonError>;
 
     /// Stage a new holon as a clone of an existing holon, with a new key.
     fn stage_new_from_clone(
         &self,
-        context: &dyn HolonsContextBehavior,
+        transaction_handle: &TransactionContextHandle,
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError>;
@@ -58,7 +65,7 @@ pub trait HolonStagingBehavior: Send + Sync {
     /// Stage a new version of the current holon, maintaining lineage.
     fn stage_new_version(
         &self,
-        context: &dyn HolonsContextBehavior,
+        transaction_handle: &TransactionContextHandle,
         current_version: SmartReference,
     ) -> Result<StagedReference, HolonError>;
 }

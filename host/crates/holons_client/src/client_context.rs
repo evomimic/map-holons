@@ -2,9 +2,10 @@ use crate::client_shared_objects::ClientHolonService;
 
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::ServiceRoutingPolicy;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 
 use holons_core::dances::DanceInitiator;
-use holons_core::reference_layer::{HolonServiceApi, HolonsContextBehavior};
+use holons_core::reference_layer::HolonServiceApi;
 
 use std::sync::Arc;
 
@@ -18,10 +19,10 @@ use std::sync::Arc;
 /// - Injects the optional `DanceInitiator` for conductor calls.
 ///
 /// # Returns
-/// * An `Arc<dyn HolonsContextBehavior>` backed by a `TransactionContext`.
+/// * An `Arc<TransactionContext>` backed by a `TransactionContext`.
 pub fn init_client_context(
     initiator: Option<Arc<dyn DanceInitiator>>,
-) -> Arc<dyn HolonsContextBehavior + Send + Sync> {
+) -> Arc<TransactionContext> {
     // Create the ClientHolonService.
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
 

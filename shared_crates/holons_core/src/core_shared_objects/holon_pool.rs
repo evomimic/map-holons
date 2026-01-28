@@ -5,7 +5,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::{Holon, ReadableHolonState, WriteableHolonState};
+use super::{Holon, HolonWire, ReadableHolonState, WriteableHolonState};
+use crate::core_shared_objects::holon::HolonWire;
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::utils::uuid::create_temporary_id_from_key;
 use crate::StagedReference;
 use base_types::MapString;
@@ -100,13 +102,26 @@ impl DerefMut for StagedSerializableHolonPool {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SerializableHolonPool {
-    pub holons: BTreeMap<TemporaryId, Holon>,
+    pub holons: BTreeMap<TemporaryId, HolonWire>,
     pub keyed_index: BTreeMap<MapString, TemporaryId>,
 }
 
 impl Default for SerializableHolonPool {
     fn default() -> Self {
         Self { holons: BTreeMap::new(), keyed_index: BTreeMap::new() }
+    }
+}
+
+impl SerializableHolonPool {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<HolonPool, HolonError> {
+        let mut holons = BTreeMap::new();
+
+        for (id, holon_wire) in self.holons {
+            let holon_runtime = holon_wire.bind(Arc::clone(&context))?;
+            holons.insert(id, Arc::new(RwLock::new(holon_runtime)));
+        }
+
+        Ok(HolonPool { holons, keyed_index: self.keyed_index })
     }
 }
 
@@ -125,16 +140,6 @@ impl Default for SerializableHolonPool {
 pub struct HolonPool {
     holons: BTreeMap<TemporaryId, Arc<RwLock<Holon>>>,
     keyed_index: BTreeMap<MapString, TemporaryId>,
-}
-
-impl From<SerializableHolonPool> for HolonPool {
-    fn from(pool: SerializableHolonPool) -> Self {
-        let mut holons = BTreeMap::new();
-        for (id, holon) in pool.holons {
-            holons.insert(id, Arc::new(RwLock::new(holon)));
-        }
-        Self { holons, keyed_index: pool.keyed_index.clone() }
-    }
 }
 
 impl HolonPool {
@@ -267,22 +272,17 @@ impl HolonPool {
             // Read lock the holon to clone its value
             holons.insert(
                 id.clone(),
-                holon.read().expect("Failed to acquire read lock on holon").clone(),
+                HolonWire::from(&*holon.read().expect("Failed to acquire read lock on holon")),
             );
         }
         Ok(SerializableHolonPool { holons, keyed_index: self.keyed_index.clone() })
     }
 
     /// Imports a `SerializableHolonPool`, replacing the current holons.
-    pub fn import_pool(&mut self, pool: SerializableHolonPool) {
+    pub fn import_pool(&mut self, pool: HolonPool) {
         self.holons.clear();
         self.keyed_index.clear();
-
-        for (id, holon) in pool.holons.into_iter() {
-            // Wrap holon in Arc<RwLock> for thread-safe storage
-            self.holons.insert(id, Arc::new(RwLock::new(holon)));
-        }
-
+        self.holons.extend(pool.holons);
         self.keyed_index.extend(pool.keyed_index);
     }
 

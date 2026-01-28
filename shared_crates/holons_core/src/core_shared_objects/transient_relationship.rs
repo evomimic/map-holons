@@ -89,7 +89,6 @@ impl TransientRelationshipMap {
     /// - Returns an error if adding references fails due to validation or other issues.
     pub fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
@@ -105,7 +104,7 @@ impl TransientRelationshipMap {
                     e
                 ))
             })?
-            .add_references(context, holons)?;
+            .add_references(holons)?;
         Ok(())
     }
 
@@ -165,7 +164,6 @@ impl TransientRelationshipMap {
     /// - Returns an error if removing references fails due to validation or other issues.
     pub fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
@@ -177,7 +175,7 @@ impl TransientRelationshipMap {
                         e
                     ))
                 })?
-                .remove_references(context, holons)?;
+                .remove_references(holons)?;
             Ok(())
         } else {
             Err(HolonError::InvalidRelationship(
@@ -265,9 +263,7 @@ impl From<&TransientRelationshipMap> for TransientRelationshipMapWire {
         let mut wire_map = BTreeMap::new();
 
         for (name, lock) in map.map.iter() {
-            let collection = lock
-                .read()
-                .expect("Failed to acquire read lock on holon collection");
+            let collection = lock.read().expect("Failed to acquire read lock on holon collection");
             wire_map.insert(name.clone(), HolonCollectionWire::from(&*collection));
         }
 
@@ -292,11 +288,10 @@ impl ReadableRelationship for TransientRelationshipMap {
 impl WritableRelationship for TransientRelationshipMap {
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        TransientRelationshipMap::add_related_holons(self, context, relationship_name, holons)
+        TransientRelationshipMap::add_related_holons(self, relationship_name, holons)
     }
 
     fn add_related_holons_with_keys(
@@ -309,11 +304,10 @@ impl WritableRelationship for TransientRelationshipMap {
 
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        TransientRelationshipMap::remove_related_holons(self, context, relationship_name, holons)
+        TransientRelationshipMap::remove_related_holons(self, relationship_name, holons)
     }
 
     fn remove_related_holons_with_keys(

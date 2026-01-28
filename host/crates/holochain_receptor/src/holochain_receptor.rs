@@ -18,7 +18,8 @@ use holons_client::{
     },
 };
 
-use holons_core::{dances::DanceInitiator, HolonsContextBehavior};
+use holons_core::dances::DanceInitiator;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_trust_channel::TrustChannel;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
@@ -31,7 +32,7 @@ pub struct HolochainReceptor {
     receptor_id: Option<String>,
     receptor_type: String,
     properties: HashMap<String, String>,
-    context: Arc<dyn HolonsContextBehavior + Send + Sync>,
+    context: Arc<TransactionContext>,
     client_handler: Arc<HolochainConductorClient>,
     _home_space_holon: HolonSpace,
 }

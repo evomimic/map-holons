@@ -28,7 +28,10 @@ pub use crate::reference_layer::holon_operations_api::*;
 pub use cache_access::HolonCacheAccess;
 pub use cache_request_router::ServiceRoutingPolicy;
 pub use commit_response::{CommitRequestStatus, CommitResponse};
-pub use holon::{Holon, SavedHolon, StagedHolon, TransientHolon};
+pub use holon::{
+    Holon, HolonWire, SavedHolon, StagedHolon, StagedHolonWire, TransientHolon,
+    TransientHolonWire,
+};
 pub use holon_behavior::{ReadableHolonState, WriteableHolonState};
 pub use holon_cache::HolonCache;
 pub use holon_cache_manager::HolonCacheManager;
