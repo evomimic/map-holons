@@ -10,7 +10,8 @@ use std::sync::{Arc, RwLock};
 use crate::{
     core_shared_objects::{
         holon::HolonCloneModel, holon_behavior::ReadableHolonState,
-        TransientRelationshipMap, WriteableHolonState,
+        transactions::TransactionContext, TransientRelationshipMap, TransientRelationshipMapWire,
+        WriteableHolonState,
     },
     HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
 };
@@ -26,6 +27,44 @@ use super::{
     EssentialHolonContent,
 };
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TransientHolonWire {
+    version: MapInteger,
+    holon_state: HolonState,
+    validation_state: ValidationState,
+    property_map: PropertyMap,
+    transient_relationships: TransientRelationshipMapWire,
+    original_id: Option<LocalId>,
+}
+
+impl TransientHolonWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<TransientHolon, HolonError> {
+        Ok(TransientHolon {
+            version: self.version,
+            holon_state: self.holon_state,
+            validation_state: self.validation_state,
+            property_map: self.property_map,
+            transient_relationships: self.transient_relationships.bind(context)?,
+            original_id: self.original_id,
+        })
+    }
+}
+
+impl From<&TransientHolon> for TransientHolonWire {
+    fn from(value: &TransientHolon) -> Self {
+        Self {
+            version: value.version.clone(),
+            holon_state: value.holon_state.clone(),
+            validation_state: value.validation_state.clone(),
+            property_map: value.property_map.clone(),
+            transient_relationships: TransientRelationshipMapWire::from(
+                &value.transient_relationships,
+            ),
+            original_id: value.original_id.clone(),
+        }
+    }
+}
+
 /// Represents a Holon that exists only in-memory and cannot be persisted unless it becomes a StagedHolon.
 /// (for more information, see Holon LifeCycle [insert link] documentation/diagram)
 ///
@@ -36,7 +75,7 @@ use super::{
 /// transient_relationships: TransientRelationshipMap::new_empty(),
 /// original_id: None,
 ///
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransientHolon {
     version: MapInteger,     // Used to add to hash content for creating TemporaryID
     holon_state: HolonState, // Mutable or Immutable
@@ -206,13 +245,12 @@ impl ReadableHolonState for TransientHolon {
 impl WriteableHolonState for TransientHolon {
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
 
-        self.transient_relationships.add_related_holons(context, relationship_name, holons)?;
+        self.transient_relationships.add_related_holons(relationship_name, holons)?;
 
         Ok(self)
     }
@@ -249,12 +287,11 @@ impl WriteableHolonState for TransientHolon {
 
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.transient_relationships.remove_related_holons(context, &relationship_name, holons)?;
+        self.transient_relationships.remove_related_holons(&relationship_name, holons)?;
 
         Ok(self)
     }

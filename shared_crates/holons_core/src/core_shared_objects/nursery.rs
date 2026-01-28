@@ -8,6 +8,7 @@ use super::{
     nursery_access_internal::NurseryAccessInternal,
     Holon,
 };
+use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::{
     core_shared_objects::StagedHolon,
     reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
@@ -70,12 +71,13 @@ impl Nursery {
     /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
     fn to_validated_staged_reference(
         &self,
+        transaction_handle: &TransactionContextHandle,
         id: &TemporaryId,
     ) -> Result<StagedReference, HolonError> {
         // Determine if the id references a StagedHolon in the Nursery
         let _holon_rc = self.get_holon_by_id(id)?;
 
-        Ok(StagedReference::from_temporary_id(id))
+        Ok(StagedReference::from_temporary_id(transaction_handle.clone(), id))
     }
 }
 
@@ -94,7 +96,11 @@ impl NurseryAccess for Nursery {
 
 impl HolonStagingBehavior for Nursery {
     // Caller is assuming there is only one, returns duplicate error if multiple.
-    fn get_staged_holon_by_base_key(&self, key: &MapString) -> Result<StagedReference, HolonError> {
+    fn get_staged_holon_by_base_key(
+        &self,
+        transaction_handle: &TransactionContextHandle,
+        key: &MapString,
+    ) -> Result<StagedReference, HolonError> {
         let pool = self.staged_holons.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on staged_holons: {}",
@@ -102,11 +108,12 @@ impl HolonStagingBehavior for Nursery {
             ))
         })?;
         let id = pool.get_id_by_base_key(key)?;
-        self.to_validated_staged_reference(&id)
+        self.to_validated_staged_reference(transaction_handle, &id)
     }
 
     fn get_staged_holons_by_base_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<StagedReference>, HolonError> {
         let mut staged_references = Vec::new();
@@ -118,7 +125,8 @@ impl HolonStagingBehavior for Nursery {
         })?;
         let ids = pool.get_ids_by_base_key(key)?;
         for id in ids {
-            let validated_staged_reference = self.to_validated_staged_reference(&id)?;
+            let validated_staged_reference =
+                self.to_validated_staged_reference(transaction_handle, &id)?;
             staged_references.push(validated_staged_reference);
         }
 
@@ -128,6 +136,7 @@ impl HolonStagingBehavior for Nursery {
     /// Does a lookup by full (unique) key on staged holons.
     fn get_staged_holon_by_versioned_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
         let pool = self.staged_holons.read().map_err(|e| {
@@ -137,7 +146,7 @@ impl HolonStagingBehavior for Nursery {
             ))
         })?;
         let id = pool.get_id_by_versioned_key(key)?;
-        self.to_validated_staged_reference(&id)
+        self.to_validated_staged_reference(transaction_handle, &id)
     }
 
     fn staged_count(&self) -> Result<i64, HolonError> {
@@ -156,38 +165,38 @@ impl HolonStagingBehavior for Nursery {
 
     fn stage_new_holon(
         &self,
-        context: &dyn HolonsContextBehavior,
+        transaction_handle: &TransactionContextHandle,
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
         let staged_holon =
-            StagedHolon::new_from_clone_model(context, transient_reference.holon_clone_model(context)?)?;
+            StagedHolon::new_from_clone_model(transient_reference.holon_clone_model()?)?;
         let new_id = self.stage_holon(staged_holon)?;
-        self.to_validated_staged_reference(&new_id)
+        self.to_validated_staged_reference(transaction_handle, &new_id)
     }
 
     /// Stage a new holon by cloning an existing holon, with a new key and
     /// *without* maintaining lineage to the original.
     fn stage_new_from_clone(
         &self,
-        context: &dyn HolonsContextBehavior,
+        transaction_handle: &TransactionContextHandle,
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
         // Clone into a transient holon
-        let mut cloned_transient = original_holon.clone_holon(context)?;
+        let mut cloned_transient = original_holon.clone_holon()?;
 
         // Overwrite the Key property on the clone
         let key_prop = CorePropertyTypeName::Key.as_property_name();
-        cloned_transient.with_property_value(context, key_prop, BaseValue::StringValue(new_key))?;
+        cloned_transient.with_property_value(key_prop, BaseValue::StringValue(new_key))?;
 
         // Reset original_id (this is a new clone, not a new version)
-        cloned_transient.reset_original_id(context)?;
+        cloned_transient.reset_original_id()?;
 
         // Stage the cloned holon
-        let mut cloned_staged = self.stage_new_holon(context, cloned_transient)?;
+        let mut cloned_staged = self.stage_new_holon(transaction_handle, cloned_transient)?;
 
         // Explicitly clear predecessor for "from clone" semantics
-        cloned_staged.with_predecessor(context, None)?;
+        cloned_staged.with_predecessor(None)?;
 
         Ok(cloned_staged)
     }
@@ -195,17 +204,17 @@ impl HolonStagingBehavior for Nursery {
     /// Stage a new holon as a *version* of the current holon, keeping lineage.
     fn stage_new_version(
         &self,
-        context: &dyn HolonsContextBehavior,
+        transaction_handle: &TransactionContextHandle,
         current_version: SmartReference,
     ) -> Result<StagedReference, HolonError> {
         // Clone current version into a transient holon
-        let cloned_transient = current_version.clone_holon(context)?;
+        let cloned_transient = current_version.clone_holon()?;
 
         // Stage it as a new holon
-        let mut cloned_staged = self.stage_new_holon(context, cloned_transient)?;
+        let mut cloned_staged = self.stage_new_holon(transaction_handle, cloned_transient)?;
 
         // Set predecessor back to the current version
-        cloned_staged.with_predecessor(context, Some(HolonReference::Smart(current_version)))?;
+        cloned_staged.with_predecessor(Some(HolonReference::Smart(current_version)))?;
 
         Ok(cloned_staged)
     }
@@ -252,8 +261,8 @@ impl NurseryAccessInternal for Nursery {
             .export_pool()
     }
 
-    /// Replaces the current staged holons with those from the provided `SerializableHolonPool`.
-    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError> {
+    /// Replaces the current staged holons with those from the provided `HolonPool`.
+    fn import_staged_holons(&self, pool: HolonPool) -> Result<(), HolonError> {
         let mut guard = self.staged_holons.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire write lock on staged_holons: {}",

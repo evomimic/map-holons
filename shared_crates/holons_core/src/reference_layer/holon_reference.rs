@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
+use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -24,7 +25,7 @@ use core_types::{
 use std::sync::{Arc, RwLock};
 use type_names::CorePropertyTypeName;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 /// HolonReference provides a general way to access Holons without having to know whether they are in a read-only
 /// state (and therefore owned by the CacheManager) or being staged for creation/update (and therefore owned by the
 /// Nursery).
@@ -47,11 +48,6 @@ pub enum HolonReferenceSerializable {
 impl HolonReference {
     /// Creates a `HolonReference` wrapping a `SmartReference` for the given `HolonId`.
 
-    #[deprecated(note = "Use `HolonReference::from(holon_id)` or `holon_id.into()` instead.")]
-    pub fn from_id(holon_id: HolonId) -> HolonReference {
-        HolonReference::Smart(SmartReference::new_from_id(holon_id))
-    }
-
     #[deprecated(note = "Use `HolonReference::from(staged)` or `staged.into()` instead.")]
     /// Creates a `HolonReference::Staged` variant from a `StagedReference`.
     pub fn from_staged(staged: StagedReference) -> Self {
@@ -62,6 +58,14 @@ impl HolonReference {
     /// Creates a `HolonReference::Smart` variant from a `SmartReference`.
     pub fn from_smart(smart: SmartReference) -> Self {
         HolonReference::Smart(smart)
+    }
+
+    /// Creates a tx-bound `HolonReference::Smart` for the given `HolonId`.
+    pub fn smart_from_id(
+        transaction_handle: TransactionContextHandle,
+        holon_id: HolonId,
+    ) -> HolonReference {
+        HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))
     }
 
     /// Binds a wire reference enum to a TransactionContext, validating tx_id.
@@ -181,11 +185,15 @@ impl HolonReference {
     ///   without any additional guest-side interaction.
     /// - Other properties may be added later through the generic
     ///   `smart_with_properties` constructor.
-    pub fn smart_with_key(holon_id: HolonId, key: MapString) -> Self {
+    pub fn smart_with_key(
+        transaction_handle: TransactionContextHandle,
+        holon_id: HolonId,
+        key: MapString,
+    ) -> Self {
         let mut smart_properties = PropertyMap::new();
         smart_properties
             .insert(CorePropertyTypeName::Key.as_property_name(), BaseValue::StringValue(key));
-        Self::smart_with_properties(holon_id, smart_properties)
+        Self::smart_with_properties(transaction_handle, holon_id, smart_properties)
     }
 
     /// Constructs a `HolonReference::Smart` with an explicit set of cached
@@ -218,8 +226,16 @@ impl HolonReference {
     /// - This constructor does not perform validation of property names.
     /// - If you only need to embed the holon's key, prefer
     ///   [`smart_with_key`](Self::smart_with_key) for convenience.
-    pub fn smart_with_properties(holon_id: HolonId, smart_properties: PropertyMap) -> Self {
-        HolonReference::Smart(SmartReference::new_with_properties(holon_id, smart_properties))
+    pub fn smart_with_properties(
+        transaction_handle: TransactionContextHandle,
+        holon_id: HolonId,
+        smart_properties: PropertyMap,
+    ) -> Self {
+        HolonReference::Smart(SmartReference::new_with_properties(
+            transaction_handle,
+            holon_id,
+            smart_properties,
+        ))
     }
 
     // Simple string representations for errors/logging
@@ -244,9 +260,9 @@ impl HolonReference {
 impl From<&HolonReference> for HolonReferenceSerializable {
     fn from(reference: &HolonReference) -> Self {
         match reference {
-            HolonReference::Transient(transient) => {
-                HolonReferenceSerializable::Transient(TransientReferenceSerializable::from(transient))
-            }
+            HolonReference::Transient(transient) => HolonReferenceSerializable::Transient(
+                TransientReferenceSerializable::from(transient),
+            ),
             HolonReference::Staged(staged) => {
                 HolonReferenceSerializable::Staged(StagedReferenceSerializable::from(staged))
             }
@@ -290,28 +306,6 @@ impl From<TransientReference> for HolonReference {
 impl From<&TransientReference> for HolonReference {
     fn from(transient: &TransientReference) -> Self {
         HolonReference::Transient(transient.clone())
-    }
-}
-
-impl From<HolonId> for HolonReference {
-    fn from(holon_id: HolonId) -> Self {
-        HolonReference::Smart(SmartReference::new_from_id(holon_id))
-    }
-}
-
-impl From<&HolonReference> for HolonReferenceSerializable {
-    fn from(reference: &HolonReference) -> Self {
-        match reference {
-            HolonReference::Transient(r) => {
-                HolonReferenceSerializable::Transient(TransientReferenceSerializable::from(r))
-            }
-            HolonReference::Staged(r) => {
-                HolonReferenceSerializable::Staged(StagedReferenceSerializable::from(r))
-            }
-            HolonReference::Smart(r) => {
-                HolonReferenceSerializable::Smart(SmartReferenceSerializable::from(r))
-            }
-        }
     }
 }
 

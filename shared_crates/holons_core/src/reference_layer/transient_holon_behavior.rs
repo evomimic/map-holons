@@ -1,4 +1,5 @@
 use crate::core_shared_objects::holon::HolonCloneModel;
+use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::reference_layer::TransientReference;
 use base_types::MapString;
 use core_types::HolonError;
@@ -19,15 +20,23 @@ pub trait TransientHolonBehavior: Send + Sync {
     // TransientHolon Constructors
     // ===========================
 
-    fn create_empty(&self, key: MapString) -> Result<TransientReference, HolonError>;
+    fn create_empty(
+        &self,
+        transaction_handle: &TransactionContextHandle,
+        key: MapString,
+    ) -> Result<TransientReference, HolonError>;
 
     /// Create a new transient holon without setting a key property.
     /// The holon is identified only by its TemporaryId until a key is set/derived.
     // This enables an optional key field in the new_holon dance
-    fn create_empty_without_key(&self) -> Result<TransientReference, HolonError>;
+    fn create_empty_without_key(
+        &self,
+        transaction_handle: &TransactionContextHandle,
+    ) -> Result<TransientReference, HolonError>;
 
     fn new_from_clone_model(
         &self,
+        transaction_handle: &TransactionContextHandle,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError>;
 
@@ -39,6 +48,7 @@ pub trait TransientHolonBehavior: Send + Sync {
     /// Returns a duplicate error if multiple found.
     fn get_transient_holon_by_base_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError>;
 
@@ -46,12 +56,14 @@ pub trait TransientHolonBehavior: Send + Sync {
     /// This can be useful if multiple versions of the same Holon are being transient at the same time.
     fn get_transient_holons_by_base_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<TransientReference>, HolonError>;
 
     /// Does a lookup by full (unique) key on transient holons.
     fn get_transient_holon_by_versioned_key(
         &self,
+        transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError>;
 

@@ -38,7 +38,7 @@
 //! - Adding/removing related holons from a relationship
 //! - Cloning staged holons and their relationships into a new editing context
 //! - Serializing the current staged relationship state for syncing across boundaries
-//! 
+//!
 //!  *They cannot contain TransientRefefences, since relationsips from Staged -> Transient are not allowed.
 //!
 //! ## Relationship to `RelationshipMap`
@@ -120,7 +120,10 @@ impl StagedRelationshipMap {
 }
 
 impl StagedRelationshipMapWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<StagedRelationshipMap, HolonError> {
+    pub fn bind(
+        self,
+        context: Arc<TransactionContext>,
+    ) -> Result<StagedRelationshipMap, HolonError> {
         let mut map = BTreeMap::new();
 
         for (name, collection_wire) in self.map {
@@ -147,9 +150,7 @@ impl From<&StagedRelationshipMap> for StagedRelationshipMapWire {
         let mut wire_map = BTreeMap::new();
 
         for (name, lock) in map.map.iter() {
-            let collection = lock
-                .read()
-                .expect("Failed to acquire read lock on holon collection");
+            let collection = lock.read().expect("Failed to acquire read lock on holon collection");
             wire_map.insert(name.clone(), HolonCollectionWire::from(&*collection));
         }
 
@@ -192,7 +193,6 @@ impl WritableRelationship for StagedRelationshipMap {
     /// Adds holon references to a staged relationship, creating the collection if needed.
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
@@ -208,7 +208,7 @@ impl WritableRelationship for StagedRelationshipMap {
                     e
                 ))
             })?
-            .add_references(context, holons)?; 
+            .add_references(holons)?;
         Ok(())
     }
 
@@ -236,7 +236,6 @@ impl WritableRelationship for StagedRelationshipMap {
     /// Removes holon references from a staged relationship, erroring if the relationship is absent.
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
@@ -248,7 +247,7 @@ impl WritableRelationship for StagedRelationshipMap {
                         e
                     ))
                 })?
-                .remove_references(context, holons)?;
+                .remove_references(holons)?;
             Ok(())
         } else {
             Err(HolonError::InvalidRelationship(

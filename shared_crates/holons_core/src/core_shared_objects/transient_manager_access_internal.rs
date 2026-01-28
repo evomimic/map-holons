@@ -8,7 +8,7 @@ use core_types::{HolonError, TemporaryId};
 
 use crate::{
     core_shared_objects::{
-        holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess,
+        holon::Holon, holon_pool::{HolonPool, SerializableHolonPool}, TransientManagerAccess,
     },
     reference_layer::TransientHolonBehavior,
 };
@@ -84,7 +84,7 @@ pub trait TransientManagerAccessInternal:
     ///
     /// # Errors
     /// Returns `HolonError::FailedToAcquireLock` if the internal write lock cannot be acquired.
-    fn import_transient_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
+    fn import_transient_holons(&self, pool: HolonPool) -> Result<(), HolonError>;
 
     /// Provides direct access to the underlying transient holon instances.
     ///

@@ -109,7 +109,6 @@ pub trait WriteableHolonState {
     /// Inserts a HolonCollection of related HolonReferences for the given relationship name.
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError>;
@@ -137,7 +136,6 @@ pub trait WriteableHolonState {
     /// Removes the HolonCollection of related HolonReferences for the given relationship name.
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError>;

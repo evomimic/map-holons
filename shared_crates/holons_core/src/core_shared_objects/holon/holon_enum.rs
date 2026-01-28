@@ -11,18 +11,47 @@ use serde::{Deserialize, Serialize};
 use super::state::AccessType;
 use super::{SavedHolon, StagedHolon, TransientHolon};
 use crate::core_shared_objects::holon::EssentialHolonContent;
+use crate::core_shared_objects::holon::{StagedHolonWire, TransientHolonWire};
 use crate::core_shared_objects::holon_behavior::{ReadableHolonState, WriteableHolonState};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::{HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap};
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Holon {
     Transient(TransientHolon),
     Staged(StagedHolon),
     Saved(SavedHolon),
 }
 
-/// A normalized, serializable representation of a `Holon`'s essential state,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum HolonWire {
+    Transient(TransientHolonWire),
+    Staged(StagedHolonWire),
+    Saved(SavedHolon),
+}
+
+impl HolonWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<Holon, HolonError> {
+        Ok(match self {
+            HolonWire::Transient(holon) => Holon::Transient(holon.bind(context)?),
+            HolonWire::Staged(holon) => Holon::Staged(holon.bind(context)?),
+            HolonWire::Saved(holon) => Holon::Saved(holon),
+        })
+    }
+}
+
+impl From<&Holon> for HolonWire {
+    fn from(value: &Holon) -> Self {
+        match value {
+            Holon::Transient(holon) => HolonWire::Transient(TransientHolonWire::from(holon)),
+            Holon::Staged(holon) => HolonWire::Staged(StagedHolonWire::from(holon)),
+            Holon::Saved(holon) => HolonWire::Saved(holon.clone()),
+        }
+    }
+}
+
+/// A normalized, non-serializable representation of a `Holon`'s essential state,
 /// used specifically for cloning operations.
 ///
 /// `HolonCloneModel` exists to bridge across the internal differences of the
@@ -42,9 +71,8 @@ pub enum Holon {
 /// By design, this type is decoupled from the richer state and invariants of
 /// the `Holon` variants (e.g. `HolonState`, `ValidationState`, errors,
 /// commit/staging metadata). That separation allows it to act as a lightweight,
-/// portable container for cloning, serialization, or transport before
-/// reconstructing a new `TransientHolon`.
-#[derive(new, Debug, Clone, Serialize, Deserialize)]
+/// portable container for cloning before reconstructing a new `TransientHolon`.
+#[derive(new, Debug, Clone)]
 pub struct HolonCloneModel {
     pub version: MapInteger,
     pub original_id: Option<LocalId>,

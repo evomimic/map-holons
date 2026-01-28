@@ -56,7 +56,6 @@ pub trait WritableRelationship {
     /// - Returns an error if adding references fails due to validation or other issues.
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;
@@ -83,7 +82,6 @@ pub trait WritableRelationship {
     /// - Returns an error if removing references fails due to validation or other issues.
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError>;

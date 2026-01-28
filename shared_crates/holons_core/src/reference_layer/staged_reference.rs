@@ -211,7 +211,7 @@ impl ReadableHolonImpl for StagedReference {
         let transient_behavior = self.context_handle.context().transient_manager_access_internal();
 
         let cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(holon_clone_model)?;
+            transient_behavior.new_from_clone_model(&self.context_handle, holon_clone_model)?;
 
         Ok(cloned_holon_transient_reference)
     }
@@ -522,10 +522,7 @@ impl WritableHolonImpl for StagedReference {
 }
 
 impl ToHolonCloneModel for StagedReference {
-    fn holon_clone_model(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonCloneModel, HolonError> {
+    fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;
         let holon_clone_model = rc_holon

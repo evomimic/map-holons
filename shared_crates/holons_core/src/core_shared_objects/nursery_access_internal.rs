@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use super::holon_pool::SerializableHolonPool;
+use super::holon_pool::{HolonPool, SerializableHolonPool};
 use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -63,7 +63,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// A `SerializableHolonPool` containing a **deep clone** of the current staged holons and their keyed index.
     fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
 
-    /// Imports a `SerializableHolonPool`, replacing the current staged holons.
+    /// Imports a bound `HolonPool`, replacing the current staged holons.
     ///
     /// This method **completely replaces** the current staged holons with the provided `SerializableHolonPool`.
     /// Any existing staged holons will be **discarded** in favor of the imported data.
@@ -77,8 +77,8 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// - If the provided pool is empty, the `Nursery` will also be cleared.
     ///
     /// # Arguments
-    /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
-    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
+    /// - `pool` - A `HolonPool` containing the staged holons and their keyed index.
+    fn import_staged_holons(&self, pool: HolonPool) -> Result<(), HolonError>;
 
     /// Returns a reference-layer view of all staged holons as `StagedReference`s.
     ///

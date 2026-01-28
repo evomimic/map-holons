@@ -73,10 +73,7 @@ impl TransientReference {
         Ok(TransientReference { context_handle, id: wire.id })
     }
 
-    pub fn reset_original_id(
-        &self,
-        _context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError> {
+    pub fn reset_original_id(&self) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let mut borrow = rc_holon.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!("Failed to acquire write lock on holon: {}", e))
@@ -171,7 +168,7 @@ impl ReadableHolonImpl for TransientReference {
         let transient_behavior = self.context_handle.context().transient_manager_access_internal();
 
         let cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(holon_clone_model)?;
+            transient_behavior.new_from_clone_model(&self.context_handle, holon_clone_model)?;
 
         Ok(cloned_holon_transient_reference)
     }
@@ -394,10 +391,7 @@ impl WritableHolonImpl for TransientReference {
 }
 
 impl ToHolonCloneModel for TransientReference {
-    fn holon_clone_model(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonCloneModel, HolonError> {
+    fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
