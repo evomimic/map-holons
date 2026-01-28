@@ -12,9 +12,8 @@ use crate::{
         HolonCollection,
     },
     reference_layer::{
-        HolonsContextBehavior, ReadableHolon, SmartReference, SmartReferenceSerializable,
-        StagedReference, StagedReferenceSerializable, TransientReference,
-        TransientReferenceSerializable,
+        HolonsContextBehavior, ReadableHolon, SmartReference, SmartReferenceWire, StagedReference,
+        StagedReferenceWire, TransientReference, TransientReferenceWire,
     },
     RelationshipMap,
 };
@@ -39,9 +38,9 @@ pub enum HolonReference {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum HolonReferenceSerializable {
-    Transient(TransientReferenceSerializable),
-    Staged(StagedReferenceSerializable),
-    Smart(SmartReferenceSerializable),
+    Transient(TransientReferenceWire),
+    Staged(StagedReferenceWire),
+    Smart(SmartReferenceWire),
 }
 
 /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
@@ -58,14 +57,6 @@ impl HolonReference {
     /// Creates a `HolonReference::Smart` variant from a `SmartReference`.
     pub fn from_smart(smart: SmartReference) -> Self {
         HolonReference::Smart(smart)
-    }
-
-    /// Creates a tx-bound `HolonReference::Smart` for the given `HolonId`.
-    pub fn smart_from_id(
-        transaction_handle: TransactionContextHandle,
-        holon_id: HolonId,
-    ) -> HolonReference {
-        HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))
     }
 
     /// Binds a wire reference enum to a TransactionContext, validating tx_id.
@@ -161,6 +152,15 @@ impl HolonReference {
             HolonReference::Smart(smart_reference) => smart_reference.predecessor(),
         }
     }
+
+    /// Creates a tx-bound `HolonReference::Smart` for the given `HolonId`.
+    pub fn smart_from_id(
+        transaction_handle: TransactionContextHandle,
+        holon_id: HolonId,
+    ) -> HolonReference {
+        HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))
+    }
+
     /// Constructs a `HolonReference::Smart` for a holon that has been
     /// successfully committed to persistent storage, embedding the holon's
     /// logical key directly into the reference.
@@ -260,14 +260,14 @@ impl HolonReference {
 impl From<&HolonReference> for HolonReferenceSerializable {
     fn from(reference: &HolonReference) -> Self {
         match reference {
-            HolonReference::Transient(transient) => HolonReferenceSerializable::Transient(
-                TransientReferenceSerializable::from(transient),
-            ),
+            HolonReference::Transient(transient) => {
+                HolonReferenceSerializable::Transient(TransientReferenceWire::from(transient))
+            }
             HolonReference::Staged(staged) => {
-                HolonReferenceSerializable::Staged(StagedReferenceSerializable::from(staged))
+                HolonReferenceSerializable::Staged(StagedReferenceWire::from(staged))
             }
             HolonReference::Smart(smart) => {
-                HolonReferenceSerializable::Smart(SmartReferenceSerializable::from(smart))
+                HolonReferenceSerializable::Smart(SmartReferenceWire::from(smart))
             }
         }
     }
