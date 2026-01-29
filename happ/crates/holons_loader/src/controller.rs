@@ -303,21 +303,17 @@ impl HolonLoaderController {
         // - Abandoned are not saved; they appear in `abandoned_holons`.
         // - If saved + abandoned != commits_attempted, then errors occurred.
         // Retrieve relationships
-        let committed_refs = commit_response.related_holons(
-            context,
-            CoreRelationshipTypeName::SavedHolons.as_relationship_name(),
-        )?;
-        let abandoned_refs = commit_response.related_holons(
-            context,
-            CoreRelationshipTypeName::AbandonedHolons.as_relationship_name(),
-        )?;
+        let committed_refs = commit_response
+            .related_holons(CoreRelationshipTypeName::SavedHolons.as_relationship_name())?;
+        let abandoned_refs = commit_response
+            .related_holons(CoreRelationshipTypeName::AbandonedHolons.as_relationship_name())?;
 
         let saved_holons: i64 = committed_refs.read().unwrap().get_count().0;
         let abandoned_holons: i64 = abandoned_refs.read().unwrap().get_count().0;
 
         // Retrieve property CommitsAttempted
         let commits_attempted_val = commit_response
-            .property_value(context, CorePropertyTypeName::CommitsAttempted.as_property_name())?;
+            .property_value(CorePropertyTypeName::CommitsAttempted.as_property_name())?;
         let commits_attempted: i64 = match commits_attempted_val {
             Some(BaseValue::IntegerValue(MapInteger(n))) => n,
             Some(other) => {
@@ -379,7 +375,7 @@ impl HolonLoaderController {
         info!("discover_bundle_transients: fetching CONTAINS collection from HolonLoadSet");
 
         let relationship_type = CoreRelationshipTypeName::Contains;
-        let collection_handle = match set_reference.related_holons(context, &relationship_type) {
+        let collection_handle = match set_reference.related_holons(&relationship_type) {
             Ok(handle) => handle,
             Err(e) => {
                 // If the relationship is absent, treat as empty rather than a hard error.
@@ -444,14 +440,13 @@ impl HolonLoaderController {
     ) -> Result<(), HolonError> {
         let members_relationship = CoreRelationshipTypeName::BundleMembers;
 
-        let collection_handle =
-            match bundle_reference.related_holons(context, &members_relationship) {
-                Ok(handle) => handle,
-                Err(_) => {
-                    // No members → nothing to index.
-                    return Ok(());
-                }
-            };
+        let collection_handle = match bundle_reference.related_holons(&members_relationship) {
+            Ok(handle) => handle,
+            Err(_) => {
+                // No members → nothing to index.
+                return Ok(());
+            }
+        };
 
         // Hold the read lock while iterating (no writers exist during the loader phase).
         let guard = collection_handle.read().map_err(|_| {
@@ -476,7 +471,7 @@ impl HolonLoaderController {
 
             // Read loader key (required to index provenance).
             let maybe_loader_key =
-                transient_member_reference.property_value(context, CorePropertyTypeName::Key)?;
+                transient_member_reference.property_value(CorePropertyTypeName::Key)?;
             let loader_key = match maybe_loader_key {
                 Some(BaseValue::StringValue(key)) if !key.0.is_empty() => key,
                 _ => continue, // no key → cannot index
@@ -484,7 +479,7 @@ impl HolonLoaderController {
 
             // Read start byte offset (optional).
             let maybe_offset = transient_member_reference
-                .property_value(context, CorePropertyTypeName::StartUtf8ByteOffset)?;
+                .property_value(CorePropertyTypeName::StartUtf8ByteOffset)?;
             let start_utf8_byte_offset = match maybe_offset {
                 Some(BaseValue::IntegerValue(i)) => Some(i.0),
                 _ => None,
@@ -532,7 +527,7 @@ impl HolonLoaderController {
         reference: &TransientReference,
         property_name: CorePropertyTypeName,
     ) -> Result<MapString, HolonError> {
-        let maybe_value = reference.property_value(context, &property_name)?;
+        let maybe_value = reference.property_value(&property_name)?;
 
         match maybe_value {
             Some(BaseValue::StringValue(s)) if !s.0.is_empty() => Ok(s),
@@ -546,7 +541,7 @@ impl HolonLoaderController {
     ///  - returns the *transient* response reference.
     fn build_response(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         run_id: i64, // uuid::Uuid,
         holons_staged: i64,
         holons_committed: i64,

@@ -24,9 +24,7 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal,
-        transactions::TransactionContext,
-        Holon,
+        nursery_access_internal::NurseryAccessInternal, transactions::TransactionContext, Holon,
         HolonCollection,
     },
     reference_layer::{
@@ -88,16 +86,14 @@ impl GuestHolonService {
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
         space_holon_reference
             .with_property_value(
-                context,
                 PropertyName(MapString("name".to_string())),
                 name.clone().into_base_value(),
             )?
             .with_property_value(
-                context,
                 PropertyName(MapString("description".to_string())),
                 description.into_base_value(),
             )?;
-        let space_holon_node = space_holon_reference.into_model(context)?;
+        let space_holon_node = space_holon_reference.into_model()?;
 
         // Try to create the holon node in the DHT
         let holon_record = create_holon_node(HolonNode::from(space_holon_node.clone()))
@@ -157,6 +153,7 @@ impl GuestHolonService {
             }
         };
 
+        // let transaction_handle = context.handle();
         holon
             .get_local_id()
             .map(|id| HolonReference::Smart(SmartReference::new_from_id(HolonId::Local(id))))
@@ -165,7 +162,6 @@ impl GuestHolonService {
                 e
             })
     }
-
 }
 
 impl HolonServiceApi for GuestHolonService {
@@ -246,7 +242,7 @@ impl HolonServiceApi for GuestHolonService {
         for (map_name, holon_references) in reference_map {
             let mut collection = HolonCollection::new_existing();
             for reference in holon_references {
-                let key = reference.key(context)?.ok_or_else(|| {
+                let key = reference.key()?.ok_or_else(|| {
                     HolonError::Misc(
                         "Expected Smartlink to have a key, didn't get one.".to_string(),
                     )
@@ -299,17 +295,14 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    fn get_all_holons_internal(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonCollection, HolonError> {
+    fn get_all_holons_internal(&self) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
         let holon_ids = fetch_links_to_all_holons()?;
         let mut holon_references = Vec::new();
         for id in holon_ids {
             holon_references.push(id.into());
         }
-        collection.add_references(context, holon_references)?;
+        collection.add_references(holon_references)?;
 
         Ok(collection)
     }

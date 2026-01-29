@@ -78,7 +78,6 @@ pub fn make_error_holons_best_effort(
         {
             // Add LoaderHolonKey
             transient_reference.with_property_value(
-                context,
                 CorePropertyTypeName::LoaderHolonKey,
                 BaseValue::StringValue(loader_key.clone()),
             )?;
@@ -88,13 +87,11 @@ pub fn make_error_holons_best_effort(
                 index.get(&loader_key)
             {
                 transient_reference.with_property_value(
-                    context,
                     CorePropertyTypeName::Filename,
                     BaseValue::StringValue(filename.clone()),
                 )?;
                 if let Some(offset) = start_utf8_byte_offset {
                     transient_reference.with_property_value(
-                        context,
                         CorePropertyTypeName::StartUtf8ByteOffset,
                         BaseValue::IntegerValue(MapInteger(*offset)),
                     )?;
@@ -137,7 +134,7 @@ pub fn make_error_holon(
 ) -> Result<TransientReference, HolonError> {
     let mut transient_reference = create_empty_error_holon(context)?;
     if let Some(desc) = descriptor {
-        transient_reference.with_descriptor(context, desc)?;
+        transient_reference.with_descriptor(desc)?;
     }
     populate_error_fields(context, &mut transient_reference, err)?;
     Ok(transient_reference)
@@ -147,7 +144,7 @@ pub fn make_error_holon(
 // ─────────────────────────────────────────────────────────────────────────────
 
 fn create_empty_error_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
 ) -> Result<TransientReference, HolonError> {
     // Generate a unique, local-only key (fast and deterministic within a process).
     let id = ERROR_SEQ.fetch_add(1, Ordering::Relaxed);
@@ -170,13 +167,11 @@ fn populate_error_fields(
     let error_type: &str = error_type_code(err);
 
     error_ref.with_property_value(
-        context,
         ErrorType.as_property_name(),
         BaseValue::StringValue(MapString(error_type.to_string())),
     )?;
 
     error_ref.with_property_value(
-        context,
         ErrorMessage.as_property_name(),
         BaseValue::StringValue(MapString(err.to_string())),
     )?;
@@ -188,7 +183,7 @@ fn populate_error_fields(
 /// 1) Staged (Nursery) lookup by key "HolonLoadError.HolonErrorType"
 /// 2) Saved fallback via get_all_holons() + get_by_key()
 fn resolve_holon_error_type_descriptor(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
 ) -> Result<HolonReference, HolonError> {
     // Canonical key from the enum (=> "HolonLoadError")
     let type_name = CoreHolonTypeName::HolonLoadError.as_holon_name();

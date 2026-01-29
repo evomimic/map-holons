@@ -1,12 +1,11 @@
 use std::{
     any::Any,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
 };
 
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, PropertyMap, TemporaryId};
-// use tracing::{debug};
-use crate::core_shared_objects::transactions::TransactionContextHandle;
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::{
     core_shared_objects::{
         holon::{
@@ -18,8 +17,9 @@ use crate::{
         ReadableRelationship, TransientManagerAccess, TransientRelationshipMap,
     },
     reference_layer::{TransientHolonBehavior, TransientReference},
-    HolonsContextBehavior,
 };
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{HolonError, PropertyMap, TemporaryId};
 use tracing::warn;
 use type_names::CorePropertyTypeName;
 
@@ -32,16 +32,22 @@ pub trait ToHolonCloneModel {
 
 #[derive(Debug)]
 pub struct TransientHolonManager {
-    transient_holons: RwLock<TransientHolonPool>, // Thread-safe pool
+    tx_id: TxId,
+    context: Weak<TransactionContext>,
+    transient_holons: RwLock<TransientHolonPool>,
 }
 
 impl TransientHolonManager {
-    pub fn new_empty() -> Self {
-        Self { transient_holons: RwLock::new(TransientHolonPool(HolonPool::new())) }
+    pub fn new_empty(tx_id: TxId, context: Weak<TransactionContext>) -> Self {
+        Self { tx_id, context, transient_holons: RwLock::new(TransientHolonPool(HolonPool::new())) }
     }
 
-    pub fn new_with_pool(pool: TransientHolonPool) -> Self {
-        Self { transient_holons: RwLock::new(pool) }
+    pub fn new_with_pool(
+        tx_id: TxId,
+        context: Weak<TransactionContext>,
+        pool: TransientHolonPool,
+    ) -> Self {
+        Self { tx_id, context, transient_holons: RwLock::new(pool) }
     }
 
     /// Adds the provided holon and returns a reference-counted reference to it
@@ -49,7 +55,7 @@ impl TransientHolonManager {
     /// to be retrieved by key.
     fn add_new_holon(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         holon: TransientHolon,
     ) -> Result<TransientReference, HolonError> {
         let id: TemporaryId = {
@@ -59,7 +65,7 @@ impl TransientHolonManager {
             })?;
             pool.insert_holon(Holon::Transient(holon))?
         };
-        self.to_validated_transient_reference(transaction_handle, &id)
+        self.to_validated_transient_reference(&id)
     }
 
     /// Converts a TemporaryId into a validated TransientReference using the provided transaction handle.
@@ -69,14 +75,27 @@ impl TransientHolonManager {
     /// - the reference is minted with the caller’s transaction handle
     pub(crate) fn to_validated_transient_reference(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         id: &TemporaryId,
     ) -> Result<TransientReference, HolonError> {
         // Validate id exists in this pool.
         self.get_holon_by_id(id)?;
 
-        // Mint the capability-bearing reference.
-        Ok(TransientReference::from_temporary_id(transaction_handle.clone(), id))
+        // Mint the capability-bearing reference using a handle derived from the stored Weak<TC>.
+        let handle = self.require_handle()?;
+
+        Ok(TransientReference::from_temporary_id(handle, id))
+    }
+
+    fn require_handle(&self) -> Result<TransactionContextHandle, HolonError> {
+        let context = self.context.upgrade().ok_or_else(|| {
+            HolonError::ServiceNotAvailable(format!(
+                "TransactionContext (tx_id={})",
+                self.tx_id.value()
+            ))
+        })?;
+
+        Ok(TransactionContextHandle::new(context))
     }
 }
 
@@ -95,7 +114,7 @@ impl Clone for TransientHolonManager {
             .expect("Failed to acquire read lock on transient_holons while cloning manager")
             .clone();
 
-        TransientHolonManager::new_with_pool(pool)
+        TransientHolonManager::new_with_pool(self.tx_id, self.context.clone(), pool)
     }
 }
 
@@ -115,7 +134,7 @@ impl TransientManagerAccess for TransientHolonManager {
 impl TransientHolonBehavior for TransientHolonManager {
     fn create_empty(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: MapString,
     ) -> Result<TransientReference, HolonError> {
         let mut property_map = PropertyMap::new();
@@ -131,14 +150,14 @@ impl TransientHolonBehavior for TransientHolonManager {
             None,
         );
 
-        let transient_reference = self.add_new_holon(transaction_handle, holon)?;
+        let transient_reference = self.add_new_holon(holon)?;
 
         Ok(transient_reference)
     }
 
     fn create_empty_without_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
     ) -> Result<TransientReference, HolonError> {
         let holon = TransientHolon::with_fields(
             MapInteger(1),
@@ -148,12 +167,12 @@ impl TransientHolonBehavior for TransientHolonManager {
             TransientRelationshipMap::new_empty(),
             None,
         );
-        self.add_new_holon(transaction_handle, holon)
+        self.add_new_holon(holon)
     }
 
     fn new_from_clone_model(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError> {
         let transient_relationships = {
@@ -173,7 +192,8 @@ impl TransientHolonBehavior for TransientHolonManager {
             holon_clone_model.original_id,
         );
 
-        let transient_reference = self.add_new_holon(transaction_handle, holon)?;
+        let transaction_handle = self.require_handle()?;
+        let transient_reference = self.add_new_holon(holon)?;
 
         Ok(transient_reference)
     }
@@ -181,7 +201,7 @@ impl TransientHolonBehavior for TransientHolonManager {
     // Caller is assuming there is only one, returns duplicate error if multiple.
     fn get_transient_holon_by_base_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
         let id = {
@@ -193,12 +213,12 @@ impl TransientHolonBehavior for TransientHolonManager {
                 })?
                 .get_id_by_base_key(key)?
         };
-        self.to_validated_transient_reference(transaction_handle, &id)
+        self.to_validated_transient_reference(&id)
     }
 
     fn get_transient_holons_by_base_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<TransientReference>, HolonError> {
         let mut transient_references = Vec::new();
@@ -208,8 +228,7 @@ impl TransientHolonBehavior for TransientHolonManager {
         })?;
         let ids = transient_manager.get_ids_by_base_key(key)?;
         for id in ids {
-            let validated_transient_reference =
-                self.to_validated_transient_reference(transaction_handle, &id)?;
+            let validated_transient_reference = self.to_validated_transient_reference(&id)?;
             transient_references.push(validated_transient_reference);
         }
 
@@ -218,7 +237,7 @@ impl TransientHolonBehavior for TransientHolonManager {
 
     fn get_transient_holon_by_versioned_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
         let id = {
@@ -230,7 +249,7 @@ impl TransientHolonBehavior for TransientHolonManager {
                 })?
                 .get_id_by_versioned_key(key)?
         };
-        self.to_validated_transient_reference(transaction_handle, &id)
+        self.to_validated_transient_reference(&id)
     }
 
     fn transient_count(&self) -> Result<i64, HolonError> {

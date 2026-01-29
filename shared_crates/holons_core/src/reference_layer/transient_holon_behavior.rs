@@ -22,7 +22,7 @@ pub trait TransientHolonBehavior: Send + Sync {
 
     fn create_empty(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: MapString,
     ) -> Result<TransientReference, HolonError>;
 
@@ -31,12 +31,12 @@ pub trait TransientHolonBehavior: Send + Sync {
     // This enables an optional key field in the new_holon dance
     fn create_empty_without_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
     ) -> Result<TransientReference, HolonError>;
 
     fn new_from_clone_model(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError>;
 
@@ -48,7 +48,7 @@ pub trait TransientHolonBehavior: Send + Sync {
     /// Returns a duplicate error if multiple found.
     fn get_transient_holon_by_base_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError>;
 
@@ -56,14 +56,14 @@ pub trait TransientHolonBehavior: Send + Sync {
     /// This can be useful if multiple versions of the same Holon are being transient at the same time.
     fn get_transient_holons_by_base_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<TransientReference>, HolonError>;
 
     /// Does a lookup by full (unique) key on transient holons.
     fn get_transient_holon_by_versioned_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError>;
 

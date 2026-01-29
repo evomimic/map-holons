@@ -41,7 +41,7 @@ impl SessionState {
         }
     }
 
-    pub fn get_local_holon_space_wire(&self) -> Option<HolonReferenceWire> {
+    pub fn get_local_space_holon_wire(&self) -> Option<HolonReferenceWire> {
         self.local_holon_space.clone()
     }
 

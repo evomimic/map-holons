@@ -211,7 +211,7 @@ impl ReadableHolonImpl for StagedReference {
         let transient_behavior = self.context_handle.context().transient_manager_access_internal();
 
         let cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(&self.context_handle, holon_clone_model)?;
+            transient_behavior.new_from_clone_model(holon_clone_model)?;
 
         Ok(cloned_holon_transient_reference)
     }

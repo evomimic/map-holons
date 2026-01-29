@@ -21,7 +21,7 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
-use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
@@ -105,14 +105,12 @@ pub fn new_holon(
     context: &Arc<TransactionContext>,
     key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
-    let transaction_handle = context.handle();
-
     // Acquire transient service
     let borrowed_service = context.get_transient_behavior_service();
 
     let reference = match key {
-        Some(key_string) => borrowed_service.create_empty(&transaction_handle, key_string)?,
-        None => borrowed_service.create_empty_without_key(&transaction_handle)?,
+        Some(key_string) => borrowed_service.create_empty(key_string)?,
+        None => borrowed_service.create_empty_without_key()?,
     };
 
     Ok(reference)
@@ -151,7 +149,7 @@ pub fn delete_holon(
 
 pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
     let holon_service = context.get_holon_service();
-    holon_service.get_all_holons_internal(context)
+    holon_service.get_all_holons_internal()
 }
 
 pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
@@ -172,10 +170,9 @@ pub fn get_staged_holon_by_base_key(
     context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let transaction_handle = context.handle();
     let staging_service = context.get_staging_service();
 
-    staging_service.get_staged_holon_by_base_key(&transaction_handle, key)
+    staging_service.get_staged_holon_by_base_key(key)
 }
 
 /// Returns StagedReference's for all Holons that have the same base key.
@@ -184,10 +181,9 @@ pub fn get_staged_holons_by_base_key(
     context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<Vec<StagedReference>, HolonError> {
-    let transaction_handle = context.handle();
     let staging_service_borrow = context.get_staging_service();
 
-    staging_service_borrow.get_staged_holons_by_base_key(&transaction_handle, key)
+    staging_service_borrow.get_staged_holons_by_base_key(key)
 }
 
 /// Does a lookup by full (unique) key on staged holons.
@@ -195,10 +191,9 @@ pub fn get_staged_holon_by_versioned_key(
     context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
-    let transaction_handle = context.handle();
     let staging_service = context.get_staging_service();
 
-    staging_service.get_staged_holon_by_versioned_key(&transaction_handle, key)
+    staging_service.get_staged_holon_by_versioned_key(key)
 }
 
 /// Convenience method for retrieving a single TransientReference for a base key, when the caller expects there to only be one.
@@ -207,10 +202,9 @@ pub fn get_transient_holon_by_base_key(
     context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
-    let transaction_handle = context.handle();
     let transient_service = context.get_transient_behavior_service();
 
-    transient_service.get_transient_holon_by_base_key(&transaction_handle, key)
+    transient_service.get_transient_holon_by_base_key(key)
 }
 
 /// Does a lookup by full (unique) key on transient holons.
@@ -218,10 +212,9 @@ pub fn get_transient_holon_by_versioned_key(
     context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
-    let transaction_handle = context.handle();
     let transient_service = context.get_transient_behavior_service();
 
-    transient_service.get_transient_holon_by_versioned_key(&transaction_handle, key)
+    transient_service.get_transient_holon_by_versioned_key(key)
 }
 
 // == //
@@ -258,9 +251,8 @@ pub fn stage_new_from_clone(
             "Must use stage_new_holon for staging from a TransientReference".to_string(),
         ));
     }
-    let transaction_handle = context.handle();
     let staging_service = context.get_staging_service();
-    staging_service.stage_new_from_clone(&transaction_handle, original_holon, new_key)
+    staging_service.stage_new_from_clone(original_holon, new_key)
 }
 
 /// Stages a new holon in the holon space.
@@ -283,11 +275,9 @@ pub fn stage_new_holon(
     context: &Arc<TransactionContext>,
     transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
-    let transaction_handle = context.handle();
     let staging_service = context.get_staging_service();
 
-    let staged_reference =
-        staging_service.stage_new_holon(&transaction_handle, transient_reference)?;
+    let staged_reference = staging_service.stage_new_holon(transient_reference)?;
 
     Ok(staged_reference)
 }
@@ -313,9 +303,8 @@ pub fn stage_new_version(
     context: &Arc<TransactionContext>,
     current_version: SmartReference,
 ) -> Result<StagedReference, HolonError> {
-    let transaction_handle = context.handle();
     let staging_service = context.get_staging_service();
-    staging_service.stage_new_version(&transaction_handle, current_version)
+    staging_service.stage_new_version(current_version)
 }
 
 // ======

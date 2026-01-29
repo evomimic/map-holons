@@ -34,16 +34,14 @@ pub struct TransactionContext {
 
 impl TransactionContext {
     /// Creates a new transaction context with its own staging and transient pools.
-    pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Self {
-        // Store transaction identity and space linkage.
-        // Construct the transaction-owned staging and transient pools.
-        Self {
+    pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Arc<Self> {
+        Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
             is_open: AtomicBool::new(true),
             space_manager,
-            nursery: Arc::new(Nursery::new()),
-            transient_manager: Arc::new(TransientHolonManager::new_empty()),
-        }
+            nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
+            transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
+        })
     }
 
     /// Creates a handle to this transaction context for holon references.

@@ -87,7 +87,7 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// entry point for the commit path.
     fn get_staged_references(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
     ) -> Result<Vec<StagedReference>, HolonError>;
 }
 

@@ -203,8 +203,8 @@ impl ReadableHolonImpl for SmartReference {
 
         // HolonCloneModel for SavedHolon will have 'None' for relationships, as populating its RelationshipMap
         // is deferred to the reference layer, because context is needed that is only available in reference layer.
-        let mut cloned_holon_transient_reference = transient_behavior
-            .new_from_clone_model(&self.context_handle, borrowed_holon.holon_clone_model())?;
+        let mut cloned_holon_transient_reference =
+            transient_behavior.new_from_clone_model(borrowed_holon.holon_clone_model())?;
 
         let relationships = self.all_related_holons()?;
         let transient_relationships = relationships.clone_for_new_source()?;

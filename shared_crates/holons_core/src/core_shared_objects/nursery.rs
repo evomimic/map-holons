@@ -1,18 +1,15 @@
-use std::{
-    any::Any,
-    sync::{Arc, RwLock},
-};
-
 use super::{
     holon_pool::{HolonPool, SerializableHolonPool},
     nursery_access_internal::NurseryAccessInternal,
     Holon,
 };
-use crate::core_shared_objects::transactions::TransactionContextHandle;
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::{
     core_shared_objects::StagedHolon,
     reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
-    HolonReference, HolonsContextBehavior, ReadableHolon, SmartReference, WritableHolon,
+    HolonReference, ReadableHolon, SmartReference, WritableHolon,
 };
 use crate::{
     core_shared_objects::{
@@ -22,11 +19,17 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, TemporaryId};
+use std::{
+    any::Any,
+    sync::{Arc, RwLock, Weak},
+};
 use type_names::CorePropertyTypeName;
 
 #[derive(Clone, Debug)]
 pub struct Nursery {
-    staged_holons: Arc<RwLock<StagedHolonPool>>, // Thread-safe pool of staged holons
+    tx_id: TxId,
+    context: Weak<TransactionContext>,
+    staged_holons: Arc<RwLock<StagedHolonPool>>,
 }
 
 // The Nursery uses `Arc<RwLock<StagedHolonPool>>` to allow thread-safe mutation of staged holons.
@@ -40,14 +43,14 @@ pub struct Nursery {
 //
 // All read/write access to the staged pool is explicitly scoped to avoid lock poisoning or panic scenarios.
 impl Nursery {
-    /// Creates a new Nursery with an empty HolonPool
-    pub fn new() -> Self {
-        Self { staged_holons: Arc::new(RwLock::new(StagedHolonPool(HolonPool::new()))) }
+    // /// Creates a new Nursery with an empty HolonPool
+    pub fn new(tx_id: TxId, context: Weak<TransactionContext>) -> Self {
+        Self {
+            tx_id,
+            context,
+            staged_holons: Arc::new(RwLock::new(StagedHolonPool(HolonPool::new()))),
+        }
     }
-
-    // pub fn as_internal(&self) -> &dyn NurseryAccessInternal {
-    //     self
-    // }
 
     /// Stages a new holon.
     ///
@@ -71,13 +74,36 @@ impl Nursery {
     /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
     fn to_validated_staged_reference(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         id: &TemporaryId,
     ) -> Result<StagedReference, HolonError> {
         // Determine if the id references a StagedHolon in the Nursery
         let _holon_rc = self.get_holon_by_id(id)?;
 
+        let transaction_handle = self.require_handle()?;
         Ok(StagedReference::from_temporary_id(transaction_handle.clone(), id))
+    }
+
+    fn require_handle(&self) -> Result<TransactionContextHandle, HolonError> {
+        let context = self.context.upgrade().ok_or_else(|| {
+            HolonError::ServiceNotAvailable(format!(
+                "TransactionContext (tx_id={})",
+                self.tx_id.value()
+            ))
+        })?;
+
+        // Optional extra guard: assert context.tx_id() == self.tx_id
+        // If this ever fails, it's a serious invariant break.
+        if context.tx_id() != self.tx_id {
+            return Err(HolonError::CrossTransactionReference {
+                reference_kind: "Nursery".to_string(),
+                reference_id: format!("TxId={}", self.tx_id.value()),
+                reference_tx: self.tx_id.value(),
+                context_tx: context.tx_id().value(),
+            });
+        }
+
+        Ok(TransactionContextHandle::new(context))
     }
 }
 
@@ -98,7 +124,7 @@ impl HolonStagingBehavior for Nursery {
     // Caller is assuming there is only one, returns duplicate error if multiple.
     fn get_staged_holon_by_base_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
         let pool = self.staged_holons.read().map_err(|e| {
@@ -108,12 +134,12 @@ impl HolonStagingBehavior for Nursery {
             ))
         })?;
         let id = pool.get_id_by_base_key(key)?;
-        self.to_validated_staged_reference(transaction_handle, &id)
+        self.to_validated_staged_reference(&id)
     }
 
     fn get_staged_holons_by_base_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<StagedReference>, HolonError> {
         let mut staged_references = Vec::new();
@@ -125,8 +151,7 @@ impl HolonStagingBehavior for Nursery {
         })?;
         let ids = pool.get_ids_by_base_key(key)?;
         for id in ids {
-            let validated_staged_reference =
-                self.to_validated_staged_reference(transaction_handle, &id)?;
+            let validated_staged_reference = self.to_validated_staged_reference(&id)?;
             staged_references.push(validated_staged_reference);
         }
 
@@ -136,7 +161,7 @@ impl HolonStagingBehavior for Nursery {
     /// Does a lookup by full (unique) key on staged holons.
     fn get_staged_holon_by_versioned_key(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
         let pool = self.staged_holons.read().map_err(|e| {
@@ -146,7 +171,7 @@ impl HolonStagingBehavior for Nursery {
             ))
         })?;
         let id = pool.get_id_by_versioned_key(key)?;
-        self.to_validated_staged_reference(transaction_handle, &id)
+        self.to_validated_staged_reference(&id)
     }
 
     fn staged_count(&self) -> Result<i64, HolonError> {
@@ -165,20 +190,20 @@ impl HolonStagingBehavior for Nursery {
 
     fn stage_new_holon(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
         let staged_holon =
             StagedHolon::new_from_clone_model(transient_reference.holon_clone_model()?)?;
         let new_id = self.stage_holon(staged_holon)?;
-        self.to_validated_staged_reference(transaction_handle, &new_id)
+        self.to_validated_staged_reference(&new_id)
     }
 
     /// Stage a new holon by cloning an existing holon, with a new key and
     /// *without* maintaining lineage to the original.
     fn stage_new_from_clone(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
@@ -193,7 +218,7 @@ impl HolonStagingBehavior for Nursery {
         cloned_transient.reset_original_id()?;
 
         // Stage the cloned holon
-        let mut cloned_staged = self.stage_new_holon(transaction_handle, cloned_transient)?;
+        let mut cloned_staged = self.stage_new_holon(cloned_transient)?;
 
         // Explicitly clear predecessor for "from clone" semantics
         cloned_staged.with_predecessor(None)?;
@@ -204,14 +229,14 @@ impl HolonStagingBehavior for Nursery {
     /// Stage a new holon as a *version* of the current holon, keeping lineage.
     fn stage_new_version(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
         current_version: SmartReference,
     ) -> Result<StagedReference, HolonError> {
         // Clone current version into a transient holon
         let cloned_transient = current_version.clone_holon()?;
 
         // Stage it as a new holon
-        let mut cloned_staged = self.stage_new_holon(transaction_handle, cloned_transient)?;
+        let mut cloned_staged = self.stage_new_holon(cloned_transient)?;
 
         // Set predecessor back to the current version
         cloned_staged.with_predecessor(Some(HolonReference::Smart(current_version)))?;
@@ -279,14 +304,15 @@ impl NurseryAccessInternal for Nursery {
     /// the underlying HolonPool or `Arc<RwLock<Holon>>` handles.
     fn get_staged_references(
         &self,
-        transaction_handle: &TransactionContextHandle,
+        //transaction_handle: &TransactionContextHandle,
     ) -> Result<Vec<StagedReference>, HolonError> {
+        let transaction_handle = self.require_handle()?;
         let guard = self.staged_holons.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on staged_holons: {}",
                 e
             ))
         })?;
-        Ok(guard.get_staged_references(transaction_handle.clone()))
+        Ok(guard.get_staged_references(transaction_handle))
     }
 }

@@ -97,7 +97,7 @@ impl TransactionManager {
         let tx_id = self.id_generator.next_id();
 
         // Build the transaction context with a STRONG space reference.
-        let context = Arc::new(TransactionContext::new(tx_id, space_manager));
+        let context = TransactionContext::new(tx_id, space_manager);
 
         // Register the transaction (weak only) while holding the lock briefly.
         let mut guard = self.transactions.write().map_err(|e| {
@@ -122,7 +122,9 @@ impl Default for TransactionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
+    use crate::core_shared_objects::{
+        Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
+    };
     use crate::reference_layer::{HolonServiceApi, HolonsContextBehavior, TransientReference};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
     use std::any::Any;
@@ -171,10 +173,7 @@ mod tests {
             not_implemented()
         }
 
-        fn get_all_holons_internal(
-            &self,
-            _context: &dyn HolonsContextBehavior,
-        ) -> Result<HolonCollection, HolonError> {
+        fn get_all_holons_internal(&self) -> Result<HolonCollection, HolonError> {
             not_implemented()
         }
 
