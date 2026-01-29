@@ -550,3 +550,15 @@ impl From<StagedReference> for StagedReferenceWire {
         StagedReferenceWire::from(&reference)
     }
 }
+
+// ---------- StagedReference equality ----------
+//
+// Staged holons are transaction-scoped, so the combination of (tx_id, TemporaryId)
+// is the stable identity.
+impl PartialEq for StagedReference {
+    fn eq(&self, other: &Self) -> bool {
+        self.context_handle.tx_id() == other.context_handle.tx_id() && self.id == other.id
+    }
+}
+
+impl Eq for StagedReference {}

@@ -14,8 +14,10 @@
 //! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
 //!   adapters return `Result<ResponseBody, HolonError>`.
 
+use std::sync::Arc;
 use tracing::{debug, info};
 
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::TransientReference;
 use crate::{
     core_shared_objects::{
@@ -85,17 +87,14 @@ pub fn abandon_staged_changes_dance(
 /// *ResponseBody:*
 /// - HolonReference for the updated Holon
 ///
-pub fn add_related_holons_dance(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
+pub fn add_related_holons_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
     info!("----- Entered add_related_holons_dance");
 
     // Match the dance_type
     match request.dance_type {
         DanceType::CommandMethod(mut holon_reference) => match request.body {
             RequestBody::TargetHolons(relationship_name, holons_to_add) => {
-                holon_reference.add_related_holons(context, relationship_name, holons_to_add)?;
+                holon_reference.add_related_holons(relationship_name, holons_to_add)?;
 
                 Ok(ResponseBody::HolonReference(holon_reference))
             }
@@ -265,7 +264,7 @@ pub fn load_holons_dance(
 }
 
 pub fn new_holon_dance(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered new holon dance");
@@ -307,10 +306,7 @@ pub fn new_holon_dance(
 /// - NodeCollection -- a collection containing the same source nodes passed in the request, but with their `relationships`
 /// updated to include entries that satisfy the criteria set by the QueryExpression supplied in the request
 ///
-pub fn query_relationships_dance(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
+pub fn query_relationships_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
     info!("Entered query_relationships_dance");
 
     match request.dance_type {
@@ -325,7 +321,7 @@ pub fn query_relationships_dance(
                     )),
                 };
 
-            let result_collection = evaluate_query(node_collection, context, relationship_name)?;
+            let result_collection = evaluate_query(node_collection, relationship_name)?;
             Ok(ResponseBody::NodeCollection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(
@@ -356,7 +352,7 @@ pub fn remove_properties_dance(
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
                     for property_name in parameters.keys() {
-                        holon_reference.remove_property_value(context, property_name)?;
+                        holon_reference.remove_property_value(property_name)?;
                     }
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
@@ -381,10 +377,7 @@ pub fn remove_properties_dance(
 /// - HolonReference(HolonReference) for the Holon in which related holons were removed
 ///
 ///
-pub fn remove_related_holons_dance(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
+pub fn remove_related_holons_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
     info!("Entered remove_related_holons_dance");
 
     // Match the dance_type
@@ -392,11 +385,7 @@ pub fn remove_related_holons_dance(
         DanceType::CommandMethod(mut holon_reference) => {
             match request.body {
                 RequestBody::TargetHolons(relationship_name, holons_to_remove) => {
-                    holon_reference.remove_related_holons(
-                        context,
-                        relationship_name,
-                        holons_to_remove,
-                    )?;
+                    holon_reference.remove_related_holons(relationship_name, holons_to_remove)?;
 
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }
@@ -426,7 +415,7 @@ pub fn remove_related_holons_dance(
 /// StagedReference(StagedReference), // a reference to the newly staged holon
 ///
 pub fn stage_new_from_clone_dance(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_from_clone dance");
@@ -491,7 +480,7 @@ pub fn stage_new_from_clone_dance(
 /// - an Index into staged_holons that references the newly staged holon.
 ///
 pub fn stage_new_holon_dance(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage new holon dance");
@@ -523,13 +512,16 @@ pub fn stage_new_holon_dance(
 /// StagedReference(StagedReference), // a reference to the newly staged holon
 ///
 pub fn stage_new_version_dance(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_version dance ==");
 
+    let transaction_handle = context.handle();
     let smart_reference = match request.dance_type {
-        DanceType::NewVersionMethod(holon_id) => SmartReference::new_from_id(holon_id), // TODO: handle getting smart_prop_vals
+        DanceType::NewVersionMethod(holon_id) => {
+            SmartReference::new_from_id(transaction_handle, holon_id)
+        } // TODO: handle getting smart_prop_vals
         _ => {
             return Err(HolonError::InvalidParameter(
                 "Invalid DanceType: expected CloneMethod, didn't get one".to_string(),
@@ -553,10 +545,7 @@ pub fn stage_new_version_dance(
 /// *ResponseBody:*
 /// - HolonReference of the updated Holon
 ///
-pub fn with_properties_dance(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError> {
+pub fn with_properties_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
     info!("----- Entered with_properties_dance");
     match request.dance_type {
         DanceType::CommandMethod(mut holon_reference) => {
@@ -564,11 +553,8 @@ pub fn with_properties_dance(
                 RequestBody::ParameterValues(parameters) => {
                     // Populate parameters into the new Holon
                     for (property_name, base_value) in parameters {
-                        holon_reference.with_property_value(
-                            context,
-                            property_name.clone(),
-                            base_value.clone(),
-                        )?;
+                        holon_reference
+                            .with_property_value(property_name.clone(), base_value.clone())?;
                     }
                     Ok(ResponseBody::HolonReference(holon_reference))
                 }

@@ -1,14 +1,23 @@
-use crate::core_shared_objects::{Holon, ReadableHolonState};
+use crate::core_shared_objects::{Holon, HolonWire, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::SessionState;
-use crate::query_layer::{NodeCollection, QueryExpression};
-use crate::{HolonReference, StagedReference};
+use crate::query_layer::{NodeCollection, NodeCollectionWire, QueryExpression};
+use crate::{
+    HolonReference, HolonReferenceWire, StagedReference, StagedReferenceWire,
+    TransientReferenceWire,
+};
 use base_types::MapString;
-use core_types::{HolonId, LocalId, PropertyMap, RelationshipName};
+use core_types::{HolonError, HolonId, LocalId, PropertyMap, RelationshipName};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// Runtime dance request (tx-bound, execution-capable).
+///
+/// This type must not be deserialized across IPC boundaries because it may contain
+/// tx-bound references. Use `DanceRequestWire` for IPC and call `bind(context)` at ingress.
+#[derive(Debug, Clone, PartialEq)]
 pub struct DanceRequest {
     pub dance_name: MapString, // unique key within the (single) dispatch table
     pub dance_type: DanceType,
@@ -17,7 +26,20 @@ pub struct DanceRequest {
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// IPC-safe wire-form dance request.
+///
+/// This is the context-free shape that may be decoded at IPC boundaries.
+/// Convert to runtime via `bind(context)`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DanceRequestWire {
+    pub dance_name: MapString,
+    pub dance_type: DanceTypeWire,
+    pub body: RequestBodyWire,
+    pub state: Option<SessionState>,
+}
+
+/// Runtime dance type (may contain tx-bound references).
+#[derive(Debug, Clone, PartialEq)]
 pub enum DanceType {
     Standalone,                    // i.e., a dance not associated with a specific holon
     QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
@@ -27,7 +49,19 @@ pub enum DanceType {
     DeleteMethod(LocalId),
 }
 
+/// IPC-safe wire-form dance type.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum DanceTypeWire {
+    Standalone,
+    QueryMethod(NodeCollectionWire),
+    CommandMethod(HolonReferenceWire),
+    CloneMethod(HolonReferenceWire),
+    NewVersionMethod(HolonId),
+    DeleteMethod(LocalId),
+}
+
+/// Runtime request body (may contain tx-bound references).
+#[derive(Debug, Clone, PartialEq)]
 pub enum RequestBody {
     None,
     Holon(Holon),
@@ -37,6 +71,139 @@ pub enum RequestBody {
     ParameterValues(PropertyMap),
     StagedRef(StagedReference),
     QueryExpression(QueryExpression),
+}
+
+/// IPC-safe wire-form request body.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum RequestBodyWire {
+    None,
+    Holon(HolonWire),
+    TargetHolons(RelationshipName, Vec<HolonReferenceWire>),
+    TransientReference(TransientReferenceWire),
+    HolonId(HolonId),
+    ParameterValues(PropertyMap),
+    StagedRef(StagedReferenceWire),
+    QueryExpression(QueryExpression),
+}
+
+impl DanceRequestWire {
+    /// Binds a wire request to the supplied transaction, validating `tx_id` for all embedded references.
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<DanceRequest, HolonError> {
+        Ok(DanceRequest {
+            dance_name: self.dance_name,
+            dance_type: self.dance_type.bind(Arc::clone(&context))?,
+            body: self.body.bind(Arc::clone(&context))?,
+            state: self.state,
+        })
+    }
+}
+
+impl DanceTypeWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<DanceType, HolonError> {
+        match self {
+            DanceTypeWire::Standalone => Ok(DanceType::Standalone),
+            DanceTypeWire::QueryMethod(node_collection_wire) => {
+                Ok(DanceType::QueryMethod(node_collection_wire.bind(context)?))
+            }
+            DanceTypeWire::CommandMethod(reference_wire) => {
+                Ok(DanceType::CommandMethod(HolonReference::bind(reference_wire, context)?))
+            }
+            DanceTypeWire::CloneMethod(reference_wire) => {
+                Ok(DanceType::CloneMethod(HolonReference::bind(reference_wire, context)?))
+            }
+            DanceTypeWire::NewVersionMethod(holon_id) => Ok(DanceType::NewVersionMethod(holon_id)),
+            DanceTypeWire::DeleteMethod(local_id) => Ok(DanceType::DeleteMethod(local_id)),
+        }
+    }
+}
+
+impl RequestBodyWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<RequestBody, HolonError> {
+        match self {
+            RequestBodyWire::None => Ok(RequestBody::None),
+            RequestBodyWire::Holon(holon_wire) => Ok(RequestBody::Holon(holon_wire.bind(context)?)),
+            RequestBodyWire::TargetHolons(relationship_name, references_wire) => {
+                let mut references = Vec::with_capacity(references_wire.len());
+                for reference_wire in references_wire {
+                    references.push(HolonReference::bind(reference_wire, Arc::clone(&context))?);
+                }
+                Ok(RequestBody::TargetHolons(relationship_name, references))
+            }
+            RequestBodyWire::TransientReference(reference_wire) => Ok(
+                RequestBody::TransientReference(TransientReference::bind(reference_wire, context)?),
+            ),
+            RequestBodyWire::HolonId(holon_id) => Ok(RequestBody::HolonId(holon_id)),
+            RequestBodyWire::ParameterValues(parameters) => {
+                Ok(RequestBody::ParameterValues(parameters))
+            }
+            RequestBodyWire::StagedRef(reference_wire) => {
+                Ok(RequestBody::StagedRef(StagedReference::bind(reference_wire, context)?))
+            }
+            RequestBodyWire::QueryExpression(query_expression) => {
+                Ok(RequestBody::QueryExpression(query_expression))
+            }
+        }
+    }
+}
+
+impl From<&DanceRequest> for DanceRequestWire {
+    fn from(request: &DanceRequest) -> Self {
+        Self {
+            dance_name: request.dance_name.clone(),
+            dance_type: DanceTypeWire::from(&request.dance_type),
+            body: RequestBodyWire::from(&request.body),
+            state: request.state.clone().or(Some(SessionState::default())),
+        }
+    }
+}
+
+impl From<&DanceType> for DanceTypeWire {
+    fn from(dance_type: &DanceType) -> Self {
+        match dance_type {
+            DanceType::Standalone => DanceTypeWire::Standalone,
+            DanceType::QueryMethod(node_collection) => {
+                DanceTypeWire::QueryMethod(NodeCollectionWire::from(node_collection))
+            }
+            DanceType::CommandMethod(reference) => {
+                DanceTypeWire::CommandMethod(HolonReferenceWire::from(reference))
+            }
+            DanceType::CloneMethod(reference) => {
+                DanceTypeWire::CloneMethod(HolonReferenceWire::from(reference))
+            }
+            DanceType::NewVersionMethod(holon_id) => {
+                DanceTypeWire::NewVersionMethod(holon_id.clone())
+            }
+            DanceType::DeleteMethod(local_id) => DanceTypeWire::DeleteMethod(local_id.clone()),
+        }
+    }
+}
+
+impl From<&RequestBody> for RequestBodyWire {
+    fn from(body: &RequestBody) -> Self {
+        match body {
+            RequestBody::None => RequestBodyWire::None,
+            RequestBody::Holon(holon) => RequestBodyWire::Holon(HolonWire::from(holon)),
+            RequestBody::TargetHolons(relationship_name, references) => {
+                RequestBodyWire::TargetHolons(
+                    relationship_name.clone(),
+                    references.iter().map(HolonReferenceWire::from).collect(),
+                )
+            }
+            RequestBody::TransientReference(reference) => {
+                RequestBodyWire::TransientReference(TransientReferenceWire::from(reference))
+            }
+            RequestBody::HolonId(holon_id) => RequestBodyWire::HolonId(holon_id.clone()),
+            RequestBody::ParameterValues(parameters) => {
+                RequestBodyWire::ParameterValues(parameters.clone())
+            }
+            RequestBody::StagedRef(reference) => {
+                RequestBodyWire::StagedRef(StagedReferenceWire::from(reference))
+            }
+            RequestBody::QueryExpression(query_expression) => {
+                RequestBodyWire::QueryExpression(query_expression.clone())
+            }
+        }
+    }
 }
 
 impl RequestBody {

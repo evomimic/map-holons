@@ -1,6 +1,6 @@
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 
-use crate::{HolonReference, HolonReferenceSerializable};
+use crate::{HolonReference, HolonReferenceWire};
 use serde::{Deserialize, Serialize};
 
 /// `SessionState` represents **transaction-scoped, serializable execution state**
@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 pub struct SessionState {
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
-    local_holon_space: Option<HolonReferenceSerializable>,
+    local_holon_space: Option<HolonReferenceWire>,
 }
 
 impl SessionState {
@@ -37,17 +37,17 @@ impl SessionState {
         Self {
             transient_holons,
             staged_holons,
-            local_holon_space: local_holon_space.map(HolonReferenceSerializable::from),
+            local_holon_space: local_holon_space.map(HolonReferenceWire::from),
         }
     }
 
-    pub fn get_local_holon_space_wire(&self) -> Option<HolonReferenceSerializable> {
+    pub fn get_local_holon_space_wire(&self) -> Option<HolonReferenceWire> {
         self.local_holon_space.clone()
     }
 
     /// Sets a new local holon space reference.
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReference>) {
-        self.local_holon_space = local_holon_space.map(HolonReferenceSerializable::from);
+        self.local_holon_space = local_holon_space.map(HolonReferenceWire::from);
     }
 
     /// Retrieves the staged holon pool.

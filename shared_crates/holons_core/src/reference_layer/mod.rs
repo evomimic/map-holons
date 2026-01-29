@@ -19,7 +19,7 @@ pub use context_behavior::HolonsContextBehavior;
 // pub use factory::init_context_from_session;
 pub use holon_collection_api::HolonCollectionApi;
 pub use holon_operations_api::*;
-pub use holon_reference::{HolonReference, HolonReferenceSerializable};
+pub use holon_reference::{HolonReference, HolonReferenceWire};
 pub use holon_service_api::HolonServiceApi;
 pub use holon_staging_behavior::HolonStagingBehavior;
 pub use readable_holon::ReadableHolon;

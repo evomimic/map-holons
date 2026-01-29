@@ -1,6 +1,12 @@
 use base_types::MapString;
 use core_types::{ContentSet, HolonId, PropertyMap, RelationshipName};
-use holons_core::{HolonReference, StagedReference, TransientHolonBehavior, core_shared_objects::{Holon, TransientHolonManager, TransientManagerAccess}, dances::{DanceType}, query_layer::QueryExpression, reference_layer::TransientReference};
+use holons_core::{
+    core_shared_objects::{Holon, TransientHolonManager, TransientManagerAccess},
+    dances::DanceType,
+    query_layer::QueryExpression,
+    reference_layer::TransientReference,
+    HolonReference, StagedReference, TransientHolonBehavior,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::shared_types::holon_space::HolonSpace;
@@ -50,27 +56,20 @@ impl MapRequestBody {
     }
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct MapRequest {
     pub name: String, // unique key within the (single) dispatch table
     pub req_type: DanceType,
     pub body: MapRequestBody,
     pub space: HolonSpace,
-
 }
- impl MapRequest {
-    pub fn new_for_reference(reference:TransientReference) -> Self {
+impl MapRequest {
+    pub fn new_for_reference(reference: TransientReference) -> Self {
         let name = "get_all_holons".to_string();
         let req_type = DanceType::Standalone;
         let body = MapRequestBody::TransientReference(reference);
         let space = HolonSpace::default();
-        Self {
-            name,
-            req_type,
-            body,
-            space,
-        }
+        Self { name, req_type, body, space }
     }
     pub fn test_for_stage_new_holon() -> Self {
         let name = "stage_new_holon".to_string();
@@ -80,23 +79,18 @@ pub struct MapRequest {
         let locked_holon = manager.get_holon_by_id(&transient_ref.temporary_id()).unwrap();
         let actualholon = locked_holon.clone().read().unwrap().clone();
         let body = MapRequestBody::new_holon(actualholon);
-         //holon.with_property_value(property_name, value)?;
+        //holon.with_property_value(property_name, value)?;
         let space = HolonSpace::default();
-        Self {
-            name,
-            req_type,
-            body,
-            space,
-        }
+        Self { name, req_type, body, space }
     }
 }
 
 /*        let holon = TransientHolon::with_fields(
-            MapInteger(1),
-            HolonState::Mutable,
-            ValidationState::ValidationRequired,
-            // None,
-            property_map,
-            TransientRelationshipMap::new_empty(),
-            None,
-        ); */
+    MapInteger(1),
+    HolonState::Mutable,
+    ValidationState::ValidationRequired,
+    // None,
+    property_map,
+    TransientRelationshipMap::new_empty(),
+    None,
+); */
