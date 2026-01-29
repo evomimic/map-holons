@@ -12,6 +12,16 @@ pub enum HolonError {
     #[error("Conductor call failed: {0}")]
     ConductorError(String),
     #[error(
+        "Cross-transaction reference: {reference_kind}({reference_id}) belongs to tx {reference_tx}, \
+        but the active transaction is tx {context_tx}."
+    )]
+    CrossTransactionReference {
+        reference_kind: String,
+        reference_id: String,
+        reference_tx: u64,
+        context_tx: u64,
+    },
+    #[error(
         "You must remove related holons from {0} relationship before you can delete this holon."
     )]
     DeletionNotAllowed(String),
@@ -33,30 +43,8 @@ pub enum HolonError {
     IndexOutOfRange(String),
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
-    #[error(
-        "Cross-transaction reference: {reference_kind}({reference_id}) belongs to tx {reference_tx}, \
-but the active transaction is tx {context_tx}."
-    )]
-    CrossTransactionReference {
-        reference_kind: String,
-        reference_id: String,
-        reference_tx: u64,
-        context_tx: u64,
-    },
-    #[error("Reference binding failed for {reference_kind}: {reason} (id: {reference_id:?})")]
-    ReferenceBindingFailed {
-        reference_kind: String,
-        reference_id: Option<String>,
-        reason: String,
-    },
-    #[error(
-        "Reference resolution failed for {reference_kind}({reference_id}): {reason}"
-    )]
-    ReferenceResolutionFailed {
-        reference_kind: String,
-        reference_id: String,
-        reason: String,
-    },
+    #[error("Invalid wire format for {wire_type}: {reason}")]
+    InvalidWireFormat { wire_type: String, reason: String },
     #[error("Invalid Transition, {0}")]
     InvalidTransition(String),
     #[error("Invalid Type, {0}")]
@@ -79,6 +67,10 @@ but the active transaction is tx {context_tx}."
     NotImplemented(String),
     #[error("Couldn't convert Record to {0}")]
     RecordConversion(String),
+    #[error("Reference binding failed for {reference_kind}: {reason} (id: {reference_id:?})")]
+    ReferenceBindingFailed { reference_kind: String, reference_id: Option<String>, reason: String },
+    #[error("Reference resolution failed for {reference_kind}({reference_id}): {reason}")]
+    ReferenceResolutionFailed { reference_kind: String, reference_id: String, reason: String },
     #[error("Service '{0}' is not available")]
     ServiceNotAvailable(String),
     #[error("to {0}")]

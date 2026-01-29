@@ -1,19 +1,39 @@
-use serde::{Deserialize, Serialize};
-use std::fmt;
-
-use crate::core_shared_objects::{summarize_holons, Holon, ReadableHolonState};
+use crate::core_shared_objects::transactions::TransactionContext;
+use crate::core_shared_objects::{
+    summarize_holons, Holon, HolonCollectionWire, HolonWire, ReadableHolonState,
+};
 use crate::dances::SessionState;
-use crate::query_layer::NodeCollection;
-use crate::{HolonCollection, HolonReference};
+use crate::query_layer::{NodeCollection, NodeCollectionWire};
+use crate::{HolonCollection, HolonReference, HolonReferenceWire};
 use base_types::MapString;
 use core_types::HolonError;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// Runtime dance response (tx-bound, execution-capable).
+///
+/// This type must not be deserialized across IPC boundaries because it may contain
+/// tx-bound references. Use `DanceResponseWire` for IPC and call `bind(context)` at ingress.
+#[derive(Debug, Clone, PartialEq)]
 pub struct DanceResponse {
     pub status_code: ResponseStatusCode,
     pub description: MapString,
     pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
+    pub state: Option<SessionState>,
+}
+
+/// IPC-safe wire-form dance response.
+///
+/// This is the context-free shape that may be decoded at IPC boundaries.
+/// Convert to runtime via `bind(context)`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DanceResponseWire {
+    pub status_code: ResponseStatusCode,
+    pub description: MapString,
+    pub body: ResponseBodyWire,
+    pub descriptor: Option<HolonReferenceWire>,
     pub state: Option<SessionState>,
 }
 
@@ -37,7 +57,8 @@ pub enum ResponseStatusCode {
 // Read-only results can be returned directly in ResponseBody as either a Holon or a
 // (serialized) SmartCollection
 // Staged holons will be returned via the StagingArea.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// Runtime response body (may contain tx-bound references).
+#[derive(Debug, Clone, PartialEq)]
 pub enum ResponseBody {
     None,
     Holon(Holon),
@@ -48,42 +69,145 @@ pub enum ResponseBody {
     // SmartCollection(SmartCollection),
 }
 
-impl From<HolonError> for ResponseStatusCode {
-    fn from(error: HolonError) -> Self {
-        match error {
-            HolonError::CacheError(_) => ResponseStatusCode::ServerError,
-            HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
-            HolonError::ConductorError(_) => ResponseStatusCode::ServerError,
-            HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
-            HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
-            HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
-            HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
-            HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
-            HolonError::FailedToAcquireLock(_) => ResponseStatusCode::ServerError,
-            HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
-            HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
-            HolonError::IndexOutOfRange(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidHolonReference(_) => ResponseStatusCode::BadRequest,
-            HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
-            HolonError::InvalidRelationship(_, _) => ResponseStatusCode::BadRequest,
-            HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidUpdate(_) => ResponseStatusCode::ServerError,
-            HolonError::LoaderParsingError(_) => ResponseStatusCode::UnprocessableEntity,
-            HolonError::Misc(_) => ResponseStatusCode::ServerError,
-            HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
-            HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
-            HolonError::NotImplemented(_) => ResponseStatusCode::NotImplemented,
-            HolonError::RecordConversion(_) => ResponseStatusCode::ServerError,
-            HolonError::ServiceNotAvailable(_) => ResponseStatusCode::ServerError,
-            HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
-            HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
-            HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
-            HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,
-            HolonError::WasmError(_) => ResponseStatusCode::ServerError,
+/// IPC-safe wire-form response body.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResponseBodyWire {
+    None,
+    Holon(HolonWire),
+    HolonCollection(HolonCollectionWire),
+    Holons(Vec<HolonWire>),
+    HolonReference(HolonReferenceWire),
+    NodeCollection(NodeCollectionWire),
+}
+
+impl DanceResponseWire {
+    /// Binds a wire response to the supplied transaction, validating `tx_id` for all embedded references.
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<DanceResponse, HolonError> {
+        Ok(DanceResponse {
+            status_code: self.status_code,
+            description: self.description,
+            body: self.body.bind(Arc::clone(&context))?,
+            descriptor: match self.descriptor {
+                None => None,
+                Some(reference_wire) => Some(HolonReference::bind(reference_wire, context)?),
+            },
+            state: self.state,
+        })
+    }
+}
+
+impl ResponseBodyWire {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<ResponseBody, HolonError> {
+        match self {
+            ResponseBodyWire::None => Ok(ResponseBody::None),
+            ResponseBodyWire::Holon(holon_wire) => {
+                Ok(ResponseBody::Holon(holon_wire.bind(context)?))
+            }
+            ResponseBodyWire::HolonCollection(collection_wire) => {
+                Ok(ResponseBody::HolonCollection(collection_wire.bind(context)?))
+            }
+            ResponseBodyWire::Holons(holons_wire) => {
+                let mut holons = Vec::with_capacity(holons_wire.len());
+                for holon_wire in holons_wire {
+                    holons.push(holon_wire.bind(Arc::clone(&context))?);
+                }
+                Ok(ResponseBody::Holons(holons))
+            }
+            ResponseBodyWire::HolonReference(reference_wire) => {
+                Ok(ResponseBody::HolonReference(HolonReference::bind(reference_wire, context)?))
+            }
+            ResponseBodyWire::NodeCollection(node_collection_wire) => {
+                Ok(ResponseBody::NodeCollection(node_collection_wire.bind(context)?))
+            }
         }
     }
 }
+
+impl From<&DanceResponse> for DanceResponseWire {
+    fn from(response: &DanceResponse) -> Self {
+        Self {
+            status_code: response.status_code.clone(),
+            description: response.description.clone(),
+            body: ResponseBodyWire::from(&response.body),
+            descriptor: response.descriptor.as_ref().map(HolonReferenceWire::from),
+            state: response.state.clone().or(Some(SessionState::default())),
+        }
+    }
+}
+
+impl From<&ResponseBody> for ResponseBodyWire {
+    fn from(body: &ResponseBody) -> Self {
+        match body {
+            ResponseBody::None => ResponseBodyWire::None,
+            ResponseBody::Holon(holon) => ResponseBodyWire::Holon(HolonWire::from(holon)),
+            ResponseBody::HolonCollection(collection) => {
+                ResponseBodyWire::HolonCollection(HolonCollectionWire::from(collection))
+            }
+            ResponseBody::Holons(holons) => {
+                ResponseBodyWire::Holons(holons.iter().map(HolonWire::from).collect())
+            }
+            ResponseBody::HolonReference(reference) => {
+                ResponseBodyWire::HolonReference(HolonReferenceWire::from(reference))
+            }
+            ResponseBody::NodeCollection(node_collection) => {
+                ResponseBodyWire::NodeCollection(NodeCollectionWire::from(node_collection))
+            }
+        }
+    }
+}
+
+impl From<HolonError> for ResponseStatusCode {
+    fn from(error: HolonError) -> Self {
+        match error {
+            // 500-ish (internal / infrastructure)
+            HolonError::CacheError(_) => ResponseStatusCode::ServerError,
+            HolonError::CommitFailure(_) => ResponseStatusCode::ServerError,
+            HolonError::ConductorError(_) => ResponseStatusCode::ServerError,
+            HolonError::DowncastFailure(_) => ResponseStatusCode::ServerError,
+            HolonError::FailedToBorrow(_) => ResponseStatusCode::ServerError,
+            HolonError::FailedToAcquireLock(_) => ResponseStatusCode::ServerError,
+            HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
+            HolonError::IndexOutOfRange(_) => ResponseStatusCode::ServerError,
+            HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
+            HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
+            HolonError::InvalidUpdate(_) => ResponseStatusCode::ServerError,
+            HolonError::RecordConversion(_) => ResponseStatusCode::ServerError,
+            HolonError::ServiceNotAvailable(_) => ResponseStatusCode::ServiceUnavailable,
+            HolonError::UnableToAddHolons(_) => ResponseStatusCode::ServerError,
+            HolonError::UnexpectedValueType(_, _) => ResponseStatusCode::ServerError,
+            HolonError::Utf8Conversion(_, _) => ResponseStatusCode::ServerError,
+            HolonError::WasmError(_) => ResponseStatusCode::ServerError,
+            HolonError::Misc(_) => ResponseStatusCode::ServerError,
+
+            // 404-ish (missing resource)
+            HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
+
+            // 409-ish (conflict with current state / invariants)
+            HolonError::CrossTransactionReference { .. } => ResponseStatusCode::Conflict,
+            HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
+            HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
+            HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
+
+            // 400-ish (client supplied invalid input / malformed request)
+            HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidHolonReference(_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidRelationship(_, _) => ResponseStatusCode::BadRequest,
+            HolonError::InvalidWireFormat { .. } => ResponseStatusCode::BadRequest,
+            HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
+
+            // 422-ish (semantic validation / parse errors)
+            HolonError::LoaderParsingError(_) => ResponseStatusCode::UnprocessableEntity,
+            HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,
+
+            // 501-ish
+            HolonError::NotImplemented(_) => ResponseStatusCode::NotImplemented,
+        }
+    }
+}
+
 impl fmt::Display for ResponseStatusCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -113,16 +237,6 @@ impl DanceResponse {
         DanceResponse { status_code, description, body, descriptor, state }
     }
 
-    //moved to the dancer
-    /*pub fn restore_state(&mut self, context: &dyn HolonsContextBehavior) {
-        let space_manager = &context.get_space_manager();
-        let staged_holons = space_manager.get_holon_stage();
-        let staged_index = space_manager.get_stage_key_index();
-        let staging_area = StagingArea::new_from_references(staged_holons, staged_index);
-        let local_space_holon = space_manager.get_space_holon();
-        self.state.set_staging_area(staging_area);
-        self.state.set_local_holon_space(local_space_holon);
-    }*/
     /// Annotates this response with a local processing error (e.g. envelope hydration failure).
     ///
     /// Preserves existing fields (body, descriptor, etc.) but:

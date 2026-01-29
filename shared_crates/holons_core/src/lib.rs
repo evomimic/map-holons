@@ -22,9 +22,9 @@ pub use core_shared_objects::{
 pub use core_types::HolonError;
 pub use reference_layer::holon_operations_api::*;
 pub use reference_layer::{
-    HolonCollectionApi, HolonReference, HolonReferenceSerializable, HolonServiceApi,
-    HolonSpaceBehavior, HolonStagingBehavior, HolonsContextBehavior, ReadableHolon, SmartReference,
-    SmartReferenceWire, StagedReference, StagedReferenceWire, TransientHolonBehavior,
-    TransientReference, TransientReferenceWire, WritableHolon,
+    HolonCollectionApi, HolonReference, HolonReferenceWire, HolonServiceApi, HolonSpaceBehavior,
+    HolonStagingBehavior, HolonsContextBehavior, ReadableHolon, SmartReference, SmartReferenceWire,
+    StagedReference, StagedReferenceWire, TransientHolonBehavior, TransientReference,
+    TransientReferenceWire, WritableHolon,
 };
 // pub use utils::*;

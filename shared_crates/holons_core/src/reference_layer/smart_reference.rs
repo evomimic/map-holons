@@ -478,3 +478,25 @@ impl From<&SmartReference> for SmartReferenceWire {
         )
     }
 }
+
+impl From<SmartReference> for SmartReferenceWire {
+    fn from(reference: SmartReference) -> Self {
+        SmartReferenceWire::from(&reference)
+    }
+}
+
+// ---------- SmartReference equality ----------
+//
+// Equality for tx-bound references must be based on stable identity,
+// not on `Arc<TransactionContext>` pointer identity.
+
+impl PartialEq for SmartReference {
+    fn eq(&self, other: &Self) -> bool {
+        self.context_handle.tx_id() == other.context_handle.tx_id()
+            && self.holon_id == other.holon_id
+        // NOTE: We intentionally do *not* include `smart_property_values` in equality.
+        // Those are cached hints and do not change the identity of the referenced holon.
+    }
+}
+
+impl Eq for SmartReference {}

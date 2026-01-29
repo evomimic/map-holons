@@ -410,3 +410,11 @@ impl From<TransientReference> for TransientReferenceWire {
         TransientReferenceWire::from(&reference)
     }
 }
+
+impl PartialEq for TransientReference {
+    fn eq(&self, other: &Self) -> bool {
+        self.context_handle.tx_id() == other.context_handle.tx_id() && self.id == other.id
+    }
+}
+
+impl Eq for TransientReference {}

@@ -192,17 +192,16 @@ impl ReadableHolonState for Holon {
 impl WriteableHolonState for Holon {
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         match self {
             Holon::Transient(h) => {
-                h.add_related_holons(context, relationship_name, holons)?;
+                h.add_related_holons(relationship_name, holons)?;
                 Ok(self)
             }
             Holon::Staged(h) => {
-                h.add_related_holons(context, relationship_name, holons)?;
+                h.add_related_holons(relationship_name, holons)?;
                 Ok(self)
             }
             Holon::Saved(_) => {
@@ -267,17 +266,16 @@ impl WriteableHolonState for Holon {
 
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         match self {
             Holon::Transient(h) => {
-                h.remove_related_holons(context, relationship_name, holons)?;
+                h.remove_related_holons(relationship_name, holons)?;
                 Ok(self)
             }
             Holon::Staged(h) => {
-                h.remove_related_holons(context, relationship_name, holons)?;
+                h.remove_related_holons(relationship_name, holons)?;
                 Ok(self)
             }
             Holon::Saved(_) => {
