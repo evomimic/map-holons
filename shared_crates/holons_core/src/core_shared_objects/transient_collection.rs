@@ -12,7 +12,7 @@ use core_types::HolonError;
 /// references to staged or existing holons.
 ///
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TransientCollection {
     // TransientCollections do not undergo state transitions, so they don't need a state field
     // or a guard function.
@@ -44,15 +44,10 @@ impl TransientCollection {
 
 impl HolonCollectionApi for TransientCollection {
     /// Adds the supplied HolonReferences to this holon collection and updates the keyed_index
-    /// accordingly. Currently, this method requires a `context`. Use `add_reference_with_key()` to
-    /// add individual references without requiring `context` when the key is known.
-    fn add_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    /// accordingly.
+    fn add_references(&mut self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
         for holon_ref in holons {
-            let key = holon_ref.key(context)?;
+            let key = holon_ref.key()?;
 
             if let Some(key) = key {
                 if let Some(&_index) = self.keyed_index.get(&key) {
@@ -70,7 +65,7 @@ impl HolonCollectionApi for TransientCollection {
 
     /// Adds the supplied HolonReference to this holon collection and updates the keyed_index
     /// according to the supplied key. This allows the collection to be populated when key is
-    /// known and context may not be available.
+    /// known.
     fn add_reference_with_key(
         &mut self,
         key: Option<&MapString>,
@@ -124,21 +119,17 @@ impl HolonCollectionApi for TransientCollection {
         }
     }
 
-    fn remove_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    fn remove_references(&mut self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
         for holon in holons {
             self.members.retain(|x| x != &holon);
-            if let Some(key) = holon.key(context)? {
+            if let Some(key) = holon.key()? {
                 self.keyed_index.remove(&key);
             }
         }
         // adjust new order of members in the keyed_index
         let mut i = 0;
         for member in self.members.clone() {
-            if let Some(key) = member.key(context)? {
+            if let Some(key) = member.key()? {
                 self.keyed_index.insert(key, i);
                 i += 1;
             }

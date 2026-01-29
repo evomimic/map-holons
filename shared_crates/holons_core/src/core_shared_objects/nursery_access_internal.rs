@@ -1,6 +1,7 @@
 use std::any::Any;
 
 use super::holon_pool::{HolonPool, SerializableHolonPool};
+use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -84,7 +85,10 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     ///
     /// This hides the underlying HolonPool and lock details from callers and is the
     /// entry point for the commit path.
-    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError>;
+    fn get_staged_references(
+        &self,
+        transaction_handle: &TransactionContextHandle,
+    ) -> Result<Vec<StagedReference>, HolonError>;
 }
 
 #[cfg(test)]

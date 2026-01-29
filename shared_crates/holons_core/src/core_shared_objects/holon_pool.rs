@@ -6,8 +6,7 @@ use std::{
 };
 
 use super::{Holon, HolonWire, ReadableHolonState, WriteableHolonState};
-use crate::core_shared_objects::holon::HolonWire;
-use crate::core_shared_objects::transactions::TransactionContext;
+use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
 use crate::utils::uuid::create_temporary_id_from_key;
 use crate::StagedReference;
 use base_types::MapString;
@@ -259,10 +258,16 @@ impl HolonPool {
     /// Returns a vector of `StagedReference`s for all holons currently staged in this pool.
     ///
     /// This provides a reference-layer view of the pool contents without exposing
-    /// the underlying Holon structs or locks. The references can then be passed
-    /// to higher-level commit or validation logic.
-    pub fn get_staged_references(&self) -> Vec<StagedReference> {
-        self.holons.keys().map(|temp_id| StagedReference::from_temporary_id(temp_id)).collect()
+    /// the underlying Holon structs or locks. All returned references are explicitly
+    /// bound to the supplied transaction context.
+    pub fn get_staged_references(
+        &self,
+        transaction_handle: TransactionContextHandle,
+    ) -> Vec<StagedReference> {
+        self.holons
+            .keys()
+            .map(|temp_id| StagedReference::from_temporary_id(transaction_handle.clone(), temp_id))
+            .collect()
     }
 
     /// Exports the HolonPool as a `SerializableHolonPool`.

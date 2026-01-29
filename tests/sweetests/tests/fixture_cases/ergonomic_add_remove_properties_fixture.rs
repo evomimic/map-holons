@@ -11,7 +11,7 @@ use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 #[fixture]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    
+
     let TestCaseInit { test_case, fixture_context, fixture_holons: _fixture_holons, fixture_bindings: _fixture_bindings } = TestCaseInit::new(
         "Ergonomic Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),

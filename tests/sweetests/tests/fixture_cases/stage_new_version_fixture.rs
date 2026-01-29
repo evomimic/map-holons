@@ -12,7 +12,7 @@ use holons_test::harness::helpers::{BOOK_KEY};
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
-    
+
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
             "Simple StageNewVersion Testcase".to_string(),

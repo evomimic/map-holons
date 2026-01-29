@@ -15,15 +15,15 @@
 //! The TypeScript side remains stateless and will later use lightweight
 //! dances/commands to navigate the response graph via references.
 
+use crate::errors::map_parsing_issues_to_holon_error;
+use crate::parser::parse_files_into_load_set;
 use base_types::MapString;
 use core_types::{ContentSet, HolonError};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::{load_holons, HolonsContextBehavior, TransientReference};
 use holons_core::HolonReference;
 use std::sync::Arc;
 use tracing::debug;
-
-use crate::errors::map_parsing_issues_to_holon_error;
-use crate::parser::parse_files_into_load_set;
 
 /// Primary entry point for the host-side Holon Loader.
 ///
@@ -52,7 +52,7 @@ use crate::parser::parse_files_into_load_set;
 ///   The underlying dance execution is already bridged from async → sync
 ///   inside the `HolonServiceApi` implementation.
 pub async fn load_holons_from_files(
-    context: Arc<dyn HolonsContextBehavior>,
+    context: Arc<TransactionContext>,
     content_set: ContentSet,
 ) -> Result<TransientReference, HolonError> {
     debug!("[loader-client] start load_holons_from_files");
@@ -76,7 +76,7 @@ pub async fn load_holons_from_files(
     let load_set_key: Option<MapString> = Some(MapString("HolonLoadSet".to_string()));
 
     let load_set_reference: HolonReference =
-        match parse_files_into_load_set(context.as_ref(), load_set_key, &content_set) {
+        match parse_files_into_load_set(&context, load_set_key, &content_set) {
             Ok(reference) => reference,
             Err(issues) => {
                 let error = map_parsing_issues_to_holon_error(&issues);

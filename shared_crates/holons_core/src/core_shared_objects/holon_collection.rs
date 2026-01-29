@@ -36,7 +36,7 @@ impl fmt::Display for CollectionState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HolonCollection {
     state: CollectionState,
     members: Vec<HolonReference>,

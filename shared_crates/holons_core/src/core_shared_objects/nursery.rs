@@ -277,13 +277,16 @@ impl NurseryAccessInternal for Nursery {
     ///
     /// This is the main entry for the commit pipeline and avoids exposing
     /// the underlying HolonPool or `Arc<RwLock<Holon>>` handles.
-    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError> {
+    fn get_staged_references(
+        &self,
+        transaction_handle: &TransactionContextHandle,
+    ) -> Result<Vec<StagedReference>, HolonError> {
         let guard = self.staged_holons.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on staged_holons: {}",
                 e
             ))
         })?;
-        Ok(guard.get_staged_references())
+        Ok(guard.get_staged_references(transaction_handle.clone()))
     }
 }

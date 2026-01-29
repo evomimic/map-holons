@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse};
+use std::sync::Arc;
 use tracing::debug;
 
 use crate::envelopes::session_state_envelope::SessionStateEnvelope;
@@ -26,21 +27,23 @@ impl TrustChannel {
 impl DanceInitiator for TrustChannel {
     async fn initiate_dance(
         &self,
-        context: &TransactionContext,
+        context: Arc<TransactionContext>,
         mut request: DanceRequest,
     ) -> DanceResponse {
         // --- Outbound session state encapsulation -----------------------------
-        if let Err(err) = SessionStateEnvelope::attach_to_request(context, &mut request) {
+        if let Err(err) = SessionStateEnvelope::attach_to_request(&context, &mut request) {
             return DanceResponse::from_error(err);
         }
 
         debug!("TrustChannel::initiate_dance() — prepared request: {:?}", request.summarize());
 
         // --- Transmit via backend --------------------------------------------
-        let mut response = self.backend.initiate_dance(context, request).await;
+        let context_for_backend = Arc::clone(&context);
+
+        let mut response = self.backend.initiate_dance(context_for_backend, request).await;
 
         // --- Inbound session state hydration ---------------------------------
-        if let Err(err) = SessionStateEnvelope::hydrate_from_response(context, &response) {
+        if let Err(err) = SessionStateEnvelope::hydrate_from_response(&context, &response) {
             // Instead of discarding the response, annotate it with local error context.
             response.annotate_error(err);
         }

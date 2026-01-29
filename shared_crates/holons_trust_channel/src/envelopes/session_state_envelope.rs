@@ -1,6 +1,7 @@
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
 use holons_core::{HolonError, HolonReference, HolonsContextBehavior};
+use std::sync::Arc;
 use tracing::debug;
 
 /// The SessionStateEnvelope layer manages attaching and restoring SessionState
@@ -16,7 +17,7 @@ impl SessionStateEnvelope {
     ///
     /// Inject the current session state into a DanceRequest before sending.
     pub fn attach_to_request(
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         request: &mut DanceRequest,
     ) -> Result<(), HolonError> {
         let mut session_state = SessionState::default();
@@ -35,7 +36,7 @@ impl SessionStateEnvelope {
     /// Hydrate the local environment (nursery, transient manager, and local holon)
     /// from the SessionState contained in a DanceResponse.
     pub fn hydrate_from_response(
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         response: &DanceResponse,
     ) -> Result<(), HolonError> {
         let Some(state) = &response.state else {
@@ -46,7 +47,7 @@ impl SessionStateEnvelope {
         context.import_transient_holons(state.get_transient_holons().clone())?;
 
         if let Some(space_ref_wire) = state.get_local_space_holon_wire() {
-            let space_ref = HolonReference::bind(space_ref_wire, context.clone())?;
+            let space_ref = HolonReference::bind(space_ref_wire, Arc::clone(context))?;
             context.set_space_holon(space_ref)?;
         }
 

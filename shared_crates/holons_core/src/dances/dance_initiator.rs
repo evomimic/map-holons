@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 
-use crate::dances::{DanceRequest, DanceResponse};
 use crate::core_shared_objects::transactions::TransactionContext;
+use crate::dances::{DanceRequest, DanceResponse};
 use std::fmt::Debug;
+use std::sync::Arc;
 
 /// Canonical trait for initiating outbound Dances.
 ///
@@ -21,7 +22,7 @@ pub trait DanceInitiator: Send + Sync + Debug {
     /// the environment (e.g., native conductor, Tauri bridge, or mock testing).
     async fn initiate_dance(
         &self,
-        context: &TransactionContext,
+        context: Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse;
 }
