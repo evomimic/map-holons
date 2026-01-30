@@ -47,7 +47,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  MATCH SAVED CONTENT  //
-    // test_case.add_match_saved_content_step()?;
+    test_case.add_match_saved_content_step()?;
 
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
