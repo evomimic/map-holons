@@ -36,6 +36,7 @@
 
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
 use holons_core::ReadableHolon;
@@ -140,7 +141,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn get_all_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
         let initiator = context.get_dance_initiator()?;
@@ -164,7 +165,7 @@ impl HolonServiceApi for ClientHolonService {
     fn load_holons_internal(
         &self,
         context: &dyn HolonsContextBehavior,
-        set: TransientReference, // HolonLoadSet
+        set: TransientReference, // HolonLoadSet type
     ) -> Result<TransientReference, HolonError> {
         // 1) Build the dance request for the loader.
         let request = holon_dance_builders::build_load_holons_dance_request(set)?;
@@ -188,7 +189,7 @@ impl HolonServiceApi for ClientHolonService {
         // 5) Extract the returned holon
         match response.body {
             ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
-            ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(context),
+            ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(),
             _ => Err(HolonError::InvalidParameter(
                 "LoadHolons: expected ResponseBody::HolonReference".into(),
             )),

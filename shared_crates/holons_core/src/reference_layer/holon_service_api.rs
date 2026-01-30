@@ -2,8 +2,8 @@ use std::any::Any;
 use std::fmt::Debug;
 
 use super::TransientReference;
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
-use crate::reference_layer::HolonsContextBehavior;
 use crate::RelationshipMap;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 
@@ -30,7 +30,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// This function commits the staged holons to the persistent store
     fn commit_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
     ) -> Result<TransientReference, HolonError>;
 
     /// This function deletes the saved holon identified by  from the persistent store
@@ -38,7 +38,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError>;
 
@@ -46,6 +46,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
 
     fn fetch_related_holons_internal(
         &self,
+        context: &TransactionContext,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
@@ -57,7 +58,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// Returns a transient reference to a HolonLoadResponse holon.
     fn load_holons_internal(
         &self,
-        ctx: &dyn HolonsContextBehavior,
+        ctx: &TransactionContext,
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 }

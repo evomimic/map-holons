@@ -327,6 +327,7 @@ pub fn stage_new_version_from_id(
     let smart = SmartReference::new_from_id(handle, holon_id);
 
     stage_new_version(context, smart)
+    // maybe later: staging_service.stage_new_version_from_id(holon_id)
 }
 
 // ======
