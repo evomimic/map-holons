@@ -44,7 +44,7 @@ impl LoaderHolonMapper {
     /// - Stages properties-only holons (filters loader-only props); fills counts
     /// - Collects LoaderRelationshipReference transients into `queued_relationship_references`
     pub fn map_bundle(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         bundle: TransientReference,
     ) -> Result<MapperOutput, HolonError> {
         let mut output = MapperOutput::default();
@@ -77,7 +77,7 @@ impl LoaderHolonMapper {
                     output.staged_count += 1;
 
                     // Queue relationship references only for successfully staged holons.
-                    match Self::collect_loader_rel_refs(context, loader_reference) {
+                    match Self::collect_loader_rel_refs(loader_reference) {
                         Ok(relationship_refs) => {
                             output.queued_relationship_references.extend(relationship_refs)
                         }
@@ -105,7 +105,7 @@ impl LoaderHolonMapper {
     /// - `key` MUST be present on the LoaderHolon (we currently do not support keyless).
     /// - Loader-only properties (e.g., `StartUtf8ByteOffset`) are **not** copied to the target.
     pub fn build_target_staged(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         loader: &HolonReference,
     ) -> Result<(StagedReference, MapString), HolonError> {
         // Produce a detached TransientReference so we can access raw properties

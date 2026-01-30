@@ -54,7 +54,7 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
 /// - If `provenance` + `source_loader_key` are available, stamp:
 ///     LoaderHolonKey, Filename, StartUtf8ByteOffset.
 pub fn make_error_holons_best_effort(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
     errors: &[ErrorWithContext],
     provenance: Option<&ProvenanceIndex>,
 ) -> Result<Vec<TransientReference>, HolonError> {
@@ -128,7 +128,7 @@ pub fn make_error_holons_best_effort(
 ///
 /// Use this helper to create both typed and untyped error holons from a single entry point.
 pub fn make_error_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
     descriptor: Option<HolonReference>,
     err: &HolonError,
 ) -> Result<TransientReference, HolonError> {
@@ -136,7 +136,7 @@ pub fn make_error_holon(
     if let Some(desc) = descriptor {
         transient_reference.with_descriptor(desc)?;
     }
-    populate_error_fields(context, &mut transient_reference, err)?;
+    populate_error_fields(&mut transient_reference, err)?;
     Ok(transient_reference)
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,7 +160,6 @@ fn create_empty_error_holon(
 }
 
 fn populate_error_fields(
-    context: &dyn HolonsContextBehavior,
     error_ref: &mut TransientReference,
     err: &HolonError,
 ) -> Result<(), HolonError> {

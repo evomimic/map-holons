@@ -68,10 +68,7 @@ impl ResolverState {
     /// Ensure we have a saved holon index available.
     /// If already present, this is a no-op. Otherwise, it attempts to fetch
     /// all holons once via the HolonOperationsApi and stores the collection.
-    pub fn ensure_saved_index(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError> {
+    pub fn ensure_saved_index(&mut self, context: &TransactionContext) -> Result<(), HolonError> {
         if self.saved_index.is_some() {
             return Ok(());
         }
@@ -97,7 +94,7 @@ impl LoaderRefResolver {
     ///   2) Pass-2b: declared InverseOf → add_related_holons() (no prefilter)
     ///   3) Pass-2c: process remaining relationship references
     pub fn resolve_relationships(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         queued_relationship_references: Vec<TransientReference>,
     ) -> Result<ResolverOutcome, HolonError> {
         let mut outcome = ResolverOutcome::default();
@@ -167,12 +164,12 @@ impl LoaderRefResolver {
 
     /// Returns true if the LRR is declared (IsDeclared = true). Errors default to false.
     fn is_declared(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
     ) -> bool {
         let is_declared_property: PropertyName =
             CorePropertyTypeName::IsDeclared.as_property_name();
-        match relationship_reference.property_value(context, &is_declared_property) {
+        match relationship_reference.property_value(&is_declared_property) {
             Ok(Some(BaseValue::BooleanValue(b))) => b.0,
             _ => false,
         }
@@ -180,13 +177,13 @@ impl LoaderRefResolver {
 
     /// Returns true if the LRR’s relationship name equals `relationship_name`.
     fn has_relationship_name(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
         relationship_name: &RelationshipName,
     ) -> bool {
         let relationship_name_property: PropertyName =
             CorePropertyTypeName::RelationshipName.as_property_name();
-        match relationship_reference.property_value(context, &relationship_name_property) {
+        match relationship_reference.property_value(&relationship_name_property) {
             Ok(Some(BaseValue::StringValue(MapString(s)))) => {
                 &s.to_relationship_name() == relationship_name
             }
@@ -196,7 +193,7 @@ impl LoaderRefResolver {
 
     /// Returns true if the LRR is a declared DescribedBy relationship.
     fn is_described_by_declared(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
     ) -> bool {
         let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
@@ -206,7 +203,7 @@ impl LoaderRefResolver {
 
     /// Returns true if the LRR is a declared InverseOf relationship.
     fn is_inverse_of_declared(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
     ) -> bool {
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
@@ -220,7 +217,7 @@ impl LoaderRefResolver {
 
     /// Writes all declared DescribedBy edges; enforces exactly one target.
     fn pass_2a_write_described_by_declared(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         queue: &[TransientReference],
         seen: &mut HashSet<RelationshipEdgeKey>,
         outcome: &mut ResolverOutcome,
@@ -311,7 +308,7 @@ impl LoaderRefResolver {
 
     /// Writes all declared InverseOf edges (no endpoint prefilter).
     fn pass_2b_write_inverse_of_declared(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         queue: &[TransientReference],
         seen: &mut HashSet<RelationshipEdgeKey>,
         outcome: &mut ResolverOutcome,
@@ -388,7 +385,7 @@ impl LoaderRefResolver {
     /// After 2a/2b, process all remaining references together.
     /// Removes successes & fatals; retains only deferrables; stops at fixed point.
     fn process_remaining_references(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         resolver_state: &mut ResolverState,
         mut remaining_queue: Vec<TransientReference>,
         seen: &mut HashSet<RelationshipEdgeKey>,
@@ -461,7 +458,7 @@ impl LoaderRefResolver {
 
     /// Resolve the declared relationship name for a single inverse LRR via type-gated graph walk.
     fn declared_name_for_inverse(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         resolver_state: &mut ResolverState,
         inverse_name: &RelationshipName,
         src_endpoint: &HolonReference,
@@ -497,8 +494,7 @@ impl LoaderRefResolver {
 
         // 4) Follow InverseOf from the inverse RTD to the declared RTD.
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        let declared_handle =
-            inverse_relationship_descriptor.related_holons(context, &inverse_of)?;
+        let declared_handle = inverse_relationship_descriptor.related_holons(&inverse_of)?;
         debug!("[resolver] found declared TypeDescriptor");
 
         let related_members: Vec<HolonReference> = {
@@ -551,7 +547,7 @@ impl LoaderRefResolver {
 
     /// Extracts (relationship_name, is_declared) from an LRR.
     fn extract_relationship_metadata(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
     ) -> Result<(RelationshipName, bool), HolonError> {
         let relationship_name_property: PropertyName =
@@ -559,11 +555,10 @@ impl LoaderRefResolver {
         let is_declared_property: PropertyName =
             CorePropertyTypeName::IsDeclared.as_property_name();
 
-        let relationship_value = relationship_reference
-            .property_value(context, &relationship_name_property)?
-            .ok_or_else(|| {
-                HolonError::EmptyField("LoaderRelationshipReference.RelationshipName".into())
-            })?;
+        let relationship_value =
+            relationship_reference.property_value(&relationship_name_property)?.ok_or_else(
+                || HolonError::EmptyField("LoaderRelationshipReference.RelationshipName".into()),
+            )?;
 
         let relationship_name = match relationship_value {
             BaseValue::StringValue(MapString(text)) => text.to_relationship_name(),
@@ -576,9 +571,9 @@ impl LoaderRefResolver {
         };
 
         let is_declared_value =
-            relationship_reference.property_value(context, &is_declared_property)?.ok_or_else(
-                || HolonError::EmptyField("LoaderRelationshipReference.IsDeclared".into()),
-            )?;
+            relationship_reference.property_value(&is_declared_property)?.ok_or_else(|| {
+                HolonError::EmptyField("LoaderRelationshipReference.IsDeclared".into())
+            })?;
 
         let is_declared_flag: bool = match is_declared_value {
             BaseValue::BooleanValue(inner) => inner.0,
@@ -595,17 +590,15 @@ impl LoaderRefResolver {
     /// Returns (source_holon, target_holons) where each has been dereferenced
     /// from its LoaderHolonReference wrapper.
     fn resolve_endpoints(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
     ) -> Result<(HolonReference, Vec<HolonReference>), HolonError> {
         let source_relationship = CoreRelationshipTypeName::ReferenceSource;
         let target_relationship = CoreRelationshipTypeName::ReferenceTarget;
 
         // Get LoaderHolonReference wrappers (not the actual holons yet)
-        let source_refs_handle =
-            relationship_reference.related_holons(context, source_relationship)?;
-        let target_refs_handle =
-            relationship_reference.related_holons(context, target_relationship)?;
+        let source_refs_handle = relationship_reference.related_holons(source_relationship)?;
+        let target_refs_handle = relationship_reference.related_holons(target_relationship)?;
 
         // NOTE: Safe to hold these read locks in resolver paths; parser-produced bundles are immutable during Pass-2.
         let source_guard = source_refs_handle.read().map_err(|_| {
@@ -675,7 +668,7 @@ impl LoaderRefResolver {
     /// 2. `holon_id` → saved holon by ID
     /// 3. (Future) `proxy_key`/`proxy_id` → external holon via proxy
     fn resolve_loader_holon_reference(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         loader_ref: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
         // Property names from LoaderHolonReference schema
@@ -683,9 +676,7 @@ impl LoaderRefResolver {
         // let holon_id_property = CorePropertyTypeName::HolonId.as_property_name(); // to be used with holon id lookup below
 
         // Try holon_key first (local staged)
-        if let Some(BaseValue::StringValue(key)) =
-            loader_ref.property_value(context, &holon_key_property)?
-        {
+        if let Some(BaseValue::StringValue(key)) = loader_ref.property_value(&holon_key_property)? {
             debug!("[resolver] dereference LHR by holon_key='{}'", key.0);
             // Use the convenience API for single expected match
             return match get_staged_holon_by_base_key(context, &key) {
@@ -709,7 +700,7 @@ impl LoaderRefResolver {
         // TODO: un-comment when saved holon fetch by ID is implemented (we need a MapBytes BaseValue variant)
         // Try holon_id (saved)
         // if let Some(BaseValue::BytesValue(id_bytes)) =
-        //     loader_ref.property_value(context, &holon_id_property)?
+        //     loader_ref.property_value(&holon_id_property)?
         // {
         //     // Convert MapBytes to HolonId
         //     let holon_id = HolonId::try_from(id_bytes.0.as_slice()).map_err(|e| {
@@ -738,7 +729,7 @@ impl LoaderRefResolver {
     ///   return an `EmptyField` error because after Pass‑2a every holon should have a resolved descriptor;
     ///   missing descriptors at this stage are unexpected and indicate malformed input or earlier failure.
     fn resolve_type_descriptor(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         endpoint: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
         let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
@@ -747,7 +738,7 @@ impl LoaderRefResolver {
 
         // Read `DescribedBy` targets (propagate access errors).
         // NOTE: Safe to hold this read lock in resolver paths; bundles & RTD sets are immutable during Pass-2.
-        let related_handle = endpoint.related_holons(context, &described_by)?;
+        let related_handle = endpoint.related_holons(&described_by)?;
         let related_guard = related_handle.read().map_err(|_| {
             HolonError::FailedToBorrow("DescribedBy collection read lock poisoned".into())
         })?;
@@ -785,7 +776,7 @@ impl LoaderRefResolver {
     ///   2) Saved fallback via a pre-fetched HolonCollection and `get_by_key`
     /// Returns `Ok(None)` if not found in either place.
     fn find_relationship_type_by_key(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         resolver_state: &mut ResolverState,
         canonical_key: &MapString,
     ) -> Result<Option<HolonReference>, HolonError> {
@@ -834,7 +825,7 @@ impl LoaderRefResolver {
 
     /// Returns true if the holon's `InstanceTypeKind == "Relationship"`.
     fn is_relationship_type_kind(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         holon_reference: &HolonReference,
     ) -> bool {
         debug!("[resolver] entering is_relationship_type_kind");
@@ -842,7 +833,7 @@ impl LoaderRefResolver {
         let property_name: PropertyName = CorePropertyTypeName::InstanceTypeKind.as_property_name();
         let expected = TypeKind::Relationship.to_string();
 
-        match holon_reference.property_value(context, &property_name) {
+        match holon_reference.property_value(&property_name) {
             Ok(Some(PropertyValue::StringValue(MapString(actual)))) => actual == expected,
 
             _ => false,
@@ -855,14 +846,14 @@ impl LoaderRefResolver {
 
     /// Ensures a writable staged source (promote saved → staged if policy allows).
     fn resolve_staged_write_source(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         write_source_endpoint: &HolonReference,
     ) -> Result<StagedReference, HolonError> {
         // 1) If the endpoint already corresponds to a staged holon, use it (prefer versioned key).
         if let HolonReference::Staged(s) = write_source_endpoint {
             return Ok(s.clone());
         }
-        if let Ok(versioned_key) = write_source_endpoint.versioned_key(context) {
+        if let Ok(versioned_key) = write_source_endpoint.versioned_key() {
             // Short read lock to check by versioned key
             if let Ok(staged_ref) = { get_staged_holon_by_versioned_key(context, &versioned_key) } {
                 return Ok(staged_ref);
@@ -870,7 +861,7 @@ impl LoaderRefResolver {
         }
 
         // Try base key as a secondary staged lookup.
-        if let Ok(Some(base_key)) = write_source_endpoint.key(context) {
+        if let Ok(Some(base_key)) = write_source_endpoint.key() {
             let staged_matches = get_staged_holons_by_base_key(context, &base_key)?;
 
             match staged_matches.len() {
@@ -899,9 +890,8 @@ impl LoaderRefResolver {
         }
 
         // 2) Promotion path: saved → stage a new version (requires HolonId).
-        if let Ok(saved_id) = write_source_endpoint.holon_id(context) {
-            let smart_reference = SmartReference::new_from_id(saved_id);
-            let staged_reference = stage_new_version(context, smart_reference)?;
+        if let Ok(saved_id) = write_source_endpoint.holon_id() {
+            let staged_reference = stage_new_version_from_id(context, saved_id)?;
             return Ok(staged_reference);
         }
 
@@ -915,7 +905,7 @@ impl LoaderRefResolver {
     /// - DescribedBy: exactly one target → `with_descriptor`
     /// - Others: batch → `add_related_holons`
     fn write_relationship(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         mut staged_source: StagedReference,
         declared_relationship_name: &RelationshipName,
         mut write_targets: Vec<HolonReference>,
@@ -928,7 +918,7 @@ impl LoaderRefResolver {
                 0 => Ok(0), // nothing to do (likely deduped earlier)
                 1 => {
                     // Exactly one descriptor: attach it
-                    staged_source.with_descriptor(context, write_targets.remove(0))?;
+                    staged_source.with_descriptor(write_targets.remove(0))?;
                     Ok(1)
                 }
                 _ => {
@@ -947,18 +937,14 @@ impl LoaderRefResolver {
         }
 
         let number_of_targets = write_targets.len() as i64;
-        staged_source.add_related_holons(
-            context,
-            declared_relationship_name.clone(),
-            write_targets,
-        )?;
+        staged_source.add_related_holons(declared_relationship_name.clone(), write_targets)?;
 
         Ok(number_of_targets)
     }
 
     /// Builds a stable dedupe key for (source, relationship, target).
     fn make_edge_key(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         source_ref: &HolonReference,
         relationship_name: &RelationshipName,
         target_ref: &HolonReference,
@@ -986,21 +972,21 @@ impl LoaderRefResolver {
     /// 3) Fall back to base key (prefixed with provenance).
     /// 4) Final fallback includes provenance as well.
     fn best_identifier_for_dedupe(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         reference: &HolonReference,
     ) -> String {
         // If we can resolve a HolonId, that’s the canonical identity across staged/saved.
-        if let Ok(id) = reference.holon_id(context) {
+        if let Ok(id) = reference.holon_id() {
             return format!("id:{id}");
         }
 
         // Otherwise we’re in key territory—prefix to avoid staged/saved collisions.
         let prefix = Self::provenance_prefix(reference);
 
-        if let Ok(vk) = reference.versioned_key(context) {
+        if let Ok(vk) = reference.versioned_key() {
             return format!("{prefix}vkey:{vk}");
         }
-        if let Ok(Some(k)) = reference.key(context) {
+        if let Ok(Some(k)) = reference.key() {
             return format!("{prefix}key:{k}");
         }
 
@@ -1010,7 +996,7 @@ impl LoaderRefResolver {
     /// Handle a single DECLARED (non-InverseOf, non-DescribedBy) reference.
     /// Returns number of links created (may be 0 if dedup) or an error.
     fn try_declared_single_resolve(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         relationship_reference: &TransientReference,
         seen: &mut HashSet<RelationshipEdgeKey>,
     ) -> Result<i64, HolonError> {
@@ -1066,7 +1052,7 @@ impl LoaderRefResolver {
     /// Returns number of links created (sum across flipped targets) or an error
     /// if *no* targets could be processed (fatal). Deferrables should be returned as Err(deferrable).
     fn try_inverse_single_resolve(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         resolver_state: &mut ResolverState,
         relationship_reference: &TransientReference,
         seen: &mut HashSet<RelationshipEdgeKey>,
@@ -1149,11 +1135,11 @@ impl LoaderRefResolver {
 
     /// Read a required string property from a holon reference.
     fn read_string_property(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         holon: &HolonReference,
         property_name: &PropertyName,
     ) -> Result<MapString, HolonError> {
-        match holon.property_value(context, property_name)? {
+        match holon.property_value(property_name)? {
             Some(BaseValue::StringValue(s)) => Ok(s),
             Some(other) => {
                 Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".into()))
@@ -1163,7 +1149,7 @@ impl LoaderRefResolver {
     }
 
     /// Short diagnostic summary for a LoaderRelationshipReference.
-    fn brief_lrr_summary(context: &dyn HolonsContextBehavior, lrr: &TransientReference) -> String {
+    fn brief_lrr_summary(context: &TransactionContext, lrr: &TransientReference) -> String {
         let (name, is_decl) = Self::extract_relationship_metadata(context, lrr)
             .unwrap_or_else(|_| (RelationshipName(MapString("<unknown>".into())), false));
         format!("name={}, declared={}", name, is_decl)
@@ -1183,16 +1169,16 @@ impl LoaderRefResolver {
 
     /// Extract the LoaderHolon key from the LRR's ReferenceSource (if present).
     fn source_loader_key_of_lrr(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         lrr: &TransientReference,
     ) -> Option<MapString> {
         let source_rel = CoreRelationshipTypeName::ReferenceSource.as_relationship_name();
-        let handle = lrr.related_holons(context, source_rel).ok()?;
+        let handle = lrr.related_holons(source_rel).ok()?;
         let guard = handle.read().ok()?;
         let first = guard.get_members().get(0)?;
         // The ReferenceSource points to a LoaderHolonReference which carries HolonKey.
         let key_prop = CorePropertyTypeName::HolonKey.as_property_name();
-        match first.property_value(context, &key_prop).ok()? {
+        match first.property_value(&key_prop).ok()? {
             Some(BaseValue::StringValue(k)) if !k.0.is_empty() => Some(k),
             _ => None,
         }
@@ -1200,7 +1186,7 @@ impl LoaderRefResolver {
 
     /// Wrap a HolonError with contextual loader key (if available).
     fn error_with_context(
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         lrr: &TransientReference,
         err: HolonError,
     ) -> ErrorWithContext {
