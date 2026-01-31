@@ -150,11 +150,10 @@ pub fn commit(
 
             match commit_holon(staged_reference, context) {
                 Ok(CommitOutcome::Saved) => {
-                    let holon_id = staged_reference.holon_id(context)?;
-                    let key_string: MapString =
-                        staged_reference.key(context)?.ok_or_else(|| {
-                            HolonError::HolonNotFound("Committed holon has no key".into())
-                        })?;
+                    let holon_id = staged_reference.holon_id()?;
+                    let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
+                        HolonError::HolonNotFound("Committed holon has no key".into())
+                    })?;
                     let saved_reference = HolonReference::smart_with_key(holon_id, key_string);
                     saved_holons.push(saved_reference);
                 }

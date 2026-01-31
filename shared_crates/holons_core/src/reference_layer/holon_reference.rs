@@ -62,18 +62,17 @@ impl HolonReference {
     /// Binds a wire reference enum to a TransactionContext, validating tx_id.
     pub fn bind(
         wire: HolonReferenceWire,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
         match wire {
             HolonReferenceWire::Transient(transient) => {
-                TransientReference::bind(transient, Arc::clone(&context))
-                    .map(HolonReference::Transient)
+                TransientReference::bind(transient, context).map(HolonReference::Transient)
             }
             HolonReferenceWire::Staged(staged) => {
-                StagedReference::bind(staged, Arc::clone(&context)).map(HolonReference::Staged)
+                StagedReference::bind(staged, context).map(HolonReference::Staged)
             }
             HolonReferenceWire::Smart(smart) => {
-                SmartReference::bind(smart, Arc::clone(&context)).map(HolonReference::Smart)
+                SmartReference::bind(smart, context).map(HolonReference::Smart)
             }
         }
     }

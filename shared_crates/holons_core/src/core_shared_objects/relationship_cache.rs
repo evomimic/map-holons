@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tracing::debug;
 
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
 use crate::HolonsContextBehavior;
@@ -25,7 +26,7 @@ impl RelationshipCache {
     /// Retrieves a RelationshipMap for the source HolonReference by calling the HolonService to fetch all related Holons.
     pub fn get_all_related_holons(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
@@ -47,6 +48,7 @@ impl RelationshipCache {
     /// repeated calls to the `fetch_related_holons` method of the `HolonServiceApi`.
     pub fn related_holons(
         &self,
+        context: &TransactionContext,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
@@ -78,8 +80,11 @@ impl RelationshipCache {
         "Cache miss for source_holon_id: {:?}, relationship_name: {:?}. Fetching from HolonServiceApi.",
         source_holon_id, relationship_name
     );
-        let fetched_holons =
-            holon_service.fetch_related_holons_internal(&source_holon_id, relationship_name)?;
+        let fetched_holons = holon_service.fetch_related_holons_internal(
+            context,
+            &source_holon_id,
+            relationship_name,
+        )?;
         // Wrap in Arc<RwLock> for caching
         let fetched_arc = Arc::new(RwLock::new(fetched_holons));
 

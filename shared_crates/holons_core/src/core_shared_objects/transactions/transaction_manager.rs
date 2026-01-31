@@ -167,6 +167,7 @@ mod tests {
 
         fn fetch_related_holons_internal(
             &self,
+            _context: &TransactionContext,
             _source_id: &HolonId,
             _relationship_name: &RelationshipName,
         ) -> Result<HolonCollection, HolonError> {
@@ -179,7 +180,7 @@ mod tests {
 
         fn load_holons_internal(
             &self,
-            _ctx: &TransactionContext,
+            _context: &TransactionContext,
             _bundle: TransientReference,
         ) -> Result<TransientReference, HolonError> {
             not_implemented()

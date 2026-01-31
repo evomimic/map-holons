@@ -1,13 +1,11 @@
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
 use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
 
 use crate::core_shared_objects::transactions::TxId;
 use crate::core_shared_objects::{HolonCacheAccess, TransientCollection};
 use crate::dances::dance_initiator::DanceInitiator;
-use crate::reference_layer::{
-    HolonReference, HolonServiceApi,
-};
+use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 /// Defines the execution surface for a single transaction within a space.
 pub trait HolonsContextBehavior: Debug + Send + Sync {
@@ -29,8 +27,8 @@ pub trait HolonsContextBehavior: Debug + Send + Sync {
     /// Retrieves the local space holon reference.
     fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError>;
 
-    /// Updates the local space holon reference.
-    fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError>;
+    /// Updates the local space holon reference id.
+    fn set_space_holon_id(&self, space: HolonId) -> Result<(), HolonError>;
 
     /// Provides access to the transient state collection.
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>>;

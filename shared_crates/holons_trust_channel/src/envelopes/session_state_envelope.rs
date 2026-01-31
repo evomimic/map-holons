@@ -1,6 +1,7 @@
+use core_types::HolonId;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
-use holons_core::{HolonError, HolonReference, HolonsContextBehavior};
+use holons_core::{HolonError, HolonReference, HolonReferenceWire, HolonsContextBehavior};
 use std::sync::Arc;
 use tracing::debug;
 
@@ -46,12 +47,29 @@ impl SessionStateEnvelope {
         context.import_staged_holons(state.get_staged_holons().clone())?;
         context.import_transient_holons(state.get_transient_holons().clone())?;
 
+        // Space holon anchor is stored as a wire reference for now; extract HolonId without binding.
         if let Some(space_ref_wire) = state.get_local_space_holon_wire() {
-            let space_ref = HolonReference::bind(space_ref_wire, Arc::clone(context))?;
-            context.set_space_holon(space_ref)?;
+            let space_holon_id = space_holon_id_from_wire_reference(&space_ref_wire)?;
+            context.set_space_holon_id(space_holon_id)?;
         }
 
         debug!("SessionStateEnvelope::hydrate_from_response() — {}", state.summarize());
         Ok(())
+    }
+}
+
+// TEMPORARY: remove once SessionState stores HolonId directly
+/// Extracts the persisted holon id from a wire reference suitable for anchoring the space holon.
+///
+/// The space holon must always be persisted, so only SmartReferenceWire is accepted.
+fn space_holon_id_from_wire_reference(
+    reference_wire: &HolonReferenceWire,
+) -> Result<HolonId, HolonError> {
+    match reference_wire {
+        HolonReferenceWire::Smart(smart_wire) => Ok(smart_wire.holon_id().clone()),
+        other => Err(HolonError::InvalidHolonReference(format!(
+            "Space holon must be a SmartReferenceWire; got {:?}",
+            other
+        ))),
     }
 }

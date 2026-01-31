@@ -5,7 +5,7 @@ use std::sync::{
     Arc, RwLock,
 };
 
-use core_types::{HolonError, TemporaryId};
+use core_types::{HolonError, HolonId, TemporaryId};
 
 use super::{TransactionContextHandle, TxId};
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
@@ -194,20 +194,7 @@ impl HolonsContextBehavior for TransactionContext {
         Ok(Some(HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))))
     }
 
-    fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError> {
-        // Validation: only persisted (smart) holons may anchor the space.
-        let reference_kind = space.reference_kind_string();
-        let reference_id = space.reference_id_string();
-        let space_holon_id = match space {
-            HolonReference::Smart(smart_reference) => smart_reference.get_id()?,
-            _ => {
-                return Err(HolonError::InvalidHolonReference(format!(
-                    "Space holon must be a SmartReference; got {} ({})",
-                    reference_kind, reference_id
-                )));
-            }
-        };
-
+    fn set_space_holon_id(&self, space_holon_id: HolonId) -> Result<(), HolonError> {
         self.require_space_manager().set_space_holon_id(space_holon_id)
     }
 

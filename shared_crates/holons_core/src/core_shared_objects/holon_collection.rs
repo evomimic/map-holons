@@ -77,10 +77,20 @@ impl HolonCollectionWire {
         // Bind members (tx_id validation happens inside HolonReference::bind).
         let mut members = Vec::with_capacity(self.members.len());
         for member_wire in self.members {
-            members.push(HolonReference::bind(member_wire, Arc::clone(&context))?);
+            members.push(HolonReference::bind(member_wire, &context)?);
         }
 
         Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))
+    }
+
+    /// Summarizes this wire collection without binding.
+    pub fn summarize(&self) -> String {
+        format!(
+            "HolonCollectionWire {{ state: {}, members: {}, keyed_index: {} }}",
+            self.state,
+            self.members.len(),
+            self.keyed_index.len(),
+        )
     }
 }
 

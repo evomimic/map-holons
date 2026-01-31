@@ -5,7 +5,9 @@ use hdk::prelude::*;
 use crate::{init_guest_context, GuestHolonService};
 
 use base_types::MapString;
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
+use holons_core::dances::dance_request::DanceRequestWire;
+use holons_core::dances::dance_response::{DanceResponseWire, ResponseBodyWire};
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
@@ -13,7 +15,7 @@ use holons_core::{
         descriptors_dance_adapter::load_core_schema_dance, DanceRequest, DanceResponse,
         ResponseBody, ResponseStatusCode, SessionState,
     },
-    HolonsContextBehavior,
+    HolonReferenceWire, HolonsContextBehavior, ReadableHolon,
 };
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -24,32 +26,55 @@ use holons_core::{
 /// This function always returns a DanceResponse (instead of an Error) because
 /// errors are encoded in the DanceResponse's status_code.
 #[hdk_extern]
-pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
+pub fn dance(request: DanceRequestWire) -> ExternResult<DanceResponseWire> {
     info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
 
     // -------------------------- ENSURE VALID REQUEST ---------------------------------
     if let Err(status_code) = validate_request(&request) {
-        let response = DanceResponse::new(
+        // Build a *wire* response directly (we do not have a TransactionContext yet).
+        let response_wire = DanceResponseWire {
             status_code,
-            MapString("Invalid Request".to_string()),
-            ResponseBody::None,
-            None,
-            request.state.clone(),
-        );
+            description: MapString("Invalid Request".to_string()),
+            body: ResponseBodyWire::None,
+            descriptor: None,
+            state: request.state.clone(),
+        };
 
-        return Ok(response);
+        return Ok(response_wire);
     }
 
-    // Initialize the context for this request
+    // -------------------------- INIT CONTEXT FROM SESSION STATE ---------------------------------
     //
+    // This is the only place we can create a TransactionContext on the guest side.
+    // We intentionally do this *before* binding the wire request, because binding
+    // requires a live TransactionContext for tx_id validation + handle attachment.
     let context = match initialize_context_from_request(&request) {
         Ok(ctx) => ctx,
-        Err(error_response) => return Ok(error_response),
+        Err(error_response_wire) => return Ok(error_response_wire),
+    };
+
+    // -------------------------- BIND WIRE → RUNTIME ---------------------------------
+    //
+    // Validate tx provenance and attach TransactionContextHandle to all embedded references.
+    let bound_request = match request.clone().bind(Arc::clone(&context)) {
+        Ok(bound) => bound,
+        Err(error) => {
+            // Binding failed locally (e.g., cross-transaction reference).
+            // Return a wire error response preserving the original session state.
+            let response_wire = DanceResponseWire {
+                status_code: ResponseStatusCode::from(error.clone()),
+                description: MapString(format!("Failed to bind DanceRequestWire: {}", error)),
+                body: ResponseBodyWire::None,
+                descriptor: None,
+                state: request.state.clone(),
+            };
+            return Ok(response_wire);
+        }
     };
 
     debug!("context and space manager ready to dance");
 
-    // Get the Dancer
+    // -------------------------- DISPATCH ---------------------------------
     let dancer = Dancer::new();
 
     // TODO: If the request is a Command, add the request to the undo_list
@@ -64,19 +89,25 @@ pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
     // }
     debug!("dispatching dance");
 
-    let dispatch_result = dancer.dispatch(context.as_ref(), request.clone());
-    let result = process_dispatch_result(context.as_ref(), dispatch_result);
+    let dispatch_result = dancer.dispatch(context.as_ref(), bound_request);
+    let result_runtime = process_dispatch_result(context.as_ref(), dispatch_result);
 
-    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
+    // -------------------------- PROJECT RUNTIME → WIRE ---------------------------------
+    //
+    // IPC boundary must return wire form only.
+    let result_wire = DanceResponseWire::from(&result_runtime);
 
-    Ok(result)
+    info!(
+        "\n======== RETURNING FROM {:?} Dance with {:?}",
+        request.dance_name.0,
+        result_wire, //.summarize(),
+    );
+
+    Ok(result_wire)
 }
 
 // Define a type alias for functions that can be dispatched
-type DanceFunction = fn(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError>;
+type DanceFunction = fn(&TransactionContext, DanceRequest) -> Result<ResponseBody, HolonError>;
 
 /// The dispatch table offers the Dancer behaviors including the external API operations of dance and
 /// (eventually) undo / redo (see [Command Pattern Wiki](https://en.wikipedia.org/wiki/Command_pattern)
@@ -106,7 +137,7 @@ impl Dancer {
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
-        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
+        dispatch_table.insert("load_core_schema", load_core_schema_dance);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
@@ -139,7 +170,7 @@ impl Dancer {
     // Function to dispatch a request based on the function name
     fn dispatch(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         request: DanceRequest,
     ) -> Result<ResponseBody, HolonError> {
         if let Some(func) = self.dispatch_table.get(request.dance_name.0.as_str()) {
@@ -150,7 +181,7 @@ impl Dancer {
     }
 }
 
-/// Creates a `DanceResponse` for cases where `init_context_from_session` fails.
+/// Creates a `DanceResponseWire` for cases where `init_context_from_session` fails.
 /// Uses the session state from the `DanceRequest` to preserve state integrity.
 ///
 /// # Arguments
@@ -158,21 +189,22 @@ impl Dancer {
 /// * `request` - The original `DanceRequest` containing the session state.
 ///
 /// # Returns
-/// A `DanceResponse` with the error details and the original session state.
-fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResponse {
+/// A `DanceResponseWire` with the error details and the original session state.
+fn create_error_response_wire(error: HolonError, request: &DanceRequestWire) -> DanceResponseWire {
     let error_message = format!("Failed to initialize context: {}", error);
-    DanceResponse {
+
+    DanceResponseWire {
         status_code: ResponseStatusCode::from(error),
         description: MapString(error_message),
-        body: ResponseBody::None,
+        body: ResponseBodyWire::None,
         descriptor: None,
         state: request.get_state().cloned(), // Use the session state from the request
     }
 }
 
 fn initialize_context_from_request(
-    request: &DanceRequest,
-) -> Result<Arc<TransactionContext>, DanceResponse> {
+    request: &DanceRequestWire,
+) -> Result<Arc<TransactionContext>, DanceResponseWire> {
     info!("==Initializing context from request==");
     debug!("request: {:#?}", request);
 
@@ -181,32 +213,67 @@ fn initialize_context_from_request(
 
     let staged_holons = session_state.get_staged_holons().clone();
     let transient_holons = session_state.get_transient_holons().clone();
-    let local_space_holon = session_state.get_local_holon_space();
+    let local_space_holon_wire = session_state.get_local_space_holon_wire();
 
-    // Initialize context from session state
-    let context = init_guest_context(transient_holons, staged_holons, local_space_holon.clone())
-        .map_err(|error| create_error_response(error, request))?;
-
-    let holon_service = context.get_holon_service();
-    let guest = {
-        if let Some(guest) = holon_service.as_any().downcast_ref::<GuestHolonService>() {
-            Ok(guest)
-        } else {
-            Err(HolonError::DowncastFailure("GuestHolonService".to_string()))
-        }
-    }
-    .map_err(|error| create_error_response(error, request))?;
-    // Ensure HolonSpace Holon exists
-    let ensured_local_space_holon = match local_space_holon {
-        Some(space_holon) => space_holon, // space holon already in session state
-        None => guest
-            .ensure_local_holon_space(context.as_ref())
-            .map_err(|error| create_error_response(error, request))?, // get space_holon from DHT, creating it if necessary
+    // TEMPORARY: extract `Option<HolonId>` from the wire reference.
+    // Once SessionState stores `Option<HolonId>`, this block goes away.
+    let local_space_holon_id: Option<HolonId> = match &local_space_holon_wire {
+        Some(wire_ref) => Some(space_holon_id_from_wire_reference(wire_ref).map_err(|e| {
+            // If the session state carried an invalid space holon reference,
+            // treat this as a request/format error (still return a response).
+            create_error_response_wire(e, request)
+        })?),
+        None => None,
     };
-    // Update space manager with it
+
+    // Initialize context from session state pools.
+    let context = init_guest_context(transient_holons, staged_holons, local_space_holon_id.clone())
+        .map_err(|error| create_error_response_wire(error, request))?;
+
+    // Ensure the TransactionContext has a space holon id set.
+    //
+    // If the session state provided one, use it.
+    // Otherwise, ensure/create it via guest persistence and then store the id.
+    let ensured_space_holon_id: HolonId = match local_space_holon_id {
+        Some(id) => id,
+        None => {
+            // Guest-specific "ensure" requires the concrete GuestHolonService.
+            let holon_service = context.get_holon_service();
+            let guest_service =
+                holon_service.as_any().downcast_ref::<GuestHolonService>().ok_or_else(|| {
+                    create_error_response_wire(
+                        HolonError::DowncastFailure("GuestHolonService".to_string()),
+                        request,
+                    )
+                })?;
+
+            // Ensure the persisted HolonSpace holon exists and extract its id.
+            let ensured_space_ref = guest_service
+                .ensure_local_holon_space(context.as_ref())
+                .map_err(|error| create_error_response_wire(error, request))?;
+
+            match ensured_space_ref {
+                holons_core::HolonReference::Smart(smart_ref) => smart_ref
+                    .get_id()
+                    .map_err(|error| create_error_response_wire(error, request))?,
+                other => {
+                    return Err(create_error_response_wire(
+                        HolonError::InvalidHolonReference(format!(
+                            "ensure_local_holon_space returned non-smart reference: {} ({})",
+                            other.reference_kind_string(),
+                            other.reference_id_string()
+                        )),
+                        request,
+                    ));
+                }
+            }
+        }
+    };
+
+    // Store the id on the context / space manager.
     context
-        .set_space_holon(ensured_local_space_holon)
-        .map_err(|error| create_error_response(error, request))?;
+        .set_space_holon_id(ensured_space_holon_id)
+        .map_err(|error| create_error_response_wire(error, request))?;
 
     Ok(context)
 }
@@ -295,44 +362,15 @@ fn process_dispatch_result(
     }
 }
 
-/// This helper function extracts the error message from a HolonError so that the message
-/// can be included in the DanceResponse
+/// Extracts a user-facing error message from a `HolonError` for inclusion in a `DanceResponse`.
+///
+/// This stays correct automatically as new `HolonError` variants are added, because
+/// `HolonError` derives `thiserror::Error` and its `Display` impl is the source of truth.
 fn extract_error_message(error: &HolonError) -> String {
-    match error.clone() {
-        HolonError::CacheError(_)
-        | HolonError::CommitFailure(_)
-        | HolonError::ConductorError(_)
-        | HolonError::DeletionNotAllowed(_)
-        | HolonError::DowncastFailure(_)
-        | HolonError::DuplicateError(_, _)
-        | HolonError::EmptyField(_)
-        | HolonError::FailedToBorrow(_)
-        | HolonError::FailedToAcquireLock(_)
-        | HolonError::HashConversion(_, _)
-        | HolonError::HolonNotFound(_)
-        | HolonError::IndexOutOfRange(_)
-        | HolonError::InvalidHolonReference(_)
-        | HolonError::InvalidParameter(_)
-        | HolonError::InvalidRelationship(_, _)
-        | HolonError::InvalidTransition(_)
-        | HolonError::InvalidType(_)
-        | HolonError::InvalidUpdate(_)
-        | HolonError::LoaderParsingError(_)
-        | HolonError::Misc(_)
-        | HolonError::MissingStagedCollection(_)
-        | HolonError::NotAccessible(_, _)
-        | HolonError::NotImplemented(_)
-        | HolonError::RecordConversion(_)
-        | HolonError::ServiceNotAvailable(_)
-        | HolonError::UnableToAddHolons(_)
-        | HolonError::UnexpectedValueType(_, _)
-        | HolonError::Utf8Conversion(_, _)
-        | HolonError::WasmError(_) => error.to_string(),
-        HolonError::ValidationError(validation_error) => validation_error.to_string(),
-    }
+    error.to_string()
 }
-fn validate_request(request: &DanceRequest) -> Result<(), ResponseStatusCode> {
-    // Check if session_state is present
+
+fn validate_request(request: &DanceRequestWire) -> Result<(), ResponseStatusCode> {
     if request.state.is_none() {
         warn!("Validation failed: Missing session state");
         return Err(ResponseStatusCode::BadRequest);
@@ -341,4 +379,20 @@ fn validate_request(request: &DanceRequest) -> Result<(), ResponseStatusCode> {
     // TODO: Add additional validation checks for dance_name, dance_type, etc.
 
     Ok(())
+}
+
+// TEMPORARY: remove once SessionState stores HolonId directly
+/// Extracts the persisted holon id from a wire reference suitable for anchoring the space holon.
+///
+/// The space holon must always be persisted, so only SmartReferenceWire is accepted.
+pub fn space_holon_id_from_wire_reference(
+    reference_wire: &HolonReferenceWire,
+) -> Result<HolonId, HolonError> {
+    match reference_wire {
+        HolonReferenceWire::Smart(smart_wire) => Ok(smart_wire.holon_id().clone()),
+        other => Err(HolonError::InvalidHolonReference(format!(
+            "Space holon must be a SmartReferenceWire; got {:?}",
+            other
+        ))),
+    }
 }

@@ -46,6 +46,10 @@ impl SmartReferenceWire {
     pub fn tx_id(&self) -> TxId {
         self.tx_id
     }
+
+    pub fn holon_id(&self) -> HolonId {
+        self.holon_id.clone()
+    }
 }
 
 #[derive(new, Debug, Clone)]
@@ -78,9 +82,9 @@ impl SmartReference {
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a SmartReference.
     pub fn bind(
         wire: SmartReferenceWire,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
-        let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
+        let context_handle = TransactionContextHandle::bind(wire.tx_id(), Arc::clone(context))?;
 
         Ok(SmartReference {
             context_handle,
@@ -362,7 +366,11 @@ impl ReadableHolonImpl for SmartReference {
         self.is_accessible(AccessType::Read)?;
         // Get CacheAccess
         let cache_access = self.get_cache_access();
-        cache_access.get_related_holons(&self.holon_id, relationship_name)
+        cache_access.get_related_holons(
+            &self.context_handle.context().as_ref(),
+            &self.holon_id,
+            relationship_name,
+        )
     }
 
     fn summarize_impl(&self) -> Result<String, HolonError> {

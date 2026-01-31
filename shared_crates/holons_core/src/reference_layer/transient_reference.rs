@@ -66,9 +66,9 @@ impl TransientReference {
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
     pub fn bind(
         wire: TransientReferenceWire,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
     ) -> Result<Self, HolonError> {
-        let context_handle = TransactionContextHandle::bind(wire.tx_id(), context)?;
+        let context_handle = TransactionContextHandle::bind(wire.tx_id(), Arc::clone(context))?;
 
         Ok(TransientReference { context_handle, id: wire.id })
     }

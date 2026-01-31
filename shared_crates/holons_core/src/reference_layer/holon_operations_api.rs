@@ -91,7 +91,7 @@ use type_names::CorePropertyTypeName;
 /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
 ///
 
-pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference, HolonError> {
+pub fn commit(context: &TransactionContext) -> Result<TransientReference, HolonError> {
     let holon_service = context.get_holon_service();
     let commit_response = holon_service.commit_internal(context)?;
 
@@ -102,7 +102,7 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference,
 /// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
 /// Returns a TransientReference to the newly created holon.
 pub fn new_holon(
-    context: &Arc<TransactionContext>,
+    context: &TransactionContext,
     key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
     // Acquire transient service
@@ -137,17 +137,14 @@ pub fn new_holon(
 /// # Errors
 /// - Returns a `HolonError` if the specified holon cannot be found or deleted.
 ///
-pub fn delete_holon(
-    context: &dyn HolonsContextBehavior,
-    local_id: LocalId,
-) -> Result<(), HolonError> {
+pub fn delete_holon(context: &TransactionContext, local_id: LocalId) -> Result<(), HolonError> {
     let holon_service = context.get_holon_service();
     holon_service.delete_holon_internal(&local_id)
 }
 
 // == GETTERS == //
 
-pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+pub fn get_all_holons(context: &TransactionContext) -> Result<HolonCollection, HolonError> {
     let holon_service = context.get_holon_service();
     holon_service.get_all_holons_internal()
 }
@@ -349,7 +346,7 @@ pub fn transient_count(context: &TransactionContext) -> Result<i64, HolonError> 
 }
 
 pub fn load_holons(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
     bundle: TransientReference,
 ) -> Result<TransientReference, HolonError> {
     let service = context.get_holon_service();

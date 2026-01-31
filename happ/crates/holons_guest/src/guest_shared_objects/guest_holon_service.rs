@@ -84,9 +84,7 @@ impl GuestHolonService {
         let transient_behavior_service = context.get_transient_behavior_service();
 
         // Create new (empty) TransientHolon
-        let transaction_handle = context.handle();
-        let mut space_holon_reference =
-            transient_behavior_service.create_empty(transaction_handle, name.clone())?;
+        let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
         space_holon_reference
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
@@ -143,7 +141,7 @@ impl GuestHolonService {
     /// * `Err(HolonError)` – If any errors occur during retrieval or creation.
     pub fn ensure_local_holon_space(
         &self,
-        context: &Arc<TransactionContext>,
+        context: &TransactionContext,
     ) -> Result<HolonReference, HolonError> {
         let space_holon_result =
             get_holon_by_path(LOCAL_HOLON_SPACE_PATH.to_string(), LinkTypes::LocalHolonSpace)?;

@@ -80,13 +80,88 @@ pub enum ResponseBodyWire {
     NodeCollection(NodeCollectionWire),
 }
 
+impl DanceResponse {
+    pub fn new(
+        status_code: ResponseStatusCode,
+        description: MapString,
+        body: ResponseBody,
+        descriptor: Option<HolonReference>,
+        state: Option<SessionState>,
+    ) -> DanceResponse {
+        DanceResponse { status_code, description, body, descriptor, state }
+    }
+
+    /// Annotates this response with a local processing error (e.g. envelope hydration failure).
+    ///
+    /// Preserves existing fields (body, descriptor, etc.) but:
+    /// - Updates `status_code` to reflect the mapped error code.
+    /// - Appends a diagnostic note to the `description`, including both
+    ///   the local error and the original response status.
+    pub fn annotate_error(&mut self, error: HolonError) {
+        let prev_code = self.status_code.clone();
+        let new_code = ResponseStatusCode::from(error.clone());
+
+        let note = format!(
+            "[Local processing error: {} → mapped to {} (original response was {})]",
+            error, new_code, prev_code
+        );
+
+        // Update the status code
+        self.status_code = new_code;
+
+        // Append to or initialize description
+        if self.description.0.is_empty() {
+            self.description = MapString(note);
+        } else {
+            self.description = MapString(format!("{}\n{}", self.description.0, note));
+        }
+    }
+    /// Constructs a `DanceResponse` representing an error that occurred during a dance.
+    ///
+    /// This method wraps the provided [`HolonError`] into a [`DanceResponse`] object
+    /// by:
+    /// - Mapping the error to a [`ResponseStatusCode`] using its `From<HolonError>` implementation.
+    /// - Converting the error message into a `MapString` description.
+    /// - Setting `body` to `ResponseBody::None` (no successful payload).
+    /// - Leaving `descriptor` and `state` unset (`None`).
+    pub fn from_error(error: HolonError) -> Self {
+        Self {
+            status_code: ResponseStatusCode::from(error.clone()),
+            description: MapString(error.to_string()),
+            body: ResponseBody::None,
+            descriptor: None,
+            state: None,
+        }
+    }
+
+    // Method to summarize the DanceResponse for logging purposes
+    pub fn summarize(&self) -> String {
+        let body_summary = match &self.body {
+            ResponseBody::Holon(holon) => holon.summarize(),
+            ResponseBody::Holons(holons) => summarize_holons(holons),
+            _ => format!("{:#?}", self.body), // Use full debug for other response bodies
+        };
+
+        format!(
+            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
+            self.status_code,
+            self.description,
+            self.descriptor,
+            body_summary,
+            self.state
+                .as_ref()
+                .map_or_else(|| "None".to_string(), |state| state.summarize()),
+        )
+    }
+}
+
 impl DanceResponseWire {
     /// Binds a wire response to the supplied transaction, validating `tx_id` for all embedded references.
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<DanceResponse, HolonError> {
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<DanceResponse, HolonError> {
         Ok(DanceResponse {
             status_code: self.status_code,
             description: self.description,
-            body: self.body.bind(Arc::clone(&context))?,
+            body: self.body.bind(context)?,
             descriptor: match self.descriptor {
                 None => None,
                 Some(reference_wire) => Some(HolonReference::bind(reference_wire, context)?),
@@ -94,22 +169,39 @@ impl DanceResponseWire {
             state: self.state,
         })
     }
+
+    /// Summarizes the IPC-safe wire response for logging purposes.
+    ///
+    /// Safe to call immediately after IPC decode (before binding).
+    pub fn summarize(&self) -> String {
+        let state_summary =
+            self.state.as_ref().map_or_else(|| "None".to_string(), |state| state.summarize());
+
+        format!(
+            "DanceResponseWire {{ \n  status_code: {}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
+            self.status_code,
+            self.description,
+            self.descriptor,
+            self.body.summarize(),
+            state_summary,
+        )
+    }
 }
 
 impl ResponseBodyWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<ResponseBody, HolonError> {
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<ResponseBody, HolonError> {
         match self {
             ResponseBodyWire::None => Ok(ResponseBody::None),
             ResponseBodyWire::Holon(holon_wire) => {
-                Ok(ResponseBody::Holon(holon_wire.bind(context)?))
+                Ok(ResponseBody::Holon(holon_wire.bind(Arc::clone(context))?))
             }
             ResponseBodyWire::HolonCollection(collection_wire) => {
-                Ok(ResponseBody::HolonCollection(collection_wire.bind(context)?))
+                Ok(ResponseBody::HolonCollection(collection_wire.bind(Arc::clone(context))?))
             }
             ResponseBodyWire::Holons(holons_wire) => {
                 let mut holons = Vec::with_capacity(holons_wire.len());
                 for holon_wire in holons_wire {
-                    holons.push(holon_wire.bind(Arc::clone(&context))?);
+                    holons.push(holon_wire.bind(Arc::clone(context))?);
                 }
                 Ok(ResponseBody::Holons(holons))
             }
@@ -118,6 +210,33 @@ impl ResponseBodyWire {
             }
             ResponseBodyWire::NodeCollection(node_collection_wire) => {
                 Ok(ResponseBody::NodeCollection(node_collection_wire.bind(context)?))
+            }
+        }
+    }
+
+    /// Summarizes the wire response body for logging purposes.
+    pub fn summarize(&self) -> String {
+        match self {
+            ResponseBodyWire::None => "None".to_string(),
+
+            ResponseBodyWire::Holon(holon_wire) => {
+                format!("HolonWire: {:#?}", holon_wire)
+            }
+
+            ResponseBodyWire::HolonCollection(collection_wire) => {
+                format!("HolonCollectionWire ({} holons)", collection_wire.summarize())
+            }
+
+            ResponseBodyWire::Holons(holons_wire) => {
+                format!("HolonsWire ({} holons)", holons_wire.len())
+            }
+
+            ResponseBodyWire::HolonReference(reference_wire) => {
+                format!("HolonReferenceWire: {:?}", reference_wire)
+            }
+
+            ResponseBodyWire::NodeCollection(node_collection_wire) => {
+                format!("NodeCollectionWire: {:#?}", node_collection_wire)
             }
         }
     }
@@ -130,7 +249,7 @@ impl From<&DanceResponse> for DanceResponseWire {
             description: response.description.clone(),
             body: ResponseBodyWire::from(&response.body),
             descriptor: response.descriptor.as_ref().map(HolonReferenceWire::from),
-            state: response.state.clone().or(Some(SessionState::default())),
+            state: response.state.clone(),
         }
     }
 }
@@ -223,80 +342,5 @@ impl fmt::Display for ResponseStatusCode {
             ResponseStatusCode::ServiceUnavailable => write!(f, "503 -- Service Unavailable"),
             ResponseStatusCode::UnprocessableEntity => write!(f, "422 -- Unprocessable Entity"),
         }
-    }
-}
-
-impl DanceResponse {
-    pub fn new(
-        status_code: ResponseStatusCode,
-        description: MapString,
-        body: ResponseBody,
-        descriptor: Option<HolonReference>,
-        state: Option<SessionState>,
-    ) -> DanceResponse {
-        DanceResponse { status_code, description, body, descriptor, state }
-    }
-
-    /// Annotates this response with a local processing error (e.g. envelope hydration failure).
-    ///
-    /// Preserves existing fields (body, descriptor, etc.) but:
-    /// - Updates `status_code` to reflect the mapped error code.
-    /// - Appends a diagnostic note to the `description`, including both
-    ///   the local error and the original response status.
-    pub fn annotate_error(&mut self, error: HolonError) {
-        let prev_code = self.status_code.clone();
-        let new_code = ResponseStatusCode::from(error.clone());
-
-        let note = format!(
-            "[Local processing error: {} → mapped to {} (original response was {})]",
-            error, new_code, prev_code
-        );
-
-        // Update the status code
-        self.status_code = new_code;
-
-        // Append to or initialize description
-        if self.description.0.is_empty() {
-            self.description = MapString(note);
-        } else {
-            self.description = MapString(format!("{}\n{}", self.description.0, note));
-        }
-    }
-    /// Constructs a `DanceResponse` representing an error that occurred during a dance.
-    ///
-    /// This method wraps the provided [`HolonError`] into a [`DanceResponse`] object
-    /// by:
-    /// - Mapping the error to a [`ResponseStatusCode`] using its `From<HolonError>` implementation.
-    /// - Converting the error message into a `MapString` description.
-    /// - Setting `body` to `ResponseBody::None` (no successful payload).
-    /// - Leaving `descriptor` and `state` unset (`None`).
-    pub fn from_error(error: HolonError) -> Self {
-        Self {
-            status_code: ResponseStatusCode::from(error.clone()),
-            description: MapString(error.to_string()),
-            body: ResponseBody::None,
-            descriptor: None,
-            state: None,
-        }
-    }
-
-    // Method to summarize the DanceResponse for logging purposes
-    pub fn summarize(&self) -> String {
-        let body_summary = match &self.body {
-            ResponseBody::Holon(holon) => holon.summarize(),
-            ResponseBody::Holons(holons) => summarize_holons(holons),
-            _ => format!("{:#?}", self.body), // Use full debug for other response bodies
-        };
-
-        format!(
-            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
-            self.status_code,
-            self.description,
-            self.descriptor,
-            body_summary,
-            self.state
-                .as_ref()
-                .map_or_else(|| "None".to_string(), |state| state.summarize()),
-        )
     }
 }

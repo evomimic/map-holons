@@ -11,10 +11,17 @@ use core_types::{HolonError, RelationshipName};
 ///
 /// Runtime nodes carry tx-bound `HolonReference` values and must never be
 /// deserialized directly across IPC boundaries.
-#[derive(new, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     pub source_holon: HolonReference,
     pub relationships: Option<QueryPathMap>,
+}
+
+impl Node {
+    /// Creates a new runtime query node rooted at `source_holon`.
+    pub fn new(source_holon: HolonReference, relationships: Option<QueryPathMap>) -> Self {
+        Self { source_holon, relationships }
+    }
 }
 
 /// A collection of query nodes (the query result shape).
@@ -37,22 +44,36 @@ impl NodeCollection {
 ///
 /// This type contains tx-bound references (via `NodeCollection`) and is therefore
 /// runtime-only (no `Serialize`/`Deserialize`).
-#[derive(new, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QueryPathMap(pub BTreeMap<RelationshipName, NodeCollection>);
+
+impl QueryPathMap {
+    /// Creates a new relationship traversal map.
+    pub fn new(map: BTreeMap<RelationshipName, NodeCollection>) -> Self {
+        Self(map)
+    }
+}
 
 /// A minimal query expression describing the relationship being traversed.
 ///
 /// This does not contain tx-bound references and may be safely serialized.
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryExpression {
     pub relationship_name: RelationshipName,
+}
+
+impl QueryExpression {
+    /// Creates a new query expression describing a traversal of `relationship_name`.
+    pub fn new(relationship_name: RelationshipName) -> Self {
+        Self { relationship_name }
+    }
 }
 
 /// Wire-form query node for IPC.
 ///
 /// This is a context-free shape that may be decoded at IPC boundaries.
 /// Convert to runtime using `bind(context)`.
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct NodeWire {
     pub source_holon: HolonReferenceWire,
     pub relationships: Option<QueryPathMapWire>,
@@ -72,26 +93,26 @@ pub struct NodeCollectionWire {
 ///
 /// This is a context-free shape that may be decoded at IPC boundaries.
 /// Convert to runtime using `bind(context)`.
-#[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryPathMapWire(pub BTreeMap<RelationshipName, NodeCollectionWire>);
 
 impl NodeWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<Node, HolonError> {
+    pub fn new(source_holon: HolonReferenceWire, relationships: Option<QueryPathMapWire>) -> Self {
+        Self { source_holon, relationships }
+    }
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<Node, HolonError> {
         Ok(Node::new(
-            HolonReference::bind(self.source_holon, Arc::clone(&context))?,
-            match self.relationships {
-                None => None,
-                Some(wire_map) => Some(wire_map.bind(context)?),
-            },
+            HolonReference::bind(self.source_holon, context)?,
+            self.relationships.map(|wire_map| wire_map.bind(context)).transpose()?,
         ))
     }
 }
 
 impl NodeCollectionWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<NodeCollection, HolonError> {
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<NodeCollection, HolonError> {
         let mut members = Vec::with_capacity(self.members.len());
         for wire_node in self.members {
-            members.push(wire_node.bind(Arc::clone(&context))?);
+            members.push(wire_node.bind(context)?);
         }
 
         Ok(NodeCollection { members, query_spec: self.query_spec })
@@ -99,10 +120,13 @@ impl NodeCollectionWire {
 }
 
 impl QueryPathMapWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<QueryPathMap, HolonError> {
+    pub fn new(map: BTreeMap<RelationshipName, NodeCollectionWire>) -> Self {
+        Self(map)
+    }
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<QueryPathMap, HolonError> {
         let mut map = BTreeMap::new();
         for (relationship_name, node_collection_wire) in self.0 {
-            map.insert(relationship_name, node_collection_wire.bind(Arc::clone(&context))?);
+            map.insert(relationship_name, node_collection_wire.bind(context)?);
         }
         Ok(QueryPathMap::new(map))
     }
@@ -128,11 +152,14 @@ impl From<&NodeCollection> for NodeCollectionWire {
 
 impl From<&QueryPathMap> for QueryPathMapWire {
     fn from(map: &QueryPathMap) -> Self {
-        let mut wire_map = BTreeMap::new();
-        for (relationship_name, node_collection) in &map.0 {
-            wire_map.insert(relationship_name.clone(), NodeCollectionWire::from(node_collection));
-        }
-        QueryPathMapWire::new(wire_map)
+        QueryPathMapWire::new(
+            map.0
+                .iter()
+                .map(|(relationship_name, node_collection)| {
+                    (relationship_name.clone(), NodeCollectionWire::from(node_collection))
+                })
+                .collect(),
+        )
     }
 }
 
