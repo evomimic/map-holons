@@ -57,5 +57,5 @@ pub async fn execute_remove_properties(
     info!("Success! Updated holon's essential content matched expected");
 
     // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(source_token.expected_id(), resolved_reference);
+    state.record(source_token.expected_id(), resolved_reference).unwrap();
 }

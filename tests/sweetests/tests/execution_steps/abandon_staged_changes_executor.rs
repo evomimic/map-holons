@@ -78,5 +78,5 @@ pub async fn execute_abandon_staged_changes(
     }
 
     // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(source_token.expected_id(), resolved_reference);
+    state.record(source_token.expected_id(), resolved_reference).unwrap();
 }

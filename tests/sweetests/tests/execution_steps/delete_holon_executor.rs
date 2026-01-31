@@ -67,5 +67,5 @@ pub async fn execute_delete_holon(
         resulting_reference,
     );
 
-    state.record(source_token.expected_id(), resolved_reference);
+    state.record(source_token.expected_id(), resolved_reference).unwrap();
 }
