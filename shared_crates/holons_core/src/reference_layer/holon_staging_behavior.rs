@@ -1,9 +1,8 @@
 use crate::{
     reference_layer::{StagedReference, TransientReference},
-    HolonReference, HolonsContextBehavior, SmartReference,
+    HolonReference, SmartReference,
 };
 
-use crate::core_shared_objects::transactions::TransactionContextHandle;
 use base_types::MapString;
 use core_types::HolonError;
 

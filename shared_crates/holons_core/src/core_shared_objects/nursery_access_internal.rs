@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use super::holon_pool::{HolonPool, SerializableHolonPool};
-use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};

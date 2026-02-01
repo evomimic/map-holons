@@ -1,9 +1,3 @@
-// use crate::holon::behavior::HolonBehavior;
-// use crate::common::{PropertyName, PropertyValue, EssentialHolonContent, MapString};
-// use crate::HolonError, HolonState};
-// use crate::state::AccessType;
-// use crate::identifier::TemporaryId;
-
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
@@ -13,7 +7,7 @@ use crate::{
         transactions::TransactionContext, TransientRelationshipMap, TransientRelationshipMapWire,
         WriteableHolonState,
     },
-    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
+    HolonCollection, HolonReference, RelationshipMap,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{

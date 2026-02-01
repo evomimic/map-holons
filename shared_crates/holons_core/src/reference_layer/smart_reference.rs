@@ -20,9 +20,7 @@ use crate::{
         transient_holon_manager::ToHolonCloneModel,
         Holon, HolonCollection, ReadableHolonState,
     },
-    reference_layer::{
-        HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference, WritableHolon,
-    },
+    reference_layer::{HolonReference, ReadableHolon, TransientReference, WritableHolon},
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};

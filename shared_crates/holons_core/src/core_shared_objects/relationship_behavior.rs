@@ -1,5 +1,5 @@
 use super::{HolonCollection, TransientRelationshipMap};
-use crate::{HolonReference, HolonsContextBehavior};
+use crate::HolonReference;
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
 use std::sync::{Arc, RwLock};

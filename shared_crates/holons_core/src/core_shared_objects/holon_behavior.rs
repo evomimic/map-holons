@@ -7,7 +7,7 @@ use core_types::{
 
 use crate::{
     core_shared_objects::holon::{state::AccessType, EssentialHolonContent, HolonCloneModel},
-    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap,
+    HolonCollection, HolonReference, RelationshipMap,
 };
 
 /// The `ReadableHolonState` trait mirrors ReadableHolon, so that references can simply delegate without having to match Holon variant.

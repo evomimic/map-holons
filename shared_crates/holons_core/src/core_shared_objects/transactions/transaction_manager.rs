@@ -210,7 +210,10 @@ mod tests {
             not_implemented()
         }
 
-        fn get_all_holons_internal(&self) -> Result<HolonCollection, HolonError> {
+        fn get_all_holons_internal(
+            &self,
+            context: &TransactionContext,
+        ) -> Result<HolonCollection, HolonError> {
             not_implemented()
         }
 

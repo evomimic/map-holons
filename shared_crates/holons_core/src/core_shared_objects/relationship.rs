@@ -1,12 +1,11 @@
 use derive_new::new;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, RwLock},
 };
 
 use super::{ReadableRelationship, TransientRelationshipMap};
-use crate::{core_shared_objects::HolonCollection, HolonsContextBehavior, StagedRelationshipMap};
+use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
 use core_types::{HolonError, RelationshipName};
 
 /// Custom RelationshipMap is only used for caching and will never be serialized

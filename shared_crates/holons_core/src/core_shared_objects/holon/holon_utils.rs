@@ -7,8 +7,7 @@ use core_types::{HolonError, PropertyMap, RelationshipName};
 
 use crate::{
     core_shared_objects::TransientRelationshipMap, CollectionState, HolonCollection,
-    HolonCollectionApi, HolonReference, HolonsContextBehavior, RelationshipMap,
-    StagedRelationshipMap,
+    HolonCollectionApi, HolonReference, RelationshipMap, StagedRelationshipMap,
 };
 
 use super::state::{HolonState, ValidationState};

@@ -172,7 +172,6 @@ impl TransientHolonBehavior for TransientHolonManager {
 
     fn new_from_clone_model(
         &self,
-        //transaction_handle: &TransactionContextHandle,
         holon_clone_model: HolonCloneModel,
     ) -> Result<TransientReference, HolonError> {
         let transient_relationships = {
@@ -192,7 +191,6 @@ impl TransientHolonBehavior for TransientHolonManager {
             holon_clone_model.original_id,
         );
 
-        let transaction_handle = self.require_handle()?;
         let transient_reference = self.add_new_holon(holon)?;
 
         Ok(transient_reference)

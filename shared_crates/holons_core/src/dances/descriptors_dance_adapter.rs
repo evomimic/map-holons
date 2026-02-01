@@ -17,7 +17,6 @@
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::{DanceRequest, DanceType, RequestBody, ResponseBody};
-use crate::HolonsContextBehavior;
 use base_types::MapString;
 use core_types::HolonError;
 

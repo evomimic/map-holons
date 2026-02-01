@@ -8,9 +8,7 @@ use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::reference_layer::{
-    HolonReference, HolonReferenceWire, HolonsContextBehavior, ReadableHolon,
-};
+use crate::reference_layer::{HolonReference, HolonReferenceWire, ReadableHolon};
 use crate::HolonCollectionApi;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;

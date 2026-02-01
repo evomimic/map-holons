@@ -1,8 +1,7 @@
-use super::{HolonReference, HolonsContextBehavior};
+use super::HolonReference;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
 use std::fmt::Debug;
-// use tracing::warn;
 
 pub trait HolonCollectionApi: Debug + Send + Sync {
     fn add_references(&mut self, holons: Vec<HolonReference>) -> Result<(), HolonError>;

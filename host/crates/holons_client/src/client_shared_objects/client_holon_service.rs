@@ -35,11 +35,9 @@
 #![allow(unused_variables)]
 
 use core_types::{HolonError, HolonId};
-use futures_executor::block_on;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
-use holons_core::ReadableHolon;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
@@ -49,8 +47,8 @@ use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
+use std::sync::Arc;
 use tokio::runtime::Handle;
-use tokio::task::block_in_place;
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;

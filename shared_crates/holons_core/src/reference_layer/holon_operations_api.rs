@@ -29,7 +29,6 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, LocalId, PropertyMap};
-use std::sync::Arc;
 use type_names::CorePropertyTypeName;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
@@ -146,7 +145,7 @@ pub fn delete_holon(context: &TransactionContext, local_id: LocalId) -> Result<(
 
 pub fn get_all_holons(context: &TransactionContext) -> Result<HolonCollection, HolonError> {
     let holon_service = context.get_holon_service();
-    holon_service.get_all_holons_internal()
+    holon_service.get_all_holons_internal(context)
 }
 
 pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {

@@ -52,7 +52,10 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     ) -> Result<HolonCollection, HolonError>;
 
     /// Retrieves all persisted Holons, as a HolonCollection
-    fn get_all_holons_internal(&self) -> Result<HolonCollection, HolonError>;
+    fn get_all_holons_internal(
+        &self,
+        context: &TransactionContext,
+    ) -> Result<HolonCollection, HolonError>;
 
     /// Execute a Holon Loader import using a HolonLoadSet (transient) reference.
     /// Returns a transient reference to a HolonLoadResponse holon.

@@ -331,7 +331,10 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
-    fn get_all_holons_internal(&self) -> Result<HolonCollection, HolonError> {
+    fn get_all_holons_internal(
+        &self,
+        _context: &TransactionContext,
+    ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
         let holon_ids = fetch_links_to_all_holons()?;
         let mut holon_references = Vec::new();

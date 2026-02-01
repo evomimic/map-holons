@@ -14,7 +14,6 @@
 //! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
 //!   adapters return `Result<ResponseBody, HolonError>`.
 
-use std::sync::Arc;
 use tracing::{debug, info};
 
 use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};

@@ -1,5 +1,4 @@
 use crate::core_shared_objects::holon::HolonCloneModel;
-use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::reference_layer::TransientReference;
 use base_types::MapString;
 use core_types::HolonError;

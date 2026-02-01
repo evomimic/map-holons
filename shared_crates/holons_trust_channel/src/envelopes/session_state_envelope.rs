@@ -1,7 +1,7 @@
 use core_types::HolonId;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
-use holons_core::{HolonError, HolonReference, HolonReferenceWire, HolonsContextBehavior};
+use holons_core::{HolonError, HolonReferenceWire, HolonsContextBehavior};
 use std::sync::Arc;
 use tracing::debug;
 

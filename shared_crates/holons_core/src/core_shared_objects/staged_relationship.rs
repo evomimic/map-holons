@@ -59,7 +59,7 @@ use std::{
 use super::{ReadableRelationship, TransientRelationshipMap, WritableRelationship};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{HolonCollection, HolonCollectionWire};
-use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior};
+use crate::{HolonCollectionApi, HolonReference};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
 

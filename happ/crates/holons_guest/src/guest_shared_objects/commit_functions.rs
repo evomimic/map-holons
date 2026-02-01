@@ -22,6 +22,7 @@ use holons_core::{
 
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
@@ -117,7 +118,7 @@ pub enum CommitOutcome {
 /// If both passes succeed (no `Incomplete` status), the guest holon service
 /// is responsible for clearing the staged holon pool afterward.
 pub fn commit(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
     staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
     info!("Entering commit...");
@@ -128,8 +129,8 @@ pub fn commit(
     let mut response_reference =
         new_holon(context, Some(MapString("Commit Response".to_string())))?;
     response_reference
-        .with_property_value(context, CommitRequestStatus, "Complete")?
-        .with_property_value(context, CommitsAttempted, stage_count)?;
+        .with_property_value(CommitRequestStatus, "Complete")?
+        .with_property_value(CommitsAttempted, stage_count)?;
 
     if stage_count < 1 {
         info!("Stage empty, nothing to commit!");
@@ -144,7 +145,7 @@ pub fn commit(
         let mut abandoned_holons: Vec<HolonReference> = Vec::new();
 
         for staged_reference in staged_references {
-            staged_reference.is_accessible(context, AccessType::Commit)?;
+            staged_reference.is_accessible(AccessType::Commit)?;
 
             trace!("Committing {:?}", staged_reference.temporary_id());
 
@@ -165,11 +166,7 @@ pub fn commit(
                     trace!("No action required for {:?}", staged_reference.temporary_id());
                 }
                 Err(error) => {
-                    response_reference.with_property_value(
-                        context,
-                        CommitRequestStatus,
-                        "Incomplete",
-                    )?;
+                    response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
                     abandoned_holons.push(staged_reference.into());
                     warn!("Commit failed for {:?}: {:?}", staged_reference.temporary_id(), error);
                 }
@@ -177,12 +174,12 @@ pub fn commit(
         }
 
         // Attach results to the CommitResponse holon
-        response_reference.add_related_holons(context, SavedHolons, saved_holons)?;
-        response_reference.add_related_holons(context, AbandonedHolons, abandoned_holons)?;
+        response_reference.add_related_holons(SavedHolons, saved_holons)?;
+        response_reference.add_related_holons(AbandonedHolons, abandoned_holons)?;
     }
 
     // Check if Pass 1 ended with an incomplete status
-    if let Some(status_value) = response_reference.property_value(context, CommitRequestStatus)? {
+    if let Some(status_value) = response_reference.property_value(CommitRequestStatus)? {
         let status_string: String = (&status_value).into();
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
@@ -282,7 +279,7 @@ pub fn commit(
                 staged_holon.add_error(error.clone())?;
             }
 
-            response_reference.with_property_value(context, CommitRequestStatus, "Incomplete")?;
+            response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
 
             warn!(
                 "Attempt to commit relationships failed for {:?}: {:?}",
@@ -467,7 +464,7 @@ fn save_smartlinks_for_collection(
         debug!("Target index={} holon_reference={:#?}", idx, holon_reference);
 
         // 1) Narrow down: do we get through holon_id?
-        let target_id = match holon_reference.holon_id(context) {
+        let target_id = match holon_reference.holon_id() {
             Ok(id) => {
                 debug!("Resolved holon_id for index {}: {:?}", idx, id);
                 id
@@ -482,7 +479,7 @@ fn save_smartlinks_for_collection(
         };
 
         // 2) Narrow down: do we get through key()?
-        let key_option = match holon_reference.key(context) {
+        let key_option = match holon_reference.key() {
             Ok(k) => {
                 debug!("Resolved key for index {}: {:?}", idx, k);
                 k

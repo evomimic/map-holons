@@ -12,8 +12,8 @@ use crate::{
         HolonCollection,
     },
     reference_layer::{
-        HolonsContextBehavior, ReadableHolon, SmartReference, SmartReferenceWire, StagedReference,
-        StagedReferenceWire, TransientReference, TransientReferenceWire,
+        ReadableHolon, SmartReference, SmartReferenceWire, StagedReference, StagedReferenceWire,
+        TransientReference, TransientReferenceWire,
     },
     RelationshipMap,
 };

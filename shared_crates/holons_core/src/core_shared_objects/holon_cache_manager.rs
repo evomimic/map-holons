@@ -4,9 +4,7 @@ use tracing::debug;
 use super::{holon_cache::HolonCache, Holon};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::HolonServiceApi;
-use crate::{
-    HolonCacheAccess, HolonCollection, HolonsContextBehavior, RelationshipCache, RelationshipMap,
-};
+use crate::{HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Debug)]

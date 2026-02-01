@@ -11,7 +11,7 @@ use crate::{
         ReadableHolonState, ReadableRelationship, StagedRelationshipMapWire, WritableRelationship,
         WriteableHolonState,
     },
-    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap, StagedRelationshipMap,
+    HolonCollection, HolonReference, RelationshipMap, StagedRelationshipMap,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{

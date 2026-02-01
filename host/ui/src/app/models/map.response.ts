@@ -12,7 +12,9 @@ import {
   MapStringFactory,
   MapInteger,
   PropertyMap,
-  ValidationState
+  ValidationState,
+  TxId,
+  DEFAULT_TX_ID
 } from './shared-types';
 import { Holon, TransientHolon, StagedHolon, SavedHolon, HolonState, StagedState, StagedRelationshipMap } from './holon';
 
@@ -69,6 +71,7 @@ export type SerializableHolonPool ={
 }
 
 export type SessionState = {
+    tx_id?: TxId | null,
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_holon_space?: HolonReference | null,
@@ -603,6 +606,7 @@ const mockTransientHolonsPool: SerializableHolonPool = {
 
 // Create mock session state
 const mockSessionState: SessionState = {
+  tx_id: DEFAULT_TX_ID,
   transient_holons: mockTransientHolonsPool,
   staged_holons: mockStagedHolonsPool,
   local_holon_space: null

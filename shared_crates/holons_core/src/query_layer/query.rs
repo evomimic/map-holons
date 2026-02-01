@@ -1,4 +1,3 @@
-use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;

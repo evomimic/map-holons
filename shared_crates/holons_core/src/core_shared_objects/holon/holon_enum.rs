@@ -14,7 +14,7 @@ use crate::core_shared_objects::holon::EssentialHolonContent;
 use crate::core_shared_objects::holon::{StagedHolonWire, TransientHolonWire};
 use crate::core_shared_objects::holon_behavior::{ReadableHolonState, WriteableHolonState};
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::{HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap};
+use crate::{HolonCollection, HolonReference, RelationshipMap};
 
 /// Enum representing the three Holon phases: `Transient`, `Staged`, and `Saved`.
 #[derive(Debug, Clone, PartialEq, Eq)]

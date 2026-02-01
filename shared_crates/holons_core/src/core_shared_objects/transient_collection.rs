@@ -1,8 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tracing::warn;
 
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
+use crate::reference_layer::{HolonReference, ReadableHolon};
 use crate::HolonCollectionApi;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
