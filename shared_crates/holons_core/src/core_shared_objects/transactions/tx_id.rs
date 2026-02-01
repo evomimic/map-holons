@@ -28,4 +28,22 @@ impl TransactionIdGenerator {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         TxId(id)
     }
+
+    // Ensures no TxId collisions after creating a TransactionContext for a given TxId.
+    pub(super) fn bump_to_at_least(&self, tx_id: TxId) {
+        let target = tx_id.value().saturating_add(1);
+        let mut current = self.next_id.load(Ordering::Relaxed);
+
+        while current < target {
+            match self.next_id.compare_exchange(
+                current,
+                target,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => return,
+                Err(observed) => current = observed,
+            }
+        }
+    }
 }

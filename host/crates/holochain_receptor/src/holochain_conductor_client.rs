@@ -14,7 +14,11 @@ use holochain_client::{
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::{
-    dances::{DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode},
+    dances::{
+        dance_request::DanceRequestWire,
+        dance_response::{DanceResponseWire, ResponseBodyWire},
+        DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode,
+    },
     HolonsContextBehavior,
 };
 
@@ -76,21 +80,31 @@ impl HolochainConductorClient {
 impl DanceInitiator for HolochainConductorClient {
     async fn initiate_dance(
         &self,
-        _context: &TransactionContext,
+        context: Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse {
-        self.conductor_dance_call(request).await
+        let request_wire = DanceRequestWire::from(&request);
+        let response_wire = self.conductor_dance_call(request_wire).await;
+
+        match response_wire.bind(&context) {
+            Ok(bound) => bound,
+            Err(error) => {
+                let mut response = DanceResponse::from_error(error);
+                response.state = response_wire.state;
+                response
+            }
+        }
     }
 }
 
 /// Round-trip the zome call
 #[async_trait]
 impl ConductorDanceCaller for HolochainConductorClient {
-    async fn conductor_dance_call(&self, request: DanceRequest) -> DanceResponse {
+    async fn conductor_dance_call(&self, request: DanceRequestWire) -> DanceResponseWire {
         // --- Serialize request ---
         let payload: ExternIO = match ExternIO::encode(request) {
             Ok(p) => p,
-            Err(e) => return server_error_response(format!("Encoding error: {:?}", e)),
+            Err(e) => return server_error_response_wire(format!("Encoding error: {:?}", e)),
         };
 
         // --- Clone websocket (POC safe) ---
@@ -100,7 +114,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         let Some(app_ws) = ws else {
-            return server_error_response("AppSocket not initialized".into());
+            return server_error_response_wire("AppSocket not initialized".into());
         };
 
         // --- Make zome call ---
@@ -114,22 +128,24 @@ impl ConductorDanceCaller for HolochainConductorClient {
             .await;
 
         let Ok(extern_io) = result else {
-            return server_error_response("Zome call failed".into());
+            return server_error_response_wire("Zome call failed".into());
         };
 
-        match ExternIO::decode::<DanceResponse>(&extern_io) {
+        match ExternIO::decode::<DanceResponseWire>(&extern_io) {
             Ok(decoded) => decoded,
-            Err(e) => server_error_response(format!("Failed to decode dance response: {:?}", e)),
+            Err(e) => {
+                server_error_response_wire(format!("Failed to decode dance response: {:?}", e))
+            }
         }
     }
 }
 
 /// Minimal helper for consistent error formatting.
-fn server_error_response(msg: String) -> DanceResponse {
-    DanceResponse {
+fn server_error_response_wire(msg: String) -> DanceResponseWire {
+    DanceResponseWire {
         status_code: ResponseStatusCode::ServerError,
         description: MapString(msg),
-        body: ResponseBody::None,
+        body: ResponseBodyWire::None,
         descriptor: None,
         state: None,
     }

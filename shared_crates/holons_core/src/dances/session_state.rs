@@ -1,5 +1,6 @@
 use crate::core_shared_objects::holon_pool::SerializableHolonPool;
 
+use crate::core_shared_objects::transactions::TxId;
 use crate::{HolonReference, HolonReferenceWire};
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +23,7 @@ use serde::{Deserialize, Serialize};
 /// may evolve toward token-based or indirect state transfer mechanisms in the future.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SessionState {
+    tx_id: Option<TxId>,
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReferenceWire>,
@@ -33,12 +35,22 @@ impl SessionState {
         transient_holons: SerializableHolonPool,
         staged_holons: SerializableHolonPool,
         local_holon_space: Option<HolonReference>,
+        tx_id: Option<TxId>,
     ) -> Self {
         Self {
+            tx_id,
             transient_holons,
             staged_holons,
             local_holon_space: local_holon_space.map(HolonReferenceWire::from),
         }
+    }
+
+    pub fn get_tx_id(&self) -> Option<TxId> {
+        self.tx_id
+    }
+
+    pub fn set_tx_id(&mut self, tx_id: TxId) {
+        self.tx_id = Some(tx_id);
     }
 
     pub fn get_local_space_holon_wire(&self) -> Option<HolonReferenceWire> {
@@ -83,7 +95,8 @@ impl SessionState {
     /// Summarizes the session state.
     pub fn summarize(&self) -> String {
         format!(
-            "\n   local_holon_space: {:?}, \n  staged holons: {} }}",
+            "\n   tx_id: {:?}, \n   local_holon_space: {:?}, \n  staged holons: {} }}",
+            self.tx_id,
             self.local_holon_space,
             self.staged_holons.holons.len(),
         )

@@ -3,7 +3,7 @@ use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
         holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager,
-        transactions::TransactionContext, ServiceRoutingPolicy,
+        transactions::{TransactionContext, TxId}, ServiceRoutingPolicy,
     },
     reference_layer::HolonReference,
     HolonServiceApi,
@@ -43,6 +43,7 @@ pub fn init_guest_context(
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_space_holon_id: Option<HolonId>,
+    tx_id: TxId,
 ) -> Result<Arc<TransactionContext>, HolonError> {
     info!("\n ========== Initializing GUEST CONTEXT ============");
 
@@ -67,7 +68,7 @@ pub fn init_guest_context(
     // Step 3: Open the default transaction for this space.
     let transaction_context = space_manager
         .get_transaction_manager()
-        .open_default_transaction(Arc::clone(&space_manager))?;
+        .open_transaction_with_id(Arc::clone(&space_manager), tx_id)?;
 
     // Step 4: Load staged and transient holons into the transaction.
     transaction_context.import_staged_holons(staged_holons)?;

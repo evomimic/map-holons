@@ -213,6 +213,12 @@ fn initialize_context_from_request(
     let staged_holons = session_state.get_staged_holons().clone();
     let transient_holons = session_state.get_transient_holons().clone();
     let local_space_holon_wire = session_state.get_local_space_holon_wire();
+    let tx_id = session_state.get_tx_id().ok_or_else(|| {
+        create_error_response_wire(
+            HolonError::InvalidParameter("SessionState missing tx_id".into()),
+            request,
+        )
+    })?;
 
     // TEMPORARY: extract `Option<HolonId>` from the wire reference.
     // Once SessionState stores `Option<HolonId>`, this block goes away.
@@ -226,7 +232,12 @@ fn initialize_context_from_request(
     };
 
     // Initialize context from session state pools.
-    let context = init_guest_context(transient_holons, staged_holons, local_space_holon_id.clone())
+    let context = init_guest_context(
+        transient_holons,
+        staged_holons,
+        local_space_holon_id.clone(),
+        tx_id,
+    )
         .map_err(|error| create_error_response_wire(error, request))?;
 
     // Ensure the TransactionContext has a space holon id set.
@@ -317,6 +328,7 @@ fn restore_session_state_from_context(context: &TransactionContext) -> Option<Se
         serializable_transient_pool,
         serializable_staged_pool,
         local_space_holon,
+        Some(context.tx_id()),
     ))
 }
 

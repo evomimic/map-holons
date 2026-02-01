@@ -41,6 +41,42 @@ impl TransactionManager {
         self.open_transaction(space_manager)
     }
 
+    /// Creates and registers a transaction with a specific id.
+    ///
+    /// This is intended for IPC round-trips where the originating side
+    /// supplies an explicit tx_id that must be preserved.
+    pub fn open_transaction_with_id(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+        tx_id: TxId,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        // Prevent collisions with an existing live transaction.
+        if let Some(existing) = self.get_transaction(&tx_id)? {
+            return Err(HolonError::DuplicateError(
+                "Transaction".to_string(),
+                format!("tx_id={}", existing.tx_id().value()),
+            ));
+        }
+
+        // Ensure the generator will not re-issue this id.
+        self.id_generator.bump_to_at_least(tx_id);
+
+        // Build the transaction context with a STRONG space reference.
+        let context = TransactionContext::new(tx_id, space_manager);
+
+        // Register the transaction (weak only) while holding the lock briefly.
+        let mut guard = self.transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, Arc::downgrade(&context));
+        drop(guard);
+
+        Ok(context)
+    }
+
     /// Looks up a transaction by id.
     ///
     /// Returns:

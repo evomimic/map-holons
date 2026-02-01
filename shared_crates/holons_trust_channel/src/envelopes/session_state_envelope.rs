@@ -26,6 +26,7 @@ impl SessionStateEnvelope {
         session_state.set_staged_holons(context.export_staged_holons()?);
         session_state.set_transient_holons(context.export_transient_holons()?);
         session_state.set_local_holon_space(context.get_space_holon()?);
+        session_state.set_tx_id(context.tx_id());
 
         request.state = Some(session_state);
         debug!("SessionStateEnvelope::attach_to_request() — {}", request.summarize());
@@ -43,6 +44,17 @@ impl SessionStateEnvelope {
         let Some(state) = &response.state else {
             return Err(HolonError::InvalidParameter("DanceResponse missing SessionState".into()));
         };
+        let response_tx_id = state
+            .get_tx_id()
+            .ok_or_else(|| HolonError::InvalidParameter("SessionState missing tx_id".into()))?;
+        if response_tx_id != context.tx_id() {
+            return Err(HolonError::CrossTransactionReference {
+                reference_kind: "SessionState".to_string(),
+                reference_id: format!("TxId={}", response_tx_id.value()),
+                reference_tx: response_tx_id.value(),
+                context_tx: context.tx_id().value(),
+            });
+        }
 
         context.import_staged_holons(state.get_staged_holons().clone())?;
         context.import_transient_holons(state.get_transient_holons().clone())?;
