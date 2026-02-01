@@ -117,10 +117,9 @@ type DanceFunction = fn(&TransactionContext, DanceRequest) -> Result<ResponseBod
 /// `UndoableCommand` Trait. This trait defines: `execute`, `undo` and `redo` functions.
 /// Additionally, an `ActionsController` is responsible for executing commands, maintaining the undo
 /// and redo stacks, and orchestrating undo and redo operations.
-/// * **Asynch vs Synch Commands** -- Commands will support either or both _Asynchronous execution_
+/// * **Async vs Sync Commands** -- Commands will support either or both _Asynchronous execution_
 /// (non-blocking), _Synchronous execution_ (blocking).
 ///
-
 #[derive(Debug)]
 struct Dancer {
     pub dispatch_table: HashMap<&'static str, DanceFunction>,
@@ -137,7 +136,7 @@ impl Dancer {
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
-        dispatch_table.insert("load_core_schema", load_core_schema_dance);
+        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
@@ -336,7 +335,6 @@ fn restore_session_state_from_context(context: &TransactionContext) -> Option<Se
 /// * `body` and `descriptor` are set to None
 /// * `state` is restored from context
 ///
-
 fn process_dispatch_result(
     context: &TransactionContext,
     dispatch_result: Result<ResponseBody, HolonError>,

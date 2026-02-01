@@ -170,7 +170,7 @@ impl GuestHolonService {
 
     fn mint_smart_reference_from_pointer(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         holon_id: HolonId,
         smart_property_values: Option<PropertyMap>,
     ) -> Result<HolonReference, HolonError> {
@@ -202,7 +202,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn commit_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
     ) -> Result<TransientReference, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;

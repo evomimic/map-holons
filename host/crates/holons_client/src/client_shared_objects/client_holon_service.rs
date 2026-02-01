@@ -62,7 +62,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn commit_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
     ) -> Result<TransientReference, HolonError> {
         // 1. Build commit dance request
         let request = holon_dance_builders::build_commit_dance_request()?;
@@ -113,7 +113,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         //let request = holon_dance_builders::=((*source_id)?)?;
@@ -132,6 +132,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn fetch_related_holons_internal(
         &self,
+        context: &TransactionContext,
         _source_id: &HolonId,
         _relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
@@ -164,7 +165,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn load_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &TransactionContext,
         set: TransientReference, // HolonLoadSet type
     ) -> Result<TransientReference, HolonError> {
         // 1) Build the dance request for the loader.
@@ -188,11 +189,15 @@ impl HolonServiceApi for ClientHolonService {
 
         // 5) Extract the returned holon
         match response.body {
-            ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
-            ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(),
-            _ => Err(HolonError::InvalidParameter(
-                "LoadHolons: expected ResponseBody::HolonReference".into(),
-            )),
+            ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
+            ResponseBody::HolonReference(other) => Err(HolonError::InvalidParameter(format!(
+                "LoadHolons: expected TransientReference, got {:?}",
+                other
+            ))),
+            other => Err(HolonError::InvalidParameter(format!(
+                "LoadHolons: expected ResponseBody::HolonReference, got {:?}",
+                other
+            ))),
         }
     }
 }
@@ -208,19 +213,36 @@ impl HolonServiceApi for ClientHolonService {
 ///
 /// This helper intentionally returns `T` (and will panic if runtime setup fails or the
 /// future panics) to keep the surrounding sync APIs unchanged.
+// pub fn run_future_synchronously<F, T>(future: F) -> T
+// where
+//     F: Future<Output = T>,
+// {
+//     // Choice: return T to avoid widening the sync API surface; if we want to propagate
+//     // runtime setup errors instead of panicking, we can change the signature to
+//     // -> Result<T, HolonError> later.
+//
+//     // If already inside a Tokio runtime, drive the future there without requiring 'static.
+//     if Handle::try_current().is_ok() {
+//         return block_in_place(|| block_on(future));
+//     }
+//
+//     // Otherwise, create a small current-thread runtime for this call (futures_executor).
+//     block_on(future)
+// }
 pub fn run_future_synchronously<F, T>(future: F) -> T
 where
-    F: Future<Output = T>,
+    F: Future<Output = T> + Send + 'static,
+    T: Send + 'static,
 {
-    // Choice: return T to avoid widening the sync API surface; if we want to propagate
-    // runtime setup errors instead of panicking, we can change the signature to
-    // -> Result<T, HolonError> later.
-
-    // If already inside a Tokio runtime, drive the future there without requiring 'static.
-    if Handle::try_current().is_ok() {
-        return block_in_place(|| block_on(future));
+    // If we are already inside a Tokio runtime, use it.
+    if let Ok(handle) = Handle::try_current() {
+        return handle.block_on(future);
     }
 
-    // Otherwise, create a small current-thread runtime for this call (futures_executor).
-    block_on(future)
+    // Otherwise, create a small runtime for this call.
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime for synchronous bridge")
+        .block_on(future)
 }

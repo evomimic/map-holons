@@ -15,6 +15,7 @@
 //! 3.  Creating a DanceResponse based on the results returned by the native function. This includes,
 //! mapping any errors into an appropriate ResponseStatus and returning results in the body.
 
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::{DanceRequest, DanceType, RequestBody, ResponseBody};
 use crate::HolonsContextBehavior;
 use base_types::MapString;
@@ -29,7 +30,7 @@ use core_types::HolonError;
 /// - Holon -- the created Schema Holon
 ///
 pub fn load_core_schema_dance(
-    context: &dyn HolonsContextBehavior,
+    context: &TransactionContext,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // TODO: Need to sort out the dependencies (find new home for descriptors_dance_adapter)

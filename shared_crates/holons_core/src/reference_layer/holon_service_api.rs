@@ -58,7 +58,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// Returns a transient reference to a HolonLoadResponse holon.
     fn load_holons_internal(
         &self,
-        ctx: &TransactionContext,
+        context: &TransactionContext,
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 }
