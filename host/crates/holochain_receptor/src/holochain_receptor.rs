@@ -70,6 +70,10 @@ impl HolochainReceptor {
 
 #[async_trait]
 impl ReceptorBehavior for HolochainReceptor {
+    fn transaction_context(&self) -> Arc<TransactionContext> {
+        Arc::clone(&self.context)
+    }
+
     /// Core request → client dance pipeline
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         let dance_request =

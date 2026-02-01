@@ -56,6 +56,10 @@ impl LocalReceptor {
 
 #[async_trait]
 impl ReceptorBehavior for LocalReceptor {
+    fn transaction_context(&self) -> Arc<TransactionContext> {
+        Arc::clone(&self.context)
+    }
+
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         tracing::warn!("LocalReceptor: handling request: {:?}", self.context);
         

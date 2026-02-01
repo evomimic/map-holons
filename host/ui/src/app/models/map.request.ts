@@ -16,7 +16,9 @@ import {
   RequestType,
   TransientReference,
   TemporaryId,
-  ContentSet
+  ContentSet,
+  DEFAULT_TX_ID,
+  TxId
 } from './shared-types';
 
 import { Holon, StagedHolon, TransientHolon } from './holon';
@@ -28,6 +30,7 @@ import { SessionState } from './map.response';
 // DANCE REQUEST STRUCTURE
 // ===========================================
 
+// IPC request shape (wire-form).
 export interface MapRequest {
     name: MapString, // unique command - covers dance dispatch table eg stage_new_holon
     req_type: RequestType,  // same as Dancetype enum in rust
@@ -104,8 +107,11 @@ export class RequestBodyFactory {
     return { TargetHolons: [relationshipName, holons] };
   }
 
-  static transientReference(id: TemporaryId): RequestBody {
-    return { TransientReference: { id } };
+  static transientReference(
+    id: TemporaryId,
+    tx_id: TxId = DEFAULT_TX_ID
+  ): RequestBody {
+    return { TransientReference: { id, tx_id } };
   }
 
   static stagedHolon(stagedHolon: StagedHolon): RequestBody {
@@ -168,11 +174,11 @@ export class MapRequestFactory {
 
   static commandMethod(
     name: string, 
-    stagedRef: StagedReference, 
+    holonRef: HolonReference, 
     body: RequestBody,
     space: HolonSpace = mockContentSpace
   ): MapRequest {
-    return this.create(name, { CommandMethod: stagedRef }, body, space);
+    return this.create(name, { CommandMethod: holonRef }, body, space);
   }
 
   static cloneMethod(
@@ -237,10 +243,14 @@ export function createMapRequestForLoadHolons(space: HolonSpace, contentSet: Con
   );
 }
 
-export function createMapRequestForStageHolon(space: HolonSpace, transientId: string): MapRequest {
+export function createMapRequestForStageHolon(
+  space: HolonSpace,
+  transientId: TemporaryId,
+  tx_id: TxId = DEFAULT_TX_ID
+): MapRequest {
   return MapRequestFactory.standalone(
     "stage_new_holon",
-    RequestBodyFactory.transientReference(transientId),
+    RequestBodyFactory.transientReference(transientId, tx_id),
     space
   );
 }
@@ -264,7 +274,7 @@ export function createMapRequestForStageCloneHolon(space: HolonSpace, id: HolonI
 export function createMapRequestForUpdateHolon(space: HolonSpace, stagedref: StagedReference, properties: PropertyMap): MapRequest {
   return MapRequestFactory.commandMethod(
     "with_properties",
-    stagedref,
+    { Staged: stagedref },
     RequestBodyFactory.parameterValues(properties),
     space,
   );
@@ -273,7 +283,7 @@ export function createMapRequestForUpdateHolon(space: HolonSpace, stagedref: Sta
 export function createMapRequestForCommitHolon(space: HolonSpace, stageref: StagedReference): MapRequest {
   return MapRequestFactory.commandMethod(
     "commit",
-    stageref,
+    { Staged: stageref },
     RequestBodyFactory.none(),
     space,
   );

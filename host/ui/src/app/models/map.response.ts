@@ -8,7 +8,6 @@ import {
   HolonReference,
   HolonCollection,
   NodeCollection,
-  StagedReference,
   TemporaryId,
   MapStringFactory,
   MapInteger,
@@ -58,8 +57,7 @@ export type ResponseBody =
   | { HolonCollection: HolonCollection }
   | { Holons: Holon[] } // will be replaced by SmartCollection once supported
   | { HolonReference: HolonReference }
-  | { NodeCollection: NodeCollection }
-  | { StagedRef: StagedReference };
+  | { NodeCollection: NodeCollection };
 
 // ===========================================
 // SESSION STATE TYPES
@@ -101,10 +99,6 @@ export function isResponseBodyHolonReference(body: ResponseBody): body is { Holo
 
 export function isResponseBodyNodeCollection(body: ResponseBody): body is { NodeCollection: NodeCollection } {
   return typeof body === "object" && body !== null && "NodeCollection" in body;
-}
-
-export function isResponseBodyStagedRef(body: ResponseBody): body is { StagedRef: StagedReference } {
-  return typeof body === "object" && body !== null && "StagedRef" in body;
 }
 
 // ===========================================
@@ -440,10 +434,6 @@ export class ResponseBodyFactory {
 
   static nodeCollection(collection: NodeCollection): ResponseBody {
     return { NodeCollection: collection };
-  }
-
-  static stagedRef(reference: StagedReference): ResponseBody {
-    return { StagedRef: reference };
   }
 }
 

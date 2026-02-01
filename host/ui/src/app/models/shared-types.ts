@@ -26,6 +26,12 @@ export type BaseValue =
 // LocalId is a newtype wrapper around Vec<u8>, serializes as plain array
 export type LocalId = string |number[];
 
+// TxId is a newtype wrapper around u64, serializes as number
+export type TxId = number;
+
+// Temporary placeholder until tx_id is threaded from runtime/session state.
+export const DEFAULT_TX_ID: TxId = 0;
+
 // TemporaryId is a newtype wrapper around UUID, serializes as string
 export type TemporaryId = string;
 
@@ -59,14 +65,17 @@ export type RelationshipName = MapString;
 // ===========================================
 
 export interface TransientReference {
+  tx_id: TxId;
   id: TemporaryId;
 }
 
 export interface StagedReference {
+  tx_id: TxId;
   id: TemporaryId;
 }
 
 export interface SmartReference {
+  tx_id: TxId;
   holon_id: HolonId;
   smart_property_values?: PropertyMap | null;
 }
@@ -144,7 +153,7 @@ export interface HolonNodeModel {
 export type RequestType = 
   | "Standalone"
   | { QueryMethod: NodeCollection }
-  | { CommandMethod: StagedReference }
+  | { CommandMethod: HolonReference }
   | { CloneMethod: HolonReference }
   | { NewVersionMethod: HolonId }
   | { DeleteMethod: LocalId };
@@ -238,16 +247,20 @@ export class BaseValueFactory {
 }
 
 export class HolonReferenceFactory {
-  static transient(id: TemporaryId): HolonReference {
-    return { Transient: { id } };
+  static transient(id: TemporaryId, tx_id: TxId = DEFAULT_TX_ID): HolonReference {
+    return { Transient: { id, tx_id } };
   }
 
-  static staged(id: TemporaryId): HolonReference {
-    return { Staged: { id } };
+  static staged(id: TemporaryId, tx_id: TxId = DEFAULT_TX_ID): HolonReference {
+    return { Staged: { id, tx_id } };
   }
 
-  static smart(holon_id: HolonId, smart_property_values?: PropertyMap): HolonReference {
-    return { Smart: { holon_id, smart_property_values: smart_property_values || null } };
+  static smart(
+    holon_id: HolonId,
+    tx_id: TxId = DEFAULT_TX_ID,
+    smart_property_values?: PropertyMap
+  ): HolonReference {
+    return { Smart: { holon_id, tx_id, smart_property_values: smart_property_values || null } };
   }
 }
 
@@ -270,4 +283,3 @@ export interface ContentSet {
   schema: FileData;
   files_to_load: FileData[];
 };
-

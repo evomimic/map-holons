@@ -67,34 +67,30 @@ impl HolonServiceApi for ClientHolonService {
         // 1. Build commit dance request
         let request = holon_dance_builders::build_commit_dance_request()?;
 
-        // 2. Run the dance
-        let initiator = context.get_dance_initiator()?;
-        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response =
-            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
+        // 2. Reacquire Arc<TransactionContext> for initiator
+        let context_arc = reacquire_transaction_context_arc(context)?;
 
-        // 3. Any non-OK status is an error
+        // 3. Run the dance (sync → async → sync)
+        let initiator = context.get_dance_initiator()?;
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(Arc::clone(&context_arc), request).await
+        });
+
+        // 4. Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
                 "Commit dance failed: {:?} — {}",
                 response.status_code, response.description.0
             )));
         }
-        // 4. Extract HolonReference → TransientReference
+
+        // 5. Extract HolonReference → TransientReference
         match response.body {
-            ResponseBody::HolonReference(href) => {
-                match href {
-                    HolonReference::Transient(tref) => Ok(tref),
-
-                    // Wrong kind of reference ⇒ failure in commit pipeline
-                    other => Err(HolonError::CommitFailure(format!(
-                        "Expected TransientReference but received {:?}",
-                        other
-                    ))),
-                }
-            }
-
-            // Wrong response type entirely ⇒ core bug, not caller error
+            ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
+            ResponseBody::HolonReference(other) => Err(HolonError::CommitFailure(format!(
+                "Expected TransientReference but received {:?}",
+                other
+            ))),
             body => Err(HolonError::CommitFailure(format!(
                 "Commit returned unexpected ResponseBody: {:?}; expected HolonReference",
                 body
@@ -145,21 +141,27 @@ impl HolonServiceApi for ClientHolonService {
         context: &TransactionContext,
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
+
+        let context_arc = reacquire_transaction_context_arc(context)?;
         let initiator = context.get_dance_initiator()?;
-        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response =
-            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
+
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(Arc::clone(&context_arc), request).await
+        });
+
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
-                "get all holons dance failed: {:?} — {}",
+                "GetAllHolons dance failed: {:?} — {}",
                 response.status_code, response.description.0
             )));
         }
+
         match response.body {
             ResponseBody::HolonCollection(collection) => Ok(collection),
-            _ => Err(HolonError::InvalidParameter(
-                "GetAllHolons: expected ResponseBody::HolonCollection".into(),
-            )),
+            other => Err(HolonError::InvalidParameter(format!(
+                "GetAllHolons: expected ResponseBody::HolonCollection, got {:?}",
+                other
+            ))),
         }
     }
 
@@ -175,9 +177,14 @@ impl HolonServiceApi for ClientHolonService {
         let initiator = context.get_dance_initiator()?;
 
         // 3) Bridge async → sync (ClientHolonService is synchronous)
-        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response =
-            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
+        //
+        // We must pass an `Arc<TransactionContext>` into the initiator so it can
+        // apply envelope logic and initiate the Holochain IPC request.
+        // Since this API is still `&TransactionContext` (transitional), reacquire the Arc.
+        let context_arc = reacquire_transaction_context_arc(context)?;
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(Arc::clone(&context_arc), request).await
+        });
 
         // 4) Check the status
         if response.status_code != ResponseStatusCode::OK {
@@ -245,4 +252,15 @@ where
         .build()
         .expect("Failed to create Tokio runtime for synchronous bridge")
         .block_on(future)
+}
+
+// Temporary helper
+fn reacquire_transaction_context_arc(
+    context: &TransactionContext,
+) -> Result<Arc<TransactionContext>, HolonError> {
+    context
+        .space_manager()
+        .get_transaction_manager()
+        .get_transaction(&context.tx_id())?
+        .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))
 }

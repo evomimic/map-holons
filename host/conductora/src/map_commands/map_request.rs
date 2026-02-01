@@ -1,36 +1,42 @@
 
 use holons_receptor::factory::ReceptorFactory;
-use holons_client::shared_types::map_request::{MapRequest};
-use holons_client::shared_types::map_response::MapResponse;
+use holons_client::shared_types::map_request::MapRequestWire;
+use holons_client::shared_types::map_response::MapResponseWire;
 use tauri::{command, State};
 use core_types::HolonError;
 
 #[command]
 pub async fn map_request(
-    map_request: MapRequest,
+    map_request: MapRequestWire,
     receptor_factory: State<'_, ReceptorFactory>,
-) -> Result<MapResponse, HolonError> {
+) -> Result<MapResponseWire, HolonError> {
 
     tracing::debug!("[TAURI COMMAND] 'map_request' command invoked for space: {:?}", map_request);
     // a map_request is currently using "holochain" receptor type only
-    let receptor = receptor_factory.get_receptor_by_type("holochain"); 
-        if map_request.name == "load_holons" {
-            tracing::info!("[TAURI COMMAND] 'map_request' handling 'load_holons' request");
-                return receptor
-                .load_holons(map_request)
-                .await
-                .map_err(|e| {
-                    tracing::error!("Error in load_holons: {:?}", e);
-                    HolonError::from(e)
-                });
-        } 
+    let receptor = receptor_factory.get_receptor_by_type("holochain");
+    let context = receptor.transaction_context();
+    let bound_request = map_request.bind(&context)?;
+
+    if bound_request.name == "load_holons" {
+        tracing::info!("[TAURI COMMAND] 'map_request' handling 'load_holons' request");
         return receptor
-            .handle_map_request(map_request)
+            .load_holons(bound_request)
             .await
             .map_err(|e| {
-                tracing::error!("Error in handle_map_request: {:?}", e);
+                tracing::error!("Error in load_holons: {:?}", e);
                 HolonError::from(e)
-            });
+            })
+            .map(|response| MapResponseWire::from(&response));
+    }
+
+    receptor
+        .handle_map_request(bound_request)
+        .await
+        .map_err(|e| {
+            tracing::error!("Error in handle_map_request: {:?}", e);
+            HolonError::from(e)
+        })
+        .map(|response| MapResponseWire::from(&response))
 }
 
 
