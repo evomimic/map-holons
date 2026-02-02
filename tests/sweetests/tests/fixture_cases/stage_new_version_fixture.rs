@@ -48,10 +48,14 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
+    let book_saved_token: TestReference = saved_tokens
+        .iter()
+        .filter(|t| t.token_id().essential_content().unwrap().key.unwrap() == book_key)
+        .collect::<Vec<&TestReference>>()[0]
+        .clone();
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let staged_clone = test_case.add_stage_new_version_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_staged_token.clone(),
         ResponseStatusCode::OK,
@@ -67,7 +71,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     expected_clone_properties.insert("title".to_property_name(), "Changed".to_base_value());
 
     test_case.add_with_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         staged_clone,
         expected_clone_properties.clone(),
@@ -78,7 +81,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;

@@ -65,11 +65,12 @@ pub async fn execute_stage_new_version(
     // 6. RECORD — make execution result available downstream
     state.record(&source_token, execution_reference).unwrap();
 
-    // 7. Verify predecessor relationship
-    let predecessor = response_holon_reference.predecessor(context).unwrap();
+    // 7. Verify the new version has the original holon as its predecessor.
+    let predecessor = version_1_response_holon_reference.predecessor().unwrap();
+
     assert_eq!(
         predecessor,
-        Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
+        Some(HolonReference::Smart(smart_reference.clone())),
         "Predecessor relationship did not match expected"
     );
 

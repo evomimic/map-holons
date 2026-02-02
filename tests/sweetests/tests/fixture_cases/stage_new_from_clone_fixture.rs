@@ -32,7 +32,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("book:transient-source".to_string());
-    let transient_source = new_holon(fixture_context.as_ref(), Some(transient_source_key.clone()))?;
+    let transient_source = new_holon(&fixture_context, Some(transient_source_key.clone()))?;
     // Mint transient source token
     let transient_token = test_case.add_new_holon_step(
         &*fixture_context,
@@ -44,7 +44,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     // Expect BadRequest
     test_case.add_stage_new_from_clone_step(
-        &*fixture_context,
         &mut fixture_holons,
         transient_token,
         transient_source_key.clone(),
@@ -69,7 +68,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  Stage New From Clone  //
     let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_staged_token.clone(),
         from_staged_key.clone(),
@@ -84,7 +82,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     phase_b_expected_properties.insert("EDITION".to_property_name(), 2.to_base_value());
 
     test_case.add_with_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         clone_from_staged_staged,
         phase_b_expected_properties,
@@ -102,7 +99,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  Stage New From Clone  //
     let clone_from_saved_staged = test_case.add_stage_new_from_clone_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_staged_token,
         from_saved_key.clone(),
@@ -119,7 +115,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     phase_c_expected_properties.insert("TYPE".to_property_name(), "Book Clone".to_base_value());
 
     test_case.add_with_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         clone_from_saved_staged,
         phase_c_expected_properties,
