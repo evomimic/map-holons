@@ -53,11 +53,7 @@ impl TransientHolonManager {
     /// Adds the provided holon and returns a reference-counted reference to it
     /// If the holon has a key, update the keyed_index to allow the transient holon
     /// to be retrieved by key.
-    fn add_new_holon(
-        &self,
-        //transaction_handle: &TransactionContextHandle,
-        holon: TransientHolon,
-    ) -> Result<TransientReference, HolonError> {
+    fn add_new_holon(&self, holon: TransientHolon) -> Result<TransientReference, HolonError> {
         let id: TemporaryId = {
             let mut pool = self.transient_holons.try_write().map_err(|e| {
                 warn!("❌ Failed to acquire write lock - lock may be held elsewhere");
@@ -75,7 +71,6 @@ impl TransientHolonManager {
     /// - the reference is minted with the caller’s transaction handle
     pub(crate) fn to_validated_transient_reference(
         &self,
-        //transaction_handle: &TransactionContextHandle,
         id: &TemporaryId,
     ) -> Result<TransientReference, HolonError> {
         // Validate id exists in this pool.
@@ -132,11 +127,7 @@ impl TransientManagerAccess for TransientHolonManager {
 }
 
 impl TransientHolonBehavior for TransientHolonManager {
-    fn create_empty(
-        &self,
-        //transaction_handle: &TransactionContextHandle,
-        key: MapString,
-    ) -> Result<TransientReference, HolonError> {
+    fn create_empty(&self, key: MapString) -> Result<TransientReference, HolonError> {
         let mut property_map = PropertyMap::new();
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
         property_map.insert(key_property_name, BaseValue::StringValue(key));
@@ -155,10 +146,7 @@ impl TransientHolonBehavior for TransientHolonManager {
         Ok(transient_reference)
     }
 
-    fn create_empty_without_key(
-        &self,
-        //transaction_handle: &TransactionContextHandle,
-    ) -> Result<TransientReference, HolonError> {
+    fn create_empty_without_key(&self) -> Result<TransientReference, HolonError> {
         let holon = TransientHolon::with_fields(
             MapInteger(1),
             HolonState::Mutable,
@@ -199,7 +187,6 @@ impl TransientHolonBehavior for TransientHolonManager {
     // Caller is assuming there is only one, returns duplicate error if multiple.
     fn get_transient_holon_by_base_key(
         &self,
-        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
         let id = {
@@ -216,7 +203,6 @@ impl TransientHolonBehavior for TransientHolonManager {
 
     fn get_transient_holons_by_base_key(
         &self,
-        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<Vec<TransientReference>, HolonError> {
         let mut transient_references = Vec::new();
@@ -235,7 +221,6 @@ impl TransientHolonBehavior for TransientHolonManager {
 
     fn get_transient_holon_by_versioned_key(
         &self,
-        //transaction_handle: &TransactionContextHandle,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
         let id = {

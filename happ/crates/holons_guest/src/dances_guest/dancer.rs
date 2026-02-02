@@ -217,7 +217,7 @@ fn initialize_context_from_request(
     })?;
 
     // TEMPORARY: extract `Option<HolonId>` from the wire reference.
-    // Once SessionState stores `Option<HolonId>`, this block goes away.
+    // If SessionState stores `Option<HolonId>`, this block goes away.
     let local_space_holon_id: Option<HolonId> = match &local_space_holon_wire {
         Some(wire_ref) => Some(space_holon_id_from_wire_reference(wire_ref).map_err(|e| {
             // If the session state carried an invalid space holon reference,

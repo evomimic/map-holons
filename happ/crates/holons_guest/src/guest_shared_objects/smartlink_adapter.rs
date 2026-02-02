@@ -6,7 +6,6 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_core::{
     core_shared_objects::key_from_property_map,
-    reference_layer::{HolonReference, SmartReference},
 };
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;

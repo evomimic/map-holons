@@ -29,8 +29,7 @@ use holons_core::{
         HolonCollection,
     },
     reference_layer::{
-        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
-        WritableHolon,
+        HolonCollectionApi, HolonReference, HolonServiceApi, SmartReference, WritableHolon,
     },
 };
 use holons_integrity::LinkTypes;
@@ -212,7 +211,7 @@ impl HolonServiceApi for GuestHolonService {
         let commit_response = commit_functions::commit(context, &staged_references)?;
 
         // Step 3: Borrow mutably to clear the stage
-        internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
+        let _ = internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
 
         // Step 4: Return the commit response
         Ok(commit_response)

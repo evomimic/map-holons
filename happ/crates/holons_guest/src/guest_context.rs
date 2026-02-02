@@ -5,7 +5,6 @@ use holons_core::{
         holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager,
         transactions::{TransactionContext, TxId}, ServiceRoutingPolicy,
     },
-    reference_layer::HolonReference,
     HolonServiceApi,
 };
 use std::sync::{Arc, RwLock};

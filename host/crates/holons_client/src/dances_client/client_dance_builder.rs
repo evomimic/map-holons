@@ -9,7 +9,7 @@ use holon_dance_builders::{
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::HolonReference;
-use holons_core::{dances::DanceRequest, new_holon, HolonsContextBehavior};
+use holons_core::{dances::DanceRequest, new_holon};
 use std::sync::Arc;
 
 pub struct ClientDanceBuilder;

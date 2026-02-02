@@ -16,7 +16,7 @@ use holons_core::{
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
     new_holon,
-    reference_layer::{HolonsContextBehavior, ReadableHolon},
+    reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
 };
 
@@ -406,6 +406,7 @@ fn commit_holon(
 /// Any other states are ignored.
 ///
 /// The function only returns OK if ALL commits are successful.
+#[allow(dead_code)]
 fn commit_relationships(
     context: &Arc<TransactionContext>,
     holon: &StagedHolon,
@@ -451,7 +452,7 @@ fn commit_relationship(
 /// This method creates smartlinks from the specified source_id for the specified relationship name
 /// to each holon in its collection that has a holon_id.
 fn save_smartlinks_for_collection(
-    context: &Arc<TransactionContext>,
+    _context: &Arc<TransactionContext>,
     source_id: LocalId,
     name: RelationshipName,
     collection: &HolonCollection,
@@ -468,7 +469,13 @@ fn save_smartlinks_for_collection(
     debug!("Relationship {:?} has {} members to commit", name.0 .0, members.len());
 
     for (idx, holon_reference) in members.iter().enumerate() {
-        debug!("Target index={} holon_reference={:#?}", idx, holon_reference);
+        // Avoid deep Debug formatting here because runtime-bound references can recurse heavily in wasm.
+        debug!(
+            "Target index={} ref_kind={} ref_id={}",
+            idx,
+            holon_reference.reference_kind_string(),
+            holon_reference.reference_id_string()
+        );
 
         // 1) Narrow down: do we get through holon_id?
         let target_id = match holon_reference.holon_id() {
@@ -518,7 +525,13 @@ fn save_smartlinks_for_collection(
             }
         };
 
-        debug!("saving smartlink (idx={}): {:#?}", idx, smartlink);
+        debug!(
+            "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
+            idx,
+            name.0 .0,
+            source_id,
+            smartlink.to_address
+        );
         save_smartlink(smartlink)?;
     }
 

@@ -13,7 +13,7 @@ use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::holon::HolonCloneModel,
-    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon, TransientReference},
+    reference_layer::{HolonReference, ReadableHolon, TransientReference},
 };
 // Provides methods for creating/transient holons
 use crate::{

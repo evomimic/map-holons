@@ -24,7 +24,7 @@ use crate::{
         transient_holon_manager::ToHolonCloneModel,
         ReadableHolonState, WriteableHolonState,
     },
-    reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon},
+    reference_layer::{HolonReference, ReadableHolon},
     HolonCollection, RelationshipMap,
 };
 

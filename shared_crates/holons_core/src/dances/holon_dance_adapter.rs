@@ -17,7 +17,7 @@
 use std::sync::Arc;
 use tracing::{debug, info};
 
-use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::TransientReference;
 use crate::{
     core_shared_objects::{

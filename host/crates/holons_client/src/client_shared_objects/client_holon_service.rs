@@ -35,6 +35,7 @@
 #![allow(unused_variables)]
 
 use core_types::{HolonError, HolonId};
+use futures_executor::block_on;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
@@ -49,6 +50,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::sync::Arc;
 use tokio::runtime::Handle;
+use tokio::task::block_in_place;
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -204,47 +206,28 @@ impl HolonServiceApi for ClientHolonService {
     }
 }
 
-/// Run an async future to completion from synchronous code (native only).
-/// Drive an async future to completion from synchronous host/client code, aware of Tokio.
+/// Drive an async future to completion from synchronous host/client code.
 ///
 /// Behavior:
-/// - If a Tokio runtime is already running on this thread, the future is executed
-///   inside that runtime using `block_in_place` to avoid creating a nested runtime.
-/// - If no runtime is running, a lightweight current-thread runtime is created
-///   just for this call.
+/// - If a Tokio runtime is already running on this thread, execute via
+///   `block_in_place(|| futures_executor::block_on(...))` so we do not nest runtimes.
+/// - If no runtime is running, execute directly with `futures_executor::block_on(...)`.
 ///
-/// This helper intentionally returns `T` (and will panic if runtime setup fails or the
-/// future panics) to keep the surrounding sync APIs unchanged.
-// pub fn run_future_synchronously<F, T>(future: F) -> T
-// where
-//     F: Future<Output = T>,
-// {
-//     // Choice: return T to avoid widening the sync API surface; if we want to propagate
-//     // runtime setup errors instead of panicking, we can change the signature to
-//     // -> Result<T, HolonError> later.
-//
-//     // If already inside a Tokio runtime, drive the future there without requiring 'static.
-//     if Handle::try_current().is_ok() {
-//         return block_in_place(|| block_on(future));
-//     }
-//
-//     // Otherwise, create a small current-thread runtime for this call (futures_executor).
-//     block_on(future)
-// }
+/// Note: `block_in_place` requires a Tokio multi-thread runtime. If this helper is
+/// called from a current-thread Tokio runtime, Tokio will panic.
 pub fn run_future_synchronously<F, T>(future: F) -> T
 where
-    F: Future<Output = T> + Send + 'static,
-    T: Send + 'static,
+    F: Future<Output = T>,
 {
-    // If we are already inside a Tokio runtime, use it.
-    if let Ok(handle) = Handle::try_current() {
-        return handle.block_on(future);
+    // Choice: return T to avoid widening the sync API surface; if we want to propagate
+    // runtime setup errors instead of panicking, we can change the signature to
+    // -> Result<T, HolonError> later.
+
+    // If already inside a Tokio runtime, drive the future there without requiring 'static.
+    if Handle::try_current().is_ok() {
+        return block_in_place(|| block_on(future));
     }
 
-    // Otherwise, create a small runtime for this call.
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to create Tokio runtime for synchronous bridge")
-        .block_on(future)
+    // Otherwise, run directly with futures_executor (no Tokio runtime required).
+    block_on(future)
 }
