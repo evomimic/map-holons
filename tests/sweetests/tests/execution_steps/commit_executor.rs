@@ -73,13 +73,14 @@ pub async fn execute_commit(
         let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
-        let expected = expected_tokens[*source_index].expected_snapshot();
+        let token = &expected_tokens[*source_index];
+        let expected = token.expected_snapshot();
         let resolved_reference = ExecutionReference::from_reference_parts(
             expected.clone(),
             ResultingReference::from(holon_reference.clone()),
         );
 
-        state.record(expected.id(), resolved_reference);
+        state.record(token, resolved_reference);
     }
 
     // 6. Optional: log a summary

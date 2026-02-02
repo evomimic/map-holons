@@ -1,11 +1,8 @@
-use holons_core::{
-    core_shared_objects::holon::EssentialRelationshipMap, reference_layer::holon_operations_api::*,
-};
-use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit, TestReference};
+use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit};
 use rstest::*;
 
 use holons_prelude::prelude::*;
-use tracing::debug;
+// use tracing::debug;
 
 use super::setup_book_author_steps_with_context;
 use crate::helpers::{init_fixture_context, BOOK_KEY};
@@ -90,6 +87,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
+    // TODO: solved in issue 373
+
     // // VERSION 2 //
     // // Stage a second version from the same original holon in order to verify that:
     // // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
@@ -150,5 +149,5 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Finalize
     test_case.finalize(&*fixture_context);
 
-    Ok(test_case.clone())
+    Ok(test_case)
 }

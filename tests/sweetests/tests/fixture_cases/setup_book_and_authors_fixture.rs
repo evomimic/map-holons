@@ -32,7 +32,10 @@ pub fn setup_book_author_steps_with_context<'a>(
     bindings: &'a mut FixtureBindings,
 ) -> Result<&'a mut FixtureBindings, HolonError> {
     // Set relationship
-    bindings.set_relationship_name(BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name());
+    bindings.set_relationship_name(
+        MapString("BOOK_TO_PERSON".to_string()),
+        BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
+    );
 
     //  STAGE:  Book Holon  //
     //

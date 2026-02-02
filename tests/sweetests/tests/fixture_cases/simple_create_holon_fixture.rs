@@ -1,10 +1,8 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    fixture_cases::setup_book_author_steps_with_context,
     helpers::{init_fixture_context, BOOK_KEY},
 };
-use holochain::conductor::conductor::hdk::prelude::holochain_zome_types::properties;
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit};
 use rstest::*;
@@ -61,5 +59,5 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Finalize
     test_case.finalize(&*fixture_context);
 
-    Ok(test_case.clone())
+    Ok(test_case)
 }

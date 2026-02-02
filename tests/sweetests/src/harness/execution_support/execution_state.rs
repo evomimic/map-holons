@@ -16,7 +16,6 @@ use std::sync::Arc;
 
 use crate::harness::execution_support::{ExecutionHolons, ExecutionReference};
 use crate::harness::fixtures_support::TestReference;
-use crate::SnapshotId;
 use holons_prelude::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -70,10 +69,10 @@ impl TestExecutionState {
     #[inline]
     pub fn record(
         &mut self,
-        id: SnapshotId,
+        token: &TestReference,
         resolved: ExecutionReference,
     ) -> Result<(), HolonError> {
-        self.execution_holons.record(id, resolved)?;
+        self.execution_holons.record(token, resolved)?;
 
         Ok(())
     }

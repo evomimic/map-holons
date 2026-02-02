@@ -61,11 +61,20 @@ pub async fn execute_delete_holon(
     info!("Confirmed Holon deletion!");
 
     // 5. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
-    let resulting_reference = ResultingReference::Deleted;
-    let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_snapshot(),
-        resulting_reference,
-    );
 
-    state.record(source_token.expected_id(), resolved_reference).unwrap();
+    if response.status_code == ResponseStatusCode::OK {
+        let resulting_reference = ResultingReference::Deleted;
+        let resolved_reference = ExecutionReference::from_reference_parts(
+            source_token.expected_snapshot(),
+            resulting_reference,
+        );
+        state.record(&source_token, resolved_reference).unwrap();
+    } else {
+            let resulting_reference = ResultingReference::LiveReference(source_reference);
+            let resolved_reference = ExecutionReference::from_reference_parts(
+                source_token.expected_snapshot(),
+                resulting_reference,
+            );
+            state.record(&source_token, resolved_reference).unwrap();
+    }
 }

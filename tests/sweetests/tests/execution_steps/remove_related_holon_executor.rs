@@ -73,5 +73,5 @@ pub async fn execute_remove_related_holons(
         source_token.expected_snapshot(),
         resulting_reference,
     );
-    state.record(source_token.expected_id(), resolved_reference).unwrap();
+    state.record(&source_token, resolved_reference).unwrap();
 }

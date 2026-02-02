@@ -50,9 +50,10 @@ impl ExecutionHolons {
     /// - Must not overwrite existing entries.
     pub fn record(
         &mut self,
-        id: SnapshotId,
+        token: &TestReference,
         resolved: ExecutionReference,
     ) -> Result<(), HolonError> {
+        let id = token.expected_id();
         if self.by_snapshot_id.contains_key(&id) {
             return Err(HolonError::InvalidParameter(format!(
                 "An ExecutionHolon already exists for id: {:?}, cannot overwrite.",

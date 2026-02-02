@@ -245,5 +245,5 @@
 //     // Load test_session_state
 //     test_case.load_test_session_state(&*fixture_context);
 
-//     Ok(test_case.clone())
+//     Ok(test_case)
 // }

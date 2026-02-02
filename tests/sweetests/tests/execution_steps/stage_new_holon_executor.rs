@@ -61,5 +61,5 @@ pub async fn execute_stage_new_holon(
     info!("Success! Staged holon's essential content matched expected");
 
     // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(source_token.expected_id(), resolved_reference).unwrap();
+    state.record(&source_token, resolved_reference).unwrap();
 }

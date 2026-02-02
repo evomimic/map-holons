@@ -43,7 +43,7 @@ pub struct FixtureHolon {
 
 impl FixtureHolon {
     /// Conversion mechanism called by adders that determines which snapshot can be used as the new source and then performs the conversion.
-    pub fn resolve_snapshot_as_source(&self) -> SourceSnapshot {
+    fn resolve_snapshot_as_source(&self) -> SourceSnapshot {
         if self.head_snapshot.state() == TestHolonState::Deleted {
             self.last_live_snapshot.as_source()
         } else {
@@ -143,10 +143,22 @@ impl FixtureHolons {
         }
     }
 
-    pub fn get_fixture_holon_by_snapshot(
-        &self,
-        id: &SnapshotId,
-    ) -> Result<&FixtureHolon, HolonError> {
+    /// Public helper for adders to derive the next source snapshot to be (potentially) used for the subsequent step.
+    /// Extracts the TemporaryId of the ExpectedSnapshot to get the associated fixture holon and uses that to call a private helper
+    /// for resolving the appropriate live/head converted as a SourceSnapshot.
+    pub fn derive_next_source(
+        &mut self,
+        token: &TestReference,
+    ) -> Result<SourceSnapshot, HolonError> {
+        let id = token.expected_id();
+        let fixture_holon = self.get_fixture_holon_by_snapshot(&id)?;
+        let new_source = fixture_holon.resolve_snapshot_as_source();
+
+        Ok(new_source)
+    }
+
+    /// Retrieves the FixtureHolon that is keyed by the given SnapshotId.
+    fn get_fixture_holon_by_snapshot(&self, id: &SnapshotId) -> Result<&FixtureHolon, HolonError> {
         let fixture_id =
             self.snapshot_to_fixture_holon.get(&id).ok_or(HolonError::InvalidParameter(
                 "No FixtureHolon is keyed by the given SnapshotId".to_string(),
@@ -180,6 +192,7 @@ impl FixtureHolons {
                     saved_tokens.push(saved_token);
                     // Advance head
                     holon.head_snapshot = expected;
+                    // self.advance_head(&holon.head_snapshot.snapshot().temporary_id(), expected)?;
                 }
                 TestHolonState::Abandoned => {
                     debug!("Skipping commit on Abandoned Holon: {:#?}", holon);
