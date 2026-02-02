@@ -17,9 +17,8 @@ use holons_core::{
     dances::{
         dance_request::DanceRequestWire,
         dance_response::{DanceResponseWire, ResponseBodyWire},
-        DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode,
+        DanceInitiator, DanceRequest, DanceResponse, ResponseStatusCode,
     },
-    HolonsContextBehavior,
 };
 
 /// Minimal conductor client for POC.
@@ -85,12 +84,13 @@ impl DanceInitiator for HolochainConductorClient {
     ) -> DanceResponse {
         let request_wire = DanceRequestWire::from(&request);
         let response_wire = self.conductor_dance_call(request_wire).await;
+        let response_state = response_wire.state.clone();
 
         match response_wire.bind(&context) {
             Ok(bound) => bound,
             Err(error) => {
                 let mut response = DanceResponse::from_error(error);
-                response.state = response_wire.state;
+                response.state = response_state;
                 response
             }
         }

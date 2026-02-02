@@ -118,7 +118,7 @@ pub enum CommitOutcome {
 /// If both passes succeed (no `Incomplete` status), the guest holon service
 /// is responsible for clearing the staged holon pool afterward.
 pub fn commit(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
     info!("Entering commit...");
@@ -155,7 +155,8 @@ pub fn commit(
                     let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
                         HolonError::HolonNotFound("Committed holon has no key".into())
                     })?;
-                    let saved_reference = HolonReference::smart_with_key(holon_id, key_string);
+                    let saved_reference =
+                        HolonReference::smart_with_key(context.handle(), holon_id, key_string);
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::Abandoned) => {
@@ -313,7 +314,7 @@ pub fn commit(
 /// idempotent to call repeatedly; holons already committed or abandoned are skipped.
 fn commit_holon(
     staged_reference: &StagedReference,
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
 ) -> Result<CommitOutcome, HolonError> {
     // Resolve the staged holon from the pool
     let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -400,7 +401,7 @@ fn commit_holon(
 ///
 /// The function only returns OK if ALL commits are successful.
 fn commit_relationships(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     holon: &StagedHolon,
 ) -> Result<(), HolonError> {
     debug!("Entered Holon::commit_relationships");
@@ -429,7 +430,7 @@ fn commit_relationships(
 
 /// The method
 fn commit_relationship(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     source_id: LocalId,
     name: RelationshipName,
     collection: &HolonCollection,
@@ -444,7 +445,7 @@ fn commit_relationship(
 /// This method creates smartlinks from the specified source_id for the specified relationship name
 /// to each holon in its collection that has a holon_id.
 fn save_smartlinks_for_collection(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     source_id: LocalId,
     name: RelationshipName,
     collection: &HolonCollection,

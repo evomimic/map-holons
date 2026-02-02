@@ -60,7 +60,7 @@ impl StagedReference {
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     pub fn abandon_staged_changes(
         &self,
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
     ) -> Result<(), HolonError> {
         // Get access to the source holon
         let rc_holon = self.get_rc_holon()?;
@@ -110,7 +110,7 @@ impl StagedReference {
     /// persistence.  It will later be restricted to the `guest` feature.
     pub fn get_holon_to_commit(
         &self,
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         self.get_rc_holon()
     }
@@ -135,7 +135,7 @@ impl StagedReference {
 
     pub fn is_in_state(
         &self,
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         check_state: StagedState,
     ) -> Result<bool, HolonError> {
         let rc_holon = self.get_rc_holon()?;
@@ -171,11 +171,6 @@ impl StagedReference {
     /// Returns the transaction id this reference is bound to.
     pub fn tx_id(&self) -> TxId {
         self.context_handle.tx_id()
-    }
-
-    /// Borrowed access to the runtime transaction handle (useful internally).
-    pub(crate) fn context_handle(&self) -> &TransactionContextHandle {
-        &self.context_handle
     }
 
     // Simple string representations for errors/logging

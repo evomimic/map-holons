@@ -180,7 +180,7 @@ mod tests {
 
         fn commit_internal(
             &self,
-            _context: &TransactionContext,
+            _context: &Arc<TransactionContext>,
         ) -> Result<TransientReference, HolonError> {
             not_implemented()
         }
@@ -191,7 +191,7 @@ mod tests {
 
         fn fetch_all_related_holons_internal(
             &self,
-            _context: &TransactionContext,
+            _context: &Arc<TransactionContext>,
             _source_id: &HolonId,
         ) -> Result<RelationshipMap, HolonError> {
             not_implemented()
@@ -203,7 +203,7 @@ mod tests {
 
         fn fetch_related_holons_internal(
             &self,
-            _context: &TransactionContext,
+            _context: &Arc<TransactionContext>,
             _source_id: &HolonId,
             _relationship_name: &RelationshipName,
         ) -> Result<HolonCollection, HolonError> {
@@ -212,14 +212,14 @@ mod tests {
 
         fn get_all_holons_internal(
             &self,
-            context: &TransactionContext,
+            context: &Arc<TransactionContext>,
         ) -> Result<HolonCollection, HolonError> {
             not_implemented()
         }
 
         fn load_holons_internal(
             &self,
-            _context: &TransactionContext,
+            _context: &Arc<TransactionContext>,
             _bundle: TransientReference,
         ) -> Result<TransientReference, HolonError> {
             not_implemented()

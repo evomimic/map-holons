@@ -25,7 +25,7 @@ impl RelationshipCache {
     /// Retrieves a RelationshipMap for the source HolonReference by calling the HolonService to fetch all related Holons.
     pub fn get_all_related_holons(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
@@ -47,7 +47,7 @@ impl RelationshipCache {
     /// repeated calls to the `fetch_related_holons` method of the `HolonServiceApi`.
     pub fn related_holons(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,

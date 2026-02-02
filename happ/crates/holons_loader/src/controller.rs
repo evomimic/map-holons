@@ -11,6 +11,7 @@
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 // use uuid::Uuid;
 
@@ -54,7 +55,7 @@ impl HolonLoaderController {
     ///
     pub fn load_set(
         &mut self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         set_reference: TransientReference, // -> HolonLoadSet
     ) -> Result<TransientReference, HolonError> {
         // let run_id = Uuid::new_v4();

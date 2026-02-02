@@ -60,21 +60,20 @@ impl HolonServiceApi for ClientHolonService {
 
     fn commit_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<TransientReference, HolonError> {
-        // 1. Build commit dance request
+        // Build commit dance request
         let request = holon_dance_builders::build_commit_dance_request()?;
 
-        // 2. Reacquire Arc<TransactionContext> for initiator
-        let context_arc = reacquire_transaction_context_arc(context)?;
-
-        // 3. Run the dance (sync → async → sync)
+        // Run the dance (sync → async → sync)
         let initiator = context.get_dance_initiator()?;
+        let context_for_async = Arc::clone(context);
+
         let response = run_future_synchronously(async move {
-            initiator.initiate_dance(Arc::clone(&context_arc), request).await
+            initiator.initiate_dance(context_for_async, request).await
         });
 
-        // 4. Any non-OK status is an error
+        // Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
                 "Commit dance failed: {:?} — {}",
@@ -82,7 +81,7 @@ impl HolonServiceApi for ClientHolonService {
             )));
         }
 
-        // 5. Extract HolonReference → TransientReference
+        // Extract HolonReference → TransientReference
         match response.body {
             ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
             ResponseBody::HolonReference(other) => Err(HolonError::CommitFailure(format!(
@@ -107,7 +106,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         //let request = holon_dance_builders::=((*source_id)?)?;
@@ -126,7 +125,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn fetch_related_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         _source_id: &HolonId,
         _relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
@@ -136,15 +135,16 @@ impl HolonServiceApi for ClientHolonService {
 
     fn get_all_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
 
-        let context_arc = reacquire_transaction_context_arc(context)?;
         let initiator = context.get_dance_initiator()?;
 
+        let context_for_async = Arc::clone(context);
+
         let response = run_future_synchronously(async move {
-            initiator.initiate_dance(Arc::clone(&context_arc), request).await
+            initiator.initiate_dance(context_for_async, request).await
         });
 
         if response.status_code != ResponseStatusCode::OK {
@@ -165,7 +165,7 @@ impl HolonServiceApi for ClientHolonService {
 
     fn load_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         set: TransientReference, // HolonLoadSet type
     ) -> Result<TransientReference, HolonError> {
         // 1) Build the dance request for the loader.
@@ -175,13 +175,10 @@ impl HolonServiceApi for ClientHolonService {
         let initiator = context.get_dance_initiator()?;
 
         // 3) Bridge async → sync (ClientHolonService is synchronous)
-        //
-        // We must pass an `Arc<TransactionContext>` into the initiator so it can
-        // apply envelope logic and initiate the Holochain IPC request.
-        // Since this API is still `&TransactionContext` (transitional), reacquire the Arc.
-        let context_arc = reacquire_transaction_context_arc(context)?;
+        let context_for_async = Arc::clone(context);
+
         let response = run_future_synchronously(async move {
-            initiator.initiate_dance(Arc::clone(&context_arc), request).await
+            initiator.initiate_dance(context_for_async, request).await
         });
 
         // 4) Check the status
@@ -250,15 +247,4 @@ where
         .build()
         .expect("Failed to create Tokio runtime for synchronous bridge")
         .block_on(future)
-}
-
-// Temporary helper
-fn reacquire_transaction_context_arc(
-    context: &TransactionContext,
-) -> Result<Arc<TransactionContext>, HolonError> {
-    context
-        .space_manager()
-        .get_transaction_manager()
-        .get_transaction(&context.tx_id())?
-        .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))
 }

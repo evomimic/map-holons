@@ -1,11 +1,11 @@
-use std::any::Any;
-use std::fmt::Debug;
-
 use super::TransientReference;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::RelationshipMap;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
+use std::any::Any;
+use std::fmt::Debug;
+use std::sync::Arc;
 
 /// The HolonServiceApi trait defines the public service interface for Holon operations
 /// in MAP. Its primary purpose is to provide a **shared abstraction** between client
@@ -30,7 +30,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// This function commits the staged holons to the persistent store
     fn commit_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<TransientReference, HolonError>;
 
     /// This function deletes the saved holon identified by  from the persistent store
@@ -38,7 +38,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError>;
 
@@ -46,7 +46,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
 
     fn fetch_related_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
@@ -54,14 +54,14 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     /// Retrieves all persisted Holons, as a HolonCollection
     fn get_all_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError>;
 
     /// Execute a Holon Loader import using a HolonLoadSet (transient) reference.
     /// Returns a transient reference to a HolonLoadResponse holon.
     fn load_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 }

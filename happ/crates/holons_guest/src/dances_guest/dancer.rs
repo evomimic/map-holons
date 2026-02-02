@@ -56,7 +56,7 @@ pub fn dance(request: DanceRequestWire) -> ExternResult<DanceResponseWire> {
     // -------------------------- BIND WIRE → RUNTIME ---------------------------------
     //
     // Validate tx provenance and attach TransactionContextHandle to all embedded references.
-    let bound_request = match request.clone().bind(Arc::clone(&context)) {
+    let bound_request = match request.clone().bind(&context) {
         Ok(bound) => bound,
         Err(error) => {
             // Binding failed locally (e.g., cross-transaction reference).
@@ -89,8 +89,8 @@ pub fn dance(request: DanceRequestWire) -> ExternResult<DanceResponseWire> {
     // }
     debug!("dispatching dance");
 
-    let dispatch_result = dancer.dispatch(context.as_ref(), bound_request);
-    let result_runtime = process_dispatch_result(context.as_ref(), dispatch_result);
+    let dispatch_result = dancer.dispatch(&context, bound_request);
+    let result_runtime = process_dispatch_result(&context, dispatch_result);
 
     // -------------------------- PROJECT RUNTIME → WIRE ---------------------------------
     //
@@ -107,7 +107,7 @@ pub fn dance(request: DanceRequestWire) -> ExternResult<DanceResponseWire> {
 }
 
 // Define a type alias for functions that can be dispatched
-type DanceFunction = fn(&TransactionContext, DanceRequest) -> Result<ResponseBody, HolonError>;
+type DanceFunction = fn(&Arc<TransactionContext>, DanceRequest) -> Result<ResponseBody, HolonError>;
 
 /// The dispatch table offers the Dancer behaviors including the external API operations of dance and
 /// (eventually) undo / redo (see [Command Pattern Wiki](https://en.wikipedia.org/wiki/Command_pattern)
@@ -169,7 +169,7 @@ impl Dancer {
     // Function to dispatch a request based on the function name
     fn dispatch(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> Result<ResponseBody, HolonError> {
         if let Some(func) = self.dispatch_table.get(request.dance_name.0.as_str()) {
@@ -232,13 +232,9 @@ fn initialize_context_from_request(
     };
 
     // Initialize context from session state pools.
-    let context = init_guest_context(
-        transient_holons,
-        staged_holons,
-        local_space_holon_id.clone(),
-        tx_id,
-    )
-        .map_err(|error| create_error_response_wire(error, request))?;
+    let context =
+        init_guest_context(transient_holons, staged_holons, local_space_holon_id.clone(), tx_id)
+            .map_err(|error| create_error_response_wire(error, request))?;
 
     // Ensure the TransactionContext has a space holon id set.
     //
@@ -348,7 +344,7 @@ fn restore_session_state_from_context(context: &TransactionContext) -> Option<Se
 /// * `state` is restored from context
 ///
 fn process_dispatch_result(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     dispatch_result: Result<ResponseBody, HolonError>,
 ) -> DanceResponse {
     match dispatch_result {

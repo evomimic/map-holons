@@ -9,6 +9,7 @@
 // This module intentionally avoids any relationship writes or type application;
 // those are handled by the resolver in Pass 2.
 
+use std::sync::Arc;
 use tracing::{debug, warn};
 
 use holons_prelude::prelude::CorePropertyTypeName::{Key, StartUtf8ByteOffset};
@@ -44,7 +45,7 @@ impl LoaderHolonMapper {
     /// - Stages properties-only holons (filters loader-only props); fills counts
     /// - Collects LoaderRelationshipReference transients into `queued_relationship_references`
     pub fn map_bundle(
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         bundle: TransientReference,
     ) -> Result<MapperOutput, HolonError> {
         let mut output = MapperOutput::default();
@@ -105,7 +106,7 @@ impl LoaderHolonMapper {
     /// - `key` MUST be present on the LoaderHolon (we currently do not support keyless).
     /// - Loader-only properties (e.g., `StartUtf8ByteOffset`) are **not** copied to the target.
     pub fn build_target_staged(
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         loader: &HolonReference,
     ) -> Result<(StagedReference, MapString), HolonError> {
         // Produce a detached TransientReference so we can access raw properties

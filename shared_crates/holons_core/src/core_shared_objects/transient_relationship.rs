@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{HolonCollection, HolonCollectionWire, ReadableRelationship, WritableRelationship};
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
+use crate::{HolonCollectionApi, HolonReference, StagedRelationshipMap};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
 

@@ -14,6 +14,7 @@
 //! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
 //!   adapters return `Result<ResponseBody, HolonError>`.
 
+use std::sync::Arc;
 use tracing::{debug, info};
 
 use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
@@ -50,7 +51,7 @@ use type_names::CorePropertyTypeName;
 /// - an Index into staged_holons that references the updated holon.
 ///
 pub fn abandon_staged_changes_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // Get the staged holon
@@ -87,7 +88,7 @@ pub fn abandon_staged_changes_dance(
 /// - HolonReference for the updated Holon
 ///
 pub fn add_related_holons_dance(
-    _context: &TransactionContext,
+    _context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered add_related_holons_dance");
@@ -121,7 +122,7 @@ pub fn add_related_holons_dance(
 /// - Holons -- a vector of clones of all successfully committed holons
 ///
 pub fn commit_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered commit_dance");
@@ -148,7 +149,7 @@ pub fn commit_dance(
 // This would allow the cascaded effects of deletion to be determined and shared with the agent, leaving them free to cancel the deletion if desired.
 // A staged deletion process would be more consistent with the staged creation process.
 pub fn delete_holon_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered delete_holon dance");
@@ -174,7 +175,7 @@ pub fn delete_holon_dance(
 /// - HolonCollection
 ///
 pub fn get_all_holons_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // TODO: add support for descriptor parameter
@@ -196,7 +197,7 @@ pub fn get_all_holons_dance(
 ///     - Holon(Holon)
 ///
 pub fn get_holon_by_id_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered get_holon_by_id_dance.");
@@ -237,7 +238,7 @@ pub fn get_holon_by_id_dance(
 /// or if the `RequestBody` is not `TransientReference`.
 ///
 pub fn load_holons_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered load holons dance");
@@ -266,7 +267,7 @@ pub fn load_holons_dance(
 }
 
 pub fn new_holon_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered new holon dance");
@@ -308,7 +309,10 @@ pub fn new_holon_dance(
 /// - NodeCollection -- a collection containing the same source nodes passed in the request, but with their `relationships`
 /// updated to include entries that satisfy the criteria set by the QueryExpression supplied in the request
 ///
-pub fn query_relationships_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn query_relationships_dance(
+    _context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     info!("Entered query_relationships_dance");
 
     match request.dance_type {
@@ -343,7 +347,10 @@ pub fn query_relationships_dance(request: DanceRequest) -> Result<ResponseBody, 
 /// *ResponseBody:*
 /// - HolonReference of the updated holon
 ///
-pub fn remove_properties_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn remove_properties_dance(
+    _context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     info!("----- Entered remove_properties_dance");
     match request.dance_type {
         DanceType::CommandMethod(mut holon_reference) => {
@@ -376,7 +383,10 @@ pub fn remove_properties_dance(request: DanceRequest) -> Result<ResponseBody, Ho
 /// - HolonReference(HolonReference) for the Holon in which related holons were removed
 ///
 ///
-pub fn remove_related_holons_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn remove_related_holons_dance(
+    _context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     info!("Entered remove_related_holons_dance");
 
     // Match the dance_type
@@ -414,7 +424,7 @@ pub fn remove_related_holons_dance(request: DanceRequest) -> Result<ResponseBody
 /// StagedReference(StagedReference), // a reference to the newly staged holon
 ///
 pub fn stage_new_from_clone_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_from_clone dance");
@@ -479,7 +489,7 @@ pub fn stage_new_from_clone_dance(
 /// - an Index into staged_holons that references the newly staged holon.
 ///
 pub fn stage_new_holon_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage new holon dance");
@@ -511,14 +521,12 @@ pub fn stage_new_holon_dance(
 /// StagedReference(StagedReference), // a reference to the newly staged holon
 ///
 pub fn stage_new_version_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_version dance ==");
 
-    // Mint a handle from `&TransactionContext` (transitional; see helper doc).
-    let transaction_handle = transaction_handle_from_context(context)?;
-    // let transaction_handle = context.handle();
+    let transaction_handle = context.handle();
 
     // Extract the target persisted holon id from the dance type.
     let smart_reference = match request.dance_type {
@@ -550,7 +558,10 @@ pub fn stage_new_version_dance(
 /// *ResponseBody:*
 /// - HolonReference of the updated Holon
 ///
-pub fn with_properties_dance(request: DanceRequest) -> Result<ResponseBody, HolonError> {
+pub fn with_properties_dance(
+    _context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
     info!("----- Entered with_properties_dance");
     match request.dance_type {
         DanceType::CommandMethod(mut holon_reference) => {
@@ -570,25 +581,4 @@ pub fn with_properties_dance(request: DanceRequest) -> Result<ResponseBody, Holo
             "Expected Command(HolonReference) DanceType, didn't get one".to_string(),
         )),
     }
-}
-
-/// Reacquires an `Arc<TransactionContext>` for the current transaction so we can mint a
-/// `TransactionContextHandle` while only holding `&TransactionContext`.
-///
-/// NOTE: This exists because `HolonsContextBehavior` / some call surfaces are still object-safe
-/// and pass `&TransactionContext` instead of `&Arc<TransactionContext>`.
-/// Once Phase 1.4 consolidates execution under `TransactionContext` as `&Arc<Self>`,
-/// callers should mint handles directly via `context.handle()`.
-fn transaction_handle_from_context(
-    context: &TransactionContext,
-) -> Result<TransactionContextHandle, HolonError> {
-    let space_manager = context.space_manager();
-
-    // Reacquire the Arc<TransactionContext> so we can create a TransactionContextHandle.
-    let context_arc = space_manager
-        .get_transaction_manager()
-        .get_transaction(&context.tx_id())?
-        .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
-
-    Ok(context_arc.handle())
 }

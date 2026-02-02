@@ -107,7 +107,7 @@ impl HolonCacheAccess for CacheRequestRouter {
     /// Returns a thread-safe `Arc<RwLock<HolonCollection>>` or an error if not `Local`.
     fn get_related_holons(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
@@ -135,7 +135,7 @@ impl HolonCacheAccess for CacheRequestRouter {
 
     fn get_all_related_holons(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         // Determine the routing policy for the request

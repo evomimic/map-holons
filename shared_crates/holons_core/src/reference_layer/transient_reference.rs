@@ -119,7 +119,7 @@ impl TransientReference {
     /// accessed via `Rc<RefCell<...>>`; any reference would be tied to a temporary borrow.
     pub fn get_raw_property_map(
         &self,
-        context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
     ) -> Result<PropertyMap, HolonError> {
         // Enforce read access
         self.is_accessible(AccessType::Read)?;

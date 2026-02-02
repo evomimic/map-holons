@@ -74,7 +74,7 @@ impl GuestHolonService {
 
     fn create_local_space_holon(
         &self,
-        context: &Arc<TransactionContext>,
+        context: &TransactionContext,
     ) -> Result<SavedHolon, HolonError> {
         // Define the name and description for the local space holon
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
@@ -202,7 +202,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn commit_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<TransientReference, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
@@ -241,7 +241,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         if !source_id.is_local() {
@@ -309,7 +309,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn fetch_related_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
@@ -333,7 +333,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn get_all_holons_internal(
         &self,
-        _context: &TransactionContext,
+        _context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
         let holon_ids = fetch_links_to_all_holons()?;
@@ -350,7 +350,7 @@ impl HolonServiceApi for GuestHolonService {
     /// Delegates to the `HolonLoaderController` and returns a transient `HolonLoadResponse`.
     fn load_holons_internal(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
         // Construct controller and delegate to load_set()

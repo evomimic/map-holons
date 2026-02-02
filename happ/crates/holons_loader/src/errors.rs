@@ -4,6 +4,7 @@ use crate::controller::{FileProvenance, ProvenanceIndex};
 use holons_prelude::prelude::CorePropertyTypeName::{ErrorMessage, ErrorType};
 use holons_prelude::prelude::*;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 // Global counter for generating unique error holon keys
 static ERROR_SEQ: AtomicU32 = AtomicU32::new(1);
@@ -54,7 +55,7 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
 /// - If `provenance` + `source_loader_key` are available, stamp:
 ///     LoaderHolonKey, Filename, StartUtf8ByteOffset.
 pub fn make_error_holons_best_effort(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     errors: &[ErrorWithContext],
     provenance: Option<&ProvenanceIndex>,
 ) -> Result<Vec<TransientReference>, HolonError> {
@@ -128,7 +129,7 @@ pub fn make_error_holons_best_effort(
 ///
 /// Use this helper to create both typed and untyped error holons from a single entry point.
 pub fn make_error_holon(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     descriptor: Option<HolonReference>,
     err: &HolonError,
 ) -> Result<TransientReference, HolonError> {
@@ -144,7 +145,7 @@ pub fn make_error_holon(
 // ─────────────────────────────────────────────────────────────────────────────
 
 fn create_empty_error_holon(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
 ) -> Result<TransientReference, HolonError> {
     // Generate a unique, local-only key (fast and deterministic within a process).
     let id = ERROR_SEQ.fetch_add(1, Ordering::Relaxed);
@@ -182,7 +183,7 @@ fn populate_error_fields(
 /// 1) Staged (Nursery) lookup by key "HolonLoadError.HolonErrorType"
 /// 2) Saved fallback via get_all_holons() + get_by_key()
 fn resolve_holon_error_type_descriptor(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
 ) -> Result<HolonReference, HolonError> {
     // Canonical key from the enum (=> "HolonLoadError")
     let type_name = CoreHolonTypeName::HolonLoadError.as_holon_name();

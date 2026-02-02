@@ -232,8 +232,8 @@ impl ReadableHolonImpl for SmartReference {
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let cache_access = self.get_cache_access();
-        let relationship_map = cache_access
-            .get_all_related_holons(self.context_handle.context().as_ref(), &self.get_id()?)?;
+        let relationship_map =
+            cache_access.get_all_related_holons(&self.context_handle.context(), &self.get_id()?)?;
 
         Ok(relationship_map)
     }
@@ -365,7 +365,7 @@ impl ReadableHolonImpl for SmartReference {
         // Get CacheAccess
         let cache_access = self.get_cache_access();
         cache_access.get_related_holons(
-            &self.context_handle.context().as_ref(),
+            &self.context_handle.context(),
             &self.holon_id,
             relationship_name,
         )

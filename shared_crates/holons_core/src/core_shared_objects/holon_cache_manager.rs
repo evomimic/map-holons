@@ -52,7 +52,7 @@ impl HolonCacheAccess for HolonCacheManager {
 
     fn get_related_holons(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
@@ -71,7 +71,7 @@ impl HolonCacheAccess for HolonCacheManager {
 
     fn get_all_related_holons(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         self.relationship_cache

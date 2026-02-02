@@ -20,7 +20,7 @@ use crate::parser::parse_files_into_load_set;
 use base_types::MapString;
 use core_types::{ContentSet, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::reference_layer::{load_holons, HolonsContextBehavior, TransientReference};
+use holons_core::reference_layer::{load_holons, TransientReference};
 use holons_core::HolonReference;
 use std::sync::Arc;
 use tracing::debug;
@@ -104,7 +104,7 @@ pub async fn load_holons_from_files(
     // builds the dance request, calls into the guest, and
     // returns a `TransientReference` to the `HolonLoadResponse` holon.
     debug!("[loader-client] invoking load_holons dance");
-    let response_reference = load_holons(context.as_ref(), load_set_transient)?;
+    let response_reference = load_holons(&context, load_set_transient)?;
     debug!("[loader-client] load_holons dance returned");
 
     Ok(response_reference)

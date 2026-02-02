@@ -19,6 +19,7 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::{DanceRequest, DanceType, RequestBody, ResponseBody};
 use base_types::MapString;
 use core_types::HolonError;
+use std::sync::Arc;
 
 /// *DanceRequest:*
 /// - dance_name: "load_core_schema"
@@ -29,7 +30,7 @@ use core_types::HolonError;
 /// - Holon -- the created Schema Holon
 ///
 pub fn load_core_schema_dance(
-    context: &TransactionContext,
+    context: &Arc<TransactionContext>,
     request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     // TODO: Need to sort out the dependencies (find new home for descriptors_dance_adapter)
