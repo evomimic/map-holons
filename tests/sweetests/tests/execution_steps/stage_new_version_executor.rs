@@ -1,5 +1,6 @@
 use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
@@ -16,8 +17,7 @@ pub async fn execute_stage_new_version(
 ) {
     info!("--- TEST STEP: Staging a New Version of a Holon ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
@@ -31,7 +31,7 @@ pub async fn execute_stage_new_version(
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(Arc::clone(&context), request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status

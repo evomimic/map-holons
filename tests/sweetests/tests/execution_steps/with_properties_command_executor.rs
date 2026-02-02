@@ -18,8 +18,7 @@ pub async fn execute_with_properties(
 ) {
     info!("--- TEST STEP: Updating Holon with Properties ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

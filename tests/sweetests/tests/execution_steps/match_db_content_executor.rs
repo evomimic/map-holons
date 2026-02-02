@@ -1,5 +1,6 @@
 use holons_test::{TestExecutionState, TestHolonState};
 use pretty_assertions::assert_eq;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
@@ -14,8 +15,7 @@ use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody}
 pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // Iterate through all created holons and verify them in the database, panic if resolved reference does not match expected state
     for (id, resolved_reference) in state.holons().by_snapshot_id.clone() {
@@ -40,7 +40,10 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
 
             // 3. CALL — the dance
             let dance_initiator = context.get_dance_initiator().unwrap();
-            let response = dance_initiator.initiate_dance(context, request).await;
+
+            // IMPORTANT: initiate_dance takes ownership of Arc<TransactionContext>,
+            // so clone the Arc instead of moving the one we keep for the whole test.
+            let response = dance_initiator.initiate_dance(Arc::clone(&context), request).await;
 
             // 4. VALIDATE - Ensure response contains the expected Holon
             if let ResponseBody::Holon(actual_holon) = response.body {

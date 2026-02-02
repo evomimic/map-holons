@@ -15,8 +15,7 @@ pub async fn execute_query_relationships(
 ) {
     info!("--- TEST STEP: Querying Relationships ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =

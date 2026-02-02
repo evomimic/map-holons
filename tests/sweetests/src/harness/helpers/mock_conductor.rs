@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use holochain::prelude::AgentPubKey;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
+use holons_core::dances::dance_request::DanceRequestWire;
+use holons_core::dances::dance_response::DanceResponseWire;
 use holons_core::dances::{DanceInitiator, DanceRequest, DanceResponse};
-use holons_core::{HolonsContextBehavior};
-// use holons_prelude::prelude::*;
+use holons_core::HolonError;
+use holons_prelude::prelude::*;
 use holons_trust_channel::TrustChannel;
 use std::sync::Arc;
 use tracing::info;
@@ -53,12 +55,36 @@ pub struct MockConductorConfig {
 impl DanceInitiator for MockConductorConfig {
     async fn initiate_dance(
         &self,
-        _context: Arc<TransactionContext>,
+        context: Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse {
-        let res = self.conductor.call(&self.cell.zome("holons"), "dance", request).await;
+        let request_wire = DanceRequestWire::from(&request);
+        let result = self
+            .conductor
+            .call_fallible::<DanceRequestWire, DanceResponseWire>(
+                &self.cell.zome("holons"),
+                "dance",
+                request_wire,
+            )
+            .await;
 
-        DanceResponse::from(res)
+        match result {
+            Ok(response_wire) => {
+                let response_state = response_wire.state.clone();
+                match response_wire.bind(&context) {
+                    Ok(response) => response,
+                    Err(error) => {
+                        let mut response = DanceResponse::from_error(error);
+                        response.state = response_state;
+                        response
+                    }
+                }
+            }
+            Err(error) => DanceResponse::from_error(HolonError::ConductorError(format!(
+                "SweetConductor dance call failed: {:?}",
+                error
+            ))),
+        }
     }
 }
 

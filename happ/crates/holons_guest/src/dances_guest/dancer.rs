@@ -11,11 +11,8 @@ use holons_core::dances::dance_response::{DanceResponseWire, ResponseBodyWire};
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
-    dances::{
-        descriptors_dance_adapter::load_core_schema_dance, DanceRequest, DanceResponse,
-        ResponseBody, ResponseStatusCode, SessionState,
-    },
-    HolonReferenceWire, HolonsContextBehavior, ReadableHolon,
+    dances::{DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode, SessionState},
+    HolonReferenceWire, HolonsContextBehavior,
 };
 
 /// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
@@ -136,7 +133,6 @@ impl Dancer {
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
-        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);

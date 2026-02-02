@@ -49,6 +49,7 @@ use holons_core::{
 };
 use holons_prelude::prelude::*;
 use integrity_core_types::PropertyMap;
+use std::sync::Arc;
 
 /// Public test case type that collects steps to be executed later.
 #[derive(Default, Clone, Debug)]
@@ -141,7 +142,7 @@ impl DancesTestCase {
     /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
     ///
     /// This function is called automatically within `rs_test` and should not be used directly.
-    pub fn load_test_session_state(&mut self, fixture_context: &TransactionContext) {
+    pub fn load_test_session_state(&mut self, fixture_context: &Arc<TransactionContext>) {
         let transient_holons = fixture_context.export_transient_holons().unwrap();
         self.test_session_state.set_transient_holons(transient_holons);
     }

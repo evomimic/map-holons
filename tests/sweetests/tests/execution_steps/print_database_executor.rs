@@ -10,8 +10,7 @@ use holons_prelude::prelude::*;
 pub async fn execute_print_database(state: &mut TestExecutionState) {
     info!("--- TEST STEP: Print Database Contents ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. BUILD - the get_all_holons DanceRequest
     let request =
@@ -30,14 +29,14 @@ pub async fn execute_print_database(state: &mut TestExecutionState) {
 
         for holon in holons {
             let key = holon
-                .key(context)
+                .key()
                 .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
                 .unwrap_or_else(|err| {
                     panic!("Attempt to key() resulted in error: {:?}", err);
                 });
 
             info!("Key = {:?}", key.0);
-            info!("{:?}", holon.summarize(context));
+            info!("{:?}", holon.summarize());
             // debug!("Holon JSON: {:?}", as_json(&holon));
         }
     } else {

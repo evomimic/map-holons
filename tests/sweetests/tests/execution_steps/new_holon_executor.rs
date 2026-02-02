@@ -14,8 +14,7 @@ pub async fn execute_new_holon(
 ) {
     info!("--- TEST STEP: Creating a new Holon via DANCE ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. BUILD - the stage_new_holon DanceRequest
     let request = build_new_holon_dance_request(key);
