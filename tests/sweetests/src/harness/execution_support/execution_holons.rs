@@ -21,6 +21,8 @@ use crate::SnapshotId;
 use core_types::LocalId;
 use holons_core::core_shared_objects::holon::StagedState;
 use holons_prelude::prelude::*;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Authoritative execution-time registry.
 ///
@@ -80,7 +82,7 @@ impl ExecutionHolons {
     /// - `TestHolonState::Deleted`  → return Error
     pub fn resolve_source_reference(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
         let source = token.source_snapshot();
@@ -146,7 +148,7 @@ impl ExecutionHolons {
     /// Batch variant of `resolve_source_reference`.
     pub fn resolve_source_references(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         tokens: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
         let mut references = Vec::new();

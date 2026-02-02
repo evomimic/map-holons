@@ -20,8 +20,8 @@ use holons_prelude::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct TestExecutionState {
-    pub context: Arc<dyn HolonsContextBehavior>,
-    // Registry of execution references keyed by expected SnapshotId
+    pub context: Arc<TransactionContext>,
+    // Registry of realized references keyed by source token’s `TemporaryId`.
     pub execution_holons: ExecutionHolons,
 }
 
@@ -34,7 +34,7 @@ impl TestExecutionState {
     ///
     /// # Returns
     /// A new `DanceTestExecutionState` instance.
-    pub fn new(test_context: Arc<dyn HolonsContextBehavior>) -> Self {
+    pub fn new(test_context: Arc<TransactionContext>) -> Self {
         TestExecutionState { context: test_context, execution_holons: ExecutionHolons::default() }
     }
 
@@ -43,7 +43,7 @@ impl TestExecutionState {
         self.execution_holons = ExecutionHolons::new();
     }
 
-    pub fn context(&self) -> Arc<dyn HolonsContextBehavior> {
+    pub fn context(&self) -> Arc<TransactionContext> {
         self.context.clone()
     }
 
@@ -89,7 +89,7 @@ impl TestExecutionState {
     #[inline]
     pub fn resolve_source_reference(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
         self.execution_holons.resolve_source_reference(context, token)
@@ -99,7 +99,7 @@ impl TestExecutionState {
     #[inline]
     pub fn resolve_source_references(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         tokens: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
         self.execution_holons.resolve_source_references(context, tokens)

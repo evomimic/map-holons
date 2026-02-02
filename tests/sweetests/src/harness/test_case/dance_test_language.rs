@@ -44,10 +44,7 @@ use std::sync::Arc;
 use crate::{harness::fixtures_support::TestReference, init_fixture_context, ExpectedSnapshot, FixtureBindings, FixtureHolons, SourceSnapshot, TestHolonState};
 use core_types::ContentSet;
 use holons_core::{
-    core_shared_objects::{
-        holon_pool::SerializableHolonPool,
-        transactions::TransactionContext,
-    },
+    core_shared_objects::{holon_pool::SerializableHolonPool, transactions::TransactionContext},
     reference_layer::ReadableHolon,
 };
 use holons_prelude::prelude::*;
@@ -241,7 +238,6 @@ impl DancesTestCase {
     // Advance head snapshot (no new logical holon).
     pub fn add_abandon_staged_changes_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -269,7 +265,6 @@ impl DancesTestCase {
     // Advance head snapshot (no new logical holon).
     pub fn add_delete_holon_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -297,7 +292,6 @@ impl DancesTestCase {
     // Commit advances head snapshots to Saved for existing logical holons.
     pub fn add_commit_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         expected_status: ResponseStatusCode,
     ) -> Result<(), HolonError> {
@@ -311,7 +305,6 @@ impl DancesTestCase {
     // i.e. the first snapshot for a FixtureHolon.
     pub fn add_new_holon_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_reference: TransientReference,
         properties: PropertyMap,
@@ -376,7 +369,6 @@ impl DancesTestCase {
     // Advance head (no new logical holon).
     pub fn add_remove_properties_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         properties: PropertyMap,
@@ -443,7 +435,6 @@ impl DancesTestCase {
     // Creates new logical holon and therefore a new FixtureHolon.
     pub fn add_stage_holon_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -469,7 +460,6 @@ impl DancesTestCase {
     // Creates new logical holon and therefore a new FixtureHolon.
     pub fn add_stage_new_from_clone_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
@@ -500,7 +490,6 @@ impl DancesTestCase {
     // Creates new logical holon and therefore a new FixtureHolon.
     pub fn add_stage_new_version_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -528,7 +517,6 @@ impl DancesTestCase {
     // Advance head (no new logical holon).
     pub fn add_with_properties_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         properties: PropertyMap,

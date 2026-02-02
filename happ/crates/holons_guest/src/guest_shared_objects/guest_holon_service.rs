@@ -74,7 +74,7 @@ impl GuestHolonService {
 
     fn create_local_space_holon(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<SavedHolon, HolonError> {
         // Define the name and description for the local space holon
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
@@ -141,7 +141,7 @@ impl GuestHolonService {
     /// * `Err(HolonError)` – If any errors occur during retrieval or creation.
     pub fn ensure_local_holon_space(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonReference, HolonError> {
         let space_holon_result =
             get_holon_by_path(LOCAL_HOLON_SPACE_PATH.to_string(), LinkTypes::LocalHolonSpace)?;
@@ -170,21 +170,11 @@ impl GuestHolonService {
 
     fn mint_smart_reference_from_pointer(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         holon_id: HolonId,
         smart_property_values: Option<PropertyMap>,
     ) -> Result<HolonReference, HolonError> {
-        // Transitional bridge until Phase 1.4:
-        // We need Arc<TransactionContext> to create a TransactionContextHandle.
-        let tx_id = context.tx_id();
-
-        let tx_context = context
-            .space_manager()
-            .get_transaction_manager()
-            .get_transaction(&tx_id)?
-            .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
-
-        let handle = TransactionContextHandle::new(tx_context);
+        let handle = TransactionContextHandle::new(Arc::clone(context));
 
         let smart = match smart_property_values {
             Some(props) => SmartReference::new_with_properties(handle, holon_id, props),
@@ -333,13 +323,13 @@ impl HolonServiceApi for GuestHolonService {
 
     fn get_all_holons_internal(
         &self,
-        _context: &Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
         let holon_ids = fetch_links_to_all_holons()?;
         let mut holon_references = Vec::new();
         for id in holon_ids {
-            holon_references.push(id.into());
+            holon_references.push(self.mint_smart_reference_from_pointer(context, id, None)?);
         }
         collection.add_references(holon_references)?;
 

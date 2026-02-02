@@ -53,7 +53,7 @@ pub struct MockConductorConfig {
 impl DanceInitiator for MockConductorConfig {
     async fn initiate_dance(
         &self,
-        _context: &(dyn HolonsContextBehavior + Send + Sync),
+        _context: Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse {
         let res = self.conductor.call(&self.cell.zome("holons"), "dance", request).await;

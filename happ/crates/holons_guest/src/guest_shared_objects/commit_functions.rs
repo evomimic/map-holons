@@ -22,7 +22,9 @@ use holons_core::{
 
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
-use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle,
+};
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
@@ -143,6 +145,7 @@ pub fn commit(
 
         let mut saved_holons: Vec<HolonReference> = Vec::new();
         let mut abandoned_holons: Vec<HolonReference> = Vec::new();
+        let transaction_handle = TransactionContextHandle::new(Arc::clone(context));
 
         for staged_reference in staged_references {
             staged_reference.is_accessible(AccessType::Commit)?;
@@ -155,8 +158,11 @@ pub fn commit(
                     let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
                         HolonError::HolonNotFound("Committed holon has no key".into())
                     })?;
-                    let saved_reference =
-                        HolonReference::smart_with_key(context.handle(), holon_id, key_string);
+                    let saved_reference = HolonReference::smart_with_key(
+                        transaction_handle.clone(),
+                        holon_id,
+                        key_string,
+                    );
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::Abandoned) => {

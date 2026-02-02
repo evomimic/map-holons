@@ -255,7 +255,7 @@ fn initialize_context_from_request(
 
             // Ensure the persisted HolonSpace holon exists and extract its id.
             let ensured_space_ref = guest_service
-                .ensure_local_holon_space(context.as_ref())
+                .ensure_local_holon_space(&context)
                 .map_err(|error| create_error_response_wire(error, request))?;
 
             match ensured_space_ref {
@@ -291,7 +291,7 @@ fn initialize_context_from_request(
 /// NOTE: State restoration is **best-effort**. If exporting staged/transient holons
 /// or reading the local space holon fails (e.g., due to lock acquisition errors),
 /// this function logs the error and returns `None` instead of panicking.
-fn restore_session_state_from_context(context: &TransactionContext) -> Option<SessionState> {
+fn restore_session_state_from_context(context: &Arc<TransactionContext>) -> Option<SessionState> {
     // Export staged holons as a single SerializableHolonPool
     let serializable_staged_pool = match context.export_staged_holons() {
         Ok(pool) => pool,

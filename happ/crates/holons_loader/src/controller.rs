@@ -537,7 +537,7 @@ impl HolonLoaderController {
     ///  - returns the *transient* response reference.
     fn build_response(
         &self,
-        context: &TransactionContext,
+        context: &Arc<TransactionContext>,
         run_id: i64, // uuid::Uuid,
         holons_staged: i64,
         holons_committed: i64,

@@ -20,8 +20,7 @@ pub async fn execute_abandon_staged_changes(
 ) {
     info!("--- TEST STEP: Abandon Staged Changes ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
@@ -68,8 +67,7 @@ pub async fn execute_abandon_staged_changes(
 
         // Confirm that operations on the abandoned Holon fail as expected
         assert_eq!(
-            response_holon_reference.with_property_value(
-                context,
+            abandoned_holon.with_property_value(
                 PropertyName(MapString("some_name".to_string())),
                 BaseValue::BooleanValue(MapBoolean(true))
             ),

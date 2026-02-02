@@ -14,8 +14,7 @@ pub async fn execute_commit(
 ) {
     info!("--- TEST STEP: Committing Staged Holons ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. BUILD - dance request to commit
     let request = build_commit_dance_request().expect("Failed to build commit DanceRequest");
