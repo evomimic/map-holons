@@ -25,13 +25,13 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     for (id, resolved_reference) in state.holons().by_snapshot_id.clone() {
         if resolved_reference.expected_snapshot.state() == TestHolonState::Saved {
             let holon_reference = resolved_reference
-                .resulting_reference
+                .execution_reference
                 .get_holon_reference()
                 .expect("HolonReference must be Live, cannot be in a deleted state");
             if !matches!(holon_reference, HolonReference::Smart(_)) {
                 panic!(
-                    "Expected resulting_reference for id: {:?} to be Smart, but got {:?}",
-                    id, resolved_reference.resulting_reference
+                    "Expected execution_reference for id: {:?} to be Smart, but got {:?}",
+                    id, resolved_reference.execution_reference
                 );
             }
 

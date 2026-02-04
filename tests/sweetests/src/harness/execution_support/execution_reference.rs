@@ -7,7 +7,7 @@
 //! - `expected_snapshot`: the [`ExpectedSnapshot`] declared by the fixture. Its
 //!   `TestHolonState` describes the lifecycle of the *mapping* holon
 //!   (Transient, Staged, or Saved).
-//! - `resulting_reference`: the [`HolonReference`] created at runtime
+//! - `execution_reference`: the [`HolonReference`] created at runtime
 //!   (often a `StagedReference`; if committed, represents “Saved”).
 //!
 //! ⚠ Important: **Do not confuse intent and result.**
@@ -23,7 +23,7 @@ pub struct ExecutionReference {
     /// Fixture-declared intent of the expected snapshot, which includes expected content.
     pub expected_snapshot: ExpectedSnapshot,
     /// Runtime handle produced by executing the step.
-    pub resulting_reference: ResultingReference,
+    pub execution_reference: ResultingReference,
 }
 
 #[derive(Clone, Debug)]
@@ -65,9 +65,9 @@ impl ExecutionReference {
     /// Build from a fixture token and the resulting runtime handle.
     pub fn from_reference_parts(
         expected_snapshot: ExpectedSnapshot,
-        resulting_reference: ResultingReference,
+        execution_reference: ResultingReference,
     ) -> Self {
-        Self { expected_snapshot, resulting_reference }
+        Self { expected_snapshot, execution_reference }
     }
 
     /// Assert that the essential content of the fixture-declared expected_snapshot
@@ -77,7 +77,7 @@ impl ExecutionReference {
         context: &dyn HolonsContextBehavior,
     ) -> Result<(), HolonError> {
         let expected_content = self.expected_snapshot.essential_content(context)?;
-        let actual_content = self.resulting_reference.essential_content(context)?;
+        let actual_content = self.execution_reference.essential_content(context)?;
 
         // TODO: find a way to compare relationships
 

@@ -180,7 +180,7 @@ impl FixtureHolons {
     ) -> Result<Vec<TestReference>, HolonError> {
         let mut saved_tokens = Vec::new();
 
-        for holon in self.holons.values_mut() {
+        for holon in self.holons.clone().values() {
             match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
                     let snapshot = holon.head_snapshot.snapshot().clone().clone_holon(context)?;
@@ -191,8 +191,7 @@ impl FixtureHolons {
                     // Return tokens for passing to executor used for building ExecutionReference
                     saved_tokens.push(saved_token);
                     // Advance head
-                    holon.head_snapshot = expected;
-                    // self.advance_head(&holon.head_snapshot.snapshot().temporary_id(), expected)?;
+                    self.advance_head(&holon.head_snapshot.snapshot().temporary_id(), expected)?;
                 }
                 TestHolonState::Abandoned => {
                     debug!("Skipping commit on Abandoned Holon: {:#?}", holon);

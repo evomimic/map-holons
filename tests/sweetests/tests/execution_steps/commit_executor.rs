@@ -80,7 +80,7 @@ pub async fn execute_commit(
             ResultingReference::from(holon_reference.clone()),
         );
 
-        state.record(token, resolved_reference);
+        state.record(token, resolved_reference).unwrap();
     }
 
     // 6. Optional: log a summary

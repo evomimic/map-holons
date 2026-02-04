@@ -1,13 +1,10 @@
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
-use holons_test::{fixture_holons, DancesTestCase, FixtureHolons, TestReference, TestCaseInit};
+use holons_test::{fixture_holons, DancesTestCase, FixtureHolons, TestCaseInit};
 use pretty_assertions::assert_eq;
-use std::{collections::BTreeMap, sync::Arc};
-use tracing::{error, info};
-
+use std::collections::BTreeMap;
 use holons_prelude::prelude::*;
 use rstest::*;
 
-use crate::helpers::{init_fixture_context, BOOK_KEY, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY};
+use crate::helpers::{init_fixture_context, BOOK_KEY};
 use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 
 use super::setup_book_author_steps_with_context;
@@ -136,7 +133,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Finalize
-    test_case.finalize(&*fixture_context);
+    test_case.finalize(&*fixture_context)?;
 
     Ok(test_case)
 }

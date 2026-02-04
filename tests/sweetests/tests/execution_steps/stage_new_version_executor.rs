@@ -6,8 +6,6 @@ use holons_prelude::prelude::*;
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 
-// TODO: Version 2
-
 /// This function builds and dances a `stage_new_version` DanceRequest for the supplied Holon
 /// and confirms a Success response
 ///
@@ -20,8 +18,6 @@ pub async fn execute_stage_new_version(
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
-
-    // VERSION 1 //
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
@@ -60,18 +56,18 @@ pub async fn execute_stage_new_version(
             panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
         }
     };
-    let version_1_resulting_reference =
+    let version_1_execution_reference =
         ResultingReference::from(version_1_response_holon_reference.clone());
     // TestReference::new()
     let version_1_resolved_reference = ExecutionReference::from_reference_parts(
         source_token.expected_snapshot(),
-        version_1_resulting_reference.clone(),
+        version_1_execution_reference.clone(),
     );
     version_1_resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Staged new version holon's essential content matched expected");
 
     // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(&source_token, version_1_resolved_reference);
+    state.record(&source_token, version_1_resolved_reference).unwrap();
 
     // 7. Verify the new version as the original holon as its predecessor
     let predecessor = version_1_response_holon_reference.predecessor(context).unwrap();
@@ -88,7 +84,7 @@ pub async fn execute_stage_new_version(
     // holon whose key matches.
     let by_base = get_staged_holon_by_base_key(context, &original_holon_key).unwrap();
 
-    let version_1_holon_reference = version_1_resulting_reference
+    let version_1_holon_reference = version_1_execution_reference
         .get_holon_reference()
         .expect("HolonReference must be Live, cannot be in a deleted state");
     assert_eq!(

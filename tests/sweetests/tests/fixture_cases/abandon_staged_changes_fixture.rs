@@ -1,11 +1,8 @@
-// #![allow(dead_code)]
-
 use holons_prelude::prelude::*;
-use holons_test::{fixture_bindings, DancesTestCase, FixtureHolons, TestCaseInit, TestReference};
+use holons_test::{fixture_bindings, DancesTestCase, FixtureHolons, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
-use type_names::relationship_names;
-// use tracing::warn;
+// use type_names::relationship_names;
 
 use crate::helpers::{init_fixture_context, BOOK_KEY, PERSON_1_KEY};
 
@@ -39,7 +36,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_bindings,
     )?;
 
-    let _relationship_name = fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
+    let _relationship_name =
+        fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
     let person_1_staged_token =
         fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Person1' label").clone();
@@ -161,7 +159,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     // Finalize
-    test_case.finalize(&*fixture_context);
+    test_case.finalize(&*fixture_context)?;
 
     Ok(test_case)
 }

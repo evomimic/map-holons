@@ -60,10 +60,10 @@ pub async fn execute_add_related_holons(
                 panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
             }
         };
-        let resulting_reference = ResultingReference::from(response_holon_reference);
+        let execution_reference = ResultingReference::from(response_holon_reference);
         let resolved_reference = ExecutionReference::from_reference_parts(
             source_token.expected_snapshot(),
-            resulting_reference,
+            execution_reference,
         );
 
         resolved_reference.assert_essential_content_eq(context).unwrap();

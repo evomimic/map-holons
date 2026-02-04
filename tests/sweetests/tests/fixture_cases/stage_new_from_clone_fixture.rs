@@ -138,7 +138,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_match_saved_content_step()?;
 
     // Finalize
-    test_case.finalize(&*fixture_context);
+    test_case.finalize(&*fixture_context)?;
 
     Ok(test_case)
 }

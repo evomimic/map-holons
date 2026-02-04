@@ -171,8 +171,5 @@ pub fn setup_book_author_steps_with_context<'a>(
     //     ResponseStatusCode::OK,
     // )?;
 
-    // Finalize
-    test_case.finalize(&*fixture_context);
-
     Ok(bindings)
 }

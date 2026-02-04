@@ -53,10 +53,10 @@ pub async fn execute_abandon_staged_changes(
             panic!("expected ResponseBody::HolonReference, got {:?}", other);
         }
     };
-    let resulting_reference = ResultingReference::from(response_holon_reference.clone());
+    let execution_reference = ResultingReference::from(response_holon_reference.clone());
     let resolved_reference = ExecutionReference::from_reference_parts(
         source_token.expected_snapshot(),
-        resulting_reference,
+        execution_reference,
     );
     resolved_reference.assert_essential_content_eq(context).unwrap();
     // Confirm that operations on the abandoned Holon fail as expected

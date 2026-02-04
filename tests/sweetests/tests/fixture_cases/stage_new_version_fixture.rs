@@ -147,7 +147,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // }
 
     // Finalize
-    test_case.finalize(&*fixture_context);
+    test_case.finalize(&*fixture_context)?;
 
     Ok(test_case)
 }

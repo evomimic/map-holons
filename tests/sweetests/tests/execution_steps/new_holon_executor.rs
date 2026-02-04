@@ -42,13 +42,13 @@ pub async fn execute_new_holon(
         }
     };
     for (name, value) in properties {
-        response_holon_reference.with_property_value(context, name, value);
+        response_holon_reference.with_property_value(context, name, value).unwrap();
     }
 
-    let resulting_reference = ResultingReference::from(response_holon_reference);
+    let execution_reference = ResultingReference::from(response_holon_reference);
     let resolved_reference = ExecutionReference::from_reference_parts(
         source_token.expected_snapshot(),
-        resulting_reference,
+        execution_reference,
     );
     resolved_reference.assert_essential_content_eq(context).unwrap();
     info!("Success! Holon's essential content matched expected");
