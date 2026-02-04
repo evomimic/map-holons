@@ -44,22 +44,25 @@ pub async fn execute_stage_new_holon(
         "stage_new_holon request failed: {}",
         response.description
     );
+    info!("Success! stage_new_holon DanceResponse matched expected");
 
-    // 5. ASSERT the staged holon's content matches
-    let response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
-    let execution_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_snapshot(),
-        execution_reference,
-    );
-    resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Staged holon's essential content matched expected");
+    if response.status_code == ResponseStatusCode::OK {
+        // 5. ASSERT the staged holon's content matches
+        let response_holon_reference = match response.body {
+            ResponseBody::HolonReference(ref hr) => hr.clone(),
+            other => {
+                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+            }
+        };
+        let execution_reference = ResultingReference::from(response_holon_reference);
+        let resolved_reference = ExecutionReference::from_reference_parts(
+            source_token.expected_snapshot(),
+            execution_reference,
+        );
+        resolved_reference.assert_essential_content_eq(context).unwrap();
+        info!("Success! Staged holon's essential content matched expected");
 
-    // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
+        state.record(&source_token, resolved_reference).unwrap();
+    }
 }

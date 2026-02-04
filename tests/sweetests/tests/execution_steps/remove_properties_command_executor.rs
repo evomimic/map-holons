@@ -40,22 +40,25 @@ pub async fn execute_remove_properties(
         "remove_properties request returned unexpected status: {}",
         response.description
     );
+    info!("Success! remove_properties DanceResponse matched expected");
 
-    // 5. ASSERT - updated holon's essential content matches expected
-    let response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
-    let execution_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_snapshot(),
-        execution_reference,
-    );
-    resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Updated holon's essential content matched expected");
+    if response.status_code == ResponseStatusCode::OK {
+        // 5. ASSERT - updated holon's essential content matches expected
+        let response_holon_reference = match response.body {
+            ResponseBody::HolonReference(ref hr) => hr.clone(),
+            other => {
+                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+            }
+        };
+        let execution_reference = ResultingReference::from(response_holon_reference);
+        let resolved_reference = ExecutionReference::from_reference_parts(
+            source_token.expected_snapshot(),
+            execution_reference,
+        );
+        resolved_reference.assert_essential_content_eq(context).unwrap();
+        info!("Success! Updated holon's essential content matched expected");
 
-    // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
+        state.record(&source_token, resolved_reference).unwrap();
+    }
 }

@@ -44,45 +44,46 @@ pub async fn execute_commit(
 
     // TODO: Once TypeDescriptors are enabled, we should also check the HolonType of the ResponseBody
 
-    // 4. GET - committed holons from the HolonsCommitted relationship.
-    let committed_references = commit_response_body_reference
-        .related_holons(context, CoreRelationshipTypeName::SavedHolons)
-        .expect("Failed to read HolonsCommitted relationship");
+    if response.status_code == ResponseStatusCode::OK {
+        // 4. GET - committed holons from the HolonsCommitted relationship.
+        let committed_references = commit_response_body_reference
+            .related_holons(context, CoreRelationshipTypeName::SavedHolons)
+            .expect("Failed to read HolonsCommitted relationship");
 
-    let committed_refs_guard = committed_references.read().unwrap();
-    let commit_count: MapInteger = committed_refs_guard.get_count();
-    debug!("Discovered {:?} committed holons", commit_count.0);
+        let committed_refs_guard = committed_references.read().unwrap();
+        let commit_count: MapInteger = committed_refs_guard.get_count();
+        debug!("Discovered {:?} committed holons", commit_count.0);
 
-    // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    let holon_collection = committed_references.read().expect("Failed to read committed holons");
-    // Temporary 'key' workaround for matching source token (expected) to resulting reference (actual).
-    // TODO: solve or migrate issue 352
-    let mut index: usize = 0;
-    let mut keyed_index = BTreeMap::new();
-    for token in &expected_tokens {
-        let key = token
-            .expected_reference()
-            .clone()
-            .key(context)
-            .unwrap()
-            .expect("For these testing purposes, source token (TestReference) must have a key");
-        keyed_index.insert(key, index);
-        index += 1;
-    }
-    for holon_reference in holon_collection.get_members() {
-        let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
+        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
+        let holon_collection =
+            committed_references.read().expect("Failed to read committed holons");
+        // Temporary 'key' workaround for matching source token (expected) to resulting reference (actual).
+        // TODO: solve or migrate issue 352
+        let mut index: usize = 0;
+        let mut keyed_index = BTreeMap::new();
+        for token in &expected_tokens {
+            let key =
+                token.expected_reference().clone().key(context).unwrap().expect(
+                    "For these testing purposes, source token (TestReference) must have a key",
+                );
+            keyed_index.insert(key, index);
+            index += 1;
+        }
+        for holon_reference in holon_collection.get_members() {
+            let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
-        let token = &expected_tokens[*source_index];
-        let expected = token.expected_snapshot();
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            expected.clone(),
-            ResultingReference::from(holon_reference.clone()),
-        );
+            let token = &expected_tokens[*source_index];
+            let expected = token.expected_snapshot();
+            let resolved_reference = ExecutionReference::from_reference_parts(
+                expected.clone(),
+                ResultingReference::from(holon_reference.clone()),
+            );
 
-        state.record(token, resolved_reference).unwrap();
+            state.record(token, resolved_reference).unwrap();
+        }
+
+        // 6. Optional: log a summary
+        trace!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
     }
-
-    // 6. Optional: log a summary
-    trace!("Commit complete: {} holons committed", committed_refs_guard.get_count().0);
 }

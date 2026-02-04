@@ -43,23 +43,26 @@ pub async fn execute_with_properties(
         "with_properties request returned unexpected status: {}",
         response.description
     );
+    info!("Success! with_properties DanceResponse matched expected");
 
-    // 5. ASSERT - essential content matches expected
-    let response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
-    let execution_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_snapshot(),
-        execution_reference,
-    );
+    if response.status_code == ResponseStatusCode::OK {
+        // 5. ASSERT - essential content matches expected
+        let response_holon_reference = match response.body {
+            ResponseBody::HolonReference(ref hr) => hr.clone(),
+            other => {
+                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+            }
+        };
+        let execution_reference = ResultingReference::from(response_holon_reference);
+        let resolved_reference = ExecutionReference::from_reference_parts(
+            source_token.expected_snapshot(),
+            execution_reference,
+        );
 
-    resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Updated holon's essential content matched expected");
+        resolved_reference.assert_essential_content_eq(context).unwrap();
+        info!("Success! Updated holon's essential content matched expected");
 
-    // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(&source_token, resolved_reference).unwrap();
+        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
+        state.record(&source_token, resolved_reference).unwrap();
+    }
 }

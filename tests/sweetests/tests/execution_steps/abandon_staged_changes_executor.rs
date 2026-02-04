@@ -45,31 +45,36 @@ pub async fn execute_abandon_staged_changes(
     );
     info!("Success! abandon_staged_changes DanceResponse matched expected");
 
-    // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
-    //            Compare essential content
-    let mut response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("expected ResponseBody::HolonReference, got {:?}", other);
-        }
-    };
-    let execution_reference = ResultingReference::from(response_holon_reference.clone());
-    let resolved_reference = ExecutionReference::from_reference_parts(
-        source_token.expected_snapshot(),
-        execution_reference,
-    );
-    resolved_reference.assert_essential_content_eq(context).unwrap();
-    // Confirm that operations on the abandoned Holon fail as expected
-    assert_eq!(
-        response_holon_reference.with_property_value(
-            context, // Pass context for proper behavior
-            PropertyName(MapString("some_name".to_string())),
-            BaseValue::BooleanValue(MapBoolean(true))
-        ),
-        Err(HolonError::NotAccessible(format!("{:?}", AccessType::Write), "Immutable".to_string()))
-    );
-    debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
+    if response.status_code == ResponseStatusCode::OK {
+        // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
+        //            Compare essential content
+        let mut response_holon_reference = match response.body {
+            ResponseBody::HolonReference(ref hr) => hr.clone(),
+            other => {
+                panic!("expected ResponseBody::HolonReference, got {:?}", other);
+            }
+        };
+        let execution_reference = ResultingReference::from(response_holon_reference.clone());
+        let resolved_reference = ExecutionReference::from_reference_parts(
+            source_token.expected_snapshot(),
+            execution_reference,
+        );
+        resolved_reference.assert_essential_content_eq(context).unwrap();
+        // Confirm that operations on the abandoned Holon fail as expected
+        assert_eq!(
+            response_holon_reference.with_property_value(
+                context, // Pass context for proper behavior
+                PropertyName(MapString("some_name".to_string())),
+                BaseValue::BooleanValue(MapBoolean(true))
+            ),
+            Err(HolonError::NotAccessible(
+                format!("{:?}", AccessType::Write),
+                "Immutable".to_string()
+            ))
+        );
+        debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
 
-    // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
+        state.record(&source_token, resolved_reference).unwrap();
+    }
 }

@@ -6,6 +6,7 @@ use holons_core::{
     HolonReference, HolonsContextBehavior,
 };
 use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use tracing::info;
 
 /// Execute the StageNewFromClone step:
 ///  1) LOOKUP: convert the fixture `TestReference` into a runtime `HolonReference`
@@ -34,10 +35,17 @@ pub async fn execute_stage_new_from_clone(
     // 3. CALL — use the context-owned call service
     let dance_initiator = context.get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(context, request).await;
-    assert_eq!(response.status_code, expected_status);
+
+    // 4. VALIDATE - response status
+    assert_eq!(
+        response.status_code, expected_status,
+        "stage_new_from_clone request failed: {}",
+        response.description
+    );
+    info!("Success! stage_new_from_clone DanceResponse matched expected");
 
     if expected_status == ResponseStatusCode::OK {
-        // 4. ASSERT — on success, the body should be a HolonReference to the newly staged holon.
+        // 5. ASSERT — on success, the body should be a HolonReference to the newly staged holon.
         //            Compare essential content (source vs. resolved) without durable fetch.
         let response_holon_reference = match response.body {
             ResponseBody::HolonReference(hr) => hr,
@@ -52,7 +60,7 @@ pub async fn execute_stage_new_from_clone(
         );
         resolved_reference.assert_essential_content_eq(context).unwrap();
 
-        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
+        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
         state.record(&source_token, resolved_reference).unwrap();
     }
 }
