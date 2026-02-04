@@ -1,5 +1,5 @@
 use derive_new::new;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     fmt,
     sync::{Arc, RwLock},
@@ -7,9 +7,7 @@ use std::{
 use tracing::{info, trace};
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::{
-    TransactionContext, TransactionContextHandle, TxId,
-};
+use crate::core_shared_objects::transactions::{TransactionContextHandle, TxId};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -28,27 +26,6 @@ use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 use type_names::CorePropertyTypeName;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SmartReferenceWire {
-    tx_id: TxId,
-    holon_id: HolonId,
-    smart_property_values: Option<PropertyMap>,
-}
-
-impl SmartReferenceWire {
-    pub fn new(tx_id: TxId, holon_id: HolonId, smart_property_values: Option<PropertyMap>) -> Self {
-        Self { tx_id, holon_id, smart_property_values }
-    }
-
-    pub fn tx_id(&self) -> TxId {
-        self.tx_id
-    }
-
-    pub fn holon_id(&self) -> HolonId {
-        self.holon_id.clone()
-    }
-}
 
 #[derive(new, Debug, Clone)]
 pub struct SmartReference {
@@ -75,20 +52,6 @@ impl SmartReference {
             holon_id,
             smart_property_values: Some(smart_property_values),
         }
-    }
-
-    /// Binds a wire reference to a TransactionContext, validating tx_id and returning a SmartReference.
-    pub fn bind(
-        wire: SmartReferenceWire,
-        context: &Arc<TransactionContext>,
-    ) -> Result<Self, HolonError> {
-        let context_handle = TransactionContextHandle::bind(wire.tx_id(), Arc::clone(context))?;
-
-        Ok(SmartReference {
-            context_handle,
-            holon_id: wire.holon_id,
-            smart_property_values: wire.smart_property_values,
-        })
     }
 
     // *************** ACCESSORS ***************
@@ -472,22 +435,6 @@ impl ToHolonCloneModel for SmartReference {
             .holon_clone_model();
 
         Ok(model)
-    }
-}
-
-impl From<&SmartReference> for SmartReferenceWire {
-    fn from(reference: &SmartReference) -> Self {
-        Self::new(
-            reference.tx_id(),
-            reference.holon_id(),
-            reference.smart_property_values().cloned(),
-        )
-    }
-}
-
-impl From<SmartReference> for SmartReferenceWire {
-    fn from(reference: SmartReference) -> Self {
-        SmartReferenceWire::from(&reference)
     }
 }
 

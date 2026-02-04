@@ -148,19 +148,19 @@ impl MapRequestBodyWire {
             MapRequestBodyWire::TargetHolons(name, wires) => {
                 let mut refs = Vec::with_capacity(wires.len());
                 for wire in wires {
-                    refs.push(HolonReference::bind(wire, context)?);
+                    refs.push(wire.bind(context)?);
                 }
                 Ok(MapRequestBody::TargetHolons(name, refs))
             }
             MapRequestBodyWire::TransientReference(wire) => {
-                Ok(MapRequestBody::TransientReference(TransientReference::bind(wire, context)?))
+                Ok(MapRequestBody::TransientReference(wire.bind(context)?))
             }
             MapRequestBodyWire::HolonId(id) => Ok(MapRequestBody::HolonId(id)),
             MapRequestBodyWire::ParameterValues(values) => {
                 Ok(MapRequestBody::ParameterValues(values))
             }
             MapRequestBodyWire::StagedRef(wire) => {
-                Ok(MapRequestBody::StagedRef(StagedReference::bind(wire, context)?))
+                Ok(MapRequestBody::StagedRef(wire.bind(context)?))
             }
             MapRequestBodyWire::QueryExpression(query) => {
                 Ok(MapRequestBody::QueryExpression(query))

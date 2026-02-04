@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
@@ -6,15 +5,11 @@ use crate::core_shared_objects::transactions::{TransactionContextHandle, TxId};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
-    core_shared_objects::transactions::TransactionContext,
     core_shared_objects::{
         holon::{holon_utils::EssentialHolonContent, state::AccessType},
         HolonCollection,
     },
-    reference_layer::{
-        ReadableHolon, SmartReference, SmartReferenceWire, StagedReference, StagedReferenceWire,
-        TransientReference, TransientReferenceWire,
-    },
+    reference_layer::{ReadableHolon, SmartReference, StagedReference, TransientReference},
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
@@ -36,13 +31,6 @@ pub enum HolonReference {
     Smart(SmartReference),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum HolonReferenceWire {
-    Transient(TransientReferenceWire),
-    Staged(StagedReferenceWire),
-    Smart(SmartReferenceWire),
-}
-
 /// Stages a new Holon by cloning an existing Holon from its HolonReference, without retaining lineage to the Holon its cloned from.
 impl HolonReference {
     /// Creates a `HolonReference` wrapping a `SmartReference` for the given `HolonId`.
@@ -57,24 +45,6 @@ impl HolonReference {
     /// Creates a `HolonReference::Smart` variant from a `SmartReference`.
     pub fn from_smart(smart: SmartReference) -> Self {
         HolonReference::Smart(smart)
-    }
-
-    /// Binds a wire reference enum to a TransactionContext, validating tx_id.
-    pub fn bind(
-        wire: HolonReferenceWire,
-        context: &Arc<TransactionContext>,
-    ) -> Result<Self, HolonError> {
-        match wire {
-            HolonReferenceWire::Transient(transient) => {
-                TransientReference::bind(transient, context).map(HolonReference::Transient)
-            }
-            HolonReferenceWire::Staged(staged) => {
-                StagedReference::bind(staged, context).map(HolonReference::Staged)
-            }
-            HolonReferenceWire::Smart(smart) => {
-                SmartReference::bind(smart, context).map(HolonReference::Smart)
-            }
-        }
     }
 
     pub fn get_descriptor(&self) -> Result<Option<HolonReference>, HolonError> {
@@ -260,38 +230,6 @@ impl HolonReference {
             HolonReference::Transient(reference) => reference.reference_id_string(),
             HolonReference::Staged(reference) => reference.reference_id_string(),
             HolonReference::Smart(reference) => reference.reference_id_string(),
-        }
-    }
-}
-
-impl From<HolonReference> for HolonReferenceWire {
-    fn from(reference: HolonReference) -> Self {
-        match reference {
-            HolonReference::Transient(transient) => {
-                HolonReferenceWire::Transient(TransientReferenceWire::from(transient))
-            }
-            HolonReference::Staged(staged) => {
-                HolonReferenceWire::Staged(StagedReferenceWire::from(staged))
-            }
-            HolonReference::Smart(smart) => {
-                HolonReferenceWire::Smart(SmartReferenceWire::from(smart))
-            }
-        }
-    }
-}
-
-impl From<&HolonReference> for HolonReferenceWire {
-    fn from(reference: &HolonReference) -> Self {
-        match reference {
-            HolonReference::Transient(transient) => {
-                HolonReferenceWire::Transient(TransientReferenceWire::from(transient))
-            }
-            HolonReference::Staged(staged) => {
-                HolonReferenceWire::Staged(StagedReferenceWire::from(staged))
-            }
-            HolonReference::Smart(smart) => {
-                HolonReferenceWire::Smart(SmartReferenceWire::from(smart))
-            }
         }
     }
 }

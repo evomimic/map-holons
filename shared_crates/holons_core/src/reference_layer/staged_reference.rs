@@ -29,22 +29,6 @@ use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName, TemporaryId,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct StagedReferenceWire {
-    tx_id: TxId,
-    id: TemporaryId,
-}
-
-impl StagedReferenceWire {
-    pub fn new(tx_id: TxId, id: TemporaryId) -> Self {
-        Self { tx_id, id }
-    }
-
-    pub fn tx_id(&self) -> TxId {
-        self.tx_id
-    }
-}
-
 #[derive(new, Debug, Clone)]
 pub struct StagedReference {
     context_handle: TransactionContextHandle,
@@ -91,16 +75,6 @@ impl StagedReference {
     /// A new `StagedReference` wrapping the provided id.
     pub fn from_temporary_id(context_handle: TransactionContextHandle, id: &TemporaryId) -> Self {
         StagedReference { context_handle, id: id.clone() }
-    }
-
-    /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
-    pub fn bind(
-        wire: StagedReferenceWire,
-        context: &Arc<TransactionContext>,
-    ) -> Result<Self, HolonError> {
-        let context_handle = TransactionContextHandle::bind(wire.tx_id(), Arc::clone(context))?;
-
-        Ok(StagedReference { context_handle, id: wire.id })
     }
 
     /// Retrieves the underlying Holon handle for commit operations.
@@ -531,18 +505,6 @@ impl ToHolonCloneModel for StagedReference {
             .holon_clone_model();
 
         Ok(holon_clone_model)
-    }
-}
-
-impl From<&StagedReference> for StagedReferenceWire {
-    fn from(reference: &StagedReference) -> Self {
-        Self::new(reference.tx_id(), reference.temporary_id())
-    }
-}
-
-impl From<StagedReference> for StagedReferenceWire {
-    fn from(reference: StagedReference) -> Self {
-        StagedReferenceWire::from(&reference)
     }
 }
 

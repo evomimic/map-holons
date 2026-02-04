@@ -56,7 +56,7 @@ impl MapResponseWire {
             description: self.description,
             body: self.body.bind(context)?,
             descriptor: match self.descriptor {
-                Some(reference_wire) => Some(HolonReference::bind(reference_wire, context)?),
+                Some(reference_wire) => Some(reference_wire.bind(context)?),
                 None => None,
             },
             state: self.state,

@@ -1,5 +1,4 @@
 use derive_new::new;
-use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::{
     fmt,
@@ -28,22 +27,6 @@ use crate::{
     HolonCollection, RelationshipMap,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TransientReferenceWire {
-    tx_id: TxId,
-    id: TemporaryId,
-}
-
-impl TransientReferenceWire {
-    pub fn new(tx_id: TxId, id: TemporaryId) -> Self {
-        Self { tx_id, id }
-    }
-
-    pub fn tx_id(&self) -> TxId {
-        self.tx_id
-    }
-}
-
 #[derive(new, Debug, Clone)]
 pub struct TransientReference {
     context_handle: TransactionContextHandle,
@@ -61,16 +44,6 @@ impl TransientReference {
     ///
     pub fn from_temporary_id(context_handle: TransactionContextHandle, id: &TemporaryId) -> Self {
         TransientReference::new(context_handle, id.clone())
-    }
-
-    /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
-    pub fn bind(
-        wire: TransientReferenceWire,
-        context: &Arc<TransactionContext>,
-    ) -> Result<Self, HolonError> {
-        let context_handle = TransactionContextHandle::bind(wire.tx_id(), Arc::clone(context))?;
-
-        Ok(TransientReference { context_handle, id: wire.id })
     }
 
     pub fn reset_original_id(&self) -> Result<(), HolonError> {
@@ -396,18 +369,6 @@ impl ToHolonCloneModel for TransientReference {
         let holon_clone_model = rc_holon.read().unwrap().holon_clone_model();
 
         Ok(holon_clone_model)
-    }
-}
-
-impl From<&TransientReference> for TransientReferenceWire {
-    fn from(reference: &TransientReference) -> Self {
-        Self::new(reference.tx_id(), reference.temporary_id())
-    }
-}
-
-impl From<TransientReference> for TransientReferenceWire {
-    fn from(reference: TransientReference) -> Self {
-        TransientReferenceWire::from(&reference)
     }
 }
 
