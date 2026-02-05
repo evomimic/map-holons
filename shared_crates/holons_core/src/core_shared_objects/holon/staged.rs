@@ -8,8 +8,7 @@ use crate::{
             ValidationState,
         },
         transactions::TransactionContext,
-        ReadableHolonState, ReadableRelationship, StagedRelationshipMapWire, WritableRelationship,
-        WriteableHolonState,
+        ReadableHolonState, ReadableRelationship, WritableRelationship, WriteableHolonState,
     },
     HolonCollection, HolonReference, RelationshipMap, StagedRelationshipMap,
 };
@@ -19,48 +18,6 @@ use core_types::{
     RelationshipName,
 };
 use type_names::CorePropertyTypeName;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct StagedHolonWire {
-    version: MapInteger,
-    holon_state: HolonState,
-    staged_state: StagedState,
-    validation_state: ValidationState,
-    property_map: PropertyMap,
-    staged_relationships: StagedRelationshipMapWire,
-    original_id: Option<LocalId>,
-    errors: Vec<HolonError>,
-}
-
-impl StagedHolonWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<StagedHolon, HolonError> {
-        Ok(StagedHolon {
-            version: self.version,
-            holon_state: self.holon_state,
-            staged_state: self.staged_state,
-            validation_state: self.validation_state,
-            property_map: self.property_map,
-            staged_relationships: self.staged_relationships.bind(context)?,
-            original_id: self.original_id,
-            errors: self.errors,
-        })
-    }
-}
-
-impl From<&StagedHolon> for StagedHolonWire {
-    fn from(value: &StagedHolon) -> Self {
-        Self {
-            version: value.version.clone(),
-            holon_state: value.holon_state.clone(),
-            staged_state: value.staged_state.clone(),
-            validation_state: value.validation_state.clone(),
-            property_map: value.property_map.clone(),
-            staged_relationships: StagedRelationshipMapWire::from(&value.staged_relationships),
-            original_id: value.original_id.clone(),
-            errors: value.errors.clone(),
-        }
-    }
-}
 
 /// Represents a Holon that has been staged for persistence or updates.
 #[derive(Debug, Clone, PartialEq, Eq)]

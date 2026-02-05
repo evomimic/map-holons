@@ -8,10 +8,15 @@ mod dance_request_wire;
 mod dance_response_wire;
 mod holon_collection_wire;
 mod holon_reference_wire;
+mod holon_wire;
 mod query_wire;
 mod smart_reference_wire;
 mod staged_reference_wire;
+mod staged_relationship_wire;
+mod staged_wire;
 mod transient_reference_wire;
+mod transient_relationship_wire;
+mod transient_wire;
 
 pub mod reference_layer {
     pub use crate::holon_reference_wire::HolonReferenceWire;

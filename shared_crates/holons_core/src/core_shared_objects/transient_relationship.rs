@@ -2,10 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use derive_new::new;
-use serde::{Deserialize, Serialize};
 
-use super::{HolonCollection, HolonCollectionWire, ReadableRelationship, WritableRelationship};
-use crate::core_shared_objects::transactions::TransactionContext;
+use super::{HolonCollection, ReadableRelationship, WritableRelationship};
 use crate::{HolonCollectionApi, HolonReference, StagedRelationshipMap};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
@@ -16,11 +14,6 @@ use core_types::{HolonError, RelationshipName};
 #[derive(new, Debug, Clone)]
 pub struct TransientRelationshipMap {
     pub map: BTreeMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TransientRelationshipMapWire {
-    pub map: BTreeMap<RelationshipName, HolonCollectionWire>,
 }
 
 // Manual PartialEq implementation to compare underlying HolonCollection values in RwLocks
@@ -235,39 +228,6 @@ impl TransientRelationshipMap {
         let staged = StagedRelationshipMap::new(self.map);
 
         Ok(staged)
-    }
-
-    pub fn to_wire(&self) -> TransientRelationshipMapWire {
-        TransientRelationshipMapWire::from(self)
-    }
-}
-
-impl TransientRelationshipMapWire {
-    pub fn bind(
-        self,
-        context: Arc<TransactionContext>,
-    ) -> Result<TransientRelationshipMap, HolonError> {
-        let mut map = BTreeMap::new();
-
-        for (name, collection_wire) in self.map {
-            let collection = collection_wire.bind(Arc::clone(&context))?;
-            map.insert(name, Arc::new(RwLock::new(collection)));
-        }
-
-        Ok(TransientRelationshipMap::new(map))
-    }
-}
-
-impl From<&TransientRelationshipMap> for TransientRelationshipMapWire {
-    fn from(map: &TransientRelationshipMap) -> Self {
-        let mut wire_map = BTreeMap::new();
-
-        for (name, lock) in map.map.iter() {
-            let collection = lock.read().expect("Failed to acquire read lock on holon collection");
-            wire_map.insert(name.clone(), HolonCollectionWire::from(&*collection));
-        }
-
-        Self { map: wire_map }
     }
 }
 

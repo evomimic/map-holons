@@ -1,13 +1,11 @@
-use crate::core_shared_objects::transactions::TransactionContext;
-use crate::core_shared_objects::{summarize_holons, Holon, HolonWire, ReadableHolonState};
+use crate::core_shared_objects::{summarize_holons, Holon, ReadableHolonState};
 use crate::dances::SessionState;
-use crate::query_layer::{NodeCollection, NodeCollectionWire};
+use crate::query_layer::NodeCollection;
 use crate::{HolonCollection, HolonReference};
 use base_types::MapString;
 use core_types::HolonError;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::sync::Arc;
 
 /// Runtime dance response (tx-bound, execution-capable).
 ///
