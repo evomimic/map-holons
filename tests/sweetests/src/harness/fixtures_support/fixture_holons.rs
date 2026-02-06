@@ -1,10 +1,11 @@
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{reference_layer::TransientReference, HolonsContextBehavior, ReadableHolon};
-use std::sync::Arc;
+use holons_core::{reference_layer::TransientReference, ReadableHolon};
+
 use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
+use holons_core::{reference_layer::TransientReference, ReadableHolon};
 use tracing::debug;
 // use tracing::warn;
 use crate::harness::fixtures_support::{TestHolonState, TestReference};

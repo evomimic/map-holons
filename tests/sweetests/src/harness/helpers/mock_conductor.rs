@@ -1,12 +1,10 @@
 use async_trait::async_trait;
 use holochain::prelude::AgentPubKey;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
-use holons_core::dances::dance_request::DanceRequestWire;
-use holons_core::dances::dance_response::DanceResponseWire;
-use holons_core::dances::{DanceInitiator, DanceRequest, DanceResponse};
+use holons_core::dances::DanceInitiator;
 use holons_core::HolonError;
-use holons_prelude::prelude::*;
-use holons_trust_channel::TrustChannel;
+use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
+use holons_trust_channel::{DanceEnvelopeTransport, TrustChannel};
 use std::sync::Arc;
 use tracing::info;
 
@@ -19,68 +17,26 @@ pub struct MockConductorConfig {
     pub cell: SweetCell,
 }
 
-/// Implements the [`DanceInitiator`] trait for the [`MockConductorConfig`],
-/// enabling simulated Holochain conductor calls within the Sweetest test environment.
+/// Implements envelope transport for the Sweetest mock conductor backend.
 ///
-/// This implementation bridges the `DanceInitiator` interface to the mock
-/// conductor used in integration tests. It sends a `DanceRequest` into the
-/// "holons" zome of the test conductor, awaits the zome call result, and
-/// converts the outcome into a standardized [`DanceResponse`].
-///
-/// Unlike production implementations, this test variant does **not** return a
-/// `Result`. Any underlying conductor or zome-level error is encapsulated as a
-/// [`DanceResponse`] with an appropriate [`ResponseStatusCode`], ensuring
-/// consistent handling of all outcomes within test logic.
-///
-/// # Arguments
-///
-/// * `_context` — The current [`HolonsContextBehavior`] context (unused in
-///   this mock implementation, but included for trait compatibility).
-/// * `request` — The [`DanceRequest`] to execute within the test conductor.
-///
-/// # Returns
-///
-/// A [`DanceResponse`] representing either a successful zome call or a
-/// structured failure response, depending on the outcome of the conductor call.
-///
-/// # Example
-///
-/// ```ignore
-/// let request = DanceRequest::new("SomeDance", payload);
-/// let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-/// let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-/// assert_eq!(response.status_code(), ResponseStatusCode::Ok);
-/// ```
 #[async_trait]
-impl DanceInitiator for MockConductorConfig {
-    async fn initiate_dance(
+impl DanceEnvelopeTransport for MockConductorConfig {
+    async fn initiate_dance_envelope(
         &self,
-        context: Arc<TransactionContext>,
-        request: DanceRequest,
-    ) -> DanceResponse {
-        let request_wire = DanceRequestWire::from(&request);
+        envelope: InternalDanceRequestEnvelope,
+    ) -> Result<InternalDanceResponseEnvelope, HolonError> {
         let result = self
             .conductor
-            .call_fallible::<DanceRequestWire, DanceResponseWire>(
+            .call_fallible::<InternalDanceRequestEnvelope, InternalDanceResponseEnvelope>(
                 &self.cell.zome("holons"),
-                "dance",
-                request_wire,
+                "dance_adapter",
+                envelope,
             )
             .await;
 
         match result {
-            Ok(response_wire) => {
-                let response_state = response_wire.state.clone();
-                match response_wire.bind(&context) {
-                    Ok(response) => response,
-                    Err(error) => {
-                        let mut response = DanceResponse::from_error(error);
-                        response.state = response_state;
-                        response
-                    }
-                }
-            }
-            Err(error) => DanceResponse::from_error(HolonError::ConductorError(format!(
+            Ok(response_envelope) => Ok(response_envelope),
+            Err(error) => Err(HolonError::ConductorError(format!(
                 "SweetConductor dance call failed: {:?}",
                 error
             ))),

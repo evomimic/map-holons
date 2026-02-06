@@ -12,14 +12,10 @@ use holochain_client::{
     ZomeCallTarget,
 };
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
-use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{
-    dances::{
-        dance_request::DanceRequestWire,
-        dance_response::{DanceResponseWire, ResponseBodyWire},
-        DanceInitiator, DanceRequest, DanceResponse, ResponseStatusCode,
-    },
-};
+use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
+use holons_boundary::{DanceResponseWire, ResponseBodyWire};
+use holons_core::dances::ResponseStatusCode;
+use holons_trust_channel::DanceEnvelopeTransport;
 
 /// Minimal conductor client for POC.
 /// Most functionality is stubbed or simplified.
@@ -76,35 +72,31 @@ impl HolochainConductorClient {
 }
 
 #[async_trait]
-impl DanceInitiator for HolochainConductorClient {
-    async fn initiate_dance(
+impl DanceEnvelopeTransport for HolochainConductorClient {
+    async fn initiate_dance_envelope(
         &self,
-        context: Arc<TransactionContext>,
-        request: DanceRequest,
-    ) -> DanceResponse {
-        let request_wire = DanceRequestWire::from(&request);
-        let response_wire = self.conductor_dance_call(request_wire).await;
-        let response_state = response_wire.state.clone();
-
-        match response_wire.bind(&context) {
-            Ok(bound) => bound,
-            Err(error) => {
-                let mut response = DanceResponse::from_error(error);
-                response.state = response_state;
-                response
-            }
-        }
+        envelope: InternalDanceRequestEnvelope,
+    ) -> Result<InternalDanceResponseEnvelope, HolonError> {
+        self.conductor_dance_call(envelope).await
     }
 }
 
 /// Round-trip the zome call
 #[async_trait]
 impl ConductorDanceCaller for HolochainConductorClient {
-    async fn conductor_dance_call(&self, request: DanceRequestWire) -> DanceResponseWire {
+    async fn conductor_dance_call(
+        &self,
+        request: InternalDanceRequestEnvelope,
+    ) -> Result<InternalDanceResponseEnvelope, HolonError> {
         // --- Serialize request ---
         let payload: ExternIO = match ExternIO::encode(request) {
             Ok(p) => p,
-            Err(e) => return server_error_response_wire(format!("Encoding error: {:?}", e)),
+            Err(e) => {
+                return Err(HolonError::ConductorError(format!(
+                    "Encoding dance envelope failed: {:?}",
+                    e
+                )));
+            }
         };
 
         // --- Clone websocket (POC safe) ---
@@ -114,7 +106,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         let Some(app_ws) = ws else {
-            return server_error_response_wire("AppSocket not initialized".into());
+            return Err(HolonError::FailedToBorrow("AppSocket not initialized".into()));
         };
 
         // --- Make zome call ---
@@ -128,27 +120,29 @@ impl ConductorDanceCaller for HolochainConductorClient {
             .await;
 
         let Ok(extern_io) = result else {
-            return server_error_response_wire("Zome call failed".into());
+            return Err(HolonError::ConductorError("Zome call failed".into()));
         };
 
-        match ExternIO::decode::<DanceResponseWire>(&extern_io) {
-            Ok(decoded) => decoded,
-            Err(e) => {
-                server_error_response_wire(format!("Failed to decode dance response: {:?}", e))
-            }
+        match ExternIO::decode::<InternalDanceResponseEnvelope>(&extern_io) {
+            Ok(decoded) => Ok(decoded),
+            Err(e) => Err(HolonError::ConductorError(format!(
+                "Failed to decode dance envelope response: {:?}",
+                e
+            ))),
         }
     }
 }
 
 /// Minimal helper for consistent error formatting.
-fn server_error_response_wire(msg: String) -> DanceResponseWire {
-    DanceResponseWire {
+#[allow(dead_code)]
+fn server_error_response_wire(msg: String) -> InternalDanceResponseEnvelope {
+    let response = DanceResponseWire {
         status_code: ResponseStatusCode::ServerError,
         description: MapString(msg),
         body: ResponseBodyWire::None,
         descriptor: None,
-        state: None,
-    }
+    };
+    InternalDanceResponseEnvelope { response, session: None }
 }
 
 // NOTE: I have had to put this back to make the UI work - needs to be refactored properly later

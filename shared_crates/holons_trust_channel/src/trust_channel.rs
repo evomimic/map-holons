@@ -4,21 +4,22 @@ use holons_core::dances::{DanceRequest, DanceResponse};
 use std::sync::Arc;
 use tracing::debug;
 
-use crate::envelopes::dance_envelope_adapter::SessionStateEnvelope;
+use crate::dance_envelope_transport::DanceEnvelopeTransport;
+use crate::envelopes::dance_envelope_adapter::DanceEnvelopeAdapter;
 use holons_core::dances::dance_initiator::DanceInitiator;
 
 /// The TrustChannel coordinates envelope flow for outbound and inbound Dances.
 ///
-/// It wraps an inner [`DanceInitiator`] backend and applies envelope logic,
-/// including session_state-state encapsulation, before and after the core invocation.
+/// It wraps an inner envelope transport backend and applies runtime <-> envelope
+/// conversion before and after the core invocation.
 #[derive(Debug, Clone)]
 pub struct TrustChannel {
-    backend: std::sync::Arc<dyn DanceInitiator + Send + Sync>,
+    backend: std::sync::Arc<dyn DanceEnvelopeTransport + Send + Sync>,
 }
 
 impl TrustChannel {
-    /// Constructs a new TrustChannel around a backend initiator.
-    pub fn new(backend: std::sync::Arc<dyn DanceInitiator + Send + Sync>) -> Self {
+    /// Constructs a new TrustChannel around a backend envelope transport.
+    pub fn new(backend: std::sync::Arc<dyn DanceEnvelopeTransport + Send + Sync>) -> Self {
         Self { backend }
     }
 }
@@ -30,23 +31,29 @@ impl DanceInitiator for TrustChannel {
         context: Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse {
-        // --- Outbound session_state state encapsulation -----------------------------
-        if let Err(err) = SessionStateEnvelope::attach_to_request(&context) {
-            return DanceResponse::from_error(err);
-        }
+        // --- Outbound runtime -> envelope -----------------------------------------
+        let request_envelope = match DanceEnvelopeAdapter::build_request_envelope(&context, request)
+        {
+            Ok(envelope) => envelope,
+            Err(error) => return DanceResponse::from_error(error),
+        };
 
-        debug!("TrustChannel::initiate_dance() — prepared request: {:?}", request.summarize());
+        debug!("TrustChannel::initiate_dance() — prepared envelope request");
 
         // --- Transmit via backend --------------------------------------------
-        let context_for_backend = Arc::clone(&context);
+        let response_envelope = match self.backend.initiate_dance_envelope(request_envelope).await {
+            Ok(envelope) => envelope,
+            Err(error) => return DanceResponse::from_error(error),
+        };
 
-        let mut response = self.backend.initiate_dance(context_for_backend, request).await;
-
-        // --- Inbound session_state state hydration ---------------------------------
-        // TODO: SessionStateWire will be carried via internal envelopes.
+        // --- Inbound envelope -> runtime -------------------------------------
+        let response = match DanceEnvelopeAdapter::bind_response_envelope(&context, response_envelope)
+        {
+            Ok(response) => response,
+            Err(error) => return DanceResponse::from_error(error),
+        };
 
         debug!("TrustChannel::initiate_dance() — got response: {:?}", response.summarize());
-
         response
     }
 }

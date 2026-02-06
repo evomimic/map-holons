@@ -1,7 +1,8 @@
+use holons_boundary::{HolonReferenceWire, ResponseBodyWire};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
-    dances::{dance_response::ResponseBodyWire, DanceResponse, ResponseBody, ResponseStatusCode},
-    HolonError, HolonReference, HolonReferenceWire,
+    dances::{DanceResponse, ResponseBody, ResponseStatusCode},
+    HolonError, HolonReference,
 };
 use holons_boundary::session_state::SessionStateWire;
 use serde::{Deserialize, Serialize};

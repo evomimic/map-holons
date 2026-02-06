@@ -15,6 +15,7 @@ use holons_boundary::session_state::{SerializableHolonPool, SessionStateWire};
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
     dances::ResponseStatusCode,
+    HolonsContextBehavior,
 };
 
 /// Adapter entrypoint for the internal dance envelope.
@@ -85,6 +86,12 @@ pub fn dance_adapter(
         response: response_wire,
         session: response_session,
     })
+}
+
+/// Backward-compatible extern name until host config is fully switched.
+#[hdk_extern]
+pub fn dance(envelope: InternalDanceRequestEnvelope) -> ExternResult<InternalDanceResponseEnvelope> {
+    dance_adapter(envelope)
 }
 
 fn create_error_response_envelope(

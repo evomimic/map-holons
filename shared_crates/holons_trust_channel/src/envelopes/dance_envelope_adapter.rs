@@ -1,22 +1,49 @@
 use core_types::HolonId;
+use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
 use holons_boundary::session_state::SerializableHolonPool;
+use holons_boundary::DanceRequestWire;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_boundary::session_state::SessionStateWire;
-use holons_core::{HolonError, HolonReferenceWire, HolonsContextBehavior};
+use holons_core::dances::{DanceRequest, DanceResponse};
+use holons_core::{HolonError, HolonsContextBehavior};
+use holons_boundary::HolonReferenceWire;
 use std::sync::Arc;
 use tracing::debug;
 
-/// The SessionStateEnvelope layer manages attaching and restoring SessionState
-/// during outbound and inbound capsule flow.
+/// Adapter for translating runtime dance requests/responses into envelope transport types.
 ///
-/// It wraps the existing `holons_core::dances::SessionState` model and provides
-/// runtime logic for interacting with the SpaceManager context.
 #[derive(Debug, Default)]
-pub struct SessionStateEnvelope;
+pub struct DanceEnvelopeAdapter;
 
-impl SessionStateEnvelope {
+impl DanceEnvelopeAdapter {
+    /// Outbound: project runtime dance request + session into a transport envelope.
+    pub fn build_request_envelope(
+        context: &Arc<TransactionContext>,
+        request: DanceRequest,
+    ) -> Result<InternalDanceRequestEnvelope, HolonError> {
+        let request_wire = DanceRequestWire::from(&request);
+        let session = Some(Self::attach_session_state(context)?);
+        Ok(InternalDanceRequestEnvelope { request: request_wire, session })
+    }
+
+    /// Inbound: hydrate context from envelope session state, then bind response wire to runtime.
+    pub fn bind_response_envelope(
+        context: &Arc<TransactionContext>,
+        envelope: InternalDanceResponseEnvelope,
+    ) -> Result<DanceResponse, HolonError> {
+        let InternalDanceResponseEnvelope { response, session } = envelope;
+        let session_state = session.ok_or_else(|| {
+            HolonError::InvalidWireFormat {
+                wire_type: "InternalDanceResponseEnvelope".to_string(),
+                reason: "Missing SessionStateWire".to_string(),
+            }
+        })?;
+        Self::hydrate_from_response(context, &session_state)?;
+        response.bind(context)
+    }
+
     /// Outbound: serializes staged and transient state into a wire payload.
-    pub fn attach_to_request(context: &Arc<TransactionContext>) -> Result<SessionStateWire, HolonError> {
+    fn attach_session_state(context: &Arc<TransactionContext>) -> Result<SessionStateWire, HolonError> {
         let mut session_state = SessionStateWire::default();
 
         let staged_pool = context.export_staged_holons()?;
@@ -31,7 +58,7 @@ impl SessionStateEnvelope {
     }
 
     /// Inbound: restores staged and transient state from the wire payload.
-    pub fn hydrate_from_response(
+    fn hydrate_from_response(
         context: &Arc<TransactionContext>,
         state: &SessionStateWire,
     ) -> Result<(), HolonError> {
@@ -59,7 +86,7 @@ impl SessionStateEnvelope {
             context.set_space_holon_id(space_holon_id)?;
         }
 
-        debug!("SessionStateEnvelope::hydrate_from_response() — {}", state.summarize());
+        debug!("DanceEnvelopeAdapter::hydrate_from_response() — {}", state.summarize());
         Ok(())
     }
 }

@@ -43,9 +43,9 @@ use std::sync::Arc;
 
 use crate::{harness::fixtures_support::TestReference, init_fixture_context, ExpectedSnapshot, FixtureBindings, FixtureHolons, SourceSnapshot, TestHolonState};
 use core_types::ContentSet;
+use holons_boundary::SerializableHolonPool;
 use holons_core::{
-    core_shared_objects::{holon_pool::SerializableHolonPool, transactions::TransactionContext},
-    reference_layer::ReadableHolon,
+    core_shared_objects::transactions::TransactionContext, reference_layer::ReadableHolon,
 };
 use holons_prelude::prelude::*;
 use integrity_core_types::PropertyMap;
@@ -144,7 +144,7 @@ impl DancesTestCase {
     /// This function is called automatically within `rs_test` and should not be used directly.
     pub fn load_test_session_state(&mut self, fixture_context: &Arc<TransactionContext>) {
         let transient_holons = fixture_context.export_transient_holons().unwrap();
-        self.test_session_state.set_transient_holons(transient_holons);
+        self.test_session_state.set_transient_holons(SerializableHolonPool::from(&transient_holons));
     }
 
     // === Execution Steps === //

@@ -1,4 +1,4 @@
-use holons_core::core_shared_objects::holon::HolonWire;
+use holons_boundary::HolonWire;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::HashMap;
