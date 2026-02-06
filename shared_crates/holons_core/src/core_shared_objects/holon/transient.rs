@@ -63,6 +63,25 @@ impl TransientHolon {
         }
     }
 
+    /// Creates a transient holon from wire-bound fields.
+    pub fn from_wire_parts(
+        version: MapInteger,
+        holon_state: HolonState,
+        validation_state: ValidationState,
+        property_map: PropertyMap,
+        transient_relationships: TransientRelationshipMap,
+        original_id: Option<LocalId>,
+    ) -> Self {
+        Self {
+            version,
+            holon_state,
+            validation_state,
+            property_map,
+            transient_relationships,
+            original_id,
+        }
+    }
+
     /// Retrieves a transient relationship after verifying read access
     pub fn get_transient_relationship(
         &self,
@@ -83,6 +102,30 @@ impl TransientHolon {
     /// Kept crate-visible; caller should enforce appropriate access checks.
     pub(crate) fn raw_property_map_clone(&self) -> PropertyMap {
         self.property_map.clone()
+    }
+
+    pub fn version(&self) -> &MapInteger {
+        &self.version
+    }
+
+    pub fn holon_state(&self) -> &HolonState {
+        &self.holon_state
+    }
+
+    pub fn validation_state(&self) -> &ValidationState {
+        &self.validation_state
+    }
+
+    pub fn property_map(&self) -> &PropertyMap {
+        &self.property_map
+    }
+
+    pub fn transient_relationships(&self) -> &TransientRelationshipMap {
+        &self.transient_relationships
+    }
+
+    pub fn original_id_ref(&self) -> Option<&LocalId> {
+        self.original_id.as_ref()
     }
 }
 

@@ -21,30 +21,30 @@ pub struct StagedHolonWire {
 
 impl StagedHolonWire {
     pub fn bind(self, context: Arc<TransactionContext>) -> Result<StagedHolon, HolonError> {
-        Ok(StagedHolon {
-            version: self.version,
-            holon_state: self.holon_state,
-            staged_state: self.staged_state,
-            validation_state: self.validation_state,
-            property_map: self.property_map,
-            staged_relationships: self.staged_relationships.bind(context)?,
-            original_id: self.original_id,
-            errors: self.errors,
-        })
+        Ok(StagedHolon::from_wire_parts(
+            self.version,
+            self.holon_state,
+            self.staged_state,
+            self.validation_state,
+            self.property_map,
+            self.staged_relationships.bind(context)?,
+            self.original_id,
+            self.errors,
+        ))
     }
 }
 
 impl From<&StagedHolon> for StagedHolonWire {
     fn from(value: &StagedHolon) -> Self {
         Self {
-            version: value.version.clone(),
-            holon_state: value.holon_state.clone(),
-            staged_state: value.staged_state.clone(),
-            validation_state: value.validation_state.clone(),
-            property_map: value.property_map.clone(),
-            staged_relationships: StagedRelationshipMapWire::from(&value.staged_relationships),
-            original_id: value.original_id.clone(),
-            errors: value.errors.clone(),
+            version: value.version().clone(),
+            holon_state: value.holon_state().clone(),
+            staged_state: value.staged_state().clone(),
+            validation_state: value.validation_state().clone(),
+            property_map: value.property_map().clone(),
+            staged_relationships: StagedRelationshipMapWire::from(value.staged_relationships()),
+            original_id: value.original_id_ref().cloned(),
+            errors: value.errors().to_vec(),
         }
     }
 }

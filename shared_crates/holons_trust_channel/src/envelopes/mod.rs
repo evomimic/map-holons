@@ -1,3 +1,3 @@
-pub mod session_state_envelope;
+pub mod dance_envelope_adapter;
 
-pub use session_state_envelope::SessionStateEnvelope;
+pub use dance_envelope_adapter::SessionStateEnvelope;

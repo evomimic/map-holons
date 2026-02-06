@@ -88,6 +88,29 @@ impl StagedHolon {
         }
     }
 
+    /// Creates a staged holon from wire-bound fields.
+    pub fn from_wire_parts(
+        version: MapInteger,
+        holon_state: HolonState,
+        staged_state: StagedState,
+        validation_state: ValidationState,
+        property_map: PropertyMap,
+        staged_relationships: StagedRelationshipMap,
+        original_id: Option<LocalId>,
+        errors: Vec<HolonError>,
+    ) -> Self {
+        Self {
+            version,
+            holon_state,
+            staged_state,
+            validation_state,
+            property_map,
+            staged_relationships,
+            original_id,
+            errors,
+        }
+    }
+
     // ==================
     //   DATA ACCESSORS
     // ==================
@@ -118,6 +141,38 @@ impl StagedHolon {
 
     pub fn get_staged_state(&self) -> StagedState {
         self.staged_state.clone()
+    }
+
+    pub fn version(&self) -> &MapInteger {
+        &self.version
+    }
+
+    pub fn holon_state(&self) -> &HolonState {
+        &self.holon_state
+    }
+
+    pub fn staged_state(&self) -> &StagedState {
+        &self.staged_state
+    }
+
+    pub fn validation_state(&self) -> &ValidationState {
+        &self.validation_state
+    }
+
+    pub fn property_map(&self) -> &PropertyMap {
+        &self.property_map
+    }
+
+    pub fn staged_relationships(&self) -> &StagedRelationshipMap {
+        &self.staged_relationships
+    }
+
+    pub fn original_id_ref(&self) -> Option<&LocalId> {
+        self.original_id.as_ref()
+    }
+
+    pub fn errors(&self) -> &[HolonError] {
+        &self.errors
     }
 
     // ==============

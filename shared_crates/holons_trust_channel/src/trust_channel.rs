@@ -4,7 +4,7 @@ use holons_core::dances::{DanceRequest, DanceResponse};
 use std::sync::Arc;
 use tracing::debug;
 
-use crate::envelopes::session_state_envelope::SessionStateEnvelope;
+use crate::envelopes::dance_envelope_adapter::SessionStateEnvelope;
 use holons_core::dances::dance_initiator::DanceInitiator;
 
 /// The TrustChannel coordinates envelope flow for outbound and inbound Dances.
