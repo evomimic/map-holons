@@ -1,5 +1,4 @@
 use derive_new::new;
-use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 use std::{fmt, sync::Arc};
 use tracing::info;

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hdk::prelude::*;
 
 use crate::dances_guest::dancer::dispatch_dance;
-use crate::init_guest_context;
+use crate::{init_guest_context, GuestHolonService};
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -129,7 +129,39 @@ fn initialize_context_from_session_state(
     let transient_holons = session_state.get_transient_holons().clone();
     let staged_holons = session_state.get_staged_holons().clone();
 
-    init_guest_context(transient_holons, staged_holons, local_space_holon_id, tx_id)
+    let context = init_guest_context(
+        transient_holons,
+        staged_holons,
+        local_space_holon_id.clone(),
+        tx_id,
+    )?;
+
+    // Ensure the transaction context is anchored to a persisted space holon.
+    let ensured_space_holon_id: HolonId = match local_space_holon_id {
+        Some(id) => id,
+        None => {
+            let holon_service = context.get_holon_service();
+            let guest_service =
+                holon_service.as_any().downcast_ref::<GuestHolonService>().ok_or_else(|| {
+                    HolonError::DowncastFailure("GuestHolonService".to_string())
+                })?;
+
+            let ensured_space_ref = guest_service.ensure_local_holon_space(&context)?;
+            match ensured_space_ref {
+                holons_core::HolonReference::Smart(smart_ref) => smart_ref.get_id()?,
+                other => {
+                    return Err(HolonError::InvalidHolonReference(format!(
+                        "ensure_local_holon_space returned non-smart reference: {} ({})",
+                        other.reference_kind_string(),
+                        other.reference_id_string()
+                    )))
+                }
+            }
+        }
+    };
+
+    context.set_space_holon_id(ensured_space_holon_id)?;
+    Ok(context)
 }
 
 /// Restores the session_state wire payload from context.

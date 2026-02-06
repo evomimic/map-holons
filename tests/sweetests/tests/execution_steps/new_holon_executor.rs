@@ -42,9 +42,9 @@ pub async fn execute_new_holon(
 
     // Apply property mutations returned by the dance
     for (name, value) in properties {
-        response_holon_reference
-            .with_property_value(context, name, value)
-            .unwrap();
+        response_holon_reference.with_property_value(name.clone(), value).unwrap_or_else(|error| {
+            panic!("failed to set property {:?} on response holon: {}", name, error)
+        });
     }
 
     // Build execution handle from runtime result

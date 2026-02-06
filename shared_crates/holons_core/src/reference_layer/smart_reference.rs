@@ -1,5 +1,4 @@
 use derive_new::new;
-use serde::Serialize;
 use std::{
     fmt,
     sync::{Arc, RwLock},

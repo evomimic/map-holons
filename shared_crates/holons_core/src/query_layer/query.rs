@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
-use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::{HolonError, RelationshipName};
 

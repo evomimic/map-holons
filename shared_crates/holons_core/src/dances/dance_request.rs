@@ -3,7 +3,7 @@ use crate::query_layer::{NodeCollection, QueryExpression};
 use crate::reference_layer::TransientReference;
 use crate::{HolonReference, StagedReference};
 use base_types::MapString;
-use core_types::{HolonError, HolonId, LocalId, PropertyMap, RelationshipName};
+use core_types::{HolonId, LocalId, PropertyMap, RelationshipName};
 
 /// Runtime dance request (tx-bound, execution-capable).
 ///
