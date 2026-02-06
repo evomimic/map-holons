@@ -137,7 +137,7 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
 /// This function builds upon [`setup_test_conductor()`] to:
 /// 1. Spawn a SweetConductor-based [`MockConductorConfig`] backend.
 /// 2. Wrap the backend in a [`TrustChannel`], which adds envelope and
-///    session-state coordination for DANCE invocations.
+///    session_state-state coordination for DANCE invocations.
 /// 3. Return the wrapped instance as a trait object suitable for dependency injection
 ///    into a [`HolonSpaceManager`].
 ///

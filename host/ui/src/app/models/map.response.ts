@@ -604,7 +604,7 @@ const mockTransientHolonsPool: SerializableHolonPool = {
   keyed_index: new Map()
 };
 
-// Create mock session state
+// Create mock session_state state
 const mockSessionState: SessionState = {
   tx_id: DEFAULT_TX_ID,
   transient_holons: mockTransientHolonsPool,

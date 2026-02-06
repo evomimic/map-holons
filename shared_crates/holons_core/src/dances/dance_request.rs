@@ -98,19 +98,19 @@ impl DanceRequest {
             state: state.or(Some(SessionState::default())), // Default if None
         }
     }
-    /// Gets a reference to the session state, or `None` if not set.
+    /// Gets a reference to the session_state state, or `None` if not set.
     pub fn get_state(&self) -> Option<&SessionState> {
         self.state.as_ref()
     }
 
-    /// Gets a mutable reference to the session state, or `None` if not set.
+    /// Gets a mutable reference to the session_state state, or `None` if not set.
     pub fn get_state_mut(&mut self) -> Option<&mut SessionState> {
         self.state.as_mut()
     }
 
     /// Summarizes the DanceRequest for logging purposes.
     ///
-    /// Handles cases where session state is `None` by providing a placeholder message.
+    /// Handles cases where session_state state is `None` by providing a placeholder message.
     pub fn summarize(&self) -> String {
         format!(
             "DanceRequest {{ \n  dance_name: {:?}, dance_type: {:?}, \n  body: {}, \n  state: {} }}\n",

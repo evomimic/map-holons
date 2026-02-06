@@ -2,8 +2,10 @@ use crate::guest_shared_objects::GuestHolonService;
 use core_types::{HolonError, HolonId};
 use holons_core::{
     core_shared_objects::{
-        holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager,
-        transactions::{TransactionContext, TxId}, ServiceRoutingPolicy,
+        holon_pool::SerializableHolonPool,
+        space_manager::HolonSpaceManager,
+        transactions::{TransactionContext, TxId},
+        ServiceRoutingPolicy,
     },
     HolonServiceApi,
 };
@@ -24,8 +26,8 @@ use tracing::{
 /// This function also ensures that a HolonSpace Holon exists in the local DHT.
 ///
 /// # Arguments
-/// * `transient_holons` - The `SerializableHolonPool` containing transient holons from the session state.
-/// * `staged_holons` - The `SerializableHolonPool` containing staged holons from the session state.
+/// * `transient_holons` - The `SerializableHolonPool` containing transient holons from the session_state state.
+/// * `staged_holons` - The `SerializableHolonPool` containing staged holons from the session_state state.
 /// * `local_space_holon` - An optional `HolonId` to anchor the local holon space (must be saved).
 ///
 /// # Returns

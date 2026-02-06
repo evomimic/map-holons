@@ -12,7 +12,7 @@ use crate::{
             state::{HolonState, ValidationState},
             Holon, HolonCloneModel, TransientHolon,
         },
-        holon_pool::{HolonPool, SerializableHolonPool, TransientHolonPool},
+        holon_pool::{HolonPool, TransientHolonPool},
         transient_manager_access_internal::TransientManagerAccessInternal,
         ReadableRelationship, TransientManagerAccess, TransientRelationshipMap,
     },
@@ -288,8 +288,9 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         Ok(pool.get_all_holons().into_iter().map(|rc_ref| rc_ref.clone()).collect::<Vec<_>>())
     }
 
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.transient_holons
+    fn export_transient_holons(&self) -> Result<HolonPool, HolonError> {
+        Ok(self
+            .transient_holons
             .read()
             .map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
@@ -297,7 +298,7 @@ impl TransientManagerAccessInternal for TransientHolonManager {
                     e
                 ))
             })?
-            .export_pool()
+            .clone())
     }
 
     /// Imports holons into the transient pool, completely replacing existing holons.

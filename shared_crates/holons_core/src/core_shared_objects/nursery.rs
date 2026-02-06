@@ -1,8 +1,4 @@
-use super::{
-    holon_pool::{HolonPool, SerializableHolonPool},
-    nursery_access_internal::NurseryAccessInternal,
-    Holon,
-};
+use super::{holon_pool::HolonPool, nursery_access_internal::NurseryAccessInternal, Holon};
 use crate::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
@@ -38,7 +34,7 @@ pub struct Nursery {
 //
 // - Shared concurrent reads across threads (e.g. for base key lookups)
 // - Exclusive mutation when staging or clearing
-// - Safe export/import of holons via `SerializableHolonPool`
+// - Safe export/import of holons via a runtime `HolonPool`
 // - Isolation of each staged holon for commit preparation, minimizing lock contention.
 //
 // All read/write access to the staged pool is explicitly scoped to avoid lock poisoning or panic scenarios.
@@ -263,9 +259,10 @@ impl NurseryAccessInternal for Nursery {
         pool.get_id_by_versioned_key(key)
     }
 
-    /// Exports the staged holons using `SerializableHolonPool`
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.staged_holons
+    /// Exports the staged holons as a runtime `HolonPool`.
+    fn export_staged_holons(&self) -> Result<HolonPool, HolonError> {
+        Ok(self
+            .staged_holons
             .read()
             .map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
@@ -273,7 +270,7 @@ impl NurseryAccessInternal for Nursery {
                     e
                 ))
             })?
-            .export_pool()
+            .clone())
     }
 
     /// Replaces the current staged holons with those from the provided `HolonPool`.

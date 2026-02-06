@@ -67,7 +67,9 @@ pub enum HolonError {
     NotImplemented(String),
     #[error("Couldn't convert Record to {0}")]
     RecordConversion(String),
-    #[error("Reference binding failed for {reference_kind}: {reason} (id: {reference_id:?})")]
+    #[error(
+        "Reference context_binding failed for {reference_kind}: {reason} (id: {reference_id:?})"
+    )]
     ReferenceBindingFailed { reference_kind: String, reference_id: Option<String>, reason: String },
     #[error("Reference resolution failed for {reference_kind}({reference_id}): {reason}")]
     ReferenceResolutionFailed { reference_kind: String, reference_id: String, reason: String },

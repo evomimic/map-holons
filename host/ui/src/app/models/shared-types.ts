@@ -29,7 +29,7 @@ export type LocalId = string |number[];
 // TxId is a newtype wrapper around u64, serializes as number
 export type TxId = number;
 
-// Temporary placeholder until tx_id is threaded from runtime/session state.
+// Temporary placeholder until tx_id is threaded from runtime/session_state state.
 export const DEFAULT_TX_ID: TxId = 0;
 
 // TemporaryId is a newtype wrapper around UUID, serializes as string

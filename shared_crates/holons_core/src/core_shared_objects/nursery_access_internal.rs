@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use super::holon_pool::{HolonPool, SerializableHolonPool};
+use super::holon_pool::HolonPool;
 use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -45,10 +45,10 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// `Ok(TemporaryId)` containing the index if the key exists, or an `Err` if the key is not found.
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
 
-    /// Exports the currently staged holons as a `SerializableHolonPool`.
+    /// Exports the currently staged holons as a runtime `HolonPool`.
     ///
     /// This method creates a **deep clone** of the current `HolonPool`, including all holons
-    /// and the keyed index. The returned `SerializableHolonPool` is **independent** of the original,
+    /// and the keyed index. The returned `HolonPool` is **independent** of the original,
     /// meaning any modifications to it will **not affect** the actual `Nursery` state.
     ///
     /// # Use Cases
@@ -60,12 +60,12 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// - **Internal references within the exported data remain consistent**, ensuring accurate reconstruction upon import.
     ///
     /// # Returns
-    /// A `SerializableHolonPool` containing a **deep clone** of the current staged holons and their keyed index.
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+    /// A `HolonPool` containing a **deep clone** of the current staged holons and their keyed index.
+    fn export_staged_holons(&self) -> Result<HolonPool, HolonError>;
 
     /// Imports a bound `HolonPool`, replacing the current staged holons.
     ///
-    /// This method **completely replaces** the current staged holons with the provided `SerializableHolonPool`.
+    /// This method **completely replaces** the current staged holons with the provided `HolonPool`.
     /// Any existing staged holons will be **discarded** in favor of the imported data.
     ///
     /// # Use Cases

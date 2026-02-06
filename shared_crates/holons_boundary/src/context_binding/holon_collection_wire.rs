@@ -46,7 +46,7 @@ impl HolonCollectionWire {
         Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))
     }
 
-    /// Summarizes this wire collection without binding.
+    /// Summarizes this wire collection without context_binding.
     pub fn summarize(&self) -> String {
         format!(
             "HolonCollectionWire {{ state: {}, members: {}, keyed_index: {} }}",

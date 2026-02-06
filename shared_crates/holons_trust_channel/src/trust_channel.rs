@@ -10,7 +10,7 @@ use holons_core::dances::dance_initiator::DanceInitiator;
 /// The TrustChannel coordinates envelope flow for outbound and inbound Dances.
 ///
 /// It wraps an inner [`DanceInitiator`] backend and applies envelope logic,
-/// including session-state encapsulation, before and after the core invocation.
+/// including session_state-state encapsulation, before and after the core invocation.
 #[derive(Debug, Clone)]
 pub struct TrustChannel {
     backend: std::sync::Arc<dyn DanceInitiator + Send + Sync>,
@@ -30,7 +30,7 @@ impl DanceInitiator for TrustChannel {
         context: Arc<TransactionContext>,
         mut request: DanceRequest,
     ) -> DanceResponse {
-        // --- Outbound session state encapsulation -----------------------------
+        // --- Outbound session_state state encapsulation -----------------------------
         if let Err(err) = SessionStateEnvelope::attach_to_request(&context, &mut request) {
             return DanceResponse::from_error(err);
         }
@@ -42,7 +42,7 @@ impl DanceInitiator for TrustChannel {
 
         let mut response = self.backend.initiate_dance(context_for_backend, request).await;
 
-        // --- Inbound session state hydration ---------------------------------
+        // --- Inbound session_state state hydration ---------------------------------
         if let Err(err) = SessionStateEnvelope::hydrate_from_response(&context, &response) {
             // Instead of discarding the response, annotate it with local error context.
             response.annotate_error(err);

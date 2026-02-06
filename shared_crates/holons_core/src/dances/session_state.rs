@@ -30,7 +30,7 @@ pub struct SessionState {
 }
 
 impl SessionState {
-    /// Creates a new session state with the provided staged and transient holons and local holon space.
+    /// Creates a new session_state state with the provided staged and transient holons and local holon space.
     pub fn new(
         transient_holons: SerializableHolonPool,
         staged_holons: SerializableHolonPool,
@@ -92,7 +92,7 @@ impl SessionState {
         self.transient_holons = transient_holons;
     }
 
-    /// Summarizes the session state.
+    /// Summarizes the session_state state.
     pub fn summarize(&self) -> String {
         format!(
             "\n   tx_id: {:?}, \n   local_holon_space: {:?}, \n  staged holons: {} }}",

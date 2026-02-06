@@ -17,33 +17,30 @@ pub mod relationship_behavior;
 pub mod relationship_cache;
 pub mod space_manager;
 pub mod staged_relationship;
+pub mod transactions;
 pub mod transient_collection;
 pub mod transient_holon_manager;
 pub mod transient_manager_access;
 pub mod transient_manager_access_internal;
 pub mod transient_relationship;
-pub mod transactions;
 
 pub use crate::reference_layer::holon_operations_api::*;
 pub use cache_access::HolonCacheAccess;
 pub use cache_request_router::ServiceRoutingPolicy;
 pub use commit_response::{CommitRequestStatus, CommitResponse};
-pub use holon::{
-    Holon, HolonWire, SavedHolon, StagedHolon, StagedHolonWire, TransientHolon,
-    TransientHolonWire,
-};
+pub use holon::{Holon, SavedHolon, StagedHolon, TransientHolon};
 pub use holon_behavior::{ReadableHolonState, WriteableHolonState};
 pub use holon_cache::HolonCache;
 pub use holon_cache_manager::HolonCacheManager;
-pub use holon_collection::{CollectionState, HolonCollection, HolonCollectionWire};
+pub use holon_collection::{CollectionState, HolonCollection};
 pub use holon_pool::HolonPool;
 pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;
 pub use relationship::RelationshipMap;
 pub use relationship_behavior::{ReadableRelationship, WritableRelationship};
 pub use relationship_cache::RelationshipCache;
-pub use staged_relationship::{StagedRelationshipMap, StagedRelationshipMapWire};
+pub use staged_relationship::StagedRelationshipMap;
 pub use transient_collection::TransientCollection;
 pub use transient_holon_manager::TransientHolonManager;
 pub use transient_manager_access::TransientManagerAccess;
-pub use transient_relationship::{TransientRelationshipMap, TransientRelationshipMapWire};
+pub use transient_relationship::TransientRelationshipMap;

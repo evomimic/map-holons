@@ -1,12 +1,11 @@
-use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     ops::{Deref, DerefMut},
     sync::{Arc, RwLock},
 };
 
-use super::{Holon, HolonWire, ReadableHolonState, WriteableHolonState};
-use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
+use super::{Holon, ReadableHolonState, WriteableHolonState};
+use crate::core_shared_objects::transactions::TransactionContextHandle;
 use crate::utils::uuid::create_temporary_id_from_key;
 use crate::StagedReference;
 use base_types::MapString;
@@ -61,68 +60,7 @@ impl DerefMut for StagedHolonPool {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TransientSerializableHolonPool(pub SerializableHolonPool);
-
-impl Deref for TransientSerializableHolonPool {
-    type Target = SerializableHolonPool;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for TransientSerializableHolonPool {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StagedSerializableHolonPool(pub SerializableHolonPool);
-
-impl Deref for StagedSerializableHolonPool {
-    type Target = SerializableHolonPool;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for StagedSerializableHolonPool {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-//
-// === SerializableHolonPool ===
-//
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct SerializableHolonPool {
-    pub holons: BTreeMap<TemporaryId, HolonWire>,
-    pub keyed_index: BTreeMap<MapString, TemporaryId>,
-}
-
-impl Default for SerializableHolonPool {
-    fn default() -> Self {
-        Self { holons: BTreeMap::new(), keyed_index: BTreeMap::new() }
-    }
-}
-
-impl SerializableHolonPool {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<HolonPool, HolonError> {
-        let mut holons = BTreeMap::new();
-
-        for (id, holon_wire) in self.holons {
-            let holon_runtime = holon_wire.bind(Arc::clone(&context))?;
-            holons.insert(id, Arc::new(RwLock::new(holon_runtime)));
-        }
-
-        Ok(HolonPool { holons, keyed_index: self.keyed_index })
-    }
-}
+// (SerializableHolonPool and related wire helpers moved to holons_boundary)
 
 //
 // === HolonPool ===
@@ -131,8 +69,8 @@ impl SerializableHolonPool {
 // These types do not implement equality by default, and comparing them would require
 // acquiring locks and comparing underlying Holon values, which is non-trivial and potentially blocking.
 //
-// Instead, equality comparisons should be done on `SerializableHolonPool`, which is derived from HolonPool
-// and contains plain, serializable Holons. It continues to derive `PartialEq` and `Eq` for testing and export validation.
+// Instead, equality comparisons should be done on the wire pool representation,
+// which is derived from HolonPool and contains plain, serializable Holons.
 
 /// A general-purpose container that manages owned Holons with key-based and index-based lookups.
 #[derive(Debug, Clone)]
@@ -145,6 +83,24 @@ impl HolonPool {
     /// Creates an empty HolonPool
     pub fn new() -> Self {
         Self { holons: BTreeMap::new(), keyed_index: BTreeMap::new() }
+    }
+
+    /// Creates a HolonPool from its internal parts.
+    pub fn from_parts(
+        holons: BTreeMap<TemporaryId, Arc<RwLock<Holon>>>,
+        keyed_index: BTreeMap<MapString, TemporaryId>,
+    ) -> Self {
+        Self { holons, keyed_index }
+    }
+
+    /// Returns a reference to the internal holon map (by temporary id).
+    pub fn holons_by_id(&self) -> &BTreeMap<TemporaryId, Arc<RwLock<Holon>>> {
+        &self.holons
+    }
+
+    /// Returns a reference to the keyed index.
+    pub fn keyed_index(&self) -> &BTreeMap<MapString, TemporaryId> {
+        &self.keyed_index
     }
 
     /// Clears all Holons and their associated key mappings.
@@ -270,20 +226,7 @@ impl HolonPool {
             .collect()
     }
 
-    /// Exports the HolonPool as a `SerializableHolonPool`.
-    pub fn export_pool(&self) -> Result<SerializableHolonPool, HolonError> {
-        let mut holons = BTreeMap::new();
-        for (id, holon) in self.holons.iter() {
-            // Read lock the holon to clone its value
-            holons.insert(
-                id.clone(),
-                HolonWire::from(&*holon.read().expect("Failed to acquire read lock on holon")),
-            );
-        }
-        Ok(SerializableHolonPool { holons, keyed_index: self.keyed_index.clone() })
-    }
-
-    /// Imports a `SerializableHolonPool`, replacing the current holons.
+    /// Replaces the current holons with those from another runtime HolonPool.
     pub fn import_pool(&mut self, pool: HolonPool) {
         self.holons.clear();
         self.keyed_index.clear();

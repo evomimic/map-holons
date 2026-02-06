@@ -1,4 +1,4 @@
-use crate::staged_relationship_wire::StagedRelationshipMapWire;
+use crate::context_binding::staged_relationship_wire::StagedRelationshipMapWire;
 use base_types::MapInteger;
 use core_types::{HolonError, LocalId, PropertyMap};
 use holons_core::core_shared_objects::holon::{HolonState, StagedState, ValidationState};

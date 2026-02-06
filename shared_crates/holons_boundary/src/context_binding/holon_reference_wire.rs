@@ -1,6 +1,6 @@
-use crate::smart_reference_wire::SmartReferenceWire;
-use crate::staged_reference_wire::StagedReferenceWire;
-use crate::transient_reference_wire::TransientReferenceWire;
+use crate::context_binding::smart_reference_wire::SmartReferenceWire;
+use crate::context_binding::staged_reference_wire::StagedReferenceWire;
+use crate::context_binding::transient_reference_wire::TransientReferenceWire;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::HolonError;
 use holons_core::HolonReference;

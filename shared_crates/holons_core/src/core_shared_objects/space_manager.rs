@@ -32,7 +32,7 @@ pub struct HolonSpaceManager {
 }
 
 impl HolonSpaceManager {
-    /// Creates a new `HolonSpaceManager` from the given session data.
+    /// Creates a new `HolonSpaceManager` from the given session_state data.
     ///
     /// This function initializes the `HolonSpaceManager` with:
     /// - A configured cache request router.

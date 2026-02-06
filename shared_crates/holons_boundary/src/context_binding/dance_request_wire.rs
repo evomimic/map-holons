@@ -80,19 +80,19 @@ impl DanceRequestWire {
         &self.body
     }
 
-    /// Returns the session state, if present.
+    /// Returns the session_state state, if present.
     pub fn get_state(&self) -> Option<&SessionState> {
         self.state.as_ref()
     }
 
-    /// Returns a cloned session state.
+    /// Returns a cloned session_state state.
     ///
     /// This is intentionally explicit to make cloning at boundaries obvious.
     pub fn cloned_state(&self) -> Option<SessionState> {
         self.state.clone()
     }
 
-    /// Returns `true` if the request carries session state.
+    /// Returns `true` if the request carries session_state state.
     pub fn has_state(&self) -> bool {
         self.state.is_some()
     }

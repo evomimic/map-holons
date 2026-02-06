@@ -16,7 +16,7 @@ pub struct SessionStateEnvelope;
 impl SessionStateEnvelope {
     /// Outbound: serializes staged and transient state into the request.
     ///
-    /// Inject the current session state into a DanceRequest before sending.
+    /// Inject the current session_state state into a DanceRequest before sending.
     pub fn attach_to_request(
         context: &Arc<TransactionContext>,
         request: &mut DanceRequest,
@@ -59,7 +59,7 @@ impl SessionStateEnvelope {
         context.import_staged_holons(state.get_staged_holons().clone())?;
         context.import_transient_holons(state.get_transient_holons().clone())?;
 
-        // Space holon anchor is stored as a wire reference for now; extract HolonId without binding.
+        // Space holon anchor is stored as a wire reference for now; extract HolonId without context_binding.
         if let Some(space_ref_wire) = state.get_local_space_holon_wire() {
             let space_holon_id = space_holon_id_from_wire_reference(&space_ref_wire)?;
             context.set_space_holon_id(space_holon_id)?;

@@ -374,7 +374,7 @@ fn build_inverse_with_inline_schema_bundle(
 /// - The nodes-only keys are chosen to **avoid clashing** with the declared-link keys.
 /// - The micro-schema enables inverse-name→declared-name mapping for Pass-2.
 /// - Inverse bundle stages only a Person and references the existing Book by key.
-/// - We export the fixture’s transient pool into the test case session state exactly once at the end.
+/// - We export the fixture’s transient pool into the test case session_state state exactly once at the end.
 #[fixture]
 pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
@@ -601,7 +601,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // DB must remain unchanged after duplicate-key failure.
     test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
 
-    // Export the fixture’s transient pool into the test case’s session state.
+    // Export the fixture’s transient pool into the test case’s session_state state.
     test_case.load_test_session_state(&fixture_context);
 
     Ok(test_case)

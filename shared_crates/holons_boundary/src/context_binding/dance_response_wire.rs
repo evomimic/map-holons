@@ -1,4 +1,4 @@
-use crate::holon_collection_wire::HolonCollectionWire;
+use crate::context_binding::holon_collection_wire::HolonCollectionWire;
 use crate::HolonReferenceWire;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -48,7 +48,7 @@ impl DanceResponseWire {
 
     /// Summarizes the IPC-safe wire response for logging purposes.
     ///
-    /// Safe to call immediately after IPC decode (before binding).
+    /// Safe to call immediately after IPC decode (before context_binding).
     pub fn summarize(&self) -> String {
         let state_summary =
             self.state.as_ref().map_or_else(|| "None".to_string(), |state| state.summarize());

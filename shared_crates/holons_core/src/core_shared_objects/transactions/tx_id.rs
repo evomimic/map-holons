@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Ephemeral transaction identifier (session-local).
+/// Ephemeral transaction identifier (session_state-local).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TxId(u64);
 

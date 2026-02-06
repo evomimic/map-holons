@@ -1,5 +1,5 @@
-use crate::staged_wire::StagedHolonWire;
-use crate::transient_wire::TransientHolonWire;
+use crate::context_binding::staged_wire::StagedHolonWire;
+use crate::context_binding::transient_wire::TransientHolonWire;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::{Holon, SavedHolon};
