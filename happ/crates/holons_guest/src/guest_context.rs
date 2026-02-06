@@ -1,8 +1,8 @@
 use crate::guest_shared_objects::GuestHolonService;
 use core_types::{HolonError, HolonId};
+use holons_boundary::session_state::SerializableHolonPool;
 use holons_core::{
     core_shared_objects::{
-        holon_pool::SerializableHolonPool,
         space_manager::HolonSpaceManager,
         transactions::{TransactionContext, TxId},
         ServiceRoutingPolicy,
@@ -72,8 +72,11 @@ pub fn init_guest_context(
         .open_transaction_with_id(Arc::clone(&space_manager), tx_id)?;
 
     // Step 4: Load staged and transient holons into the transaction.
-    transaction_context.import_staged_holons(staged_holons)?;
-    transaction_context.import_transient_holons(transient_holons)?;
+    let bound_staged_holons = staged_holons.bind(&transaction_context)?;
+    let bound_transient_holons = transient_holons.bind(&transaction_context)?;
+
+    transaction_context.import_staged_holons(bound_staged_holons)?;
+    transaction_context.import_transient_holons(bound_transient_holons)?;
 
     // Step 5: Register internal nursery access for commit.
     let nursery_for_internal_access = transaction_context.nursery();

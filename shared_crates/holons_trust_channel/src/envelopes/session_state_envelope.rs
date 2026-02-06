@@ -1,4 +1,5 @@
 use core_types::HolonId;
+use holons_boundary::session_state::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
 use holons_core::{HolonError, HolonReferenceWire, HolonsContextBehavior};
@@ -23,8 +24,11 @@ impl SessionStateEnvelope {
     ) -> Result<(), HolonError> {
         let mut session_state = SessionState::default();
 
-        session_state.set_staged_holons(context.export_staged_holons()?);
-        session_state.set_transient_holons(context.export_transient_holons()?);
+        let staged_pool = context.export_staged_holons()?;
+        let transient_pool = context.export_transient_holons()?;
+
+        session_state.set_staged_holons(SerializableHolonPool::from(&staged_pool));
+        session_state.set_transient_holons(SerializableHolonPool::from(&transient_pool));
         session_state.set_local_holon_space(context.get_space_holon()?);
         session_state.set_tx_id(context.tx_id());
 
@@ -56,8 +60,11 @@ impl SessionStateEnvelope {
             });
         }
 
-        context.import_staged_holons(state.get_staged_holons().clone())?;
-        context.import_transient_holons(state.get_transient_holons().clone())?;
+        let bound_staged_holons = state.get_staged_holons().clone().bind(context)?;
+        let bound_transient_holons = state.get_transient_holons().clone().bind(context)?;
+
+        context.import_staged_holons(bound_staged_holons)?;
+        context.import_transient_holons(bound_transient_holons)?;
 
         // Space holon anchor is stored as a wire reference for now; extract HolonId without context_binding.
         if let Some(space_ref_wire) = state.get_local_space_holon_wire() {

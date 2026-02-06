@@ -6,6 +6,7 @@ use crate::{init_guest_context, GuestHolonService};
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
+use holons_boundary::session_state::SerializableHolonPool;
 use holons_core::dances::dance_request::DanceRequestWire;
 use holons_core::dances::dance_response::{DanceResponseWire, ResponseBodyWire};
 use holons_core::dances::holon_dance_adapter::*;
@@ -290,7 +291,7 @@ fn initialize_context_from_request(
 fn restore_session_state_from_context(context: &Arc<TransactionContext>) -> Option<SessionState> {
     // Export staged holons as a single SerializableHolonPool
     let serializable_staged_pool = match context.export_staged_holons() {
-        Ok(pool) => pool,
+        Ok(pool) => SerializableHolonPool::from(&pool),
         Err(error) => {
             warn!(
                 "Failed to export staged holons while restoring session_state state: {:?}",
@@ -302,7 +303,7 @@ fn restore_session_state_from_context(context: &Arc<TransactionContext>) -> Opti
 
     // Export transient holons as a single SerializableHolonPool
     let serializable_transient_pool = match context.export_transient_holons() {
-        Ok(pool) => pool,
+        Ok(pool) => SerializableHolonPool::from(&pool),
         Err(error) => {
             warn!(
                 "Failed to export transient holons while restoring session_state state: {:?}",

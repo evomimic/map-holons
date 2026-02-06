@@ -6,7 +6,7 @@
 
 mod context_binding;
 mod envelopes;
-mod session_state;
+pub mod session_state;
 
 pub mod reference_layer {
     pub use crate::context_binding::holon_reference_wire::HolonReferenceWire;

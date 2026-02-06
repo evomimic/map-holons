@@ -13,3 +13,6 @@ path = "../holons_core"
 
 [dependencies.core_types]
 path = "../type_system/core_types"
+
+[dependencies.holons_boundary]
+path = "../holons_boundary"
