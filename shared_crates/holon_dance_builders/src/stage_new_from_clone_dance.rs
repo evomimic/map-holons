@@ -22,6 +22,5 @@ pub fn build_stage_new_from_clone_dance_request(
         MapString("stage_new_from_clone".to_string()),
         DanceType::CloneMethod(original_holon),
         RequestBody::ParameterValues(property_map),
-        None,
     ))
 }

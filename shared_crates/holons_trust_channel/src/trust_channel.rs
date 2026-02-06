@@ -28,10 +28,10 @@ impl DanceInitiator for TrustChannel {
     async fn initiate_dance(
         &self,
         context: Arc<TransactionContext>,
-        mut request: DanceRequest,
+        request: DanceRequest,
     ) -> DanceResponse {
         // --- Outbound session_state state encapsulation -----------------------------
-        if let Err(err) = SessionStateEnvelope::attach_to_request(&context, &mut request) {
+        if let Err(err) = SessionStateEnvelope::attach_to_request(&context) {
             return DanceResponse::from_error(err);
         }
 
@@ -43,10 +43,7 @@ impl DanceInitiator for TrustChannel {
         let mut response = self.backend.initiate_dance(context_for_backend, request).await;
 
         // --- Inbound session_state state hydration ---------------------------------
-        if let Err(err) = SessionStateEnvelope::hydrate_from_response(&context, &response) {
-            // Instead of discarding the response, annotate it with local error context.
-            response.annotate_error(err);
-        }
+        // TODO: SessionStateWire will be carried via internal envelopes.
 
         debug!("TrustChannel::initiate_dance() — got response: {:?}", response.summarize());
 

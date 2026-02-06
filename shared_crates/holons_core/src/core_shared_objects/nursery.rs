@@ -261,16 +261,13 @@ impl NurseryAccessInternal for Nursery {
 
     /// Exports the staged holons as a runtime `HolonPool`.
     fn export_staged_holons(&self) -> Result<HolonPool, HolonError> {
-        Ok(self
-            .staged_holons
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on staged_holons: {}",
-                    e
-                ))
-            })?
-            .clone())
+        let staged_pool = self.staged_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged_holons: {}",
+                e
+            ))
+        })?;
+        Ok(staged_pool.0.clone())
     }
 
     /// Replaces the current staged holons with those from the provided `HolonPool`.

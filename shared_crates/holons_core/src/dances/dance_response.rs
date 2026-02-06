@@ -1,5 +1,4 @@
 use crate::core_shared_objects::{summarize_holons, Holon, ReadableHolonState};
-use crate::dances::SessionState;
 use crate::query_layer::NodeCollection;
 use crate::{HolonCollection, HolonReference};
 use base_types::MapString;
@@ -17,7 +16,6 @@ pub struct DanceResponse {
     pub description: MapString,
     pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
-    pub state: Option<SessionState>,
 }
 
 /// Define a standard set of statuses that may be returned by DanceRequests.
@@ -58,9 +56,8 @@ impl DanceResponse {
         description: MapString,
         body: ResponseBody,
         descriptor: Option<HolonReference>,
-        state: Option<SessionState>,
     ) -> DanceResponse {
-        DanceResponse { status_code, description, body, descriptor, state }
+        DanceResponse { status_code, description, body, descriptor }
     }
 
     /// Annotates this response with a local processing error (e.g. envelope hydration failure).
@@ -95,14 +92,13 @@ impl DanceResponse {
     /// - Mapping the error to a [`ResponseStatusCode`] using its `From<HolonError>` implementation.
     /// - Converting the error message into a `MapString` description.
     /// - Setting `body` to `ResponseBody::None` (no successful payload).
-    /// - Leaving `descriptor` and `state` unset (`None`).
+    /// - Leaving `descriptor` unset (`None`).
     pub fn from_error(error: HolonError) -> Self {
         Self {
             status_code: ResponseStatusCode::from(error.clone()),
             description: MapString(error.to_string()),
             body: ResponseBody::None,
             descriptor: None,
-            state: None,
         }
     }
 
@@ -115,14 +111,11 @@ impl DanceResponse {
         };
 
         format!(
-            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
+            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {} }}",
             self.status_code,
             self.description,
             self.descriptor,
             body_summary,
-            self.state
-                .as_ref()
-                .map_or_else(|| "None".to_string(), |state| state.summarize()),
         )
     }
 }

@@ -1,4 +1,5 @@
 use crate::context_binding::transient_relationship_wire::TransientRelationshipMapWire;
+use base_types::MapInteger;
 use core_types::{HolonError, LocalId, PropertyMap};
 use holons_core::core_shared_objects::holon::{HolonState, ValidationState};
 use holons_core::core_shared_objects::transactions::TransactionContext;

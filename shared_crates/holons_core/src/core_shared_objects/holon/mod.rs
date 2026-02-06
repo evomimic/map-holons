@@ -9,6 +9,6 @@ pub mod transient;
 pub use holon_enum::*;
 pub use holon_utils::*;
 pub use saved::SavedHolon;
-pub use staged::{StagedHolon, StagedHolonWire};
+pub use staged::StagedHolon;
 pub use state::*;
-pub use transient::{TransientHolon, TransientHolonWire};
+pub use transient::TransientHolon;

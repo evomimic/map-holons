@@ -18,6 +18,5 @@ pub fn build_with_properties_dance_request(
         MapString("with_properties".to_string()),
         DanceType::CommandMethod(holon_reference),
         body,
-        None,
     ))
 }

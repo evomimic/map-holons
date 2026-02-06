@@ -1,11 +1,9 @@
 use holons_core::{
     core_shared_objects::transactions::TransactionContext,
-    dances::{
-        dance_response::ResponseBodyWire, DanceResponse, ResponseBody, ResponseStatusCode,
-        SessionState,
-    },
+    dances::{dance_response::ResponseBodyWire, DanceResponse, ResponseBody, ResponseStatusCode},
     HolonError, HolonReference, HolonReferenceWire,
 };
+use holons_boundary::session_state::SessionStateWire;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -16,7 +14,7 @@ pub struct MapResponse {
     pub description: String,
     pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
-    pub state: Option<SessionState>,
+    pub state: Option<SessionStateWire>,
 }
 
 /// IPC-safe wire-form map response.
@@ -30,7 +28,7 @@ pub struct MapResponseWire {
     pub description: String,
     pub body: ResponseBodyWire,
     pub descriptor: Option<HolonReferenceWire>, // space_id+holon_id of DanceDescriptor
-    pub state: Option<SessionState>,
+    pub state: Option<SessionStateWire>,
 }
 
 impl MapResponse {
@@ -41,7 +39,7 @@ impl MapResponse {
             description: dance_response.description.to_string(),
             body: dance_response.body,
             descriptor: dance_response.descriptor,
-            state: dance_response.state,
+            state: None,
         }
     }
 }

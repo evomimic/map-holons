@@ -17,6 +17,5 @@ pub fn build_remove_related_holons_dance_request(
         MapString("remove_related_holons".to_string()),
         DanceType::CommandMethod(holon_reference),
         body,
-        None,
     ))
 }

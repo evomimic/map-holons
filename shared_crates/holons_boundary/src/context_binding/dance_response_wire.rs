@@ -1,9 +1,11 @@
 use crate::context_binding::holon_collection_wire::HolonCollectionWire;
+use crate::context_binding::query_wire::NodeCollectionWire;
+use crate::context_binding::HolonWire;
 use crate::HolonReferenceWire;
+use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::core_shared_objects::HolonWire;
-use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode, SessionState};
+use holons_core::dances::{DanceResponse, ResponseBody, ResponseStatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -17,7 +19,6 @@ pub struct DanceResponseWire {
     pub description: MapString,
     pub body: ResponseBodyWire,
     pub descriptor: Option<HolonReferenceWire>,
-    pub state: Option<SessionState>,
 }
 
 /// IPC-safe wire-form response body.
@@ -42,7 +43,6 @@ impl DanceResponseWire {
                 None => None,
                 Some(reference_wire) => Some(reference_wire.bind(context)?),
             },
-            state: self.state,
         })
     }
 
@@ -50,16 +50,12 @@ impl DanceResponseWire {
     ///
     /// Safe to call immediately after IPC decode (before context_binding).
     pub fn summarize(&self) -> String {
-        let state_summary =
-            self.state.as_ref().map_or_else(|| "None".to_string(), |state| state.summarize());
-
         format!(
-            "DanceResponseWire {{ \n  status_code: {}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {},\n  state: {} }}",
+            "DanceResponseWire {{ \n  status_code: {}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {} }}",
             self.status_code,
             self.description,
             self.descriptor,
             self.body.summarize(),
-            state_summary,
         )
     }
 }
@@ -125,7 +121,6 @@ impl From<&DanceResponse> for DanceResponseWire {
             description: response.description.clone(),
             body: ResponseBodyWire::from(&response.body),
             descriptor: response.descriptor.as_ref().map(HolonReferenceWire::from),
-            state: response.state.clone(),
         }
     }
 }

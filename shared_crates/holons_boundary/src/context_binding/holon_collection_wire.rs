@@ -1,4 +1,5 @@
 use crate::HolonReferenceWire;
+use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::{CollectionState, HolonCollection};

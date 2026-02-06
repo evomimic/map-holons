@@ -289,16 +289,13 @@ impl TransientManagerAccessInternal for TransientHolonManager {
     }
 
     fn export_transient_holons(&self) -> Result<HolonPool, HolonError> {
-        Ok(self
-            .transient_holons
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock for export_transient_holons: {}",
-                    e
-                ))
-            })?
-            .clone())
+        let transient_pool = self.transient_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock for export_transient_holons: {}",
+                e
+            ))
+        })?;
+        Ok(transient_pool.0.clone())
     }
 
     /// Imports holons into the transient pool, completely replacing existing holons.

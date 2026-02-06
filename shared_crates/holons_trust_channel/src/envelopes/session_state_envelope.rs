@@ -1,7 +1,7 @@
 use core_types::HolonId;
 use holons_boundary::session_state::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::{DanceRequest, DanceResponse, SessionState};
+use holons_boundary::session_state::SessionStateWire;
 use holons_core::{HolonError, HolonReferenceWire, HolonsContextBehavior};
 use std::sync::Arc;
 use tracing::debug;
@@ -15,14 +15,9 @@ use tracing::debug;
 pub struct SessionStateEnvelope;
 
 impl SessionStateEnvelope {
-    /// Outbound: serializes staged and transient state into the request.
-    ///
-    /// Inject the current session_state state into a DanceRequest before sending.
-    pub fn attach_to_request(
-        context: &Arc<TransactionContext>,
-        request: &mut DanceRequest,
-    ) -> Result<(), HolonError> {
-        let mut session_state = SessionState::default();
+    /// Outbound: serializes staged and transient state into a wire payload.
+    pub fn attach_to_request(context: &Arc<TransactionContext>) -> Result<SessionStateWire, HolonError> {
+        let mut session_state = SessionStateWire::default();
 
         let staged_pool = context.export_staged_holons()?;
         let transient_pool = context.export_transient_holons()?;
@@ -32,22 +27,14 @@ impl SessionStateEnvelope {
         session_state.set_local_holon_space(context.get_space_holon()?);
         session_state.set_tx_id(context.tx_id());
 
-        request.state = Some(session_state);
-        debug!("SessionStateEnvelope::attach_to_request() — {}", request.summarize());
-        Ok(())
+        Ok(session_state)
     }
 
-    /// Inbound: restores staged and transient state from the response.
-    ///
-    /// Hydrate the local environment (nursery, transient manager, and local holon)
-    /// from the SessionState contained in a DanceResponse.
+    /// Inbound: restores staged and transient state from the wire payload.
     pub fn hydrate_from_response(
         context: &Arc<TransactionContext>,
-        response: &DanceResponse,
+        state: &SessionStateWire,
     ) -> Result<(), HolonError> {
-        let Some(state) = &response.state else {
-            return Err(HolonError::InvalidParameter("DanceResponse missing SessionState".into()));
-        };
         let response_tx_id = state
             .get_tx_id()
             .ok_or_else(|| HolonError::InvalidParameter("SessionState missing tx_id".into()))?;

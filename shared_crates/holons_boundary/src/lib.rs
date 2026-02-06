@@ -5,7 +5,7 @@
 //! wire implementations can then be moved here incrementally.
 
 mod context_binding;
-mod envelopes;
+pub mod envelopes;
 pub mod session_state;
 
 pub mod reference_layer {
@@ -17,25 +17,25 @@ pub mod reference_layer {
 
 pub mod core_shared_objects {
     pub use crate::session_state::SerializableHolonPool;
-    pub use holons_core::core_shared_objects::{
+    pub use crate::context_binding::{
         HolonCollectionWire, HolonWire, StagedHolonWire, StagedRelationshipMapWire,
         TransientHolonWire, TransientRelationshipMapWire,
     };
 }
 
 pub mod query_layer {
-    pub use holons_core::query_layer::{NodeCollectionWire, NodeWire, QueryPathMapWire};
+    pub use crate::context_binding::{NodeCollectionWire, NodeWire, QueryPathMapWire};
 }
 
 pub mod dances {
-    pub use holons_core::dances::dance_request::{
-        DanceRequestWire, DanceTypeWire, RequestBodyWire,
-    };
-    pub use holons_core::dances::dance_response::{DanceResponseWire, ResponseBodyWire};
-    pub use holons_core::dances::SessionState;
+    pub use crate::context_binding::{DanceRequestWire, DanceTypeWire, RequestBodyWire};
+    pub use crate::context_binding::{DanceResponseWire, ResponseBodyWire};
+    pub use crate::session_state::SessionStateWire;
 }
 
 pub use core_shared_objects::*;
 pub use dances::*;
+pub use envelopes::*;
 pub use query_layer::*;
 pub use reference_layer::*;
+pub use session_state::*;

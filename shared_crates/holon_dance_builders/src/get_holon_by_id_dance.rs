@@ -9,6 +9,5 @@ pub fn build_get_holon_by_id_dance_request(holon_id: HolonId) -> Result<DanceReq
         MapString("get_holon_by_id".to_string()),
         DanceType::Standalone,
         body,
-        None,
     ))
 }

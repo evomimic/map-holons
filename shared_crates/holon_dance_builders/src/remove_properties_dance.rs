@@ -18,6 +18,5 @@ pub fn build_remove_properties_dance_request(
         MapString("remove_properties".to_string()),
         DanceType::CommandMethod(holon_reference),
         body,
-        None,
     ))
 }

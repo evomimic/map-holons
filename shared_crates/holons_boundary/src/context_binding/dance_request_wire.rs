@@ -1,9 +1,11 @@
+use crate::context_binding::query_wire::NodeCollectionWire;
+use crate::context_binding::HolonWire;
 use crate::{HolonReferenceWire, StagedReferenceWire, TransientReferenceWire};
+use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, PropertyMap, RelationshipName};
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::core_shared_objects::HolonWire;
-use holons_core::dances::{DanceRequest, DanceType, RequestBody, SessionState};
-use holons_core::query_layer::{NodeCollectionWire, QueryExpression};
+use holons_core::dances::{DanceRequest, DanceType, RequestBody};
+use holons_core::query_layer::QueryExpression;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -16,7 +18,6 @@ pub struct DanceRequestWire {
     pub dance_name: MapString,
     pub dance_type: DanceTypeWire,
     pub body: RequestBodyWire,
-    pub state: Option<SessionState>,
 }
 
 /// IPC-safe wire-form dance type.
@@ -55,7 +56,6 @@ impl DanceRequestWire {
             dance_name: self.dance_name,
             dance_type: self.dance_type.bind(context)?,
             body: self.body.bind(context)?,
-            state: self.state,
         })
     }
 
@@ -80,38 +80,17 @@ impl DanceRequestWire {
         &self.body
     }
 
-    /// Returns the session_state state, if present.
-    pub fn get_state(&self) -> Option<&SessionState> {
-        self.state.as_ref()
-    }
-
-    /// Returns a cloned session_state state.
-    ///
-    /// This is intentionally explicit to make cloning at boundaries obvious.
-    pub fn cloned_state(&self) -> Option<SessionState> {
-        self.state.clone()
-    }
-
-    /// Returns `true` if the request carries session_state state.
-    pub fn has_state(&self) -> bool {
-        self.state.is_some()
-    }
-
     // ---------------------------------------------------------------------
     // Logging / diagnostics
     // ---------------------------------------------------------------------
 
     /// Summarizes the IPC-safe wire request for logging purposes.
     pub fn summarize(&self) -> String {
-        let state_summary =
-            self.state.as_ref().map_or_else(|| "None".to_string(), |state| state.summarize());
-
         format!(
-            "DanceRequestWire {{ \n  dance_name: {:?}, dance_type: {}, \n  body: {}, \n  state: {} }}\n",
+            "DanceRequestWire {{ \n  dance_name: {:?}, dance_type: {}, \n  body: {} }}\n",
             self.dance_name.to_string(),
             self.dance_type.summarize(),
             self.body.summarize(),
-            state_summary,
         )
     }
 }
@@ -232,7 +211,6 @@ impl From<&DanceRequest> for DanceRequestWire {
             dance_name: request.dance_name.clone(),
             dance_type: DanceTypeWire::from(&request.dance_type),
             body: RequestBodyWire::from(&request.body),
-            state: request.state.clone(),
         }
     }
 }
