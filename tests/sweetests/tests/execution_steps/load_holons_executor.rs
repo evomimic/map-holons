@@ -1,6 +1,5 @@
-use holons_core::dances::ResponseStatusCode;
 use holons_core::reference_layer::{
-    holon_operations_api, HolonsContextBehavior, ReadableHolon, TransientReference,
+    HolonsContextBehavior, ReadableHolon, TransientReference,
 };
 use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
@@ -25,7 +24,7 @@ fn read_integer_property(
 /// human-readable format.
 ///
 /// This helper is used primarily by sweetests during holon-loader testing,
-/// where TypeDescriptors are not yet available and we cannot rely on
+/// where TypeDescriptors are not yet available, and we cannot rely on
 /// `property_value()` calls using known property names.
 ///
 /// Instead of querying individual properties, `essential_content()` returns:
@@ -227,26 +226,25 @@ pub async fn execute_load_holons(
     // Read response properties from the returned HolonLoadResponse holon.
     let actual_staged =
         read_integer_property(context, &response_reference, CorePropertyTypeName::HolonsStaged)
-            .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}")) as i64;
+            .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}"));
     let actual_committed =
         read_integer_property(context, &response_reference, CorePropertyTypeName::HolonsCommitted)
-            .unwrap_or_else(|e| panic!("read HolonsCommitted failed: {e:?}")) as i64;
+            .unwrap_or_else(|e| panic!("read HolonsCommitted failed: {e:?}"));
     let actual_links_created =
         read_integer_property(context, &response_reference, CorePropertyTypeName::LinksCreated)
-            .unwrap_or_else(|e| panic!("read LinksCreated failed: {e:?}")) as i64;
+            .unwrap_or_else(|e| panic!("read LinksCreated failed: {e:?}"));
     let actual_error_count =
         read_integer_property(context, &response_reference, CorePropertyTypeName::ErrorCount)
-            .unwrap_or_else(|ev| panic!("read ErrorCount failed: {ev:?}")) as i64;
+            .unwrap_or_else(|ev| panic!("read ErrorCount failed: {ev:?}"));
     let actual_total_bundles =
         read_integer_property(context, &response_reference, CorePropertyTypeName::TotalBundles)
-            .unwrap_or_else(|e| panic!("read TotalBundles failed: {e:?}")) as i64;
+            .unwrap_or_else(|e| panic!("read TotalBundles failed: {e:?}"));
     let actual_total_loader_holons = read_integer_property(
         context,
         &response_reference,
         CorePropertyTypeName::TotalLoaderHolons,
     )
-    .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}"))
-        as i64;
+    .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}"));
 
     // Always print any attached error holons if there are any.
     if actual_error_count > 0 {

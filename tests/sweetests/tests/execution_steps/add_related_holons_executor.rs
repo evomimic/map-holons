@@ -1,5 +1,5 @@
 use holons_test::{
-    harness::prelude::TestExecutionState, ExecutionReference, ResultingReference, TestReference,
+    harness::prelude::TestExecutionState, ExecutionReference, ExecutionHandle, TestReference,
 };
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
@@ -52,24 +52,29 @@ pub async fn execute_add_related_holons(
     );
     info!("Success! add_related_holons DanceResponse status matched expected");
 
-    // 5. ASSERT - if Ok response expected, confirm essential content matches expected
     if response.status_code == ResponseStatusCode::OK {
+        // 5. ASSERT — execution-time content matches fixture expectation
         let response_holon_reference = match response.body {
             ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-            }
+            other => panic!(
+                "expected ResponseBody::HolonReference, got {:?}",
+                other
+            ),
         };
-        let execution_reference = ResultingReference::from(response_holon_reference);
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
 
-        resolved_reference.assert_essential_content_eq(context).unwrap();
+        let execution_handle =
+            ExecutionHandle::from(response_holon_reference);
+
+        let execution_reference =
+            ExecutionReference::from_token_execution(
+                &source_token,
+                execution_handle,
+            );
+
+        execution_reference.assert_essential_content_eq(context);
         info!("Success! Updated holon's essential content matched expected");
 
-        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD — make available for downstream resolution
+        state.record(&source_token, execution_reference).unwrap();
     }
 }

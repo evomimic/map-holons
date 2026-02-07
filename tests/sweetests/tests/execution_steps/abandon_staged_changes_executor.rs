@@ -1,13 +1,12 @@
 use pretty_assertions::assert_eq;
-use std::sync::Arc;
 use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 
-/// This function builds and dances an `abandon_staged_changes` DanceRequest,
-/// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test
+/// This function builds and dances an `abandon_staged_changes` DanceRequest.
+/// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test.
 /// Otherwise, if the dance returns an `OK` response,
 ///     confirm the Holon is in an `Abandoned` state and attempt various operations
 ///     that should be `NotAccessible` for holons an `Abandoned` state. If any of them do NOT
@@ -47,23 +46,30 @@ pub async fn execute_abandon_staged_changes(
 
     if response.status_code == ResponseStatusCode::OK {
         // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
-        //            Compare essential content
         let mut response_holon_reference = match response.body {
             ResponseBody::HolonReference(ref hr) => hr.clone(),
             other => {
                 panic!("expected ResponseBody::HolonReference, got {:?}", other);
             }
         };
-        let execution_reference = ResultingReference::from(response_holon_reference.clone());
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
+
+        // Build execution handle from the runtime result
+        let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
+
+        // Canonical construction: token + execution outcome
+        let execution_reference = ExecutionReference::from_token_execution(
+            &source_token,
+            execution_handle,
         );
-        resolved_reference.assert_essential_content_eq(context).unwrap();
+
+        // Validate expected vs execution-time content
+        execution_reference
+            .assert_essential_content_eq(context);
+
         // Confirm that operations on the abandoned Holon fail as expected
         assert_eq!(
             response_holon_reference.with_property_value(
-                context, // Pass context for proper behavior
+                context,
                 PropertyName(MapString("some_name".to_string())),
                 BaseValue::BooleanValue(MapBoolean(true))
             ),
@@ -74,7 +80,7 @@ pub async fn execute_abandon_staged_changes(
         );
         debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
 
-        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD — make this execution result available for downstream steps
+        state.record(&source_token, execution_reference).unwrap();
     }
 }

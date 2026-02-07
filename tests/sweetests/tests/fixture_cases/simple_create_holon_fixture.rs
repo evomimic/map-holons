@@ -1,23 +1,19 @@
 use std::collections::BTreeMap;
 
-use crate::{
-    helpers::{init_fixture_context, BOOK_KEY},
-};
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
+use holons_test::harness::helpers::{BOOK_KEY};
 
 /// This function creates a set of simple (undescribed) holons
 ///
 #[fixture]
 pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let fixture_context = init_fixture_context();
-    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _fixture_bindings } = 
+        let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _fixture_bindings } = 
         TestCaseInit::new(
-            fixture_context,
-        "Simple Create/Get Holon Testcase".to_string(),
-        "Ensure the holons and relationships setup by book and author setup helper commit successfully".to_string(),
+            "Simple Create/Get Holon Testcase".to_string(),
+            "Ensure the holons and relationships setup by book and author setup helper commit successfully".to_string(),
     );
 
     // Ensure DB count //

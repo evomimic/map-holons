@@ -1,10 +1,9 @@
 use async_trait::async_trait;
 use holochain::prelude::AgentPubKey;
-use holochain::sweettest::*;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
 use holons_core::dances::{DanceInitiator, DanceRequest, DanceResponse};
-use holons_core::{HolonError, HolonsContextBehavior};
-use holons_prelude::prelude::*;
+use holons_core::{HolonsContextBehavior};
+// use holons_prelude::prelude::*;
 use holons_trust_channel::TrustChannel;
 use std::sync::Arc;
 use tracing::info;
@@ -44,7 +43,7 @@ pub struct MockConductorConfig {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let request = DanceRequest::new("SomeDance", payload);
 /// let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
 /// let response = run_future_synchronously(initiator.initiate_dance(ctx, request));

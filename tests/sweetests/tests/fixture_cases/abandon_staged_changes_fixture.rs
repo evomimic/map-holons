@@ -1,10 +1,7 @@
 use holons_prelude::prelude::*;
-use holons_test::{fixture_bindings, DancesTestCase, FixtureHolons, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
-// use type_names::relationship_names;
-
-use crate::helpers::{init_fixture_context, BOOK_KEY, PERSON_1_KEY};
 
 use super::setup_book_author_steps_with_context;
 
@@ -12,17 +9,16 @@ use super::setup_book_author_steps_with_context;
 #[fixture]
 pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonError> {
     //== INIT ==//
-    let fixture_context = init_fixture_context();
+
     let TestCaseInit {
-    mut test_case,
-    fixture_context,
-    mut fixture_holons,
-    mut fixture_bindings,
-} = TestCaseInit::new(
-    fixture_context,
-        "Simple AbandonStagedChanges Testcase".to_string(),
-        "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible".to_string(),
-    );
+        mut test_case,
+        fixture_context,
+        mut fixture_holons,
+        mut fixture_bindings,
+    } = TestCaseInit::new(
+            "Simple AbandonStagedChanges Testcase".to_string(),
+            "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible".to_string(),
+        );
 
     // // Ensure DB count //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
@@ -40,14 +36,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
     let person_1_staged_token =
-        fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Person1' label").clone();
-
-    //====//``
+        fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label").clone();
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
-    let abandoned_person_1 = test_case.add_abandon_staged_changes_step(
+    let _abandoned_person_1 = test_case.add_abandon_staged_changes_step(
         &*fixture_context,
         &mut fixture_holons,
         person_1_staged_token,
@@ -151,7 +145,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // // ADD STEP: QUERY RELATIONSHIPS //
     // let query_expression = QueryExpression::new(relationship_name.clone());
     // let book_staged_token =
-    //     fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
+    //     fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
     // test_case.add_query_relationships_step(
     //     book_staged_token,
     //     query_expression,

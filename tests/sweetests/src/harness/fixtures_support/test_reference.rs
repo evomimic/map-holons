@@ -26,8 +26,11 @@ use holons_core::{
     HolonsContextBehavior, ReadableHolon,
 };
 
-/// Stable identity for a fixture-time snapshot, used as the key for snapshot ownership and resolution.
-/// Alias for the TemporaryId extracted from the snapshot's TransientReference.
+/// Stable identity for a fixture snapshot across execution.
+/// Used as the unifying key for:
+/// - execution-time resolution
+/// - chaining between steps
+/// - end-of-test validation (e.g. match_db_content)
 pub type SnapshotId = TemporaryId;
 
 /// Declarative intent for a test-scoped reference.
@@ -50,9 +53,11 @@ pub enum TestHolonState {
 
 /// An **immutable, opaque fixture token** that is safe to pass and reuse, as the sole artifact executors receive.
 /// and expresses its intended lifecycle via [`TestHolonState`].
-/// Conceptually, a TestReference captures two things:
-/// Starting point — what the step should operate on
-/// Expected result — what the step should produce
+/// A TestReference bundles two phase-separated roles:
+/// - **Source snapshot** — used only to resolve runtime input before a step executes
+/// - **Expected snapshot** — used only to validate outcomes after execution
+///
+/// These roles are never used simultaneously and are bundled only for fixture authoring convenience.
 ///
 /// These two roles travel together as a single immutable contract, where one or multiple are used for each TestStep.
 ///
@@ -132,7 +137,10 @@ pub struct ExpectedSnapshot {
 
 impl ExpectedSnapshot {
 
-    // Conversion helper when using an expected snapshot as the new source.
+    /// Converts this expected snapshot into the source snapshot for the *next* execution step.
+    ///
+    /// This encodes the core chaining invariant:
+    /// the expected outcome of one step becomes the input to the next.
     pub fn as_source(&self) -> SourceSnapshot {
         SourceSnapshot::new(self.snapshot.clone(), self.state)
     }

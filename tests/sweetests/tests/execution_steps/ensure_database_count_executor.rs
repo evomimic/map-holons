@@ -27,20 +27,29 @@ pub async fn execute_ensure_database_count(
     debug!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response contains Holons
-    if let ResponseBody::HolonCollection(holon_collection) = response.body {
-        let actual_count = holon_collection.get_count();
-        debug!(
-            "--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons ---",
-            expected_count, actual_count.0
-        );
+    assert_eq!(
+        response.status_code,
+        ResponseStatusCode::OK,
+        "get_all_holons returned unexpected status: {}",
+        response.description
+    );
 
-        // 4. ASSERT - that the expected count matches actual count
-        assert_eq!(expected_count, actual_count);
-        info!("Success! DB count matched expected");
-    } else {
-        panic!(
-            "Expected ensure_database_count to return {} holons, but it returned an unexpected response: {:?}",
-            expected_count.0, response.body
-        );
-    }
+    let holon_collection = match response.body {
+        ResponseBody::HolonCollection(collection) => collection,
+        other => panic!(
+            "Expected get_all_holons to return HolonCollection, got {:?}",
+            other
+        ),
+    };
+
+    let actual_count = holon_collection.get_count();
+    debug!(
+        "--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons ---",
+        expected_count, actual_count.0
+    );
+
+    // 4. ASSERT - that the expected count matches actual count
+    assert_eq!(expected_count, actual_count);
+    info!("Success! DB count matched expected");
+
 }

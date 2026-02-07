@@ -1,11 +1,10 @@
 use base_types::MapString;
-use core_types::HolonError;
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
 use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
-    HolonReference, HolonsContextBehavior,
+    HolonReference,
 };
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use tracing::info;
 
 /// Execute the StageNewFromClone step:
@@ -45,22 +44,25 @@ pub async fn execute_stage_new_from_clone(
     info!("Success! stage_new_from_clone DanceResponse matched expected");
 
     if expected_status == ResponseStatusCode::OK {
-        // 5. ASSERT — on success, the body should be a HolonReference to the newly staged holon.
-        //            Compare essential content (source vs. resolved) without durable fetch.
+        // 5. ASSERT — on success, the body must be a HolonReference
         let response_holon_reference = match response.body {
             ResponseBody::HolonReference(hr) => hr,
             other => {
-                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+                panic!("expected ResponseBody::HolonReference, got {:?}", other);
             }
         };
-        let execution_reference = ResultingReference::from(response_holon_reference);
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
-        resolved_reference.assert_essential_content_eq(context).unwrap();
 
-        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, resolved_reference).unwrap();
+        // Build execution handle from runtime result
+        let execution_handle = ExecutionHandle::from(response_holon_reference);
+
+        // Canonical construction: token + execution outcome
+        let execution_reference =
+            ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+        // Validate expected vs execution-time content
+        execution_reference.assert_essential_content_eq(context);
+
+        // 6. RECORD — make execution result available for downstream steps
+        state.record(&source_token, execution_reference).unwrap();
     }
 }

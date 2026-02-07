@@ -4,12 +4,8 @@ use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-// use base_types::{MapInteger, MapString};
-use core_types::HolonId; // TODO: Eliminate this dependency
-
-use holons_client::init_client_context;
 use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody}; // TODO: Eliminate this dependency
-                                                                                  // use holons_guest_integrity::HolonNode;
+// use holons_guest_integrity::HolonNode;
 
 /// This function iterates through the expected_holons vector supplied as a parameter
 /// and for each holon: builds and dances a `get_holon_by_id` DanceRequest,
@@ -25,13 +21,13 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     for (id, resolved_reference) in state.holons().by_snapshot_id.clone() {
         if resolved_reference.expected_snapshot.state() == TestHolonState::Saved {
             let holon_reference = resolved_reference
-                .execution_reference
+                .execution_handle
                 .get_holon_reference()
                 .expect("HolonReference must be Live, cannot be in a deleted state");
             if !matches!(holon_reference, HolonReference::Smart(_)) {
                 panic!(
                     "Expected execution_reference for id: {:?} to be Smart, but got {:?}",
-                    id, resolved_reference.execution_reference
+                    id, resolved_reference.execution_handle
                 );
             }
 

@@ -1,6 +1,6 @@
 use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use tracing::{debug, info};
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
@@ -36,29 +36,34 @@ pub async fn execute_remove_properties(
 
     // 4. VALIDATE - response status
     assert_eq!(
-        response.status_code, expected_response,
+        response.status_code,
+        expected_response,
         "remove_properties request returned unexpected status: {}",
         response.description
     );
     info!("Success! remove_properties DanceResponse matched expected");
 
     if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT - updated holon's essential content matches expected
+        // 5. ASSERT — updated holon's essential content matches expected
         let response_holon_reference = match response.body {
             ResponseBody::HolonReference(ref hr) => hr.clone(),
             other => {
-                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+                panic!("expected ResponseBody::HolonReference, got {:?}", other);
             }
         };
-        let execution_reference = ResultingReference::from(response_holon_reference);
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
-        resolved_reference.assert_essential_content_eq(context).unwrap();
+
+        // Build execution handle from runtime result
+        let execution_handle = ExecutionHandle::from(response_holon_reference);
+
+        // Canonical construction: token + execution outcome
+        let execution_reference =
+            ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+        // Validate expected vs execution-time content
+        execution_reference.assert_essential_content_eq(context);
         info!("Success! Updated holon's essential content matched expected");
 
-        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD — make this execution result available for downstream steps
+        state.record(&source_token, execution_reference).unwrap();
     }
 }

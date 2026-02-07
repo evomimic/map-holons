@@ -1,4 +1,4 @@
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -47,22 +47,26 @@ pub async fn execute_stage_new_holon(
     info!("Success! stage_new_holon DanceResponse matched expected");
 
     if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT the staged holon's content matches
+        // 5. ASSERT — on success, the body must be a HolonReference
         let response_holon_reference = match response.body {
             ResponseBody::HolonReference(ref hr) => hr.clone(),
             other => {
-                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
+                panic!("expected ResponseBody::HolonReference, got {:?}", other);
             }
         };
-        let execution_reference = ResultingReference::from(response_holon_reference);
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
-        resolved_reference.assert_essential_content_eq(context).unwrap();
+
+        // Build execution handle from runtime result
+        let execution_handle = ExecutionHandle::from(response_holon_reference);
+
+        // Canonical construction: token + execution outcome
+        let execution_reference =
+            ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+        // Validate expected vs execution-time content
+        execution_reference.assert_essential_content_eq(context);
         info!("Success! Staged holon's essential content matched expected");
 
-        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, resolved_reference).unwrap();
+        // 6. RECORD — make execution result available for downstream steps
+        state.record(&source_token, execution_reference).unwrap();
     }
 }

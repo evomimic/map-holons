@@ -1,4 +1,4 @@
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -42,64 +42,63 @@ pub async fn execute_stage_new_version(
     );
     info!("Success! stage_new_version DanceResponse matched expected");
 
-    if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT the staged holon's content matches
-        let version_1_response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-            }
-        };
-        let version_1_execution_reference =
-            ResultingReference::from(version_1_response_holon_reference.clone());
-        // TestReference::new()
-        let version_1_resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            version_1_execution_reference.clone(),
-        );
-        version_1_resolved_reference.assert_essential_content_eq(context).unwrap();
-        info!("Success! Staged new version holon's essential content matched expected");
+    if response.status_code != ResponseStatusCode::OK {
+        return;
+    }
 
-        // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, version_1_resolved_reference).unwrap();
+    // ---- success path only beyond this point ----
 
-        // 7. Verify the new version as the original holon as its predecessor
-        let predecessor = version_1_response_holon_reference.predecessor(context).unwrap();
+    // 5. ASSERT — response body must be a HolonReference
+    let response_holon_reference = match response.body {
+        ResponseBody::HolonReference(ref hr) => hr.clone(),
+        other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
+    };
 
-        assert_eq!(
-            predecessor,
-            Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
-            "Predecessor relationship did not match expected"
-        );
+    let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
 
-        let original_holon_key = source_reference.key(context).unwrap().unwrap();
+    let execution_reference =
+        ExecutionReference::from_token_execution(&source_token, execution_handle.clone());
 
-        // 8. Verify new version's key matches original holon's key and that it is the ONLY staged
-        // holon whose key matches.
-        let by_base = get_staged_holon_by_base_key(context, &original_holon_key).unwrap();
+    execution_reference.assert_essential_content_eq(context);
+    info!("Success! Staged new version holon's essential content matched expected");
 
-        let version_1_holon_reference = version_1_execution_reference
-            .get_holon_reference()
-            .expect("HolonReference must be Live, cannot be in a deleted state");
-        assert_eq!(
-            version_1_holon_reference,
-            HolonReference::Staged(by_base),
-            "get_staged_holon_by_base_key did not match expected"
-        );
+    // 6. RECORD — make execution result available downstream
+    state.record(&source_token, execution_reference).unwrap();
 
-        // 9. Verify staged holon retrieval by versioned key
-        let by_version = get_staged_holon_by_versioned_key(
-            context,
-            &version_1_holon_reference.versioned_key(context).unwrap(),
-        )
+    // 7. Verify predecessor relationship
+    let predecessor = response_holon_reference.predecessor(context).unwrap();
+    assert_eq!(
+        predecessor,
+        Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
+        "Predecessor relationship did not match expected"
+    );
+
+    // 8. Verify base-key staging behavior
+    let original_holon_key = source_reference.key(context).unwrap().unwrap();
+    let by_base = get_staged_holon_by_base_key(context, &original_holon_key).unwrap();
+
+    let staged_reference = execution_handle
+        .get_holon_reference()
+        .expect("HolonReference must be live");
+
+    assert_eq!(
+        staged_reference,
+        HolonReference::Staged(by_base),
+        "get_staged_holon_by_base_key did not match expected"
+    );
+
+    // 9. Verify versioned-key lookup
+    let by_version = get_staged_holon_by_versioned_key(
+        context,
+        &staged_reference.versioned_key(context).unwrap(),
+    )
         .unwrap();
 
-        assert_eq!(
-            version_1_holon_reference,
-            HolonReference::Staged(by_version),
-            "get_staged_holon_by_versioned_key did not match expected"
-        );
+    assert_eq!(
+        staged_reference,
+        HolonReference::Staged(by_version),
+        "get_staged_holon_by_versioned_key did not match expected"
+    );
 
-        info!("Success! New version Holon matched expected content and relationships.");
-    }
+    info!("Success! New version Holon matched expected content and relationships.");
 }

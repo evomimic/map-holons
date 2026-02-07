@@ -1,10 +1,7 @@
-use core_types::LocalId;
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
-
-use holochain::sweettest::*;
 
 /// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
 /// and matches the expected response
@@ -60,21 +57,17 @@ pub async fn execute_delete_holon(
     );
     info!("Confirmed Holon deletion!");
 
-    // 5. RECORD - Register an ExecutionHolon in a deleted state (does not resolve)
+    // 5. RECORD — Register an ExecutionHolon reflecting the execution outcome
 
-    if response.status_code == ResponseStatusCode::OK {
-        let execution_reference = ResultingReference::Deleted;
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
-        state.record(&source_token, resolved_reference).unwrap();
+    let execution_handle = if response.status_code == ResponseStatusCode::OK {
+        ExecutionHandle::Deleted
     } else {
-        let execution_reference = ResultingReference::LiveReference(source_reference);
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
-        state.record(&source_token, resolved_reference).unwrap();
-    }
+        ExecutionHandle::from(source_reference)
+    };
+
+    let execution_reference =
+        ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+    state.record(&source_token, execution_reference).unwrap();
+
 }

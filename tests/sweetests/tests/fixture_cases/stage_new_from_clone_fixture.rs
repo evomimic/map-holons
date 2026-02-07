@@ -1,14 +1,12 @@
-use crate::{
-    fixture_cases::setup_book_and_authors_fixture::*,
-    helpers::{init_fixture_context, BOOK_KEY},
-};
+use crate::fixture_cases::setup_book_and_authors_fixture::*;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
-use holons_core::{dances::ResponseStatusCode, new_holon, HolonsContextBehavior};
+use holons_core::{dances::ResponseStatusCode, new_holon};
 use holons_test::{
-    dance_test_language::DancesTestCase, fixture_holons::FixtureHolons, TestCaseInit,
+    dance_test_language::DancesTestCase, TestCaseInit,
 };
 use std::collections::BTreeMap;
+use holons_test::harness::helpers::{BOOK_KEY};
 use type_names::ToPropertyName;
 
 /// Demonstrates cloning a Book three ways using the new harness:
@@ -22,10 +20,8 @@ use type_names::ToPropertyName;
 ///   to flip staged→saved expectations on the fixture side.
 /// - Counts and content assertions derive from `FixtureHolons`.
 pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
-    let fixture_context = init_fixture_context();
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
-            fixture_context,
             "stage_new_from_clone".to_string(),
             "Clone from transient, staged, and saved; mutate staged clones; assert counts+content"
                 .to_string(),
@@ -69,7 +65,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     let _book_key = MapString(BOOK_KEY.to_string());
     let from_staged_key = MapString("book:clone:from-staged".to_string());
-    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
+    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  Stage New From Clone  //
     let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(

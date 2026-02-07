@@ -104,7 +104,7 @@ impl ExecutionHolons {
                         id,
                         state
                     )))?;
-                let holon_reference = &resolved.execution_reference.get_holon_reference()?;
+                let holon_reference = &resolved.execution_handle.get_holon_reference()?;
                 match (state, holon_reference) {
                     (
                         TestHolonState::Staged | TestHolonState::Abandoned,

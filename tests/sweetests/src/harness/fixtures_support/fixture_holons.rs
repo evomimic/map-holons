@@ -36,9 +36,15 @@ impl FixtureHolonId {
 ///  Mutable and internal to the harness.
 #[derive(new, Clone, Debug)]
 pub struct FixtureHolon {
-    id: FixtureHolonId,                   // Stable (immutable) fixture-time identity
-    head_snapshot: ExpectedSnapshot, // Current authoritative snapshot with TestHolonState, updated by mutations and commit
-    last_live_snapshot: ExpectedSnapshot, // determines the source input for when subsequent steps intentionally target the same logical holon
+    // Stable (immutable) fixture-time identity
+    id: FixtureHolonId,
+    /// Authoritative snapshot representing the fixture’s current expectation
+    /// after the most recent step. Used for chaining and validation.
+    head_snapshot: ExpectedSnapshot,
+
+    /// Most recent non-deleted snapshot usable as a source for future steps.
+    /// Used when the head snapshot represents a Deleted holon.
+    last_live_snapshot: ExpectedSnapshot,
 }
 
 impl FixtureHolon {

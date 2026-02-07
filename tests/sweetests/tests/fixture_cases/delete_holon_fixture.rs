@@ -1,22 +1,20 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 
-use crate::helpers::{init_fixture_context, BOOK_KEY};
+use holons_test::harness::helpers::{BOOK_KEY};
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
 pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let fixture_context = init_fixture_context();
     let TestCaseInit {
     mut test_case,
     fixture_context,
     mut fixture_holons,
     fixture_bindings: _fixture_bindings,
 } = TestCaseInit::new(
-        fixture_context,
         "DeleteHolon Testcase".to_string(),
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.".to_string(),
     );

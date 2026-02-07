@@ -1,4 +1,4 @@
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use std::collections::BTreeMap;
 use tracing::{debug, info, trace};
 
@@ -74,13 +74,13 @@ pub async fn execute_commit(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
             let token = &expected_tokens[*source_index];
-            let expected = token.expected_snapshot();
-            let resolved_reference = ExecutionReference::from_reference_parts(
-                expected.clone(),
-                ResultingReference::from(holon_reference.clone()),
-            );
+            let execution_handle =
+                ExecutionHandle::from(holon_reference.clone());
 
-            state.record(token, resolved_reference).unwrap();
+            let execution_reference =
+                ExecutionReference::from_token_execution(token, execution_handle);
+
+            state.record(token, execution_reference).unwrap();
         }
 
         // 6. Optional: log a summary

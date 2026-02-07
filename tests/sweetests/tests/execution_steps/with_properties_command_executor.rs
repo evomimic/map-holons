@@ -1,4 +1,4 @@
-use holons_test::{ExecutionReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -45,24 +45,26 @@ pub async fn execute_with_properties(
     );
     info!("Success! with_properties DanceResponse matched expected");
 
-    if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT - essential content matches expected
-        let response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-            }
-        };
-        let execution_reference = ResultingReference::from(response_holon_reference);
-        let resolved_reference = ExecutionReference::from_reference_parts(
-            source_token.expected_snapshot(),
-            execution_reference,
-        );
-
-        resolved_reference.assert_essential_content_eq(context).unwrap();
-        info!("Success! Updated holon's essential content matched expected");
-
-        // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        state.record(&source_token, resolved_reference).unwrap();
+    if response.status_code != ResponseStatusCode::OK {
+        return;
     }
+
+    // Success only after this point
+
+    // 5. ASSERT — essential content matches expected
+    let response_holon_reference = match response.body {
+        ResponseBody::HolonReference(ref hr) => hr.clone(),
+        other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
+    };
+
+    let execution_handle = ExecutionHandle::from(response_holon_reference);
+
+    let execution_reference =
+        ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+    execution_reference.assert_essential_content_eq(context);
+    info!("Success! Updated holon's essential content matched expected");
+
+    // 6. RECORD — make this execution result available downstream
+    state.record(&source_token, execution_reference).unwrap();
 }

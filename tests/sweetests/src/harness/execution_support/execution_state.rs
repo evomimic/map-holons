@@ -2,7 +2,7 @@
 //!
 //! `TestExecutionState` is the single runtime hub executors use to:
 //! - **record** new realizations (e.g., a freshly staged holon), and
-//! - **look up** previously realized handles from fixture tokens.
+//! - **look up** previously realized handles using fixture tokens as snapshot carriers
 //!
 //! It intentionally **does not** own services; those come from the provided
 //! `context` (per Issue #308). This keeps executors focused on the loop:
@@ -21,7 +21,7 @@ use holons_prelude::prelude::*;
 #[derive(Clone, Debug)]
 pub struct TestExecutionState {
     pub context: Arc<dyn HolonsContextBehavior>,
-    // Registry of realized references keyed by source token’s `TemporaryId`.
+    // Registry of execution references keyed by expected SnapshotId
     pub execution_holons: ExecutionHolons,
 }
 

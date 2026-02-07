@@ -13,7 +13,7 @@
 //! ⚠ Important: **Do not confuse intent and result.**
 //! The expected snapshot that comes from the exectuor input token is intent; the resulting reference is 'DHT' reality.
 
-use crate::ExpectedSnapshot;
+use crate::{ExpectedSnapshot, TestReference};
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
 use pretty_assertions::assert_eq;
@@ -23,16 +23,16 @@ pub struct ExecutionReference {
     /// Fixture-declared intent of the expected snapshot, which includes expected content.
     pub expected_snapshot: ExpectedSnapshot,
     /// Runtime handle produced by executing the step.
-    pub execution_reference: ResultingReference,
+    pub execution_handle: ExecutionHandle,
 }
 
 #[derive(Clone, Debug)]
-pub enum ResultingReference {
+pub enum ExecutionHandle {
     LiveReference(HolonReference),
     Deleted,
 }
 
-impl ResultingReference {
+impl ExecutionHandle {
     pub fn essential_content(
         &self,
         context: &dyn HolonsContextBehavior,
@@ -55,34 +55,52 @@ impl ResultingReference {
     }
 }
 
-impl From<HolonReference> for ResultingReference {
+impl From<HolonReference> for ExecutionHandle {
     fn from(reference: HolonReference) -> Self {
         Self::LiveReference(reference)
     }
 }
 
 impl ExecutionReference {
-    /// Build from a fixture token and the resulting runtime handle.
-    pub fn from_reference_parts(
-        expected_snapshot: ExpectedSnapshot,
-        execution_reference: ResultingReference,
+    /// Canonical constructor for executors.
+    ///
+    /// Binds fixture intent (via TestReference) to the execution-time handle
+    /// produced by running a step.
+    ///
+    /// Executors MUST use this method.
+    pub fn from_token_execution(
+        token: &TestReference,
+        execution_handle: ExecutionHandle,
     ) -> Self {
-        Self { expected_snapshot, execution_reference }
+        Self {
+            expected_snapshot: token.expected_snapshot(),
+            execution_handle,
+        }
     }
 
-    /// Assert that the essential content of the fixture-declared expected_snapshot
-    /// matches the essential content of the runtime result.
+    /// Assert that execution-time state matches fixture-declared expectations.
+    ///
+    /// This is a **test assertion helper**, not a fallible API:
+    /// - Panics if expected content cannot be read
+    /// - Panics if execution-time content cannot be read
+    /// - Panics if the two do not match
+    ///
+    /// Intended for use by test executors to enforce fixture invariants.
+    /// A mismatch indicates a test failure, not a recoverable error.
     pub fn assert_essential_content_eq(
         &self,
         context: &dyn HolonsContextBehavior,
-    ) -> Result<(), HolonError> {
-        let expected_content = self.expected_snapshot.essential_content(context)?;
-        let actual_content = self.execution_reference.essential_content(context)?;
+    ) {
+        let expected_content = self
+            .expected_snapshot
+            .essential_content(context)
+            .expect("failed to read expected snapshot content");
 
-        // TODO: find a way to compare relationships
+        let actual_content = self
+            .execution_handle
+            .essential_content(context)
+            .expect("failed to read execution-time content");
 
         assert_eq!(expected_content, actual_content);
-
-        Ok(())
     }
 }

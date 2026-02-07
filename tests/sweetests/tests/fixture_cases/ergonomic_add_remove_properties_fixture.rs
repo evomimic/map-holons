@@ -1,21 +1,18 @@
-use holons_core::core_shared_objects::holon::{EssentialHolonContent, EssentialRelationshipMap};
+use holons_core::core_shared_objects::holon::{EssentialHolonContent};
 use holons_test::{DancesTestCase, TestCaseInit};
 use pretty_assertions::assert_eq;
-use std::{collections::BTreeMap, sync::Arc};
-use tracing::{error, info};
+// use tracing::{error, info};
 
 use holons_prelude::prelude::*;
 use rstest::*;
 
-use crate::helpers::init_fixture_context;
 use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 
 #[fixture]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    let fixture_context = init_fixture_context();
+    
     let TestCaseInit { test_case, fixture_context, fixture_holons: _fixture_holons, fixture_bindings: _fixture_bindings } = TestCaseInit::new(
-        fixture_context,
         "Ergonomic Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),
     );

@@ -1,21 +1,20 @@
-use holons_test::{DancesTestCase, FixtureHolons, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 
 use holons_prelude::prelude::*;
 // use tracing::debug;
 
 use super::setup_book_author_steps_with_context;
-use crate::helpers::{init_fixture_context, BOOK_KEY};
+use holons_test::harness::helpers::{BOOK_KEY};
 
 // TODO: add/remove relationships
 
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
-    let fixture_context = init_fixture_context();
+    
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
-            fixture_context,
             "Simple StageNewVersion Testcase".to_string(),
             "Tests stage_new_version dance, \n\
         1. creates and commits a holon, clones it for staged, changes some properties, \n \
@@ -33,7 +32,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_bindings,
     )?;
 
-    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
+    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;

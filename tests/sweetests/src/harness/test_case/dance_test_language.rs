@@ -36,15 +36,12 @@
 //!   cases against client- and guest-side contexts.
 //!
 //! This separation allows test behavior to be described declaratively while
-//! remaining independent of execution order, runtime identifiers, and
-//! persistence details.
+//! remaining independent of runtime identifiers and execution-time handles
+
 
 use std::sync::Arc;
 
-use crate::{
-    harness::fixtures_support::TestReference, ExpectedSnapshot, FixtureBindings, FixtureHolons,
-    SourceSnapshot, TestHolonState,
-};
+use crate::{harness::fixtures_support::TestReference, init_fixture_context, ExpectedSnapshot, FixtureBindings, FixtureHolons, SourceSnapshot, TestHolonState};
 use core_types::ContentSet;
 use holons_core::{
     core_shared_objects::holon_pool::SerializableHolonPool,
@@ -79,7 +76,8 @@ pub struct TestCaseInit {
 }
 
 impl TestCaseInit {
-    pub fn new(context: Arc<dyn HolonsContextBehavior>, name: String, description: String) -> Self {
+    pub fn new(name: String, description: String) -> Self {
+        let context = init_fixture_context();
         let mut test_case = DancesTestCase::default();
         test_case.name = name;
         test_case.description = description;
@@ -165,6 +163,29 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_holons_client_step(
+        &mut self,
+        content_set: ContentSet,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
+    ) -> Result<(), HolonError> {
+        self.steps.push(DanceTestStep::LoadHolonsClient {
+            content_set,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+            expect_total_bundles,
+            expect_total_loader_holons,
+        });
+
+        Ok(())
+    }
+
     pub fn add_load_holons_step(
         &mut self,
         set: TransientReference,
@@ -209,7 +230,7 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // === Exectution Steps with === //
+    // === Execution Steps with === //
     // ==== Token Minting ==== //
 
     // Note: adders use the expected snapshot from the source_token passed in as the new source for the execution step.
@@ -270,7 +291,7 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // Special case: Advance head, even though a new 'Saved' logical holon is created.
+    // Commit advances head snapshots to Saved for existing logical holons.
     pub fn add_commit_step(
         &mut self,
         context: &dyn HolonsContextBehavior,

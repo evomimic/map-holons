@@ -1,9 +1,8 @@
-use crate::helpers::init_fixture_context;
 use core_types::{ContentSet, FileData};
 use holons_loader_client::BOOTSTRAP_IMPORT_SCHEMA_PATH;
 use holons_prelude::prelude::*;
-use holons_test::{DanceTestStep, DancesTestCase, TestSessionState};
-use std::{collections::VecDeque, fs, path::PathBuf};
+use holons_test::{DancesTestCase, TestCaseInit};
+use std::{fs, path::PathBuf};
 
 /// Absolute paths to all core schema import files used for loader-client testing.
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
@@ -32,8 +31,15 @@ pub fn map_core_schema_paths() -> Vec<PathBuf> {
 /// - One HolonType descriptor holon
 /// - One instance holon described by the type
 pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
-    let fixture_context = init_fixture_context();
-    let mut steps = Vec::new();
+
+    let TestCaseInit {
+        mut test_case,
+        fixture_context,
+        ..
+    } = TestCaseInit::new(
+        "loader_client_minimal".to_string(),
+        "Core Schema JSON loader input via loader_client entrypoint".to_string(),
+    );
 
     let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
     let schema = FileData {
@@ -54,23 +60,26 @@ pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
 
     let content_set = ContentSet { schema, files_to_load };
 
-    steps.push(DanceTestStep::LoadHolonsClient {
+    test_case.add_load_holons_client_step(
         content_set,
-        expect_staged: MapInteger(182),
-        expect_committed: MapInteger(182),
-        expect_links_created: MapInteger(1060),
-        expect_errors: MapInteger(0),
-        expect_total_bundles: MapInteger(7),
-        expect_total_loader_holons: MapInteger(182),
-    });
+        MapInteger(182),
+        MapInteger(182),
+        MapInteger(1060),
+        MapInteger(0),
+        MapInteger(7),
+        MapInteger(182),
+    )?;
+// test_case.add_load_holons_client_step(
+// content_set,
+// expect_staged: MapInteger(182),
+// expect_committed: MapInteger(182),
+// expect_links_created: MapInteger(1060),
+// expect_errors: MapInteger(0),
+// expect_total_bundles: MapInteger(7),
+// expect_total_loader_holons: MapInteger(182),
+// });
 
-    let mut test_case = DancesTestCase {
-        name: "loader_client_minimal".to_string(),
-        description: "Core Schema JSON loader input via loader_client entrypoint".to_string(),
-        steps,
-        test_session_state: TestSessionState::default(),
-        is_finalized: false,
-    };
+
 
     // Finalize
     test_case.finalize(&*fixture_context)?;

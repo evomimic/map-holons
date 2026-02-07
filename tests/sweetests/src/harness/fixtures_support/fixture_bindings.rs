@@ -1,7 +1,8 @@
 //! This file offers the following benefits:
 //! - Decouple identity from keys: Using test_labels avoids overloading holon keys as test-only identifiers
 //! and allows fixtures to deliberately create duplicate keys when that’s the behavior under test.
-//! - Cleaner fixture contracts: A test_label → TestReference map makes the fixture’s contract explicit, self-documenting, and stable across internal changes.
+//! - Cleaner fixture contracts: A test_label → TestReference map makes the fixture’s
+//! contract explicit and self-documenting, while remaining resilient to most internal refactors.
 //! - Supports keyless holons naturally: Fixtures can now return references to holons that legitimately have no key at all.
 use super::TestReference;
 use core_types::RelationshipName;
@@ -9,6 +10,8 @@ use holons_prelude::prelude::MapString;
 use std::collections::BTreeMap;
 
 /// This is a pure utility type offered by, but NOT used by the harness.
+/// This type is not interpreted or enforced by the harness.
+/// Consumers are responsible for validating that required labels are present.
 /// It allows fixture libraries (like setup_book_and_authors_fixture) to populate a map of TestLabel-> TestReference
 /// and relationships by assigned name.
 /// The set of "labels" constitutes the contract between the helper function and its consumers.
