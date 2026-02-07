@@ -10,12 +10,22 @@ publish = false
 # Workspace shared_crates (prefer workspace deps over path for consistency)
 
 # General deps
+async-trait = "0.1.51"
 #base64ct = "=1.7.3"
+derive-new = "0.7"
+# Holochain sweettest stack (pin as you already do)
+holochain = { version = "0.5", default-features = false, features = [
+    "sweettest",
+    "wasmer_sys",
+    "datachannel-vendored"
+] }
 pretty_assertions = "1.4.0"
-serde = { version = "1", features = ["derive"] }
+#serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
-async-trait = "0.1.51"
+tracing-subscriber = "0.3"
+sha2 = "0.10.8"
+uuid = { version = "1", features = ["serde"] }
 
 [dependencies.holons_prelude]
 path = "../../shared_crates/holons_prelude"
@@ -58,12 +68,6 @@ rstest = "0.26.1"
 pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }
 tokio = { version = "1", features = ["full"] }
-async-std = "1"
-tracing-subscriber = "0.3"
+#async-std = "1"
 
-# Holochain sweettest stack (pin as you already do)
-holochain = { version = "0.5", default-features = false, features = [
-    "sweettest",
-    "wasmer_sys",
-    "datachannel-vendored"
-] }
+

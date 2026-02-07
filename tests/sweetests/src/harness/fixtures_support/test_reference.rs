@@ -1,10 +1,10 @@
 //! Fixture-time tokens for referring to holons in test cases.
 //!
 //! # Overview
-//! - [`IntendedResolvedState`] expresses the **intended lifecycle** of a holon at a
+//! - [`TestHolonState`] expresses the **intended lifecycle** of a holon at a
 //!   specific point in a test case: `Transient`, `Staged`, or `Saved`.
 //! - [`TestReference`] is an **opaque fixture-time token** that contains a
-//!   portable [`TransientReference`] plus an [`IntendedResolvedState`].
+//!   portable [`TransientReference`] plus an [`TestHolonState`].
 //!
 //! ## Why a token?
 //! Fixtures declare *intent* but must not couple themselves to runtime handles
@@ -19,7 +19,19 @@
 //! - All fields are private.
 //! - Tokens are immutable, representing a frozen "snapshot".
 
-use holons_core::reference_layer::TransientReference;
+use core_types::{HolonError, TemporaryId};
+use derive_new::new;
+use holons_core::{
+    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
+    HolonsContextBehavior, ReadableHolon,
+};
+
+/// Stable identity for a fixture snapshot across execution.
+/// Used as the unifying key for:
+/// - execution-time resolution
+/// - chaining between steps
+/// - end-of-test validation (e.g. match_db_content)
+pub type SnapshotId = TemporaryId;
 
 /// Declarative intent for a test-scoped reference.
 ///
@@ -31,7 +43,7 @@ use holons_core::reference_layer::TransientReference;
 /// - A new token is minted with a unique id for each snapshot representation of a state change.
 /// - FixtureHolons::commit() will mint a saved-intent (ie saved state) token for each staged-intent token who's previous snapshot is not either Abandoned or Saved.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum IntendedResolvedState {
+pub enum TestHolonState {
     Transient,
     Staged,
     Saved,
@@ -39,8 +51,15 @@ pub enum IntendedResolvedState {
     Deleted,
 }
 
-/// An **opaque fixture token** that identifies a holon by [`TransientReference`]
-/// and expresses its intended lifecycle via [`IntendedResolvedState`].
+/// An **immutable, opaque fixture token** that is safe to pass and reuse, as the sole artifact executors receive.
+/// and expresses its intended lifecycle via [`TestHolonState`].
+/// A TestReference bundles two phase-separated roles:
+/// - **Source snapshot** — used only to resolve runtime input before a step executes
+/// - **Expected snapshot** — used only to validate outcomes after execution
+///
+/// These roles are never used simultaneously and are bundled only for fixture authoring convenience.
+///
+/// These two roles travel together as a single immutable contract, where one or multiple are used for each TestStep.
 ///
 /// From a fixture’s perspective, this is just a *token*:
 /// - No direct construction or mutation (use [`FixtureHolons`](super::fixture_holons::FixtureHolons)
@@ -51,33 +70,97 @@ pub enum IntendedResolvedState {
 /// Internally, harness code can access identity and intent in order to:
 /// - Resolve the token into a `HolonReference`.
 /// - Verify and assert state transitions.
-/// - Update intent by minting a new token that points back to the previous snapshot token_id.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestReference {
-    previous: TransientReference, // back pointer to previous snapshot
-    intended_resolved_state: IntendedResolvedState, // Transient | Staged | Saved | Abandoned | Deleted
-    token_id: TransientReference, // carries the TemporaryId used to resolve the ExecutionHolon and expected essential content
+    source: SourceSnapshot,
+    expected: ExpectedSnapshot,
 }
 
 impl TestReference {
     /// Crate-internal constructor. Only [`FixtureHolons`] may mint tokens.
-    pub fn new(
-        previous: TransientReference,
-        intended_resolved_state: IntendedResolvedState,
-        token_id: TransientReference,
-    ) -> Self {
-        Self { previous, intended_resolved_state, token_id }
+    pub(crate) fn new(source: SourceSnapshot, expected: ExpectedSnapshot) -> Self {
+        Self { source, expected }
     }
 
-    pub fn previous(&self) -> TransientReference {
-        self.previous.clone()
+    pub fn source_snapshot(&self) -> SourceSnapshot {
+        self.source.clone()
     }
 
-    pub fn intended_resolved_state(&self) -> IntendedResolvedState {
-        self.intended_resolved_state
+    pub fn source_id(&self) -> SnapshotId {
+        self.source.id()
     }
 
-    pub fn token_id(&self) -> TransientReference {
-        self.token_id.clone()
+    pub fn source_reference(&self) -> &TransientReference {
+        &self.source.snapshot
+    }
+
+    pub fn expected_snapshot(&self) -> ExpectedSnapshot {
+        self.expected.clone()
+    }
+
+    pub fn expected_id(&self) -> SnapshotId {
+        self.expected.id()
+    }
+
+    pub fn expected_reference(&self) -> &TransientReference {
+        &self.expected.snapshot
+    }
+}
+
+/// Input to the execution step.
+#[derive(new, Clone, Debug, Eq, PartialEq)]
+pub struct SourceSnapshot {
+    snapshot: TransientReference, // immutable snapshot of token
+    state: TestHolonState,        // Transient | Staged | Saved | Abandoned | Deleted
+}
+
+impl SourceSnapshot {
+    pub fn id(&self) -> SnapshotId {
+        self.snapshot.temporary_id().into()
+    }
+
+    pub fn snapshot(&self) -> &TransientReference {
+        &self.snapshot
+    }
+
+    pub fn state(&self) -> TestHolonState {
+        self.state
+    }
+}
+
+/// Defines what is expected after the execution step.
+#[derive(new, Clone, Debug, Eq, PartialEq)]
+pub struct ExpectedSnapshot {
+    snapshot: TransientReference, // Carries the expected content, which can be mutated, except for Deleted state its an ID only.
+    state: TestHolonState,        // Transient | Staged | Saved | Abandoned | Deleted
+}
+
+impl ExpectedSnapshot {
+
+    /// Converts this expected snapshot into the source snapshot for the *next* execution step.
+    ///
+    /// This encodes the core chaining invariant:
+    /// the expected outcome of one step becomes the input to the next.
+    pub fn as_source(&self) -> SourceSnapshot {
+        SourceSnapshot::new(self.snapshot.clone(), self.state)
+    }
+
+    pub fn essential_content(
+        &self,
+        context: &dyn HolonsContextBehavior,
+    ) -> Result<EssentialHolonContent, HolonError> {
+        self.snapshot.essential_content(context)
+    }
+
+    pub fn id(&self) -> SnapshotId{
+        self.snapshot.temporary_id().into()
+    }
+
+    pub fn snapshot(&self) -> &TransientReference {
+        &self.snapshot
+    }
+
+    pub fn state(&self) -> TestHolonState {
+        self.state
     }
 }

@@ -30,12 +30,19 @@
 //!
 //! Result: endpoint resolution uses consistent strings everywhere.
 
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+
 use core_types::TypeKind;
 use holons_prelude::prelude::*;
-use holons_test::DancesTestCase;
+use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 
-use crate::helpers::{BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_REL_INVERSE, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, init_fixture_context};
+use holons_test::harness::helpers::{
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP,
+    BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY,
+    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE,
+};
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
 /// loader’s `IsDeclared` boolean property.
@@ -376,9 +383,11 @@ fn build_inverse_with_inline_schema_bundle(
 /// - We export the fixture’s transient pool into the test case session state exactly once at the end.
 #[fixture]
 pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
-    let mut test_case = DancesTestCase::new(
-        "Loader Incremental Fixture".to_string(),
-        "1) Ensure DB starts with only the Space holon,\n\
+    
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
+        TestCaseInit::new(
+            "Loader Incremental Fixture".to_string(),
+            "1) Ensure DB starts with only the Space holon,\n\
          2) Load a HolonLoadSet containing a single empty HolonLoaderBundle and assert the\n\
             loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
          3) Load a nodes-only HolonLoadSet (Book/Person/Publisher LoaderHolons, no relationships)\n\
@@ -396,12 +405,11 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
             LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
             the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
             leaves the DB unchanged, and surfaces per-file provenance via error holons.\n"
-            .to_string(),
-    );
+                .to_string(),
+        );
 
     // Create a private fixture context with its own TransientHolonManager.
-    let fixture_context_arc = init_fixture_context();
-    let fixture_context_ref: &dyn HolonsContextBehavior = &*fixture_context_arc;
+    let fixture_context_ref: &dyn HolonsContextBehavior = &*fixture_context;
 
     // A) Ensure DB starts with only the Space holon.
     test_case.add_ensure_database_count_step(MapInteger(1))?;
@@ -600,7 +608,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
 
     // Export the fixture’s transient pool into the test case’s session state.
-    test_case.load_test_session_state(fixture_context_ref);
+    test_case.finalize(fixture_context_ref)?;
 
     Ok(test_case)
 }
@@ -641,7 +649,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 ///
 /// ### Notes
 /// - `new_holon(context, Some(MapString(key)))` automatically sets the `Key` property; no
-///   explicit `with_property_value(Key, ..)` needed.
+///   explicit `with_property_value(Key, ...)` needed.
 /// - Endpoint resolution in Pass-2 relies on `LoaderHolonReference.holon_key`
 ///   values matching the instance keys you use for the corresponding LoaderHolons.
 pub fn add_loader_relationship_reference(

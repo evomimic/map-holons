@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -13,7 +13,6 @@ use holons_prelude::prelude::*;
 pub async fn execute_with_properties(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
 ) {
@@ -24,7 +23,7 @@ pub async fn execute_with_properties(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     // 2. BUILD — with_properties DanceRequest
 
@@ -44,21 +43,28 @@ pub async fn execute_with_properties(
         "with_properties request returned unexpected status: {}",
         response.description
     );
+    info!("Success! with_properties DanceResponse matched expected");
 
-    // 5. ASSERT - essential content matches expected
+    if response.status_code != ResponseStatusCode::OK {
+        return;
+    }
+
+    // Success only after this point
+
+    // 5. ASSERT — essential content matches expected
     let response_holon_reference = match response.body {
         ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
+        other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
     };
-    let resulting_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference =
-        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
 
-    resolved_reference.assert_essential_content_eq(context).unwrap();
+    let execution_handle = ExecutionHandle::from(response_holon_reference);
+
+    let execution_reference =
+        ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+    execution_reference.assert_essential_content_eq(context);
     info!("Success! Updated holon's essential content matched expected");
 
-    // 5. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record_resolved(resolved_reference);
+    // 6. RECORD — make this execution result available downstream
+    state.record(&source_token, execution_reference).unwrap();
 }

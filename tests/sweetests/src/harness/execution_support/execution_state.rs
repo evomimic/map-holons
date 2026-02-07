@@ -2,11 +2,11 @@
 //!
 //! `TestExecutionState` is the single runtime hub executors use to:
 //! - **record** new realizations (e.g., a freshly staged holon), and
-//! - **look up** previously realized handles from fixture tokens.
+//! - **look up** previously realized handles using fixture tokens as snapshot carriers
 //!
 //! It intentionally **does not** own services; those come from the provided
 //! `context` (per Issue #308). This keeps executors focused on the loop:
-//! **lookup → call → record**.
+//! **resolve → execute → validate → record**.
 //!
 //! Despite the name, this is **not** an enum of lifecycle phases (Running, Done, …).
 //! It’s a thin container around [`ExecutionHolons`] so we can grow execution-time
@@ -14,17 +14,14 @@
 
 use std::sync::Arc;
 
-use crate::harness::execution_support::{ExecutionHolons, ResolvedTestReference};
+use crate::harness::execution_support::{ExecutionHolons, ExecutionReference};
 use crate::harness::fixtures_support::TestReference;
-use core_types::TemporaryId;
 use holons_prelude::prelude::*;
-
-use super::ResultingReference;
 
 #[derive(Clone, Debug)]
 pub struct TestExecutionState {
     pub context: Arc<dyn HolonsContextBehavior>,
-    // Registry of realized references keyed by source token’s `TemporaryId`.
+    // Registry of execution references keyed by expected SnapshotId
     pub execution_holons: ExecutionHolons,
 }
 
@@ -68,22 +65,16 @@ impl TestExecutionState {
 
     /// Record a fully-built resolved entry produced by this step.
     ///
-    /// Overwrites any previous entry for the same `TemporaryId` (most recent wins).
+    /// Append-only, cannot overwrite existing.
     #[inline]
-    pub fn record_resolved(&mut self, resolved: ResolvedTestReference) {
-        self.execution_holons.record_resolved(resolved);
-    }
-
-    /// Convenience: construct and record from a source token + resulting handle.
-    ///
-    /// Returns a clone of the `ResolvedTestReference` just stored.
-    #[inline]
-    pub fn record_from_parts(
+    pub fn record(
         &mut self,
-        source_token: TestReference,
-        resulting_reference: ResultingReference,
-    ) -> ResolvedTestReference {
-        self.execution_holons.record_from_parts(source_token, resulting_reference)
+        token: &TestReference,
+        resolved: ExecutionReference,
+    ) -> Result<(), HolonError> {
+        self.execution_holons.record(token, resolved)?;
+
+        Ok(())
     }
 
     // ---------------------------------------------------------------------
@@ -96,27 +87,21 @@ impl TestExecutionState {
     /// No Nursery/DHT fallback is performed; missing entries are treated as
     /// authoring/ordering errors.
     #[inline]
-    pub fn lookup_holon_reference(
+    pub fn resolve_source_reference(
         &self,
         context: &dyn HolonsContextBehavior,
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
-        self.execution_holons.lookup_holon_reference(context, token)
+        self.execution_holons.resolve_source_reference(context, token)
     }
 
-    /// Batch variant of `lookup_holon_reference`.
+    /// Batch variant of `resolve_source_reference`.
     #[inline]
-    pub fn lookup_holon_references(
+    pub fn resolve_source_references(
         &self,
         context: &dyn HolonsContextBehavior,
         tokens: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
-        self.execution_holons.lookup_holon_references(context, tokens)
-    }
-
-    /// Lookup the HolonReference for the previous snapshot (the source token for the prior step).
-    #[inline]
-    pub fn lookup_previous(&self, id: TemporaryId) -> Result<HolonReference, HolonError> {
-        self.execution_holons.lookup_previous(id)
+        self.execution_holons.resolve_source_references(context, tokens)
     }
 }

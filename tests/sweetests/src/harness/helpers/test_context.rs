@@ -2,13 +2,12 @@ use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::{HolonServiceApi, HolonsContextBehavior, ServiceRoutingPolicy};
-use holons_test::dance_test_language::DancesTestCase;
+use crate::DancesTestCase;
 use std::sync::Arc;
 use tracing::info;
-
-use crate::helpers::init_tracing;
-
+use crate::init_tracing;
 use super::create_test_dance_initiator;
+
 
 /// Initializes a new fixture context with a fresh `HolonSpaceManager` with parameters:
 /// - A default `HolonServiceApi` implementation (`ClientHolonService`).
@@ -17,7 +16,9 @@ use super::create_test_dance_initiator;
 /// # Returns
 /// * A `Arc<TransactionContext>` containing the initialized client context.
 pub fn init_fixture_context() -> Arc<TransactionContext> {
-    init_tracing(); // this sets tracing level for both fixture and test client
+    // this sets tracing level for both fixture and test client
+    // this method is idempotent by design
+    init_tracing();
 
     info!("\n ========== Initializing FIXTURE CONTEXT ============");
 

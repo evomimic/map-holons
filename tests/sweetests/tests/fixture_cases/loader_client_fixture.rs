@@ -1,18 +1,14 @@
-use std::{collections::VecDeque, fs, path::PathBuf};
-
 use core_types::{ContentSet, FileData};
-use holons_loader_client::{BOOTSTRAP_IMPORT_SCHEMA_PATH};
+use holons_loader_client::BOOTSTRAP_IMPORT_SCHEMA_PATH;
 use holons_prelude::prelude::*;
-use holons_test::{DanceTestStep, DancesTestCase, TestSessionState};
+use holons_test::{DancesTestCase, TestCaseInit};
+use std::{fs, path::PathBuf};
 
 /// Absolute paths to all core schema import files used for loader-client testing.
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
     // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,
     // so we need to walk back to the repo root before joining the import_files path.
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("host");
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("host");
 
     let rels = [
         "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
@@ -35,7 +31,15 @@ pub fn map_core_schema_paths() -> Vec<PathBuf> {
 /// - One HolonType descriptor holon
 /// - One instance holon described by the type
 pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
-    let mut steps = Vec::new();
+
+    let TestCaseInit {
+        mut test_case,
+        fixture_context,
+        ..
+    } = TestCaseInit::new(
+        "loader_client_minimal".to_string(),
+        "Core Schema JSON loader input via loader_client entrypoint".to_string(),
+    );
 
     let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
     let schema = FileData {
@@ -56,20 +60,29 @@ pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
 
     let content_set = ContentSet { schema, files_to_load };
 
-    steps.push(DanceTestStep::LoadHolonsClient {
+    test_case.add_load_holons_client_step(
         content_set,
-        expect_staged: MapInteger(182),
-        expect_committed: MapInteger(182),
-        expect_links_created: MapInteger(1060),
-        expect_errors: MapInteger(0),
-        expect_total_bundles: MapInteger(7),
-        expect_total_loader_holons: MapInteger(182),
-    });
+        MapInteger(182),
+        MapInteger(182),
+        MapInteger(1060),
+        MapInteger(0),
+        MapInteger(7),
+        MapInteger(182),
+    )?;
+// test_case.add_load_holons_client_step(
+// content_set,
+// expect_staged: MapInteger(182),
+// expect_committed: MapInteger(182),
+// expect_links_created: MapInteger(1060),
+// expect_errors: MapInteger(0),
+// expect_total_bundles: MapInteger(7),
+// expect_total_loader_holons: MapInteger(182),
+// });
 
-    Ok(DancesTestCase {
-        name: "loader_client_minimal".to_string(),
-        description: "Core Schema JSON loader input via loader_client entrypoint".to_string(),
-        steps,
-        test_session_state: TestSessionState::default(),
-    })
+
+
+    // Finalize
+    test_case.finalize(&*fixture_context)?;
+
+    Ok(test_case)
 }

@@ -1,23 +1,21 @@
-use holons_core::core_shared_objects::holon::{EssentialHolonContent, EssentialRelationshipMap};
-use holons_test::DancesTestCase;
+use holons_core::core_shared_objects::holon::{EssentialHolonContent};
+use holons_test::{DancesTestCase, TestCaseInit};
 use pretty_assertions::assert_eq;
-use std::{collections::BTreeMap, sync::Arc};
-use tracing::{error, info};
+// use tracing::{error, info};
 
 use holons_prelude::prelude::*;
 use rstest::*;
 
-use crate::helpers::init_fixture_context;
 use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 
 #[fixture]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    let test_case = DancesTestCase::new(
+    
+    let TestCaseInit { test_case, fixture_context, fixture_holons: _fixture_holons, fixture_bindings: _fixture_bindings } = TestCaseInit::new(
         "Ergonomic Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),
     );
-    let fixture_context = init_fixture_context();
     // == //
 
     // Modifies an existing property and adds a new property, passing Enum, MapString, String, and string literal
@@ -53,11 +51,8 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     ); // MapString, str
     expected_properties.insert("Int".to_property_name(), 42.to_base_value()); // str, int
     expected_properties.insert("Bool".to_property_name(), true.to_base_value()); // str, bool
-    let essential = EssentialHolonContent::new(
-        expected_properties.clone(),
-        Some(book_key.clone()),
-        Vec::new(),
-    );
+    let essential =
+        EssentialHolonContent::new(expected_properties.clone(), Some(book_key.clone()), Vec::new());
     // Modify source
     book_transient_reference
         .with_property_value(&*fixture_context, Description, "Changed description")? // Enum, str
@@ -119,7 +114,7 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         .with_property_value(
             &*fixture_context,
             PropertyName(MapString("Description".to_string())), // PropertyName,
-            "Another description again".to_string(), // String
+            "Another description again".to_string(),            // String
         )?
         .with_property_value(
             &*fixture_context,

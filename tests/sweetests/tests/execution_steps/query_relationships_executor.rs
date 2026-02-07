@@ -20,7 +20,7 @@ pub async fn execute_query_relationships(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     let node_collection =
         NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
@@ -41,4 +41,6 @@ pub async fn execute_query_relationships(
         "query_relationships request returned unexpected status: {}",
         response.description
     );
+
+    // TODO:  Match on response.body node collection expected vs actual
 }

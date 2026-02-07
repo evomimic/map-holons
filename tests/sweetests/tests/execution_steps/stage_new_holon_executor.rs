@@ -1,4 +1,4 @@
-use holons_test::{ResolvedTestReference, ResultingReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -10,7 +10,6 @@ use holons_prelude::prelude::*;
 pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
-    expected_token: TestReference,
     expected_status: ResponseStatusCode,
 ) {
     info!("--- TEST STEP: Staging a new Holon via DANCE ---");
@@ -20,7 +19,7 @@ pub async fn execute_stage_new_holon(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.lookup_holon_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(context, &source_token).unwrap();
 
     // Can only stage Transient
     let transient_reference = match source_reference {
@@ -45,20 +44,29 @@ pub async fn execute_stage_new_holon(
         "stage_new_holon request failed: {}",
         response.description
     );
+    info!("Success! stage_new_holon DanceResponse matched expected");
 
-    // 5. ASSERT the staged holon's content matches
-    let response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => {
-            panic!("{}", format!("expected ResponseBody::HolonReference, got {:?}", other));
-        }
-    };
-    let resulting_reference = ResultingReference::from(response_holon_reference);
-    let resolved_reference =
-        ResolvedTestReference::from_reference_parts(expected_token, resulting_reference);
-    resolved_reference.assert_essential_content_eq(context).unwrap();
-    info!("Success! Staged holon's essential content matched expected");
+    if response.status_code == ResponseStatusCode::OK {
+        // 5. ASSERT — on success, the body must be a HolonReference
+        let response_holon_reference = match response.body {
+            ResponseBody::HolonReference(ref hr) => hr.clone(),
+            other => {
+                panic!("expected ResponseBody::HolonReference, got {:?}", other);
+            }
+        };
 
-    // 6. RECORD - Register an ExecutionHolon so that this token becomes resolvable during test execution.
-    state.record_resolved(resolved_reference);
+        // Build execution handle from runtime result
+        let execution_handle = ExecutionHandle::from(response_holon_reference);
+
+        // Canonical construction: token + execution outcome
+        let execution_reference =
+            ExecutionReference::from_token_execution(&source_token, execution_handle);
+
+        // Validate expected vs execution-time content
+        execution_reference.assert_essential_content_eq(context);
+        info!("Success! Staged holon's essential content matched expected");
+
+        // 6. RECORD — make execution result available for downstream steps
+        state.record(&source_token, execution_reference).unwrap();
+    }
 }

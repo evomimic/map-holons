@@ -1,14 +1,11 @@
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
-use holons_test::{fixture_holons, DancesTestCase, FixtureHolons, TestReference};
-use pretty_assertions::assert_eq;
-use std::{collections::BTreeMap, sync::Arc};
-use tracing::{error, info};
+use holons_test::{DancesTestCase, TestCaseInit};
 
+use std::collections::BTreeMap;
 use holons_prelude::prelude::*;
 use rstest::*;
 
-use crate::helpers::{init_fixture_context, BOOK_KEY, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY};
-use type_names::{CorePropertyTypeName::Description, ToPropertyName};
+use holons_test::harness::helpers::{BOOK_KEY};
+use type_names::{ToPropertyName};
 
 use super::setup_book_author_steps_with_context;
 
@@ -22,19 +19,20 @@ use super::setup_book_author_steps_with_context;
 #[fixture]
 pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    let mut test_case = DancesTestCase::new(
+   
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings, } = 
+        TestCaseInit::new(
         "Simple Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties for both Staged and Transient references".to_string(),
     );
-    let fixture_context = init_fixture_context();
-    let mut fixture_holons = FixtureHolons::new();
-    let fixture_tuple = setup_book_author_steps_with_context(
+    
+    setup_book_author_steps_with_context(
         &*fixture_context,
         &mut test_case,
         &mut fixture_holons,
+        &mut fixture_bindings,
     )?;
 
-    let fixture_bindings = fixture_tuple.1;
     // == //
 
     // -- ADD STEP -- //
@@ -70,7 +68,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // BOOK (Staged) //
     let _book_key = MapString(BOOK_KEY.to_string());
-    let book_source_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixure return_items to contain a staged-intent token associated with 'Book' label").clone();
+    let book_source_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
     // Add
     let mut book_properties = PropertyMap::new();
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());
@@ -92,10 +90,11 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // TRANSIENT //
     let mut transient_holon_properties_to_remove = BTreeMap::new();
-    // Note: Technically for a remove_property_value call, a value is not required, however the RequestBody for the Dance
-    // takes a ParameterValues(PropertyMap) and thus a full map is populated for the step.
-    // We could consider changing this - ie the Body, as what's interesting is the value here is arbitrary and could be incorrect,
-    // which would go unflagged and therefore ultimately be misleading for readers of the test code in such a scenario.
+    // Note: Technically for a remove_property_value call, a value is not required. However, the 
+    // RequestBody for the Dance takes a ParameterValues(PropertyMap) and thus a full map is 
+    // populated for the step. We should consider changing this. The value here is arbitrary and 
+    // could be incorrect, which would go unflagged and therefore ultimately be misleading for 
+    // readers of the test code in such a scenario.
     transient_holon_properties_to_remove
         .insert("Boolean".to_property_name(), false.to_base_value());
     transient_holon_properties_to_remove.insert("Integer".to_property_name(), (-1).to_base_value());
@@ -133,8 +132,8 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // TODO:
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
-    // Load test_session_state
-    test_case.load_test_session_state(&*fixture_context);
+    // Finalize
+    test_case.finalize(&*fixture_context)?;
 
     Ok(test_case)
 }

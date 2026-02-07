@@ -9,7 +9,7 @@
 // use crate::{
 //     fixture_cases::setup_book_author_steps_with_context,
 //     helpers::{
-//         init_fixture_context, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY,
+//         BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY,
 //         PUBLISHER_KEY,
 //     },
 // };
@@ -38,7 +38,6 @@
 
 //     // let _ = holochain_trace::test_run();
 
-//     let fixture_context = init_fixture_context();
 //     let mut fixture_holons = FixtureHolons::new();
 
 //     // Ensure DB count //
@@ -245,5 +244,5 @@
 //     // Load test_session_state
 //     test_case.load_test_session_state(&*fixture_context);
 
-//     Ok(test_case.clone())
+//     Ok(test_case)
 // }
