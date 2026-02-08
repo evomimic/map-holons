@@ -123,6 +123,62 @@ The root workspace does **not** produce a build lockfile.
 
 Version differences between `happ/Cargo.lock` and `host/Cargo.lock` are **expected and valid**, reflecting different runtime needs.
 
+### 6.1 Cargo.lock, MSRV, and Build Determinism
+
+Holochain pins a _Minimum Supported Rust Version_ (MSRV) that MAP must honor — MAP must not independently upgrade Rust beyond that constraint. 
+
+MAP enforces **deterministic, MSRV-safe builds** across all execution contexts.
+
+This is achieved through **strict lockfile discipline**, not ad-hoc dependency pinning.
+
+#### Authoritative Rule
+
+**`Cargo.lock` is the single source of truth for resolved dependencies.**
+
+- `Cargo.toml` expresses *compatibility intent*
+- `Cargo.lock` captures *actual, reproducible resolution*
+
+This distinction is critical in a multi-workspace repository with differing runtime constraints.
+
+#### MSRV Handling Policy
+
+When a transitive dependency introduces a Rust version incompatibility (e.g. an MSRV bump):
+
+- **Do not** add the dependency to `Cargo.toml` solely to pin its version
+- **Do not** use `[patch.crates-io]` for MSRV management
+- Resolve the issue by updating the workspace lockfile explicitly, for example:
+
+`cargo update -p zip@7.4.0 –precise 7.3.0`
+
+- Commit the resulting `Cargo.lock`
+- CI and all developers inherit the exact same dependency graph
+
+This approach preserves:
+- clean dependency intent
+- deterministic builds
+- correct separation between compatibility and resolution
+
+#### Lockfile Discipline (Non-Negotiable)
+
+- `Cargo.lock` **must be committed** for all build workspaces
+- Clean scripts **must not delete** `Cargo.lock`
+- `cargo update` is **never run casually**
+- `cargo update` is run only:
+  - during a deliberate dependency upgrade
+  - by a single developer
+  - with lockfile diffs reviewed and committed
+
+#### When MSRV Changes (e.g. Holochain Upgrade)
+
+When a core dependency upgrades its MSRV:
+
+1. A developer intentionally runs `cargo update` in the affected workspaces
+2. The new dependency graph is reviewed
+3. Updated lockfiles are committed
+4. The repository moves forward as a unit
+
+This makes MSRV changes **explicit, auditable, and reversible**.
+
 ---
 
 ## 7. Conductura’s Role in the Architecture

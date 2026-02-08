@@ -8,7 +8,7 @@
 
     "clean": "npm run clean:rust:deep",
     "clean:rust": "cargo clean",
-    "clean:rust:deep": "npx rimraf target .cargo Cargo.lock && cargo clean",
+    "clean:rust:deep": "npx rimraf target .cargo && cargo clean",
 
     "test:unit:no-run": "cargo test --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown --no-run"
   },
