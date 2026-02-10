@@ -13,8 +13,13 @@ pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     source_token: TestReference,
     expected_response: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Staging a New Version of a Holon ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Staging New Version of a Holon".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

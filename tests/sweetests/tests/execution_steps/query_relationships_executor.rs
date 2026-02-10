@@ -12,8 +12,13 @@ pub async fn execute_query_relationships(
     source_token: TestReference,
     query_expression: QueryExpression,
     expected_status: ResponseStatusCode,
+    description:Option<String>,
 ) {
-    info!("--- TEST STEP: Querying Relationships ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Querying Relationships".to_string()
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

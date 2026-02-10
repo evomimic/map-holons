@@ -10,8 +10,13 @@ pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
     expected_status: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Deleting an Existing (Saved) Holon");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Deleting an Existing (Saved) Holon".to_string()
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

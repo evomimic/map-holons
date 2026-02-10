@@ -1,6 +1,6 @@
 use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use tracing::{debug, info};
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
@@ -14,8 +14,13 @@ pub async fn execute_remove_properties(
     source_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Removing Properties from Holon ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Removing Properties from Holon".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
@@ -36,8 +41,7 @@ pub async fn execute_remove_properties(
 
     // 4. VALIDATE - response status
     assert_eq!(
-        response.status_code,
-        expected_response,
+        response.status_code, expected_response,
         "remove_properties request returned unexpected status: {}",
         response.description
     );

@@ -412,7 +412,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     let fixture_context_ref: &dyn HolonsContextBehavior = &*fixture_context;
 
     // A) Ensure DB starts with only the Space holon.
-    test_case.add_ensure_database_count_step(MapInteger(1))?;
+    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
     // B) Empty bundle → expect UnprocessableEntity and no DB change.
     let empty_bundle = build_empty_bundle(fixture_context_ref, "Bundle.Empty.1")?;
@@ -430,7 +430,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1), // total_bundles
         MapInteger(0), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1))?;
+    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
     // C) Nodes-only bundle → expect OK, N committed, 0 links created.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
@@ -450,7 +450,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64))?;
+    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
 
     // D) Declared relationship happy path (no type graph).
     let (declared_bundle, node_count, links_created) = build_declared_links_bundle(
@@ -474,7 +474,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64))?;
+    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64), None)?;
 
     // E) Inverse LRR bundle: Person Authors Book → writes declared AuthoredBy(Book→Person).
     // Use a distinct book key to avoid colliding with the earlier Book instance.
@@ -505,7 +505,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // DB after inverse step:
     // 1 (space) + n_nodes (3) + node_count (2) + inv_nodes (6) = 12
     let post_inverse_db_count = 1 + n_nodes as i64 + node_count as i64 + inv_nodes as i64;
-    test_case.add_ensure_database_count_step(MapInteger(post_inverse_db_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(post_inverse_db_count), None)?;
 
     // F) Multi-bundle happy path:
     //
@@ -554,7 +554,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // Final DB count after multi-bundle happy path:
     // 12 (post-inverse) + 2 (multi-bundle Book + Person) = 14
     let post_multi_db_count = post_inverse_db_count + multi_bundle_nodes_total;
-    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
 
     // G) Multi-bundle duplicate-key failure:
     //
@@ -605,7 +605,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // DB must remain unchanged after duplicate-key failure.
-    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
 
     // Export the fixture’s transient pool into the test case’s session state.
     test_case.finalize(fixture_context_ref)?;

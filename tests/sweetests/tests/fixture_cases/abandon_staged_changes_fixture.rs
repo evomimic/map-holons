@@ -21,7 +21,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         );
 
     // // Ensure DB count //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    test_case.add_ensure_database_count_step(
+        fixture_holons.count_saved(),
+        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
+    )?;
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
@@ -46,6 +49,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_holons,
         person_1_staged_token,
         ResponseStatusCode::OK,
+        Some("First Abandon --- abandoning person1 (H2)...".to_string()),
     )?;
 
     // //  RELATIONSHIP:  Author H2 -> H3  //
@@ -60,10 +64,15 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     //  COMMIT  //  all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        Some("Committing after First Abandon".to_string()),
+    )?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
@@ -84,6 +93,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         abandon1_properties,
         Some(abandoned_holon_1_key.clone()),
         ResponseStatusCode::OK,
+        Some("Creating example_abandon1 (H4)".to_string()),
     )?;
     // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
@@ -91,6 +101,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_holons,
         abandoned_holon_1_transient_token,
         ResponseStatusCode::OK,
+        Some("Staging example_abandon1 (H4)".to_string()),
     )?;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
@@ -108,6 +119,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         abandon2_properties,
         Some(abandoned_holon_2_key.clone()),
         ResponseStatusCode::OK,
+        Some("Creating example_abandon2 (H5)".to_string()),
     )?;
     // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
@@ -115,6 +127,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_holons,
         abandoned_holon_2_transient_token,
         ResponseStatusCode::OK,
+        Some("Staging example_abandon2 (H5)".to_string()),
     )?;
 
     // ABANDON:  H4
@@ -123,6 +136,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_holons,
         abandoned_holon_1_staged_token,
         ResponseStatusCode::OK,
+        Some("Second Abandon --- abandoning example_abandon1 (H4)...".to_string()),
     )?;
 
     // ABANDON:  H5
@@ -131,13 +145,19 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut fixture_holons,
         abandoned_holon_2_staged_token,
         ResponseStatusCode::OK,
+        Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),
     )?;
 
     // COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(
+        &*fixture_context,
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        Some("Committing after Second & Third Abandons".to_string()),
+    )?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     // MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;

@@ -15,8 +15,13 @@ pub async fn execute_with_properties(
     source_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Updating Holon with Properties ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => " Updating Holon with Properties".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

@@ -1,4 +1,4 @@
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -27,8 +27,13 @@ pub async fn execute_remove_related_holons(
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
     expected_response: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Removing Related Holons ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Removing Related Holons".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

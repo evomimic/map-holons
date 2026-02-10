@@ -11,8 +11,13 @@ pub async fn execute_commit(
     state: &mut TestExecutionState,
     expected_tokens: Vec<TestReference>, // list of expected tokens to resolve
     expected_status: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Committing Staged Holons ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Committing Staged Holons".to_string()
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

@@ -11,8 +11,13 @@ pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
     source_token: TestReference,
     expected_status: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Staging a new Holon via DANCE ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Staging New Holon".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();

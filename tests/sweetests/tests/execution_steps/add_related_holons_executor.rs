@@ -18,8 +18,13 @@ pub async fn execute_add_related_holons(
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
     expected_status: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Add Related Holons ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Add Related Holons".to_string()
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let ctx_arc = state.context();
     let context = ctx_arc.as_ref();
