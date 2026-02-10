@@ -15,7 +15,7 @@ pub struct HolonCollectionWire {
 }
 
 impl HolonCollectionWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
         // Validate that keyed_index does not contain out-of-bounds indices.
         // This protects runtime code from panics and makes corrupted or malicious
         // wire data fail deterministically.
@@ -41,7 +41,7 @@ impl HolonCollectionWire {
         // Bind members (tx_id validation happens inside HolonReferenceWire::bind).
         let mut members = Vec::with_capacity(self.members.len());
         for member_wire in self.members {
-            members.push(member_wire.bind(&context)?);
+            members.push(member_wire.bind(context)?);
         }
 
         Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))

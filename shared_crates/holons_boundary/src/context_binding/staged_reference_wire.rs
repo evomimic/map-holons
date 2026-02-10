@@ -23,7 +23,7 @@ impl StagedReferenceWire {
 
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a runtime reference.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<StagedReference, HolonError> {
-        let context_handle = TransactionContextHandle::bind(self.tx_id(), Arc::clone(context))?;
+        let context_handle = TransactionContextHandle::bind(self.tx_id(), context)?;
         Ok(StagedReference::from_temporary_id(context_handle, &self.id))
     }
 }

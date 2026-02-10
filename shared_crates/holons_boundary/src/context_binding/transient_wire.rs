@@ -18,7 +18,7 @@ pub struct TransientHolonWire {
 }
 
 impl TransientHolonWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<TransientHolon, HolonError> {
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<TransientHolon, HolonError> {
         Ok(TransientHolon::from_wire_parts(
             self.version,
             self.holon_state,

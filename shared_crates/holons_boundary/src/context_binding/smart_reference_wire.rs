@@ -28,7 +28,7 @@ impl SmartReferenceWire {
 
     /// Binds a wire reference to a TransactionContext, validating tx_id and returning a SmartReference.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<SmartReference, HolonError> {
-        let context_handle = TransactionContextHandle::bind(self.tx_id(), Arc::clone(context))?;
+        let context_handle = TransactionContextHandle::bind(self.tx_id(), context)?;
         match self.smart_property_values {
             Some(property_values) => Ok(SmartReference::new_with_properties(
                 context_handle,

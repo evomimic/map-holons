@@ -27,7 +27,7 @@ impl SerializableHolonPool {
         let mut holons: BTreeMap<TemporaryId, Arc<RwLock<Holon>>> = BTreeMap::new();
 
         for (id, holon_wire) in self.holons {
-            let holon_runtime = holon_wire.bind(Arc::clone(context))?;
+            let holon_runtime = holon_wire.bind(context)?;
             holons.insert(id, Arc::new(RwLock::new(holon_runtime)));
         }
 

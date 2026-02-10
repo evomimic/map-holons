@@ -14,7 +14,7 @@ pub enum HolonWire {
 }
 
 impl HolonWire {
-    pub fn bind(self, context: Arc<TransactionContext>) -> Result<Holon, HolonError> {
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<Holon, HolonError> {
         Ok(match self {
             HolonWire::Transient(holon) => Holon::Transient(holon.bind(context)?),
             HolonWire::Staged(holon) => Holon::Staged(holon.bind(context)?),

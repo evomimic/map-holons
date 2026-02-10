@@ -147,7 +147,7 @@ impl RequestBodyWire {
         match self {
             RequestBodyWire::None => Ok(RequestBody::None),
             RequestBodyWire::Holon(holon_wire) => {
-                Ok(RequestBody::Holon(holon_wire.bind(Arc::clone(context))?))
+                Ok(RequestBody::Holon(holon_wire.bind(context)?))
             }
             RequestBodyWire::TargetHolons(name, wires) => {
                 let mut refs = Vec::with_capacity(wires.len());

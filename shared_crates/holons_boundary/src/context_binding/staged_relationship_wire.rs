@@ -15,12 +15,12 @@ pub struct StagedRelationshipMapWire {
 impl StagedRelationshipMapWire {
     pub fn bind(
         self,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
     ) -> Result<StagedRelationshipMap, HolonError> {
         let mut map = BTreeMap::new();
 
         for (name, collection_wire) in self.map {
-            let collection = collection_wire.bind(Arc::clone(&context))?;
+            let collection = collection_wire.bind(context)?;
 
             for member in collection.get_members() {
                 if member.is_transient() {

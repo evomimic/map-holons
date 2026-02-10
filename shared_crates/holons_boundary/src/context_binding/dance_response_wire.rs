@@ -65,15 +65,15 @@ impl ResponseBodyWire {
         match self {
             ResponseBodyWire::None => Ok(ResponseBody::None),
             ResponseBodyWire::Holon(holon_wire) => {
-                Ok(ResponseBody::Holon(holon_wire.bind(Arc::clone(context))?))
+                Ok(ResponseBody::Holon(holon_wire.bind(context)?))
             }
             ResponseBodyWire::HolonCollection(collection_wire) => {
-                Ok(ResponseBody::HolonCollection(collection_wire.bind(Arc::clone(context))?))
+                Ok(ResponseBody::HolonCollection(collection_wire.bind(context)?))
             }
             ResponseBodyWire::Holons(holons_wire) => {
                 let mut holons = Vec::with_capacity(holons_wire.len());
                 for holon_wire in holons_wire {
-                    holons.push(holon_wire.bind(Arc::clone(context))?);
+                    holons.push(holon_wire.bind(context)?);
                 }
                 Ok(ResponseBody::Holons(holons))
             }

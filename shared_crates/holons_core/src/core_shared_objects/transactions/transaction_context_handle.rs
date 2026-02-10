@@ -19,7 +19,7 @@ impl TransactionContextHandle {
     }
 
     /// Validates the tx_id against the context before creating the handle.
-    pub fn bind(tx_id: TxId, context: Arc<TransactionContext>) -> Result<Self, HolonError> {
+    pub fn bind(tx_id: TxId, context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
         if context.tx_id() != tx_id {
             return Err(HolonError::CrossTransactionReference {
                 reference_kind: "TransactionContextHandle".to_string(),
@@ -28,7 +28,7 @@ impl TransactionContextHandle {
                 context_tx: context.tx_id().value(),
             });
         }
-        Ok(Self { tx_id, context })
+        Ok(Self { tx_id, context: Arc::clone(context) })
     }
 
     /// Returns the bound transaction id.

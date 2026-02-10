@@ -15,12 +15,12 @@ pub struct TransientRelationshipMapWire {
 impl TransientRelationshipMapWire {
     pub fn bind(
         self,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
     ) -> Result<TransientRelationshipMap, HolonError> {
         let mut map = BTreeMap::new();
 
         for (name, collection_wire) in self.map {
-            let collection = collection_wire.bind(Arc::clone(&context))?;
+            let collection = collection_wire.bind(context)?;
             map.insert(name, Arc::new(RwLock::new(collection)));
         }
 
