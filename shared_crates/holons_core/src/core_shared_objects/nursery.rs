@@ -1,17 +1,15 @@
-use super::{holon_pool::HolonPool, nursery_access_internal::NurseryAccessInternal, Holon};
+use super::{
+    holon_pool::{HolonPool, StagedHolonPool},
+    nursery_access_internal::NurseryAccessInternal,
+    Holon,
+};
 use crate::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
 use crate::{
-    core_shared_objects::StagedHolon,
+    core_shared_objects::{transient_holon_manager::ToHolonCloneModel, StagedHolon},
     reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
-    HolonReference, ReadableHolon, SmartReference, WritableHolon,
-};
-use crate::{
-    core_shared_objects::{
-        holon_pool::StagedHolonPool, transient_holon_manager::ToHolonCloneModel,
-    },
-    NurseryAccess,
+    HolonReference, NurseryAccess, ReadableHolon, SmartReference, WritableHolon,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, TemporaryId};
@@ -25,6 +23,8 @@ use type_names::CorePropertyTypeName;
 pub struct Nursery {
     tx_id: TxId,
     context: Weak<TransactionContext>,
+    // `StagedHolonPool` is a typed wrapper over the generic `HolonPool`; entries are
+    // intentionally stored as `Holon::Staged` to preserve a single pool abstraction.
     staged_holons: Arc<RwLock<StagedHolonPool>>,
 }
 
@@ -72,11 +72,11 @@ impl Nursery {
         &self,
         id: &TemporaryId,
     ) -> Result<StagedReference, HolonError> {
-        // Determine if the id references a StagedHolon in the Nursery
-        let _holon_rc = self.get_holon_by_id(id)?;
+        // Validate that this id exists in the nursery's staged pool.
+        let _ = self.get_holon_by_id(id)?;
 
         let transaction_handle = self.require_handle()?;
-        Ok(StagedReference::from_temporary_id(transaction_handle.clone(), id))
+        Ok(StagedReference::from_temporary_id(transaction_handle, id))
     }
 
     fn require_handle(&self) -> Result<TransactionContextHandle, HolonError> {
@@ -87,8 +87,15 @@ impl Nursery {
             ))
         })?;
 
-        // Optional extra guard: assert context.tx_id() == self.tx_id
-        // If this ever fails, it's a serious invariant break.
+        debug_assert_eq!(
+            context.tx_id(),
+            self.tx_id,
+            "Nursery context tx_id mismatch: context={} nursery={}",
+            context.tx_id().value(),
+            self.tx_id.value()
+        );
+
+        // Extra runtime guard for non-debug builds.
         if context.tx_id() != self.tx_id {
             return Err(HolonError::CrossTransactionReference {
                 reference_kind: "Nursery".to_string(),
