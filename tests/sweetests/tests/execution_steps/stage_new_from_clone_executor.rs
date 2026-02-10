@@ -15,8 +15,16 @@ pub async fn execute_stage_new_from_clone(
     source_token: TestReference,
     new_key: MapString,
     expected_status: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    let context = state.context();
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Staging New Holon From Clone".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
+
+    let ctx_arc = state.context();
+    let context = ctx_arc.as_ref();
 
     // 1. LOOKUP — get the input handle for the clone source
     //    (enforces Saved ≙ Staged(Committed(LocalId)); no nursery fallback)

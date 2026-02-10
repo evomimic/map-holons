@@ -11,8 +11,13 @@ pub async fn execute_new_holon(
     properties: PropertyMap,
     key: Option<MapString>,
     expected_status: ResponseStatusCode,
+    description:Option<String>,
 ) {
-    info!("--- TEST STEP: Creating a new Holon via DANCE ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Creating a new Holon via DANCE".to_string()
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
 

@@ -34,14 +34,14 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
-    //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    //  ENSURE DATABASE COUNT -- Initial //
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()))?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK, Some("Commit --- after setup_book_authors".to_string()))?;
 
-    //  ENSURE DATABASE COUNT  //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    //  ENSURE DATABASE COUNT -- After Commit //
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
@@ -54,6 +54,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_holons,
         book_staged_token.clone(),
         ResponseStatusCode::OK,
+        Some("Stage New Version -- first clone from book.".to_string()),
     )?;
 
     // Add properties
@@ -70,16 +71,14 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         staged_clone,
         expected_clone_properties.clone(),
         ResponseStatusCode::OK,
+        Some("With Properties -- first version cloned from book.".to_string()),
     )?;
 
-    //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
-
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK, None)?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

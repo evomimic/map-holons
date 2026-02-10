@@ -11,8 +11,13 @@ use holons_prelude::prelude::*;
 pub async fn execute_ensure_database_count(
     state: &mut TestExecutionState,
     expected_count: MapInteger,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Ensuring database holds {} holons ---", expected_count.0);
+    let description = match description {
+        Some(dsc) => dsc,
+        None => format!("Ensuring database holds {} holons ---", expected_count.0)
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
 
