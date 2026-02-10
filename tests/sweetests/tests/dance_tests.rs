@@ -24,7 +24,7 @@ use rstest::*;
 
 
 use tracing::{
-    // debug,
+    debug,
     // error,
     info,
     // trace,
