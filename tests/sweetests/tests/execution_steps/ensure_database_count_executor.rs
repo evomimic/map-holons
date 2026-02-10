@@ -22,7 +22,8 @@ pub async fn execute_ensure_database_count(
 
     // 2. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response contains Holons

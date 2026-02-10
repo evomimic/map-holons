@@ -13,7 +13,7 @@ use std::sync::Arc;
 /// Implementations may delegate to a Holochain conductor,
 /// a Tauri bridge, or other runtime adapters.
 
-/// Production trait: requires Send + Sync for multi-threaded contexts
+/// Production trait: requires Send + Sync for multithreaded contexts
 #[async_trait]
 pub trait DanceInitiator: Send + Sync + Debug {
     /// Sends a `DanceRequest` and returns a `DanceResponse`.
@@ -22,7 +22,7 @@ pub trait DanceInitiator: Send + Sync + Debug {
     /// the environment (e.g., native conductor, Tauri bridge, or mock testing).
     async fn initiate_dance(
         &self,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse;
 }

@@ -27,7 +27,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     );
 
     setup_book_author_steps_with_context(
-        &*fixture_context,
+        &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
@@ -128,7 +128,8 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+    test_case.finalize()?;
+
 
     Ok(test_case)
 }

@@ -191,7 +191,8 @@ pub async fn execute_load_holons(
 
     // Initiate the dance using the test harness (TrustChannel-backed initiator).
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let dance_response = dance_initiator.initiate_dance(context, request).await;
+    let dance_response = dance_initiator.initiate_dance(&context, request)
+.await;
 
     // Convert the DanceResponse into a TransientReference for property assertions.
     let response_reference: TransientReference = match dance_response.body {

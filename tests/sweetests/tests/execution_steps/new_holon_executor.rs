@@ -22,7 +22,8 @@ pub async fn execute_new_holon(
 
     // 2. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response status
@@ -55,7 +56,8 @@ pub async fn execute_new_holon(
         ExecutionReference::from_token_execution(&source_token, execution_handle);
 
     // Validate expected vs execution-time content
-    execution_reference.assert_essential_content_eq(context);
+    execution_reference.assert_essential_content_eq()
+;
     info!("Success! Holon's essential content matched expected");
 
     // Record for downstream resolution

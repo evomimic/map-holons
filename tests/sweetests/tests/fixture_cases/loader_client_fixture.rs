@@ -82,7 +82,8 @@ pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
 
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+    test_case.finalize()?;
+
 
     Ok(test_case)
 }

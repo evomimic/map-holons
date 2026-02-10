@@ -35,7 +35,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let transient_source = new_holon(&fixture_context, Some(transient_source_key.clone()))?;
     // Mint transient source token
     let transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
         transient_source,
         BTreeMap::new(),
@@ -53,7 +52,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ── PHASE B — Setup canonical holons, then clone FROM STAGED ──────────────────
     setup_book_author_steps_with_context(
-        &*fixture_context,
+        &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
@@ -89,7 +88,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 1  //
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
@@ -122,14 +121,15 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 2  //
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     // MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+    test_case.finalize()?;
+
 
     Ok(test_case)
 }

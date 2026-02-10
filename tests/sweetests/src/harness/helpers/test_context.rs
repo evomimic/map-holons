@@ -1,7 +1,7 @@
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{HolonServiceApi, HolonsContextBehavior, ServiceRoutingPolicy};
+use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use crate::DancesTestCase;
 use std::sync::Arc;
 use tracing::info;

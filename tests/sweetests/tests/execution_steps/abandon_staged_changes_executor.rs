@@ -24,7 +24,8 @@ pub async fn execute_abandon_staged_changes(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(&context, &source_token)
+.unwrap();
 
     // 2. BUILD — dance request to abandon holon
     let request = build_abandon_staged_changes_dance_request(source_reference)
@@ -33,7 +34,8 @@ pub async fn execute_abandon_staged_changes(
 
     // 3. CALL — use the context-owned call service
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
 
     // 4. VALIDATE - response status
     assert_eq!(
@@ -44,30 +46,19 @@ pub async fn execute_abandon_staged_changes(
     info!("Success! abandon_staged_changes DanceResponse matched expected");
 
     if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT — on success, the body should be a HolonReference to the abandoned holon.
         let mut response_holon_reference = match response.body {
             ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("expected ResponseBody::HolonReference, got {:?}", other);
-            }
+            other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
         };
 
-        // Build execution handle from the runtime result
         let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
+        let mut execution_reference =
+            ExecutionReference::from_token_execution(&source_token, execution_handle);
 
-        // Canonical construction: token + execution outcome
-        let execution_reference = ExecutionReference::from_token_execution(
-            &source_token,
-            execution_handle,
-        );
+        execution_reference.assert_essential_content_eq();
 
-        // Validate expected vs execution-time content
-        execution_reference
-            .assert_essential_content_eq(context);
-
-        // Confirm that operations on the abandoned Holon fail as expected
         assert_eq!(
-            abandoned_holon.with_property_value(
+            response_holon_reference.with_property_value(
                 PropertyName(MapString("some_name".to_string())),
                 BaseValue::BooleanValue(MapBoolean(true))
             ),
@@ -76,9 +67,7 @@ pub async fn execute_abandon_staged_changes(
                 "Immutable".to_string()
             ))
         );
-        debug!("Confirmed abandoned holon is NotAccessible for `with_property_value`");
 
-        // 6. RECORD — make this execution result available for downstream steps
         state.record(&source_token, execution_reference).unwrap();
     }
 }

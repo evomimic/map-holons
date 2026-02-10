@@ -13,8 +13,6 @@
 //! - **Invariant**: Saved ≙ Staged(Committed(LocalId)) is enforced during lookup.
 //! - **Append-only**: Overwrites are not allowed.
 
-use std::collections::BTreeMap;
-
 use crate::harness::execution_support::ExecutionReference;
 use crate::harness::fixtures_support::{TestHolonState, TestReference};
 use crate::SnapshotId;

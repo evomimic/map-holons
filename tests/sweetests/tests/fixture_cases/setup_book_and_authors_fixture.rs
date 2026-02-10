@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use holons_prelude::prelude::*;
 use holons_test::FixtureBindings;
 use holons_test::{
@@ -24,7 +26,7 @@ use holons_test::harness::helpers::{
 /// FixtureHolons contains the minted token TestReferences that are used to track a lineage of state to mirror in parallel the ExecutionHolons.
 /// This parallel reflects 'expected' (Fixture) vs 'actual' (Mock DHT).
 pub fn setup_book_author_steps_with_context<'a>(
-    fixture_context: &dyn HolonsContextBehavior,
+    fixture_context: &Arc<TransactionContext>,
     test_case: &mut DancesTestCase,
     fixture_holons: &mut FixtureHolons,
     bindings: &'a mut FixtureBindings,

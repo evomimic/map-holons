@@ -31,7 +31,8 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
                 );
             }
 
-            let holon_id = holon_reference.holon_id(context).expect("Failed to get HolonId");
+            let holon_id = holon_reference.holon_id()
+.expect("Failed to get HolonId");
 
             // 2. BUILD — get_holon_by_id DanceRequest
             let request = build_get_holon_by_id_dance_request(holon_id.clone())
@@ -43,12 +44,15 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
 
             // IMPORTANT: initiate_dance takes ownership of Arc<TransactionContext>,
             // so clone the Arc instead of moving the one we keep for the whole test.
-            let response = dance_initiator.initiate_dance(Arc::clone(&context), request).await;
+            let cloned_context = Arc::clone(&context);
+
+            let response = dance_initiator.initiate_dance(&cloned_context, request).await;
 
             // 4. VALIDATE - Ensure response contains the expected Holon
             if let ResponseBody::Holon(actual_holon) = response.body {
                 assert_eq!(
-                    resolved_reference.expected_snapshot.essential_content(context).unwrap(),
+                    resolved_reference.expected_snapshot.essential_content()
+.unwrap(),
                     actual_holon.essential_content(),
                 );
                 info!(

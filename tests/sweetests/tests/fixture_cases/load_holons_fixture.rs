@@ -402,9 +402,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
                 .to_string(),
         );
 
-    // Create a private fixture context with its own TransientHolonManager.
-    let fixture_context = init_fixture_context();
-
     // A) Ensure DB starts with only the Space holon.
     test_case.add_ensure_database_count_step(MapInteger(1))?;
 

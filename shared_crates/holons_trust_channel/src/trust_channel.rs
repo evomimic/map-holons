@@ -28,7 +28,7 @@ impl TrustChannel {
 impl DanceInitiator for TrustChannel {
     async fn initiate_dance(
         &self,
-        context: Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> DanceResponse {
         // --- Outbound runtime -> envelope -----------------------------------------

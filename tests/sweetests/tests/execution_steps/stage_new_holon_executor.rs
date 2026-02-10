@@ -18,7 +18,8 @@ pub async fn execute_stage_new_holon(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(&context, &source_token)
+.unwrap();
 
     // Can only stage Transient
     let transient_reference = match source_reference {
@@ -34,7 +35,8 @@ pub async fn execute_stage_new_holon(
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -62,7 +64,8 @@ pub async fn execute_stage_new_holon(
             ExecutionReference::from_token_execution(&source_token, execution_handle);
 
         // Validate expected vs execution-time content
-        execution_reference.assert_essential_content_eq(context);
+        execution_reference.assert_essential_content_eq()
+;
         info!("Success! Staged holon's essential content matched expected");
 
         // 6. RECORD — make execution result available for downstream steps

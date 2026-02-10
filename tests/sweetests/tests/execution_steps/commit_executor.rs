@@ -22,7 +22,8 @@ pub async fn execute_commit(
 
     // 2. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response status and ResponseBody type
@@ -46,7 +47,8 @@ pub async fn execute_commit(
     if response.status_code == ResponseStatusCode::OK {
         // 4. GET - committed holons from the HolonsCommitted relationship.
         let committed_references = commit_response_body_reference
-            .related_holons(context, CoreRelationshipTypeName::SavedHolons)
+            .related_holons(
+CoreRelationshipTypeName::SavedHolons)
             .expect("Failed to read HolonsCommitted relationship");
 
         let committed_refs_guard = committed_references.read().unwrap();
@@ -62,14 +64,16 @@ pub async fn execute_commit(
         let mut keyed_index = BTreeMap::new();
         for token in &expected_tokens {
             let key =
-                token.expected_reference().clone().key(context).unwrap().expect(
+                token.expected_reference().clone().key()
+.unwrap().expect(
                     "For these testing purposes, source token (TestReference) must have a key",
                 );
             keyed_index.insert(key, index);
             index += 1;
         }
         for holon_reference in holon_collection.get_members() {
-            let source_index = keyed_index.get(&holon_reference.key(context).unwrap().expect(
+            let source_index = keyed_index.get(&holon_reference.key()
+.unwrap().expect(
             "For these testing purposes, resulting reference (HolonReference) must have a key",
         )).expect("Something went wrong in this functions logic.. Expected source token to be indexed by key");
             let token = &expected_tokens[*source_index];

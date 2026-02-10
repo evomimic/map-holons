@@ -26,7 +26,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     setup_book_author_steps_with_context(
-        &*fixture_context,
+        &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
@@ -42,7 +42,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
     let _abandoned_person_1 = test_case.add_abandon_staged_changes_step(
-        &*fixture_context,
         &mut fixture_holons,
         person_1_staged_token,
         ResponseStatusCode::OK,
@@ -147,7 +146,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+    test_case.finalize()?;
+
 
     Ok(test_case)
 }

@@ -25,9 +25,10 @@ pub async fn execute_add_related_holons(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(&context, &source_token)
+.unwrap();
     let holons_to_add: Vec<HolonReference> =
-        state.resolve_source_references(context, &holons).unwrap();
+        state.resolve_source_references(&context, &holons).unwrap();
 
     // 2. BUILD — dance request to add related holons
     let request = build_add_related_holons_dance_request(
@@ -40,7 +41,8 @@ pub async fn execute_add_related_holons(
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -70,7 +72,8 @@ pub async fn execute_add_related_holons(
                 execution_handle,
             );
 
-        execution_reference.assert_essential_content_eq(context);
+        execution_reference.assert_essential_content_eq()
+;
         info!("Success! Updated holon's essential content matched expected");
 
         // 6. RECORD — make available for downstream resolution

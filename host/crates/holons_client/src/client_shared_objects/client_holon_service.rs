@@ -69,10 +69,9 @@ impl HolonServiceApi for ClientHolonService {
 
         // Run the dance (sync → async → sync)
         let initiator = context.get_dance_initiator()?;
-        let context_for_async = Arc::clone(context);
 
         let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context_for_async, request).await
+            initiator.initiate_dance(context, request).await
         });
 
         // Any non-OK status is an error
@@ -102,7 +101,7 @@ impl HolonServiceApi for ClientHolonService {
         //let initiator = context.get_space_manager().get_dance_initiator()?;
         // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        // no context.. not sure what to do here
+        // no context. not sure what to do here
         todo!()
     }
 
@@ -121,7 +120,7 @@ impl HolonServiceApi for ClientHolonService {
     }
 
     fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
-        // no context.. not sure what to do here
+        // no context. not sure what to do here
         todo!()
     }
 
@@ -131,7 +130,7 @@ impl HolonServiceApi for ClientHolonService {
         _source_id: &HolonId,
         _relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
-        // no context.. not sure what to do here
+        // no context. not sure what to do here
         todo!()
     }
 
@@ -146,7 +145,7 @@ impl HolonServiceApi for ClientHolonService {
         let context_for_async = Arc::clone(context);
 
         let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context_for_async, request).await
+            initiator.initiate_dance(context, request).await
         });
 
         if response.status_code != ResponseStatusCode::OK {
@@ -180,7 +179,7 @@ impl HolonServiceApi for ClientHolonService {
         let context_for_async = Arc::clone(context);
 
         let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context_for_async, request).await
+            initiator.initiate_dance(context, request).await
         });
 
         // 4) Check the status
@@ -223,7 +222,7 @@ where
     // runtime setup errors instead of panicking, we can change the signature to
     // -> Result<T, HolonError> later.
 
-    // If already inside a Tokio runtime, drive the future there without requiring 'static.
+    // If already inside a Tokio runtime, drive the future there without requiring static.
     if Handle::try_current().is_ok() {
         return block_in_place(|| block_on(future));
     }
