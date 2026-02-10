@@ -91,7 +91,7 @@ use holons_prelude::prelude::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 // #[case::delete_holon(delete_holon_fixture())]
 // #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 // #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
@@ -99,7 +99,7 @@ use holons_prelude::prelude::*;
 // #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 // // #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 // #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
-// #[case::stage_new_version_test(stage_new_version_fixture())]
+#[case::stage_new_version_test(stage_new_version_fixture())]
 // #[case::load_holons_test(loader_incremental_fixture())]
 // #[case::load_holons_client_test(loader_client_fixture())]
 #[tokio::test(flavor = "multi_thread")]
@@ -315,11 +315,19 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 )
                 .await
             }
-            DanceTestStep::StageNewVersion { source_token, expected_status, description } => {
+            DanceTestStep::StageNewVersion {
+                source_token,
+                expected_status,
+                version_count,
+                expected_failure_code,
+                description,
+            } => {
                 execute_stage_new_version(
                     &mut test_execution_state,
                     source_token,
                     expected_status,
+                    version_count,
+                    expected_failure_code,
                     description,
                 )
                 .await

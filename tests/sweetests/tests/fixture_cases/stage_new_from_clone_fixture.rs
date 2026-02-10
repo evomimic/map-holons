@@ -6,7 +6,7 @@ use holons_test::{
     dance_test_language::DancesTestCase, TestCaseInit,
 };
 use std::collections::BTreeMap;
-use holons_test::harness::helpers::{BOOK_KEY};
+use holons_test::harness::helpers::BOOK_KEY;
 use type_names::ToPropertyName;
 
 /// Demonstrates cloning a Book three ways using the new harness:
