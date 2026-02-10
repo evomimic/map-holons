@@ -211,7 +211,7 @@ fn restore_session_state_from_context(
     Some(SessionStateWire::new(
         serializable_transient_pool,
         serializable_staged_pool,
-        local_space_holon,
+        local_space_holon.map(HolonReferenceWire::from),
         Some(context.tx_id()),
     ))
 }
