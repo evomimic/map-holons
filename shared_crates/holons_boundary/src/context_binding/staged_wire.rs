@@ -21,7 +21,7 @@ pub struct StagedHolonWire {
 
 impl StagedHolonWire {
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<StagedHolon, HolonError> {
-        Ok(StagedHolon::from_wire_parts(
+        Ok(StagedHolon::from_parts(
             self.version,
             self.holon_state,
             self.staged_state,

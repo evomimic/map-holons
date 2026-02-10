@@ -86,8 +86,8 @@ impl StagedHolon {
         }
     }
 
-    /// Creates a staged holon from wire-bound fields.
-    pub fn from_wire_parts(
+    /// Creates a staged holon from pre-validated constituent parts.
+    pub fn from_parts(
         version: MapInteger,
         holon_state: HolonState,
         staged_state: StagedState,

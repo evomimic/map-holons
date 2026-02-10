@@ -63,8 +63,8 @@ impl TransientHolon {
         }
     }
 
-    /// Creates a transient holon from wire-bound fields.
-    pub fn from_wire_parts(
+    /// Creates a transient holon from pre-validated constituent parts.
+    pub fn from_parts(
         version: MapInteger,
         holon_state: HolonState,
         validation_state: ValidationState,
