@@ -596,6 +596,8 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
+        version_count: MapInteger,
+        expected_failure_code: Option<ResponseStatusCode>,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         if self.is_finalized == true {
@@ -619,6 +621,8 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::StageNewVersion {
             source_token: new_token.clone(),
             expected_status: expected_status.clone(),
+            version_count,
+            expected_failure_code,
             description,
         });
 
@@ -753,6 +757,8 @@ pub enum DanceTestStep {
     StageNewVersion {
         source_token: TestReference,
         expected_status: ResponseStatusCode,
+        version_count: MapInteger,
+        expected_failure_code: Option<ResponseStatusCode>,
         description: Option<String>,
     },
     WithProperties {
@@ -892,12 +898,14 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::StageNewVersion {
                 source_token,
                 expected_status,
+                version_count: _version_count,
+                expected_failure_code,
                 description: _description,
             } => {
                 write!(
                     f,
-                    "NewVersion for source: {:#?}, expecting response: {:#?}",
-                    source_token, expected_status
+                    "NewVersion for source: {:#?}, expecting response: {:#?}, optional failure_code: {:?}",
+                    source_token, expected_status, expected_failure_code,
                 )
             }
             DanceTestStep::StageNewFromClone {

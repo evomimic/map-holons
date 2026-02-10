@@ -1,9 +1,8 @@
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_prelude::prelude::*;
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
 use tracing::{debug, info};
-
-use holons_prelude::prelude::*;
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
 
@@ -14,6 +13,8 @@ pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     source_token: TestReference,
     expected_response: ResponseStatusCode,
+    version_count: MapInteger,
+    expected_failure_code: Option<ResponseStatusCode>,
     description: Option<String>,
 ) {
     let description = match description {
@@ -87,15 +88,19 @@ pub async fn execute_stage_new_version(
     let original_holon_key = source_reference.key().unwrap().unwrap();
     let by_base = get_staged_holon_by_base_key(&context, &original_holon_key).unwrap();
 
-    let staged_reference = execution_handle
-        .get_holon_reference()
-        .expect("HolonReference must be live");
+    match by_base {
+        Ok(staged_reference) => {
+            if let Some(code) = expected_failure_code {
+                panic!("{}", format!("Expected get_staged_holon_by_base_key to return {:?}", code));
+            } else {
+                let holon_reference =
+                    execution_handle.get_holon_reference().expect("HolonReference must be live");
 
-    assert_eq!(
-        staged_reference,
-        HolonReference::Staged(by_base),
-        "get_staged_holon_by_base_key did not match expected"
-    );
+                assert_eq!(
+                    HolonReference::Staged(staged_reference.clone()),
+                    holon_reference,
+                    "get_staged_holon_by_base_key did not match expected"
+                );
 
     // 9. Verify versioned-key lookup
     let by_version = get_staged_holon_by_versioned_key(
@@ -105,11 +110,40 @@ pub async fn execute_stage_new_version(
     )
         .unwrap();
 
-    assert_eq!(
-        staged_reference,
-        HolonReference::Staged(by_version),
-        "get_staged_holon_by_versioned_key did not match expected"
-    );
+                assert_eq!(
+                    holon_reference,
+                    HolonReference::Staged(by_version),
+                    "get_staged_holon_by_versioned_key did not match expected"
+                );
 
-    info!("Success! New version Holon matched expected content and relationships.");
+                info!("Success! New version Holon matched expected content and relationships.");
+            }
+        }
+        Err(e) => {
+            if let Some(code) = expected_failure_code {
+                debug!("Confirmed get_staged_holon_by_base_key returned a duplicate error");
+                // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
+                let staged_references =
+                    get_staged_holons_by_base_key(context, &original_holon_key).unwrap();
+                let length = staged_references.len();
+
+                if length != version_count.0 as usize {
+                    panic!("{}", format!(
+                        "get_staged_holons_by_base_key returned: {:?} staged references, expected {:?}",
+                        length, version_count
+                    ));
+                }
+                let first_reference_content =
+                    staged_references[0].essential_content(context).unwrap();
+                let second_reference_content =
+                    staged_references[1].essential_content(context).unwrap();
+
+                if first_reference_content != second_reference_content {
+                    panic!("References returned by get_staged_holons_by_base_key do not match essential content");
+                }
+            } else {
+                panic!("Expected get_staged_holon_by_base_key to return OK");
+            }
+        }
+    }
 }
