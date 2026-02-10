@@ -8,7 +8,10 @@ use super::{ReadableRelationship, TransientRelationshipMap};
 use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
 use core_types::{HolonError, RelationshipName};
 
-/// Custom RelationshipMap is only used for caching and will never be serialized
+/// Runtime-only `RelationshipMap` used for caching related holons.
+///
+/// This type is **never serialized** and exists solely to support
+/// in-memory relationship caching and traversal during execution.
 #[derive(new, Clone, Debug)]
 pub struct RelationshipMap {
     map: HashMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
@@ -20,6 +23,8 @@ impl RelationshipMap {
     }
 
     /// Converts to a StagedRelationshipMap.
+    /// 
+    /// Any `TransientReference` entries are intentionally skipped during cloning.
     pub fn clone_for_staged(&self) -> Result<StagedRelationshipMap, HolonError> {
         let mut cloned_map = BTreeMap::new();
         for (name, arc_lock) in self.map.iter() {

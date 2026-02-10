@@ -6,7 +6,10 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
 use core_types::{HolonError, HolonId, RelationshipName};
-
+/// In-memory cache mapping a source `HolonId` to its relationship map.
+///
+/// This cache does **not** enforce eviction or invalidation; correctness
+/// relies on transaction scoping and the immutability of saved holons.
 #[derive(Clone, Debug)]
 pub struct RelationshipCache {
     cache: Arc<RwLock<HashMap<HolonId, RelationshipMap>>>,
@@ -35,6 +38,11 @@ impl RelationshipCache {
     /// Retrieves the `HolonCollection` containing references to all holons that are related
     /// to the specified `source_holon_id` via the specified `relationship_name` Note
     /// that the `HolonCollection` could be empty.
+    ///
+    /// Cache semantics:
+    /// - First access triggers a fetch via `HolonServiceApi`
+    /// - Results (including empty collections) are cached exactly once
+    /// - Subsequent reads are served entirely from memory
     ///
     /// If the relationship data for the `source_holon_id` and `relationship_name` is already in
     /// the cache, it is returned immediately. Otherwise, it is fetched from the `HolonServiceApi`,

@@ -8,6 +8,28 @@ use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::{HolonReference, HolonServiceApi};
 
 /// Defines the execution surface for a single transaction within a space.
+///
+/// ## Transitional API (Phase 1.2)
+///
+/// This trait is a **temporary compatibility layer** used during the
+/// transaction-binding rollout (Phase 1.2).
+///
+/// It exists to:
+/// - Preserve object safety where `Arc<TransactionContext>` cannot yet be passed directly
+/// - Bridge pre-consolidation execution paths while managers and dispatch are being unified
+///
+/// ## Planned Deprecation
+///
+/// Once execution is fully consolidated under `TransactionContext`
+/// (Phase 1.3+), this trait is expected to be **deprecated and removed**.
+///
+/// At that point:
+/// - Runtime APIs should accept `&Arc<TransactionContext>` directly
+/// - Binding will occur strictly at ingress
+/// - Object-safe indirection will no longer be required
+///
+/// New APIs should avoid extending this trait.
+
 pub trait HolonsContextBehavior: Debug + Send + Sync {
     /// Returns the transaction id for this context.
     fn tx_id(&self) -> TxId;

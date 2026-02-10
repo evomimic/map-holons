@@ -21,17 +21,15 @@ pub trait ReadableRelationship {
     //    DATA ACCESSORS
     // ====================
 
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
+    /// Retrieves the `HolonCollection` for the given relationship name.
     ///
-    /// If the `relationship_name` exists in the Relationship Map, this method returns the
-    /// corresponding collection wrapped in `Arc<RwLock<HolonCollection>>`. If the relationship
-    /// is not found, an empty `HolonCollection` wrapped in `Arc<RwLock<HolonCollection>>` is returned instead.
-    /// Retrieves the `HolonCollection` for the given relationship name, wrapped in `Arc<RwLock<HolonCollection>>`.
+    /// If the relationship exists, returns its collection wrapped in
+    /// `Arc<RwLock<HolonCollection>>`. If it does not exist, returns an
+    /// empty staged `HolonCollection`.
     ///
-    /// If the `relationship_name` exists in the Relationship Map, this method returns the
-    /// corresponding collection wrapped in `Arc<RwLock<HolonCollection>>`. If the relationship
-    /// is not found, an empty `HolonCollection` wrapped in `Arc<RwLock<HolonCollection>>` is returned instead.
-    // TODO(PERF/CLEANUP): This clones the inner HolonCollection, which may be costly in time/space.
+    /// This method never returns `None`; absence is represented as an
+    /// empty collection.
+    // TODO(PERF): This clones the inner HolonCollection, which may be costly in time/space.
     // Ideally, the trait method would return an associated type (e.g., `type Output: Clone`) to allow
     // different implementations to return shared ownership types like `Rc<RefCell<_>>`.
     // For now, we’re preserving this behavior to avoid destabilizing the long-lived feature branch;

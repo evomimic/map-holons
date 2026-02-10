@@ -20,18 +20,18 @@ use core_types::{HolonError, TemporaryId};
 /// - Exporting/importing the full staged holon pool
 /// - Providing holons to the commit pipeline
 pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + Sync {
-    /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their concrete type.
+    /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their
+    /// concrete type when core services require direct access to `Nursery`.
     ///
-    /// This method is useful when working with `NurseryAccessInternal` as a trait object (`dyn NurseryAccessInternal`)
-    /// but needing to recover its underlying concrete type (e.g., `Nursery`). It allows casting
-    /// through `Any`, which is required because Rust does not support direct downcasting of trait objects.
+    /// This method is useful when working with `NurseryAccessInternal` as a trait object
+    /// (`dyn NurseryAccessInternal`) but needing to recover its underlying concrete type
+    /// (e.g., `Nursery`). It allows casting through `Any`, which is required because Rust does not
+    /// support direct downcasting of trait objects.
     fn as_any(&self) -> &dyn Any;
 
-    /// # CAUTION!!!
+    /// # Safety -- This method is intended **only for internal use by `GuestHolonService`**.
     ///
-    /// **This method is ONLY intended for use by the GuestHolonService**
-    ///
-    /// Clears the Nursery's staged holons
+    /// It clears all staged holons and should not be exposed outside the core commit lifecycle.
     fn clear_stage(&self) -> Result<(), HolonError>;
 
     /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
@@ -81,9 +81,9 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     fn import_staged_holons(&self, pool: HolonPool) -> Result<(), HolonError>;
 
     /// Returns a reference-layer view of all staged holons as `StagedReference`s.
-    ///
-    /// This hides the underlying HolonPool and lock details from callers and is the
-    /// entry point for the commit path.
+    /// - This method assumes the provided `HolonPool` is already correctly
+    ///   constructed; wrapping holons in `Arc<RwLock<Holon>>` is handled by
+    ///   `HolonPool` itself, not by this trait.
     fn get_staged_references(
         &self,
         //transaction_handle: &TransactionContextHandle,

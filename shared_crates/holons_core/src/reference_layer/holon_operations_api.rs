@@ -314,7 +314,11 @@ pub fn stage_new_version_from_id(
     // Avoid constructing SmartReference at call sites (e.g. loader).
     // This keeps reference minting inside core execution surfaces/managers.
 
-    // We *temporarily* reacquire an Arc<TransactionContext> for SmartReference context_binding.
+    // TODO (Phase 1.4):
+    // This re-acquires an Arc<TransactionContext> solely to mint a TransactionContextHandle
+    // for SmartReference creation. Once execution surfaces are consolidated to operate
+    // directly on Arc<TransactionContext>, handle minting should occur directly from the
+    // provided context without round-tripping through the TransactionManager.
     // Once Phase 1.4 consolidates execution under Arc<TransactionContext>, this becomes trivial.
     let context_arc = context
         .space_manager()
