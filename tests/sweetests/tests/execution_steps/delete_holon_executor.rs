@@ -13,15 +13,14 @@ pub async fn execute_delete_holon(
 ) {
     info!("--- TEST STEP: Deleting an Existing (Saved) Holon");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        { state.resolve_source_reference(context, &source_token).unwrap() };
+        { state.resolve_source_reference(&context, &source_token)
+.unwrap() };
 
-    let HolonId::Local(local_id) =
-        source_reference.holon_id(context).expect("Failed to get HolonId")
+    let HolonId::Local(local_id) = source_reference.holon_id().expect("Failed to get HolonId")
     else {
         panic!("Expected LocalId");
     };
@@ -31,9 +30,14 @@ pub async fn execute_delete_holon(
         .expect("Failed to build delete_holon request");
     debug!("Dance Request: {:#?}", request);
 
-    // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+
+    // 3. CALL - the dance
+    // Clone context and initiator for async call so they can still be used later
+    let cloned_context = context.clone();
+    let cloned_initiator = dance_initiator.clone();
+
+    let response = cloned_initiator.initiate_dance(&cloned_context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -49,7 +53,7 @@ pub async fn execute_delete_holon(
         .expect("Failed to build get_holon_by_id request");
 
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let get_response = dance_initiator.initiate_dance(context, get_request).await;
+    let get_response = dance_initiator.initiate_dance(&context, get_request).await;
     assert_eq!(
         get_response.status_code,
         ResponseStatusCode::NotFound,

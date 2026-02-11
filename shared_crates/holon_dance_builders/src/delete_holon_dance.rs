@@ -12,6 +12,5 @@ pub fn build_delete_holon_dance_request(
         MapString("delete_holon".to_string()),
         DanceType::DeleteMethod(holon_to_delete),
         body,
-        None,
     ))
 }

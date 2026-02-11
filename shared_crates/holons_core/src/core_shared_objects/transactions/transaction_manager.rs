@@ -41,6 +41,42 @@ impl TransactionManager {
         self.open_transaction(space_manager)
     }
 
+    /// Creates and registers a transaction with a specific id.
+    ///
+    /// This is intended for IPC round-trips where the originating side
+    /// supplies an explicit tx_id that must be preserved.
+    pub fn open_transaction_with_id(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+        tx_id: TxId,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        // Prevent collisions with an existing live transaction.
+        if let Some(existing) = self.get_transaction(&tx_id)? {
+            return Err(HolonError::DuplicateError(
+                "Transaction".to_string(),
+                format!("tx_id={}", existing.tx_id().value()),
+            ));
+        }
+
+        // Ensure the generator will not re-issue this id.
+        self.id_generator.bump_to_at_least(tx_id);
+
+        // Build the transaction context with a STRONG space reference.
+        let context = TransactionContext::new(tx_id, space_manager);
+
+        // Register the transaction (weak only) while holding the lock briefly.
+        let mut guard = self.transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, Arc::downgrade(&context));
+        drop(guard);
+
+        Ok(context)
+    }
+
     /// Looks up a transaction by id.
     ///
     /// Returns:
@@ -97,7 +133,7 @@ impl TransactionManager {
         let tx_id = self.id_generator.next_id();
 
         // Build the transaction context with a STRONG space reference.
-        let context = Arc::new(TransactionContext::new(tx_id, space_manager));
+        let context = TransactionContext::new(tx_id, space_manager);
 
         // Register the transaction (weak only) while holding the lock briefly.
         let mut guard = self.transactions.write().map_err(|e| {
@@ -122,7 +158,9 @@ impl Default for TransactionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
+    use crate::core_shared_objects::{
+        Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
+    };
     use crate::reference_layer::{HolonServiceApi, HolonsContextBehavior, TransientReference};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
     use std::any::Any;
@@ -142,7 +180,7 @@ mod tests {
 
         fn commit_internal(
             &self,
-            _context: &dyn HolonsContextBehavior,
+            _context: &Arc<TransactionContext>,
         ) -> Result<TransientReference, HolonError> {
             not_implemented()
         }
@@ -153,7 +191,7 @@ mod tests {
 
         fn fetch_all_related_holons_internal(
             &self,
-            _context: &dyn HolonsContextBehavior,
+            _context: &Arc<TransactionContext>,
             _source_id: &HolonId,
         ) -> Result<RelationshipMap, HolonError> {
             not_implemented()
@@ -165,6 +203,7 @@ mod tests {
 
         fn fetch_related_holons_internal(
             &self,
+            _context: &Arc<TransactionContext>,
             _source_id: &HolonId,
             _relationship_name: &RelationshipName,
         ) -> Result<HolonCollection, HolonError> {
@@ -173,14 +212,14 @@ mod tests {
 
         fn get_all_holons_internal(
             &self,
-            _context: &dyn HolonsContextBehavior,
+            context: &Arc<TransactionContext>,
         ) -> Result<HolonCollection, HolonError> {
             not_implemented()
         }
 
         fn load_holons_internal(
             &self,
-            _ctx: &dyn HolonsContextBehavior,
+            _context: &Arc<TransactionContext>,
             _bundle: TransientReference,
         ) -> Result<TransientReference, HolonError> {
             not_implemented()

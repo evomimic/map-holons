@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-
+use std::sync::Arc;
 use holons_prelude::prelude::*;
 use holons_test::FixtureBindings;
 use holons_test::{
@@ -26,7 +26,7 @@ use holons_test::harness::helpers::{
 /// FixtureHolons contains the minted token TestReferences that are used to track a lineage of state to mirror in parallel the ExecutionHolons.
 /// This parallel reflects 'expected' (Fixture) vs 'actual' (Mock DHT).
 pub fn setup_book_author_steps_with_context<'a>(
-    fixture_context: &dyn HolonsContextBehavior,
+    fixture_context: &Arc<TransactionContext>,
     test_case: &mut DancesTestCase,
     fixture_holons: &mut FixtureHolons,
     bindings: &'a mut FixtureBindings,
@@ -49,7 +49,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     book_properties.insert("Description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
 
     let book_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         fixture_holons,
         book_transient_reference,
         book_properties,
@@ -58,7 +57,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     )?;
     // Stage & bind with label
     let book_staged_token = test_case.add_stage_holon_step(
-        &*fixture_context,
         fixture_holons,
         book_transient_token,
         ResponseStatusCode::OK,
@@ -76,7 +74,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     person_1_properties.insert("last name".to_property_name(), "Briggs".to_base_value());
 
     let person_1_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         fixture_holons,
         person_1_transient_reference,
         person_1_properties,
@@ -85,7 +82,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     )?;
 
     let person_1_staged_token = test_case.add_stage_holon_step(
-        &*fixture_context,
         fixture_holons,
         person_1_transient_token,
         ResponseStatusCode::OK,
@@ -103,7 +99,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     person_2_properties.insert("last name".to_property_name(), "Smith".to_base_value());
 
     let person_2_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         fixture_holons,
         person_2_transient_reference,
         person_2_properties,
@@ -112,7 +107,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     )?;
 
     let person_2_staged_token = test_case.add_stage_holon_step(
-        &*fixture_context,
         fixture_holons,
         person_2_transient_token,
         ResponseStatusCode::OK,
@@ -133,7 +127,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     );
 
     let publisher_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         fixture_holons,
         publisher_transient_reference,
         publisher_properties,
@@ -142,7 +135,6 @@ pub fn setup_book_author_steps_with_context<'a>(
     )?;
 
     let publisher_staged_token = test_case.add_stage_holon_step(
-        &*fixture_context,
         fixture_holons,
         publisher_transient_token,
         ResponseStatusCode::OK,

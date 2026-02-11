@@ -7,9 +7,7 @@ use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
 
 use crate::{
-    core_shared_objects::{
-        holon::Holon, holon_pool::SerializableHolonPool, TransientManagerAccess,
-    },
+    core_shared_objects::{holon::Holon, holon_pool::HolonPool, TransientManagerAccess},
     reference_layer::TransientHolonBehavior,
 };
 
@@ -63,7 +61,7 @@ pub trait TransientManagerAccessInternal:
     /// - Any key lookup errors from the underlying pool
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
 
-    /// Exports the transient holon pool as a `SerializableHolonPool`.
+    /// Exports the transient holon pool as a runtime `HolonPool`.
     ///
     /// This is a **deep clone** of the current transient state, suitable for:
     /// - Client ↔ Guest synchronization  
@@ -72,7 +70,7 @@ pub trait TransientManagerAccessInternal:
     ///
     /// # Errors
     /// Returns `HolonError::FailedToAcquireLock` if the internal read lock cannot be acquired.
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+    fn export_transient_holons(&self) -> Result<HolonPool, HolonError>;
 
     /// Imports a transient holon pool, **replacing the current one entirely**.
     ///
@@ -84,7 +82,7 @@ pub trait TransientManagerAccessInternal:
     ///
     /// # Errors
     /// Returns `HolonError::FailedToAcquireLock` if the internal write lock cannot be acquired.
-    fn import_transient_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
+    fn import_transient_holons(&self, pool: HolonPool) -> Result<(), HolonError>;
 
     /// Provides direct access to the underlying transient holon instances.
     ///

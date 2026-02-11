@@ -9,6 +9,5 @@ pub fn build_get_all_holons_dance_request() -> Result<DanceRequest, HolonError> 
         MapString("get_all_holons".to_string()),
         DanceType::Standalone,
         body,
-        None,
     ))
 }

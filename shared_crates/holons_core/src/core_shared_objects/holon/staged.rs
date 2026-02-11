@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
 use crate::{
@@ -9,7 +8,7 @@ use crate::{
         },
         ReadableHolonState, ReadableRelationship, WritableRelationship, WriteableHolonState,
     },
-    HolonCollection, HolonReference, HolonsContextBehavior, RelationshipMap, StagedRelationshipMap,
+    HolonCollection, HolonReference, RelationshipMap, StagedRelationshipMap,
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
@@ -19,7 +18,7 @@ use core_types::{
 use type_names::CorePropertyTypeName;
 
 /// Represents a Holon that has been staged for persistence or updates.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StagedHolon {
     version: MapInteger,       // Used to add to hash content for creating TemporaryID
     holon_state: HolonState,   // Mutable or Immutable
@@ -51,13 +50,10 @@ impl StagedHolon {
     }
 
     /// Creates a new StagedHolon in the `ForCreate` state.   
-    pub fn new_from_clone_model(
-        context: &dyn HolonsContextBehavior,
-        model: HolonCloneModel,
-    ) -> Result<Self, HolonError> {
+    pub fn new_from_clone_model(model: HolonCloneModel) -> Result<Self, HolonError> {
         let staged_relationships: StagedRelationshipMap = {
             if let Some(relationship_map) = model.relationships {
-                relationship_map.clone_for_staged(context)? // Skips any TransientReference members
+                relationship_map.clone_for_staged()? // Skips any TransientReference members
             } else {
                 return Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()));
             }
@@ -87,6 +83,29 @@ impl StagedHolon {
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: Some(original_id),
             errors: Vec::new(),
+        }
+    }
+
+    /// Creates a staged holon from pre-validated constituent parts.
+    pub fn from_parts(
+        version: MapInteger,
+        holon_state: HolonState,
+        staged_state: StagedState,
+        validation_state: ValidationState,
+        property_map: PropertyMap,
+        staged_relationships: StagedRelationshipMap,
+        original_id: Option<LocalId>,
+        errors: Vec<HolonError>,
+    ) -> Self {
+        Self {
+            version,
+            holon_state,
+            staged_state,
+            validation_state,
+            property_map,
+            staged_relationships,
+            original_id,
+            errors,
         }
     }
 
@@ -120,6 +139,38 @@ impl StagedHolon {
 
     pub fn get_staged_state(&self) -> StagedState {
         self.staged_state.clone()
+    }
+
+    pub fn version(&self) -> &MapInteger {
+        &self.version
+    }
+
+    pub fn holon_state(&self) -> &HolonState {
+        &self.holon_state
+    }
+
+    pub fn staged_state(&self) -> &StagedState {
+        &self.staged_state
+    }
+
+    pub fn validation_state(&self) -> &ValidationState {
+        &self.validation_state
+    }
+
+    pub fn property_map(&self) -> &PropertyMap {
+        &self.property_map
+    }
+
+    pub fn staged_relationships(&self) -> &StagedRelationshipMap {
+        &self.staged_relationships
+    }
+
+    pub fn original_id_ref(&self) -> Option<&LocalId> {
+        self.original_id.as_ref()
+    }
+
+    pub fn errors(&self) -> &[HolonError] {
+        &self.errors
     }
 
     // ==============
@@ -214,11 +265,7 @@ impl ReadableHolonState for StagedHolon {
     }
 
     fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent::new(
-            self.property_map.clone(),
-            self.key(),
-            self.errors.clone(),
-        )
+        EssentialHolonContent::new(self.property_map.clone(), self.key(), self.errors.clone())
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {
@@ -350,13 +397,12 @@ impl ReadableHolonState for StagedHolon {
 impl WriteableHolonState for StagedHolon {
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
 
-        self.staged_relationships.add_related_holons(context, relationship_name, holons)?;
+        self.staged_relationships.add_related_holons(relationship_name, holons)?;
 
         Ok(self)
     }
@@ -391,12 +437,11 @@ impl WriteableHolonState for StagedHolon {
 
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.staged_relationships.remove_related_holons(context, &relationship_name, holons)?;
+        self.staged_relationships.remove_related_holons(&relationship_name, holons)?;
 
         Ok(self)
     }

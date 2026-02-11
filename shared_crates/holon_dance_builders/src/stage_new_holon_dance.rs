@@ -16,6 +16,5 @@ pub fn build_stage_new_holon_dance_request(
         MapString("stage_new_holon".to_string()),
         DanceType::Standalone,
         body,
-        None,
     ))
 }

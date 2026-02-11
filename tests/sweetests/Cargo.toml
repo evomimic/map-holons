@@ -39,6 +39,9 @@ path = "../../shared_crates/holon_dance_builders"
 [dependencies.holons_core]
 path = "../../shared_crates/holons_core"
 
+[dependencies.holons_boundary]
+path = "../../shared_crates/holons_boundary"
+
 [dependencies.holons_client]
 path = "../../host/crates/holons_client"
 

@@ -15,12 +15,12 @@ pub async fn execute_query_relationships(
 ) {
     info!("--- TEST STEP: Querying Relationships ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(&context,
+ &source_token).unwrap();
 
     let node_collection =
         NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
@@ -32,7 +32,8 @@ pub async fn execute_query_relationships(
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status

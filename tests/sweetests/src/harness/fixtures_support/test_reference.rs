@@ -23,7 +23,7 @@ use core_types::{HolonError, TemporaryId};
 use derive_new::new;
 use holons_core::{
     core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    HolonsContextBehavior, ReadableHolon,
+    ReadableHolon,
 };
 
 /// Stable identity for a fixture snapshot across execution.
@@ -41,7 +41,7 @@ pub type SnapshotId = TemporaryId;
 ///
 /// Notes:
 /// - A new token is minted with a unique id for each snapshot representation of a state change.
-/// - FixtureHolons::commit() will mint a saved-intent (ie saved state) token for each staged-intent token who's previous snapshot is not either Abandoned or Saved.
+/// - FixtureHolons::commit() will mint a saved-intent (ie saved state) token for each staged-intent token whose previous snapshot is not either Abandoned or Saved.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum TestHolonState {
     Transient,
@@ -131,7 +131,7 @@ impl SourceSnapshot {
 /// Defines what is expected after the execution step.
 #[derive(new, Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedSnapshot {
-    snapshot: TransientReference, // Carries the expected content, which can be mutated, except for Deleted state its an ID only.
+    snapshot: TransientReference, // Carries the expected content, which can be mutated, except for Deleted state it's an ID only.
     state: TestHolonState,        // Transient | Staged | Saved | Abandoned | Deleted
 }
 
@@ -147,9 +147,9 @@ impl ExpectedSnapshot {
 
     pub fn essential_content(
         &self,
-        context: &dyn HolonsContextBehavior,
+        
     ) -> Result<EssentialHolonContent, HolonError> {
-        self.snapshot.essential_content(context)
+        self.snapshot.essential_content()
     }
 
     pub fn id(&self) -> SnapshotId{

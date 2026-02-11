@@ -46,7 +46,7 @@
 //     // // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
 //     // // from the book to the two persons
 //    // let fixture_tuple = setup_book_author_steps_with_context(
-//    //     &*fixture_context,
+//    //     &fixture_context,
 //    //     &mut test_case,
 //    //     &mut fixture_holons,
 //    // )?;

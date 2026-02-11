@@ -12,7 +12,7 @@ use holons_test::harness::helpers::{BOOK_KEY};
 /// Fixture for creating Simple NEWVERSION Testcase
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
-    
+
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
             "Simple StageNewVersion Testcase".to_string(),
@@ -26,7 +26,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     setup_book_author_steps_with_context(
-        &*fixture_context,
+        &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
@@ -38,7 +38,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT  //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
@@ -51,7 +51,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
     let staged_clone = test_case.add_stage_new_version_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_staged_token.clone(),
         ResponseStatusCode::OK,
@@ -67,7 +66,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     expected_clone_properties.insert("title".to_property_name(), "Changed".to_base_value());
 
     test_case.add_with_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         staged_clone,
         expected_clone_properties.clone(),
@@ -78,7 +76,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
 
     //  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
@@ -146,7 +144,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // }
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+   test_case.finalize(&fixture_context)?;
+
 
     Ok(test_case)
 }

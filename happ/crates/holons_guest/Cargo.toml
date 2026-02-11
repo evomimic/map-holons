@@ -46,3 +46,6 @@ path = "../holons_guest_integrity"
 
 [dependencies.holons_loader]
 path = "../holons_loader"
+
+[dependencies.holons_boundary]
+path = "../../../shared_crates/holons_boundary"

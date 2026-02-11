@@ -9,6 +9,7 @@
 // This module intentionally avoids any relationship writes or type application;
 // those are handled by the resolver in Pass 2.
 
+use std::sync::Arc;
 use tracing::{debug, warn};
 
 use holons_prelude::prelude::CorePropertyTypeName::{Key, StartUtf8ByteOffset};
@@ -44,7 +45,7 @@ impl LoaderHolonMapper {
     /// - Stages properties-only holons (filters loader-only props); fills counts
     /// - Collects LoaderRelationshipReference transients into `queued_relationship_references`
     pub fn map_bundle(
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         bundle: TransientReference,
     ) -> Result<MapperOutput, HolonError> {
         let mut output = MapperOutput::default();
@@ -54,7 +55,7 @@ impl LoaderHolonMapper {
         // Locking & safety:
         //   The bundle’s relationship map is immutable once parsing completes (loader phase has no writers).
         //   It is therefore safe to hold the read lock while iterating members to avoid cloning the collection.
-        let collection_handle = bundle.related_holons(context, &BundleMembers)?;
+        let collection_handle = bundle.related_holons(&BundleMembers)?;
         let guard = collection_handle
             .read()
             .map_err(|_| HolonError::FailedToBorrow("HolonCollection read lock poisoned".into()))?;
@@ -77,7 +78,7 @@ impl LoaderHolonMapper {
                     output.staged_count += 1;
 
                     // Queue relationship references only for successfully staged holons.
-                    match Self::collect_loader_rel_refs(context, loader_reference) {
+                    match Self::collect_loader_rel_refs(loader_reference) {
                         Ok(relationship_refs) => {
                             output.queued_relationship_references.extend(relationship_refs)
                         }
@@ -105,12 +106,12 @@ impl LoaderHolonMapper {
     /// - `key` MUST be present on the LoaderHolon (we currently do not support keyless).
     /// - Loader-only properties (e.g., `StartUtf8ByteOffset`) are **not** copied to the target.
     pub fn build_target_staged(
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         loader: &HolonReference,
     ) -> Result<(StagedReference, MapString), HolonError> {
         // Produce a detached TransientReference so we can access raw properties
-        let loader_transient = loader.clone_holon(context)?;
-        loader_transient.is_accessible(context, AccessType::Read)?;
+        let loader_transient = loader.clone_holon()?;
+        loader_transient.is_accessible(AccessType::Read)?;
 
         // Read the LoaderHolon's current property map (owned snapshot)
         let properties: PropertyMap = loader_transient.get_raw_property_map(context)?;
@@ -153,7 +154,7 @@ impl LoaderHolonMapper {
                 );
                 continue;
             }
-            target_transient.with_property_value(context, &property_name, property_value)?;
+            target_transient.with_property_value(&property_name, property_value)?;
         }
 
         // Stage it
@@ -167,12 +168,11 @@ impl LoaderHolonMapper {
     ///
     /// Relationship used: `HAS_LOADER_RELATIONSHIP_REFERENCE`.
     pub fn collect_loader_rel_refs(
-        context: &dyn HolonsContextBehavior,
         loader: &HolonReference,
     ) -> Result<Vec<TransientReference>, HolonError> {
         // Direct traversal from LoaderHolon → LoaderRelationshipReference entries.
         let relationship_name = HasRelationshipReference;
-        let collection_handle = loader.related_holons(context, &relationship_name)?;
+        let collection_handle = loader.related_holons(&relationship_name)?;
 
         // Lock the collection for read and iterate members without cloning the entire collection.
         //
@@ -187,7 +187,7 @@ impl LoaderHolonMapper {
         let mut output: Vec<TransientReference> = Vec::new();
         // Work on **detached** copies so Pass-2 can resolve in any order/idempotently.
         for holon_reference in member_refs {
-            let loader_relationship = holon_reference.clone_holon(context)?;
+            let loader_relationship = holon_reference.clone_holon()?;
             output.push(loader_relationship);
         }
 

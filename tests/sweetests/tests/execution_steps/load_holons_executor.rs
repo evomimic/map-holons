@@ -7,11 +7,10 @@ use tracing::info;
 
 /// Read an integer property from a transient response holon.
 fn read_integer_property(
-    context: &dyn HolonsContextBehavior,
     response: &TransientReference,
     property: CorePropertyTypeName,
 ) -> Result<i64, HolonError> {
-    match response.property_value(context, &property)? {
+    match response.property_value(&property)? {
         Some(PropertyValue::IntegerValue(MapInteger(i))) => Ok(i),
         other => Err(HolonError::InvalidParameter(format!(
             "Expected integer value for {:?}, got {:?}",
@@ -37,15 +36,9 @@ fn read_integer_property(
 /// This function should **never** be used by production code; it is strictly
 /// a test/sweetest debugging aid for introspecting holons before descriptors
 /// exist or during early-bootstrapping scenarios.
-fn dump_essential(
-    state: &mut TestExecutionState,
-    holon_reference: &impl ReadableHolon,
-) -> String {
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
-
+fn dump_essential(state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
     // Attempt to get essential content (properties, key, errors)
-    let essential_content_result = holon_reference.essential_content(context);
+    let essential_content_result = holon_reference.essential_content();
 
     // Early return if reading essential content failed
     let essential_content = match essential_content_result {
@@ -85,13 +78,7 @@ fn dump_essential(
 
 /// Utility: dump all properties (name + value) on the HolonLoadResponse holon,
 /// plus the important fields like response_status_code, error_count, etc.
-fn dump_full_response(
-    state: &mut TestExecutionState,
-    response: &TransientReference,
-) -> String {
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
-
+fn dump_full_response(state: &mut TestExecutionState, response: &TransientReference) -> String {
     let mut out = String::new();
     out.push_str("\n===== HolonLoadResponse dump =====\n");
 
@@ -111,7 +98,7 @@ fn dump_full_response(
     ]
     .iter()
     {
-        if let Ok(Some(val)) = response.property_value(context, p_name) {
+        if let Ok(Some(val)) = response.property_value(p_name) {
             out.push_str(&format!("  {} => {:?}\n", p_name.0 .0, val));
         }
     }
@@ -127,14 +114,11 @@ fn dump_error_holons_from_response(
     state: &mut TestExecutionState,
     response_reference: &TransientReference,
 ) -> String {
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
-
     let mut output = String::new();
 
     // Try to follow the HasLoadError relationship.
     let relationship_name = CoreRelationshipTypeName::HasLoadError;
-    let collection_handle = match response_reference.related_holons(context, &relationship_name) {
+    let collection_handle = match response_reference.related_holons(&relationship_name) {
         Ok(collection) => collection,
         Err(_) => return output, // No error holons present.
     };
@@ -156,7 +140,7 @@ fn dump_error_holons_from_response(
 
     for (index, holon_reference) in members.into_iter().enumerate() {
         // Clone the holon so we can read its properties safely.
-        let transient_reference = match holon_reference.clone_holon(context) {
+        let transient_reference = match holon_reference.clone_holon() {
             Ok(reference) => reference,
             Err(error) => {
                 output.push_str(&format!(
@@ -199,8 +183,7 @@ pub async fn execute_load_holons(
     expect_total_loader_holons: MapInteger,
 ) {
     info!("--- TEST STEP: Load Holons ---");
-    let ctx_arc = test_state.context(); // Arc lives until end of scope
-    let context = ctx_arc.as_ref();
+    let context = test_state.context();
 
     // Build the DanceRequest for the loader.
     let request = build_load_holons_dance_request(load_set_reference)
@@ -208,7 +191,8 @@ pub async fn execute_load_holons(
 
     // Initiate the dance using the test harness (TrustChannel-backed initiator).
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let dance_response = dance_initiator.initiate_dance(context, request).await;
+    let dance_response = dance_initiator.initiate_dance(&context, request)
+.await;
 
     // Convert the DanceResponse into a TransientReference for property assertions.
     let response_reference: TransientReference = match dance_response.body {
@@ -216,7 +200,7 @@ pub async fn execute_load_holons(
         ResponseBody::HolonReference(other_ref) => {
             // If we got a non-transient HolonReference (e.g. staged/saved),
             // clone it into a transient so we can read properties the same way.
-            other_ref.clone_holon(context).unwrap_or_else(|e| {
+            other_ref.clone_holon().unwrap_or_else(|e| {
                 panic!("LoadHolons returned non-transient reference and clone_holon failed: {e:?}")
             })
         }
@@ -225,26 +209,23 @@ pub async fn execute_load_holons(
 
     // Read response properties from the returned HolonLoadResponse holon.
     let actual_staged =
-        read_integer_property(context, &response_reference, CorePropertyTypeName::HolonsStaged)
-            .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}"));
+        read_integer_property(&response_reference, CorePropertyTypeName::HolonsStaged)
+            .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}")) as i64;
     let actual_committed =
-        read_integer_property(context, &response_reference, CorePropertyTypeName::HolonsCommitted)
-            .unwrap_or_else(|e| panic!("read HolonsCommitted failed: {e:?}"));
+        read_integer_property(&response_reference, CorePropertyTypeName::HolonsCommitted)
+            .unwrap_or_else(|e| panic!("read HolonsCommitted failed: {e:?}")) as i64;
     let actual_links_created =
-        read_integer_property(context, &response_reference, CorePropertyTypeName::LinksCreated)
-            .unwrap_or_else(|e| panic!("read LinksCreated failed: {e:?}"));
+        read_integer_property(&response_reference, CorePropertyTypeName::LinksCreated)
+            .unwrap_or_else(|e| panic!("read LinksCreated failed: {e:?}")) as i64;
     let actual_error_count =
-        read_integer_property(context, &response_reference, CorePropertyTypeName::ErrorCount)
-            .unwrap_or_else(|ev| panic!("read ErrorCount failed: {ev:?}"));
+        read_integer_property(&response_reference, CorePropertyTypeName::ErrorCount)
+            .unwrap_or_else(|ev| panic!("read ErrorCount failed: {ev:?}")) as i64;
     let actual_total_bundles =
-        read_integer_property(context, &response_reference, CorePropertyTypeName::TotalBundles)
-            .unwrap_or_else(|e| panic!("read TotalBundles failed: {e:?}"));
-    let actual_total_loader_holons = read_integer_property(
-        context,
-        &response_reference,
-        CorePropertyTypeName::TotalLoaderHolons,
-    )
-    .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}"));
+        read_integer_property(&response_reference, CorePropertyTypeName::TotalBundles)
+            .unwrap_or_else(|e| panic!("read TotalBundles failed: {e:?}")) as i64;
+    let actual_total_loader_holons =
+        read_integer_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons)
+            .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}")) as i64;
 
     // Always print any attached error holons if there are any.
     if actual_error_count > 0 {

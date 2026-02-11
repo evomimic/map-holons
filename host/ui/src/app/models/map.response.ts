@@ -8,12 +8,13 @@ import {
   HolonReference,
   HolonCollection,
   NodeCollection,
-  StagedReference,
   TemporaryId,
   MapStringFactory,
   MapInteger,
   PropertyMap,
-  ValidationState
+  ValidationState,
+  TxId,
+  DEFAULT_TX_ID
 } from './shared-types';
 import { Holon, TransientHolon, StagedHolon, SavedHolon, HolonState, StagedState, StagedRelationshipMap } from './holon';
 
@@ -58,8 +59,7 @@ export type ResponseBody =
   | { HolonCollection: HolonCollection }
   | { Holons: Holon[] } // will be replaced by SmartCollection once supported
   | { HolonReference: HolonReference }
-  | { NodeCollection: NodeCollection }
-  | { StagedRef: StagedReference };
+  | { NodeCollection: NodeCollection };
 
 // ===========================================
 // SESSION STATE TYPES
@@ -71,6 +71,7 @@ export type SerializableHolonPool ={
 }
 
 export type SessionState = {
+    tx_id?: TxId | null,
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_holon_space?: HolonReference | null,
@@ -101,10 +102,6 @@ export function isResponseBodyHolonReference(body: ResponseBody): body is { Holo
 
 export function isResponseBodyNodeCollection(body: ResponseBody): body is { NodeCollection: NodeCollection } {
   return typeof body === "object" && body !== null && "NodeCollection" in body;
-}
-
-export function isResponseBodyStagedRef(body: ResponseBody): body is { StagedRef: StagedReference } {
-  return typeof body === "object" && body !== null && "StagedRef" in body;
 }
 
 // ===========================================
@@ -441,10 +438,6 @@ export class ResponseBodyFactory {
   static nodeCollection(collection: NodeCollection): ResponseBody {
     return { NodeCollection: collection };
   }
-
-  static stagedRef(reference: StagedReference): ResponseBody {
-    return { StagedRef: reference };
-  }
 }
 
 export class MapResponseFactory {
@@ -611,8 +604,9 @@ const mockTransientHolonsPool: SerializableHolonPool = {
   keyed_index: new Map()
 };
 
-// Create mock session state
+// Create mock session_state state
 const mockSessionState: SessionState = {
+  tx_id: DEFAULT_TX_ID,
   transient_holons: mockTransientHolonsPool,
   staged_holons: mockStagedHolonsPool,
   local_holon_space: null

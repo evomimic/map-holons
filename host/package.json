@@ -20,7 +20,7 @@
     "clean": "npm run clean:rust:deep && npm run clean:ui",
     "clean:rust": "cargo clean",
     "clean:rust:deep": "npx rimraf target .cargo && cargo clean",
-    "clean:ui": "npx rimraf ../node_modules ../package-lock.json",
+    "clean:ui": "npx rimraf ../node_modules",
 
     "tauri:bundle": "tauri build"
   },

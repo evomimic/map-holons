@@ -2,11 +2,13 @@ use async_trait::async_trait;
 use core_types::{HolonError};
 use std::{any::Any, fmt::Debug, sync::Arc};
 use crate::shared_types::{holon_space::SpaceInfo, map_request::MapRequest, map_response::MapResponse};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait ReceptorBehavior: Debug + Send + Sync {
+    fn transaction_context(&self) -> Arc<TransactionContext>;
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError>;
     async fn get_space_info(&self) -> Result<SpaceInfo, HolonError>;
     async fn load_holons(&self, request:MapRequest) -> Result<MapResponse, HolonError>;
@@ -20,4 +22,3 @@ pub struct BaseReceptor {
     pub client_handler: Option<Arc<dyn Any + Send + Sync>>,
     pub properties: HashMap<String, String>,
 }
-

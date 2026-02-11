@@ -14,8 +14,7 @@ pub async fn execute_ensure_database_count(
 ) {
     info!("--- TEST STEP: Ensuring database holds {} holons ---", expected_count.0);
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. BUILD - the get_all_holons DanceRequest
     let request =
@@ -23,7 +22,8 @@ pub async fn execute_ensure_database_count(
 
     // 2. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response contains Holons

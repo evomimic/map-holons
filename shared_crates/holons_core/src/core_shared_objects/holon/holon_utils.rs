@@ -7,8 +7,7 @@ use core_types::{HolonError, PropertyMap, RelationshipName};
 
 use crate::{
     core_shared_objects::TransientRelationshipMap, CollectionState, HolonCollection,
-    HolonCollectionApi, HolonReference, HolonsContextBehavior, RelationshipMap,
-    StagedRelationshipMap,
+    HolonCollectionApi, HolonReference, RelationshipMap, StagedRelationshipMap,
 };
 
 use super::state::{HolonState, ValidationState};
@@ -27,7 +26,7 @@ pub struct EssentialHolonContent {
 
 // ==== TESTING PURPOSES ==== //
 
-#[derive(new, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(new, Clone, Debug, Eq, PartialEq, Default)]
 pub struct EssentialRelationshipMap {
     map: BTreeMap<RelationshipName, HolonCollection>,
 }
@@ -35,7 +34,6 @@ pub struct EssentialRelationshipMap {
 impl EssentialRelationshipMap {
     pub fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         collection_state: CollectionState,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
@@ -75,19 +73,18 @@ impl EssentialRelationshipMap {
             }
         };
 
-        collection.add_references(context, holons)?;
+        collection.add_references(holons)?;
 
         Ok(())
     }
 
     pub fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         if let Some(collection) = self.map.get_mut(relationship_name) {
-            collection.remove_references(context, holons)?;
+            collection.remove_references(holons)?;
 
             Ok(())
         } else {

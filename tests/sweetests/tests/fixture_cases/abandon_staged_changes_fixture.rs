@@ -26,7 +26,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
     // the book to both persons.
     setup_book_author_steps_with_context(
-        &*fixture_context,
+        &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
@@ -42,7 +42,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // This step verifies the abandon dance succeeds and that subsequent operations on the
     // abandoned Holon return NotAccessible Errors
     let _abandoned_person_1 = test_case.add_abandon_staged_changes_step(
-        &*fixture_context,
         &mut fixture_holons,
         person_1_staged_token,
         ResponseStatusCode::OK,
@@ -60,7 +59,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     //  COMMIT  //  all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
@@ -71,14 +70,13 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  STAGE:  Abandoned Holon1 (H4)  //
     let abandoned_holon_1_key = MapString("Abandon1".to_string());
     let abandoned_holon_1_transient_reference =
-        new_holon(&*fixture_context, Some(abandoned_holon_1_key.clone()))?;
+        new_holon(&fixture_context, Some(abandoned_holon_1_key.clone()))?;
 
     // Mint
     let mut abandon1_properties = BTreeMap::new();
     abandon1_properties.insert("example abandon1".to_property_name(), "test1".to_base_value());
 
     let abandoned_holon_1_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_1_transient_reference,
         abandon1_properties,
@@ -87,7 +85,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
     // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_1_transient_token,
         ResponseStatusCode::OK,
@@ -96,13 +93,12 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  STAGE:  Abandoned Holon2 (H5)  //
     let abandoned_holon_2_key = MapString("Abandon2".to_string());
     let abandoned_holon_2_transient_reference =
-        new_holon(&*fixture_context, Some(abandoned_holon_2_key.clone()))?;
+        new_holon(&fixture_context, Some(abandoned_holon_2_key.clone()))?;
     // Mint
     let mut abandon2_properties = BTreeMap::new();
     abandon2_properties.insert("example abandon2".to_property_name(), "test2".to_base_value());
 
     let abandoned_holon_2_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_2_transient_reference,
         abandon2_properties,
@@ -111,7 +107,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
     // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_2_transient_token,
         ResponseStatusCode::OK,
@@ -119,7 +114,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // ABANDON:  H4
     test_case.add_abandon_staged_changes_step(
-        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_1_staged_token,
         ResponseStatusCode::OK,
@@ -127,14 +121,13 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // ABANDON:  H5
     test_case.add_abandon_staged_changes_step(
-        &*fixture_context,
         &mut fixture_holons,
         abandoned_holon_2_staged_token,
         ResponseStatusCode::OK,
     )?;
 
     // COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&*fixture_context, &mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
@@ -153,7 +146,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+    test_case.finalize(&fixture_context)?;
+
 
     Ok(test_case)
 }

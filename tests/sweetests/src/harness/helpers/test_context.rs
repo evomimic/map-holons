@@ -1,7 +1,7 @@
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::{HolonServiceApi, HolonsContextBehavior, ServiceRoutingPolicy};
+use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use crate::DancesTestCase;
 use std::sync::Arc;
 use tracing::info;
@@ -74,9 +74,17 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<Transactio
         .open_default_transaction(Arc::clone(&space_manager))
         .expect("failed to open default test transaction");
 
-    // Step 5: Load transient holons from the test session state.
+    // Step 5: Load transient holons from the test session_state state.
+    let bound_transient_holons = test_case
+        .test_session_state
+        .get_transient_holons()
+        .clone()
+        .bind(&transaction_context)
+        .expect("failed to bind transient holon wire pool into runtime holon pool");
+
     transaction_context
-        .import_transient_holons(test_case.test_session_state.get_transient_holons().clone());
+        .import_transient_holons(bound_transient_holons)
+        .expect("failed to import transient holons into test context");
 
     transaction_context
 }

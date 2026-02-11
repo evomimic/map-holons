@@ -1,9 +1,9 @@
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
 
 use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
 use crate::core_shared_objects::transactions::TransactionManager;
 use crate::core_shared_objects::{HolonCacheAccess, HolonCacheManager, ServiceRoutingPolicy};
-use crate::reference_layer::{HolonReference, HolonServiceApi, HolonSpaceBehavior};
+use crate::reference_layer::{HolonServiceApi, HolonSpaceBehavior};
 use crate::TransientCollection;
 
 use std::sync::{Arc, RwLock};
@@ -21,8 +21,8 @@ pub struct HolonSpaceManager {
     /// Shared reference to the Holon service API (persists, retrieves, and queries holons).
     holon_service: Arc<dyn HolonServiceApi + Send + Sync>,
 
-    /// Optional reference to the space holon (authoritative context for other holons).
-    local_holon_space: RwLock<Option<HolonReference>>,
+    /// Optional id of the space holon (authoritative context for other holons).
+    local_holon_space: RwLock<Option<HolonId>>,
 
     /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
     transient_state: Arc<RwLock<TransientCollection>>,
@@ -32,21 +32,21 @@ pub struct HolonSpaceManager {
 }
 
 impl HolonSpaceManager {
-    /// Creates a new `HolonSpaceManager` from the given session data.
+    /// Creates a new `HolonSpaceManager` from the given session_state data.
     ///
     /// This function initializes the `HolonSpaceManager` with:
     /// - A configured cache request router.
     ///
     /// # Parameters
     /// - `holon_service`: The holon service used for accessing and managing holons.
-    /// - `local_holon_space`: An optional reference to the local holon space.
+    /// - `local_holon_space`: An optional id of the local holon space.
     /// - `cache_routing_policy`: Specifies how cache requests should be routed.
     /// # Returns
     /// A new instance of `HolonSpaceManager`
     pub fn new_with_managers(
         dance_initiator: Option<Arc<dyn DanceInitiator>>,
         holon_service: Arc<dyn HolonServiceApi>,
-        local_holon_space: Option<HolonReference>,
+        local_holon_space: Option<HolonId>,
         cache_routing_policy: ServiceRoutingPolicy,
     ) -> Self {
         // Step 1: Initialize the Local Cache Manager inside Arc<RwLock>
@@ -99,7 +99,7 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Retrieves a reference to the space holon if it exists.
-    fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
+    fn get_space_holon_id(&self) -> Result<Option<HolonId>, HolonError> {
         let guard = self.local_holon_space.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on local_holon_space: {}",
@@ -116,7 +116,7 @@ impl HolonSpaceBehavior for HolonSpaceManager {
     }
 
     /// Updates the local space holon reference.
-    fn set_space_holon(&self, holon: HolonReference) -> Result<(), HolonError> {
+    fn set_space_holon_id(&self, holon: HolonId) -> Result<(), HolonError> {
         let mut guard = self.local_holon_space.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire write lock on local_holon_space: {}",

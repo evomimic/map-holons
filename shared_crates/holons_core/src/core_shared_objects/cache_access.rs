@@ -1,8 +1,9 @@
 use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
 
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::Holon;
-use crate::{HolonCollection, HolonsContextBehavior, RelationshipMap};
+use crate::{HolonCollection, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
 pub trait HolonCacheAccess: Debug + Send + Sync {
@@ -20,13 +21,14 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// - An `Arc<RwLock<HolonCollection>>` containing the related holons for thread-safe access.
     fn get_related_holons(
         &self,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
     fn get_all_related_holons(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError>;
 }

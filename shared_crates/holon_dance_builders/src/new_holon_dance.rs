@@ -18,14 +18,12 @@ pub fn build_new_holon_dance_request(key: Option<MapString>) -> DanceRequest {
                 MapString("new_holon".into()),
                 DanceType::Standalone,
                 RequestBody::ParameterValues(params),
-                None,
             )
         }
         None => DanceRequest::new(
             MapString("new_holon".into()),
             DanceType::Standalone,
             RequestBody::None,
-            None,
         ),
     }
 }

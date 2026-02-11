@@ -11,7 +11,7 @@
 //!   (often a `StagedReference`; if committed, represents “Saved”).
 //!
 //! ⚠ Important: **Do not confuse intent and result.**
-//! The expected snapshot that comes from the exectuor input token is intent; the resulting reference is 'DHT' reality.
+//! The expected snapshot that comes from the executor input token is intent; the resulting reference is 'DHT' reality.
 
 use crate::{ExpectedSnapshot, TestReference};
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
@@ -35,10 +35,10 @@ pub enum ExecutionHandle {
 impl ExecutionHandle {
     pub fn essential_content(
         &self,
-        context: &dyn HolonsContextBehavior,
+
     ) -> Result<EssentialHolonContent, HolonError> {
         match self {
-            Self::LiveReference(holon_reference) => holon_reference.essential_content(context),
+            Self::LiveReference(holon_reference) => holon_reference.essential_content(),
             Self::Deleted => Err(HolonError::InvalidParameter(
                 "Holon is marked as deleted, there is no content to compare".to_string(),
             )),
@@ -89,16 +89,16 @@ impl ExecutionReference {
     /// A mismatch indicates a test failure, not a recoverable error.
     pub fn assert_essential_content_eq(
         &self,
-        context: &dyn HolonsContextBehavior,
+
     ) {
         let expected_content = self
             .expected_snapshot
-            .essential_content(context)
+            .essential_content()
             .expect("failed to read expected snapshot content");
 
         let actual_content = self
             .execution_handle
-            .essential_content(context)
+            .essential_content()
             .expect("failed to read execution-time content");
 
         assert_eq!(expected_content, actual_content);

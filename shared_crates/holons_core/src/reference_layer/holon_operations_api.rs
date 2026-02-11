@@ -21,13 +21,15 @@
 //! application logic with the lower-level holon services, hiding service lookups
 //! and improving usability.
 
+use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
 use crate::core_shared_objects::{Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
     HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
 };
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, LocalId, PropertyMap};
+use core_types::{HolonError, HolonId, LocalId, PropertyMap};
+use std::sync::Arc;
 use type_names::CorePropertyTypeName;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
@@ -89,7 +91,7 @@ use type_names::CorePropertyTypeName;
 /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
 ///
 
-pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference, HolonError> {
+pub fn commit(context: &Arc<TransactionContext>) -> Result<TransientReference, HolonError> {
     let holon_service = context.get_holon_service();
     let commit_response = holon_service.commit_internal(context)?;
 
@@ -100,7 +102,7 @@ pub fn commit(context: &dyn HolonsContextBehavior) -> Result<TransientReference,
 /// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
 /// Returns a TransientReference to the newly created holon.
 pub fn new_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     key: Option<MapString>,
 ) -> Result<TransientReference, HolonError> {
     // Acquire transient service
@@ -136,7 +138,7 @@ pub fn new_holon(
 /// - Returns a `HolonError` if the specified holon cannot be found or deleted.
 ///
 pub fn delete_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     local_id: LocalId,
 ) -> Result<(), HolonError> {
     let holon_service = context.get_holon_service();
@@ -145,7 +147,7 @@ pub fn delete_holon(
 
 // == GETTERS == //
 
-pub fn get_all_holons(context: &dyn HolonsContextBehavior) -> Result<HolonCollection, HolonError> {
+pub fn get_all_holons(context: &Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
     let holon_service = context.get_holon_service();
     holon_service.get_all_holons_internal(context)
 }
@@ -165,7 +167,7 @@ pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, Hol
 /// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
 /// Returns a duplicate error if multiple found.
 pub fn get_staged_holon_by_base_key(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_staging_service();
@@ -176,7 +178,7 @@ pub fn get_staged_holon_by_base_key(
 /// Returns StagedReference's for all Holons that have the same base key.
 /// This can be useful if multiple versions of the same Holon are being staged at the same time.
 pub fn get_staged_holons_by_base_key(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<Vec<StagedReference>, HolonError> {
     let staging_service_borrow = context.get_staging_service();
@@ -186,7 +188,7 @@ pub fn get_staged_holons_by_base_key(
 
 /// Does a lookup by full (unique) key on staged holons.
 pub fn get_staged_holon_by_versioned_key(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_staging_service();
@@ -197,7 +199,7 @@ pub fn get_staged_holon_by_versioned_key(
 /// Convenience method for retrieving a single TransientReference for a base key, when the caller expects there to only be one.
 /// Returns a duplicate error if multiple found.
 pub fn get_transient_holon_by_base_key(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
     let transient_service = context.get_transient_behavior_service();
@@ -207,7 +209,7 @@ pub fn get_transient_holon_by_base_key(
 
 /// Does a lookup by full (unique) key on transient holons.
 pub fn get_transient_holon_by_versioned_key(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     key: &MapString,
 ) -> Result<TransientReference, HolonError> {
     let transient_service = context.get_transient_behavior_service();
@@ -240,7 +242,7 @@ pub fn get_transient_holon_by_versioned_key(
 /// - Returns a `HolonError` if the staging operation cannot complete.
 ///
 pub fn stage_new_from_clone(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     original_holon: HolonReference,
     new_key: MapString,
 ) -> Result<StagedReference, HolonError> {
@@ -250,7 +252,7 @@ pub fn stage_new_from_clone(
         ));
     }
     let staging_service = context.get_staging_service();
-    staging_service.stage_new_from_clone(context, original_holon, new_key)
+    staging_service.stage_new_from_clone(original_holon, new_key)
 }
 
 /// Stages a new holon in the holon space.
@@ -270,12 +272,12 @@ pub fn stage_new_from_clone(
 /// - Returns a `HolonError` if the staging operation cannot complete.
 ///
 pub fn stage_new_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     transient_reference: TransientReference,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_staging_service();
 
-    let staged_reference = staging_service.stage_new_holon(context, transient_reference)?;
+    let staged_reference = staging_service.stage_new_holon(transient_reference)?;
 
     Ok(staged_reference)
 }
@@ -298,11 +300,38 @@ pub fn stage_new_holon(
 /// - `Ok(StagedReference)` pointing to the newly staged holon.
 /// - `Err(HolonError)` if staging fails.
 pub fn stage_new_version(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     current_version: SmartReference,
 ) -> Result<StagedReference, HolonError> {
     let staging_service = context.get_staging_service();
-    staging_service.stage_new_version(context, current_version)
+    staging_service.stage_new_version(current_version)
+}
+
+pub fn stage_new_version_from_id(
+    context: &Arc<TransactionContext>,
+    holon_id: HolonId,
+) -> Result<StagedReference, HolonError> {
+    // Avoid constructing SmartReference at call sites (e.g. loader).
+    // This keeps reference minting inside core execution surfaces/managers.
+
+    // TODO (Phase 1.4):
+    // This re-acquires an Arc<TransactionContext> solely to mint a TransactionContextHandle
+    // for SmartReference creation. Once execution surfaces are consolidated to operate
+    // directly on Arc<TransactionContext>, handle minting should occur directly from the
+    // provided context without round-tripping through the TransactionManager.
+    // Once Phase 1.4 consolidates execution under Arc<TransactionContext>, this becomes trivial.
+    let context_arc = context
+        .space_manager()
+        .get_transaction_manager()
+        .get_transaction(&context.tx_id())?
+        .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
+
+    // Build a tx-bound SmartReference using the context handle derived from the Arc.
+    let handle = TransactionContextHandle::new(context_arc);
+    let smart = SmartReference::new_from_id(handle, holon_id);
+
+    stage_new_version(context, smart)
+    // maybe later: staging_service.stage_new_version_from_id(holon_id)
 }
 
 // ======
@@ -314,17 +343,17 @@ pub fn summarize_holons(holons: &Vec<Holon>) -> String {
 }
 
 // Gets total count of Staged Holons present in the Nursery
-pub fn staged_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
+pub fn staged_count(context: &Arc<TransactionContext>) -> Result<i64, HolonError> {
     context.get_staging_service().staged_count()
 }
 
 // Gets total count of Transient Holons present in the TransientHolonManager
-pub fn transient_count(context: &dyn HolonsContextBehavior) -> Result<i64, HolonError> {
+pub fn transient_count(context: &Arc<TransactionContext>) -> Result<i64, HolonError> {
     context.get_transient_behavior_service().transient_count()
 }
 
 pub fn load_holons(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle: TransientReference,
 ) -> Result<TransientReference, HolonError> {
     let service = context.get_holon_service();
