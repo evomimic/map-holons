@@ -82,8 +82,7 @@ impl ReceptorBehavior for HolochainReceptor {
         let initiator =
             self.context.get_dance_initiator().expect("Dance initiator must be initialized");
 
-        let dance_response =
-            initiator.initiate_dance(Arc::clone(&self.context), dance_request).await;
+        let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
         Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
     }
@@ -104,8 +103,7 @@ impl ReceptorBehavior for HolochainReceptor {
             let dance_request = ClientDanceBuilder::get_all_holons_dance()?; //self.context.as_ref(), &request)?;
             let initiator =
                 self.context.get_dance_initiator().expect("Dance initiator must be initialized");
-            let dance_response =
-                initiator.initiate_dance(Arc::clone(&self.context), dance_request).await;
+            let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
             Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
         } else {
             Err(HolonError::InvalidParameter(
