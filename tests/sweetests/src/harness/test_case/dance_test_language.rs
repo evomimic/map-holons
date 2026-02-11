@@ -120,7 +120,10 @@ impl DancesTestCase {
 
     pub fn finalize(
         &mut self,
+        fixture_context: &Arc<TransactionContext>
+
     ) -> Result<(), HolonError> {
+        self.load_test_session_state(fixture_context);
         self.is_finalized = true;
 
         Ok(())

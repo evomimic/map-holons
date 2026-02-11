@@ -128,7 +128,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Finalize
-    test_case.finalize()?;
+   test_case.finalize(&fixture_context)?;
 
 
     Ok(test_case)

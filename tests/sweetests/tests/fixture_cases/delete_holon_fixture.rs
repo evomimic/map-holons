@@ -67,7 +67,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // Finalize
-    test_case.finalize()?;
+   test_case.finalize(&fixture_context)?;
 
 
     Ok(test_case)
