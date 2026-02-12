@@ -28,7 +28,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     book_properties.insert("Title".to_property_name(), BOOK_KEY.to_base_value());
     book_properties.insert("description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
 
-    let book_source_token = test_case.add_new_holon_step(
+    let book_step_token = test_case.add_new_holon_step(
         &mut fixture_holons,
         book_transient_reference,
         book_properties,
@@ -40,7 +40,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Add a stage-holon step and capture its TestReference for later steps
     let staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
-        book_source_token,
+        book_step_token,
         ResponseStatusCode::OK,
         Some("Staging book holon...".to_string()),
     )?;

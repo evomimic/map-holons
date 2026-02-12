@@ -9,7 +9,7 @@ use holons_prelude::prelude::*;
 ///
 pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     expected_status: ResponseStatusCode,
     description: Option<String>,
 ) {
@@ -23,7 +23,7 @@ pub async fn execute_stage_new_holon(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token)
+        state.resolve_source_reference(&context, &step_token)
 .unwrap();
 
     // Can only stage Transient
@@ -66,7 +66,7 @@ pub async fn execute_stage_new_holon(
 
         // Canonical construction: token + execution outcome
         let execution_reference =
-            ExecutionReference::from_token_execution(&source_token, execution_handle);
+            ExecutionReference::from_token_execution(&step_token, execution_handle);
 
         // Validate expected vs execution-time content
         execution_reference.assert_essential_content_eq()
@@ -74,6 +74,6 @@ pub async fn execute_stage_new_holon(
         info!("Success! Staged holon's essential content matched expected");
 
         // 6. RECORD — make execution result available for downstream steps
-        state.record(&source_token, execution_reference).unwrap();
+        state.record(&step_token, execution_reference).unwrap();
     }
 }

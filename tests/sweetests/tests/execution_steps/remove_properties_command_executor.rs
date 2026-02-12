@@ -11,7 +11,7 @@ use tracing::{debug, info};
 
 pub async fn execute_remove_properties(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
     description: Option<String>,
@@ -26,7 +26,7 @@ pub async fn execute_remove_properties(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token)
+        state.resolve_source_reference(&context, &step_token)
 .unwrap();
 
     // 2. BUILD — remove_properties DanceRequest
@@ -62,7 +62,7 @@ pub async fn execute_remove_properties(
 
         // Canonical construction: token + execution outcome
         let execution_reference =
-            ExecutionReference::from_token_execution(&source_token, execution_handle);
+            ExecutionReference::from_token_execution(&step_token, execution_handle);
 
         // Validate expected vs execution-time content
         execution_reference.assert_essential_content_eq()
@@ -70,6 +70,6 @@ pub async fn execute_remove_properties(
         info!("Success! Updated holon's essential content matched expected");
 
         // 6. RECORD — make this execution result available for downstream steps
-        state.record(&source_token, execution_reference).unwrap();
+        state.record(&step_token, execution_reference).unwrap();
     }
 }
