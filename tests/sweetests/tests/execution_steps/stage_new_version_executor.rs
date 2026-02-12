@@ -1,7 +1,6 @@
 use holons_prelude::prelude::*;
 use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
-use std::sync::Arc;
 use tracing::{debug, info};
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
@@ -17,10 +16,7 @@ pub async fn execute_stage_new_version(
     expected_failure_code: Option<ResponseStatusCode>,
     description: Option<String>,
 ) {
-    let description = match description {
-        Some(dsc) => dsc,
-        None => "Staging New Version of a Holon".to_string(),
-    };
+    let description = description.unwrap_or_else(|| "Staging New Version of a Holon".to_string());
     info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
@@ -86,7 +82,7 @@ pub async fn execute_stage_new_version(
 
     // 8. Verify base-key staging behavior
     let original_holon_key = source_reference.key().unwrap().unwrap();
-    let by_base = get_staged_holon_by_base_key(&context, &original_holon_key).unwrap();
+    let by_base = get_staged_holon_by_base_key(&context, &original_holon_key);
 
     match by_base {
         Ok(staged_reference) => {
@@ -119,12 +115,12 @@ pub async fn execute_stage_new_version(
                 info!("Success! New version Holon matched expected content and relationships.");
             }
         }
-        Err(e) => {
-            if let Some(code) = expected_failure_code {
+        Err(_e) => {
+            if let Some(_code) = expected_failure_code {
                 debug!("Confirmed get_staged_holon_by_base_key returned a duplicate error");
                 // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
                 let staged_references =
-                    get_staged_holons_by_base_key(context, &original_holon_key).unwrap();
+                    get_staged_holons_by_base_key(&context, &original_holon_key).unwrap();
                 let length = staged_references.len();
 
                 if length != version_count.0 as usize {
@@ -134,9 +130,9 @@ pub async fn execute_stage_new_version(
                     ));
                 }
                 let first_reference_content =
-                    staged_references[0].essential_content(context).unwrap();
+                    staged_references[0].essential_content().unwrap();
                 let second_reference_content =
-                    staged_references[1].essential_content(context).unwrap();
+                    staged_references[1].essential_content().unwrap();
 
                 if first_reference_content != second_reference_content {
                     panic!("References returned by get_staged_holons_by_base_key do not match essential content");

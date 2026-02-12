@@ -40,7 +40,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
-        &*fixture_context,
         &mut fixture_holons,
         ResponseStatusCode::OK,
         Some("Commit --- after setup_book_authors".to_string()),
@@ -84,10 +83,9 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
-        &*fixture_context,
         &mut fixture_holons,
         ResponseStatusCode::OK,
-        None,
+        Some("With Properties -- first version cloned from book.".to_string()),
     )?;
 
     //  ENSURE DATABASE COUNT //
@@ -102,7 +100,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // b. get_staged_holons_by_base_key correctly returns BOTH staged holons
 
     let _version_2_token = test_case.add_stage_new_version_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_staged_token.clone(),
         ResponseStatusCode::OK,
@@ -113,7 +110,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     version_count.0 += 1;
 
     let _version_3_token = test_case.add_stage_new_version_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_staged_token,
         ResponseStatusCode::OK,
