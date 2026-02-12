@@ -11,7 +11,7 @@ use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 #[fixture]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    
+
     let TestCaseInit { test_case, fixture_context, fixture_holons: _fixture_holons, fixture_bindings: _fixture_bindings } = TestCaseInit::new(
         "Ergonomic Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties using all combinations of ergonomic values".to_string(),
@@ -34,12 +34,8 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     // -- ADD -- //
     let book_key = MapString("BOOK_KEY".to_string());
-    let mut book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
-    book_transient_reference.with_property_value(
-        &*fixture_context,
-        "Description",
-        "This is a book description",
-    )?;
+    let mut book_transient_reference = new_holon(&fixture_context, Some(book_key.clone()))?;
+    book_transient_reference.with_property_value("Description", "This is a book description")?;
     // Set expected
     let mut expected_properties = PropertyMap::new();
     expected_properties.insert("Key".to_property_name(), book_key.clone().to_base_value());
@@ -55,17 +51,13 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         EssentialHolonContent::new(expected_properties.clone(), Some(book_key.clone()), Vec::new());
     // Modify source
     book_transient_reference
-        .with_property_value(&*fixture_context, Description, "Changed description")? // Enum, str
-        .with_property_value(
-            &*fixture_context,
-            "NewProperty".to_string(),
-            "This is another property".to_string(),
-        )?
-        .with_property_value(&*fixture_context, "Int", 42)? // str, int
-        .with_property_value(&*fixture_context, "Bool", true)?; // str, bool
+        .with_property_value(Description, "Changed description")? // Enum, str
+        .with_property_value("NewProperty".to_string(), "This is another property".to_string())?
+        .with_property_value("Int", 42)? // str, int
+        .with_property_value("Bool", true)?; // str, bool
 
     // Assert essential content equal
-    assert_eq!(essential, book_transient_reference.essential_content(&*fixture_context)?);
+    assert_eq!(essential, book_transient_reference.essential_content()?);
 
     // -- REMOVE -- //
     let mut expected_properties_after_remove = expected_properties.clone();
@@ -80,18 +72,15 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     );
 
     book_transient_reference
-        .remove_property_value(&*fixture_context, "NewProperty".to_string())? // String
-        .remove_property_value(&*fixture_context, "Int")? // str
-        .remove_property_value(&*fixture_context, MapString("Bool".to_string()))?; // MapString
+        .remove_property_value("NewProperty".to_string())? // String
+        .remove_property_value("Int")? // str
+        .remove_property_value(MapString("Bool".to_string()))?; // MapString
 
-    assert_eq!(
-        essential_after_remove,
-        book_transient_reference.essential_content(&*fixture_context)?
-    );
+    assert_eq!(essential_after_remove, book_transient_reference.essential_content()?);
 
     // === STAGED === //
     let mut book_staged_reference =
-        stage_new_holon(&*fixture_context, book_transient_reference.clone())?;
+        stage_new_holon(&fixture_context, book_transient_reference.clone())?;
 
     // -- ADD -- //
     let mut staged_expected_properties = PropertyMap::new();
@@ -112,17 +101,15 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     book_staged_reference
         .with_property_value(
-            &*fixture_context,
             PropertyName(MapString("Description".to_string())), // PropertyName,
             "Another description again".to_string(),            // String
         )?
         .with_property_value(
-            &*fixture_context,
-            MapString("AnotherProperty".to_string()), // MapString
+            MapString("AnotherProperty".to_string()),   // MapString
             MapString("Adding a property".to_string()), // MapString
         )?;
 
-    assert_eq!(staged_essential, book_staged_reference.essential_content(&*fixture_context)?);
+    assert_eq!(staged_essential, book_staged_reference.essential_content()?);
 
     // -- REMOVE -- //
     let mut staged_expected_properties_after_remove = staged_expected_properties.clone();
@@ -135,18 +122,13 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     );
 
     book_staged_reference.remove_property_value(
-        &*fixture_context,
         Description, // Enum
     )?;
     book_staged_reference.remove_property_value(
-        &*fixture_context,
         PropertyName(MapString("AnotherProperty".to_string())), // PropertyName
     )?;
 
-    assert_eq!(
-        staged_essential_after_remove,
-        book_staged_reference.essential_content(&*fixture_context)?
-    );
+    assert_eq!(staged_essential_after_remove, book_staged_reference.essential_content()?);
 
     Ok(test_case)
 }

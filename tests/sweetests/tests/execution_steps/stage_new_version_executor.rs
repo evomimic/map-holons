@@ -1,6 +1,7 @@
 use holons_prelude::prelude::*;
 use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance_request;
@@ -22,22 +23,25 @@ pub async fn execute_stage_new_version(
     };
     info!("--- TEST STEP: {description} ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(context, &source_token).unwrap();
+        state.resolve_source_reference(&context, &source_token).unwrap();
 
     // 2. BUILD — stage_new_version DanceRequest
-    let original_holon_id = source_reference.holon_id(context).expect("Failed to get LocalId");
+    let original_holon_id = source_reference.holon_id()
+        .expect("Failed to get LocalId");
     let request = build_stage_new_version_dance_request(original_holon_id.clone())
         .expect("Failed to build stage_new_version request");
     debug!("Dance Request: {:#?}", request);
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+        .await;
+    // let dance_initiator = context.get_dance_initiator().unwrap();
+    // let response = dance_initiator.initiate_dance(Arc::clone(&context), request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -65,23 +69,24 @@ pub async fn execute_stage_new_version(
     let execution_reference =
         ExecutionReference::from_token_execution(&source_token, execution_handle.clone());
 
-    execution_reference.assert_essential_content_eq(context);
+    execution_reference.assert_essential_content_eq();
     info!("Success! Staged new version holon's essential content matched expected");
 
     // 6. RECORD — make execution result available downstream
     state.record(&source_token, execution_reference).unwrap();
 
-    // 7. Verify predecessor relationship
-    let predecessor = response_holon_reference.predecessor(context).unwrap();
+    // 7. Verify the new version has the original holon as its predecessor.
+    let predecessor = response_holon_reference.predecessor().unwrap().unwrap();
+
     assert_eq!(
-        predecessor,
-        Some(HolonReference::Smart(SmartReference::new(original_holon_id.clone(), None))),
+        predecessor.holon_id().unwrap(),
+        original_holon_id,
         "Predecessor relationship did not match expected"
     );
 
     // 8. Verify base-key staging behavior
-    let original_holon_key = source_reference.key(context).unwrap().unwrap();
-    let by_base = get_staged_holon_by_base_key(context, &original_holon_key);
+    let original_holon_key = source_reference.key().unwrap().unwrap();
+    let by_base = get_staged_holon_by_base_key(&context, &original_holon_key).unwrap();
 
     match by_base {
         Ok(staged_reference) => {
@@ -97,12 +102,13 @@ pub async fn execute_stage_new_version(
                     "get_staged_holon_by_base_key did not match expected"
                 );
 
-                // 9. Verify versioned-key lookup
-                let by_version = get_staged_holon_by_versioned_key(
-                    context,
-                    &staged_reference.versioned_key(context).unwrap(),
-                )
-                .unwrap();
+    // 9. Verify versioned-key lookup
+    let by_version = get_staged_holon_by_versioned_key(
+        &context,
+        &staged_reference.versioned_key()
+.unwrap(),
+    )
+        .unwrap();
 
                 assert_eq!(
                     holon_reference,

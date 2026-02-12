@@ -6,7 +6,6 @@ use hdi::prelude::*;
 use hdk::prelude::*;
 use holons_core::{
     core_shared_objects::key_from_property_map,
-    reference_layer::{HolonReference, SmartReference},
 };
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
@@ -46,10 +45,17 @@ impl SmartLink {
             Ok(None)
         }
     }
-    pub fn to_holon_reference(&self) -> HolonReference {
-        let smart_reference =
-            SmartReference::new(self.to_address.clone(), self.smart_property_values.clone());
-        HolonReference::Smart(smart_reference)
+
+    // pub fn to_holon_reference(&self) -> HolonReference {
+    //     let smart_reference =
+    //         SmartReference::new(self.to_address.clone(), self.smart_property_values.clone());
+    //     HolonReference::Smart(smart_reference)
+    // }
+
+    /// Returns the persisted target identity and any cached smart properties.
+    /// This is context-free and does not mint runtime references.
+    pub fn to_pointer(&self) -> (HolonId, Option<PropertyMap>) {
+        (self.to_address.clone(), self.smart_property_values.clone())
     }
 }
 

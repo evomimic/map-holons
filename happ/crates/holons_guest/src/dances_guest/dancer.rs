@@ -1,81 +1,25 @@
 use std::{collections::HashMap, sync::Arc};
 
-use hdk::prelude::*;
-
-use crate::{init_guest_context, GuestHolonService};
-
 use base_types::MapString;
 use core_types::HolonError;
+use hdk::prelude::*;
 use holons_core::dances::holon_dance_adapter::*;
 use holons_core::{
-    dances::{
-        descriptors_dance_adapter::load_core_schema_dance, DanceRequest, DanceResponse,
-        ResponseBody, ResponseStatusCode, SessionState,
-    },
-    HolonsContextBehavior,
+    core_shared_objects::transactions::TransactionContext,
+    dances::{DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode},
 };
 
-/// The Dancer handles dance() requests on the uniform API and dispatches the Rust function
-/// associated with that Dance using its dispatch_table. dance() is also responsible for
-/// initializing the context from the session state and, after getting the result of the call,
-/// restoring the session state from the context.
-///
-/// This function always returns a DanceResponse (instead of an Error) because
-/// errors are encoded in the DanceResponse's status_code.
-#[hdk_extern]
-pub fn dance(request: DanceRequest) -> ExternResult<DanceResponse> {
-    info!("\n\n\n***********************  Entered Dancer::dance() with {}", request.summarize());
-
-    // -------------------------- ENSURE VALID REQUEST ---------------------------------
-    if let Err(status_code) = validate_request(&request) {
-        let response = DanceResponse::new(
-            status_code,
-            MapString("Invalid Request".to_string()),
-            ResponseBody::None,
-            None,
-            request.state.clone(),
-        );
-
-        return Ok(response);
-    }
-
-    // Initialize the context for this request
-    //
-    let context = match initialize_context_from_request(&request) {
-        Ok(ctx) => ctx,
-        Err(error_response) => return Ok(error_response),
-    };
-
-    debug!("context and space manager ready to dance");
-
-    // Get the Dancer
+pub(crate) fn dispatch_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> DanceResponse {
     let dancer = Dancer::new();
-
-    // TODO: If the request is a Command, add the request to the undo_list
-    // info!("confirm dance is dispatchable");
-    //
-    // // Dispatch the dance and map result to DanceResponse
-    // if !dancer.dance_name_is_dispatchable(request.clone()) {
-    //     return Err(HolonError::NotImplemented(
-    //         "No function to dispatch in dispatch table".to_string(),
-    //     )
-    //     .into());
-    // }
-    debug!("dispatching dance");
-
-    let dispatch_result = dancer.dispatch(&*context, request.clone());
-    let result = process_dispatch_result(&*context, dispatch_result);
-
-    info!("\n======== RETURNING FROM {:?} Dance with {}", request.dance_name.0, result.summarize());
-
-    Ok(result)
+    let dispatch_result = dancer.dispatch(context, request);
+    process_dispatch_result(dispatch_result)
 }
 
 // Define a type alias for functions that can be dispatched
-type DanceFunction = fn(
-    context: &dyn HolonsContextBehavior,
-    request: DanceRequest,
-) -> Result<ResponseBody, HolonError>;
+type DanceFunction = fn(&Arc<TransactionContext>, DanceRequest) -> Result<ResponseBody, HolonError>;
 
 /// The dispatch table offers the Dancer behaviors including the external API operations of dance and
 /// (eventually) undo / redo (see [Command Pattern Wiki](https://en.wikipedia.org/wiki/Command_pattern)
@@ -85,10 +29,9 @@ type DanceFunction = fn(
 /// `UndoableCommand` Trait. This trait defines: `execute`, `undo` and `redo` functions.
 /// Additionally, an `ActionsController` is responsible for executing commands, maintaining the undo
 /// and redo stacks, and orchestrating undo and redo operations.
-/// * **Asynch vs Synch Commands** -- Commands will support either or both _Asynchronous execution_
+/// * **Async vs Sync Commands** -- Commands will support either or both _Asynchronous execution_
 /// (non-blocking), _Synchronous execution_ (blocking).
 ///
-
 #[derive(Debug)]
 struct Dancer {
     pub dispatch_table: HashMap<&'static str, DanceFunction>,
@@ -105,7 +48,6 @@ impl Dancer {
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
-        dispatch_table.insert("load_core_schema", load_core_schema_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
@@ -138,7 +80,7 @@ impl Dancer {
     // Function to dispatch a request based on the function name
     fn dispatch(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         request: DanceRequest,
     ) -> Result<ResponseBody, HolonError> {
         if let Some(func) = self.dispatch_table.get(request.dance_name.0.as_str()) {
@@ -149,110 +91,6 @@ impl Dancer {
     }
 }
 
-/// Creates a `DanceResponse` for cases where `init_context_from_session` fails.
-/// Uses the session state from the `DanceRequest` to preserve state integrity.
-///
-/// # Arguments
-/// * `error` - The error that occurred during initialization.
-/// * `request` - The original `DanceRequest` containing the session state.
-///
-/// # Returns
-/// A `DanceResponse` with the error details and the original session state.
-fn create_error_response(error: HolonError, request: &DanceRequest) -> DanceResponse {
-    let error_message = format!("Failed to initialize context: {}", error);
-    DanceResponse {
-        status_code: ResponseStatusCode::from(error),
-        description: MapString(error_message),
-        body: ResponseBody::None,
-        descriptor: None,
-        state: request.get_state().cloned(), // Use the session state from the request
-    }
-}
-
-fn initialize_context_from_request(
-    request: &DanceRequest,
-) -> Result<Arc<dyn HolonsContextBehavior>, DanceResponse> {
-    info!("==Initializing context from request==");
-    debug!("request: {:#?}", request);
-
-    // Since `dance()` validates the request, we can safely unwrap the state.
-    let session_state = request.state.as_ref().expect("Valid request should have a state");
-
-    let staged_holons = session_state.get_staged_holons().clone();
-    let transient_holons = session_state.get_transient_holons().clone();
-    let local_space_holon = session_state.get_local_holon_space();
-
-    // Initialize context from session state
-    let context = init_guest_context(transient_holons, staged_holons, local_space_holon.clone())
-        .map_err(|error| create_error_response(error, request))?;
-
-    let holon_service = context.get_holon_service();
-    let guest = {
-        if let Some(guest) = holon_service.as_any().downcast_ref::<GuestHolonService>() {
-            Ok(guest)
-        } else {
-            Err(HolonError::DowncastFailure("GuestHolonService".to_string()))
-        }
-    }
-    .map_err(|error| create_error_response(error, request))?;
-    // Ensure HolonSpace Holon exists
-    let ensured_local_space_holon = match local_space_holon {
-        Some(space_holon) => space_holon, // space holon already in session state
-        None => guest
-            .ensure_local_holon_space(context.as_ref())
-            .map_err(|error| create_error_response(error, request))?, // get space_holon from DHT, creating it if necessary
-    };
-    // Update space manager with it
-    context
-        .set_space_holon(ensured_local_space_holon)
-        .map_err(|error| create_error_response(error, request))?;
-
-    Ok(context)
-}
-
-/// Restores the session state for the DanceResponse from context. This should always
-/// be called before returning DanceResponse since the state is intended to be "ping-ponged"
-/// between client and guest.
-///
-/// NOTE: State restoration is **best-effort**. If exporting staged/transient holons
-/// or reading the local space holon fails (e.g., due to lock acquisition errors),
-/// this function logs the error and returns `None` instead of panicking.
-fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Option<SessionState> {
-    // Export staged holons as a single SerializableHolonPool
-    let serializable_staged_pool = match context.export_staged_holons() {
-        Ok(pool) => pool,
-        Err(error) => {
-            warn!("Failed to export staged holons while restoring session state: {:?}", error);
-            return None;
-        }
-    };
-
-    // Export transient holons as a single SerializableHolonPool
-    let serializable_transient_pool = match context.export_transient_holons() {
-        Ok(pool) => pool,
-        Err(error) => {
-            warn!("Failed to export transient holons while restoring session state: {:?}", error);
-            return None;
-        }
-    };
-
-    // Get the local space holon (now returns Result<Option<HolonReference>, HolonError>)
-    let local_space_holon = match context.get_space_holon() {
-        Ok(space_opt) => space_opt,
-        Err(error) => {
-            warn!("Failed to read local_holon_space while restoring session state: {:?}", error);
-            return None;
-        }
-    };
-
-    // Construct SessionState with SerializableHolonPool replacing StagingArea
-    Some(SessionState::new(
-        serializable_transient_pool,
-        serializable_staged_pool,
-        local_space_holon,
-    ))
-}
-
 /// This function creates a DanceResponse from a `dispatch_result`.
 ///
 /// If `dispatch_result` is `Ok`,
@@ -260,17 +98,12 @@ fn restore_session_state_from_context(context: &dyn HolonsContextBehavior) -> Op
 /// * `description` is set to "Success".
 /// * `body` is set to the body returned in the dispatch_result
 /// * `descriptor` is all initialized to None
-/// * `state` is restored from context
-///
 /// If the `dispatch_result` is `Err`,
 /// * `status_code` is set from the mapping of HolonError `ResponseStatusCode`
 /// * `description` holds the error message associated with the HolonError
 /// * `body` and `descriptor` are set to None
-/// * `state` is restored from context
 ///
-
 fn process_dispatch_result(
-    context: &dyn HolonsContextBehavior, // 🔄 Changed back to `&dyn`
     dispatch_result: Result<ResponseBody, HolonError>,
 ) -> DanceResponse {
     match dispatch_result {
@@ -279,7 +112,6 @@ fn process_dispatch_result(
             description: MapString("Success".to_string()),
             body,
             descriptor: None,
-            state: restore_session_state_from_context(context),
         },
         Err(error) => {
             let error_message = extract_error_message(&error);
@@ -288,56 +120,15 @@ fn process_dispatch_result(
                 description: MapString(error_message),
                 body: ResponseBody::None,
                 descriptor: None,
-                state: restore_session_state_from_context(context),
             }
         }
     }
 }
 
-/// This helper function extracts the error message from a HolonError so that the message
-/// can be included in the DanceResponse
+/// Extracts a user-facing error message from a `HolonError` for inclusion in a `DanceResponse`.
+///
+/// This stays correct automatically as new `HolonError` variants are added, because
+/// `HolonError` derives `thiserror::Error` and its `Display` impl is the source of truth.
 fn extract_error_message(error: &HolonError) -> String {
-    match error.clone() {
-        HolonError::CacheError(_)
-        | HolonError::CommitFailure(_)
-        | HolonError::ConductorError(_)
-        | HolonError::DeletionNotAllowed(_)
-        | HolonError::DowncastFailure(_)
-        | HolonError::DuplicateError(_, _)
-        | HolonError::EmptyField(_)
-        | HolonError::FailedToBorrow(_)
-        | HolonError::FailedToAcquireLock(_)
-        | HolonError::HashConversion(_, _)
-        | HolonError::HolonNotFound(_)
-        | HolonError::IndexOutOfRange(_)
-        | HolonError::InvalidHolonReference(_)
-        | HolonError::InvalidParameter(_)
-        | HolonError::InvalidRelationship(_, _)
-        | HolonError::InvalidTransition(_)
-        | HolonError::InvalidType(_)
-        | HolonError::InvalidUpdate(_)
-        | HolonError::LoaderParsingError(_)
-        | HolonError::Misc(_)
-        | HolonError::MissingStagedCollection(_)
-        | HolonError::NotAccessible(_, _)
-        | HolonError::NotImplemented(_)
-        | HolonError::RecordConversion(_)
-        | HolonError::ServiceNotAvailable(_)
-        | HolonError::UnableToAddHolons(_)
-        | HolonError::UnexpectedValueType(_, _)
-        | HolonError::Utf8Conversion(_, _)
-        | HolonError::WasmError(_) => error.to_string(),
-        HolonError::ValidationError(validation_error) => validation_error.to_string(),
-    }
-}
-fn validate_request(request: &DanceRequest) -> Result<(), ResponseStatusCode> {
-    // Check if session_state is present
-    if request.state.is_none() {
-        warn!("Validation failed: Missing session state");
-        return Err(ResponseStatusCode::BadRequest);
-    }
-
-    // TODO: Add additional validation checks for dance_name, dance_type, etc.
-
-    Ok(())
+    error.to_string()
 }

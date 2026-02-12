@@ -5,14 +5,14 @@ use std::sync::{
     Arc, RwLock,
 };
 
-use core_types::HolonError;
+use core_types::{HolonError, HolonId, TemporaryId};
 
-use crate::core_shared_objects::holon_pool::SerializableHolonPool;
+use super::{TransactionContextHandle, TxId};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
 use crate::core_shared_objects::{
-    HolonCacheAccess, Nursery, NurseryAccess, TransientCollection, TransientHolonManager,
+    HolonCacheAccess, HolonPool, Nursery, TransientCollection, TransientHolonManager,
     TransientManagerAccess,
 };
 use crate::dances::dance_initiator::DanceInitiator;
@@ -20,8 +20,7 @@ use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
     HolonsContextBehavior, TransientHolonBehavior,
 };
-
-use super::TxId;
+use crate::{SmartReference, TransientReference};
 
 /// Transaction-scoped execution context holding mutable transaction state.
 #[derive(Debug)]
@@ -35,16 +34,19 @@ pub struct TransactionContext {
 
 impl TransactionContext {
     /// Creates a new transaction context with its own staging and transient pools.
-    pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Self {
-        // Store transaction identity and space linkage.
-        // Construct the transaction-owned staging and transient pools.
-        Self {
+    pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Arc<Self> {
+        Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
             is_open: AtomicBool::new(true),
             space_manager,
-            nursery: Arc::new(Nursery::new()),
-            transient_manager: Arc::new(TransientHolonManager::new_empty()),
-        }
+            nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
+            transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
+        })
+    }
+
+    /// Creates a handle to this transaction context for holon references.
+    pub(crate) fn handle(self: &Arc<Self>) -> TransactionContextHandle {
+        TransactionContextHandle::new(Arc::clone(self))
     }
 
     /// Returns the transaction id.
@@ -72,9 +74,61 @@ impl TransactionContext {
         Arc::clone(&self.transient_manager)
     }
 
+    // Public accessors for staging/transient behaviors (transaction-scoped).
+    pub fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
+    }
+
+    pub fn get_transient_behavior_service(&self) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
+    }
+
+    // Internal privileged accessors for reference resolution.
+    pub(crate) fn nursery_access_internal(&self) -> Arc<dyn NurseryAccessInternal + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn NurseryAccessInternal + Send + Sync>
+    }
+
+    pub(crate) fn transient_manager_access_internal(
+        &self,
+    ) -> Arc<dyn TransientManagerAccessInternal + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccessInternal + Send + Sync>
+    }
+
+    pub(crate) fn cache_access_internal(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
+        self.require_space_manager().get_cache_access()
+    }
+
+    // Public import/export for session_state-state transport.
+    pub fn export_staged_holons(&self) -> Result<HolonPool, HolonError> {
+        self.nursery.export_staged_holons()
+    }
+
+    pub fn import_staged_holons(&self, staged_holons: HolonPool) -> Result<(), HolonError> {
+        self.nursery.import_staged_holons(staged_holons)
+    }
+
+    pub fn export_transient_holons(&self) -> Result<HolonPool, HolonError> {
+        self.transient_manager.export_transient_holons()
+    }
+
+    pub fn import_transient_holons(&self, transient_holons: HolonPool) -> Result<(), HolonError> {
+        self.transient_manager.import_transient_holons(transient_holons)
+    }
+
     fn require_space_manager(&self) -> Arc<HolonSpaceManager> {
         // Space manager lifetime is guaranteed by the strong Arc stored on the context.
         Arc::clone(&self.space_manager)
+    }
+
+    /// This function converts a TemporaryId into a validated TransientReference.
+    /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
+    pub fn transient_reference_for_id(
+        self: &Arc<Self>,
+        id: &TemporaryId,
+    ) -> Result<TransientReference, HolonError> {
+        // Validate id exists in this tx’s transient pool
+        self.transient_manager().get_holon_by_id(id)?;
+        Ok(TransientReference::from_temporary_id(self.handle(), id))
     }
 }
 
@@ -85,40 +139,6 @@ impl HolonsContextBehavior for TransactionContext {
 
     fn is_open(&self) -> bool {
         self.is_open.load(Ordering::Acquire)
-    }
-
-    fn get_nursery_access(&self) -> Arc<dyn NurseryAccess + Send + Sync> {
-        Arc::clone(&self.nursery) as Arc<dyn NurseryAccess + Send + Sync>
-    }
-
-    fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
-        Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
-    }
-
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.nursery.export_staged_holons()
-    }
-
-    fn import_staged_holons(&self, staged_holons: SerializableHolonPool) {
-        // Preserve the existing void API by discarding the internal result.
-        let _ = self.nursery.import_staged_holons(staged_holons);
-    }
-
-    fn get_transient_behavior_service(&self) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
-        Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
-    }
-
-    fn get_transient_manager_access(&self) -> Arc<dyn TransientManagerAccess + Send + Sync> {
-        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccess + Send + Sync>
-    }
-
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.transient_manager.export_transient_holons()
-    }
-
-    fn import_transient_holons(&self, transient_holons: SerializableHolonPool) {
-        // Preserve the existing void API by discarding the internal result.
-        let _ = self.transient_manager.import_transient_holons(transient_holons);
     }
 
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
@@ -133,12 +153,29 @@ impl HolonsContextBehavior for TransactionContext {
         self.require_space_manager().get_dance_initiator()
     }
 
+    // NOTE: This reacquires Arc<TransactionContext> via TransactionManager because HolonsContextBehavior
+    // must remain object-safe for now. Once Phase 1.4 consolidates execution under TransactionContext,
+    // this should become a simple `self: &Arc<Self>` method using `self.handle()`.
     fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
-        self.require_space_manager().get_space_holon()
+        let maybe_holon_id = self.require_space_manager().get_space_holon_id()?;
+        let Some(holon_id) = maybe_holon_id else {
+            return Ok(None);
+        };
+
+        // Reacquire the Arc<TransactionContext> so we can create a TransactionContextHandle.
+        let context = self
+            .require_space_manager()
+            .get_transaction_manager()
+            .get_transaction(&self.tx_id())?
+            .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
+
+        let transaction_handle = context.handle();
+
+        Ok(Some(HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))))
     }
 
-    fn set_space_holon(&self, space: HolonReference) -> Result<(), HolonError> {
-        self.require_space_manager().set_space_holon(space)
+    fn set_space_holon_id(&self, space_holon_id: HolonId) -> Result<(), HolonError> {
+        self.require_space_manager().set_space_holon_id(space_holon_id)
     }
 
     fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {

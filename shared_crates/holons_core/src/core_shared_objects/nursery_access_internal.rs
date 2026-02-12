@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use super::holon_pool::SerializableHolonPool;
+use super::holon_pool::HolonPool;
 use crate::{HolonStagingBehavior, NurseryAccess, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, TemporaryId};
@@ -20,18 +20,18 @@ use core_types::{HolonError, TemporaryId};
 /// - Exporting/importing the full staged holon pool
 /// - Providing holons to the commit pipeline
 pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + Sync {
-    /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their concrete type.
+    /// Enables safe downcasting of `NurseryAccessInternal` trait objects to their
+    /// concrete type when core services require direct access to `Nursery`.
     ///
-    /// This method is useful when working with `NurseryAccessInternal` as a trait object (`dyn NurseryAccessInternal`)
-    /// but needing to recover its underlying concrete type (e.g., `Nursery`). It allows casting
-    /// through `Any`, which is required because Rust does not support direct downcasting of trait objects.
+    /// This method is useful when working with `NurseryAccessInternal` as a trait object
+    /// (`dyn NurseryAccessInternal`) but needing to recover its underlying concrete type
+    /// (e.g., `Nursery`). It allows casting through `Any`, which is required because Rust does not
+    /// support direct downcasting of trait objects.
     fn as_any(&self) -> &dyn Any;
 
-    /// # CAUTION!!!
+    /// # Safety -- This method is intended **only for internal use by `GuestHolonService`**.
     ///
-    /// **This method is ONLY intended for use by the GuestHolonService**
-    ///
-    /// Clears the Nursery's staged holons
+    /// It clears all staged holons and should not be exposed outside the core commit lifecycle.
     fn clear_stage(&self) -> Result<(), HolonError>;
 
     /// Finds a holon by its (unique) versioned key and returns its TemporaryId.
@@ -45,10 +45,10 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// `Ok(TemporaryId)` containing the index if the key exists, or an `Err` if the key is not found.
     fn get_id_by_versioned_key(&self, key: &MapString) -> Result<TemporaryId, HolonError>;
 
-    /// Exports the currently staged holons as a `SerializableHolonPool`.
+    /// Exports the currently staged holons as a runtime `HolonPool`.
     ///
     /// This method creates a **deep clone** of the current `HolonPool`, including all holons
-    /// and the keyed index. The returned `SerializableHolonPool` is **independent** of the original,
+    /// and the keyed index. The returned `HolonPool` is **independent** of the original,
     /// meaning any modifications to it will **not affect** the actual `Nursery` state.
     ///
     /// # Use Cases
@@ -60,12 +60,12 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// - **Internal references within the exported data remain consistent**, ensuring accurate reconstruction upon import.
     ///
     /// # Returns
-    /// A `SerializableHolonPool` containing a **deep clone** of the current staged holons and their keyed index.
-    fn export_staged_holons(&self) -> Result<SerializableHolonPool, HolonError>;
+    /// A `HolonPool` containing a **deep clone** of the current staged holons and their keyed index.
+    fn export_staged_holons(&self) -> Result<HolonPool, HolonError>;
 
-    /// Imports a `SerializableHolonPool`, replacing the current staged holons.
+    /// Imports a bound `HolonPool`, replacing the current staged holons.
     ///
-    /// This method **completely replaces** the current staged holons with the provided `SerializableHolonPool`.
+    /// This method **completely replaces** the current staged holons with the provided `HolonPool`.
     /// Any existing staged holons will be **discarded** in favor of the imported data.
     ///
     /// # Use Cases
@@ -77,14 +77,17 @@ pub trait NurseryAccessInternal: NurseryAccess + HolonStagingBehavior + Send + S
     /// - If the provided pool is empty, the `Nursery` will also be cleared.
     ///
     /// # Arguments
-    /// - `pool` - A `SerializableHolonPool` containing the staged holons and their keyed index.
-    fn import_staged_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError>;
+    /// - `pool` - A `HolonPool` containing the staged holons and their keyed index.
+    fn import_staged_holons(&self, pool: HolonPool) -> Result<(), HolonError>;
 
     /// Returns a reference-layer view of all staged holons as `StagedReference`s.
-    ///
-    /// This hides the underlying HolonPool and lock details from callers and is the
-    /// entry point for the commit path.
-    fn get_staged_references(&self) -> Result<Vec<StagedReference>, HolonError>;
+    /// - This method assumes the provided `HolonPool` is already correctly
+    ///   constructed; wrapping holons in `Arc<RwLock<Holon>>` is handled by
+    ///   `HolonPool` itself, not by this trait.
+    fn get_staged_references(
+        &self,
+        //transaction_handle: &TransactionContextHandle,
+    ) -> Result<Vec<StagedReference>, HolonError>;
 }
 
 #[cfg(test)]

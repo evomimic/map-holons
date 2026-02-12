@@ -12,14 +12,15 @@
 //! It exposes small, focused functions that the parsing layer can call after
 //! validating and decoding the raw JSON into `RawLoaderHolon` structures.
 
-use std::collections::HashMap;
-use std::path::Path;
-
 use holons_prelude::prelude::*;
 use serde::{de, Deserialize};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::Arc;
 
 use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 
 /// Raw JSON representation of the `"meta"` block from a loader import file.
 ///
@@ -112,7 +113,7 @@ pub struct RawRelationshipSpec {
 /// - Populate bundle metadata properties (including `Filename`).
 /// - Attach the bundle to the `HolonLoadSet` with `Contains`.
 pub fn create_loader_bundle_for_file(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     load_set_ref: &HolonReference,
     import_file_path: &Path,
     raw_meta: &Option<RawLoaderMeta>,
@@ -123,13 +124,12 @@ pub fn create_loader_bundle_for_file(
 
     // Apply any metadata properties from the JSON meta block.
     if let Some(meta) = raw_meta {
-        apply_json_properties(context, &mut bundle, &meta.extra)?;
+        apply_json_properties(&mut bundle, &meta.extra)?;
     }
 
     // Always stamp the canonical Filename property with the provided file path.
     let filename_value = path_to_string(import_file_path);
     bundle.with_property_value(
-        context,
         CorePropertyTypeName::Filename,
         BaseValue::StringValue(MapString(filename_value)),
     )?;
@@ -137,11 +137,8 @@ pub fn create_loader_bundle_for_file(
     // Attach bundle to the HolonLoadSet via Contains.
     let bundle_reference = HolonReference::Transient(bundle);
     let mut load_set = load_set_ref.clone();
-    load_set.add_related_holons(
-        context,
-        CoreRelationshipTypeName::Contains,
-        vec![bundle_reference.clone()],
-    )?;
+    load_set
+        .add_related_holons(CoreRelationshipTypeName::Contains, vec![bundle_reference.clone()])?;
 
     Ok(bundle_reference)
 }
@@ -156,7 +153,7 @@ pub fn create_loader_bundle_for_file(
 /// - Set the `StartUtf8ByteOffset` property from the provided offset.
 /// - Attach the loader holon to its `HolonLoaderBundle`.
 pub fn create_loader_holon_from_raw(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_ref: &HolonReference,
     raw_holon: &RawLoaderHolon,
     start_utf8_byte_offset: i64,
@@ -169,11 +166,10 @@ pub fn create_loader_holon_from_raw(
     let mut loader_holon = new_holon(context, Some(MapString(raw_holon.key.clone())))?;
 
     // Copy user-defined properties.
-    apply_json_properties(context, &mut loader_holon, &raw_holon.properties)?;
+    apply_json_properties(&mut loader_holon, &raw_holon.properties)?;
 
     // Stamp the loader-only byte offset provenance property.
     loader_holon.with_property_value(
-        context,
         CorePropertyTypeName::StartUtf8ByteOffset,
         start_utf8_byte_offset.to_base_value(),
     )?;
@@ -182,11 +178,7 @@ pub fn create_loader_holon_from_raw(
 
     // Attach the loader holon to its bundle via BundleMembers.
     let mut bundle = bundle_ref.clone();
-    bundle.add_related_holons(
-        context,
-        CoreRelationshipTypeName::BundleMembers,
-        vec![loader_ref.clone()],
-    )?;
+    bundle.add_related_holons(CoreRelationshipTypeName::BundleMembers, vec![loader_ref.clone()])?;
 
     Ok(loader_ref)
 }
@@ -222,7 +214,7 @@ pub fn collect_relationship_specs_for_loader_holon(
 ///   - `ReferenceSource` (LRR → source endpoint)
 ///   - `ReferenceTarget` (LRR → target endpoints*)
 pub fn attach_relationships_for_loader_holon(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     loader_holon_ref: &HolonReference,
     source_holon_key: &str,
     relationship_specs: &[RawRelationshipSpec],
@@ -267,7 +259,7 @@ pub fn attach_relationships_for_loader_holon(
 ///       - `ReferenceTarget`
 /// - If `type_descriptor_key` is empty, this function is a no-op.
 pub fn attach_described_by_relationship(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     loader_holon_ref: &HolonReference,
     holon_key: &str,
     type_descriptor_key: &str,
@@ -316,7 +308,6 @@ fn path_to_string(import_file_path: &Path) -> String {
 
 /// Apply a JSON property map onto a transient holon by converting each value into a `BaseValue`.
 fn apply_json_properties(
-    context: &dyn HolonsContextBehavior,
     target: &mut TransientReference,
     properties: &HashMap<String, Value>,
 ) -> Result<(), HolonError> {
@@ -326,7 +317,7 @@ fn apply_json_properties(
 
     for (name, value) in properties {
         let base_value = json_value_to_base_value(name, value)?;
-        target.with_property_value(context, name.as_str(), base_value)?;
+        target.with_property_value(name.as_str(), base_value)?;
     }
 
     Ok(())
@@ -414,7 +405,7 @@ where
 
 /// Create the loader relationship + endpoint holons and wire them into the graph.
 fn create_relationship_reference(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     loader_holon_ref: &mut HolonReference,
     source_holon_key: &str,
     relationship_name: &str,
@@ -439,12 +430,10 @@ fn create_relationship_reference(
     let mut relationship_reference = new_holon(context, Some(MapString(relationship_key)))?;
 
     relationship_reference.with_property_value(
-        context,
         CorePropertyTypeName::RelationshipName,
         BaseValue::StringValue(MapString(relationship_name.to_string())),
     )?;
     relationship_reference.with_property_value(
-        context,
         CorePropertyTypeName::IsDeclared,
         BaseValue::BooleanValue(MapBoolean(true)),
     )?;
@@ -453,7 +442,6 @@ fn create_relationship_reference(
     let source_ref_key = format!("LoaderHolonReference.Source.{}", source_holon_key);
     let mut source_reference = new_holon(context, Some(MapString(source_ref_key)))?;
     source_reference.with_property_value(
-        context,
         CorePropertyTypeName::HolonKey,
         BaseValue::StringValue(MapString(source_holon_key.to_string())),
     )?;
@@ -471,7 +459,6 @@ fn create_relationship_reference(
         let target_ref_key = format!("LoaderHolonReference.Target{}.{}", index + 1, target_key);
         let mut target_reference = new_holon(context, Some(MapString(target_ref_key)))?;
         target_reference.with_property_value(
-            context,
             CorePropertyTypeName::HolonKey,
             BaseValue::StringValue(MapString(target_key.clone())),
         )?;
@@ -480,19 +467,14 @@ fn create_relationship_reference(
 
     // Wire endpoints to the relationship reference.
     relationship_reference.add_related_holons(
-        context,
         CoreRelationshipTypeName::ReferenceSource,
         vec![HolonReference::Transient(source_reference)],
     )?;
-    relationship_reference.add_related_holons(
-        context,
-        CoreRelationshipTypeName::ReferenceTarget,
-        target_references,
-    )?;
+    relationship_reference
+        .add_related_holons(CoreRelationshipTypeName::ReferenceTarget, target_references)?;
 
     // Attach the relationship reference to the loader holon.
     loader_holon_ref.add_related_holons(
-        context,
         CoreRelationshipTypeName::HasRelationshipReference,
         vec![HolonReference::Transient(relationship_reference)],
     )?;

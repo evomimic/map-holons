@@ -1,15 +1,17 @@
 use derive_new::new;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, RwLock},
 };
 
 use super::{ReadableRelationship, TransientRelationshipMap};
-use crate::{core_shared_objects::HolonCollection, HolonsContextBehavior, StagedRelationshipMap};
+use crate::{core_shared_objects::HolonCollection, StagedRelationshipMap};
 use core_types::{HolonError, RelationshipName};
 
-/// Custom RelationshipMap is only used for caching and will never be serialized
+/// Runtime-only `RelationshipMap` used for caching related holons.
+///
+/// This type is **never serialized** and exists solely to support
+/// in-memory relationship caching and traversal during execution.
 #[derive(new, Clone, Debug)]
 pub struct RelationshipMap {
     map: HashMap<RelationshipName, Arc<RwLock<HolonCollection>>>,
@@ -21,10 +23,9 @@ impl RelationshipMap {
     }
 
     /// Converts to a StagedRelationshipMap.
-    pub fn clone_for_staged(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<StagedRelationshipMap, HolonError> {
+    /// 
+    /// Any `TransientReference` entries are intentionally skipped during cloning.
+    pub fn clone_for_staged(&self) -> Result<StagedRelationshipMap, HolonError> {
         let mut cloned_map = BTreeMap::new();
         for (name, arc_lock) in self.map.iter() {
             let collection = arc_lock
@@ -35,7 +36,7 @@ impl RelationshipMap {
                         e
                     ))
                 })?
-                .clone_for_staged(context)?; // Skips any TransientReference members
+                .clone_for_staged()?; // Skips any TransientReference members
             cloned_map.insert(name.clone(), Arc::new(RwLock::new(collection)));
         }
         Ok(StagedRelationshipMap::new(cloned_map))
@@ -104,42 +105,43 @@ impl ReadableRelationship for RelationshipMap {
     }
 }
 
-// Implement Serialize for RelationshipMap
-impl Serialize for RelationshipMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut serializable_map = HashMap::new();
-        for (key, arc_lock) in &self.map {
-            let coll = arc_lock.read().map_err(|e| {
-                serde::ser::Error::custom(format!(
-                    "Failed to acquire read lock on holon collection: {}",
-                    e
-                ))
-            })?;
-            serializable_map.insert(key.clone(), coll.clone());
-        }
-        serializable_map.serialize(serializer)
-    }
-}
-
-// Implement Deserialize for RelationshipMap
-impl<'de> Deserialize<'de> for RelationshipMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let deserialized_map: HashMap<RelationshipName, HolonCollection> =
-            HashMap::deserialize(deserializer)?;
-        let wrapped_map: HashMap<_, _> = deserialized_map
-            .into_iter()
-            .map(|(key, value)| (key, Arc::new(RwLock::new(value))))
-            .collect();
-
-        Ok(RelationshipMap { map: wrapped_map })
-    }
-}
+// --- RelationshipMap states that it should not be serialized ---
+// // Implement Serialize for RelationshipMap
+// impl Serialize for RelationshipMap {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         let mut serializable_map = HashMap::new();
+//         for (key, arc_lock) in &self.map {
+//             let coll = arc_lock.read().map_err(|e| {
+//                 serde::ser::Error::custom(format!(
+//                     "Failed to acquire read lock on holon collection: {}",
+//                     e
+//                 ))
+//             })?;
+//             serializable_map.insert(key.clone(), coll.clone());
+//         }
+//         serializable_map.serialize(serializer)
+//     }
+// }
+//
+// // Implement Deserialize for RelationshipMap
+// impl<'de> Deserialize<'de> for RelationshipMap {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: serde::Deserializer<'de>,
+//     {
+//         let deserialized_map: HashMap<RelationshipName, HolonCollection> =
+//             HashMap::deserialize(deserializer)?;
+//         let wrapped_map: HashMap<_, _> = deserialized_map
+//             .into_iter()
+//             .map(|(key, value)| (key, Arc::new(RwLock::new(value))))
+//             .collect();
+//
+//         Ok(RelationshipMap { map: wrapped_map })
+//     }
+// }
 
 impl From<StagedRelationshipMap> for RelationshipMap {
     fn from(staged: StagedRelationshipMap) -> Self {

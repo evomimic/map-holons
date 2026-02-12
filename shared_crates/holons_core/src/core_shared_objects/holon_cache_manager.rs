@@ -2,10 +2,9 @@ use std::sync::{Arc, RwLock};
 use tracing::debug;
 
 use super::{holon_cache::HolonCache, Holon};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::HolonServiceApi;
-use crate::{
-    HolonCacheAccess, HolonCollection, HolonsContextBehavior, RelationshipCache, RelationshipMap,
-};
+use crate::{HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
 #[derive(Debug)]
@@ -53,6 +52,7 @@ impl HolonCacheAccess for HolonCacheManager {
 
     fn get_related_holons(
         &self,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
@@ -61,12 +61,17 @@ impl HolonCacheAccess for HolonCacheManager {
             .map_err(|e| {
                 HolonError::FailedToAcquireLock(format!("Cache manager read lock poisoned: {}", e))
             })?
-            .related_holons(self.holon_service.as_ref(), source_holon_id, relationship_name)
+            .related_holons(
+                context,
+                self.holon_service.as_ref(),
+                source_holon_id,
+                relationship_name,
+            )
     }
 
     fn get_all_related_holons(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         self.relationship_cache

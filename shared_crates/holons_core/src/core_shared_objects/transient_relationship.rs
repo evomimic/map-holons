@@ -2,10 +2,9 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use derive_new::new;
-use serde::{Deserialize, Serialize};
 
 use super::{HolonCollection, ReadableRelationship, WritableRelationship};
-use crate::{HolonCollectionApi, HolonReference, HolonsContextBehavior, StagedRelationshipMap};
+use crate::{HolonCollectionApi, HolonReference, StagedRelationshipMap};
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
 
@@ -83,7 +82,6 @@ impl TransientRelationshipMap {
     /// - Returns an error if adding references fails due to validation or other issues.
     pub fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
@@ -99,7 +97,7 @@ impl TransientRelationshipMap {
                     e
                 ))
             })?
-            .add_references(context, holons)?;
+            .add_references(holons)?;
         Ok(())
     }
 
@@ -159,7 +157,6 @@ impl TransientRelationshipMap {
     /// - Returns an error if removing references fails due to validation or other issues.
     pub fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
@@ -171,7 +168,7 @@ impl TransientRelationshipMap {
                         e
                     ))
                 })?
-                .remove_references(context, holons)?;
+                .remove_references(holons)?;
             Ok(())
         } else {
             Err(HolonError::InvalidRelationship(
@@ -251,11 +248,10 @@ impl ReadableRelationship for TransientRelationshipMap {
 impl WritableRelationship for TransientRelationshipMap {
     fn add_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        TransientRelationshipMap::add_related_holons(self, context, relationship_name, holons)
+        TransientRelationshipMap::add_related_holons(self, relationship_name, holons)
     }
 
     fn add_related_holons_with_keys(
@@ -268,11 +264,10 @@ impl WritableRelationship for TransientRelationshipMap {
 
     fn remove_related_holons(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         relationship_name: &RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        TransientRelationshipMap::remove_related_holons(self, context, relationship_name, holons)
+        TransientRelationshipMap::remove_related_holons(self, relationship_name, holons)
     }
 
     fn remove_related_holons_with_keys(
@@ -281,48 +276,5 @@ impl WritableRelationship for TransientRelationshipMap {
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<(), HolonError> {
         TransientRelationshipMap::remove_related_holons_with_keys(self, relationship_name, entries)
-    }
-}
-
-impl Serialize for TransientRelationshipMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        // Create a serializable version of the map by cloning the inner `HolonCollection`
-        let serializable_map: BTreeMap<_, _> = self
-            .map
-            .iter()
-            .map(|(key, value)| {
-                let collection = value.read().map_err(|e| {
-                    serde::ser::Error::custom(format!(
-                        "Failed to acquire read lock on holon collection: {}",
-                        e
-                    ))
-                })?;
-                Ok((key.clone(), collection.clone()))
-            })
-            .collect::<Result<_, _>>()?;
-
-        serializable_map.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for TransientRelationshipMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        // Deserialize into a temporary BTreeMap<RelationshipName, HolonCollection>
-        let deserialized_map: BTreeMap<RelationshipName, HolonCollection> =
-            BTreeMap::deserialize(deserializer)?;
-
-        // Wrap each value in Arc<RwLock<HolonCollection>>
-        let wrapped_map: BTreeMap<_, _> = deserialized_map
-            .into_iter()
-            .map(|(key, value)| (key, Arc::new(RwLock::new(value))))
-            .collect();
-
-        Ok(Self { map: wrapped_map })
     }
 }

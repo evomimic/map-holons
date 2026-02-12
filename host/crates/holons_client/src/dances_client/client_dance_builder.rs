@@ -1,3 +1,4 @@
+use crate::shared_types::map_request::{MapRequest, MapRequestBody};
 use base_types::BaseValue::StringValue;
 use base_types::MapString;
 use core_types::{HolonError, PropertyMap, PropertyName};
@@ -6,13 +7,10 @@ use holon_dance_builders::{
     build_get_holon_by_id_dance_request, build_with_properties_dance_request,
     stage_new_holon_dance::build_stage_new_holon_dance_request,
 };
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::HolonReference;
-use holons_core::{
-    dances::DanceRequest,
-    new_holon, HolonsContextBehavior,
-};
-
-use crate::shared_types::map_request::{MapRequest, MapRequestBody};
+use holons_core::{dances::DanceRequest, new_holon};
+use std::sync::Arc;
 
 pub struct ClientDanceBuilder;
 
@@ -35,14 +33,13 @@ const PERMITTED_OPS: &[&str] = &[
     "with_properties",
 ];
 
-
 impl ClientDanceBuilder {
     pub fn permitted_operations() -> Vec<&'static str> {
         PERMITTED_OPS.to_vec()
     }
 
     pub fn validate_and_execute(
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         Self::validate_request(request)?;
@@ -80,39 +77,38 @@ impl ClientDanceBuilder {
         }
     }
     pub fn abandon_staged_changes_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
 
     pub fn add_related_holons_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
 
     pub fn commit_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         return build_commit_dance_request();
     }
     pub fn delete_holon_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
-    pub fn get_all_holons_dance(
-        //_context: &dyn HolonsContextBehavior,
+    pub fn get_all_holons_dance(//_context: &Arc<TransactionContext>,
         //_request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         return build_get_all_holons_dance_request();
     }
     pub fn get_holon_by_id_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         match &request.body {
@@ -127,19 +123,21 @@ impl ClientDanceBuilder {
         }
     }
     pub fn load_core_schema_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
 
     pub fn load_holons_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
-        match &request.body { 
-            MapRequestBody::TransientReference(transient_ref) => { 
-                return holon_dance_builders::load_holons_dance::build_load_holons_dance_request(transient_ref.clone());
+        match &request.body {
+            MapRequestBody::TransientReference(transient_ref) => {
+                return holon_dance_builders::load_holons_dance::build_load_holons_dance_request(
+                    transient_ref.clone(),
+                );
             }
             _ => {
                 return Err(HolonError::InvalidParameter(
@@ -150,39 +148,42 @@ impl ClientDanceBuilder {
     }
 
     pub fn query_relationships_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
     pub fn remove_properties_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
     pub fn remove_related_holons_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
     pub fn stage_new_from_clone_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
 
     pub fn create_new_holon_dance(
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         match &request.body {
             MapRequestBody::ParameterValues(props) => {
                 let key = Self::extract_holon_key(&props)?;
                 let transient_ref = new_holon(context, Some(key))?;
-                return build_with_properties_dance_request(HolonReference::from(transient_ref.clone()), props.clone());
+                return build_with_properties_dance_request(
+                    HolonReference::from(transient_ref.clone()),
+                    props.clone(),
+                );
             }
             _ => {
                 return Err(HolonError::InvalidParameter(
@@ -193,7 +194,7 @@ impl ClientDanceBuilder {
     }
 
     pub fn stage_new_holon_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         match &request.body {
@@ -209,19 +210,18 @@ impl ClientDanceBuilder {
     }
 
     pub fn stage_new_version_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
     pub fn with_properties_dance(
-        _context: &dyn HolonsContextBehavior,
+        _context: &Arc<TransactionContext>,
         _request: &MapRequest,
     ) -> Result<DanceRequest, HolonError> {
         todo!()
     }
 
-    
     //helpers
 
     fn extract_holon_key(props: &PropertyMap) -> Result<MapString, HolonError> {

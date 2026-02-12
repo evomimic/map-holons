@@ -1,23 +1,24 @@
 use crate::core_shared_objects::{Holon, ReadableHolonState};
-use crate::reference_layer::TransientReference;
-use serde::{Deserialize, Serialize};
-
-use crate::dances::SessionState;
 use crate::query_layer::{NodeCollection, QueryExpression};
+use crate::reference_layer::TransientReference;
 use crate::{HolonReference, StagedReference};
 use base_types::MapString;
 use core_types::{HolonId, LocalId, PropertyMap, RelationshipName};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// Runtime dance request (tx-bound, execution-capable).
+///
+/// This type must not be deserialized across IPC boundaries because it may contain
+/// tx-bound references. Use `DanceRequestWire` for IPC and call `bind(context)` at ingress.
+#[derive(Debug, Clone, PartialEq)]
 pub struct DanceRequest {
     pub dance_name: MapString, // unique key within the (single) dispatch table
     pub dance_type: DanceType,
     pub body: RequestBody,
-    pub state: Option<SessionState>,
     //pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// Runtime dance type (may contain tx-bound references).
+#[derive(Debug, Clone, PartialEq)]
 pub enum DanceType {
     Standalone,                    // i.e., a dance not associated with a specific holon
     QueryMethod(NodeCollection), // a read-only dance originated from a specific, already persisted, holon
@@ -27,7 +28,8 @@ pub enum DanceType {
     DeleteMethod(LocalId),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+/// Runtime request body (may contain tx-bound references).
+#[derive(Debug, Clone, PartialEq)]
 pub enum RequestBody {
     None,
     Holon(Holon),
@@ -85,37 +87,21 @@ impl DanceRequest {
         dance_name: MapString,
         dance_type: DanceType,
         body: RequestBody,
-        state: Option<SessionState>,
     ) -> Self {
         Self {
             dance_name,
             dance_type,
             body,
-            state: state.or(Some(SessionState::default())), // Default if None
         }
-    }
-    /// Gets a reference to the session state, or `None` if not set.
-    pub fn get_state(&self) -> Option<&SessionState> {
-        self.state.as_ref()
-    }
-
-    /// Gets a mutable reference to the session state, or `None` if not set.
-    pub fn get_state_mut(&mut self) -> Option<&mut SessionState> {
-        self.state.as_mut()
     }
 
     /// Summarizes the DanceRequest for logging purposes.
-    ///
-    /// Handles cases where session state is `None` by providing a placeholder message.
     pub fn summarize(&self) -> String {
         format!(
-            "DanceRequest {{ \n  dance_name: {:?}, dance_type: {:?}, \n  body: {}, \n  state: {} }}\n",
+            "DanceRequest {{ \n  dance_name: {:?}, dance_type: {:?}, \n  body: {} }}\n",
             self.dance_name.to_string(),
             self.dance_type,
             self.body.summarize(),
-            self.state
-                .as_ref()
-                .map_or_else(|| "None".to_string(), |state| state.summarize()),
         )
     }
 }

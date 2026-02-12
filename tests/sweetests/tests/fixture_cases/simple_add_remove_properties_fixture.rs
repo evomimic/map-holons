@@ -19,15 +19,15 @@ use super::setup_book_author_steps_with_context;
 #[fixture]
 pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-   
-    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings, } = 
+
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings, } =
         TestCaseInit::new(
         "Simple Add / Remove Holon Properties Testcase".to_string(),
         "Tests the adding and removing of Holon properties for both Staged and Transient references".to_string(),
     );
-    
+
     setup_book_author_steps_with_context(
-        &*fixture_context,
+        &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
@@ -39,11 +39,10 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // EXAMPLE (Transient) //
     let example_key = MapString("EXAMPLE_KEY".to_string());
-    let example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
+    let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
     // Mint
     let mut example_properties = PropertyMap::new();
     let example_transient_token = test_case.add_new_holon_step(
-        &*fixture_context,
         &mut fixture_holons,
         example_transient_reference,
         example_properties.clone(),
@@ -60,7 +59,6 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     example_properties.insert("Boolean".to_property_name(), false.to_base_value());
 
     let modified_example_token = test_case.add_with_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         example_transient_token,
         example_properties.clone(),
@@ -81,7 +79,6 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     book_properties.insert("Bool".to_property_name(), true.to_base_value());
 
     let modified_book_token = test_case.add_with_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         book_source_token,
         book_properties.clone(),
@@ -93,10 +90,10 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // TRANSIENT //
     let mut transient_holon_properties_to_remove = BTreeMap::new();
-    // Note: Technically for a remove_property_value call, a value is not required. However, the 
-    // RequestBody for the Dance takes a ParameterValues(PropertyMap) and thus a full map is 
-    // populated for the step. We should consider changing this. The value here is arbitrary and 
-    // could be incorrect, which would go unflagged and therefore ultimately be misleading for 
+    // Note: Technically for a remove_property_value call, a value is not required. However, the
+    // RequestBody for the Dance takes a ParameterValues(PropertyMap) and thus a full map is
+    // populated for the step. We should consider changing this. The value here is arbitrary and
+    // could be incorrect, which would go unflagged and therefore ultimately be misleading for
     // readers of the test code in such a scenario.
     transient_holon_properties_to_remove
         .insert("Boolean".to_property_name(), false.to_base_value());
@@ -106,7 +103,6 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     example_properties.remove(&"Boolean".to_property_name());
 
     let _modified_book_token_after_remove = test_case.add_remove_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         modified_example_token,
         transient_holon_properties_to_remove,
@@ -126,7 +122,6 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     book_properties.remove(&"Bool".to_property_name());
 
     let _modified_example_token_after_remove = test_case.add_remove_properties_step(
-        &*fixture_context,
         &mut fixture_holons,
         modified_book_token,
         staged_holon_properties_to_remove,
@@ -138,7 +133,8 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Finalize
-    test_case.finalize(&*fixture_context)?;
+   test_case.finalize(&fixture_context)?;
+
 
     Ok(test_case)
 }

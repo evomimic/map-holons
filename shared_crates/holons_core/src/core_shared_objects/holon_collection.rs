@@ -6,7 +6,7 @@ use std::vec::IntoIter;
 use tracing::{debug, warn};
 
 use super::holon::state::AccessType;
-use crate::reference_layer::{HolonReference, HolonsContextBehavior, ReadableHolon};
+use crate::reference_layer::{HolonReference, ReadableHolon};
 use crate::HolonCollectionApi;
 use base_types::{MapInteger, MapString};
 use core_types::HolonError;
@@ -32,7 +32,7 @@ impl fmt::Display for CollectionState {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HolonCollection {
     state: CollectionState,
     members: Vec<HolonReference>,
@@ -83,16 +83,13 @@ impl HolonCollection {
     }
 
     /// Does not retain members that are TransientReference.
-    pub fn clone_for_staged(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<Self, HolonError> {
+    pub fn clone_for_staged(&self) -> Result<Self, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let mut collection = HolonCollection::new_staged();
         let mut index = 0;
         for holon_reference in self.members.clone() {
             if !holon_reference.is_transient() {
-                if let Some(key) = holon_reference.key(context)? {
+                if let Some(key) = holon_reference.key()? {
                     collection.keyed_index.insert(key, index);
                     index += 1;
                 }
@@ -105,17 +102,14 @@ impl HolonCollection {
 
     // METHODS //
 
-    pub fn from_parts(state: CollectionState, members: Vec<HolonReference>) -> Self {
-        let keyed_index = BTreeMap::new();
-
-        // TODO: This method should reconstitute the keyed_index from members -- but needs member.key to not require context first.
-        // for (index, member) in members.iter().enumerate() {
-        //     if let Some(key) = member.key() {
-        //         keyed_index.insert(key, index);
-        //     }
-        // }
+    pub fn from_parts(
+        state: CollectionState,
+        members: Vec<HolonReference>,
+        keyed_index: BTreeMap<MapString, usize>,
+    ) -> Self {
         HolonCollection { state, members, keyed_index }
     }
+
     /// Checks if requested `access_type` is acceptable given the collection's current `state`.
     /// If not, returns `NotAccessible` error
     pub fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
@@ -207,11 +201,7 @@ impl HolonCollectionApi for HolonCollection {
     /// Adds the supplied HolonReferences to this holon collection and updates the keyed_index
     /// accordingly. Currently, this method requires a `context`. Use `add_reference_with_key()` to
     /// add individual references without requiring `context` when the key is known.
-    fn add_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    fn add_references(&mut self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
 
         for holon_ref in holons {
@@ -220,7 +210,7 @@ impl HolonCollectionApi for HolonCollection {
 
             // Add reference to keyed index (unless it is a duplicate key, in which case just
             // issue a warning
-            let key = holon_ref.key(context)?;
+            let key = holon_ref.key()?;
 
             if let Some(key) = key {
                 if let Some(&_index) = self.keyed_index.get(&key) {
@@ -302,23 +292,19 @@ impl HolonCollectionApi for HolonCollection {
         }
     }
 
-    fn remove_references(
-        &mut self,
-        context: &dyn HolonsContextBehavior,
-        holons: Vec<HolonReference>,
-    ) -> Result<(), HolonError> {
+    fn remove_references(&mut self, holons: Vec<HolonReference>) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
 
         for holon in holons {
             self.members.retain(|x| x != &holon);
-            if let Some(key) = holon.key(context)? {
+            if let Some(key) = holon.key()? {
                 self.keyed_index.remove(&key);
             }
         }
         // adjust new order of members in the keyed_index
         let mut i = 0;
         for member in self.members.clone() {
-            if let Some(key) = member.key(context)? {
+            if let Some(key) = member.key()? {
                 self.keyed_index.insert(key, i);
                 i += 1;
             }

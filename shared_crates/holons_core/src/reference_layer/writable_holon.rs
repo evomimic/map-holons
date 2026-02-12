@@ -1,5 +1,5 @@
 use crate::reference_layer::writable_impl::WritableHolonImpl;
-use crate::reference_layer::{HolonReference, HolonsContextBehavior};
+use crate::reference_layer::HolonReference;
 use base_types::ToBaseValue;
 use core_types::HolonError;
 use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
@@ -24,13 +24,11 @@ pub trait WritableHolon: WritableHolonImpl {
     #[inline]
     fn add_related_holons<T: ToRelationshipName>(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         name: T,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::add_related_holons_impl(
             self,
-            context,
             name.to_relationship_name(),
             holons,
         )
@@ -44,18 +42,16 @@ pub trait WritableHolon: WritableHolonImpl {
     ///
     /// # Examples
     /// ```ignore
-    /// holon.remove_related_holons(context, "friends", vec![other])?;
+    /// holon.remove_related_holons("friends", vec![other])?;
     /// ```
     #[inline]
     fn remove_related_holons<T: ToRelationshipName>(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         name: T,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::remove_related_holons_impl(
             self,
-            context,
             name.to_relationship_name(),
             holons,
         )
@@ -71,13 +67,11 @@ pub trait WritableHolon: WritableHolonImpl {
     #[inline]
     fn with_property_value<N: ToPropertyName, V: ToBaseValue>(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         name: N,
         value: V,
     ) -> Result<&mut Self, HolonError> {
         WritableHolonImpl::with_property_value_impl(
             self,
-            context,
             name.to_property_name(),
             value.to_base_value(),
         )
@@ -90,15 +84,14 @@ pub trait WritableHolon: WritableHolonImpl {
     ///
     /// # Examples
     /// ```ignore
-    /// holon.remove_property_value(context, "title")?;
+    /// holon.remove_property_value("title")?;
     /// ```
     #[inline]
     fn remove_property_value<T: ToPropertyName>(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         name: T,
     ) -> Result<&mut Self, HolonError> {
-        WritableHolonImpl::remove_property_value_impl(self, context, name.to_property_name())
+        WritableHolonImpl::remove_property_value_impl(self, name.to_property_name())
     }
 
     /// Attaches a descriptor holon to this holon.
@@ -107,10 +100,9 @@ pub trait WritableHolon: WritableHolonImpl {
     #[inline]
     fn with_descriptor(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         descriptor: HolonReference,
     ) -> Result<(), HolonError> {
-        WritableHolonImpl::with_descriptor_impl(self, context, descriptor)
+        WritableHolonImpl::with_descriptor_impl(self, descriptor)
     }
 
     /// Attaches a predecessor holon to this holon.
@@ -119,10 +111,9 @@ pub trait WritableHolon: WritableHolonImpl {
     #[inline]
     fn with_predecessor(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         predecessor: Option<HolonReference>,
     ) -> Result<(), HolonError> {
-        WritableHolonImpl::with_predecessor_impl(self, context, predecessor)
+        WritableHolonImpl::with_predecessor_impl(self, predecessor)
     }
 }
 impl<T: WritableHolonImpl + ?Sized> WritableHolon for T {}

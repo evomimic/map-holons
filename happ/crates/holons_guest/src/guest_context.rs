@@ -1,11 +1,12 @@
 use crate::guest_shared_objects::GuestHolonService;
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
+use holons_boundary::session_state::SerializableHolonPool;
 use holons_core::{
     core_shared_objects::{
-        holon_pool::SerializableHolonPool, space_manager::HolonSpaceManager,
+        space_manager::HolonSpaceManager,
+        transactions::{TransactionContext, TxId},
         ServiceRoutingPolicy,
     },
-    reference_layer::{HolonReference, HolonsContextBehavior},
     HolonServiceApi,
 };
 use std::sync::{Arc, RwLock};
@@ -25,12 +26,12 @@ use tracing::{
 /// This function also ensures that a HolonSpace Holon exists in the local DHT.
 ///
 /// # Arguments
-/// * `transient_holons` - The `SerializableHolonPool` containing transient holons from the session state.
-/// * `staged_holons` - The `SerializableHolonPool` containing staged holons from the session state.
-/// * `local_space_holon` - An optional reference to the local holon space.
+/// * `transient_holons` - The `SerializableHolonPool` containing transient holons from the session_state state.
+/// * `staged_holons` - The `SerializableHolonPool` containing staged holons from the session_state state.
+/// * `local_space_holon` - An optional `HolonId` to anchor the local holon space (must be saved).
 ///
 /// # Returns
-/// * `Ok(Arc<dyn HolonsContextBehavior>)` - The initialized guest context if successful.
+/// * `Ok(Arc<TransactionContext>)` - The initialized guest context if successful.
 /// * `Err(HolonError)` - If opening the default transaction fails.
 ///
 /// # Errors
@@ -42,8 +43,9 @@ use tracing::{
 pub fn init_guest_context(
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
-    local_space_holon: Option<HolonReference>,
-) -> Result<Arc<dyn HolonsContextBehavior>, HolonError> {
+    local_space_holon_id: Option<HolonId>,
+    tx_id: TxId,
+) -> Result<Arc<TransactionContext>, HolonError> {
     info!("\n ========== Initializing GUEST CONTEXT ============");
 
     // Step 1: Create the GuestHolonService (keep a concrete handle for registration).
@@ -54,21 +56,27 @@ pub fn init_guest_context(
         guest_holon_service_concrete.clone();
 
     // Step 2: Create the HolonSpaceManager with guest routing policy.
+    //
+    // NOTE: `local_space_holon_id` may be `None` if the caller did not provide one
+    // in SessionState; in that case the guest will ensure/create it later during ingress.
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         guest_holon_service,
-        local_space_holon,
+        local_space_holon_id,
         ServiceRoutingPolicy::Combined,
     ));
 
     // Step 3: Open the default transaction for this space.
     let transaction_context = space_manager
         .get_transaction_manager()
-        .open_default_transaction(Arc::clone(&space_manager))?;
+        .open_transaction_with_id(Arc::clone(&space_manager), tx_id)?;
 
     // Step 4: Load staged and transient holons into the transaction.
-    transaction_context.import_staged_holons(staged_holons);
-    transaction_context.import_transient_holons(transient_holons);
+    let bound_staged_holons = staged_holons.bind(&transaction_context)?;
+    let bound_transient_holons = transient_holons.bind(&transaction_context)?;
+
+    transaction_context.import_staged_holons(bound_staged_holons)?;
+    transaction_context.import_transient_holons(bound_transient_holons)?;
 
     // Step 5: Register internal nursery access for commit.
     let nursery_for_internal_access = transaction_context.nursery();
@@ -77,5 +85,5 @@ pub fn init_guest_context(
     )));
 
     // Step 6: Return the transaction context directly.
-    Ok(transaction_context as Arc<dyn HolonsContextBehavior>)
+    Ok(transaction_context)
 }

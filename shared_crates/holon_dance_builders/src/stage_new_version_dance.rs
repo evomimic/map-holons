@@ -11,6 +11,5 @@ pub fn build_stage_new_version_dance_request(
         MapString("stage_new_version".to_string()),
         DanceType::NewVersionMethod(holon_id),
         RequestBody::None,
-        None,
     ))
 }

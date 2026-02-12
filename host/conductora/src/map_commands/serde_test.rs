@@ -1,5 +1,5 @@
 
-use holons_client::shared_types::{map_request::MapRequest};
+use holons_client::shared_types::map_request::MapRequestWire;
 use tauri::{command };
 
 #[command]
@@ -22,7 +22,7 @@ pub async fn serde_test(
     }
 
     //HERE add the type you want to check against in the from_str<>
-    match serde_json::from_str::<MapRequest>(&request_json) {
+    match serde_json::from_str::<MapRequestWire>(&request_json) {
         Ok(request) => {
             tracing::info!("[TEST] Successfully parsed: {:?}", request);
             Ok("Parsed successfully".to_string())

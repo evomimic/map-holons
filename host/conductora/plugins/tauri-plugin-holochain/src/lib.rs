@@ -60,7 +60,7 @@ impl<R: Runtime> HolochainPlugin<R> {
         &self,
         app_id: InstalledAppId,
         url_path: Option<String>,
-    ) -> crate::Result<WebviewWindowBuilder<R, AppHandle<R>>> {
+    ) -> crate::Result<WebviewWindowBuilder<'_, R, AppHandle<R>>> {
         let app_id: String = app_id.into();
 
         let allowed_origins = self.get_allowed_origins(&app_id, false);
@@ -121,7 +121,7 @@ impl<R: Runtime> HolochainPlugin<R> {
         enable_admin_websocket: bool,
         enabled_app: Option<InstalledAppId>,
         url_path: Option<String>,
-    ) -> crate::Result<WebviewWindowBuilder<R, AppHandle<R>>> {
+    ) -> crate::Result<WebviewWindowBuilder<'_, R, AppHandle<R>>> {
         let url_path = url_path.unwrap_or_default();
 
         let mut window_builder = WebviewWindowBuilder::new(

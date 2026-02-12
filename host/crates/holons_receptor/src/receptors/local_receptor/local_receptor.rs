@@ -5,8 +5,8 @@ use holons_client::{ClientHolonService, init_client_context};
 use holons_client::shared_types::map_request::MapRequest;
 use holons_client::shared_types::map_response::MapResponse;
 use holons_core::HolonServiceApi;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_core::reference_layer::HolonsContextBehavior;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ pub struct LocalReceptor {
     receptor_id: Option<String>,
     receptor_type: String,
     properties: HashMap<String, String>,
-    context: Arc<dyn HolonsContextBehavior + Send + Sync>,
+    context: Arc<TransactionContext>,
     client_handler: Arc<LocalClient>,
     _holon_service: Arc<dyn HolonServiceApi>,
     _root_space: HolonSpace,
@@ -56,6 +56,10 @@ impl LocalReceptor {
 
 #[async_trait]
 impl ReceptorBehavior for LocalReceptor {
+    fn transaction_context(&self) -> Arc<TransactionContext> {
+        Arc::clone(&self.context)
+    }
+
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         tracing::warn!("LocalReceptor: handling request: {:?}", self.context);
         

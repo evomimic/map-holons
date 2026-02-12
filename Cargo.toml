@@ -30,7 +30,7 @@ members = [
 
     # Tests
     "tests/sweetests"
-]
+, "shared_crates/holons_boundary"]
 
 # -------------------------------------------------------------------
 # Unified dependency versions (optional but helpful for consistency)

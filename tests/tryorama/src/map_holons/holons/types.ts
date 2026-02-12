@@ -157,7 +157,7 @@ export type SessionState = {
 
 /**
  * Creates an empty/default SessionState
- * Useful when you need to initialize a DanceResponseObject with empty session state
+ * Useful when you need to initialize a DanceResponseObject with empty session_state state
  */
 export function createEmptySessionState(): SessionState {
     return {

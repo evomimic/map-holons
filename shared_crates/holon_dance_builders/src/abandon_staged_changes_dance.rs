@@ -15,6 +15,5 @@ pub fn build_abandon_staged_changes_dance_request(
         MapString("abandon_staged_changes".to_string()),
         DanceType::CommandMethod(staged_reference),
         body,
-        None,
     ))
 }

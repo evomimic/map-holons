@@ -19,8 +19,7 @@ pub async fn execute_new_holon(
     };
     info!("--- TEST STEP: {description} ---");
 
-    let ctx_arc = state.context();
-    let context = ctx_arc.as_ref();
+    let context = state.context();
 
     // 1. BUILD - the stage_new_holon DanceRequest
     let request = build_new_holon_dance_request(key);
@@ -28,7 +27,8 @@ pub async fn execute_new_holon(
 
     // 2. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(context, request).await;
+    let response = dance_initiator.initiate_dance(&context, request)
+.await;
     info!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - response status
@@ -48,9 +48,9 @@ pub async fn execute_new_holon(
 
     // Apply property mutations returned by the dance
     for (name, value) in properties {
-        response_holon_reference
-            .with_property_value(context, name, value)
-            .unwrap();
+        response_holon_reference.with_property_value(name.clone(), value).unwrap_or_else(|error| {
+            panic!("failed to set property {:?} on response holon: {}", name, error)
+        });
     }
 
     // Build execution handle from runtime result
@@ -61,7 +61,8 @@ pub async fn execute_new_holon(
         ExecutionReference::from_token_execution(&source_token, execution_handle);
 
     // Validate expected vs execution-time content
-    execution_reference.assert_essential_content_eq(context);
+    execution_reference.assert_essential_content_eq()
+;
     info!("Success! Holon's essential content matched expected");
 
     // Record for downstream resolution

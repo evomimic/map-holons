@@ -22,18 +22,19 @@ use crate::persistence_layer::{create_holon_node, delete_holon_node, get_origina
 use crate::{create_local_path, get_holon_by_path, try_from_record};
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
+use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal, Holon, HolonCollection, NurseryAccess,
+        nursery_access_internal::NurseryAccessInternal, transactions::TransactionContext, Holon,
+        HolonCollection,
     },
     reference_layer::{
-        HolonCollectionApi, HolonReference, HolonServiceApi, HolonsContextBehavior, SmartReference,
-        WritableHolon,
+        HolonCollectionApi, HolonReference, HolonServiceApi, SmartReference, WritableHolon,
     },
 };
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
-use integrity_core_types::{LocalId, PropertyName, RelationshipName};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
 
 pub struct GuestHolonService {
     /// Holds the internal nursery access after registration
@@ -72,7 +73,7 @@ impl GuestHolonService {
 
     fn create_local_space_holon(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
     ) -> Result<SavedHolon, HolonError> {
         // Define the name and description for the local space holon
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
@@ -85,16 +86,14 @@ impl GuestHolonService {
         let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
         space_holon_reference
             .with_property_value(
-                context,
                 PropertyName(MapString("name".to_string())),
                 name.clone().into_base_value(),
             )?
             .with_property_value(
-                context,
                 PropertyName(MapString("description".to_string())),
                 description.into_base_value(),
             )?;
-        let space_holon_node = space_holon_reference.into_model(context)?;
+        let space_holon_node = space_holon_reference.into_model()?;
 
         // Try to create the holon node in the DHT
         let holon_record = create_holon_node(HolonNode::from(space_holon_node.clone()))
@@ -141,7 +140,7 @@ impl GuestHolonService {
     /// * `Err(HolonError)` – If any errors occur during retrieval or creation.
     pub fn ensure_local_holon_space(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonReference, HolonError> {
         let space_holon_result =
             get_holon_by_path(LOCAL_HOLON_SPACE_PATH.to_string(), LinkTypes::LocalHolonSpace)?;
@@ -154,20 +153,34 @@ impl GuestHolonService {
             }
         };
 
-        holon
-            .get_local_id()
-            .map(|id| HolonReference::Smart(SmartReference::new_from_id(HolonId::Local(id))))
-            .map_err(|e| {
-                error!("Failed to retrieve local holon ID: {:?}", e);
-                e
-            })
+        let local_id = holon.get_local_id()?;
+
+        // Reacquire Arc<TransactionContext> to mint a tx-bound SmartReference.
+        let context_arc = context
+            .space_manager()
+            .get_transaction_manager()
+            .get_transaction(&context.tx_id())?
+            .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
+
+        let handle = TransactionContextHandle::new(context_arc);
+
+        Ok(HolonReference::Smart(SmartReference::new_from_id(handle, HolonId::Local(local_id))))
     }
 
-    pub fn get_nursery_access(
+    fn mint_smart_reference_from_pointer(
         &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Arc<dyn NurseryAccess> {
-        context.get_nursery_access()
+        context: &Arc<TransactionContext>,
+        holon_id: HolonId,
+        smart_property_values: Option<PropertyMap>,
+    ) -> Result<HolonReference, HolonError> {
+        let handle = TransactionContextHandle::new(Arc::clone(context));
+
+        let smart = match smart_property_values {
+            Some(props) => SmartReference::new_with_properties(handle, holon_id, props),
+            None => SmartReference::new_from_id(handle, holon_id),
+        };
+
+        Ok(HolonReference::Smart(smart))
     }
 }
 
@@ -178,7 +191,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn commit_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
     ) -> Result<TransientReference, HolonError> {
         // Get internal nursery access
         let internal_nursery = self.get_internal_nursery_access()?;
@@ -198,7 +211,7 @@ impl HolonServiceApi for GuestHolonService {
         let commit_response = commit_functions::commit(context, &staged_references)?;
 
         // Step 3: Borrow mutably to clear the stage
-        internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
+        let _ = internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
 
         // Step 4: Return the commit response
         Ok(commit_response)
@@ -217,7 +230,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         if !source_id.is_local() {
@@ -233,7 +246,9 @@ impl HolonServiceApi for GuestHolonService {
         debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {
-            let reference = smartlink.to_holon_reference();
+            let (holon_id, smart_props) = smartlink.to_pointer();
+            let reference =
+                self.mint_smart_reference_from_pointer(context, holon_id, smart_props)?;
 
             // The following:
             // 1) adds an entry for relationship name if not already present (via `entry` API)
@@ -249,7 +264,7 @@ impl HolonServiceApi for GuestHolonService {
         for (map_name, holon_references) in reference_map {
             let mut collection = HolonCollection::new_existing();
             for reference in holon_references {
-                let key = reference.key(context)?.ok_or_else(|| {
+                let key = reference.key()?.ok_or_else(|| {
                     HolonError::Misc(
                         "Expected Smartlink to have a key, didn't get one.".to_string(),
                     )
@@ -283,6 +298,7 @@ impl HolonServiceApi for GuestHolonService {
 
     fn fetch_related_holons_internal(
         &self,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
@@ -296,7 +312,9 @@ impl HolonServiceApi for GuestHolonService {
         debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
         for smartlink in smartlinks {
-            let holon_reference = smartlink.to_holon_reference();
+            let (holon_id, smart_props) = smartlink.to_pointer();
+            let holon_reference =
+                self.mint_smart_reference_from_pointer(context, holon_id, smart_props)?;
             collection.add_reference_with_key(smartlink.key()?.as_ref(), &holon_reference)?;
         }
         Ok(collection)
@@ -304,15 +322,15 @@ impl HolonServiceApi for GuestHolonService {
 
     fn get_all_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
         let holon_ids = fetch_links_to_all_holons()?;
         let mut holon_references = Vec::new();
         for id in holon_ids {
-            holon_references.push(id.into());
+            holon_references.push(self.mint_smart_reference_from_pointer(context, id, None)?);
         }
-        collection.add_references(context, holon_references)?;
+        collection.add_references(holon_references)?;
 
         Ok(collection)
     }
@@ -321,7 +339,7 @@ impl HolonServiceApi for GuestHolonService {
     /// Delegates to the `HolonLoaderController` and returns a transient `HolonLoadResponse`.
     fn load_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
         // Construct controller and delegate to load_set()

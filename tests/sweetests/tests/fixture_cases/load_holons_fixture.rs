@@ -37,6 +37,7 @@ use core_types::TypeKind;
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
+use std::sync::Arc;
 
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP,
@@ -84,7 +85,7 @@ impl BundleWithFilename {
 /// Build a HolonLoaderBundle **without** any BUNDLE_MEMBERS.
 /// This intentionally exercises the “empty bundle” short-circuit path.
 fn build_empty_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_key: &str,
 ) -> Result<TransientReference, HolonError> {
     // New bundle transient holon with the provided key.
@@ -96,7 +97,7 @@ fn build_empty_bundle(
 /// Each member is created with its **instance key string**; no relationship references.
 /// This exercises Pass-1 staging + commit with LinksCreated = 0.
 fn build_nodes_only_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_key: &str,
     instance_keys: &[&str],
 ) -> Result<(TransientReference, usize), HolonError> {
@@ -112,7 +113,6 @@ fn build_nodes_only_bundle(
 
     // 3) Attach members via BUNDLE_MEMBERS.
     bundle.add_related_holons(
-        context,
         CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
         members,
     )?;
@@ -131,7 +131,7 @@ fn build_nodes_only_bundle(
 ///
 /// RETURNS: (bundle, expected_node_count, expected_links_created)
 fn build_declared_links_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_key: &str,
     source_instance_key: &str,
     target_instance_key: &str,
@@ -145,7 +145,6 @@ fn build_declared_links_bundle(
 
     // 2) Attach both as BundleMembers.
     bundle.add_related_holons(
-        context,
         CoreRelationshipTypeName::BundleMembers.as_relationship_name().clone(),
         vec![
             HolonReference::Transient(source_loader.clone()),
@@ -176,7 +175,7 @@ fn build_declared_links_bundle(
 ///
 /// RETURNS: (bundle, expected_node_count, expected_links_created)
 fn build_cross_bundle_declared_link_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_key: &str,
     source_instance_key: &str,
     target_instance_key: &str,
@@ -188,7 +187,6 @@ fn build_cross_bundle_declared_link_bundle(
 
     // Add source as BundleMember.
     bundle.add_related_holons(
-        context,
         CoreRelationshipTypeName::BundleMembers,
         vec![HolonReference::Transient(source_loader.clone())],
     )?;
@@ -217,7 +215,7 @@ fn build_cross_bundle_declared_link_bundle(
 ///
 /// RETURNS: (bundle, staged_node_count)
 fn build_single_loader_with_offset_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_key: &str,
     loader_key: &str,
     offset: i64,
@@ -227,11 +225,10 @@ fn build_single_loader_with_offset_bundle(
     let mut loader = new_holon(context, Some(MapString(loader_key.to_string())))?;
 
     // Stamp the byte offset on the loader so the controller can enrich errors.
-    set_start_offset(context, &mut loader, offset)?;
+    set_start_offset(&mut loader, offset)?;
 
     // (HolonLoaderBundle)-[BUNDLE_MEMBERS]->(LoaderHolon)
     bundle.add_related_holons(
-        context,
         CoreRelationshipTypeName::BundleMembers,
         vec![HolonReference::Transient(loader)],
     )?;
@@ -242,7 +239,7 @@ fn build_single_loader_with_offset_bundle(
 /// Build a HolonLoaderBundle to test **inverse LRR mapping**,
 /// including inline micro-schema descriptors and two instances:
 fn build_inverse_with_inline_schema_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     bundle_key: &str,
     inverse_rel_name: &str,    // e.g., PERSON_TO_BOOK_REL_INVERSE ("Authors")
     person_instance_key: &str, // e.g., PERSON_2_KEY
@@ -274,7 +271,6 @@ fn build_inverse_with_inline_schema_bundle(
         (&mut inverse_rel_descriptor, PERSON_TO_BOOK_REL_INVERSE),   // "Authors"
     ] {
         transient_reference.with_property_value(
-            context,
             CorePropertyTypeName::TypeName,
             BaseValue::StringValue(MapString(name.to_string())),
         )?;
@@ -284,7 +280,6 @@ fn build_inverse_with_inline_schema_bundle(
     // the loader's is_relationship_type_kind() check.
     for rel_descriptor in [&mut declared_rel_descriptor, &mut inverse_rel_descriptor] {
         rel_descriptor.with_property_value(
-            context,
             CorePropertyTypeName::InstanceTypeKind,
             BaseValue::StringValue(MapString(TypeKind::Relationship.to_string())),
         )?;
@@ -292,7 +287,6 @@ fn build_inverse_with_inline_schema_bundle(
 
     // 2) Add all six to the bundle as members
     bundle.add_related_holons(
-        context,
         CoreRelationshipTypeName::BundleMembers,
         vec![
             HolonReference::Transient(person_loader.clone()),
@@ -380,10 +374,10 @@ fn build_inverse_with_inline_schema_bundle(
 /// - The nodes-only keys are chosen to **avoid clashing** with the declared-link keys.
 /// - The micro-schema enables inverse-name→declared-name mapping for Pass-2.
 /// - Inverse bundle stages only a Person and references the existing Book by key.
-/// - We export the fixture’s transient pool into the test case session state exactly once at the end.
+/// - We export the fixture’s transient pool into the test case session_state state exactly once at the end.
 #[fixture]
 pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
-    
+
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
             "Loader Incremental Fixture".to_string(),
@@ -408,16 +402,13 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
                 .to_string(),
         );
 
-    // Create a private fixture context with its own TransientHolonManager.
-    let fixture_context_ref: &dyn HolonsContextBehavior = &*fixture_context;
-
     // A) Ensure DB starts with only the Space holon.
     test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
     // B) Empty bundle → expect UnprocessableEntity and no DB change.
-    let empty_bundle = build_empty_bundle(fixture_context_ref, "Bundle.Empty.1")?;
+    let empty_bundle = build_empty_bundle(&fixture_context, "Bundle.Empty.1")?;
     let empty_set = make_load_set_from_bundles(
-        fixture_context_ref,
+        &fixture_context,
         "LoadSet.Empty.1",
         vec![BundleWithFilename::new(empty_bundle, "empty.json")],
     )?;
@@ -435,9 +426,9 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // C) Nodes-only bundle → expect OK, N committed, 0 links created.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
     let (nodes_bundle, n_nodes) =
-        build_nodes_only_bundle(fixture_context_ref, "Bundle.NodesOnly.1", nodes_only_keys)?;
+        build_nodes_only_bundle(&fixture_context, "Bundle.NodesOnly.1", nodes_only_keys)?;
     let nodes_set = make_load_set_from_bundles(
-        fixture_context_ref,
+        &fixture_context,
         "LoadSet.NodesOnly.1",
         vec![BundleWithFilename::new(nodes_bundle, "nodes_only.json")],
     )?;
@@ -454,14 +445,14 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
     // D) Declared relationship happy path (no type graph).
     let (declared_bundle, node_count, links_created) = build_declared_links_bundle(
-        fixture_context_ref,
+        &fixture_context,
         "Bundle.DeclaredLink.1",
         BOOK_KEY,
         PERSON_1_KEY,
         BOOK_TO_PERSON_RELATIONSHIP, // e.g., "AUTHORED_BY"
     )?;
     let declared_set = make_load_set_from_bundles(
-        fixture_context_ref,
+        &fixture_context,
         "LoadSet.DeclaredLink.1",
         vec![BundleWithFilename::new(declared_bundle, "declared_link.json")],
     )?;
@@ -481,14 +472,14 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     let inverse_book_key = "Emerging World (Test Edition)";
 
     let (inverse_bundle, inv_nodes, inv_links) = build_inverse_with_inline_schema_bundle(
-        fixture_context_ref,
+        &fixture_context,
         "Bundle.InverseLink.1",
         PERSON_TO_BOOK_REL_INVERSE, // "Authors"
         PERSON_2_KEY,               // stage a new Person (2)
         inverse_book_key,           // stage a new Book with a distinct key
     )?;
     let inverse_set = make_load_set_from_bundles(
-        fixture_context_ref,
+        &fixture_context,
         "LoadSet.InverseLink.1",
         vec![BundleWithFilename::new(inverse_bundle, "inverse_link.json")],
     )?;
@@ -519,11 +510,11 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Bundle F1: Book node only
     let (bundle_f1, f1_nodes) =
-        build_nodes_only_bundle(fixture_context_ref, "Bundle.Multi.BookOnly", &[multi_book_key])?;
+        build_nodes_only_bundle(&fixture_context, "Bundle.Multi.BookOnly", &[multi_book_key])?;
 
     // Bundle F2: Person node + declared AuthoredBy link pointing to Book in F1
     let (bundle_f2, f2_nodes, f_links) = build_cross_bundle_declared_link_bundle(
-        fixture_context_ref,
+        &fixture_context,
         "Bundle.Multi.PersonWithLink",
         multi_person_key,            // source (Person)
         multi_book_key,              // target (Book in Bundle F1)
@@ -531,7 +522,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     let multi_set = make_load_set_from_bundles(
-        fixture_context_ref,
+        &fixture_context,
         "LoadSet.MultiBundle.1",
         vec![
             BundleWithFilename::new(bundle_f1, "multi_book.json"),
@@ -569,7 +560,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Bundle G1: first occurrence (offset = 10)
     let (dup_bundle_1, dup_nodes_1) = build_single_loader_with_offset_bundle(
-        fixture_context_ref,
+        &fixture_context,
         "Bundle.Multi.DuplicateKey.File1",
         dup_key,
         10,
@@ -577,14 +568,14 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Bundle G2: second occurrence (offset = 200)
     let (dup_bundle_2, dup_nodes_2) = build_single_loader_with_offset_bundle(
-        fixture_context_ref,
+        &fixture_context,
         "Bundle.Multi.DuplicateKey.File2",
         dup_key,
         200,
     )?;
 
     let dup_set = make_load_set_from_bundles(
-        fixture_context_ref,
+        &fixture_context,
         "LoadSet.MultiBundle.DuplicateKey.1",
         vec![
             BundleWithFilename::new(dup_bundle_1, "multi_dup_file_1.json"),
@@ -607,8 +598,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // DB must remain unchanged after duplicate-key failure.
     test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
 
-    // Export the fixture’s transient pool into the test case’s session state.
-    test_case.finalize(fixture_context_ref)?;
+    // Export the fixture’s transient pool into the test case’s session_state state.
+    test_case.load_test_session_state(&fixture_context);
 
     Ok(test_case)
 }
@@ -653,7 +644,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 /// - Endpoint resolution in Pass-2 relies on `LoaderHolonReference.holon_key`
 ///   values matching the instance keys you use for the corresponding LoaderHolons.
 pub fn add_loader_relationship_reference(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     source_loader_holon: &mut TransientReference,
     relationship_name_str: &str,
     declaredness: LoaderRelationshipDeclaredness,
@@ -690,19 +681,16 @@ pub fn add_loader_relationship_reference(
 
     // LRR required properties: relationship_name + is_declared
     relationship_reference.with_property_value(
-        context,
         CorePropertyTypeName::RelationshipName,
         BaseValue::StringValue(MapString(relationship_name_str.to_string())),
     )?;
     relationship_reference.with_property_value(
-        context,
         CorePropertyTypeName::IsDeclared,
         BaseValue::BooleanValue(declaredness.as_map_boolean()),
     )?;
 
     // Source endpoint: holon_key = source instance key
     source_ref.with_property_value(
-        context,
         CorePropertyTypeName::HolonKey,
         BaseValue::StringValue(MapString(source_instance_key.to_string())),
     )?;
@@ -714,7 +702,6 @@ pub fn add_loader_relationship_reference(
         target_refs_uninitialized.into_iter().zip(target_instance_keys.iter())
     {
         target_ref.with_property_value(
-            context,
             CorePropertyTypeName::HolonKey,
             BaseValue::StringValue(MapString((*target_key).to_string())),
         )?;
@@ -724,37 +711,27 @@ pub fn add_loader_relationship_reference(
     // ── 3) Wire relationships on the loader graph ─────────────────────────────
     // LoaderHolon → HasRelationshipReference → LRR
     source_loader_holon.add_related_holons(
-        context,
         CoreRelationshipTypeName::HasRelationshipReference,
         vec![HolonReference::Transient(relationship_reference.clone())],
     )?;
 
     // LRR → ReferenceSource → source_ref
     relationship_reference.add_related_holons(
-        context,
         CoreRelationshipTypeName::ReferenceSource,
         vec![HolonReference::Transient(source_ref)],
     )?;
 
     // LRR → ReferenceTarget → target_refs (ordered)
-    relationship_reference.add_related_holons(
-        context,
-        CoreRelationshipTypeName::ReferenceTarget,
-        target_ref_hrefs,
-    )?;
+    relationship_reference
+        .add_related_holons(CoreRelationshipTypeName::ReferenceTarget, target_ref_hrefs)?;
 
     Ok(relationship_reference)
 }
 
 /// Convenience: set the optional start byte offset on a LoaderHolon.
 #[inline]
-fn set_start_offset(
-    context: &dyn HolonsContextBehavior,
-    loader: &mut TransientReference,
-    offset: i64,
-) -> Result<(), HolonError> {
+fn set_start_offset(loader: &mut TransientReference, offset: i64) -> Result<(), HolonError> {
     loader.with_property_value(
-        context,
         CorePropertyTypeName::StartUtf8ByteOffset,
         BaseValue::IntegerValue(MapInteger(offset)),
     )?;
@@ -766,13 +743,8 @@ fn set_start_offset(
 // ───────────────────────────────────────────────────────────────────────────
 
 /// Attach the required `Filename` property to a HolonLoaderBundle.
-fn set_bundle_filename(
-    context: &dyn HolonsContextBehavior,
-    bundle: &mut TransientReference,
-    filename: &str,
-) -> Result<(), HolonError> {
+fn set_bundle_filename(bundle: &mut TransientReference, filename: &str) -> Result<(), HolonError> {
     bundle.with_property_value(
-        context,
         CorePropertyTypeName::Filename,
         BaseValue::StringValue(MapString(filename.to_string())),
     )?;
@@ -784,7 +756,7 @@ fn set_bundle_filename(
 /// `bundles` is a Vec of BundleWithFilename; for a single-bundle set,
 /// just pass a Vec with one element.
 pub fn make_load_set_from_bundles(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     set_key: &str,
     bundles: Vec<BundleWithFilename>,
 ) -> Result<TransientReference, HolonError> {
@@ -795,12 +767,12 @@ pub fn make_load_set_from_bundles(
     let mut hrefs: Vec<HolonReference> = Vec::with_capacity(bundles.len());
     for spec in bundles {
         let mut bundle = spec.bundle;
-        set_bundle_filename(context, &mut bundle, &spec.filename)?;
+        set_bundle_filename(&mut bundle, &spec.filename)?;
         hrefs.push(HolonReference::Transient(bundle));
     }
 
     // 3) (HolonLoadSet)-[CONTAINS]->(HolonLoaderBundle*)
-    set_ref.add_related_holons(context, CoreRelationshipTypeName::Contains, hrefs)?;
+    set_ref.add_related_holons(CoreRelationshipTypeName::Contains, hrefs)?;
 
     Ok(set_ref)
 }

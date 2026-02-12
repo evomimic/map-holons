@@ -38,19 +38,15 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 
-use std::sync::Arc;
-
-use crate::{
-    harness::fixtures_support::TestReference, init_fixture_context, ExpectedSnapshot,
-    FixtureBindings, FixtureHolons, SourceSnapshot, TestHolonState,
-};
+use crate::{harness::fixtures_support::TestReference, init_fixture_context, ExpectedSnapshot, FixtureBindings, FixtureHolons, SourceSnapshot, TestHolonState};
 use core_types::ContentSet;
+use holons_boundary::SerializableHolonPool;
 use holons_core::{
-    core_shared_objects::holon_pool::SerializableHolonPool,
-    reference_layer::{HolonsContextBehavior, ReadableHolon},
+    core_shared_objects::transactions::TransactionContext, reference_layer::ReadableHolon,
 };
 use holons_prelude::prelude::*;
 use integrity_core_types::PropertyMap;
+use std::sync::Arc;
 
 /// Public test case type that collects steps to be executed later.
 #[derive(Default, Clone, Debug)]
@@ -72,7 +68,7 @@ pub struct DancesTestCase {
 /// - Keep the DancesTestCase itself as the primary author-facing artifact
 pub struct TestCaseInit {
     pub test_case: DancesTestCase,
-    pub fixture_context: Arc<dyn HolonsContextBehavior>,
+    pub fixture_context: Arc<TransactionContext>,
     pub fixture_holons: FixtureHolons,
     pub fixture_bindings: FixtureBindings,
 }
@@ -124,7 +120,8 @@ impl DancesTestCase {
 
     pub fn finalize(
         &mut self,
-        fixture_context: &dyn HolonsContextBehavior,
+        fixture_context: &Arc<TransactionContext>
+
     ) -> Result<(), HolonError> {
         self.load_test_session_state(fixture_context);
         if self.is_finalized == true {
@@ -142,13 +139,13 @@ impl DancesTestCase {
     /// the latest state from the local context.
     ///
     /// # Arguments
-    /// * `fixture_context` - A reference to the `HolonsContextBehavior`, which provides access to the space manager.
+    /// * `fixture_context` - A reference to the `TransactionContext`, which provides access to the space manager.
     /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
     ///
     /// This function is called automatically within `rs_test` and should not be used directly.
-    fn load_test_session_state(&mut self, fixture_context: &dyn HolonsContextBehavior) {
+    pub fn load_test_session_state(&mut self, fixture_context: &Arc<TransactionContext>) {
         let transient_holons = fixture_context.export_transient_holons().unwrap();
-        self.test_session_state.set_transient_holons(transient_holons);
+        self.test_session_state.set_transient_holons(SerializableHolonPool::from(&transient_holons));
     }
 
     // === Execution Steps === //
@@ -282,7 +279,6 @@ impl DancesTestCase {
     // Advance head snapshot (no new logical holon).
     pub fn add_abandon_staged_changes_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -296,7 +292,7 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let new_snapshot = new_source.snapshot().clone_holon(context)?;
+        let new_snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Abandoned);
         if expected_status == ResponseStatusCode::OK {
             // Advance head snapshot for the FixtureHolon
@@ -318,7 +314,6 @@ impl DancesTestCase {
     // Advance head snapshot (no new logical holon).
     pub fn add_delete_holon_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -332,7 +327,7 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let new_snapshot = new_source.snapshot().clone_holon(context)?;
+        let new_snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Deleted);
         if expected_status == ResponseStatusCode::OK {
             // Advance head snapshot for the FixtureHolon
@@ -354,19 +349,12 @@ impl DancesTestCase {
     // Commit advances head snapshots to Saved for existing logical holons.
     pub fn add_commit_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
-        let saved_tokens = fixture_holons.commit(context)?;
-        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status, description });
+        let saved_tokens = fixture_holons.commit()?;
+        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status });
 
         Ok(())
     }
@@ -375,7 +363,6 @@ impl DancesTestCase {
     // i.e. the first snapshot for a FixtureHolon.
     pub fn add_new_holon_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_reference: TransientReference,
         properties: PropertyMap,
@@ -383,15 +370,9 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
-        let mut snapshot = source_reference.clone_holon(context)?;
+        let mut snapshot = source_reference.clone_holon()?;
         for (name, value) in properties.clone() {
-            snapshot.with_property_value(context, name, value)?;
+            snapshot.with_property_value( name, value)?;
         }
         let source = SourceSnapshot::new(source_reference, TestHolonState::Transient);
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Transient);
@@ -415,7 +396,7 @@ impl DancesTestCase {
     // Advance head (no new logical holon).
     // pub fn add_add_related_holons_step(
     //     &mut self,
-    //     context: &dyn HolonsContextBehavior,
+    //
     //     source_token: TestReference, // "owning" source Holon, which owns the Relationship
     //     relationship_name: RelationshipName,
     //     holons_to_add: Vec<TestReference>,
@@ -430,9 +411,9 @@ impl DancesTestCase {
     // });
 
     // // Cloning source in order to create a new fixture holon
-    // let mut expected_content = source_token.token_id().clone_holon(context)?;
+    // let mut expected_content = source_token.token_id().clone_holon()?;
     // // Update expected
-    // expected_content.add_related_holons(context, relationship_name, holons_to_add)?;
+    // expected_content.add_related_holons(relationship_name, holons_to_add)?;
     // // Mint next
     // let source_token = fixture_holons.add_token(
     //     source_token.root(),
@@ -448,7 +429,6 @@ impl DancesTestCase {
     // Advance head (no new logical holon).
     pub fn add_remove_properties_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         properties: PropertyMap,
@@ -463,9 +443,9 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon(context)?;
+        let mut new_snapshot = new_source.snapshot().clone_holon()?;
         for property in properties.keys() {
-            new_snapshot.remove_property_value(context, property)?;
+            new_snapshot.remove_property_value(property)?;
         }
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
         if expected_status == ResponseStatusCode::OK {
@@ -505,9 +485,9 @@ impl DancesTestCase {
     // });
 
     // // Cloning source in order to create a new fixture holon
-    // let mut expected_content = source_token.token_id().clone_holon(context)?;
+    // let mut expected_content = source_token.token_id().clone_holon()?;
     // // Update expected
-    // expected_content.remove_related_holons(context, relationship_name, holons_to_remove)?;
+    // expected_content.remove_related_holons(relationship_name, holons_to_remove)?;
     // // Mint next
     // let source_token = fixture_holons.add_token(
     //     source_token.root(),
@@ -523,7 +503,6 @@ impl DancesTestCase {
     // Creates new logical holon and therefore a new FixtureHolon.
     pub fn add_stage_holon_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -537,7 +516,7 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let snapshot = new_source.snapshot().clone_holon(context)?;
+        let snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
         if expected_status == ResponseStatusCode::OK {
             // Create new FixtureHolon
@@ -559,7 +538,6 @@ impl DancesTestCase {
     // Creates new logical holon and therefore a new FixtureHolon.
     pub fn add_stage_new_from_clone_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
@@ -574,8 +552,8 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let mut snapshot = new_source.snapshot().clone_holon(context)?;
-        snapshot.with_property_value(context, "Key", new_key.clone())?;
+        let mut snapshot = new_source.snapshot().clone_holon()?;
+        snapshot.with_property_value( "Key", new_key.clone())?;
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
         if expected_status == ResponseStatusCode::OK {
             // Create new FixtureHolon
@@ -598,7 +576,6 @@ impl DancesTestCase {
     // Creates new logical holon and therefore a new FixtureHolon.
     pub fn add_stage_new_version_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         expected_status: ResponseStatusCode,
@@ -614,7 +591,7 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let snapshot = new_source.snapshot().clone_holon(context)?;
+        let snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
         if expected_status == ResponseStatusCode::OK {
             // Create new FixtureHolon
@@ -638,7 +615,6 @@ impl DancesTestCase {
     // Advance head (no new logical holon).
     pub fn add_with_properties_step(
         &mut self,
-        context: &dyn HolonsContextBehavior,
         fixture_holons: &mut FixtureHolons,
         source_token: TestReference,
         properties: PropertyMap,
@@ -653,9 +629,9 @@ impl DancesTestCase {
         }
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&source_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon(context)?;
+        let mut new_snapshot = new_source.snapshot().clone_holon()?;
         for (property, value) in properties.clone() {
-            new_snapshot.with_property_value(context, property, value)?;
+            new_snapshot.with_property_value( property, value)?;
         }
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
         // Advance head snapshot for the FixtureHolon

@@ -16,12 +16,15 @@ use holons_core::{
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
     new_holon,
-    reference_layer::{HolonsContextBehavior, ReadableHolon},
+    reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
 };
 
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
+use holons_core::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle,
+};
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
@@ -117,7 +120,7 @@ pub enum CommitOutcome {
 /// If both passes succeed (no `Incomplete` status), the guest holon service
 /// is responsible for clearing the staged holon pool afterward.
 pub fn commit(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
     info!("Entering commit...");
@@ -128,8 +131,8 @@ pub fn commit(
     let mut response_reference =
         new_holon(context, Some(MapString("Commit Response".to_string())))?;
     response_reference
-        .with_property_value(context, CommitRequestStatus, "Complete")?
-        .with_property_value(context, CommitsAttempted, stage_count)?;
+        .with_property_value(CommitRequestStatus, "Complete")?
+        .with_property_value(CommitsAttempted, stage_count)?;
 
     if stage_count < 1 {
         info!("Stage empty, nothing to commit!");
@@ -142,20 +145,24 @@ pub fn commit(
 
         let mut saved_holons: Vec<HolonReference> = Vec::new();
         let mut abandoned_holons: Vec<HolonReference> = Vec::new();
+        let transaction_handle = TransactionContextHandle::new(Arc::clone(context));
 
         for staged_reference in staged_references {
-            staged_reference.is_accessible(context, AccessType::Commit)?;
+            staged_reference.is_accessible(AccessType::Commit)?;
 
             trace!("Committing {:?}", staged_reference.temporary_id());
 
             match commit_holon(staged_reference, context) {
                 Ok(CommitOutcome::Saved) => {
-                    let holon_id = staged_reference.holon_id(context)?;
-                    let key_string: MapString =
-                        staged_reference.key(context)?.ok_or_else(|| {
-                            HolonError::HolonNotFound("Committed holon has no key".into())
-                        })?;
-                    let saved_reference = HolonReference::smart_with_key(holon_id, key_string);
+                    let holon_id = staged_reference.holon_id()?;
+                    let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
+                        HolonError::HolonNotFound("Committed holon has no key".into())
+                    })?;
+                    let saved_reference = HolonReference::smart_with_key(
+                        transaction_handle.clone(),
+                        holon_id,
+                        key_string,
+                    );
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::Abandoned) => {
@@ -166,11 +173,7 @@ pub fn commit(
                     trace!("No action required for {:?}", staged_reference.temporary_id());
                 }
                 Err(error) => {
-                    response_reference.with_property_value(
-                        context,
-                        CommitRequestStatus,
-                        "Incomplete",
-                    )?;
+                    response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
                     abandoned_holons.push(staged_reference.into());
                     warn!("Commit failed for {:?}: {:?}", staged_reference.temporary_id(), error);
                 }
@@ -178,12 +181,12 @@ pub fn commit(
         }
 
         // Attach results to the CommitResponse holon
-        response_reference.add_related_holons(context, SavedHolons, saved_holons)?;
-        response_reference.add_related_holons(context, AbandonedHolons, abandoned_holons)?;
+        response_reference.add_related_holons(SavedHolons, saved_holons)?;
+        response_reference.add_related_holons(AbandonedHolons, abandoned_holons)?;
     }
 
     // Check if Pass 1 ended with an incomplete status
-    if let Some(status_value) = response_reference.property_value(context, CommitRequestStatus)? {
+    if let Some(status_value) = response_reference.property_value(CommitRequestStatus)? {
         let status_string: String = (&status_value).into();
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
@@ -283,7 +286,7 @@ pub fn commit(
                 staged_holon.add_error(error.clone())?;
             }
 
-            response_reference.with_property_value(context, CommitRequestStatus, "Incomplete")?;
+            response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
 
             warn!(
                 "Attempt to commit relationships failed for {:?}: {:?}",
@@ -317,7 +320,7 @@ pub fn commit(
 /// idempotent to call repeatedly; holons already committed or abandoned are skipped.
 fn commit_holon(
     staged_reference: &StagedReference,
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
 ) -> Result<CommitOutcome, HolonError> {
     // Resolve the staged holon from the pool
     let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -403,8 +406,9 @@ fn commit_holon(
 /// Any other states are ignored.
 ///
 /// The function only returns OK if ALL commits are successful.
+#[allow(dead_code)]
 fn commit_relationships(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     holon: &StagedHolon,
 ) -> Result<(), HolonError> {
     debug!("Entered Holon::commit_relationships");
@@ -433,7 +437,7 @@ fn commit_relationships(
 
 /// The method
 fn commit_relationship(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     source_id: LocalId,
     name: RelationshipName,
     collection: &HolonCollection,
@@ -448,7 +452,7 @@ fn commit_relationship(
 /// This method creates smartlinks from the specified source_id for the specified relationship name
 /// to each holon in its collection that has a holon_id.
 fn save_smartlinks_for_collection(
-    context: &dyn HolonsContextBehavior,
+    _context: &Arc<TransactionContext>,
     source_id: LocalId,
     name: RelationshipName,
     collection: &HolonCollection,
@@ -465,10 +469,16 @@ fn save_smartlinks_for_collection(
     debug!("Relationship {:?} has {} members to commit", name.0 .0, members.len());
 
     for (idx, holon_reference) in members.iter().enumerate() {
-        debug!("Target index={} holon_reference={:#?}", idx, holon_reference);
+        // Avoid deep Debug formatting here because runtime-bound references can recurse heavily in wasm.
+        debug!(
+            "Target index={} ref_kind={} ref_id={}",
+            idx,
+            holon_reference.reference_kind_string(),
+            holon_reference.reference_id_string()
+        );
 
         // 1) Narrow down: do we get through holon_id?
-        let target_id = match holon_reference.holon_id(context) {
+        let target_id = match holon_reference.holon_id() {
             Ok(id) => {
                 debug!("Resolved holon_id for index {}: {:?}", idx, id);
                 id
@@ -483,7 +493,7 @@ fn save_smartlinks_for_collection(
         };
 
         // 2) Narrow down: do we get through key()?
-        let key_option = match holon_reference.key(context) {
+        let key_option = match holon_reference.key() {
             Ok(k) => {
                 debug!("Resolved key for index {}: {:?}", idx, k);
                 k
@@ -515,7 +525,13 @@ fn save_smartlinks_for_collection(
             }
         };
 
-        debug!("saving smartlink (idx={}): {:#?}", idx, smartlink);
+        debug!(
+            "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
+            idx,
+            name.0 .0,
+            source_id,
+            smartlink.to_address
+        );
         save_smartlink(smartlink)?;
     }
 

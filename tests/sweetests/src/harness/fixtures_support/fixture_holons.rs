@@ -1,7 +1,7 @@
+
 use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
-use holons_core::{HolonsContextBehavior, ReadableHolon};
 use tracing::debug;
 // use tracing::warn;
 use crate::harness::fixtures_support::{TestHolonState, TestReference};
@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use sha2::{Digest, Sha256};
 use uuid::{Builder, Uuid};
-
+use holons_core::ReadableHolon;
 use super::{ExpectedSnapshot, SnapshotId, SourceSnapshot};
 
 /// Hashes the TemporaryId of the first source snapshot token minted
@@ -182,14 +182,14 @@ impl FixtureHolons {
     /// Returned tokens are *only* used for resolution of expected during the execution, and never passed to an add step.
     pub fn commit(
         &mut self,
-        context: &dyn HolonsContextBehavior,
+
     ) -> Result<Vec<TestReference>, HolonError> {
         let mut saved_tokens = Vec::new();
 
         for holon in self.holons.clone().values() {
             match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
-                    let snapshot = holon.head_snapshot.snapshot().clone().clone_holon(context)?;
+                    let snapshot = holon.head_snapshot.snapshot().clone().clone_holon()?;
                     let source = holon.head_snapshot.as_source();
                     let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Saved);
                     // Mint saved

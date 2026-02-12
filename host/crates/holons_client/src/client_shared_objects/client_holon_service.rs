@@ -36,9 +36,9 @@
 
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
-use holons_core::ReadableHolon;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, HolonsContextBehavior},
@@ -48,6 +48,7 @@ use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
+use std::sync::Arc;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
@@ -61,39 +62,33 @@ impl HolonServiceApi for ClientHolonService {
 
     fn commit_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
     ) -> Result<TransientReference, HolonError> {
-        // 1. Build commit dance request
+        // Build commit dance request
         let request = holon_dance_builders::build_commit_dance_request()?;
 
-        // 2. Run the dance
+        // Run the dance (sync → async → sync)
         let initiator = context.get_dance_initiator()?;
-        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response =
-            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
 
-        // 3. Any non-OK status is an error
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
+
+        // Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
                 "Commit dance failed: {:?} — {}",
                 response.status_code, response.description.0
             )));
         }
-        // 4. Extract HolonReference → TransientReference
+
+        // Extract HolonReference → TransientReference
         match response.body {
-            ResponseBody::HolonReference(href) => {
-                match href {
-                    HolonReference::Transient(tref) => Ok(tref),
-
-                    // Wrong kind of reference ⇒ failure in commit pipeline
-                    other => Err(HolonError::CommitFailure(format!(
-                        "Expected TransientReference but received {:?}",
-                        other
-                    ))),
-                }
-            }
-
-            // Wrong response type entirely ⇒ core bug, not caller error
+            ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
+            ResponseBody::HolonReference(other) => Err(HolonError::CommitFailure(format!(
+                "Expected TransientReference but received {:?}",
+                other
+            ))),
             body => Err(HolonError::CommitFailure(format!(
                 "Commit returned unexpected ResponseBody: {:?}; expected HolonReference",
                 body
@@ -106,13 +101,13 @@ impl HolonServiceApi for ClientHolonService {
         //let initiator = context.get_space_manager().get_dance_initiator()?;
         // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
         // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        // no context.. not sure what to do here
+        // no context. not sure what to do here
         todo!()
     }
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
         //let request = holon_dance_builders::=((*source_id)?)?;
@@ -125,46 +120,54 @@ impl HolonServiceApi for ClientHolonService {
     }
 
     fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
-        // no context.. not sure what to do here
+        // no context. not sure what to do here
         todo!()
     }
 
     fn fetch_related_holons_internal(
         &self,
+        context: &Arc<TransactionContext>,
         _source_id: &HolonId,
         _relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
-        // no context.. not sure what to do here
+        // no context. not sure what to do here
         todo!()
     }
 
     fn get_all_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
+        context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
+
         let initiator = context.get_dance_initiator()?;
-        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response =
-            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
+
+        let context_for_async = Arc::clone(context);
+
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
+
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
-                "get all holons dance failed: {:?} — {}",
+                "GetAllHolons dance failed: {:?} — {}",
                 response.status_code, response.description.0
             )));
         }
+
         match response.body {
             ResponseBody::HolonCollection(collection) => Ok(collection),
-            _ => Err(HolonError::InvalidParameter(
-                "GetAllHolons: expected ResponseBody::HolonCollection".into(),
-            )),
+            other => Err(HolonError::InvalidParameter(format!(
+                "GetAllHolons: expected ResponseBody::HolonCollection, got {:?}",
+                other
+            ))),
         }
     }
 
     fn load_holons_internal(
         &self,
-        context: &dyn HolonsContextBehavior,
-        set: TransientReference, // HolonLoadSet
+        context: &Arc<TransactionContext>,
+        set: TransientReference, // HolonLoadSet type
     ) -> Result<TransientReference, HolonError> {
         // 1) Build the dance request for the loader.
         let request = holon_dance_builders::build_load_holons_dance_request(set)?;
@@ -173,9 +176,11 @@ impl HolonServiceApi for ClientHolonService {
         let initiator = context.get_dance_initiator()?;
 
         // 3) Bridge async → sync (ClientHolonService is synchronous)
-        let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        let response =
-            run_future_synchronously(async move { initiator.initiate_dance(ctx, request).await });
+        let context_for_async = Arc::clone(context);
+
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
 
         // 4) Check the status
         if response.status_code != ResponseStatusCode::OK {
@@ -187,26 +192,28 @@ impl HolonServiceApi for ClientHolonService {
 
         // 5) Extract the returned holon
         match response.body {
-            ResponseBody::HolonReference(HolonReference::Transient(t)) => Ok(t),
-            ResponseBody::HolonReference(other_ref) => other_ref.clone_holon(context),
-            _ => Err(HolonError::InvalidParameter(
-                "LoadHolons: expected ResponseBody::HolonReference".into(),
-            )),
+            ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
+            ResponseBody::HolonReference(other) => Err(HolonError::InvalidParameter(format!(
+                "LoadHolons: expected TransientReference, got {:?}",
+                other
+            ))),
+            other => Err(HolonError::InvalidParameter(format!(
+                "LoadHolons: expected ResponseBody::HolonReference, got {:?}",
+                other
+            ))),
         }
     }
 }
 
-/// Run an async future to completion from synchronous code (native only).
-/// Drive an async future to completion from synchronous host/client code, aware of Tokio.
+/// Drive an async future to completion from synchronous host/client code.
 ///
 /// Behavior:
-/// - If a Tokio runtime is already running on this thread, the future is executed
-///   inside that runtime using `block_in_place` to avoid creating a nested runtime.
-/// - If no runtime is running, a lightweight current-thread runtime is created
-///   just for this call.
+/// - If a Tokio runtime is already running on this thread, execute via
+///   `block_in_place(|| futures_executor::block_on(...))` so we do not nest runtimes.
+/// - If no runtime is running, execute directly with `futures_executor::block_on(...)`.
 ///
-/// This helper intentionally returns `T` (and will panic if runtime setup fails or the
-/// future panics) to keep the surrounding sync APIs unchanged.
+/// Note: `block_in_place` requires a Tokio multi-thread runtime. If this helper is
+/// called from a current-thread Tokio runtime, Tokio will panic.
 pub fn run_future_synchronously<F, T>(future: F) -> T
 where
     F: Future<Output = T>,
@@ -215,11 +222,11 @@ where
     // runtime setup errors instead of panicking, we can change the signature to
     // -> Result<T, HolonError> later.
 
-    // If already inside a Tokio runtime, drive the future there without requiring 'static.
+    // If already inside a Tokio runtime, drive the future there without requiring static.
     if Handle::try_current().is_ok() {
         return block_in_place(|| block_on(future));
     }
 
-    // Otherwise, create a small current-thread runtime for this call (futures_executor).
+    // Otherwise, run directly with futures_executor (no Tokio runtime required).
     block_on(future)
 }

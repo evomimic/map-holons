@@ -16,6 +16,5 @@ pub fn build_load_holons_dance_request(
         MapString("load_holons".into()),
         DanceType::Standalone,
         RequestBody::TransientReference(bundle_set),
-        None,
     ))
 }

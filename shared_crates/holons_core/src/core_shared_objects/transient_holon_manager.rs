@@ -1,24 +1,25 @@
 use std::{
     any::Any,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
 };
 
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, PropertyMap, TemporaryId};
-// use tracing::{debug};
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::{
     core_shared_objects::{
         holon::{
             state::{HolonState, ValidationState},
             Holon, HolonCloneModel, TransientHolon,
         },
-        holon_pool::{SerializableHolonPool, TransientHolonPool},
+        holon_pool::{HolonPool, TransientHolonPool},
         transient_manager_access_internal::TransientManagerAccessInternal,
         ReadableRelationship, TransientManagerAccess, TransientRelationshipMap,
     },
     reference_layer::{TransientHolonBehavior, TransientReference},
-    HolonPool, HolonsContextBehavior,
 };
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{HolonError, PropertyMap, TemporaryId};
 use tracing::warn;
 use type_names::CorePropertyTypeName;
 
@@ -26,24 +27,27 @@ use type_names::CorePropertyTypeName;
 ///
 /// Regardless of the source phase, cloned Holons always begin their lifecycle as `TransientHolon`.
 pub trait ToHolonCloneModel {
-    fn holon_clone_model(
-        &self,
-        context: &dyn HolonsContextBehavior,
-    ) -> Result<HolonCloneModel, HolonError>;
+    fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError>;
 }
 
 #[derive(Debug)]
 pub struct TransientHolonManager {
-    transient_holons: RwLock<TransientHolonPool>, // Thread-safe pool
+    tx_id: TxId,
+    context: Weak<TransactionContext>,
+    transient_holons: RwLock<TransientHolonPool>,
 }
 
 impl TransientHolonManager {
-    pub fn new_empty() -> Self {
-        Self { transient_holons: RwLock::new(TransientHolonPool(HolonPool::new())) }
+    pub fn new_empty(tx_id: TxId, context: Weak<TransactionContext>) -> Self {
+        Self { tx_id, context, transient_holons: RwLock::new(TransientHolonPool(HolonPool::new())) }
     }
 
-    pub fn new_with_pool(pool: TransientHolonPool) -> Self {
-        Self { transient_holons: RwLock::new(pool) }
+    pub fn new_with_pool(
+        tx_id: TxId,
+        context: Weak<TransactionContext>,
+        pool: TransientHolonPool,
+    ) -> Self {
+        Self { tx_id, context, transient_holons: RwLock::new(pool) }
     }
 
     /// Adds the provided holon and returns a reference-counted reference to it
@@ -60,15 +64,33 @@ impl TransientHolonManager {
         self.to_validated_transient_reference(&id)
     }
 
-    /// This function converts a TemporaryId into a TransientReference.
-    /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
-    fn to_validated_transient_reference(
+    /// Converts a TemporaryId into a validated TransientReference using the provided transaction handle.
+    ///
+    /// This enforces that:
+    /// - the id exists in this manager’s pool
+    /// - the reference is minted with the caller’s transaction handle
+    pub(crate) fn to_validated_transient_reference(
         &self,
         id: &TemporaryId,
     ) -> Result<TransientReference, HolonError> {
-        // Determine if the id references a TransientHolon in the transient manager
-        let _ = self.get_holon_by_id(id)?;
-        Ok(TransientReference::from_temporary_id(id))
+        // Validate id exists in this pool.
+        self.get_holon_by_id(id)?;
+
+        // Mint the capability-bearing reference using a handle derived from the stored Weak<TC>.
+        let handle = self.require_handle()?;
+
+        Ok(TransientReference::from_temporary_id(handle, id))
+    }
+
+    fn require_handle(&self) -> Result<TransactionContextHandle, HolonError> {
+        let context = self.context.upgrade().ok_or_else(|| {
+            HolonError::ServiceNotAvailable(format!(
+                "TransactionContext (tx_id={})",
+                self.tx_id.value()
+            ))
+        })?;
+
+        Ok(TransactionContextHandle::new(context))
     }
 }
 
@@ -87,7 +109,7 @@ impl Clone for TransientHolonManager {
             .expect("Failed to acquire read lock on transient_holons while cloning manager")
             .clone();
 
-        TransientHolonManager::new_with_pool(pool)
+        TransientHolonManager::new_with_pool(self.tx_id, self.context.clone(), pool)
     }
 }
 
@@ -266,20 +288,18 @@ impl TransientManagerAccessInternal for TransientHolonManager {
         Ok(pool.get_all_holons().into_iter().map(|rc_ref| rc_ref.clone()).collect::<Vec<_>>())
     }
 
-    fn export_transient_holons(&self) -> Result<SerializableHolonPool, HolonError> {
-        self.transient_holons
-            .read()
-            .map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock for export_transient_holons: {}",
-                    e
-                ))
-            })?
-            .export_pool()
+    fn export_transient_holons(&self) -> Result<HolonPool, HolonError> {
+        let transient_pool = self.transient_holons.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock for export_transient_holons: {}",
+                e
+            ))
+        })?;
+        Ok(transient_pool.0.clone())
     }
 
     /// Imports holons into the transient pool, completely replacing existing holons.
-    fn import_transient_holons(&self, pool: SerializableHolonPool) -> Result<(), HolonError> {
+    fn import_transient_holons(&self, pool: HolonPool) -> Result<(), HolonError> {
         let mut guard = self.transient_holons.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire write lock for import_transient_holons: {}",

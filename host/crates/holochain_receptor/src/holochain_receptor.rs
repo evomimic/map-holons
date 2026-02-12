@@ -18,7 +18,9 @@ use holons_client::{
     },
 };
 
-use holons_core::{dances::DanceInitiator, HolonsContextBehavior};
+use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::dances::DanceInitiator;
+use holons_core::HolonsContextBehavior;
 use holons_trust_channel::TrustChannel;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
@@ -31,7 +33,7 @@ pub struct HolochainReceptor {
     receptor_id: Option<String>,
     receptor_type: String,
     properties: HashMap<String, String>,
-    context: Arc<dyn HolonsContextBehavior + Send + Sync>,
+    context: Arc<TransactionContext>,
     client_handler: Arc<HolochainConductorClient>,
     _home_space_holon: HolonSpace,
 }
@@ -69,15 +71,18 @@ impl HolochainReceptor {
 
 #[async_trait]
 impl ReceptorBehavior for HolochainReceptor {
+    fn transaction_context(&self) -> Arc<TransactionContext> {
+        Arc::clone(&self.context)
+    }
+
     /// Core request → client dance pipeline
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
-        let dance_request =
-            ClientDanceBuilder::validate_and_execute(self.context.as_ref(), &request)?;
+        let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
 
         let initiator =
             self.context.get_dance_initiator().expect("Dance initiator must be initialized");
 
-        let dance_response = initiator.initiate_dance(&*self.context, dance_request).await;
+        let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
         Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
     }
@@ -98,7 +103,7 @@ impl ReceptorBehavior for HolochainReceptor {
             let dance_request = ClientDanceBuilder::get_all_holons_dance()?; //self.context.as_ref(), &request)?;
             let initiator =
                 self.context.get_dance_initiator().expect("Dance initiator must be initialized");
-            let dance_response = initiator.initiate_dance(&*self.context, dance_request).await;
+            let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
             Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
         } else {
             Err(HolonError::InvalidParameter(

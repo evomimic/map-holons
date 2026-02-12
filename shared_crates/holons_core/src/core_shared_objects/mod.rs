@@ -17,12 +17,12 @@ pub mod relationship_behavior;
 pub mod relationship_cache;
 pub mod space_manager;
 pub mod staged_relationship;
+pub mod transactions;
 pub mod transient_collection;
 pub mod transient_holon_manager;
 pub mod transient_manager_access;
 pub mod transient_manager_access_internal;
 pub mod transient_relationship;
-pub mod transactions;
 
 pub use crate::reference_layer::holon_operations_api::*;
 pub use cache_access::HolonCacheAccess;

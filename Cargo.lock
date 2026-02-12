@@ -2937,6 +2937,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "holons_boundary"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "serde",
+]
+
+[[package]]
 name = "holons_client"
 version = "0.1.0"
 dependencies = [
@@ -2945,6 +2955,7 @@ dependencies = [
  "core_types",
  "futures-executor",
  "holon_dance_builders",
+ "holons_boundary",
  "holons_core",
  "integrity_core_types",
  "serde",
@@ -2977,6 +2988,7 @@ dependencies = [
  "core_types",
  "hdi",
  "hdk",
+ "holons_boundary",
  "holons_core",
  "holons_guest_integrity",
  "holons_integrity",
@@ -3054,6 +3066,7 @@ dependencies = [
  "derive-new",
  "holochain",
  "holon_dance_builders",
+ "holons_boundary",
  "holons_client",
  "holons_core",
  "holons_loader_client",
@@ -3075,6 +3088,8 @@ name = "holons_trust_channel"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "core_types",
+ "holons_boundary",
  "holons_core",
  "tracing",
 ]

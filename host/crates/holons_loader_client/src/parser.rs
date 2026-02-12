@@ -7,19 +7,19 @@
 //! - Orchestrating per-file bundle construction via the `builder` module
 //!   and wiring everything into a single `HolonLoadSet`.
 
-use std::path::{Path, PathBuf};
-
-use core_types::{ContentSet, FileData};
-use holons_prelude::prelude::*;
-use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
-use serde::Deserialize;
-use serde_json::value::RawValue;
-
 use crate::builder::{
     attach_described_by_relationship, attach_relationships_for_loader_holon,
     collect_relationship_specs_for_loader_holon, create_loader_bundle_for_file,
     create_loader_holon_from_raw, normalize_ref_key, RawLoaderHolon, RawLoaderMeta,
 };
+use core_types::{ContentSet, FileData};
+use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_prelude::prelude::*;
+use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
+use serde::Deserialize;
+use serde_json::value::RawValue;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// High-level classification of a per-file parsing issue.
 ///
@@ -100,7 +100,7 @@ pub struct RawLoaderFileWithSlices<'a> {
 /// The caller decides whether a single-file failure should abort the entire
 /// load or allow partial success; this function simply reports all issues.
 pub fn parse_files_into_load_set(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     load_set_key: Option<MapString>,
     content_set: &ContentSet,
 ) -> Result<HolonReference, Vec<ImportFileParsingIssue>> {
@@ -156,7 +156,7 @@ pub fn parse_files_into_load_set(
 /// This uses the generic `new_holon` helper from the MAP prelude, which
 /// creates a transient holon with an optional explicit key.
 pub fn create_holon_load_set(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     load_set_key: Option<MapString>,
 ) -> Result<HolonReference, HolonError> {
     // Allocate a new transient holon in the current context.
@@ -181,7 +181,7 @@ pub fn create_holon_load_set(
 /// On success, the `HolonLoadSet` now contains a new bundle for this file.
 /// On failure, a single `ImportFileParsingIssue` is returned.
 pub fn parse_single_import_file_into_bundle(
-    context: &dyn HolonsContextBehavior,
+    context: &Arc<TransactionContext>,
     load_set_ref: &HolonReference,
     import_file: &FileData,
     schema_json: &str,
@@ -191,24 +191,21 @@ pub fn parse_single_import_file_into_bundle(
 
     // 2) Validate against the loader JSON Schema and deserialize into
     //    `RawLoaderFileWithSlices<'_>`.
-    let raw_file_with_slices = match validate_and_deserialize_loader_file(
-        raw_json,
-        schema_json,
-        &import_file.filename,
-    ) {
-        Ok(wrapper) => wrapper,
-        Err(err) => {
-            return Err(ImportFileParsingIssue {
-                file_path: file_path.clone(),
-                kind: ImportFileParsingIssueKind::SchemaValidationFailure,
-                message: format!(
+    let raw_file_with_slices =
+        match validate_and_deserialize_loader_file(raw_json, schema_json, &import_file.filename) {
+            Ok(wrapper) => wrapper,
+            Err(err) => {
+                return Err(ImportFileParsingIssue {
+                    file_path: file_path.clone(),
+                    kind: ImportFileParsingIssueKind::SchemaValidationFailure,
+                    message: format!(
                     "Loader import file '{}' failed schema validation or top-level decoding: {}",
                     import_file.filename, err
                 ),
-                source_error: Some(err),
-            });
-        }
-    };
+                    source_error: Some(err),
+                });
+            }
+        };
 
     // 3) Create the HolonLoaderBundle for this file and attach it to
     //    the HolonLoadSet.
