@@ -44,7 +44,11 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        None,
+    )?;
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step( fixture_holons.count_saved(), None)?;

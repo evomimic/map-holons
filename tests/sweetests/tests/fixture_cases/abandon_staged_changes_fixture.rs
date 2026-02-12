@@ -63,7 +63,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     //  COMMIT  //  all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        Some("Committing after First Abandon".to_string()),)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
@@ -137,7 +140,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
 
     // COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),)?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;

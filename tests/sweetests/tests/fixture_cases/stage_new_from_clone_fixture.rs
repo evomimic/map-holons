@@ -48,7 +48,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         transient_token,
         transient_source_key.clone(),
         ResponseStatusCode::BadRequest,
-        Some("Attempting Stage New From Clone for BadReuqest (Transient)".to_string()),
+        Some("Attempting Stage New From Clone for BadRequest (Transient)".to_string()),
     )?;
     // TODO:  Find a better way to attempt a non-OK expected response for this step without minting a token and having to subtract from fixture holons saved count
 
@@ -92,8 +92,12 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 1  //
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        Some("Commit --- Round 1".to_string()),
+    )?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None,)?;
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
     // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
@@ -127,8 +131,12 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 2  //
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved())?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ResponseStatusCode::OK,
+        Some("Commit --- Round 2".to_string()),
+    )?;
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None,)?;
 
     // MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

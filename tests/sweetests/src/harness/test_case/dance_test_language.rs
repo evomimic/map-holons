@@ -354,7 +354,7 @@ impl DancesTestCase {
         description: Option<String>,
     ) -> Result<(), HolonError> {
         let saved_tokens = fixture_holons.commit()?;
-        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status });
+        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status, description });
 
         Ok(())
     }
