@@ -308,10 +308,7 @@ impl DancesTestCase {
         }
 <<<<<<< HEAD:tests/sweetests/src/harness/test_case/adders.rs
         let saved_tokens = fixture_holons.commit()?;
-=======
-        let saved_tokens = fixture_holons.commit(context)?;
->>>>>>> 253a0ec2 (optional descriptions for steps -- enchanced verbosity):tests/sweetests/src/harness/test_case/dance_test_language.rs
-        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status, description });
+        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status });
 
         Ok(())
     }
