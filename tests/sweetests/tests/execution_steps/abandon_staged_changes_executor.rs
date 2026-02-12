@@ -3,7 +3,7 @@ use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest.
 /// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test.
@@ -15,13 +15,13 @@ use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestR
 ///
 pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     expected_status: ResponseStatusCode,
-    description:Option<String>,
+    description: Option<String>,
 ) {
     let description = match description {
         Some(dsc) => dsc,
-        None => "Abandon Staged Changes".to_string()
+        None => "Abandon Staged Changes".to_string(),
     };
     info!("--- TEST STEP: {description} ---");
 
@@ -29,8 +29,7 @@ pub async fn execute_abandon_staged_changes(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token)
-.unwrap();
+        state.resolve_source_reference(&context, &step_token).unwrap();
 
     // 2. BUILD — dance request to abandon holon
     let request = build_abandon_staged_changes_dance_request(source_reference)
@@ -39,8 +38,7 @@ pub async fn execute_abandon_staged_changes(
 
     // 3. CALL — use the context-owned call service
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request)
-.await;
+    let response = dance_initiator.initiate_dance(&context, request).await;
 
     // 4. VALIDATE - response status
     assert_eq!(
@@ -57,8 +55,8 @@ pub async fn execute_abandon_staged_changes(
         };
 
         let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
-        let mut execution_reference =
-            ExecutionReference::from_token_execution(&source_token, execution_handle);
+        let execution_reference =
+            ExecutionReference::from_token_execution(&step_token, execution_handle);
 
         execution_reference.assert_essential_content_eq();
 
@@ -73,6 +71,6 @@ pub async fn execute_abandon_staged_changes(
             ))
         );
 
-        state.record(&source_token, execution_reference).unwrap();
+        state.record(&step_token, execution_reference).unwrap();
     }
 }

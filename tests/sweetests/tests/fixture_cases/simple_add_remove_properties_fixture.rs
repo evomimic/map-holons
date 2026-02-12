@@ -68,7 +68,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // BOOK (Staged) //
     let _book_key = MapString(BOOK_KEY.to_string());
-    let book_source_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
+    let book_step_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
     // Add
     let mut book_properties = PropertyMap::new();
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());
@@ -80,7 +80,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     let modified_book_token = test_case.add_with_properties_step(
         &mut fixture_holons,
-        book_source_token,
+        book_step_token,
         book_properties.clone(),
         ResponseStatusCode::OK,
         Some("Updating Staged book holon with properties".to_string()),

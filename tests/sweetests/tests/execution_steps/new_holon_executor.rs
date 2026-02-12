@@ -7,7 +7,7 @@ use tracing::{debug, info};
 /// This function creates a new holon with an optional key. It builds and dances a `new_holon` DanceRequest.
 pub async fn execute_new_holon(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     properties: PropertyMap,
     key: Option<MapString>,
     expected_status: ResponseStatusCode,
@@ -57,12 +57,12 @@ pub async fn execute_new_holon(
 
     // Canonical construction: token + execution outcome
     let execution_reference =
-        ExecutionReference::from_token_execution(&source_token, execution_handle);
+        ExecutionReference::from_token_execution(&step_token, execution_handle);
 
     // Validate expected vs execution-time content
     execution_reference.assert_essential_content_eq();
     info!("Success! Holon's essential content matched expected");
 
     // Record for downstream resolution
-    state.record(&source_token, execution_reference).unwrap();
+    state.record(&step_token, execution_reference).unwrap();
 }

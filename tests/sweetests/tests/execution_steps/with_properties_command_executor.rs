@@ -12,7 +12,7 @@ use holons_prelude::prelude::*;
 
 pub async fn execute_with_properties(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
     description: Option<String>,
@@ -27,7 +27,7 @@ pub async fn execute_with_properties(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token)
+        state.resolve_source_reference(&context, &step_token)
 .unwrap();
 
     // 2. BUILD — with_properties DanceRequest
@@ -66,12 +66,12 @@ pub async fn execute_with_properties(
     let execution_handle = ExecutionHandle::from(response_holon_reference);
 
     let execution_reference =
-        ExecutionReference::from_token_execution(&source_token, execution_handle);
+        ExecutionReference::from_token_execution(&step_token, execution_handle);
 
     execution_reference.assert_essential_content_eq()
 ;
     info!("Success! Updated holon's essential content matched expected");
 
     // 6. RECORD — make this execution result available downstream
-    state.record(&source_token, execution_reference).unwrap();
+    state.record(&step_token, execution_reference).unwrap();
 }
