@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 //! # Dance Test Language
 //!
 //! This module defines the **declarative language** used by MAP sweetests to
@@ -38,6 +39,8 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 
+=======
+>>>>>>> 6cd89d9b (-file restructure)
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, DancesTestCase, ExpectedSnapshot,
     FixtureHolons, SourceSnapshot, TestHolonState, TestSessionState,
@@ -487,11 +490,15 @@ impl DancesTestCase {
 
         // Add execution step
         self.steps.push(DanceTestStep::StageHolon {
+<<<<<<< HEAD
 <<<<<<< HEAD:tests/sweetests/src/harness/test_case/adders.rs
             step_token: new_token.clone(),
 =======
             source_token: new_token.clone(),
 >>>>>>> 253a0ec2 (optional descriptions for steps -- enchanced verbosity):tests/sweetests/src/harness/test_case/dance_test_language.rs
+=======
+            step_token: new_token.clone(),
+>>>>>>> 6cd89d9b (-file restructure)
             expected_status,
             description,
         });
@@ -610,6 +617,7 @@ impl DancesTestCase {
         Ok(new_token)
     }
 }
+<<<<<<< HEAD
 <<<<<<< HEAD:tests/sweetests/src/harness/test_case/adders.rs
 =======
 
@@ -881,3 +889,5 @@ impl core::fmt::Display for DanceTestStep {
     }
 }
 >>>>>>> 253a0ec2 (optional descriptions for steps -- enchanced verbosity):tests/sweetests/src/harness/test_case/dance_test_language.rs
+=======
+>>>>>>> 6cd89d9b (-file restructure)
