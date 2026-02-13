@@ -131,7 +131,7 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", step_token, relationship_name, holons_to_add.len(), expected_status)
             }
             DanceTestStep::Commit { saved_tokens, expected_status, description: _description } => {
-                write!(f, "Committing {:#?}, expecting: {:?})", saved_tokens, expected_status)
+                write!(f, "Committing {:#?}, expecting: {:?}", saved_tokens, expected_status)
             }
             DanceTestStep::DeleteHolon {
                 step_token,
@@ -224,7 +224,7 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 description: _description,
             } => {
-                write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", step_token, relationship_name, holons_to_remove.len(), expected_status)
+                write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, removed_count: {:#?}, expecting: {:#?}", step_token, relationship_name, holons_to_remove.len(), expected_status)
             }
             DanceTestStep::StageHolon {
                 step_token,

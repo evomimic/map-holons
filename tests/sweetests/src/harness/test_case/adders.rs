@@ -1,4 +1,3 @@
-<<<<<<< HEAD:tests/sweetests/src/harness/test_case/dance_test_language.rs
 //! # Dance Test Language
 //!
 //! This module defines the **declarative language** used by MAP sweetests to
@@ -39,16 +38,9 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 
-use std::sync::Arc;
-
-use crate::{
-    harness::fixtures_support::TestReference, init_fixture_context, ExpectedSnapshot,
-    FixtureBindings, FixtureHolons, SourceSnapshot, TestHolonState,
-=======
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, DancesTestCase, ExpectedSnapshot,
     FixtureHolons, SourceSnapshot, TestHolonState, TestSessionState,
->>>>>>> 6cd89d9b (-file restructure):tests/sweetests/src/harness/test_case/adders.rs
 };
 use core_types::ContentSet;
 use holons_boundary::SerializableHolonPool;
@@ -314,7 +306,7 @@ impl DancesTestCase {
                     .to_string(),
             ));
         }
-        let saved_tokens = fixture_holons.commit(context)?;
+        let saved_tokens = fixture_holons.commit()?;
         self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status, description });
 
         Ok(())
@@ -337,7 +329,7 @@ impl DancesTestCase {
                     .to_string(),
             ));
         }
-        let mut snapshot = source_reference.clone_holon(context)?;
+        let mut snapshot = source_reference.clone_holon()?;
         for (name, value) in properties.clone() {
             snapshot.with_property_value(name, value)?;
         }

@@ -645,6 +645,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "holons_boundary"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "serde",
+]
+
+[[package]]
 name = "holons_core"
 version = "0.1.0"
 dependencies = [
@@ -669,6 +679,7 @@ dependencies = [
  "core_types",
  "hdi",
  "hdk",
+ "holons_boundary",
  "holons_core",
  "holons_guest_integrity",
  "holons_integrity",
