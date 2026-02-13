@@ -9,7 +9,7 @@
 //! by the sweetests harness.
 //!
 //! Test cases constructed using this language are *pure specifications*:
-//! they contain no runtime context, no concrete holon identifiers, and no
+//! they contain no execution-time context, no concrete runtime identifiers, and no
 //! execution logic. Resolution of references, state mutation, and dance
 //! invocation are handled entirely by the execution support layer at runtime.
 //!
@@ -23,9 +23,9 @@
 //!   cases against client- and guest-side contexts.
 //!
 //! This separation allows test behavior to be described declaratively while
-//! remaining independent of runtime identifiers and execution-time handles
+//! remaining independent of runtime identifiers and execution-time handles.
 
-pub mod adders;
+mod adders;
 pub mod test_case;
 pub mod test_steps;
 
