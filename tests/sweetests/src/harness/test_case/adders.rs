@@ -1,0 +1,559 @@
+use crate::{
+    harness::fixtures_support::TestReference, DanceTestStep, DancesTestCase, ExpectedSnapshot,
+    FixtureHolons, SourceSnapshot, TestHolonState, TestSessionState,
+};
+use core_types::ContentSet;
+use holons_boundary::SerializableHolonPool;
+use holons_core::{
+    core_shared_objects::transactions::TransactionContext, reference_layer::ReadableHolon,
+};
+use holons_prelude::prelude::*;
+use integrity_core_types::PropertyMap;
+use std::sync::Arc;
+
+/// - The source *token* is a TestReference that is *embedded as input* for the step. Executors will look it up at runtime
+///   (Saved ≙ Staged(Committed(LocalId)) enforced at lookup time).
+/// - The adders mint and return tokens to be used for subsequent steps.
+impl DancesTestCase {
+    pub fn new<S: Into<String>>(name: S, description: S) -> Self {
+        Self {
+            name: name.into(),
+            description: description.into(),
+            steps: Vec::new(),
+            test_session_state: TestSessionState::default(),
+            is_finalized: false,
+        }
+    }
+
+    pub fn finalize(
+        &mut self,
+        fixture_context: &Arc<TransactionContext>,
+    ) -> Result<(), HolonError> {
+        self.load_test_session_state(fixture_context);
+        if self.is_finalized == true {
+            panic!("DancesTestCase already finalized!")
+        }
+        self.is_finalized = true;
+
+        Ok(())
+    }
+
+    /// Loads the current test_session_state from the fixture_context the given `TestSessionState` instance.
+    ///
+    /// This function exports transient holons from the HolonSpaceManager and injects them into
+    /// the provided `session_state`, ensuring that the outgoing `TestCase` includes
+    /// the latest state from the local context.
+    ///
+    /// # Arguments
+    /// * `fixture_context` - A reference to the `TransactionContext`, which provides access to the space manager.
+    /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
+    ///
+    /// This function is called automatically within `rs_test` and should not be used directly.
+    pub fn load_test_session_state(&mut self, fixture_context: &Arc<TransactionContext>) {
+        let transient_holons = fixture_context.export_transient_holons().unwrap();
+        self.test_session_state
+            .set_transient_holons(SerializableHolonPool::from(&transient_holons));
+    }
+
+    // === Execution Steps === //
+
+    pub fn add_database_print_step(&mut self) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        self.steps.push(DanceTestStep::PrintDatabase);
+
+        Ok(())
+    }
+
+    pub fn add_ensure_database_count_step(
+        &mut self,
+        expected_count: MapInteger,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        self.steps.push(DanceTestStep::EnsureDatabaseCount { expected_count, description });
+
+        Ok(())
+    }
+
+    pub fn add_load_holons_client_step(
+        &mut self,
+        content_set: ContentSet,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
+    ) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        self.steps.push(DanceTestStep::LoadHolonsClient {
+            content_set,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+            expect_total_bundles,
+            expect_total_loader_holons,
+        });
+
+        Ok(())
+    }
+
+    pub fn add_load_holons_step(
+        &mut self,
+        set: TransientReference,
+        expect_staged: MapInteger,
+        expect_committed: MapInteger,
+        expect_links_created: MapInteger,
+        expect_errors: MapInteger,
+        expect_total_bundles: MapInteger,
+        expect_total_loader_holons: MapInteger,
+    ) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        self.steps.push(DanceTestStep::LoadHolons {
+            set,
+            expect_staged,
+            expect_committed,
+            expect_links_created,
+            expect_errors,
+            expect_total_bundles,
+            expect_total_loader_holons,
+        });
+
+        Ok(())
+    }
+
+    pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        self.steps.push(DanceTestStep::MatchSavedContent);
+
+        Ok(())
+    }
+
+    pub fn add_query_relationships_step(
+        &mut self,
+        step_token: TestReference,
+        query_expression: QueryExpression,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        self.steps.push(DanceTestStep::QueryRelationships {
+            step_token,
+            query_expression,
+            expected_status,
+            description,
+        });
+
+        Ok(())
+    }
+
+    // === Execution Steps with === //
+    // ==== Token Minting ==== //
+
+    // Note: adders use the expected snapshot from the step_token passed in as the new source for the execution step.
+
+    // Advance head snapshot (no new logical holon).
+    pub fn add_abandon_staged_changes_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let new_snapshot = new_source.snapshot().clone_holon()?;
+        let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Abandoned);
+        if expected_status == ResponseStatusCode::OK {
+            // Advance head snapshot for the FixtureHolon
+            fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        }
+        // Mint
+        let new_step_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::AbandonStagedChanges {
+            step_token: new_step_token.clone(),
+            expected_status,
+            description,
+        });
+
+        Ok(new_step_token)
+    }
+
+    // Advance head snapshot (no new logical holon).
+    pub fn add_delete_holon_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let new_snapshot = new_source.snapshot().clone_holon()?;
+        let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Deleted);
+        if expected_status == ResponseStatusCode::OK {
+            // Advance head snapshot for the FixtureHolon
+            fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        }
+        // Mint
+        let new_step_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::DeleteHolon {
+            step_token: new_step_token.clone(),
+            expected_status,
+            description,
+        });
+
+        Ok(())
+    }
+
+    // Commit advances head snapshots to Saved for existing logical holons.
+    pub fn add_commit_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        let saved_tokens = fixture_holons.commit()?;
+        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status, description });
+
+        Ok(())
+    }
+
+    // Special step that creates a new 'freshly minted' TransientReference,
+    // i.e. the first snapshot for a FixtureHolon.
+    pub fn add_new_holon_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        source_reference: TransientReference,
+        properties: PropertyMap,
+        key: Option<MapString>,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        let mut snapshot = source_reference.clone_holon()?;
+        for (name, value) in properties.clone() {
+            snapshot.with_property_value(name, value)?;
+        }
+        let source = SourceSnapshot::new(source_reference, TestHolonState::Transient);
+        let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Transient);
+        fixture_holons.create_fixture_holon(expected.clone())?;
+        let new_token = fixture_holons.mint_test_reference(source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::NewHolon {
+            step_token: new_token.clone(),
+            properties,
+            key,
+            expected_status,
+            description,
+        });
+
+        Ok(new_token)
+    }
+
+    // TODO: Support for relationships to be finished in issue 382
+
+    // Advance head (no new logical holon).
+    // pub fn add_add_related_holons_step(
+    //     &mut self,
+    //
+    //     step_token: TestReference, // "owning" source Holon, which owns the Relationship
+    //     relationship_name: RelationshipName,
+    //     holons_to_add: Vec<TestReference>,
+    //     expected_status: ResponseStatusCode,
+    // ) -> Result<TestReference, HolonError> {
+
+    // self.steps.push(DanceTestStep::AddRelatedHolons {
+    //     step_token: step_token.clone(),
+    //     relationship_name,
+    //     holons_to_add,
+    //     expected_status,
+    // });
+
+    // // Cloning source in order to create a new fixture holon
+    // let mut expected_content = step_token.token_id().clone_holon()?;
+    // // Update expected
+    // expected_content.add_related_holons(relationship_name, holons_to_add)?;
+    // // Mint next
+    // let step_token = fixture_holons.add_token(
+    //     step_token.root(),
+    //     step_token.state(),
+    //     expected_content,
+    // )?;
+
+    //
+
+    //     Ok(())
+    // }
+
+    // Advance head (no new logical holon).
+    pub fn add_remove_properties_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        properties: PropertyMap,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        for property in properties.keys() {
+            new_snapshot.remove_property_value(property)?;
+        }
+        let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
+        if expected_status == ResponseStatusCode::OK {
+            // Advance head snapshot for the FixtureHolon
+            fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        }
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::RemoveProperties {
+            step_token: new_token.clone(),
+            properties: properties.clone(),
+            expected_status,
+            description,
+        });
+
+        Ok(new_token)
+    }
+
+    // TODO: Support for relationships to be finished in issue 382
+
+    // Advance head (no new logical holon).
+    // pub fn add_remove_related_holons_step(
+    //     &mut self,
+    //     step_token: TestReference, // "owning" source Holon, which owns the Relationship
+    //     relationship_name: RelationshipName,
+    //     holons_to_remove: Vec<TestReference>,
+    //     expected_status: ResponseStatusCode,
+    // ) -> Result<TestReference, HolonError> {
+    // self.steps.push(DanceTestStep::RemoveRelatedHolons {
+    //     step_token,
+    //     expected_token: expected_token.clone(),
+    //     relationship_name,
+    //     holons_to_remove,
+    //     expected_status,
+    // });
+
+    // // Cloning source in order to create a new fixture holon
+    // let mut expected_content = step_token.token_id().clone_holon()?;
+    // // Update expected
+    // expected_content.remove_related_holons(relationship_name, holons_to_remove)?;
+    // // Mint next
+    // let step_token = fixture_holons.add_token(
+    //     step_token.root(),
+    //     step_token.state(),
+    //     expected_content,
+    // )?;
+
+    // Ok(step_token)
+
+    //     Ok(())
+    // }
+
+    // Creates new logical holon and therefore a new FixtureHolon.
+    pub fn add_stage_holon_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let snapshot = new_source.snapshot().clone_holon()?;
+        let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
+        if expected_status == ResponseStatusCode::OK {
+            // Create new FixtureHolon
+            fixture_holons.create_fixture_holon(expected.clone())?;
+        }
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::StageHolon {
+            step_token: new_token.clone(),
+            expected_status,
+            description,
+        });
+
+        Ok(new_token)
+    }
+
+    // Creates new logical holon and therefore a new FixtureHolon.
+    pub fn add_stage_new_from_clone_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let mut snapshot = new_source.snapshot().clone_holon()?;
+        snapshot.with_property_value("Key", new_key.clone())?;
+        let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
+        if expected_status == ResponseStatusCode::OK {
+            // Create new FixtureHolon
+            fixture_holons.create_fixture_holon(expected.clone())?;
+        }
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::StageNewFromClone {
+            step_token: new_token.clone(),
+            new_key: new_key.clone(),
+            expected_status: expected_status.clone(),
+            description,
+        });
+
+        Ok(new_token)
+    }
+
+    // Creates new logical holon and therefore a new FixtureHolon.
+    pub fn add_stage_new_version_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        expected_status: ResponseStatusCode,
+        version_count: MapInteger,
+        expected_failure_code: Option<ResponseStatusCode>,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let snapshot = new_source.snapshot().clone_holon()?;
+        let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
+        if expected_status == ResponseStatusCode::OK {
+            // Create new FixtureHolon
+            fixture_holons.create_fixture_holon(expected.clone())?;
+        }
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::StageNewVersion {
+            step_token: new_token.clone(),
+            expected_status: expected_status.clone(),
+            version_count,
+            expected_failure_code,
+            description,
+        });
+
+        Ok(new_token)
+    }
+
+    // Advance head (no new logical holon).
+    pub fn add_with_properties_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        step_token: TestReference,
+        properties: PropertyMap,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // Cloning new source to create the expected snapshot
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        for (property, value) in properties.clone() {
+            new_snapshot.with_property_value(property, value)?;
+        }
+        let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
+        // Advance head snapshot for the FixtureHolon
+        fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::WithProperties {
+            step_token: new_token.clone(),
+            properties: properties.clone(),
+            expected_status,
+            description,
+        });
+
+        Ok(new_token)
+    }
+}
