@@ -27,7 +27,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     properties.insert("title".to_property_name(), BOOK_KEY.to_base_value());
     properties.insert("description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
     // Mint
-    let book_source_token = test_case.add_new_holon_step(
+    let book_step_token = test_case.add_new_holon_step(
         &mut fixture_holons,
         book_transient_reference,
         properties,
@@ -38,7 +38,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_stage_holon_step(
         &mut fixture_holons,
-        book_source_token.clone(),
+        book_step_token.clone(),
         ResponseStatusCode::OK,
         Some("Staging book holon...".to_string()),
     )?;

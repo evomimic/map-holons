@@ -9,7 +9,7 @@ use holons_prelude::prelude::*;
 /// This function builds and dances a `query_relationships` DanceRequest for the supplied source TestReference and QueryExpression.
 pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     query_expression: QueryExpression,
     expected_status: ResponseStatusCode,
     description:Option<String>,
@@ -25,7 +25,7 @@ pub async fn execute_query_relationships(
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.resolve_source_reference(&context,
- &source_token).unwrap();
+ &step_token).unwrap();
 
     let node_collection =
         NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };

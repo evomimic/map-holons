@@ -1,5 +1,3 @@
-use std::iter::Map;
-
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 
@@ -120,8 +118,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     version_count.0 += 1;
 
     // Finalize
-   test_case.finalize(&fixture_context)?;
-
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

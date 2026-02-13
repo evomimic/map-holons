@@ -10,7 +10,7 @@ use holon_dance_builders::stage_new_version_dance::build_stage_new_version_dance
 ///
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     expected_response: ResponseStatusCode,
     version_count: MapInteger,
     expected_failure_code: Option<ResponseStatusCode>,
@@ -23,7 +23,7 @@ pub async fn execute_stage_new_version(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token).unwrap();
+        state.resolve_source_reference(&context, &step_token).unwrap();
 
     // 2. BUILD — stage_new_version DanceRequest
     let original_holon_id = source_reference.holon_id()
@@ -63,13 +63,13 @@ pub async fn execute_stage_new_version(
     let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
 
     let execution_reference =
-        ExecutionReference::from_token_execution(&source_token, execution_handle.clone());
+        ExecutionReference::from_token_execution(&step_token, execution_handle.clone());
 
     execution_reference.assert_essential_content_eq();
     info!("Success! Staged new version holon's essential content matched expected");
 
     // 6. RECORD — make execution result available downstream
-    state.record(&source_token, execution_reference).unwrap();
+    state.record(&step_token, execution_reference).unwrap();
 
     // 7. Verify the new version has the original holon as its predecessor.
     let predecessor = response_holon_reference.predecessor().unwrap().unwrap();
