@@ -1,13 +1,13 @@
 //! Transaction-scoped execution context shell for staging and transient pools.
 
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicU8, Ordering},
     Arc, RwLock,
 };
 
 use core_types::{HolonError, HolonId, TemporaryId};
 
-use super::{TransactionContextHandle, TxId};
+use super::{TransactionContextHandle, TransactionLifecycleState, TxId};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
@@ -26,7 +26,7 @@ use crate::{SmartReference, TransientReference};
 #[derive(Debug)]
 pub struct TransactionContext {
     tx_id: TxId,
-    is_open: AtomicBool,
+    lifecycle_state: AtomicU8,
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
@@ -37,7 +37,7 @@ impl TransactionContext {
     pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Arc<Self> {
         Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
-            is_open: AtomicBool::new(true),
+            lifecycle_state: AtomicU8::new(TransactionLifecycleState::Open.as_u8()),
             space_manager,
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
@@ -54,9 +54,14 @@ impl TransactionContext {
         self.tx_id
     }
 
+    /// Returns the current lifecycle state for this transaction.
+    pub fn lifecycle_state(&self) -> TransactionLifecycleState {
+        TransactionLifecycleState::from_u8(self.lifecycle_state.load(Ordering::Acquire))
+    }
+
     /// Returns whether the transaction is still open.
     pub fn is_open(&self) -> bool {
-        self.is_open.load(Ordering::Acquire)
+        self.lifecycle_state() == TransactionLifecycleState::Open
     }
 
     /// Returns a strong reference to the space manager.
@@ -138,7 +143,7 @@ impl HolonsContextBehavior for TransactionContext {
     }
 
     fn is_open(&self) -> bool {
-        self.is_open.load(Ordering::Acquire)
+        self.is_open()
     }
 
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
