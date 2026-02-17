@@ -102,21 +102,56 @@ impl DanceResponse {
         }
     }
 
-    // Method to summarize the DanceResponse for logging purposes
+    // Method to summarize the DanceResponse for logging purposes.
+    // Keep this intentionally shallow to avoid traversing tx-bound runtime graphs in logs.
     pub fn summarize(&self) -> String {
-        let body_summary = match &self.body {
-            ResponseBody::Holon(holon) => holon.summarize(),
-            ResponseBody::Holons(holons) => summarize_holons(holons),
-            _ => format!("{:#?}", self.body), // Use full debug for other response bodies
-        };
+        let body_summary = self.body_summary();
+        let descriptor_summary = self.descriptor_summary();
 
         format!(
-            "DanceResponse {{ \n  status_code: {:?}, \n  description: {:?}, \n  descriptor: {:?}, \n  body: {} }}",
-            self.status_code,
-            self.description,
-            self.descriptor,
-            body_summary,
+            "DanceResponse {{ status_code: {:?}, description: {:?}, descriptor: {}, body: {} }}",
+            self.status_code, self.description, descriptor_summary, body_summary,
         )
+    }
+
+    fn descriptor_summary(&self) -> String {
+        match &self.descriptor {
+            None => "none".to_string(),
+            Some(HolonReference::Smart(_)) => "smart".to_string(),
+            Some(HolonReference::Staged(_)) => "staged".to_string(),
+            Some(HolonReference::Transient(_)) => "transient".to_string(),
+        }
+    }
+
+    fn body_summary(&self) -> String {
+        match &self.body {
+            ResponseBody::None => "None".to_string(),
+            ResponseBody::Holon(holon) => {
+                // Holon summaries are bounded and useful for test logging.
+                format!("Holon({})", holon.summarize())
+            }
+            ResponseBody::Holons(holons) => {
+                format!("Holons(count={}, {})", holons.len(), summarize_holons(holons))
+            }
+            ResponseBody::HolonCollection(collection) => {
+                let count = collection.get_members().len();
+                format!("HolonCollection(state={:?}, count={})", collection.get_state(), count)
+            }
+            ResponseBody::HolonReference(reference) => match reference {
+                HolonReference::Smart(smart) => {
+                    format!("HolonReference::Smart(holon_id={})", smart.holon_id())
+                }
+                HolonReference::Staged(staged) => {
+                    format!("HolonReference::Staged(id={})", staged.temporary_id())
+                }
+                HolonReference::Transient(transient) => {
+                    format!("HolonReference::Transient(id={})", transient.temporary_id())
+                }
+            },
+            ResponseBody::NodeCollection(nodes) => {
+                format!("NodeCollection(count={})", nodes.members.len())
+            }
+        }
     }
 }
 
@@ -132,7 +167,6 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::FailedToAcquireLock(_) => ResponseStatusCode::ServerError,
             HolonError::HashConversion(_, _) => ResponseStatusCode::ServerError,
             HolonError::IndexOutOfRange(_) => ResponseStatusCode::ServerError,
-            HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidType(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidUpdate(_) => ResponseStatusCode::ServerError,
             HolonError::RecordConversion(_) => ResponseStatusCode::ServerError,
@@ -150,6 +184,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CrossTransactionReference { .. } => ResponseStatusCode::Conflict,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
             HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
+            HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
 
             // 400-ish (client supplied invalid input / malformed request)

@@ -1,5 +1,5 @@
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use integrity_core_types::PropertyMap;
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
@@ -22,9 +22,8 @@ pub async fn execute_new_holon(
 
     // 2. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request)
-.await;
-    info!("Dance Response: {:#?}", response.clone());
+    let response = dance_initiator.initiate_dance(&context, request).await;
+    info!("Dance Response: {}", response.summarize());
 
     // 3. VALIDATE - response status
     assert_eq!(
@@ -56,8 +55,7 @@ pub async fn execute_new_holon(
         ExecutionReference::from_token_execution(&source_token, execution_handle);
 
     // Validate expected vs execution-time content
-    execution_reference.assert_essential_content_eq()
-;
+    execution_reference.assert_essential_content_eq();
     info!("Success! Holon's essential content matched expected");
 
     // Record for downstream resolution
