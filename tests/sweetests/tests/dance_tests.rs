@@ -22,7 +22,6 @@ mod fixture_cases;
 
 use rstest::*;
 
-
 use tracing::{
     debug,
     // error,
@@ -63,13 +62,9 @@ use fixture_cases::stage_new_version_fixture::*;
 
 use self::execution_steps::execute_print_database;
 use holons_test::execution_state::TestExecutionState;
-use self::execution_steps::execute_print_database;
-use holons_test::execution_state::TestExecutionState;
+use holons_test::harness::helpers::init_test_context;
 use holons_test::harness::helpers::TEST_CLIENT_PREFIX;
 use holons_test::harness::prelude::{DanceTestStep, DancesTestCase};
-use holons_test::harness::prelude::{DanceTestStep, DancesTestCase};
-
-use holons_test::harness::helpers::init_test_context;
 
 use holons_prelude::prelude::*;
 
@@ -112,7 +107,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
 
     // The heavy lifting for this test is in the test data set creation.
 
-    let mut test_case: DancesTestCase = input.unwrap();g 
+    let mut test_case: DancesTestCase = input.unwrap();
     // Initialize test context and execution state
     let test_context = init_test_context(&mut test_case).await;
     let mut test_execution_state = TestExecutionState::new(test_context);
