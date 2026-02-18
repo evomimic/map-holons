@@ -4,9 +4,9 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use base_types::{BaseValue, MapString};
+use base_types::BaseValue;
 
-use core_types::{HolonError, PropertyName};
+use core_types::HolonError;
 
 use holons_client::{
     dances_client::ClientDanceBuilder,
@@ -20,10 +20,11 @@ use holons_client::{
 };
 
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::{DanceInitiator, ResponseStatusCode};
-use holons_core::reference_layer::{ReadableHolon, TransientReference};
+use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseStatusCode};
+use holons_core::reference_layer::{HolonReference, ReadableHolon, TransientReference};
 use holons_core::HolonsContextBehavior;
 use holons_trust_channel::TrustChannel;
+use type_names::CorePropertyTypeName;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
 use holons_loader_client::load_holons_from_files;
@@ -77,8 +78,7 @@ impl HolochainReceptor {
     fn should_transition_from_load_response(
         load_response_reference: &TransientReference,
     ) -> Result<bool, HolonError> {
-        let load_commit_status_property = PropertyName(MapString("LoadCommitStatus".to_string()));
-        let status_value = load_response_reference.property_value(load_commit_status_property)?;
+        let status_value = load_response_reference.property_value(CorePropertyTypeName::LoadCommitStatus)?;
 
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
@@ -91,6 +91,44 @@ impl HolochainReceptor {
             },
             Some(other) => Err(HolonError::InvalidType(format!(
                 "LoadCommitStatus on HolonLoadResponse must be a StringValue, found {:?}",
+                other
+            ))),
+            None => Ok(false),
+        }
+    }
+
+    fn should_transition_from_commit_response(
+        dance_response: &DanceResponse,
+    ) -> Result<bool, HolonError> {
+        let commit_response_reference = match &dance_response.body {
+            ResponseBody::HolonReference(HolonReference::Transient(reference)) => reference,
+            ResponseBody::HolonReference(other) => {
+                return Err(HolonError::InvalidType(format!(
+                    "Expected commit response to return TransientReference, found {:?}",
+                    other
+                )))
+            }
+            other => {
+                return Err(HolonError::InvalidParameter(format!(
+                    "Expected commit response body to be HolonReference, found {:?}",
+                    other
+                )))
+            }
+        };
+
+        let status_value = commit_response_reference.property_value(CorePropertyTypeName::CommitRequestStatus)?;
+
+        match status_value {
+            Some(BaseValue::StringValue(status)) => match status.0.as_str() {
+                "Complete" => Ok(true),
+                "Incomplete" => Ok(false),
+                other => Err(HolonError::InvalidParameter(format!(
+                    "Unexpected CommitRequestStatus value on CommitResponse: {}",
+                    other
+                ))),
+            },
+            Some(other) => Err(HolonError::InvalidType(format!(
+                "CommitRequestStatus on CommitResponse must be a StringValue, found {:?}",
                 other
             ))),
             None => Ok(false),
@@ -151,7 +189,9 @@ impl ReceptorBehavior for HolochainReceptor {
             let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
             // Keep the execution guard held until lifecycle transition is finalized.
-            let transition_result = if dance_response.status_code == ResponseStatusCode::OK {
+            let transition_result = if dance_response.status_code == ResponseStatusCode::OK
+                && Self::should_transition_from_commit_response(&dance_response)?
+            {
                 self.context.transition_to_committed()
             } else {
                 Ok(())
