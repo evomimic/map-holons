@@ -1,7 +1,7 @@
 //! Transaction-scoped execution context shell for staging and transient pools.
 
 use std::sync::{
-    atomic::{AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicU8, Ordering},
     Arc, RwLock,
 };
 
@@ -27,6 +27,7 @@ use crate::{SmartReference, TransientReference};
 pub struct TransactionContext {
     tx_id: TxId,
     lifecycle_state: AtomicU8,
+    commit_in_progress: AtomicBool,
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
@@ -38,6 +39,7 @@ impl TransactionContext {
         Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
             lifecycle_state: AtomicU8::new(TransactionLifecycleState::Open.as_u8()),
+            commit_in_progress: AtomicBool::new(false), // host-side execution guard
             space_manager,
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
@@ -62,6 +64,89 @@ impl TransactionContext {
     /// Returns whether the transaction is still open.
     pub fn is_open(&self) -> bool {
         self.lifecycle_state() == TransactionLifecycleState::Open
+    }
+
+    /// Enforces host-side external mutation constraints.
+    ///
+    /// External mutations are only valid while the transaction is `Open` and
+    /// no commit is currently in progress.
+    pub fn ensure_open_for_external_mutation(&self) -> Result<(), HolonError> {
+        if self.lifecycle_state() != TransactionLifecycleState::Open {
+            return Err(HolonError::TransactionNotOpen {
+                tx_id: self.tx_id.value(),
+                state: format!("{:?}", self.lifecycle_state()),
+            });
+        }
+
+        if self.is_commit_in_progress() {
+            return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
+        }
+
+        Ok(())
+    }
+
+    /// Enforces commit entry constraints for host-side request handling.
+    pub fn ensure_commit_allowed(&self) -> Result<(), HolonError> {
+        if self.lifecycle_state() == TransactionLifecycleState::Committed {
+            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
+        }
+
+        if self.is_commit_in_progress() {
+            return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
+        }
+
+        Ok(())
+    }
+
+    /// Returns whether a commit is currently in progress for this transaction.
+    pub fn is_commit_in_progress(&self) -> bool {
+        self.commit_in_progress.load(Ordering::Acquire)
+    }
+
+    /// Attempts to begin commit execution.
+    ///
+    /// Returns `true` only when the guard is acquired by this caller.
+    pub fn try_begin_commit(&self) -> bool {
+        self.commit_in_progress
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+
+    /// Ends commit execution and releases the commit guard.
+    pub fn end_commit(&self) {
+        self.commit_in_progress.store(false, Ordering::Release);
+    }
+
+    /// Transitions the transaction lifecycle from `Open` to `Committed`.
+    ///
+    /// Returns `true` only when the state transition is applied by this caller.
+    pub fn try_transition_to_committed(&self) -> bool {
+        self.lifecycle_state
+            .compare_exchange(
+                TransactionLifecycleState::Open.as_u8(),
+                TransactionLifecycleState::Committed.as_u8(),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+
+    /// Applies the `Open -> Committed` lifecycle transition.
+    pub fn transition_to_committed(&self) -> Result<(), HolonError> {
+        if self.try_transition_to_committed() {
+            return Ok(());
+        }
+
+        let current_state = self.lifecycle_state();
+        if current_state == TransactionLifecycleState::Committed {
+            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
+        }
+
+        Err(HolonError::InvalidTransactionTransition {
+            tx_id: self.tx_id.value(),
+            from_state: format!("{:?}", current_state),
+            to_state: format!("{:?}", TransactionLifecycleState::Committed),
+        })
     }
 
     /// Returns a strong reference to the space manager.

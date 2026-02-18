@@ -1,4 +1,4 @@
-// shared_crates/holons_loader/src/controller.rs
+// happ/crates/holons_loader/src/controller.rs
 //
 // Orchestrates the two-pass holon loading flow:
 //
@@ -11,6 +11,7 @@
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 // use uuid::Uuid;
@@ -28,6 +29,24 @@ pub struct FileProvenance {
 }
 
 pub type ProvenanceIndex = HashMap<MapString /* loader_holon_key */, FileProvenance>;
+
+#[derive(Debug, Clone, Copy)]
+enum LoadCommitStatus {
+    Complete,
+    Incomplete,
+    Skipped,
+}
+
+impl fmt::Display for LoadCommitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            LoadCommitStatus::Complete => "Complete",
+            LoadCommitStatus::Incomplete => "Incomplete",
+            LoadCommitStatus::Skipped => "Skipped",
+        };
+        write!(f, "{}", value)
+    }
+}
 
 /// HolonLoaderController: top-level coordinator for the loader pipeline.
 #[derive(Debug, Default)]
@@ -84,6 +103,7 @@ impl HolonLoaderController {
                 0, // errors_encountered
                 total_bundles,
                 0, // total_loader_holons
+                LoadCommitStatus::Skipped,
                 summary,
                 Vec::new(), // no error holons
             )?;
@@ -164,6 +184,7 @@ impl HolonLoaderController {
                     pass1_error_count, // always use real error count, not holon count
                     total_bundles,
                     total_loader_holons,
+                    LoadCommitStatus::Skipped,
                     summary,
                     error_holons,
                 )?;
@@ -206,6 +227,7 @@ impl HolonLoaderController {
                 duplicate_error_count, // errors_encountered
                 total_bundles,
                 total_loader_holons,
+                LoadCommitStatus::Skipped,
                 summary,
                 error_holons,
             )?;
@@ -238,6 +260,7 @@ impl HolonLoaderController {
                 0, // errors_encountered
                 total_bundles,
                 total_loader_holons,
+                LoadCommitStatus::Skipped,
                 summary,
                 Vec::new(), // no error holons
             )?;
@@ -279,6 +302,7 @@ impl HolonLoaderController {
                 resolver_error_count,
                 total_bundles,
                 total_loader_holons,
+                LoadCommitStatus::Skipped,
                 format!(
                     "Pass 2 reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
                     resolver_error_count, total_holons_staged, links_created
@@ -324,6 +348,9 @@ impl HolonLoaderController {
 
         let commit_ok = (saved_holons + abandoned_holons) == commits_attempted;
 
+        let load_commit_status =
+            if commit_ok { LoadCommitStatus::Complete } else { LoadCommitStatus::Incomplete };
+
         let summary = if commit_ok {
             format!(
                 "Commit successful: {} holons staged; {} committed; {} abandoned; {} attempts.",
@@ -346,6 +373,7 @@ impl HolonLoaderController {
             0, // errors_encountered
             total_bundles,
             total_loader_holons,
+            load_commit_status,
             summary,
             Vec::new(),
         )?;
@@ -545,6 +573,7 @@ impl HolonLoaderController {
         errors_encountered: i64,
         total_bundles: i64,
         total_loader_holons: i64,
+        load_commit_status: LoadCommitStatus,
         summary: String,
         transient_error_references: Vec<TransientReference>,
     ) -> Result<TransientReference, HolonError> {
@@ -582,6 +611,10 @@ impl HolonLoaderController {
         response_reference.with_property_value(
             CorePropertyTypeName::DanceSummary,
             BaseValue::StringValue(MapString(summary)),
+        )?;
+        response_reference.with_property_value(
+            CorePropertyTypeName::LoadCommitStatus,
+            BaseValue::StringValue(MapString(load_commit_status.to_string())),
         )?;
 
         // 3) Set set-level counters
