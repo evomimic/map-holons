@@ -99,21 +99,20 @@ use holons_prelude::prelude::*;
 #[case::delete_holon(delete_holon_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
-// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::simple_add_remove_related_holons_test(simple_add_remove_related_holons_fixture())]
 #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-// #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
 #[tokio::test(flavor = "multi_thread")]
-// TODO: Support for relationships to be finished in issue 382
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
     // The heavy lifting for this test is in the test data set creation.
 
-    let mut test_case: DancesTestCase = input.unwrap();
+    let mut test_case: DancesTestCase = input.unwrap();g 
     // Initialize test context and execution state
     let test_context = init_test_context(&mut test_case).await;
     let mut test_execution_state = TestExecutionState::new(test_context);

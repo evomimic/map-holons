@@ -77,8 +77,7 @@ pub async fn execute_add_related_holons(
                 execution_handle,
             );
 
-        execution_reference.assert_essential_content_eq()
-;
+        execution_reference.assert_essential_content_eq();
         info!("Success! Updated holon's essential content matched expected");
 
         // 6. RECORD — make available for downstream resolution

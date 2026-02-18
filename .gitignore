@@ -23,7 +23,6 @@ workspaces/**/target/**/
 /host/conductora/node_modules/
 
 # Cargo and Rust build artifacts
-host/conductora/Cargo.lock
 .rustc_info.json
 *.rlib
 *.rmeta
