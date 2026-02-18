@@ -1,6 +1,6 @@
 use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use tracing::{debug, info};
 
 /// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
@@ -11,17 +11,22 @@ use tracing::{debug, info};
 
 pub async fn execute_remove_properties(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Removing Properties from Holon ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Removing Properties from Holon".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token)
+        state.resolve_source_reference(&context, &step_token)
 .unwrap();
 
     // 2. BUILD — remove_properties DanceRequest
@@ -37,8 +42,7 @@ pub async fn execute_remove_properties(
 
     // 4. VALIDATE - response status
     assert_eq!(
-        response.status_code,
-        expected_response,
+        response.status_code, expected_response,
         "remove_properties request returned unexpected status: {}",
         response.description
     );
@@ -58,7 +62,7 @@ pub async fn execute_remove_properties(
 
         // Canonical construction: token + execution outcome
         let execution_reference =
-            ExecutionReference::from_token_execution(&source_token, execution_handle);
+            ExecutionReference::from_token_execution(&step_token, execution_handle);
 
         // Validate expected vs execution-time content
         execution_reference.assert_essential_content_eq()
@@ -66,6 +70,6 @@ pub async fn execute_remove_properties(
         info!("Success! Updated holon's essential content matched expected");
 
         // 6. RECORD — make this execution result available for downstream steps
-        state.record(&source_token, execution_reference).unwrap();
+        state.record(&step_token, execution_reference).unwrap();
     }
 }

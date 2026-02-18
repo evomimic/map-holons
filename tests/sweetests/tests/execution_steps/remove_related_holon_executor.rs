@@ -1,11 +1,11 @@
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
 /// This function is intended to test the ability to remove holons from a specified relationship
-/// originating at a source_token.
+/// originating at a step_token.
 ///
 /// There are two levels of testing required.
 /// 1. Removing related holons from an already staged holon.
@@ -23,18 +23,23 @@ use holons_prelude::prelude::*;
 ///
 pub async fn execute_remove_related_holons(
     state: &mut TestExecutionState,
-    source_token: TestReference,
+    step_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
     expected_response: ResponseStatusCode,
+    description: Option<String>,
 ) {
-    info!("--- TEST STEP: Removing Related Holons ---");
+    let description = match description {
+        Some(dsc) => dsc,
+        None => "Removing Related Holons".to_string(),
+    };
+    info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &source_token)
+        state.resolve_source_reference(&context, &step_token)
 .unwrap();
     let holons_to_remove: Vec<HolonReference> =
         state.resolve_source_references(&context, &holons).unwrap();
@@ -75,8 +80,8 @@ pub async fn execute_remove_related_holons(
 
     // Canonical construction: token + execution outcome
     let execution_reference =
-        ExecutionReference::from_token_execution(&source_token, execution_handle);
+        ExecutionReference::from_token_execution(&step_token, execution_handle);
 
     // Record execution-time realization
-    state.record(&source_token, execution_reference).unwrap();
+    state.record(&step_token, execution_reference).unwrap();
 }
