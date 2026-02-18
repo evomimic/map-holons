@@ -376,7 +376,7 @@ impl DancesTestCase {
         let new_token = fixture_holons.mint_test_reference(new_source, expected);
         // Add execution step
         self.steps.push(DanceTestStep::AddRelatedHolons {
-            step_token: step_token.clone(),
+            step_token: new_token.clone(),
             relationship_name,
             holons_to_add,
             expected_status,
@@ -451,7 +451,7 @@ impl DancesTestCase {
         let new_token = fixture_holons.mint_test_reference(new_source, expected);
         // Add execution step
         self.steps.push(DanceTestStep::RemoveRelatedHolons {
-            step_token: step_token.clone(),
+            step_token: new_token.clone(),
             relationship_name,
             holons_to_remove,
             expected_status,

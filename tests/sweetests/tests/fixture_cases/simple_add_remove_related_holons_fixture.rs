@@ -13,7 +13,6 @@ use tracing::info;
 /// For both Transient and Staged references:
 /// adds a new relationship, removes an existing relationship, then adds another relationship again.
 ///
-///
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
@@ -74,12 +73,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     )?;
 
     // -- ADD STEP -- //
-    // Set expected
-    company_step_token.expected_reference().add_related_holons(
-        &host_relationship,
-        vec![HolonReference::from(website_transient_reference.clone())],
-    )?;
-    // Executor step
     test_case.add_add_related_holons_step(
         &mut fixture_holons,
         company_step_token.clone(),
@@ -90,53 +83,40 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     )?;
 
     // -- REMOVE STEP -- //
-    // Set expected
-    company_step_token.expected_reference().remove_related_holons(
-        &host_relationship,
-        vec![HolonReference::from(website_transient_reference.clone())],
-    )?;
-    // Executor step
     test_case.add_remove_related_holons_step(
         &mut fixture_holons,
-        company_step_token,
+        company_step_token.clone(),
         host_relationship.clone(),
-        vec![website_transient_token.clone()],
+        vec![website_step_token.clone()],
         ResponseStatusCode::OK,
         Some("Removing Relationship:  Company -> HOST -> Website ".to_string()),
     )?;
 
-    // // -- Again ADD STEP -- //
-    // let again_relationship = "AGAIN".to_relationship_name();
-    // let example_key = MapString("EXAMPLE_KEY".to_string());
-    // let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
-    // let example_transient_token = fixture_holons.add_transient(
-    //     &example_transient_reference,
-    //     example_key.clone(),
-    //     &example_transient_reference.essential_content(&fixture_context)?,
-    // )?;
-    // // Set expected
-    // company_expected_content
-    //     .relationships
-    //     .add_related_holons(
-    //         &fixture_context,
-    //         CollectionState::Transient,
-    //         again_relationship.clone(),
-    //         vec![HolonReference::from(example_transient_reference.clone())],
-    //     )
-    //     .unwrap();
-    // // Mint another snapshot
-    // let another_company_token = fixture_holons.add_transient(
-    //     &company_transient_reference,
-    //     company_key.clone(),
-    //     &company_expected_content,
-    // )?;
-    // // Add step
-    // test_case.add_add_related_holons_step(
-    //     company_transient_token.clone(),
-    //     again_relationship.clone(),
-    //     vec![example_transient_token.clone()],
-    //     ResponseStatusCode::OK,
-    // )?;
+    // -- Again ADD STEP -- //
+    let again_relationship = "AGAIN".to_relationship_name();
+    let example_key = MapString("EXAMPLE_KEY".to_string());
+    // Create example
+    let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
+    let mut example_properties = BTreeMap::new();
+    example_properties.insert("example".to_property_name(), "Example Holon".to_base_value());
+    // Mint
+    let example_step_token = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        example_transient_reference,
+        example_properties,
+        Some(example_key),
+        ResponseStatusCode::OK,
+        Some("Creating example holon... ".to_string()),
+    )?;
+    // Executor step
+    test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        company_step_token.clone(),
+        again_relationship.clone(),
+        vec![example_step_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Adding Relationship:  Company -> AGAIN -> Example ".to_string()),
+    );
 
     //  COMMIT  //
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK, None)?;
@@ -144,14 +124,14 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // ENSURE DB COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
-    // //  QUERY RELATIONSHIPS  //
-    // let query_expression = QueryExpression::new(host_relationship.clone());
-    // test_case.add_query_relationships_step(
-    //     company_step_token,
-    //     query_expression,
-    //     ResponseStatusCode::OK,
-    //     None,
-    // )?;
+    //  QUERY RELATIONSHIPS  //
+    let query_expression = QueryExpression::new(host_relationship.clone());
+    test_case.add_query_relationships_step(
+        company_step_token,
+        query_expression,
+        ResponseStatusCode::OK,
+        None,
+    )?;
 
     // Finalize
     test_case.finalize(&fixture_context)?;
