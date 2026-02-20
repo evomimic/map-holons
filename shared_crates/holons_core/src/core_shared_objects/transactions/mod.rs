@@ -1,4 +1,10 @@
 //! Transaction primitives and context types.
+//!
+//! Phase 1.3 lifecycle/concurrency intent in current implementation:
+//! - Lifecycle: `Open -> Committed` (monotonic).
+//! - Host external mutations/commit-like ingress require `Open`.
+//! - Host commit ingress blocks overlapping external mutations.
+//! - Read/query ingress may remain available during commit ingress and after `Committed`.
 
 mod host_commit_execution_guard;
 mod transaction_behavior;

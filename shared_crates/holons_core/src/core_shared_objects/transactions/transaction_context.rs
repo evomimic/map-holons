@@ -70,8 +70,12 @@ impl TransactionContext {
 
     /// Enforces host-side external mutation constraints.
     ///
-    /// External mutations are only valid while the transaction is `Open` and
-    /// no host commit ingress is currently in progress.
+    /// External write/mutation entrypoints are only valid while the transaction is
+    /// `Open` and no host commit ingress is currently in progress.
+    ///
+    /// This includes host-side transient creation requests (for example
+    /// `create_new_holon`) in addition to staging/property/relationship mutations.
+    /// Read/query entrypoints are governed separately and are not blocked here.
     pub fn ensure_open_for_external_mutation(&self) -> Result<(), HolonError> {
         if self.lifecycle_state() != TransactionLifecycleState::Open {
             return Err(HolonError::TransactionNotOpen {
@@ -87,7 +91,10 @@ impl TransactionContext {
         Ok(())
     }
 
-    /// Enforces commit entry constraints for host-side request handling.
+    /// Enforces host-side commit-entry constraints.
+    ///
+    /// This guard is used for external commit-like ingress requests (`commit`,
+    /// `load_holons`) and does not restrict read/query entrypoints.
     pub fn ensure_commit_allowed(&self) -> Result<(), HolonError> {
         if self.lifecycle_state() == TransactionLifecycleState::Committed {
             return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });

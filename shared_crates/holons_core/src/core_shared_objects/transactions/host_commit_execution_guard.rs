@@ -6,6 +6,7 @@ use super::transaction_context::TransactionContext;
 ///
 /// Host-ingress concurrency guard only:
 /// Prevents external mutation requests from racing an in-flight commit.
+/// Read/query requests may still proceed while this guard is held.
 /// Not used by guest commit execution logic.
 #[derive(Debug)]
 pub struct HostCommitExecutionGuard<'a> {

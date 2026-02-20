@@ -19,7 +19,8 @@
 ///
 /// Notes:
 /// - `Open`: normal execution state.
-/// - `Committed`: terminal closed state after a successful commit.
+/// - `Committed`: terminal state for external write/commit entrypoints after a successful commit.
+///   Read/query operations may still be allowed by host ingress policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TransactionLifecycleState {

@@ -62,28 +62,19 @@ impl HolochainReceptor {
         matches!(request_name, "get_all_holons" | "get_holon_by_id" | "query_relationships")
     }
 
-    fn is_transient_only_request(request_name: &str) -> bool {
-        matches!(request_name, "create_new_holon")
-    }
-
     fn enforce_lifecycle_for_request(&self, request_name: &str) -> Result<(), HolonError> {
         if Self::is_commit_request(request_name) {
             return self.context.ensure_commit_allowed();
         }
 
+        // Read/query requests remain available during host commit ingress and after
+        // lifecycle reaches Committed so clients can inspect commit/load results.
         if Self::is_read_only_request(request_name) {
             return Ok(());
         }
 
-        if Self::is_transient_only_request(request_name) {
-            if self.context.is_host_commit_in_progress() {
-                return Err(HolonError::TransactionCommitInProgress {
-                    tx_id: self.context.tx_id().value(),
-                });
-            }
-            return Ok(());
-        }
-
+        // External write/mutation requests (including transient creation) require
+        // an open transaction and must be blocked during host commit ingress.
         self.context.ensure_open_for_external_mutation()
     }
 
@@ -307,6 +298,34 @@ mod tests {
             !context.is_host_commit_in_progress(),
             "guard must be released even when scope exits through error"
         );
+    }
+
+    #[test]
+    fn external_mutation_rejected_while_host_commit_ingress_active() {
+        let context = init_client_context(None);
+        let _guard = context
+            .begin_host_commit_ingress_guard()
+            .expect("guard acquisition should succeed");
+
+        let err = context
+            .ensure_open_for_external_mutation()
+            .expect_err("external mutation should be rejected while commit ingress is active");
+
+        assert!(matches!(err, HolonError::TransactionCommitInProgress { .. }));
+    }
+
+    #[test]
+    fn external_mutation_rejected_after_transaction_committed() {
+        let context = init_client_context(None);
+        context
+            .transition_to_committed()
+            .expect("open transaction should transition to committed");
+
+        let err = context
+            .ensure_open_for_external_mutation()
+            .expect_err("external mutation should be rejected after committed");
+
+        assert!(matches!(err, HolonError::TransactionNotOpen { .. }));
     }
 
     #[test]
