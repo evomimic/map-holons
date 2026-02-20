@@ -29,6 +29,39 @@ use type_names::CorePropertyTypeName;
 use crate::holochain_conductor_client::HolochainConductorClient;
 use holons_loader_client::load_holons_from_files;
 
+/// Scoped host-side commit execution guard.
+///
+/// Acquires `commit_in_progress` at construction and guarantees release on drop.
+struct CommitExecutionGuard<'a> {
+    context: &'a TransactionContext,
+}
+
+impl<'a> CommitExecutionGuard<'a> {
+    fn acquire(context: &'a TransactionContext) -> Result<Self, HolonError> {
+        if !context.try_begin_commit() {
+            return Err(HolonError::TransactionCommitInProgress { tx_id: context.tx_id().value() });
+        }
+        Ok(Self { context })
+    }
+}
+
+impl Drop for CommitExecutionGuard<'_> {
+    fn drop(&mut self) {
+        self.context.end_commit();
+    }
+}
+
+fn finalize_commit_transition(
+    context: &Arc<TransactionContext>,
+    should_transition_to_committed: bool,
+) -> Result<(), HolonError> {
+    if should_transition_to_committed {
+        context.transition_to_committed()?;
+    }
+
+    Ok(())
+}
+
 /// POC-safe Holochain Receptor.
 /// Enough to satisfy Conductora runtime configuration.
 /// Does NOT implement full space loading / root holon discovery yet.
@@ -43,6 +76,7 @@ pub struct HolochainReceptor {
 
 impl HolochainReceptor {
     fn is_commit_request(request_name: &str) -> bool {
+        // Should hardcode these names if we want to keep this pattern of lifecycle enforcement based on request type
         matches!(request_name, "commit" | "load_holons")
     }
 
@@ -78,7 +112,8 @@ impl HolochainReceptor {
     fn should_transition_from_load_response(
         load_response_reference: &TransientReference,
     ) -> Result<bool, HolonError> {
-        let status_value = load_response_reference.property_value(CorePropertyTypeName::LoadCommitStatus)?;
+        let status_value =
+            load_response_reference.property_value(CorePropertyTypeName::LoadCommitStatus)?;
 
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
@@ -116,7 +151,8 @@ impl HolochainReceptor {
             }
         };
 
-        let status_value = commit_response_reference.property_value(CorePropertyTypeName::CommitRequestStatus)?;
+        let status_value =
+            commit_response_reference.property_value(CorePropertyTypeName::CommitRequestStatus)?;
 
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
@@ -180,24 +216,16 @@ impl ReceptorBehavior for HolochainReceptor {
         let initiator = self.context.get_dance_initiator()?;
 
         if Self::is_commit_request(request.name.as_str()) {
-            if !self.context.try_begin_commit() {
-                return Err(HolonError::TransactionCommitInProgress {
-                    tx_id: self.context.tx_id().value(),
-                });
-            }
+            let _commit_guard = CommitExecutionGuard::acquire(self.context.as_ref())?;
 
             let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
             // Keep the execution guard held until lifecycle transition is finalized.
-            let transition_result = if dance_response.status_code == ResponseStatusCode::OK
-                && Self::should_transition_from_commit_response(&dance_response)?
-            {
-                self.context.transition_to_committed()
-            } else {
-                Ok(())
-            };
-            self.context.end_commit();
-            transition_result?;
+            let should_transition_to_committed = dance_response.status_code
+                == ResponseStatusCode::OK
+                && Self::should_transition_from_commit_response(&dance_response)?;
+
+            finalize_commit_transition(&self.context, should_transition_to_committed)?;
 
             return Ok(MapResponse::new_from_dance_response(request.space.id, dance_response));
         }
@@ -217,19 +245,15 @@ impl ReceptorBehavior for HolochainReceptor {
     async fn load_holons(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         self.enforce_lifecycle_for_request(request.name.as_str())?;
 
-        if !self.context.try_begin_commit() {
-            return Err(HolonError::TransactionCommitInProgress {
-                tx_id: self.context.tx_id().value(),
-            });
-        }
+        let _commit_guard = CommitExecutionGuard::acquire(self.context.as_ref())?;
 
         let result = if let MapRequestBody::LoadHolons(content_set) = request.body {
             let reference = load_holons_from_files(self.context.clone(), content_set).await?;
             tracing::info!("HolochainReceptor: loaded holons with reference: {:?}", reference);
 
-            if Self::should_transition_from_load_response(&reference)? {
-                self.context.transition_to_committed()?;
-            }
+            let should_transition_to_committed =
+                Self::should_transition_from_load_response(&reference)?;
+            finalize_commit_transition(&self.context, should_transition_to_committed)?;
 
             let dance_request = ClientDanceBuilder::get_all_holons_dance()?;
             let initiator = self.context.get_dance_initiator()?;
@@ -241,7 +265,6 @@ impl ReceptorBehavior for HolochainReceptor {
             ))
         };
 
-        self.context.end_commit();
         result
     }
 }
@@ -253,5 +276,79 @@ impl Debug for HolochainReceptor {
             .field("receptor_type", &self.receptor_type)
             .field("properties", &self.properties)
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{finalize_commit_transition, CommitExecutionGuard};
+    use core_types::HolonError;
+    use holons_client::init_client_context;
+    use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
+
+    #[test]
+    fn commit_execution_guard_sets_and_releases_flag() {
+        let context = init_client_context(None);
+        assert!(!context.is_commit_in_progress());
+
+        {
+            let _guard = CommitExecutionGuard::acquire(context.as_ref())
+                .expect("guard acquisition should succeed");
+            assert!(context.is_commit_in_progress());
+        }
+
+        assert!(!context.is_commit_in_progress());
+    }
+
+    #[test]
+    fn commit_execution_guard_rejects_reentrant_acquire() {
+        let context = init_client_context(None);
+        let _guard = CommitExecutionGuard::acquire(context.as_ref())
+            .expect("first acquisition should succeed");
+
+        let err = CommitExecutionGuard::acquire(context.as_ref())
+            .expect_err("second acquisition while held should fail");
+
+        assert!(matches!(err, HolonError::TransactionCommitInProgress { .. }));
+    }
+
+    #[test]
+    fn commit_execution_guard_releases_on_early_error_path() {
+        let context = init_client_context(None);
+
+        let result: Result<(), HolonError> = (|| {
+            let _guard = CommitExecutionGuard::acquire(context.as_ref())?;
+            Err(HolonError::InvalidParameter("synthetic failure".into()))
+        })();
+
+        assert!(matches!(result, Err(HolonError::InvalidParameter(_))));
+        assert!(
+            !context.is_commit_in_progress(),
+            "guard must be released even when scope exits through error"
+        );
+    }
+
+    #[test]
+    fn finalize_commit_transition_applies_open_to_committed_only_when_requested() {
+        let context = init_client_context(None);
+        assert_eq!(context.lifecycle_state(), TransactionLifecycleState::Open);
+
+        finalize_commit_transition(&context, false).expect("no-op finalize should succeed");
+        assert_eq!(context.lifecycle_state(), TransactionLifecycleState::Open);
+
+        finalize_commit_transition(&context, true).expect("transition finalize should succeed");
+        assert_eq!(context.lifecycle_state(), TransactionLifecycleState::Committed);
+    }
+
+    #[test]
+    fn finalize_commit_transition_rejects_double_commit_transition() {
+        let context = init_client_context(None);
+
+        finalize_commit_transition(&context, true).expect("first transition should succeed");
+
+        let err = finalize_commit_transition(&context, true)
+            .expect_err("second transition attempt should fail deterministically");
+
+        assert!(matches!(err, HolonError::TransactionAlreadyCommitted { .. }));
     }
 }
