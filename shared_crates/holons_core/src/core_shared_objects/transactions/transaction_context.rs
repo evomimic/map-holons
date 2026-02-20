@@ -7,7 +7,7 @@ use std::sync::{
 
 use core_types::{HolonError, HolonId, TemporaryId};
 
-use super::{TransactionContextHandle, TransactionLifecycleState, TxId};
+use super::{HostCommitExecutionGuard, TransactionContextHandle, TransactionLifecycleState, TxId};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
@@ -27,7 +27,9 @@ use crate::{SmartReference, TransientReference};
 pub struct TransactionContext {
     tx_id: TxId,
     lifecycle_state: AtomicU8,
-    commit_in_progress: AtomicBool,
+    /// Host-ingress concurrency guard only:
+    /// prevents external request mutations from racing in-flight commit ingress.
+    host_commit_in_progress: AtomicBool,
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
@@ -39,7 +41,7 @@ impl TransactionContext {
         Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
             lifecycle_state: AtomicU8::new(TransactionLifecycleState::Open.as_u8()),
-            commit_in_progress: AtomicBool::new(false), // host-side execution guard
+            host_commit_in_progress: AtomicBool::new(false),
             space_manager,
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
@@ -69,7 +71,7 @@ impl TransactionContext {
     /// Enforces host-side external mutation constraints.
     ///
     /// External mutations are only valid while the transaction is `Open` and
-    /// no commit is currently in progress.
+    /// no host commit ingress is currently in progress.
     pub fn ensure_open_for_external_mutation(&self) -> Result<(), HolonError> {
         if self.lifecycle_state() != TransactionLifecycleState::Open {
             return Err(HolonError::TransactionNotOpen {
@@ -78,7 +80,7 @@ impl TransactionContext {
             });
         }
 
-        if self.is_commit_in_progress() {
+        if self.is_host_commit_in_progress() {
             return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
         }
 
@@ -91,30 +93,39 @@ impl TransactionContext {
             return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
         }
 
-        if self.is_commit_in_progress() {
+        if self.is_host_commit_in_progress() {
             return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
         }
 
         Ok(())
     }
 
-    /// Returns whether a commit is currently in progress for this transaction.
-    pub fn is_commit_in_progress(&self) -> bool {
-        self.commit_in_progress.load(Ordering::Acquire)
+    /// Returns whether host ingress currently holds the commit guard for this transaction.
+    pub fn is_host_commit_in_progress(&self) -> bool {
+        self.host_commit_in_progress.load(Ordering::Acquire)
     }
 
-    /// Attempts to begin commit execution.
+    /// Attempts to begin host-side commit ingress.
     ///
     /// Returns `true` only when the guard is acquired by this caller.
-    pub fn try_begin_commit(&self) -> bool {
-        self.commit_in_progress
+    pub fn try_begin_host_commit_ingress(&self) -> bool {
+        self.host_commit_in_progress
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
     }
 
-    /// Ends commit execution and releases the commit guard.
-    pub fn end_commit(&self) {
-        self.commit_in_progress.store(false, Ordering::Release);
+    /// Ends host-side commit ingress and releases the guard.
+    pub fn end_host_commit_ingress(&self) {
+        self.host_commit_in_progress.store(false, Ordering::Release);
+    }
+
+    /// Acquires a scoped host-side commit ingress guard.
+    ///
+    /// Host-ingress concurrency guard only:
+    /// Prevents external mutation requests from racing an in-flight commit.
+    /// Not used by guest commit execution logic.
+    pub fn begin_host_commit_ingress_guard(&self) -> Result<HostCommitExecutionGuard<'_>, HolonError> {
+        HostCommitExecutionGuard::acquire(self)
     }
 
     /// Transitions the transaction lifecycle from `Open` to `Committed`.

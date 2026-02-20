@@ -29,28 +29,6 @@ use type_names::CorePropertyTypeName;
 use crate::holochain_conductor_client::HolochainConductorClient;
 use holons_loader_client::load_holons_from_files;
 
-/// Scoped host-side commit execution guard.
-///
-/// Acquires `commit_in_progress` at construction and guarantees release on drop.
-struct CommitExecutionGuard<'a> {
-    context: &'a TransactionContext,
-}
-
-impl<'a> CommitExecutionGuard<'a> {
-    fn acquire(context: &'a TransactionContext) -> Result<Self, HolonError> {
-        if !context.try_begin_commit() {
-            return Err(HolonError::TransactionCommitInProgress { tx_id: context.tx_id().value() });
-        }
-        Ok(Self { context })
-    }
-}
-
-impl Drop for CommitExecutionGuard<'_> {
-    fn drop(&mut self) {
-        self.context.end_commit();
-    }
-}
-
 fn finalize_commit_transition(
     context: &Arc<TransactionContext>,
     should_transition_to_committed: bool,
@@ -98,7 +76,7 @@ impl HolochainReceptor {
         }
 
         if Self::is_transient_only_request(request_name) {
-            if self.context.is_commit_in_progress() {
+            if self.context.is_host_commit_in_progress() {
                 return Err(HolonError::TransactionCommitInProgress {
                     tx_id: self.context.tx_id().value(),
                 });
@@ -216,7 +194,7 @@ impl ReceptorBehavior for HolochainReceptor {
         let initiator = self.context.get_dance_initiator()?;
 
         if Self::is_commit_request(request.name.as_str()) {
-            let _commit_guard = CommitExecutionGuard::acquire(self.context.as_ref())?;
+            let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
 
             let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
@@ -245,7 +223,7 @@ impl ReceptorBehavior for HolochainReceptor {
     async fn load_holons(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         self.enforce_lifecycle_for_request(request.name.as_str())?;
 
-        let _commit_guard = CommitExecutionGuard::acquire(self.context.as_ref())?;
+        let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
 
         let result = if let MapRequestBody::LoadHolons(content_set) = request.body {
             let reference = load_holons_from_files(self.context.clone(), content_set).await?;
@@ -281,7 +259,7 @@ impl Debug for HolochainReceptor {
 
 #[cfg(test)]
 mod tests {
-    use super::{finalize_commit_transition, CommitExecutionGuard};
+    use super::finalize_commit_transition;
     use core_types::HolonError;
     use holons_client::init_client_context;
     use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
@@ -289,24 +267,27 @@ mod tests {
     #[test]
     fn commit_execution_guard_sets_and_releases_flag() {
         let context = init_client_context(None);
-        assert!(!context.is_commit_in_progress());
+        assert!(!context.is_host_commit_in_progress());
 
         {
-            let _guard = CommitExecutionGuard::acquire(context.as_ref())
+            let _guard = context
+                .begin_host_commit_ingress_guard()
                 .expect("guard acquisition should succeed");
-            assert!(context.is_commit_in_progress());
+            assert!(context.is_host_commit_in_progress());
         }
 
-        assert!(!context.is_commit_in_progress());
+        assert!(!context.is_host_commit_in_progress());
     }
 
     #[test]
     fn commit_execution_guard_rejects_reentrant_acquire() {
         let context = init_client_context(None);
-        let _guard = CommitExecutionGuard::acquire(context.as_ref())
+        let _guard = context
+            .begin_host_commit_ingress_guard()
             .expect("first acquisition should succeed");
 
-        let err = CommitExecutionGuard::acquire(context.as_ref())
+        let err = context
+            .begin_host_commit_ingress_guard()
             .expect_err("second acquisition while held should fail");
 
         assert!(matches!(err, HolonError::TransactionCommitInProgress { .. }));
@@ -317,13 +298,13 @@ mod tests {
         let context = init_client_context(None);
 
         let result: Result<(), HolonError> = (|| {
-            let _guard = CommitExecutionGuard::acquire(context.as_ref())?;
+            let _guard = context.begin_host_commit_ingress_guard()?;
             Err(HolonError::InvalidParameter("synthetic failure".into()))
         })();
 
         assert!(matches!(result, Err(HolonError::InvalidParameter(_))));
         assert!(
-            !context.is_commit_in_progress(),
+            !context.is_host_commit_in_progress(),
             "guard must be released even when scope exits through error"
         );
     }
