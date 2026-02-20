@@ -45,9 +45,7 @@ pub use holons_core::core_shared_objects::holon::state::AccessType;
 pub use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle,
 };
-pub use holons_core::core_shared_objects::{
-    CommitRequestStatus, CommitResponse, HolonCollection, RelationshipMap,
-};
+pub use holons_core::core_shared_objects::{HolonCollection, RelationshipMap};
 pub use holons_core::dances::{
     DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode,
 };

@@ -93,6 +93,7 @@ pub enum CorePropertyTypeName {
     IsRequired,
     Key,
     LinksCreated,
+    LoadCommitStatus,
     LoaderHolonKey,
     MapBoolean,
     MapBytes,

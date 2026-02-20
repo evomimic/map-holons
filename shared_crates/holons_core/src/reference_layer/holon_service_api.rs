@@ -25,8 +25,6 @@ use std::sync::Arc;
 pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 
-    ///
-    //fn install_app(&self) -> Result<AppInstallation, HolonError>;
     /// This function commits the staged holons to the persistent store
     fn commit_internal(
         &self,
