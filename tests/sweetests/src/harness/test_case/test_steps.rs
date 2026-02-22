@@ -17,7 +17,7 @@ pub enum DanceTestStep {
     AddRelatedHolons {
         step_token: TestReference,
         relationship_name: RelationshipName,
-        holons_to_add: Vec<TestReference>,
+        step_tokens_to_add: Vec<TestReference>,
         expected_status: ResponseStatusCode,
         description: Option<String>,
     },
@@ -77,7 +77,7 @@ pub enum DanceTestStep {
     RemoveRelatedHolons {
         step_token: TestReference,
         relationship_name: RelationshipName,
-        holons_to_remove: Vec<TestReference>,
+        step_tokens_to_remove: Vec<TestReference>,
         expected_status: ResponseStatusCode,
         description: Option<String>,
     },
@@ -124,11 +124,11 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::AddRelatedHolons {
                 step_token,
                 relationship_name,
-                holons_to_add,
+                step_tokens_to_add,
                 expected_status,
                 description: _description,
             } => {
-                write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", step_token, relationship_name, holons_to_add.len(), expected_status)
+                write!(f, "AddRelatedHolons to Holon {:#?} for relationship: {:#?}, added_count: {:#?}, expecting: {:#?}", step_token, relationship_name, step_tokens_to_add.len(), expected_status)
             }
             DanceTestStep::Commit { saved_tokens, expected_status, description: _description } => {
                 write!(f, "Committing {:#?}, expecting: {:?}", saved_tokens, expected_status)
@@ -220,11 +220,11 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::RemoveRelatedHolons {
                 step_token,
                 relationship_name,
-                holons_to_remove,
+                step_tokens_to_remove,
                 expected_status,
                 description: _description,
             } => {
-                write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, removed_count: {:#?}, expecting: {:#?}", step_token, relationship_name, holons_to_remove.len(), expected_status)
+                write!(f, "RemoveRelatedHolons from Holon {:#?} for relationship: {:#?}, removed_count: {:#?}, expecting: {:#?}", step_token, relationship_name, step_tokens_to_remove.len(), expected_status)
             }
             DanceTestStep::StageHolon {
                 step_token,

@@ -146,7 +146,16 @@ impl WritableRelationship for StagedRelationshipMap {
         relationship_name: RelationshipName,
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
-        // TODO: Add check that holons to be added can only be StagedReferences
+        // Check that holons can only contain StagedReferences
+        let found_transient: Vec<&HolonReference> =
+            holons.iter().filter(|h| h.is_transient()).collect();
+
+        if !found_transient.is_empty() {
+            return Err(HolonError::InvalidRelationship(
+                format!("{:?}\n", found_transient),
+                "StagedRelationshipMap cannot contain TransientReferences".to_string(),
+            ));
+        }
         let lock = self
             .map
             .entry(relationship_name)
@@ -159,6 +168,7 @@ impl WritableRelationship for StagedRelationshipMap {
                 ))
             })?
             .add_references(holons)?;
+
         Ok(())
     }
 
@@ -168,6 +178,16 @@ impl WritableRelationship for StagedRelationshipMap {
         relationship_name: RelationshipName,
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<(), HolonError> {
+        // Check that entries can only contain StagedReferences
+        let found_transient: Vec<&HolonReference> =
+            entries.iter().filter_map(|(h, _)| (h.is_transient()).then_some(h)).collect();
+
+        if !found_transient.is_empty() {
+            return Err(HolonError::InvalidRelationship(
+                format!("{:?}\n", found_transient),
+                "StagedRelationshipMap cannot contain TransientReferences".to_string(),
+            ));
+        }
         let lock = self
             .map
             .entry(relationship_name)
@@ -180,6 +200,7 @@ impl WritableRelationship for StagedRelationshipMap {
                 ))
             })?
             .add_references_with_keys(entries)?;
+
         Ok(())
     }
 

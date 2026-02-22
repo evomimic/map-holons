@@ -93,8 +93,8 @@ use holons_prelude::prelude::*;
 // #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 // #[case::delete_holon(delete_holon_fixture())]
 // #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-// #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
-#[case::simple_add_remove_related_holons_test(simple_add_remove_related_holons_fixture())]
+#[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
+// #[case::simple_add_remove_related_holons_test(simple_add_remove_related_holons_fixture())]
 // #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 // #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 // #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
@@ -139,7 +139,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::AddRelatedHolons {
                 step_token,
                 relationship_name,
-                holons_to_add,
+                step_tokens_to_add,
                 expected_status,
                 description,
             } => {
@@ -147,7 +147,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     &mut test_execution_state,
                     step_token,
                     relationship_name,
-                    holons_to_add,
+                    step_tokens_to_add,
                     expected_status,
                     description,
                 )
@@ -275,7 +275,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::RemoveRelatedHolons {
                 step_token,
                 relationship_name,
-                holons_to_remove,
+                step_tokens_to_remove,
                 expected_status,
                 description,
             } => {
@@ -283,7 +283,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     &mut test_execution_state,
                     step_token,
                     relationship_name,
-                    holons_to_remove,
+                    step_tokens_to_remove,
                     expected_status,
                     description,
                 )

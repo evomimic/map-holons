@@ -2,7 +2,7 @@ use crate::fixture_cases::setup_book_author_steps_with_context;
 use holons_core::{core_shared_objects::WritableRelationship, CollectionState};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY,
+    BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHED_BY, PUBLISHER_KEY,
 };
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
@@ -37,12 +37,24 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         &mut fixture_holons,
         &mut fixture_bindings,
     )?;
-
     info!("fixture: book and author setup complete.");
 
-    // let book_transient_reference = fixture_holons.get_latest_by_key(&book_key).unwrap().transient();
+    let book_to_person_relationship =
+        fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
-    // === TRANSIENT === //  Company -> HOST -> Website  //
+    let book_staged_token =
+        fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
+
+    let person_1_staged_token =
+        fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label").clone();
+
+    let publisher_staged_token =
+        fixture_bindings.get_token(&MapString("Publisher".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Publisher' label").clone();
+
+    // === TRANSIENT === //
+    //
+    // Company -> HOST -> Website  //
+    //
     let host_relationship = "HOST".to_relationship_name();
     let company_key = MapString("COMPANY_KEY".to_string());
     let website_key = MapString("WEBSITE_KEY".to_string());
@@ -73,23 +85,23 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     )?;
 
     // -- ADD STEP -- //
-    test_case.add_add_related_holons_step(
+    let company_token_after_add = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         company_step_token.clone(),
         host_relationship.clone(),
         vec![website_step_token.clone()],
         ResponseStatusCode::OK,
-        Some("Adding Relationship:  Company -> HOST -> Website ".to_string()),
+        Some("Adding Relationship (Transient):  Company -> HOST -> Website ".to_string()),
     )?;
 
     // -- REMOVE STEP -- //
-    test_case.add_remove_related_holons_step(
+    let company_token_after_remove = test_case.add_remove_related_holons_step(
         &mut fixture_holons,
-        company_step_token.clone(),
+        company_token_after_add,
         host_relationship.clone(),
         vec![website_step_token.clone()],
         ResponseStatusCode::OK,
-        Some("Removing Relationship:  Company -> HOST -> Website ".to_string()),
+        Some("Removing Relationship (Transient):  Company -> HOST -> Website ".to_string()),
     )?;
 
     // -- Again ADD STEP -- //
@@ -111,12 +123,40 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // Executor step
     test_case.add_add_related_holons_step(
         &mut fixture_holons,
-        company_step_token.clone(),
+        company_token_after_remove,
         again_relationship.clone(),
         vec![example_step_token.clone()],
         ResponseStatusCode::OK,
-        Some("Adding Relationship:  Company -> AGAIN -> Example ".to_string()),
+        Some("Adding Relationship (Transient):  Company -> AGAIN -> Example ".to_string()),
     );
+    //
+    // == //
+
+    // === STAGED === //
+    //
+    // -- REMOVE STEP -- //
+    // Book -> AUTHORED_BY -> Person1  //
+    let book_token_after_remove = test_case.add_remove_related_holons_step(
+        &mut fixture_holons,
+        book_staged_token.clone(),
+        book_to_person_relationship.clone(),
+        vec![person_1_staged_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Removing Relationship (Staged):  Company -> HOST -> Website ".to_string()),
+    )?;
+
+    // -- ADD STEP -- //
+    // Book -> PUBLISHED_BY -> Publisher
+    let book_token_after_add = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        book_token_after_remove,
+        PUBLISHED_BY.to_relationship_name(),
+        vec![publisher_staged_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Adding Relationship (Staged):  Company -> HOST -> Website ".to_string()),
+    )?;
+    //
+    // == //
 
     //  COMMIT  //
     test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK, None)?;
@@ -125,9 +165,9 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  QUERY RELATIONSHIPS  //
-    let query_expression = QueryExpression::new(host_relationship.clone());
+    let query_expression = QueryExpression::new(book_to_person_relationship.clone());
     test_case.add_query_relationships_step(
-        company_step_token,
+        book_token_after_add,
         query_expression,
         ResponseStatusCode::OK,
         None,

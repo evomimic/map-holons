@@ -73,7 +73,7 @@ impl ExecutionHolons {
     /// Turn a fixture token into the **current** runtime `HolonReference` to use as executor input.
     ///
     /// Lookup strategy:
-    /// - `TestHolonState::Transient`  → return `HolonReference::Transient(token.token_id().clone())`.
+    /// - `TestHolonState::Transient`  → must find a recorded `TransientReference`.
     /// - `TestHolonState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `TestHolonState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `TestHolonState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
@@ -93,7 +93,23 @@ impl ExecutionHolons {
                     .to_string(),
             )),
             TestHolonState::Transient => {
-                Ok(HolonReference::Transient(token.source_reference().clone()))
+                let resolved = self
+                    .by_snapshot_id
+                    .get(&id)
+                    .ok_or_else(|| HolonError::InvalidHolonReference(format!(
+                        "ExecutionHolons::lookup: no realization recorded for TemporaryId {:?} (expected {:?})",
+                        id,
+                        state
+                    )))?;
+                let holon_reference = &resolved.execution_handle.get_holon_reference()?;
+                if !holon_reference.is_transient() {
+                    return Err(HolonError::InvalidHolonReference(format!(
+                        "ExecutionHolons::lookup expected TRANSIENT but got {:?} ",
+                        holon_reference
+                    )));
+                }
+
+                Ok(holon_reference.clone())
             }
             state => {
                 let resolved = self

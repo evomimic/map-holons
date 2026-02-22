@@ -2,7 +2,6 @@ use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, FixtureBindings, FixtureHolons};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-// use tracing::{debug, info};
 
 use holons_test::harness::helpers::{
     BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY,
@@ -148,7 +147,7 @@ pub fn setup_book_author_steps_with_context<'a>(
     bindings.insert_token(publisher_label, publisher_staged_token.clone());
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
-    test_case.add_add_related_holons_step(
+    let book_mod_token = test_case.add_add_related_holons_step(
         fixture_holons,
         book_staged_token,
         relationship_name,
@@ -159,6 +158,8 @@ pub fn setup_book_author_steps_with_context<'a>(
             book_label, BOOK_TO_PERSON_RELATIONSHIP, person_1_label, person_2_label
         )),
     )?;
+    // Update bindings to reflect the added relationships
+    bindings.insert_token(book_label, book_mod_token);
 
     Ok(bindings)
 }

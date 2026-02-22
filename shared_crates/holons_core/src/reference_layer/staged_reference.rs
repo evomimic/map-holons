@@ -354,7 +354,6 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-
         // Precompute keys before taking the holon write lock to avoid re-entrant locking on self-edges.
         let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
             .into_iter()
@@ -373,6 +372,7 @@ impl WritableHolonImpl for StagedReference {
         })?;
 
         holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
+        
         Ok(self)
     }
 
