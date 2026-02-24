@@ -22,15 +22,13 @@
 //! and improving usability.
 
 use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
-use crate::core_shared_objects::{Holon, ReadableHolonState};
 use crate::reference_layer::TransientReference;
 use crate::{
-    HolonCollection, HolonReference, HolonsContextBehavior, SmartReference, StagedReference,
+    HolonCollection, HolonReference, SmartReference, StagedReference,
 };
-use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId, LocalId, PropertyMap};
+use base_types::MapString;
+use core_types::{HolonError, HolonId, LocalId};
 use std::sync::Arc;
-use type_names::CorePropertyTypeName;
 //TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 /// Commits the state of all staged holons and their relationships to the DHT.
@@ -150,18 +148,6 @@ pub fn delete_holon(
 pub fn get_all_holons(context: &Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
     let holon_service = context.get_holon_service();
     holon_service.get_all_holons_internal(context)
-}
-
-pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
-    let key_prop = CorePropertyTypeName::Key.as_property_name();
-
-    match map.get(&key_prop) {
-        Some(BaseValue::StringValue(s)) => Ok(Some(s.clone())),
-        Some(other) => {
-            Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".to_string()))
-        }
-        None => Ok(None),
-    }
 }
 
 /// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.
@@ -335,12 +321,6 @@ pub fn stage_new_version_from_id(
 }
 
 // ======
-
-// Standalone function to summarize a vector of Holons
-pub fn summarize_holons(holons: &Vec<Holon>) -> String {
-    let summaries: Vec<String> = holons.iter().map(|holon| holon.summarize()).collect();
-    format!("Holons: [{}]", summaries.join(", "))
-}
 
 // Gets total count of Staged Holons present in the Nursery
 pub fn staged_count(context: &Arc<TransactionContext>) -> Result<i64, HolonError> {

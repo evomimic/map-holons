@@ -2,12 +2,14 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt};
 
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyMap, RelationshipName};
+use type_names::CorePropertyTypeName;
 
 use crate::{
-    core_shared_objects::TransientRelationshipMap, CollectionState, HolonCollection,
-    HolonCollectionApi, HolonReference, RelationshipMap, StagedRelationshipMap,
+    core_shared_objects::{Holon, ReadableHolonState, TransientRelationshipMap},
+    CollectionState, HolonCollection, HolonCollectionApi, HolonReference, RelationshipMap,
+    StagedRelationshipMap,
 };
 
 use super::state::{HolonState, ValidationState};
@@ -149,5 +151,28 @@ impl fmt::Display for HolonSummary {
             "HolonSummary {{ key: {:?}, local_id: {:?}, state: {}, validation_state: {:?} }}",
             self.key, self.local_id, self.state, self.validation_state,
         )
+    }
+}
+
+// ---------------------------------------------------------------------
+// Stateless Holon Utility Functions
+// ---------------------------------------------------------------------
+
+/// Summarizes a vector of holons for lightweight logging.
+pub fn summarize_holons(holons: &Vec<Holon>) -> String {
+    let summaries: Vec<String> = holons.iter().map(|holon| holon.summarize()).collect();
+    format!("Holons: [{}]", summaries.join(", "))
+}
+
+/// Extracts the `Key` property from a property map as a `MapString` when present.
+pub fn key_from_property_map(map: &PropertyMap) -> Result<Option<MapString>, HolonError> {
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
+    match map.get(&key_prop) {
+        Some(BaseValue::StringValue(value)) => Ok(Some(value.clone())),
+        Some(other) => {
+            Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".to_string()))
+        }
+        None => Ok(None),
     }
 }
