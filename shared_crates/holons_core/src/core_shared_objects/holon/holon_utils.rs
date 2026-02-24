@@ -133,6 +133,8 @@ impl From<StagedRelationshipMap> for EssentialRelationshipMap {
 }
 
 #[derive(Debug, Clone)]
+// TODO(phase-1.4-cleanup): `HolonSummary` appears unused across the codebase.
+// Assess whether to remove it or reintroduce it as the canonical summary type.
 pub struct HolonSummary {
     pub key: Option<String>,
     pub local_id: Option<String>,

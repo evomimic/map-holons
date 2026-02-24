@@ -18,7 +18,7 @@ use crate::core_shared_objects::{
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
-    HolonsContextBehavior, TransientHolonBehavior,
+    TransientHolonBehavior,
 };
 use crate::{SmartReference, TransientReference};
 
@@ -27,9 +27,11 @@ use crate::{SmartReference, TransientReference};
 pub struct TransactionContext {
     tx_id: TxId,
     lifecycle_state: AtomicU8,
+
     /// Host-ingress concurrency guard only:
     /// prevents external request mutations from racing in-flight commit ingress.
     host_commit_in_progress: AtomicBool,
+
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
@@ -47,6 +49,10 @@ impl TransactionContext {
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
         })
     }
+
+    // ---------------------------------------------------------------------
+    // Execution Identity & Lifecycle
+    // ---------------------------------------------------------------------
 
     /// Creates a handle to this transaction context for holon references.
     pub(crate) fn handle(self: &Arc<Self>) -> TransactionContextHandle {
@@ -67,6 +73,42 @@ impl TransactionContext {
     pub fn is_open(&self) -> bool {
         self.lifecycle_state() == TransactionLifecycleState::Open
     }
+
+    /// Transitions the transaction lifecycle from `Open` to `Committed`.
+    ///
+    /// Returns `true` only when the state transition is applied by this caller.
+    pub fn try_transition_to_committed(&self) -> bool {
+        self.lifecycle_state
+            .compare_exchange(
+                TransactionLifecycleState::Open.as_u8(),
+                TransactionLifecycleState::Committed.as_u8(),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+
+    /// Applies the `Open -> Committed` lifecycle transition.
+    pub fn transition_to_committed(&self) -> Result<(), HolonError> {
+        if self.try_transition_to_committed() {
+            return Ok(());
+        }
+
+        let current_state = self.lifecycle_state();
+        if current_state == TransactionLifecycleState::Committed {
+            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
+        }
+
+        Err(HolonError::InvalidTransactionTransition {
+            tx_id: self.tx_id.value(),
+            from_state: format!("{:?}", current_state),
+            to_state: format!("{:?}", TransactionLifecycleState::Committed),
+        })
+    }
+
+    // ---------------------------------------------------------------------
+    // Host Commit Ingress Guard
+    // ---------------------------------------------------------------------
 
     /// Enforces host-side external mutation constraints.
     ///
@@ -129,41 +171,61 @@ impl TransactionContext {
     /// Host-ingress concurrency guard only:
     /// Prevents external mutation requests from racing an in-flight commit.
     /// Not used by guest commit execution logic.
-    pub fn begin_host_commit_ingress_guard(&self) -> Result<HostCommitExecutionGuard<'_>, HolonError> {
+    pub fn begin_host_commit_ingress_guard(
+        &self,
+    ) -> Result<HostCommitExecutionGuard<'_>, HolonError> {
         HostCommitExecutionGuard::acquire(self)
     }
 
-    /// Transitions the transaction lifecycle from `Open` to `Committed`.
+    // ---------------------------------------------------------------------
+    // Core Execution Services (formerly trait methods)
+    // ---------------------------------------------------------------------
+
+    /// Returns the cache access service.
+    pub fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
+        self.space_manager.get_cache_access()
+    }
+
+    /// Returns the holon service.
+    pub fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
+        self.space_manager.get_holon_service()
+    }
+
+    /// Returns the dance initiator.
+    pub fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {
+        self.space_manager.get_dance_initiator()
+    }
+
+    /// Returns the current space holon reference (if any).
     ///
-    /// Returns `true` only when the state transition is applied by this caller.
-    pub fn try_transition_to_committed(&self) -> bool {
-        self.lifecycle_state
-            .compare_exchange(
-                TransactionLifecycleState::Open.as_u8(),
-                TransactionLifecycleState::Committed.as_u8(),
-                Ordering::AcqRel,
-                Ordering::Acquire,
-            )
-            .is_ok()
+    /// This version no longer reacquires `Arc<TransactionContext>` through
+    /// `TransactionManager`. Instead, it requires `self: &Arc<Self>` so we
+    /// can mint a handle directly.
+    pub fn get_space_holon(self: &Arc<Self>) -> Result<Option<HolonReference>, HolonError> {
+        let maybe_holon_id = self.space_manager.get_space_holon_id()?;
+
+        let Some(holon_id) = maybe_holon_id else {
+            return Ok(None);
+        };
+
+        let handle = self.handle();
+
+        Ok(Some(HolonReference::Smart(SmartReference::new_from_id(handle, holon_id))))
     }
 
-    /// Applies the `Open -> Committed` lifecycle transition.
-    pub fn transition_to_committed(&self) -> Result<(), HolonError> {
-        if self.try_transition_to_committed() {
-            return Ok(());
-        }
-
-        let current_state = self.lifecycle_state();
-        if current_state == TransactionLifecycleState::Committed {
-            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
-        }
-
-        Err(HolonError::InvalidTransactionTransition {
-            tx_id: self.tx_id.value(),
-            from_state: format!("{:?}", current_state),
-            to_state: format!("{:?}", TransactionLifecycleState::Committed),
-        })
+    /// Sets the space holon id.
+    pub fn set_space_holon_id(&self, space_holon_id: HolonId) -> Result<(), HolonError> {
+        self.space_manager.set_space_holon_id(space_holon_id)
     }
+
+    /// Returns the transient collection state (used for IPC transport).
+    pub fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
+        self.space_manager.get_transient_state()
+    }
+
+    // ---------------------------------------------------------------------
+    // Manager Access (Temporary — to be tightened in Phase 6)
+    // ---------------------------------------------------------------------
 
     /// Returns a strong reference to the space manager.
     pub fn space_manager(&self) -> Arc<HolonSpaceManager> {
@@ -201,10 +263,13 @@ impl TransactionContext {
     }
 
     pub(crate) fn cache_access_internal(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.require_space_manager().get_cache_access()
+        self.space_manager().get_cache_access()
     }
 
-    // Public import/export for session_state-state transport.
+    // ---------------------------------------------------------------------
+    // State Import / Export
+    // ---------------------------------------------------------------------
+
     pub fn export_staged_holons(&self) -> Result<HolonPool, HolonError> {
         self.nursery.export_staged_holons()
     }
@@ -221,10 +286,9 @@ impl TransactionContext {
         self.transient_manager.import_transient_holons(transient_holons)
     }
 
-    fn require_space_manager(&self) -> Arc<HolonSpaceManager> {
-        // Space manager lifetime is guaranteed by the strong Arc stored on the context.
-        Arc::clone(&self.space_manager)
-    }
+    // ---------------------------------------------------------------------
+    // Reference Helpers
+    // ---------------------------------------------------------------------
 
     /// This function converts a TemporaryId into a validated TransientReference.
     /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
@@ -235,56 +299,5 @@ impl TransactionContext {
         // Validate id exists in this tx’s transient pool
         self.transient_manager().get_holon_by_id(id)?;
         Ok(TransientReference::from_temporary_id(self.handle(), id))
-    }
-}
-
-impl HolonsContextBehavior for TransactionContext {
-    fn tx_id(&self) -> TxId {
-        self.tx_id
-    }
-
-    fn is_open(&self) -> bool {
-        self.is_open()
-    }
-
-    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.require_space_manager().get_cache_access()
-    }
-
-    fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
-        self.require_space_manager().get_holon_service()
-    }
-
-    fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {
-        self.require_space_manager().get_dance_initiator()
-    }
-
-    // NOTE: This reacquires Arc<TransactionContext> via TransactionManager because HolonsContextBehavior
-    // must remain object-safe for now. Once Phase 1.4 consolidates execution under TransactionContext,
-    // this should become a simple `self: &Arc<Self>` method using `self.handle()`.
-    fn get_space_holon(&self) -> Result<Option<HolonReference>, HolonError> {
-        let maybe_holon_id = self.require_space_manager().get_space_holon_id()?;
-        let Some(holon_id) = maybe_holon_id else {
-            return Ok(None);
-        };
-
-        // Reacquire the Arc<TransactionContext> so we can create a TransactionContextHandle.
-        let context = self
-            .require_space_manager()
-            .get_transaction_manager()
-            .get_transaction(&self.tx_id())?
-            .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
-
-        let transaction_handle = context.handle();
-
-        Ok(Some(HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))))
-    }
-
-    fn set_space_holon_id(&self, space_holon_id: HolonId) -> Result<(), HolonError> {
-        self.require_space_manager().set_space_holon_id(space_holon_id)
-    }
-
-    fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
-        self.require_space_manager().get_transient_state()
     }
 }
