@@ -7,7 +7,10 @@ use std::sync::{
 
 use core_types::{HolonError, HolonId, TemporaryId};
 
-use super::{HostCommitExecutionGuard, TransactionContextHandle, TransactionLifecycleState, TxId};
+use super::{
+    HostCommitExecutionGuard, LookupFacade, MutationFacade, TransactionContextHandle,
+    TransactionLifecycleState, TxId,
+};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
@@ -175,6 +178,18 @@ impl TransactionContext {
         &self,
     ) -> Result<HostCommitExecutionGuard<'_>, HolonError> {
         HostCommitExecutionGuard::acquire(self)
+    }
+
+    // ---------------------------------------------------------------------
+    // Public Execution Facades
+    // ---------------------------------------------------------------------
+
+    pub fn mutation(self: &Arc<Self>) -> MutationFacade {
+        MutationFacade { ctx: Arc::clone(self) }
+    }
+
+    pub fn lookup(self: &Arc<Self>) -> LookupFacade {
+        LookupFacade { ctx: Arc::clone(self) }
     }
 
     // ---------------------------------------------------------------------
