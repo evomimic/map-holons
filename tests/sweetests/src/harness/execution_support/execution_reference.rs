@@ -83,6 +83,7 @@ impl ExecutionReference {
     /// Intended for use by test executors to enforce fixture invariants.
     /// A mismatch indicates a test failure, not a recoverable error.
     pub fn assert_essential_content_eq(&self) {
+        use tracing::warn;
         // Content //
         let expected_content = self
             .expected_snapshot
@@ -123,6 +124,10 @@ impl ExecutionReference {
                     .expect("Failed to read expected holon content");
                 // Find matching holon
                 let matching_holon = actual_collection.get_members().iter().find(|actual_member| {
+                    warn!(
+                        "Getting Essential Content for Actual member {:?}",
+                        actual_member.clone()
+                    );
                     let actual_content = actual_member
                         .essential_content()
                         .expect("Failed to read actual holon content");

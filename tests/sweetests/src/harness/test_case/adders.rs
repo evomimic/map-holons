@@ -49,6 +49,7 @@ use holons_core::{
 use holons_prelude::prelude::*;
 use integrity_core_types::PropertyMap;
 use std::sync::Arc;
+use type_names::{CoreRelationshipTypeName::Predecessor, ToRelationshipName};
 
 /// - The source *token* is a TestReference that is *embedded as input* for the step. Executors will look it up at runtime
 ///   (Saved ≙ Staged(Committed(LocalId)) enforced at lookup time).
@@ -190,29 +191,6 @@ impl DancesTestCase {
             ));
         }
         self.steps.push(DanceTestStep::MatchSavedContent);
-
-        Ok(())
-    }
-
-    pub fn add_query_relationships_step(
-        &mut self,
-        step_token: TestReference,
-        query_expression: QueryExpression,
-        expected_status: ResponseStatusCode,
-        description: Option<String>,
-    ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
-        self.steps.push(DanceTestStep::QueryRelationships {
-            step_token,
-            query_expression,
-            expected_status,
-            description,
-        });
 
         Ok(())
     }
@@ -584,15 +562,10 @@ impl DancesTestCase {
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
-        // use type_names::{CoreRelationshipTypeName::Predecessor, ToRelationshipName};
-        // new_snapshot.add_related_holons(
-        //     &Predecessor.to_relationship_name(),
-        //     vec![step_token.expected_reference().into()],
-        // )?;
-        // new_snapshot.add_related_holons(
-        //     RelationshipName(MapString("PREDECESSOR".to_string())),
-        //     vec![HolonReference::from(step_token.expected_reference())],
-        // )?;
+        new_snapshot.add_related_holons(
+            &Predecessor.to_relationship_name(),
+            vec![step_token.source_reference().into()],
+        )?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_status == ResponseStatusCode::OK {
             // Create new FixtureHolon
@@ -650,5 +623,32 @@ impl DancesTestCase {
         });
 
         Ok(new_token)
+    }
+
+    pub fn add_query_relationships_step(
+        &mut self,
+        step_token: TestReference,
+        query_expression: QueryExpression,
+        expected_status: ResponseStatusCode,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        if self.is_finalized == true {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+        // TODO: derive_new_source
+        // mint
+        //
+        // ok for now to leave expected as an empty TR (punting on exec todo re matching)
+        self.steps.push(DanceTestStep::QueryRelationships {
+            step_token,
+            query_expression,
+            expected_status,
+            description,
+        });
+
+        Ok(())
     }
 }

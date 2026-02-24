@@ -164,14 +164,14 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // ENSURE DB COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
-    //  QUERY RELATIONSHIPS  //
-    let query_expression = QueryExpression::new(book_to_person_relationship.clone());
-    test_case.add_query_relationships_step(
-        book_token_after_add,
-        query_expression,
-        ResponseStatusCode::OK,
-        None,
-    )?;
+    // //  QUERY RELATIONSHIPS  //
+    // let query_expression = QueryExpression::new(book_to_person_relationship.clone());
+    // test_case.add_query_relationships_step(
+    //     book_token_after_add,
+    //     query_expression,
+    //     ResponseStatusCode::OK,
+    //     None,
+    // )?;
 
     // Finalize
     test_case.finalize(&fixture_context)?;

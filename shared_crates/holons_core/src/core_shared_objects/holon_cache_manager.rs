@@ -37,9 +37,9 @@ impl HolonCacheAccess for HolonCacheManager {
             debug!("Holon {:?} retrieved from cache.", holon_id);
             return Ok(cached.clone());
         }
-
+        use tracing::warn;
         // If not found, resolve it from the HolonService
-        debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
+        warn!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
         let holon = self.holon_service.fetch_holon_internal(holon_id)?;
         let arc_holon = Arc::new(RwLock::new(holon));
 
