@@ -185,7 +185,11 @@ mod tests {
             not_implemented()
         }
 
-        fn delete_holon_internal(&self, _local_id: &LocalId) -> Result<(), HolonError> {
+        fn delete_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _local_id: &LocalId,
+        ) -> Result<(), HolonError> {
             not_implemented()
         }
 
@@ -197,7 +201,11 @@ mod tests {
             not_implemented()
         }
 
-        fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
+        fn fetch_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _id: &HolonId,
+        ) -> Result<Holon, HolonError> {
             not_implemented()
         }
 

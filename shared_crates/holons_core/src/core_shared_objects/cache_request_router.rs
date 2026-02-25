@@ -79,7 +79,11 @@ impl HolonCacheAccess for CacheRequestRouter {
     /// Retrieves a mutable reference (`Arc<RwLock<Holon>`) to the `Holon` identified by `holon_id`.
     /// Delegates to the `local_cache_manager` if the `ServiceRoute` is `Local`.
     /// Returns an error if the route is not `Local` or cannot be resolved.
-    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError> {
+    fn get_rc_holon(
+        &self,
+        context: &Arc<TransactionContext>,
+        holon_id: &HolonId,
+    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Determine the routing policy for the request
         match CacheRequestRouter::get_request_route(holon_id, &self.cache_routing_policy)? {
             ServiceRoute::Local => {
@@ -92,7 +96,7 @@ impl HolonCacheAccess for CacheRequestRouter {
                             e
                         ))
                     })?
-                    .get_rc_holon(holon_id)
+                    .get_rc_holon(context, holon_id)
             } // ServiceRoute::Proxy(_) => {
               //     // Handle proxy-based requests (if supported in the future)
               //     Err(HolonError::NotImplemented(

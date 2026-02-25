@@ -21,14 +21,14 @@ pub async fn execute_query_relationships(
     info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
-    use tracing::warn;
+
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
     let node_collection =
         NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
-    warn!("BUILDING QUERY DANCE...");
+
     // 2. BUILD - the query_relationships DanceRequest
     let request = build_query_relationships_dance_request(node_collection, query_expression)
         .expect("Failed to build query_relationships request");

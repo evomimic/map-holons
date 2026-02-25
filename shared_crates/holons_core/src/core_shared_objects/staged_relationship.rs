@@ -178,7 +178,7 @@ impl WritableRelationship for StagedRelationshipMap {
         relationship_name: RelationshipName,
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<(), HolonError> {
-        // Check that entries can only contain StagedReferences
+        // Check that entries do not contain TransientReferences
         let found_transient: Vec<&HolonReference> =
             entries.iter().filter_map(|(h, _)| (h.is_transient()).then_some(h)).collect();
 

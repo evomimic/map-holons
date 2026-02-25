@@ -94,7 +94,7 @@ impl StagedReference {
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     ///
     /// # Returns
-    /// Rc<RefCell<Holon>>>
+    ///  Result<Arc<RwLock<Holon>>, HolonError>
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
@@ -111,10 +111,9 @@ impl StagedReference {
         _context: &Arc<TransactionContext>,
         check_state: StagedState,
     ) -> Result<bool, HolonError> {
-        use tracing::warn;
-        warn!("CHECKING STATE :: {:#?}", self.clone());
+
         let rc_holon = self.get_rc_holon()?;
-        warn!("GOT RC_HOLON");
+
         let holon = rc_holon
             .read()
             .map_err(|e| {

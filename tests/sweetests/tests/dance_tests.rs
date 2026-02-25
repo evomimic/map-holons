@@ -90,17 +90,17 @@ use holons_prelude::prelude::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-// #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-// #[case::delete_holon(delete_holon_fixture())]
-// #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-// #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
+#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
+#[case::delete_holon(delete_holon_fixture())]
+#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
+#[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
 #[case::simple_add_remove_related_holons_test(simple_add_remove_related_holons_fixture())]
-// #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-// #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
-// // #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
+#[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
+#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
-// #[case::load_holons_test(loader_incremental_fixture())]
-// #[case::load_holons_client_test(loader_client_fixture())]
+#[case::load_holons_test(loader_incremental_fixture())]
+#[case::load_holons_client_test(loader_client_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
@@ -108,6 +108,11 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // The heavy lifting for this test is in the test data set creation.
 
     let mut test_case: DancesTestCase = input.unwrap();
+    assert!(
+        test_case.is_finalized,
+        "DancesTestCase must be finalized before execution. Call test_case.finalize(&fixture_context) in the fixture."
+    );
+
     // Initialize test context and execution state
     let test_context = init_test_context(&mut test_case).await;
     let mut test_execution_state = TestExecutionState::new(test_context);

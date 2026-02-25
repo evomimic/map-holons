@@ -13,7 +13,11 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
     /// store and inserts it into the cache before returning the reference to that holon.
     /// If the holon_id is `External`, this method currently returns a `NotImplemented` HolonError
     ///
-    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError>;
+    fn get_rc_holon(
+        &self,
+        context: &Arc<TransactionContext>,
+        holon_id: &HolonId,
+    ) -> Result<Arc<RwLock<Holon>>, HolonError>;
 
     /// Retrieves related holons for the given source holon.
     ///

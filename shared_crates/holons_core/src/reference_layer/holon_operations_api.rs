@@ -142,7 +142,7 @@ pub fn delete_holon(
     local_id: LocalId,
 ) -> Result<(), HolonError> {
     let holon_service = context.get_holon_service();
-    holon_service.delete_holon_internal(&local_id)
+    holon_service.delete_holon_internal(context, &local_id)
 }
 
 // == GETTERS == //

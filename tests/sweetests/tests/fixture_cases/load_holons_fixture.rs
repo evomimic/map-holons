@@ -598,8 +598,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // DB must remain unchanged after duplicate-key failure.
     test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
 
-    // Export the fixture’s transient pool into the test case’s session_state state.
-    test_case.load_test_session_state(&fixture_context);
+    // Finalize
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

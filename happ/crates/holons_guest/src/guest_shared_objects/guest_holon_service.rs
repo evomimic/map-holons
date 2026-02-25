@@ -217,7 +217,11 @@ impl HolonServiceApi for GuestHolonService {
         Ok(commit_response)
     }
 
-    fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
+    fn delete_holon_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        local_id: &LocalId,
+    ) -> Result<(), HolonError> {
         let record = get(try_action_hash_from_local_id(&local_id)?, GetOptions::default())
             .map_err(|e| holon_error_from_wasm_error(e))?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
@@ -279,7 +283,11 @@ impl HolonServiceApi for GuestHolonService {
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
     /// then "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon_internal(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
+    fn fetch_holon_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        holon_id: &HolonId,
+    ) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
 
         // Retrieve the exact HolonNode for the specific ActionHash.

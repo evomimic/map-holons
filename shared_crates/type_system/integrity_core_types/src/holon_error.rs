@@ -49,6 +49,7 @@ pub enum HolonError {
     InvalidTransition(String),
     #[error("Invalid Type, {0}")]
     InvalidType(String),
+    /// Used to indicated that one of the supplied parameters is not resolvable or not appropriate for this function.
     #[error("Invalid Parameter: {0}")]
     InvalidParameter(String),
     #[error("{0} is not a valid relationship for this source holon type {1}")]
