@@ -485,7 +485,7 @@ fn save_smartlinks_for_collection(
                     "Failed to get holon_id for relationship {:?} at index {}: {:?}",
                     name.0 .0, idx, err
                 );
-                continue;
+                return Err(err);
             }
         };
 
