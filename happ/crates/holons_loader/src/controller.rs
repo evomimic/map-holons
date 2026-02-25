@@ -321,11 +321,38 @@ impl HolonLoaderController {
 
         // commit(): provided by HolonOperationsApi via holons_prelude
         let commit_response = commit(context)?;
-        // Basic accounting:
-        // - All staged nursery holons are attempted.
-        // - Abandoned are not saved; they appear in `abandoned_holons`.
-        // - If saved + abandoned != commits_attempted, then errors occurred.
-        // Retrieve relationships
+        // Commit status is driven by the explicit CommitRequestStatus property emitted by
+        // commit() (authoritative), while counts are retained for summary/diagnostics.
+        let commit_status_value = commit_response
+            .property_value(CorePropertyTypeName::CommitRequestStatus.as_property_name())?;
+        let load_commit_status = match commit_status_value {
+            Some(BaseValue::StringValue(status)) if status.0 == "Complete" => {
+                LoadCommitStatus::Complete
+            }
+            Some(BaseValue::StringValue(status)) if status.0 == "Incomplete" => {
+                LoadCommitStatus::Incomplete
+            }
+            Some(BaseValue::StringValue(status)) => {
+                warn!(
+                    "Unexpected CommitRequestStatus value in commit response: {:?}",
+                    status
+                );
+                LoadCommitStatus::Incomplete
+            }
+            Some(other) => {
+                warn!(
+                    "Unexpected CommitRequestStatus type in commit response: {:?}",
+                    other
+                );
+                LoadCommitStatus::Incomplete
+            }
+            None => {
+                warn!("Missing CommitRequestStatus in commit response");
+                LoadCommitStatus::Incomplete
+            }
+        };
+
+        // Retrieve commit accounting relationships for summary diagnostics.
         let committed_refs = commit_response
             .related_holons(CoreRelationshipTypeName::SavedHolons.as_relationship_name())?;
         let abandoned_refs = commit_response
@@ -346,12 +373,16 @@ impl HolonLoaderController {
             None => 0,
         };
 
-        let commit_ok = (saved_holons + abandoned_holons) == commits_attempted;
+        let counts_balanced = (saved_holons + abandoned_holons) == commits_attempted;
+        if matches!(load_commit_status, LoadCommitStatus::Complete) && !counts_balanced {
+            warn!(
+                "CommitRequestStatus is Complete but commit counts do not balance (saved + abandoned = {}, attempts = {})",
+                saved_holons + abandoned_holons,
+                commits_attempted
+            );
+        }
 
-        let load_commit_status =
-            if commit_ok { LoadCommitStatus::Complete } else { LoadCommitStatus::Incomplete };
-
-        let summary = if commit_ok {
+        let summary = if matches!(load_commit_status, LoadCommitStatus::Complete) {
             format!(
                 "Commit successful: {} holons staged; {} committed; {} abandoned; {} attempts.",
                 total_holons_staged, saved_holons, abandoned_holons, commits_attempted
