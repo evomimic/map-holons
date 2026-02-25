@@ -53,29 +53,12 @@ pub struct HolochainReceptor {
 }
 
 impl HolochainReceptor {
-    fn is_commit_request(request_name: &str) -> bool {
-        // Should hardcode these names if we want to keep this pattern of lifecycle enforcement based on request type
-        matches!(request_name, "commit" | "load_holons")
+    fn is_commit_dance_request(request_name: &str) -> bool {
+        matches!(request_name, "commit")
     }
 
     fn is_read_only_request(request_name: &str) -> bool {
         matches!(request_name, "get_all_holons" | "get_holon_by_id" | "query_relationships")
-    }
-
-    fn enforce_lifecycle_for_request(&self, request_name: &str) -> Result<(), HolonError> {
-        if Self::is_commit_request(request_name) {
-            return self.context.ensure_commit_allowed();
-        }
-
-        // Read/query requests remain available during host commit ingress and after
-        // lifecycle reaches Committed so clients can inspect commit/load results.
-        if Self::is_read_only_request(request_name) {
-            return Ok(());
-        }
-
-        // External write/mutation requests (including transient creation) require
-        // an open transaction and must be blocked during host commit ingress.
-        self.context.ensure_open_for_external_mutation()
     }
 
     fn should_transition_from_load_response(
@@ -178,14 +161,14 @@ impl ReceptorBehavior for HolochainReceptor {
 
     /// Core request → client dance pipeline
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
-        self.enforce_lifecycle_for_request(request.name.as_str())?;
-
-        let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
-
-        let initiator = self.context.get_dance_initiator()?;
-
-        if Self::is_commit_request(request.name.as_str()) {
+        // Commit-like dance requests serialize host ingress and perform lifecycle
+        // checks while the ingress guard is held.
+        if Self::is_commit_dance_request(request.name.as_str()) {
             let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
+            self.context.ensure_commit_allowed()?;
+
+            let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
+            let initiator = self.context.get_dance_initiator()?;
 
             let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
@@ -199,6 +182,16 @@ impl ReceptorBehavior for HolochainReceptor {
             return Ok(MapResponse::new_from_dance_response(request.space.id, dance_response));
         }
 
+        // Read/query requests remain available during host commit ingress and after
+        // lifecycle reaches Committed so clients can inspect commit/load results.
+        // External write/mutation requests (including transient creation) require
+        // an open transaction and must be blocked during host commit ingress.
+        if !Self::is_read_only_request(request.name.as_str()) {
+            self.context.ensure_open_for_external_mutation()?;
+        }
+
+        let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
+        let initiator = self.context.get_dance_initiator()?;
         let dance_response = initiator.initiate_dance(&self.context, dance_request).await;
 
         Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
@@ -212,9 +205,8 @@ impl ReceptorBehavior for HolochainReceptor {
 
     //todo: integrate this into the map_request handling flow,  this is a PoC hack
     async fn load_holons(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
-        self.enforce_lifecycle_for_request(request.name.as_str())?;
-
         let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
+        self.context.ensure_commit_allowed()?;
 
         let result = if let MapRequestBody::LoadHolons(content_set) = request.body {
             let reference = load_holons_from_files(self.context.clone(), content_set).await?;
@@ -326,6 +318,32 @@ mod tests {
             .expect_err("external mutation should be rejected after committed");
 
         assert!(matches!(err, HolonError::TransactionNotOpen { .. }));
+    }
+
+    #[test]
+    fn ensure_commit_allowed_succeeds_during_host_commit_ingress_when_open() {
+        let context = init_client_context(None);
+        let _guard = context
+            .begin_host_commit_ingress_guard()
+            .expect("guard acquisition should succeed");
+
+        context
+            .ensure_commit_allowed()
+            .expect("commit lifecycle check should succeed while open, even under ingress guard");
+    }
+
+    #[test]
+    fn ensure_commit_allowed_rejects_after_transaction_committed() {
+        let context = init_client_context(None);
+        context
+            .transition_to_committed()
+            .expect("open transaction should transition to committed");
+
+        let err = context
+            .ensure_commit_allowed()
+            .expect_err("commit lifecycle check should reject committed transaction");
+
+        assert!(matches!(err, HolonError::TransactionAlreadyCommitted { .. }));
     }
 
     #[test]

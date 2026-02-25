@@ -91,20 +91,18 @@ impl TransactionContext {
         Ok(())
     }
 
-    /// Enforces host-side commit-entry constraints.
+    /// Enforces lifecycle constraints for host-side commit execution.
     ///
-    /// This guard is used for external commit-like ingress requests (`commit`,
-    /// `load_holons`) and does not restrict read/query entrypoints.
+    /// Intended to run while host commit ingress guard is held, so this check
+    /// validates lifecycle state only. Commit ingress concurrency is enforced by
+    /// `begin_host_commit_ingress_guard()`.
     pub fn ensure_commit_allowed(&self) -> Result<(), HolonError> {
-        if self.lifecycle_state() == TransactionLifecycleState::Committed {
-            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
+        match self.lifecycle_state() {
+            TransactionLifecycleState::Open => Ok(()),
+            TransactionLifecycleState::Committed => {
+                Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() })
+            }
         }
-
-        if self.is_host_commit_in_progress() {
-            return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
-        }
-
-        Ok(())
     }
 
     /// Returns whether host ingress currently holds the commit guard for this transaction.
