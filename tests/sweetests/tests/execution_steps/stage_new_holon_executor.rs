@@ -1,4 +1,4 @@
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference, ResolveBy};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -23,8 +23,7 @@ pub async fn execute_stage_new_holon(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &step_token)
-.unwrap();
+        state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
     // Can only stage Transient
     let transient_reference = match source_reference {

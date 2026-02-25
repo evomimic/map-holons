@@ -1,4 +1,4 @@
-use holons_test::{TestExecutionState, TestReference};
+use holons_test::{ResolveBy, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -12,24 +12,23 @@ pub async fn execute_query_relationships(
     step_token: TestReference,
     query_expression: QueryExpression,
     expected_status: ResponseStatusCode,
-    description:Option<String>,
+    description: Option<String>,
 ) {
     let description = match description {
         Some(dsc) => dsc,
-        None => "Querying Relationships".to_string()
+        None => "Querying Relationships".to_string(),
     };
     info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
-
+    use tracing::warn;
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context,
- &step_token).unwrap();
+        state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
     let node_collection =
         NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
-
+    warn!("BUILDING QUERY DANCE...");
     // 2. BUILD - the query_relationships DanceRequest
     let request = build_query_relationships_dance_request(node_collection, query_expression)
         .expect("Failed to build query_relationships request");
@@ -37,8 +36,7 @@ pub async fn execute_query_relationships(
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request)
-.await;
+    let response = dance_initiator.initiate_dance(&context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status

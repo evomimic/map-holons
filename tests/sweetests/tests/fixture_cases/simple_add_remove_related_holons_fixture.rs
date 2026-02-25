@@ -142,7 +142,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_to_person_relationship.clone(),
         vec![person_1_staged_token.clone()],
         ResponseStatusCode::OK,
-        Some("Removing Relationship (Staged):  Company -> HOST -> Website ".to_string()),
+        Some("Removing Relationship (Staged):  Book -> AUTHORED_BY -> Person1 ".to_string()),
     )?;
 
     // -- ADD STEP -- //
@@ -153,7 +153,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         PUBLISHED_BY.to_relationship_name(),
         vec![publisher_staged_token.clone()],
         ResponseStatusCode::OK,
-        Some("Adding Relationship (Staged):  Company -> HOST -> Website ".to_string()),
+        Some("Adding Relationship (Staged):  Book -> PUBLISHED_BY -> Publisher ".to_string()),
     )?;
     //
     // == //
@@ -164,14 +164,15 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // ENSURE DB COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
-    // //  QUERY RELATIONSHIPS  //
-    // let query_expression = QueryExpression::new(book_to_person_relationship.clone());
-    // test_case.add_query_relationships_step(
-    //     book_token_after_add,
-    //     query_expression,
-    //     ResponseStatusCode::OK,
-    //     None,
-    // )?;
+    //  QUERY RELATIONSHIPS  //
+    let query_expression = QueryExpression::new(book_to_person_relationship.clone());
+    test_case.add_query_relationships_step(
+        &mut fixture_holons,
+        book_token_after_add,
+        query_expression,
+        ResponseStatusCode::OK,
+        None,
+    )?;
 
     // Finalize
     test_case.finalize(&fixture_context)?;

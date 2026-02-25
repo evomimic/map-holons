@@ -16,7 +16,7 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
         "Ergonomic Add / Remove Related Holons Testcase".to_string(),
         "Tests the adding and removing of related Holons, using all combinations of ergonomic relationship names, for both Transient & Staged Holons".to_string(),
     );
-    let published_by = RelationshipName(MapString(PUBLISHED_BY.to_string()));
+    let _published_by = RelationshipName(MapString(PUBLISHED_BY.to_string()));
     // == //
 
     // Add : Enum, String, str, MapString, RelationshipName  ... complete ✅

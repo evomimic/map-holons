@@ -126,7 +126,7 @@ impl ExecutionReference {
                 let matching_holon = actual_collection.get_members().iter().find(|actual_member| {
                     warn!(
                         "Getting Essential Content for Actual member {:?}",
-                        actual_member.clone()
+                        actual_member
                     );
                     let actual_content = actual_member
                         .essential_content()

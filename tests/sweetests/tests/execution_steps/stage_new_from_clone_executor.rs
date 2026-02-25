@@ -4,7 +4,7 @@ use holons_core::{
     dances::{ResponseBody, ResponseStatusCode},
     HolonReference, HolonsContextBehavior,
 };
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference, ResolveBy};
 use tracing::info;
 
 /// Execute the StageNewFromClone step:
@@ -30,7 +30,7 @@ pub async fn execute_stage_new_from_clone(
     // 1. LOOKUP — get the input handle for the clone source
     //    (enforces Saved ≙ Staged(Committed(LocalId)); no nursery fallback)
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &step_token).unwrap();
+        state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
     // 2. BUILD — dance request to stage a new holon cloned from `source_reference`
     let request = build_stage_new_from_clone_dance_request(source_reference, new_key)

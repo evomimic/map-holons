@@ -111,7 +111,10 @@ impl StagedReference {
         _context: &Arc<TransactionContext>,
         check_state: StagedState,
     ) -> Result<bool, HolonError> {
+        use tracing::warn;
+        warn!("CHECKING STATE :: {:#?}", self.clone());
         let rc_holon = self.get_rc_holon()?;
+        warn!("GOT RC_HOLON");
         let holon = rc_holon
             .read()
             .map_err(|e| {
@@ -372,7 +375,7 @@ impl WritableHolonImpl for StagedReference {
         })?;
 
         holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
-        
+
         Ok(self)
     }
 

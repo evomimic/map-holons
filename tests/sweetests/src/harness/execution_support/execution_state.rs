@@ -14,8 +14,10 @@
 
 use std::sync::Arc;
 
-use crate::harness::execution_support::{ExecutionHolons, ExecutionReference};
-use crate::harness::fixtures_support::TestReference;
+use crate::harness::{
+    execution_support::{ExecutionHolons, ExecutionReference, ResolveBy},
+    fixtures_support::TestReference,
+};
 use holons_prelude::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -87,21 +89,23 @@ impl TestExecutionState {
     /// No Nursery/DHT fallback is performed; missing entries are treated as
     /// authoring/ordering errors.
     #[inline]
-    pub fn resolve_source_reference(
+    pub fn resolve_execution_reference(
         &self,
         context: &Arc<TransactionContext>,
+        resolution_type: ResolveBy,
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
-        self.execution_holons.resolve_source_reference(context, token)
+        self.execution_holons.resolve_execution_reference(context, resolution_type, token)
     }
 
-    /// Batch variant of `resolve_source_reference`.
+    /// Batch variant of `resolve_execution_reference`.
     #[inline]
-    pub fn resolve_source_references(
+    pub fn resolve_execution_references(
         &self,
         context: &Arc<TransactionContext>,
+        resolution_type: ResolveBy,
         tokens: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
-        self.execution_holons.resolve_source_references(context, tokens)
+        self.execution_holons.resolve_execution_references(context, resolution_type, tokens)
     }
 }

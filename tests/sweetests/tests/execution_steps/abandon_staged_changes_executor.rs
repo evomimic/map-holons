@@ -3,7 +3,7 @@ use tracing::{debug, info};
 
 use holons_prelude::prelude::*;
 
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference, ResolveBy};
 
 /// This function builds and dances an `abandon_staged_changes` DanceRequest.
 /// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test.
@@ -29,7 +29,7 @@ pub async fn execute_abandon_staged_changes(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &step_token).unwrap();
+        state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
     // 2. BUILD — dance request to abandon holon
     let request = build_abandon_staged_changes_dance_request(source_reference)

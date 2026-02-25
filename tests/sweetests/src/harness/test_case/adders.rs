@@ -328,9 +328,6 @@ impl DancesTestCase {
     }
 
     // Advance head (no new logical holon).
-    //
-    // [future] TODO: for inverse relationship support, this function will need to advance the head for targets (if expected success)
-    // and return a Bindings object that also contains a vec of the newly minted target tokens.
     pub fn add_add_related_holons_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -345,18 +342,8 @@ impl DancesTestCase {
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
         let mut references_to_add: Vec<HolonReference> = Vec::new();
         // Set Targets
-        let mut step_tokens_to_add: Vec<TestReference> = Vec::new();
         for token in &holons_to_add {
             references_to_add.push(token.expected_reference().into());
-            // Clone target in order to mint proper expected tokens
-            let target_source = fixture_holons.derive_next_source(token)?;
-            let target_snapshot = target_source.snapshot().clone_holon()?;
-            let target_expected = ExpectedSnapshot::new(target_snapshot, target_source.state());
-            // if expected_status == ResponseStatusCode::OK {
-            //     fixture_holons.advance_head(&token.expected_id(), target_expected.clone())?;
-            // }
-            let target_token = fixture_holons.mint_test_reference(target_source, target_expected);
-            step_tokens_to_add.push(target_token);
         }
         new_snapshot.add_related_holons(&relationship_name, references_to_add)?;
         // Set Expected
@@ -371,7 +358,7 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::AddRelatedHolons {
             step_token: new_token.clone(),
             relationship_name,
-            step_tokens_to_add,
+            holons_to_add,
             expected_status,
             description,
         });
@@ -419,9 +406,6 @@ impl DancesTestCase {
     }
 
     // Advance head (no new logical holon).
-    //
-    // [future] TODO: for inverse relationship support, this function will need to advance the head for targets (if expected success)
-    // and return a Bindings object that also contains a vec of the newly minted target tokens.
     pub fn add_remove_related_holons_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -436,18 +420,8 @@ impl DancesTestCase {
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
         let mut references_to_remove: Vec<HolonReference> = Vec::new();
         // Set Targets
-        let mut step_tokens_to_remove: Vec<TestReference> = Vec::new();
         for token in &holons_to_remove {
             references_to_remove.push(token.expected_reference().into());
-            // Clone target in order to mint proper expected tokens
-            let target_source = fixture_holons.derive_next_source(token)?;
-            let target_snapshot = target_source.snapshot().clone_holon()?;
-            let target_expected = ExpectedSnapshot::new(target_snapshot, target_source.state());
-            // if expected_status == ResponseStatusCode::OK {
-            //     fixture_holons.advance_head(&token.expected_id(), target_expected.clone())?;
-            // }
-            let target_token = fixture_holons.mint_test_reference(target_source, target_expected);
-            step_tokens_to_remove.push(target_token);
         }
         new_snapshot.remove_related_holons(&relationship_name, references_to_remove)?;
         // Set Expected
@@ -462,7 +436,7 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::RemoveRelatedHolons {
             step_token: new_token.clone(),
             relationship_name,
-            step_tokens_to_remove,
+            holons_to_remove,
             expected_status,
             description,
         });
@@ -627,6 +601,7 @@ impl DancesTestCase {
 
     pub fn add_query_relationships_step(
         &mut self,
+        fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
         query_expression: QueryExpression,
         expected_status: ResponseStatusCode,
@@ -638,12 +613,16 @@ impl DancesTestCase {
                     .to_string(),
             ));
         }
-        // TODO: derive_new_source
-        // mint
-        //
-        // ok for now to leave expected as an empty TR (punting on exec todo re matching)
+        // Derive new source
+        let new_source = fixture_holons.derive_next_source(&step_token)?;
+        let new_snapshot = new_source.snapshot().clone_holon()?;
+        // TODO: set expected, as for now the exec step does not do comparison matching for query result
+        let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(new_source, expected);
+        // Add execution step
         self.steps.push(DanceTestStep::QueryRelationships {
-            step_token,
+            step_token: new_token,
             query_expression,
             expected_status,
             description,

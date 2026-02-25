@@ -1,5 +1,5 @@
 use holons_test::{
-    harness::prelude::TestExecutionState, ExecutionHandle, ExecutionReference, TestReference,
+    ExecutionHandle, ExecutionReference, ResolveBy, TestReference, harness::prelude::TestExecutionState
 };
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
@@ -29,9 +29,9 @@ pub async fn execute_add_related_holons(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &step_token).unwrap();
+        state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
     let holons_to_add: Vec<HolonReference> =
-        state.resolve_source_references(&context, &holons).unwrap();
+        state.resolve_execution_references(&context, ResolveBy::Expected,&holons).unwrap();
 
     // 2. BUILD — dance request to add related holons
     let request = build_add_related_holons_dance_request(
@@ -55,9 +55,6 @@ pub async fn execute_add_related_holons(
     );
     info!("Success! add_related_holons DanceResponse status matched expected");
 
-    // [future TODO]: when there is inverse relationship functionality, the dance response body should be changed
-    // to return BOTH the source AND the target holon references. Then in step 6, those target references that were returned
-    // will be used to create execution references to be recorded.
     if response.status_code == ResponseStatusCode::OK {
         // 5. ASSERT — execution-time content matches fixture expectation
         let response_holon_reference = match response.body {
@@ -75,19 +72,5 @@ pub async fn execute_add_related_holons(
 
         // 6. RECORD — make available for downstream resolution
         state.record(&step_token, execution_reference).unwrap();
-        // [future TODO]: no longer use the same execution reference that was derived from source
-        let mut index = 0;
-        for token in holons {
-            state
-                .record(
-                    &token,
-                    ExecutionReference::from_token_execution(
-                        &token,
-                        ExecutionHandle::from(holons_to_add[index].clone()),
-                    ),
-                )
-                .unwrap();
-            index += 1;
-        }
     }
 }
