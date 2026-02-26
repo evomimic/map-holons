@@ -3,7 +3,7 @@ use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 
-use holons_test::harness::helpers::{BOOK_KEY};
+use holons_test::harness::helpers::BOOK_KEY;
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
@@ -21,7 +21,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_transient_reference = new_holon(&fixture_context, Some(book_key.clone()))?;
+    let book_transient_reference = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
 
     // Mint
     let mut book_properties = BTreeMap::new();
@@ -67,8 +67,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // Finalize
-   test_case.finalize(&fixture_context)?;
-
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

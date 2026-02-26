@@ -1,12 +1,10 @@
 use crate::fixture_cases::setup_book_and_authors_fixture::*;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
-use holons_core::{dances::ResponseStatusCode, new_holon};
-use holons_test::{
-    dance_test_language::DancesTestCase, TestCaseInit,
-};
+use holons_core::dances::ResponseStatusCode;
+use holons_test::harness::helpers::BOOK_KEY;
+use holons_test::{dance_test_language::DancesTestCase, TestCaseInit};
 use std::collections::BTreeMap;
-use holons_test::harness::helpers::{BOOK_KEY};
 use type_names::ToPropertyName;
 
 /// Demonstrates cloning a Book three ways using the new harness:
@@ -32,7 +30,8 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("book:transient-source".to_string());
-    let transient_source = new_holon(&fixture_context, Some(transient_source_key.clone()))?;
+    let transient_source =
+        fixture_context.mutation().new_holon(Some(transient_source_key.clone()))?;
     // Mint transient source token
     let transient_token = test_case.add_new_holon_step(
         &mut fixture_holons,
@@ -128,8 +127,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_match_saved_content_step()?;
 
     // Finalize
-   test_case.finalize(&fixture_context)?;
-
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

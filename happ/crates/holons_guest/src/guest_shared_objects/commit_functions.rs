@@ -12,7 +12,6 @@ use holons_core::{
         holon::state::{AccessType, StagedState},
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
-    new_holon,
     reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
 };
@@ -126,7 +125,7 @@ pub fn commit(
     let stage_count = staged_references.len() as i64;
 
     let mut response_reference =
-        new_holon(context, Some(MapString("Commit Response".to_string())))?;
+        context.mutation().new_holon(Some(MapString("Commit Response".to_string())))?;
     response_reference
         .with_property_value(CommitRequestStatus, "Complete")?
         .with_property_value(CommitsAttempted, stage_count)?;

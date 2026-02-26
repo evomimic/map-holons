@@ -23,7 +23,6 @@ pub mod transient_manager_access;
 pub mod transient_manager_access_internal;
 pub mod transient_relationship;
 
-pub use crate::reference_layer::holon_operations_api::*;
 pub use cache_access::HolonCacheAccess;
 pub use cache_request_router::ServiceRoutingPolicy;
 pub use holon::{Holon, SavedHolon, StagedHolon, TransientHolon};

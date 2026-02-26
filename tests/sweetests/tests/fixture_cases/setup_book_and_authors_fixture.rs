@@ -1,16 +1,12 @@
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use holons_prelude::prelude::*;
 use holons_test::FixtureBindings;
-use holons_test::{
-    dance_test_language::DancesTestCase, FixtureHolons,
-};
+use holons_test::{dance_test_language::DancesTestCase, FixtureHolons};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 // use tracing::{debug, info};
 
-
 use holons_test::harness::helpers::{
-    BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY,
-    PUBLISHER_KEY,
+    BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY,
 };
 
 /// This function updates the supplied test_case with a set of steps that establish some basic
@@ -41,7 +37,7 @@ pub fn setup_book_author_steps_with_context<'a>(
     //
     // Create fresh holon
     let book_key = MapString(BOOK_KEY.to_string());
-    let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
+    let book_transient_reference = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
 
     // Mint
     let mut book_properties = BTreeMap::new();
@@ -67,7 +63,8 @@ pub fn setup_book_author_steps_with_context<'a>(
     //
     // Create
     let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let person_1_transient_reference = new_holon(&*fixture_context, Some(person_1_key.clone()))?;
+    let person_1_transient_reference =
+        fixture_context.mutation().new_holon(Some(person_1_key.clone()))?;
 
     let mut person_1_properties = BTreeMap::new();
     person_1_properties.insert("first name".to_property_name(), "Roger".to_base_value());
@@ -92,7 +89,8 @@ pub fn setup_book_author_steps_with_context<'a>(
     //
     // Create
     let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let person_2_transient_reference = new_holon(&*fixture_context, Some(person_2_key.clone()))?;
+    let person_2_transient_reference =
+        fixture_context.mutation().new_holon(Some(person_2_key.clone()))?;
 
     let mut person_2_properties = BTreeMap::new();
     person_2_properties.insert("first name".to_property_name(), "George".to_base_value());
@@ -117,7 +115,8 @@ pub fn setup_book_author_steps_with_context<'a>(
     //
     // Create
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let publisher_transient_reference = new_holon(&*fixture_context, Some(publisher_key.clone()))?;
+    let publisher_transient_reference =
+        fixture_context.mutation().new_holon(Some(publisher_key.clone()))?;
 
     let mut publisher_properties = BTreeMap::new();
     publisher_properties.insert("name".to_property_name(), PUBLISHER_KEY.to_base_value());

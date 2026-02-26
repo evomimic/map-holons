@@ -1,11 +1,11 @@
 use holons_test::{DancesTestCase, TestCaseInit};
 
-use std::collections::BTreeMap;
 use holons_prelude::prelude::*;
 use rstest::*;
+use std::collections::BTreeMap;
 
-use holons_test::harness::helpers::{BOOK_KEY};
-use type_names::{ToPropertyName};
+use holons_test::harness::helpers::BOOK_KEY;
+use type_names::ToPropertyName;
 
 use super::setup_book_author_steps_with_context;
 
@@ -39,7 +39,8 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // EXAMPLE (Transient) //
     let example_key = MapString("EXAMPLE_KEY".to_string());
-    let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
+    let example_transient_reference =
+        fixture_context.mutation().new_holon(Some(example_key.clone()))?;
     // Mint
     let mut example_properties = PropertyMap::new();
     let example_transient_token = test_case.add_new_holon_step(
@@ -128,8 +129,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD (Again) STEP -- // Confirming add succeeds after removal of things
 
     // Finalize
-   test_case.finalize(&fixture_context)?;
-
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

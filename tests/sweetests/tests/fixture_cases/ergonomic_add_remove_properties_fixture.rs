@@ -1,4 +1,4 @@
-use holons_core::core_shared_objects::holon::{EssentialHolonContent};
+use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_test::{DancesTestCase, TestCaseInit};
 use pretty_assertions::assert_eq;
 // use tracing::{error, info};
@@ -34,7 +34,8 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     // -- ADD -- //
     let book_key = MapString("BOOK_KEY".to_string());
-    let mut book_transient_reference = new_holon(&fixture_context, Some(book_key.clone()))?;
+    let mut book_transient_reference =
+        fixture_context.mutation().new_holon(Some(book_key.clone()))?;
     book_transient_reference.with_property_value("Description", "This is a book description")?;
     // Set expected
     let mut expected_properties = PropertyMap::new();
@@ -80,7 +81,7 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     // === STAGED === //
     let mut book_staged_reference =
-        stage_new_holon(&fixture_context, book_transient_reference.clone())?;
+        fixture_context.mutation().stage_new_holon(book_transient_reference.clone())?;
 
     // -- ADD -- //
     let mut staged_expected_properties = PropertyMap::new();
