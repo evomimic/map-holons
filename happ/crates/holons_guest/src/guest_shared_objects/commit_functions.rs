@@ -4,9 +4,6 @@ use holons_guest_integrity::HolonNode;
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-// use crate::{
-//     create_holon_node, save_smartlink, update_holon_node, SmartLink, UpdateHolonNodeInput,
-// };
 use crate::guest_shared_objects::{save_smartlink, SmartLink};
 use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolonNodeInput};
 
@@ -34,7 +31,7 @@ pub use type_names::{
     ToPropertyName, ToRelationshipName,
 };
 
-//// Represents the result of attempting to commit a staged holon.
+/// Represents the result of attempting to commit a staged holon.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommitOutcome {
     /// The holon was successfully persisted (created or updated).
@@ -488,7 +485,7 @@ fn save_smartlinks_for_collection(
                     "Failed to get holon_id for relationship {:?} at index {}: {:?}",
                     name.0 .0, idx, err
                 );
-                continue;
+                return Err(err);
             }
         };
 
@@ -527,10 +524,7 @@ fn save_smartlinks_for_collection(
 
         debug!(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
-            idx,
-            name.0 .0,
-            source_id,
-            smartlink.to_address
+            idx, name.0 .0, source_id, smartlink.to_address
         );
         save_smartlink(smartlink)?;
     }

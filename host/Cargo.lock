@@ -3486,6 +3486,7 @@ dependencies = [
  "holons_trust_channel",
  "serde_bytes",
  "tracing",
+ "type_names",
 ]
 
 [[package]]

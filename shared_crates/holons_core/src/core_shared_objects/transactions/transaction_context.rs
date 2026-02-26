@@ -1,13 +1,13 @@
 //! Transaction-scoped execution context shell for staging and transient pools.
 
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU8, Ordering},
     Arc, RwLock,
 };
 
 use core_types::{HolonError, HolonId, TemporaryId};
 
-use super::{TransactionContextHandle, TxId};
+use super::{HostCommitExecutionGuard, TransactionContextHandle, TransactionLifecycleState, TxId};
 use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
@@ -26,7 +26,10 @@ use crate::{SmartReference, TransientReference};
 #[derive(Debug)]
 pub struct TransactionContext {
     tx_id: TxId,
-    is_open: AtomicBool,
+    lifecycle_state: AtomicU8,
+    /// Host-ingress concurrency guard only:
+    /// prevents external request mutations from racing in-flight commit ingress.
+    host_commit_in_progress: AtomicBool,
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
@@ -37,7 +40,8 @@ impl TransactionContext {
     pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Arc<Self> {
         Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
-            is_open: AtomicBool::new(true),
+            lifecycle_state: AtomicU8::new(TransactionLifecycleState::Open.as_u8()),
+            host_commit_in_progress: AtomicBool::new(false),
             space_manager,
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
@@ -54,9 +58,111 @@ impl TransactionContext {
         self.tx_id
     }
 
+    /// Returns the current lifecycle state for this transaction.
+    pub fn lifecycle_state(&self) -> TransactionLifecycleState {
+        TransactionLifecycleState::from_u8(self.lifecycle_state.load(Ordering::Acquire))
+    }
+
     /// Returns whether the transaction is still open.
     pub fn is_open(&self) -> bool {
-        self.is_open.load(Ordering::Acquire)
+        self.lifecycle_state() == TransactionLifecycleState::Open
+    }
+
+    /// Enforces host-side external mutation constraints.
+    ///
+    /// External write/mutation entrypoints are only valid while the transaction is
+    /// `Open` and no host commit ingress is currently in progress.
+    ///
+    /// This includes host-side transient creation requests (for example
+    /// `create_new_holon`) in addition to staging/property/relationship mutations.
+    /// Read/query entrypoints are governed separately and are not blocked here.
+    pub fn ensure_open_for_external_mutation(&self) -> Result<(), HolonError> {
+        if self.lifecycle_state() != TransactionLifecycleState::Open {
+            return Err(HolonError::TransactionNotOpen {
+                tx_id: self.tx_id.value(),
+                state: format!("{:?}", self.lifecycle_state()),
+            });
+        }
+
+        if self.is_host_commit_in_progress() {
+            return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
+        }
+
+        Ok(())
+    }
+
+    /// Enforces lifecycle constraints for host-side commit execution.
+    ///
+    /// Intended to run while host commit ingress guard is held, so this check
+    /// validates lifecycle state only. Commit ingress concurrency is enforced by
+    /// `begin_host_commit_ingress_guard()`.
+    pub fn ensure_commit_allowed(&self) -> Result<(), HolonError> {
+        match self.lifecycle_state() {
+            TransactionLifecycleState::Open => Ok(()),
+            TransactionLifecycleState::Committed => {
+                Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() })
+            }
+        }
+    }
+
+    /// Returns whether host ingress currently holds the commit guard for this transaction.
+    pub fn is_host_commit_in_progress(&self) -> bool {
+        self.host_commit_in_progress.load(Ordering::Acquire)
+    }
+
+    /// Attempts to begin host-side commit ingress.
+    ///
+    /// Returns `true` only when the guard is acquired by this caller.
+    pub fn try_begin_host_commit_ingress(&self) -> bool {
+        self.host_commit_in_progress
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+
+    /// Ends host-side commit ingress and releases the guard.
+    pub fn end_host_commit_ingress(&self) {
+        self.host_commit_in_progress.store(false, Ordering::Release);
+    }
+
+    /// Acquires a scoped host-side commit ingress guard.
+    ///
+    /// Host-ingress concurrency guard only:
+    /// Prevents external mutation requests from racing an in-flight commit.
+    /// Not used by guest commit execution logic.
+    pub fn begin_host_commit_ingress_guard(&self) -> Result<HostCommitExecutionGuard<'_>, HolonError> {
+        HostCommitExecutionGuard::acquire(self)
+    }
+
+    /// Transitions the transaction lifecycle from `Open` to `Committed`.
+    ///
+    /// Returns `true` only when the state transition is applied by this caller.
+    pub fn try_transition_to_committed(&self) -> bool {
+        self.lifecycle_state
+            .compare_exchange(
+                TransactionLifecycleState::Open.as_u8(),
+                TransactionLifecycleState::Committed.as_u8(),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+
+    /// Applies the `Open -> Committed` lifecycle transition.
+    pub fn transition_to_committed(&self) -> Result<(), HolonError> {
+        if self.try_transition_to_committed() {
+            return Ok(());
+        }
+
+        let current_state = self.lifecycle_state();
+        if current_state == TransactionLifecycleState::Committed {
+            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
+        }
+
+        Err(HolonError::InvalidTransactionTransition {
+            tx_id: self.tx_id.value(),
+            from_state: format!("{:?}", current_state),
+            to_state: format!("{:?}", TransactionLifecycleState::Committed),
+        })
     }
 
     /// Returns a strong reference to the space manager.
@@ -138,7 +244,7 @@ impl HolonsContextBehavior for TransactionContext {
     }
 
     fn is_open(&self) -> bool {
-        self.is_open.load(Ordering::Acquire)
+        self.is_open()
     }
 
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
