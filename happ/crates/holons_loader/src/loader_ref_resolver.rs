@@ -76,7 +76,7 @@ impl ResolverState {
         if self.saved_index.is_some() {
             return Ok(());
         }
-        let collection = get_all_holons(context)?;
+        let collection = context.lookup().get_all_holons()?;
         self.saved_index = Some(Rc::new(collection));
         Ok(())
     }
@@ -639,7 +639,7 @@ impl LoaderRefResolver {
         if let Some(BaseValue::StringValue(key)) = loader_ref.property_value(&holon_key_property)? {
             debug!("[resolver] dereference LHR by holon_key='{}'", key.0);
             // Use the convenience API for single expected match
-            return match get_staged_holon_by_base_key(context, &key) {
+            return match context.lookup().get_staged_holon_by_base_key(&key) {
                 Ok(staged) => {
                     debug!("[resolver]   → FOUND staged holon for key='{}'", key.0);
                     Ok(HolonReference::Staged(staged))
@@ -740,7 +740,7 @@ impl LoaderRefResolver {
         debug!("[resolver] looking up RelationshipType by key '{}'", canonical_key.0);
 
         // 1) Prefer staged (Nursery) lookup by base key through the holon operations API.
-        let staged_candidates = get_staged_holons_by_base_key(context, canonical_key)?;
+        let staged_candidates = context.lookup().get_staged_holons_by_base_key(canonical_key)?;
 
         match staged_candidates.len() {
             1 => {
@@ -809,14 +809,16 @@ impl LoaderRefResolver {
         }
         if let Ok(versioned_key) = write_source_endpoint.versioned_key() {
             // Short read lock to check by versioned key
-            if let Ok(staged_ref) = { get_staged_holon_by_versioned_key(context, &versioned_key) } {
+            if let Ok(staged_ref) =
+                { context.lookup().get_staged_holon_by_versioned_key(&versioned_key) }
+            {
                 return Ok(staged_ref);
             }
         }
 
         // Try base key as a secondary staged lookup.
         if let Ok(Some(base_key)) = write_source_endpoint.key() {
-            let staged_matches = get_staged_holons_by_base_key(context, &base_key)?;
+            let staged_matches = context.lookup().get_staged_holons_by_base_key(&base_key)?;
 
             match staged_matches.len() {
                 1 => {
@@ -845,7 +847,7 @@ impl LoaderRefResolver {
 
         // 2) Promotion path: saved → stage a new version (requires HolonId).
         if let Ok(saved_id) = write_source_endpoint.holon_id() {
-            let staged_reference = stage_new_version_from_id(context, saved_id)?;
+            let staged_reference = context.mutation().stage_new_version_from_id(saved_id)?;
             return Ok(staged_reference);
         }
 

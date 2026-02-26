@@ -320,7 +320,7 @@ impl HolonLoaderController {
         info!("HolonLoaderController::load_set - commit");
 
         // commit(): provided by HolonOperationsApi via holons_prelude
-        let commit_response = commit(context)?;
+        let commit_response = context.commit()?;
         // Commit status is driven by the explicit CommitRequestStatus property emitted by
         // commit() (authoritative), while counts are retained for summary/diagnostics.
         let commit_status_value = commit_response
@@ -333,17 +333,11 @@ impl HolonLoaderController {
                 LoadCommitStatus::Incomplete
             }
             Some(BaseValue::StringValue(status)) => {
-                warn!(
-                    "Unexpected CommitRequestStatus value in commit response: {:?}",
-                    status
-                );
+                warn!("Unexpected CommitRequestStatus value in commit response: {:?}", status);
                 LoadCommitStatus::Incomplete
             }
             Some(other) => {
-                warn!(
-                    "Unexpected CommitRequestStatus type in commit response: {:?}",
-                    other
-                );
+                warn!("Unexpected CommitRequestStatus type in commit response: {:?}", other);
                 LoadCommitStatus::Incomplete
             }
             None => {

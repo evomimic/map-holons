@@ -158,7 +158,7 @@ impl LoaderHolonMapper {
         }
 
         // Stage it
-        let staged = stage_new_holon(context, target_transient)?;
+        let staged = context.mutation().stage_new_holon(target_transient)?;
 
         Ok((staged, key))
     }
