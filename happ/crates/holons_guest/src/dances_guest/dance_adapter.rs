@@ -7,15 +7,11 @@ use crate::{init_guest_context, GuestHolonService};
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use holons_boundary::{
-    DanceRequestWire, DanceResponseWire, HolonReferenceWire, ResponseBodyWire,
-};
 use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
 use holons_boundary::session_state::{SerializableHolonPool, SessionStateWire};
+use holons_boundary::{DanceRequestWire, DanceResponseWire, HolonReferenceWire, ResponseBodyWire};
 use holons_core::{
-    core_shared_objects::transactions::TransactionContext,
-    dances::ResponseStatusCode,
-    HolonsContextBehavior,
+    core_shared_objects::transactions::TransactionContext, dances::ResponseStatusCode,
 };
 
 /// Adapter entrypoint for the internal dance envelope.
@@ -28,10 +24,7 @@ pub fn dance_adapter(
     let InternalDanceRequestEnvelope { request, session } = envelope;
     let dance_name = request.dance_name.clone();
 
-    info!(
-        "\n\n\n***********************  Entered dance_adapter() with {}",
-        request.summarize()
-    );
+    info!("\n\n\n***********************  Entered dance_adapter() with {}", request.summarize());
 
     // ---- ingress validation ----
     if let Err(status_code) = validate_request(&request) {
@@ -77,20 +70,16 @@ pub fn dance_adapter(
     // ---- export session state ----
     let response_session = restore_session_state_from_context(&context);
 
-    info!(
-        "\n======== RETURNING FROM {:?} Dance with {:?}",
-        dance_name.0, response_wire,
-    );
+    info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);
 
-    Ok(InternalDanceResponseEnvelope {
-        response: response_wire,
-        session: response_session,
-    })
+    Ok(InternalDanceResponseEnvelope { response: response_wire, session: response_session })
 }
 
 /// Backward-compatible extern name until host config is fully switched.
 #[hdk_extern]
-pub fn dance(envelope: InternalDanceRequestEnvelope) -> ExternResult<InternalDanceResponseEnvelope> {
+pub fn dance(
+    envelope: InternalDanceRequestEnvelope,
+) -> ExternResult<InternalDanceResponseEnvelope> {
     dance_adapter(envelope)
 }
 
@@ -129,22 +118,18 @@ fn initialize_context_from_session_state(
     let transient_holons = session_state.get_transient_holons().clone();
     let staged_holons = session_state.get_staged_holons().clone();
 
-    let context = init_guest_context(
-        transient_holons,
-        staged_holons,
-        local_space_holon_id.clone(),
-        tx_id,
-    )?;
+    let context =
+        init_guest_context(transient_holons, staged_holons, local_space_holon_id.clone(), tx_id)?;
 
     // Ensure the transaction context is anchored to a persisted space holon.
     let ensured_space_holon_id: HolonId = match local_space_holon_id {
         Some(id) => id,
         None => {
             let holon_service = context.get_holon_service();
-            let guest_service =
-                holon_service.as_any().downcast_ref::<GuestHolonService>().ok_or_else(|| {
-                    HolonError::DowncastFailure("GuestHolonService".to_string())
-                })?;
+            let guest_service = holon_service
+                .as_any()
+                .downcast_ref::<GuestHolonService>()
+                .ok_or_else(|| HolonError::DowncastFailure("GuestHolonService".to_string()))?;
 
             let ensured_space_ref = guest_service.ensure_local_holon_space(&context)?;
             match ensured_space_ref {
@@ -176,10 +161,7 @@ fn restore_session_state_from_context(
     let serializable_staged_pool = match context.export_staged_holons() {
         Ok(pool) => SerializableHolonPool::from(&pool),
         Err(error) => {
-            warn!(
-                "Failed to export staged holons while restoring session state: {:?}",
-                error
-            );
+            warn!("Failed to export staged holons while restoring session state: {:?}", error);
             return None;
         }
     };
@@ -188,10 +170,7 @@ fn restore_session_state_from_context(
     let serializable_transient_pool = match context.export_transient_holons() {
         Ok(pool) => SerializableHolonPool::from(&pool),
         Err(error) => {
-            warn!(
-                "Failed to export transient holons while restoring session state: {:?}",
-                error
-            );
+            warn!("Failed to export transient holons while restoring session state: {:?}", error);
             return None;
         }
     };
@@ -200,10 +179,7 @@ fn restore_session_state_from_context(
     let local_space_holon = match context.get_space_holon() {
         Ok(space_opt) => space_opt,
         Err(error) => {
-            warn!(
-                "Failed to read local space holon while restoring session state: {:?}",
-                error
-            );
+            warn!("Failed to read local space holon while restoring session state: {:?}", error);
             return None;
         }
     };

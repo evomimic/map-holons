@@ -42,7 +42,7 @@ use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
-    reference_layer::{HolonServiceApi, HolonsContextBehavior, SmartReference},
+    reference_layer::{HolonServiceApi, SmartReference},
     HolonCollectionApi, HolonReference, RelationshipMap,
 };
 use integrity_core_types::{LocalId, RelationshipName};
@@ -71,9 +71,10 @@ impl HolonServiceApi for ClientHolonService {
         // Run the dance (sync → async → sync)
         let initiator = context.get_dance_initiator()?;
 
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(
+                async move { initiator.initiate_dance(context, request).await },
+            );
 
         // Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {

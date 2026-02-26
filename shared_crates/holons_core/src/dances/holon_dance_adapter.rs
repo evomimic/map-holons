@@ -26,12 +26,8 @@ use crate::{
         dance_response::ResponseBody,
         DanceRequest,
     },
-    load_holons,
-    query_layer::{evaluate_query, Node, NodeCollection, QueryPathMap},
-    reference_layer::{
-        writable_holon::WritableHolon, HolonReference, HolonsContextBehavior, SmartReference,
-    },
-    ReadableHolon,
+    query_layer::evaluate_query,
+    reference_layer::{writable_holon::WritableHolon, HolonReference, SmartReference},
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};

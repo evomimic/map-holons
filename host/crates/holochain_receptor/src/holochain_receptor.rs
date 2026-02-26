@@ -4,10 +4,10 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+
+use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::BaseValue;
-
 use core_types::HolonError;
-
 use holons_client::{
     dances_client::ClientDanceBuilder,
     init_client_context,
@@ -18,27 +18,12 @@ use holons_client::{
         map_response::MapResponse,
     },
 };
-
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::{HolonReference, ReadableHolon, TransientReference};
-use holons_core::HolonsContextBehavior;
+use holons_loader_client::load_holons_from_files;
 use holons_trust_channel::TrustChannel;
 use type_names::CorePropertyTypeName;
-
-use crate::holochain_conductor_client::HolochainConductorClient;
-use holons_loader_client::load_holons_from_files;
-
-fn finalize_commit_transition(
-    context: &Arc<TransactionContext>,
-    should_transition_to_committed: bool,
-) -> Result<(), HolonError> {
-    if should_transition_to_committed {
-        context.transition_to_committed()?;
-    }
-
-    Ok(())
-}
 
 /// POC-safe Holochain Receptor.
 /// Enough to satisfy Conductora runtime configuration.
@@ -240,6 +225,17 @@ impl Debug for HolochainReceptor {
     }
 }
 
+fn finalize_commit_transition(
+    context: &Arc<TransactionContext>,
+    should_transition_to_committed: bool,
+) -> Result<(), HolonError> {
+    if should_transition_to_committed {
+        context.transition_to_committed()?;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::finalize_commit_transition;
@@ -265,9 +261,8 @@ mod tests {
     #[test]
     fn commit_execution_guard_rejects_reentrant_acquire() {
         let context = init_client_context(None);
-        let _guard = context
-            .begin_host_commit_ingress_guard()
-            .expect("first acquisition should succeed");
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("first acquisition should succeed");
 
         let err = context
             .begin_host_commit_ingress_guard()
@@ -295,9 +290,8 @@ mod tests {
     #[test]
     fn external_mutation_rejected_while_host_commit_ingress_active() {
         let context = init_client_context(None);
-        let _guard = context
-            .begin_host_commit_ingress_guard()
-            .expect("guard acquisition should succeed");
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("guard acquisition should succeed");
 
         let err = context
             .ensure_open_for_external_mutation()
@@ -309,9 +303,7 @@ mod tests {
     #[test]
     fn external_mutation_rejected_after_transaction_committed() {
         let context = init_client_context(None);
-        context
-            .transition_to_committed()
-            .expect("open transaction should transition to committed");
+        context.transition_to_committed().expect("open transaction should transition to committed");
 
         let err = context
             .ensure_open_for_external_mutation()
@@ -323,9 +315,8 @@ mod tests {
     #[test]
     fn ensure_commit_allowed_succeeds_during_host_commit_ingress_when_open() {
         let context = init_client_context(None);
-        let _guard = context
-            .begin_host_commit_ingress_guard()
-            .expect("guard acquisition should succeed");
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("guard acquisition should succeed");
 
         context
             .ensure_commit_allowed()
@@ -335,9 +326,7 @@ mod tests {
     #[test]
     fn ensure_commit_allowed_rejects_after_transaction_committed() {
         let context = init_client_context(None);
-        context
-            .transition_to_committed()
-            .expect("open transaction should transition to committed");
+        context.transition_to_committed().expect("open transaction should transition to committed");
 
         let err = context
             .ensure_commit_allowed()
