@@ -40,7 +40,7 @@ impl StagedReference {
     /// Prevents a commit from taking place and restricts Holon to read-only access.
     ///
     /// # Arguments
-    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
+    /// * `context` - A reference to a `TransactionContext`.
     pub fn abandon_staged_changes(
         &self,
         _context: &Arc<TransactionContext>,
@@ -91,7 +91,7 @@ impl StagedReference {
     /// Retrieves a shared reference to the holon with interior mutability.
     ///
     /// # Arguments
-    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
+    /// * `context` - A reference to a `TransactionContext`.
     ///
     /// # Returns
     /// Rc<RefCell<Holon>>>

@@ -1,7 +1,10 @@
 use base_types::MapString;
 use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
-use holons_core::{dances::{ResponseBody, ResponseStatusCode}, HolonReference, HolonsContextBehavior};
-use holons_test::{ExecutionReference, ExecutionHandle, TestExecutionState, TestReference};
+use holons_core::{
+    dances::{ResponseBody, ResponseStatusCode},
+    HolonReference,
+};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
 use tracing::info;
 
 /// Execute the StageNewFromClone step:
@@ -29,8 +32,7 @@ pub async fn execute_stage_new_from_clone(
 
     // 3. CALL — use the context-owned call service
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request)
-.await;
+    let response = dance_initiator.initiate_dance(&context, request).await;
 
     // 4. VALIDATE - response status
     assert_eq!(
@@ -57,8 +59,7 @@ pub async fn execute_stage_new_from_clone(
             ExecutionReference::from_token_execution(&source_token, execution_handle);
 
         // Validate expected vs execution-time content
-        execution_reference.assert_essential_content_eq()
-;
+        execution_reference.assert_essential_content_eq();
 
         // 6. RECORD — make execution result available for downstream steps
         state.record(&source_token, execution_reference).unwrap();

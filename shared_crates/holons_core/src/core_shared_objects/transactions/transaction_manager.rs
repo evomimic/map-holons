@@ -161,7 +161,7 @@ mod tests {
     use crate::core_shared_objects::{
         Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
     };
-    use crate::reference_layer::{HolonServiceApi, HolonsContextBehavior, TransientReference};
+    use crate::reference_layer::{HolonServiceApi, TransientReference};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
     use std::any::Any;
     use std::collections::HashSet;

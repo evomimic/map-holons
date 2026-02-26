@@ -1,6 +1,4 @@
-use holons_core::reference_layer::{
-    HolonsContextBehavior, ReadableHolon, TransientReference,
-};
+use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
 use tracing::info;
@@ -191,8 +189,7 @@ pub async fn execute_load_holons(
 
     // Initiate the dance using the test harness (TrustChannel-backed initiator).
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let dance_response = dance_initiator.initiate_dance(&context, request)
-.await;
+    let dance_response = dance_initiator.initiate_dance(&context, request).await;
 
     // Convert the DanceResponse into a TransientReference for property assertions.
     let response_reference: TransientReference = match dance_response.body {

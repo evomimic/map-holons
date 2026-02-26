@@ -41,7 +41,7 @@ use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
-    reference_layer::{HolonServiceApi, HolonsContextBehavior},
+    reference_layer::HolonServiceApi,
     HolonReference, RelationshipMap,
 };
 use integrity_core_types::{LocalId, RelationshipName};
@@ -70,9 +70,10 @@ impl HolonServiceApi for ClientHolonService {
         // Run the dance (sync → async → sync)
         let initiator = context.get_dance_initiator()?;
 
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(
+                async move { initiator.initiate_dance(context, request).await },
+            );
 
         // Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
@@ -99,7 +100,7 @@ impl HolonServiceApi for ClientHolonService {
     fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
         //let request = holon_dance_builders::build_delete_holon_dance_request(*local_id)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
-        // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        // let ctx: &(TransactionContext) = context;
         // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         // no context. not sure what to do here
         todo!()
@@ -112,7 +113,7 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<RelationshipMap, HolonError> {
         //let request = holon_dance_builders::=((*source_id)?)?;
         //let initiator = context.get_space_manager().get_dance_initiator()?;
-        // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
+        // let ctx: &(TransactionContext) = context;
         // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
         //not sure how to do this one?
 
@@ -144,9 +145,10 @@ impl HolonServiceApi for ClientHolonService {
 
         let context_for_async = Arc::clone(context);
 
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(
+                async move { initiator.initiate_dance(context, request).await },
+            );
 
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
@@ -178,9 +180,10 @@ impl HolonServiceApi for ClientHolonService {
         // 3) Bridge async → sync (ClientHolonService is synchronous)
         let context_for_async = Arc::clone(context);
 
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(
+                async move { initiator.initiate_dance(context, request).await },
+            );
 
         // 4) Check the status
         if response.status_code != ResponseStatusCode::OK {
