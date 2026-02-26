@@ -33,7 +33,8 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("book:transient-source".to_string());
-    let transient_source = new_holon(&fixture_context, Some(transient_source_key.clone()))?;
+    let transient_source =
+        fixture_context.mutation().new_holon(Some(transient_source_key.clone()))?;
     // Mint transient source token
     let transient_token = test_case.add_new_holon_step(
         &mut fixture_holons,

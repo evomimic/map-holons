@@ -5,7 +5,6 @@ pub mod writable_holon;
 
 pub mod context_behavior;
 pub mod holon_collection_api;
-pub mod holon_operations_api;
 pub mod holon_reference;
 pub mod holon_service_api;
 pub(crate) mod readable_impl;
@@ -18,7 +17,6 @@ pub(crate) mod writable_impl;
 pub use context_behavior::HolonsContextBehavior;
 // pub use factory::init_context_from_session;
 pub use holon_collection_api::HolonCollectionApi;
-pub use holon_operations_api::*;
 pub use holon_reference::HolonReference;
 pub use holon_service_api::HolonServiceApi;
 pub use holon_staging_behavior::HolonStagingBehavior;
