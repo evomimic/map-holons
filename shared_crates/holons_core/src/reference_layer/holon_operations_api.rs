@@ -23,13 +23,10 @@
 
 use crate::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
 use crate::reference_layer::TransientReference;
-use crate::{
-    HolonCollection, HolonReference, SmartReference, StagedReference,
-};
+use crate::{HolonCollection, HolonReference, SmartReference, StagedReference};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId};
 use std::sync::Arc;
-//TODO: move static/stateless HDI/HDK functions to the Holon_service
 
 /// Commits the state of all staged holons and their relationships to the DHT.
 ///
@@ -88,7 +85,6 @@ use std::sync::Arc;
 /// # Errors
 /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
 ///
-
 pub fn commit(context: &Arc<TransactionContext>) -> Result<TransientReference, HolonError> {
     let holon_service = context.get_holon_service();
     let commit_response = holon_service.commit_internal(context)?;

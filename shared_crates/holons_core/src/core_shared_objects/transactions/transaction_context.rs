@@ -80,7 +80,7 @@ impl TransactionContext {
     /// Transitions the transaction lifecycle from `Open` to `Committed`.
     ///
     /// Returns `true` only when the state transition is applied by this caller.
-    pub fn try_transition_to_committed(&self) -> bool {
+    fn try_transition_to_committed(&self) -> bool {
         self.lifecycle_state
             .compare_exchange(
                 TransactionLifecycleState::Open.as_u8(),
@@ -107,6 +107,80 @@ impl TransactionContext {
             from_state: format!("{:?}", current_state),
             to_state: format!("{:?}", TransactionLifecycleState::Committed),
         })
+    }
+
+    /// Ensures commit execution can proceed from the current lifecycle state.
+    fn ensure_open_for_commit_execution(&self) -> Result<(), HolonError> {
+        match self.lifecycle_state() {
+            TransactionLifecycleState::Open => Ok(()),
+            TransactionLifecycleState::Committed => {
+                Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() })
+            }
+        }
+    }
+
+    /// Commits the state of all staged holons and their relationships to the DHT.
+    ///
+    /// This function attempts to persist the state of all staged holons and their relationships
+    /// to the distributed hash table (DHT). It can be called from both the client-side and the
+    /// guest-side:
+    /// - **On the client-side**: The call is delegated to the guest-side for execution, where the
+    ///   actual DHT operations are performed.
+    /// - **On the guest-side**: The commit process interacts directly with the DHT.
+    ///
+    /// The function returns either a `HolonError` (indicating a system-level failure) or a
+    /// `CommitResponse`. If a `CommitResponse` is returned, it will indicate whether the commit
+    /// was fully successful (`Complete`) or partially successful (`Incomplete`).
+    ///
+    /// # Commit Outcomes
+    ///
+    /// ## Complete Commit
+    /// If the commit process fully succeeds:
+    /// - The `CommitResponse` will have a `Complete` status.
+    /// - All staged holons and their relationships are successfully persisted to the DHT.
+    /// - The `CommitResponse` includes a list of all successfully saved holons, with their `record`
+    /// (including their `LocalId`) populated.
+    /// - The `space_manager`'s list of staged holons is cleared.
+    ///
+    /// ## Partial Commit
+    /// If the commit process partially succeeds:
+    /// - The `CommitResponse` will have an `Incomplete` status.
+    /// - **No staged holons are removed** from the `space_manager`.
+    /// - Holons that were successfully committed:
+    ///     - Have their state updated to `Saved`.
+    ///     - Include their saved node (indicating they were persisted).
+    ///     - Are added to the `CommitResponse`'s `records` list.
+    /// - Holons that were **not successfully committed**:
+    ///     - Retain their previous state (unchanged).
+    ///     - Have their `errors` vector populated with the errors encountered during the commit.
+    ///     - Do **not** include a saved node.
+    ///     - Are **not** added to the `CommitResponse`'s `records` list.
+    /// - Correctable errors in the `errors` vector allow the `commit` call to be retried until the
+    ///   process succeeds completely.
+    ///
+    /// ## Failure
+    /// If the commit process fails entirely due to a system-level issue:
+    /// - The function returns a `HolonError`.
+    /// - No changes are made to the staged holons.
+    ///
+    /// # Arguments
+    /// - `context`: The context to retrieve holon services.
+    ///
+    /// # Returns
+    /// - `Ok(CommitResponse)`:
+    ///     - If the commit process is successful (either completely or partially).
+    ///     - Use the `CommitResponse`'s status to determine whether the commit is `Complete` or `Incomplete`.
+    /// - `Err(HolonError)`:
+    ///     - If a system-level failure prevents the commit process from proceeding.
+    ///
+    /// # Errors
+    /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
+    ///
+    pub fn commit(self: &Arc<Self>) -> Result<TransientReference, HolonError> {
+        self.ensure_open_for_commit_execution()?;
+        let commit_response = self.get_holon_service().commit_internal(self)?;
+
+        Ok(commit_response)
     }
 
     // ---------------------------------------------------------------------
@@ -142,12 +216,7 @@ impl TransactionContext {
     /// validates lifecycle state only. Commit ingress concurrency is enforced by
     /// `begin_host_commit_ingress_guard()`.
     pub fn ensure_commit_allowed(&self) -> Result<(), HolonError> {
-        match self.lifecycle_state() {
-            TransactionLifecycleState::Open => Ok(()),
-            TransactionLifecycleState::Committed => {
-                Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() })
-            }
-        }
+        self.ensure_open_for_commit_execution()
     }
 
     /// Returns whether host ingress currently holds the commit guard for this transaction.
@@ -158,14 +227,14 @@ impl TransactionContext {
     /// Attempts to begin host-side commit ingress.
     ///
     /// Returns `true` only when the guard is acquired by this caller.
-    pub fn try_begin_host_commit_ingress(&self) -> bool {
+    pub(super) fn try_begin_host_commit_ingress(&self) -> bool {
         self.host_commit_in_progress
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
     }
 
     /// Ends host-side commit ingress and releases the guard.
-    pub fn end_host_commit_ingress(&self) {
+    pub(super) fn end_host_commit_ingress(&self) {
         self.host_commit_in_progress.store(false, Ordering::Release);
     }
 
@@ -211,12 +280,12 @@ impl TransactionContext {
     /// Cloning `Arc` is inexpensive, but avoiding repeated clones in tight
     /// loops improves clarity and avoids unnecessary churn.
     pub fn mutation(self: &Arc<Self>) -> MutationFacade {
-        MutationFacade { ctx: Arc::clone(self) }
+        MutationFacade { context: Arc::clone(self) }
     }
 
     /// Returns a facade grouping all indexed lookup operations.
     pub fn lookup(self: &Arc<Self>) -> LookupFacade {
-        LookupFacade { ctx: Arc::clone(self) }
+        LookupFacade { context: Arc::clone(self) }
     }
 
     // ---------------------------------------------------------------------
@@ -224,7 +293,7 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
 
     /// Returns the cache access service.
-    pub fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
+    pub(crate) fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
         self.space_manager.get_cache_access()
     }
 
@@ -334,7 +403,7 @@ impl TransactionContext {
 
     /// This function converts a TemporaryId into a validated TransientReference.
     /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
-    pub fn transient_reference_for_id(
+    pub(crate) fn transient_reference_for_id(
         self: &Arc<Self>,
         id: &TemporaryId,
     ) -> Result<TransientReference, HolonError> {
