@@ -1,17 +1,15 @@
-mod holon_staging_behavior;
-mod readable_holon;
-mod space_manager_behavior;
-pub mod writable_holon;
-
-pub mod context_behavior;
 pub mod holon_collection_api;
 pub mod holon_reference;
 pub mod holon_service_api;
+mod holon_staging_behavior;
+mod readable_holon;
 pub(crate) mod readable_impl;
 pub mod smart_reference;
+mod space_manager_behavior;
 pub mod staged_reference;
 pub mod transient_holon_behavior;
 pub mod transient_reference;
+pub mod writable_holon;
 pub(crate) mod writable_impl;
 
 pub use holon_collection_api::HolonCollectionApi;
