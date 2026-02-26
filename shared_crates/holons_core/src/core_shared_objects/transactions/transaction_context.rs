@@ -183,11 +183,38 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
     // Public Execution Facades
     // ---------------------------------------------------------------------
+    // These facades are the only public entrypoints for mutation and lookup
+    // operations. They do not represent alternate execution surfaces —
+    // they are thin, Arc-backed views over this TransactionContext.
 
+    /// Returns a facade grouping all state-mutating operations.
+    ///
+    /// This method clones the underlying `Arc<TransactionContext>`.
+    ///
+    /// For repeated use, prefer capturing the facade once:
+    ///
+    /// ```ignore
+    /// let mutation = ctx.mutation();
+    /// for item in items {
+    ///     mutation.stage_new_holon(item)?;
+    /// }
+    /// ```
+    ///
+    /// Instead of:
+    ///
+    /// ```ignore
+    /// for item in items {
+    ///     ctx.mutation().stage_new_holon(item)?; // Avoid repeated Arc::clone
+    /// }
+    /// ```
+    ///
+    /// Cloning `Arc` is inexpensive, but avoiding repeated clones in tight
+    /// loops improves clarity and avoids unnecessary churn.
     pub fn mutation(self: &Arc<Self>) -> MutationFacade {
         MutationFacade { ctx: Arc::clone(self) }
     }
 
+    /// Returns a facade grouping all indexed lookup operations.
     pub fn lookup(self: &Arc<Self>) -> LookupFacade {
         LookupFacade { ctx: Arc::clone(self) }
     }
