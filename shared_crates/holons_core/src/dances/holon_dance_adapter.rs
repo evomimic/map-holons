@@ -20,18 +20,13 @@ use tracing::{debug, info};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::TransientReference;
 use crate::{
-    core_shared_objects::{
-        commit, delete_holon, stage_new_from_clone, stage_new_holon, stage_new_version,
-    },
     dances::{
         dance_request::{DanceType, RequestBody},
         dance_response::ResponseBody,
         DanceRequest,
     },
-    load_holons,
     query_layer::evaluate_query,
     reference_layer::{
-        holon_operations_api::get_all_holons, holon_operations_api::new_holon,
         writable_holon::WritableHolon, HolonReference, HolonsContextBehavior, SmartReference,
     },
 };
@@ -126,7 +121,7 @@ pub fn commit_dance(
     _request: DanceRequest,
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered commit_dance");
-    let commit_response = commit(context)?;
+    let commit_response = context.commit()?;
     Ok(ResponseBody::HolonReference(commit_response.into()))
 }
 
@@ -156,7 +151,7 @@ pub fn delete_holon_dance(
     match request.dance_type {
         DanceType::DeleteMethod(holon_id) => {
             // Call the new `delete_holon_api` function
-            delete_holon(context, holon_id).map(|_| ResponseBody::None)
+            context.mutation().delete_holon(holon_id).map(|_| ResponseBody::None)
         }
         _ => Err(HolonError::InvalidParameter(
             "Invalid DanceType: expected DeleteMethod(HolonId), didn't get one".to_string(),
@@ -182,7 +177,7 @@ pub fn get_all_holons_dance(
     //
     //
     info!("----- Entered get_all_holons dance ----");
-    Ok(ResponseBody::HolonCollection(get_all_holons(context)?))
+    Ok(ResponseBody::HolonCollection(context.lookup().get_all_holons()?))
 }
 
 /// Gets Holon from persistent store, located by HolonId
@@ -260,7 +255,7 @@ pub fn load_holons_dance(
     };
 
     // Delegate to the public ops API (which calls the *_internal service impl)
-    let response_reference = load_holons(context, load_set_reference)?;
+    let response_reference = context.mutation().load_holons(load_set_reference)?;
 
     // Wrap transient response holon
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
@@ -294,7 +289,7 @@ pub fn new_holon_dance(
     };
 
     // Delegate to the public API; it will route to the *_internal impl for this env.
-    let response_reference = new_holon(context, key_option)?;
+    let response_reference = context.mutation().new_holon(key_option)?;
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))
 }
 
@@ -467,7 +462,7 @@ pub fn stage_new_from_clone_dance(
     };
 
     // 4) Stage the clone with the provided key
-    let staged_reference = stage_new_from_clone(context, original_holon, new_key)?;
+    let staged_reference = context.mutation().stage_new_from_clone(original_holon, new_key)?;
 
     Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }
@@ -497,7 +492,7 @@ pub fn stage_new_holon_dance(
     let staged_reference = {
         if let RequestBody::TransientReference(reference) = request.body {
             // Stage the new holon
-            stage_new_holon(context, reference)?
+            context.mutation().stage_new_holon(reference)?
             // This operation will have added the staged_holon to the CommitManager's vector and returned a
             // StagedReference to it.
         } else {
@@ -542,7 +537,7 @@ pub fn stage_new_version_dance(
         }
     };
 
-    let staged_reference = stage_new_version(context, smart_reference)?;
+    let staged_reference = context.mutation().stage_new_version(smart_reference)?;
 
     Ok(ResponseBody::HolonReference(HolonReference::Staged(staged_reference)))
 }

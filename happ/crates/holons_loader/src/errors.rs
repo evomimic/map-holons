@@ -212,7 +212,7 @@ fn resolve_holon_error_type_descriptor(
     }
 
     // 2) Saved fallback: single pass over the saved index by key
-    let saved_collection = get_all_holons(context)?;
+    let saved_collection = context.lookup().get_all_holons()?;
     match saved_collection.get_by_key(&key) {
         Ok(Some(reference)) => Ok(reference),
         Ok(None) => Err(HolonError::HolonNotFound(format!(

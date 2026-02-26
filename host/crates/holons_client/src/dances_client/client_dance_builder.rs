@@ -8,8 +8,8 @@ use holon_dance_builders::{
     stage_new_holon_dance::build_stage_new_holon_dance_request,
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::dances::DanceRequest;
 use holons_core::HolonReference;
-use holons_core::{dances::DanceRequest, new_holon};
 use std::sync::Arc;
 
 pub struct ClientDanceBuilder;
@@ -179,7 +179,7 @@ impl ClientDanceBuilder {
         match &request.body {
             MapRequestBody::ParameterValues(props) => {
                 let key = Self::extract_holon_key(&props)?;
-                let transient_ref = new_holon(context, Some(key))?;
+                let transient_ref = context.mutation().new_holon(Some(key))?;
                 return build_with_properties_dance_request(
                     HolonReference::from(transient_ref.clone()),
                     props.clone(),

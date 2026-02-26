@@ -21,7 +21,7 @@
 //!
 //! ## Key Implementation Notes
 //!
-//! - `new_holon(context, Some(key: String | MapString))` **sets the holon `Key` property automatically**,
+//! - `context.mutation().new_holon(Some(key: String | MapString))` **sets the holon `Key` property automatically**,
 //!   so we simply pass the *intended instance key string* when creating LoaderHolons.
 //! - Tier-0 (declared-only) needs **no** type descriptors.
 //! - For inverse mapping, we load a **tiny micro-schema** first (two HolonTypes + DeclaredRelationshipType + InverseRelationshipType).
@@ -40,9 +40,9 @@ use rstest::*;
 use std::sync::Arc;
 
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP,
-    BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY,
-    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_TO_BOOK_REL_INVERSE,
 };
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
@@ -89,7 +89,7 @@ fn build_empty_bundle(
     bundle_key: &str,
 ) -> Result<TransientReference, HolonError> {
     // New bundle transient holon with the provided key.
-    let bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
+    let bundle = context.mutation().new_holon(Some(MapString(bundle_key.to_string())))?;
     Ok(bundle)
 }
 
@@ -102,12 +102,12 @@ fn build_nodes_only_bundle(
     instance_keys: &[&str],
 ) -> Result<(TransientReference, usize), HolonError> {
     // 1) Create the bundle container (Key = bundle_key).
-    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
+    let mut bundle = context.mutation().new_holon(Some(MapString(bundle_key.to_string())))?;
 
     // 2) Create LoaderHolon containers with **consistent instance keys**.
     let mut members: Vec<HolonReference> = Vec::with_capacity(instance_keys.len());
     for key in instance_keys {
-        let loader_holon = new_holon(context, Some(MapString((*key).to_string())))?;
+        let loader_holon = context.mutation().new_holon(Some(MapString((*key).to_string())))?;
         members.push(HolonReference::Transient(loader_holon));
     }
 
@@ -125,8 +125,8 @@ fn build_nodes_only_bundle(
 ///   - One declared LoaderRelationshipReference from source → target
 ///
 /// All keys are **consistent**:
-///   - Source LoaderHolon: `new_holon(context, source_instance_key)`
-///   - Target LoaderHolon: `new_holon(context, target_instance_key)`
+///   - Source LoaderHolon: `context.mutation().new_holon(source_instance_key)`
+///   - Target LoaderHolon: `context.mutation().new_holon(target_instance_key)`
 ///   - LoaderHolonReference.holon_key values use the **same strings**
 ///
 /// RETURNS: (bundle, expected_node_count, expected_links_created)
@@ -139,9 +139,11 @@ fn build_declared_links_bundle(
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create the bundle container (Key = bundle_key).
     // LoaderHolons created with **instance key strings** (Key set automatically).
-    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
-    let mut source_loader = new_holon(context, Some(MapString(source_instance_key.to_string())))?;
-    let target_loader = new_holon(context, Some(MapString(target_instance_key.to_string())))?;
+    let mut bundle = context.mutation().new_holon(Some(MapString(bundle_key.to_string())))?;
+    let mut source_loader =
+        context.mutation().new_holon(Some(MapString(source_instance_key.to_string())))?;
+    let target_loader =
+        context.mutation().new_holon(Some(MapString(target_instance_key.to_string())))?;
 
     // 2) Attach both as BundleMembers.
     bundle.add_related_holons(
@@ -182,8 +184,9 @@ fn build_cross_bundle_declared_link_bundle(
     declared_relationship_name: &str,
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // Bundle + source LoaderHolon (target lives in a different bundle or is pre-existing)
-    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
-    let mut source_loader = new_holon(context, Some(MapString(source_instance_key.to_string())))?;
+    let mut bundle = context.mutation().new_holon(Some(MapString(bundle_key.to_string())))?;
+    let mut source_loader =
+        context.mutation().new_holon(Some(MapString(source_instance_key.to_string())))?;
 
     // Add source as BundleMember.
     bundle.add_related_holons(
@@ -221,8 +224,8 @@ fn build_single_loader_with_offset_bundle(
     offset: i64,
 ) -> Result<(TransientReference, usize), HolonError> {
     // Bundle + single LoaderHolon (Key = loader_key)
-    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
-    let mut loader = new_holon(context, Some(MapString(loader_key.to_string())))?;
+    let mut bundle = context.mutation().new_holon(Some(MapString(bundle_key.to_string())))?;
+    let mut loader = context.mutation().new_holon(Some(MapString(loader_key.to_string())))?;
 
     // Stamp the byte offset on the loader so the controller can enrich errors.
     set_start_offset(&mut loader, offset)?;
@@ -247,21 +250,25 @@ fn build_inverse_with_inline_schema_bundle(
 ) -> Result<(TransientReference, usize, usize), HolonError> {
     // 1) Create bundle + 6 loader holons (2 instances + 4 schema descriptors)
 
-    let mut bundle = new_holon(context, Some(MapString(bundle_key.to_string())))?;
+    let mut bundle = context.mutation().new_holon(Some(MapString(bundle_key.to_string())))?;
 
     // Instances
-    let mut person_loader = new_holon(context, Some(MapString(person_instance_key.to_string())))?;
-    let mut book_loader = new_holon(context, Some(MapString(book_instance_key.to_string())))?;
+    let mut person_loader =
+        context.mutation().new_holon(Some(MapString(person_instance_key.to_string())))?;
+    let mut book_loader =
+        context.mutation().new_holon(Some(MapString(book_instance_key.to_string())))?;
 
     // Schema descriptors (type + relationship types)
     let mut book_type_descriptor =
-        new_holon(context, Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
+        context.mutation().new_holon(Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
     let mut person_type_descriptor =
-        new_holon(context, Some(MapString(PERSON_DESCRIPTOR_KEY.to_string())))?;
-    let mut declared_rel_descriptor =
-        new_holon(context, Some(MapString(BOOK_TO_PERSON_RELATIONSHIP_KEY.to_string())))?;
-    let mut inverse_rel_descriptor =
-        new_holon(context, Some(MapString(PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY.to_string())))?;
+        context.mutation().new_holon(Some(MapString(PERSON_DESCRIPTOR_KEY.to_string())))?;
+    let mut declared_rel_descriptor = context
+        .mutation()
+        .new_holon(Some(MapString(BOOK_TO_PERSON_RELATIONSHIP_KEY.to_string())))?;
+    let mut inverse_rel_descriptor = context
+        .mutation()
+        .new_holon(Some(MapString(PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY.to_string())))?;
 
     // Minimal names (helps diagnostics; not required for deref-by-key)
     for (transient_reference, name) in [
@@ -377,7 +384,6 @@ fn build_inverse_with_inline_schema_bundle(
 /// - We export the fixture’s transient pool into the test case session_state state exactly once at the end.
 #[fixture]
 pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
-
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
             "Loader Incremental Fixture".to_string(),
@@ -639,7 +645,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 /// - `Ok(TransientReference)` of the created LRR container
 ///
 /// ### Notes
-/// - `new_holon(context, Some(MapString(key)))` automatically sets the `Key` property; no
+/// - `context.mutation().new_holon(Some(MapString(key)))` automatically sets the `Key` property; no
 ///   explicit `with_property_value(Key, ...)` needed.
 /// - Endpoint resolution in Pass-2 relies on `LoaderHolonReference.holon_key`
 ///   values matching the instance keys you use for the corresponding LoaderHolons.
@@ -659,18 +665,18 @@ pub fn add_loader_relationship_reference(
             source_instance_key, relationship_name_str
         );
         let relationship_reference =
-            new_holon(context, Some(MapString(relationship_reference_key)))?;
+            context.mutation().new_holon(Some(MapString(relationship_reference_key)))?;
 
         // Source LoaderHolonReference container
         let source_ref_key = format!("LoaderHolonReference.Source.{}", source_instance_key);
-        let source_ref = new_holon(context, Some(MapString(source_ref_key)))?;
+        let source_ref = context.mutation().new_holon(Some(MapString(source_ref_key)))?;
 
         // Target LoaderHolonReference containers (ordered)
         let mut target_refs: Vec<TransientReference> =
             Vec::with_capacity(target_instance_keys.len());
         for (index, target_key) in target_instance_keys.iter().enumerate() {
             let target_ref_key = format!("LoaderHolonReference.Target{}.{}", index + 1, target_key);
-            let target_ref = new_holon(context, Some(MapString(target_ref_key)))?;
+            let target_ref = context.mutation().new_holon(Some(MapString(target_ref_key)))?;
             target_refs.push(target_ref);
         }
 
@@ -761,7 +767,7 @@ pub fn make_load_set_from_bundles(
     bundles: Vec<BundleWithFilename>,
 ) -> Result<TransientReference, HolonError> {
     // 1) Create the set container
-    let mut set_ref = new_holon(context, Some(MapString(set_key.to_string())))?;
+    let mut set_ref = context.mutation().new_holon(Some(MapString(set_key.to_string())))?;
 
     // 2) Stamp filenames on bundles and collect references
     let mut hrefs: Vec<HolonReference> = Vec::with_capacity(bundles.len());

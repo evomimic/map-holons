@@ -163,7 +163,7 @@ pub fn create_holon_load_set(
     // The loader flow expects this holon to have a key; if none is provided,
     // fall back to a deterministic default.
     let key = load_set_key.unwrap_or_else(|| MapString("HolonLoadSet".to_string()));
-    let transient_ref = new_holon(context, Some(key))?;
+    let transient_ref = context.mutation().new_holon(Some(key))?;
 
     Ok(HolonReference::Transient(transient_ref))
 }

@@ -120,7 +120,7 @@ pub fn create_loader_bundle_for_file(
 ) -> Result<HolonReference, HolonError> {
     // Determine the bundle key (explicit override takes precedence).
     let bundle_key = derive_bundle_key(import_file_path, raw_meta);
-    let mut bundle = new_holon(context, Some(MapString(bundle_key)))?;
+    let mut bundle = context.mutation().new_holon(Some(MapString(bundle_key)))?;
 
     // Apply any metadata properties from the JSON meta block.
     if let Some(meta) = raw_meta {
@@ -163,7 +163,7 @@ pub fn create_loader_holon_from_raw(
         return Err(HolonError::InvalidParameter("LoaderHolon key cannot be empty".into()));
     }
 
-    let mut loader_holon = new_holon(context, Some(MapString(raw_holon.key.clone())))?;
+    let mut loader_holon = context.mutation().new_holon(Some(MapString(raw_holon.key.clone())))?;
 
     // Copy user-defined properties.
     apply_json_properties(&mut loader_holon, &raw_holon.properties)?;
@@ -427,7 +427,8 @@ fn create_relationship_reference(
     // Relationship container holon.
     let relationship_key =
         format!("LoaderRelationshipReference.{}.{}", source_holon_key, relationship_name);
-    let mut relationship_reference = new_holon(context, Some(MapString(relationship_key)))?;
+    let mut relationship_reference =
+        context.mutation().new_holon(Some(MapString(relationship_key)))?;
 
     relationship_reference.with_property_value(
         CorePropertyTypeName::RelationshipName,
@@ -440,7 +441,7 @@ fn create_relationship_reference(
 
     // Source endpoint reference.
     let source_ref_key = format!("LoaderHolonReference.Source.{}", source_holon_key);
-    let mut source_reference = new_holon(context, Some(MapString(source_ref_key)))?;
+    let mut source_reference = context.mutation().new_holon(Some(MapString(source_ref_key)))?;
     source_reference.with_property_value(
         CorePropertyTypeName::HolonKey,
         BaseValue::StringValue(MapString(source_holon_key.to_string())),
@@ -457,7 +458,7 @@ fn create_relationship_reference(
         }
 
         let target_ref_key = format!("LoaderHolonReference.Target{}.{}", index + 1, target_key);
-        let mut target_reference = new_holon(context, Some(MapString(target_ref_key)))?;
+        let mut target_reference = context.mutation().new_holon(Some(MapString(target_ref_key)))?;
         target_reference.with_property_value(
             CorePropertyTypeName::HolonKey,
             BaseValue::StringValue(MapString(target_key.clone())),
