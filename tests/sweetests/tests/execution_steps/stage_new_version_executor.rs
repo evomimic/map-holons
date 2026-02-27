@@ -1,5 +1,7 @@
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference, ResolveBy};
+use holons_test::{
+    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
+};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
@@ -13,7 +15,7 @@ pub async fn execute_stage_new_version(
     step_token: TestReference,
     expected_response: ResponseStatusCode,
     version_count: MapInteger,
-    expected_failure_code: Option<ResponseStatusCode>,
+    expected_duplicate_error: Option<ResponseStatusCode>,
     description: Option<String>,
 ) {
     let description = description.unwrap_or_else(|| "Staging New Version of a Holon".to_string());
@@ -84,8 +86,14 @@ pub async fn execute_stage_new_version(
 
     match by_base {
         Ok(staged_reference) => {
-            if let Some(code) = expected_failure_code {
-                panic!("{}", format!("Expected get_staged_holon_by_base_key to return {:?}", code));
+            if let Some(_code) = expected_duplicate_error {
+                panic!(
+                    "{}",
+                    format!(
+                        "Expected get_staged_holon_by_base_key to return {:?}",
+                        expected_duplicate_error
+                    )
+                );
             } else {
                 let holon_reference =
                     execution_handle.get_holon_reference().expect("HolonReference must be live");
@@ -113,8 +121,11 @@ pub async fn execute_stage_new_version(
             }
         }
         Err(_e) => {
-            if let Some(_code) = expected_failure_code {
-                debug!("Confirmed get_staged_holon_by_base_key returned a duplicate error");
+            if let Some(_code) = expected_duplicate_error {
+                debug!(
+                    "Confirmed get_staged_holon_by_base_key returned a duplicate error {:?}",
+                    expected_duplicate_error
+                );
                 // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
                 let staged_references =
                     get_staged_holons_by_base_key(&context, &original_holon_key).unwrap();

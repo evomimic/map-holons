@@ -9,6 +9,7 @@ use rstest::*;
 use std::collections::BTreeMap;
 use type_names::{CoreRelationshipTypeName::DescribedBy, ToRelationshipName};
 
+/// Execution steps are not needed in this fixture due to the direct calls on WriteableHolon functions.
 #[fixture]
 pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
@@ -16,7 +17,6 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
         "Ergonomic Add / Remove Related Holons Testcase".to_string(),
         "Tests the adding and removing of related Holons, using all combinations of ergonomic relationship names, for both Transient & Staged Holons".to_string(),
     );
-    let _published_by = RelationshipName(MapString(PUBLISHED_BY.to_string()));
     // == //
 
     // Add : Enum, String, str, MapString, RelationshipName  ... complete ✅
@@ -56,8 +56,6 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
             vec![HolonReference::Transient(descriptor_transient_reference.clone())],
         )?;
     // Set expected
-    let mut book_properties = BTreeMap::new();
-    book_properties.insert("Key".to_property_name(), BOOK_KEY.to_base_value());
     let mut book_expected_relationships = EssentialRelationshipMap::default();
     book_expected_relationships.add_related_holons(
         CollectionState::Transient,
@@ -138,8 +136,6 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
             vec![HolonReference::Staged(descriptor_staged_reference.clone())],
         )?;
     // Expected
-    let mut person_1_properties = BTreeMap::new();
-    person_1_properties.insert("Key".to_property_name(), person_1_key.clone().to_base_value());
     let mut staged_person_1_expected_relationships = EssentialRelationshipMap::default();
     staged_person_1_expected_relationships.add_related_holons(
         CollectionState::Staged,

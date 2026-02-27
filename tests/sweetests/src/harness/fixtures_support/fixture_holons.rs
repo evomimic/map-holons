@@ -3,7 +3,6 @@ use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
 use tracing::debug;
-// use tracing::warn;
 use crate::harness::fixtures_support::{TestHolonState, TestReference};
 use std::collections::BTreeMap;
 
