@@ -319,7 +319,6 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_set - commit");
 
-        // commit(): provided by HolonOperationsApi via holons_prelude
         let commit_response = context.commit()?;
         // Commit status is driven by the explicit CommitRequestStatus property emitted by
         // commit() (authoritative), while counts are retained for summary/diagnostics.

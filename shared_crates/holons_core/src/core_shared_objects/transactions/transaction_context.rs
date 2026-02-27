@@ -119,6 +119,27 @@ impl TransactionContext {
         }
     }
 
+    /// Ensures non-creation mutation execution can proceed from the current lifecycle state.
+    ///
+    /// This check is intended for transaction-scoped mutation operations such as staging,
+    /// deleting, and loading holons. `new_holon` is intentionally exempt.
+    pub(crate) fn ensure_open_for_mutation(&self) -> Result<(), HolonError> {
+        let raw_state = self.lifecycle_state.load(Ordering::Acquire);
+
+        if raw_state == TransactionLifecycleState::Open.as_u8() {
+            return Ok(());
+        }
+
+        if raw_state == TransactionLifecycleState::Committed.as_u8() {
+            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
+        }
+
+        Err(HolonError::TransactionNotOpen {
+            tx_id: self.tx_id.value(),
+            state: format!("Unknown({raw_state})"),
+        })
+    }
+
     /// Commits the state of all staged holons and their relationships to the DHT.
     ///
     /// This function attempts to persist the state of all staged holons and their relationships
@@ -192,16 +213,9 @@ impl TransactionContext {
     /// External write/mutation entrypoints are only valid while the transaction is
     /// `Open` and no host commit ingress is currently in progress.
     ///
-    /// This includes host-side transient creation requests (for example
-    /// `create_new_holon`) in addition to staging/property/relationship mutations.
     /// Read/query entrypoints are governed separately and are not blocked here.
-    pub fn ensure_open_for_external_mutation(&self) -> Result<(), HolonError> {
-        if self.lifecycle_state() != TransactionLifecycleState::Open {
-            return Err(HolonError::TransactionNotOpen {
-                tx_id: self.tx_id.value(),
-                state: format!("{:?}", self.lifecycle_state()),
-            });
-        }
+    pub fn ensure_open_for_host_mutation_entry(&self) -> Result<(), HolonError> {
+        self.ensure_open_for_mutation()?;
 
         if self.is_host_commit_in_progress() {
             return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
