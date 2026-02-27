@@ -128,7 +128,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         vec![example_step_token.clone()],
         ResponseStatusCode::OK,
         Some("Adding Relationship (Transient):  Company -> AGAIN -> Example ".to_string()),
-    );
+    )?;
     //
     // == //
 

@@ -83,7 +83,6 @@ impl ExecutionReference {
     /// Intended for use by test executors to enforce fixture invariants.
     /// A mismatch indicates a test failure, not a recoverable error.
     pub fn assert_essential_content_eq(&self) {
-        use tracing::warn;
         // Content //
         let expected_content = self
             .expected_snapshot
@@ -117,17 +116,13 @@ impl ExecutionReference {
             let actual_collection =
                 actual_collection_arc.write().expect("Failed to acquire write lock");
             // Clone actual to establish exhaustive list
-            let mut actual_members = actual_collection.get_members().clone();
+            let mut exhaustive_member_list = actual_collection.get_members().clone();
             for expected_holon in expected_members {
                 let expected_content = expected_holon
                     .essential_content()
                     .expect("Failed to read expected holon content");
                 // Find matching holon
                 let matching_holon = actual_collection.get_members().iter().find(|actual_member| {
-                    warn!(
-                        "Getting Essential Content for Actual member {:?}",
-                        actual_member
-                    );
                     let actual_content = actual_member
                         .essential_content()
                         .expect("Failed to read actual holon content");
@@ -136,7 +131,7 @@ impl ExecutionReference {
                 });
                 if let Some(holon) = matching_holon {
                     // Remove matched element so it cannot match again
-                    actual_members.retain(|h| h != holon);
+                    exhaustive_member_list.retain(|h| h != holon);
                 } else {
                     panic!(
                             "Expected member with content {:#?} not found in actual collection\n for relationship {:?}",
@@ -145,7 +140,7 @@ impl ExecutionReference {
                 }
             }
             assert!(
-                actual_members.is_empty(),
+                exhaustive_member_list.is_empty(),
                 "Members in actual_collection did not get exhausted"
             );
         }
