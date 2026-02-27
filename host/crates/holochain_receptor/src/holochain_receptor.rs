@@ -172,7 +172,7 @@ impl ReceptorBehavior for HolochainReceptor {
         // External write/mutation requests (including transient creation) require
         // an open transaction and must be blocked during host commit ingress.
         if !Self::is_read_only_request(request.name.as_str()) {
-            self.context.ensure_open_for_external_mutation()?;
+            self.context.ensure_open_for_host_mutation_entry()?;
         }
 
         let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
@@ -294,7 +294,7 @@ mod tests {
             context.begin_host_commit_ingress_guard().expect("guard acquisition should succeed");
 
         let err = context
-            .ensure_open_for_external_mutation()
+            .ensure_open_for_host_mutation_entry()
             .expect_err("external mutation should be rejected while commit ingress is active");
 
         assert!(matches!(err, HolonError::TransactionCommitInProgress { .. }));
@@ -306,7 +306,7 @@ mod tests {
         context.transition_to_committed().expect("open transaction should transition to committed");
 
         let err = context
-            .ensure_open_for_external_mutation()
+            .ensure_open_for_host_mutation_entry()
             .expect_err("external mutation should be rejected after committed");
 
         assert!(matches!(err, HolonError::TransactionNotOpen { .. }));

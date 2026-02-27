@@ -46,6 +46,7 @@ impl MutationFacade {
         &self,
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
+        self.context.ensure_open_for_mutation()?;
         let staged_reference =
             self.context.get_staging_service().stage_new_holon(transient_reference)?;
 
@@ -77,6 +78,7 @@ impl MutationFacade {
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
+        self.context.ensure_open_for_mutation()?;
         if original_holon.is_transient() {
             return Err(HolonError::InvalidHolonReference(
                 "Must use stage_new_holon for staging from a TransientReference".to_string(),
@@ -106,6 +108,7 @@ impl MutationFacade {
         &self,
         current_version: SmartReference,
     ) -> Result<StagedReference, HolonError> {
+        self.context.ensure_open_for_mutation()?;
         self.context.get_staging_service().stage_new_version(current_version)
     }
 
@@ -120,6 +123,7 @@ impl MutationFacade {
         let handle = TransactionContextHandle::new(self.context.clone());
         let smart = SmartReference::new_from_id(handle, holon_id);
 
+        // Lifecycle check happens inside stage_new_version
         self.stage_new_version(smart)
         // maybe later: staging_service.stage_new_version_from_id(holon_id)
     }
@@ -146,6 +150,7 @@ impl MutationFacade {
     /// - Returns a `HolonError` if the specified holon cannot be found or deleted.
     ///
     pub fn delete_holon(&self, local_id: LocalId) -> Result<(), HolonError> {
+        self.context.ensure_open_for_mutation()?;
         self.context.get_holon_service().delete_holon_internal(&local_id)
     }
 
@@ -153,6 +158,7 @@ impl MutationFacade {
         &self,
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError> {
+        self.context.ensure_open_for_mutation()?;
         self.context.get_holon_service().load_holons_internal(&self.context, bundle)
     }
 }

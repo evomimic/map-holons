@@ -68,7 +68,7 @@ impl ResolverState {
 
     /// Ensure we have a saved holon index available.
     /// If already present, this is a no-op. Otherwise, it attempts to fetch
-    /// all holons once via the HolonOperationsApi and stores the collection.
+    /// all holons once via the TransactionContext and stores the collection.
     pub fn ensure_saved_index(
         &mut self,
         context: &Arc<TransactionContext>,
