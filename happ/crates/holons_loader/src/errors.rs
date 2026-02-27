@@ -53,7 +53,7 @@ pub fn error_type_code(err: &HolonError) -> &'static str {
 /// Build transient HolonErrorType holons for reporting load errors.
 /// - One holon per error.
 /// - If `provenance` + `source_loader_key` are available, stamp:
-///     LoaderHolonKey, Filename, StartUtf8ByteOffset.
+///   LoaderHolonKey, Filename, StartUtf8ByteOffset.
 pub fn make_error_holons_best_effort(
     context: &Arc<TransactionContext>,
     errors: &[ErrorWithContext],
@@ -151,11 +151,8 @@ fn create_empty_error_holon(
     let id = ERROR_SEQ.fetch_add(1, Ordering::Relaxed);
     let key = MapString(format!("loader-error-{id}"));
 
-    // Obtain a handle to the TransientHolonBehavior service from the Space Manager.
-    let transient_behavior = context.get_transient_behavior_service();
-
     // Create a new, empty transient holon using the generated key.
-    let transient_reference = transient_behavior.create_empty(key)?;
+    let transient_reference = context.mutation().new_holon(Some(key))?;
 
     Ok(transient_reference)
 }
@@ -191,10 +188,8 @@ fn resolve_holon_error_type_descriptor(
 
     // 1) Prefer staged (Nursery) by base key
     let staged_matches = {
-        let staging_behavior = context.get_staging_service();
-
         // Query staged holons by base key.
-        staging_behavior.get_staged_holons_by_base_key(&key)?
+        context.lookup().get_staged_holons_by_base_key(&key)?
     };
 
     match staged_matches.len() {
