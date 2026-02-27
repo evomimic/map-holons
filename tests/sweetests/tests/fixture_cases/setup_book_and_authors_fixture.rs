@@ -10,7 +10,7 @@ use holons_test::harness::helpers::{
 /// This function updates the supplied test_case with a set of steps that establish some basic
 /// data the different test cases can then extend for different purposes.
 /// Specifically, this function adds test steps that will stage 4 Holons (but NOT commit):
-/// *Book Holon* with BOOK_KEY title
+/// *Book Holon* with BOOK_KEY Title
 /// *Person Holon with PERSON_1_KEY*
 /// *Person Holon with PERSON_2_KEY*
 /// *Publisher Holon with PUBLISHER_KEY*

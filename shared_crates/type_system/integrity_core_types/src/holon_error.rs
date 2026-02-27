@@ -45,11 +45,14 @@ pub enum HolonError {
     InvalidHolonReference(String),
     #[error("Invalid wire format for {wire_type}: {reason}")]
     InvalidWireFormat { wire_type: String, reason: String },
+    /// Used to indicate that one of the fields in self is not in the appropriate state.
+    #[error("Invalid State: {0}")]
+    InvalidState(String),
     #[error("Invalid Transition, {0}")]
     InvalidTransition(String),
     #[error("Invalid Type, {0}")]
     InvalidType(String),
-    /// Used to indicated that one of the supplied parameters is not resolvable or not appropriate for this function.
+    /// Used to indicate that one of the supplied parameters is not resolvable or not appropriate for this function.
     #[error("Invalid Parameter: {0}")]
     InvalidParameter(String),
     #[error("{0} is not a valid relationship for this source holon type {1}")]

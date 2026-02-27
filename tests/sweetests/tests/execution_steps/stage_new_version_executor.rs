@@ -16,11 +16,8 @@ pub async fn execute_stage_new_version(
     expected_response: ResponseStatusCode,
     version_count: MapInteger,
     expected_duplicate_error: Option<ResponseStatusCode>,
-    description: Option<String>,
+    description: String,
 ) {
-    let description = description.unwrap_or_else(|| "Staging New Version of a Holon".to_string());
-    info!("--- TEST STEP: {description} ---");
-
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
@@ -86,7 +83,7 @@ pub async fn execute_stage_new_version(
 
     match by_base {
         Ok(staged_reference) => {
-            if let Some(_code) = expected_duplicate_error {
+            if let Some(_code) = &expected_duplicate_error {
                 panic!(
                     "{}",
                     format!(
@@ -121,7 +118,7 @@ pub async fn execute_stage_new_version(
             }
         }
         Err(_e) => {
-            if let Some(_code) = expected_duplicate_error {
+            if let Some(_code) = &expected_duplicate_error {
                 debug!(
                     "Confirmed get_staged_holon_by_base_key returned a duplicate error {:?}",
                     expected_duplicate_error

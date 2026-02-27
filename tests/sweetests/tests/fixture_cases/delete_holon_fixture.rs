@@ -15,8 +15,8 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     mut fixture_holons,
     fixture_bindings: _fixture_bindings,
 } = TestCaseInit::new(
-        "DeleteHolon Testcase".to_string(),
-        "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.".to_string(),
+        "DeleteHolon Testcase",
+        "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.",
     );
 
     //  ADD STEP:  STAGE:  Book Holon  //

@@ -1,9 +1,9 @@
+use super::setup_book_author_steps_with_context;
 use holons_prelude::prelude::*;
+use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
-
-use super::setup_book_author_steps_with_context;
 
 /// Fixture for creating Simple AbandonStagedChanges Testcase
 #[fixture]
@@ -16,14 +16,14 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         mut fixture_holons,
         mut fixture_bindings,
     } = TestCaseInit::new(
-            "Simple AbandonStagedChanges Testcase".to_string(),
-            "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible".to_string(),
+            "Simple AbandonStagedChanges Testcase",
+            "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible",
         );
 
     // // Ensure DB count //
     test_case.add_ensure_database_count_step(
         fixture_holons.count_saved(),
-        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
+        Some(ENSURE_DB_EMPTY.to_string()),
     )?;
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
@@ -66,7 +66,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step(
         &mut fixture_holons,
         ResponseStatusCode::OK,
-        Some("Committing after First Abandon".to_string()),)?;
+        Some("Committing after First Abandon".to_string()),
+    )?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
@@ -143,7 +144,8 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_commit_step(
         &mut fixture_holons,
         ResponseStatusCode::OK,
-        Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),)?;
+        Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),
+    )?;
 
     // ADD STEP:  ENSURE DATABASE COUNT
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
@@ -163,7 +165,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
 
     // Finalize
     test_case.finalize(&fixture_context)?;
-
 
     Ok(test_case)
 }

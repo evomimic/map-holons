@@ -38,8 +38,8 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 use crate::{
-    harness::fixtures_support::TestReference, DanceTestStep, DancesTestCase, ExpectedSnapshot,
-    FixtureHolons, SourceSnapshot, TestHolonState, TestSessionState,
+    harness::fixtures_support::TestReference, DanceTestStep, ExpectedSnapshot, FixtureHolons,
+    SourceSnapshot, TestHolonState, TestSessionState,
 };
 use core_types::ContentSet;
 use holons_boundary::SerializableHolonPool;
@@ -50,6 +50,16 @@ use holons_prelude::prelude::*;
 use integrity_core_types::PropertyMap;
 use std::sync::Arc;
 use type_names::{CoreRelationshipTypeName::Predecessor, ToRelationshipName};
+
+/// Public test case type that collects steps to be executed later.
+#[derive(Default, Clone, Debug)]
+pub struct DancesTestCase {
+    pub name: String,
+    pub description: String,
+    pub steps: Vec<DanceTestStep>,
+    pub test_session_state: TestSessionState,
+    is_finalized: bool,
+}
 
 /// - The source *token* is a TestReference that is *embedded as input* for the step. Executors will look it up at runtime
 ///   (Saved ≙ Staged(Committed(LocalId)) enforced at lookup time).
@@ -65,14 +75,26 @@ impl DancesTestCase {
         }
     }
 
+    /// Helper guard to prevent adding steps to a finalized TestCase.
+    fn ensure_not_finalized(&self) -> Result<(), HolonError> {
+        if self.is_finalized {
+            return Err(HolonError::Misc(
+                "DancesTestCase is already finalized, thus closed for any additional steps"
+                    .to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
     pub fn finalize(
         &mut self,
         fixture_context: &Arc<TransactionContext>,
     ) -> Result<(), HolonError> {
-        self.load_test_session_state(fixture_context);
         if self.is_finalized == true {
-            panic!("DancesTestCase already finalized!")
+            return Err(HolonError::InvalidState("DancesTestCase already finalized!".to_string()));
         }
+        self.load_test_session_state(fixture_context);
         self.is_finalized = true;
 
         Ok(())
@@ -98,12 +120,7 @@ impl DancesTestCase {
     // === Execution Steps === //
 
     pub fn add_database_print_step(&mut self) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::PrintDatabase);
 
         Ok(())
@@ -114,12 +131,9 @@ impl DancesTestCase {
         expected_count: MapInteger,
         description: Option<String>,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| format!("Ensuring Database holds {}", &expected_count.0));
         self.steps.push(DanceTestStep::EnsureDatabaseCount { expected_count, description });
 
         Ok(())
@@ -135,12 +149,7 @@ impl DancesTestCase {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::LoadHolonsClient {
             content_set,
             expect_staged,
@@ -164,12 +173,7 @@ impl DancesTestCase {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::LoadHolons {
             set,
             expect_staged,
@@ -184,12 +188,7 @@ impl DancesTestCase {
     }
 
     pub fn add_match_saved_content_step(&mut self) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::MatchSavedContent);
 
         Ok(())
@@ -208,12 +207,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Abandon staged changes".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let new_snapshot = new_source.snapshot().clone_holon()?;
@@ -243,12 +238,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Delete Holon".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let new_snapshot = new_source.snapshot().clone_holon()?;
@@ -277,12 +268,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Commit".to_string());
         let saved_tokens = fixture_holons.commit()?;
         self.steps.push(DanceTestStep::Commit { saved_tokens, expected_status, description });
 
@@ -300,12 +287,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "New Holon".to_string());
         let mut snapshot = source_reference.clone_holon()?;
         for (name, value) in properties.clone() {
             snapshot.with_property_value(name, value)?;
@@ -337,6 +320,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Add related holons".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -375,12 +360,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Remove properties".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -415,6 +396,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Remove related holons".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -452,12 +435,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Stage Holon".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let snapshot = new_source.snapshot().clone_holon()?;
@@ -488,12 +467,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Stage new from clone".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -527,12 +502,8 @@ impl DancesTestCase {
         expected_failure_code: Option<ResponseStatusCode>,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Stage new version".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -570,12 +541,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "With properties".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -607,12 +574,8 @@ impl DancesTestCase {
         expected_status: ResponseStatusCode,
         description: Option<String>,
     ) -> Result<(), HolonError> {
-        if self.is_finalized == true {
-            return Err(HolonError::Misc(
-                "DancesTestCase is already finalized, thus closed for any additional steps"
-                    .to_string(),
-            ));
-        }
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Query Relationships".to_string());
         // Derive new source
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let new_snapshot = new_source.snapshot().clone_holon()?;

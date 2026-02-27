@@ -17,13 +17,8 @@ pub async fn execute_add_related_holons(
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
     expected_status: ResponseStatusCode,
-    description: Option<String>,
+    description: String,
 ) {
-    let description = match description {
-        Some(dsc) => dsc,
-        None => "Add Related Holons".to_string(),
-    };
-    info!("--- TEST STEP: {description} ---");
 
     let context = state.context();
 

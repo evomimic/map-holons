@@ -1,4 +1,5 @@
 use crate::fixture_cases::setup_book_and_authors_fixture::*;
+use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
 use holons_core::{dances::ResponseStatusCode, new_holon};
@@ -20,15 +21,14 @@ use type_names::ToPropertyName;
 pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
-            "stage_new_from_clone".to_string(),
-            "Clone from transient, staged, and saved; mutate staged clones; assert counts+content"
-                .to_string(),
+            "stage_new_from_clone",
+            "Clone from transient, staged, and saved; mutate staged clones; assert counts+content",
         );
 
     // Assert DB starts with 1 (space Holon)
     test_case.add_ensure_database_count_step(
         fixture_holons.count_saved(),
-        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
+        Some(ENSURE_DB_EMPTY.to_string()),
     )?;
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────

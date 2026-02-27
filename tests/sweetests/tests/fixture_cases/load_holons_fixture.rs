@@ -40,9 +40,9 @@ use rstest::*;
 use std::sync::Arc;
 
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP,
-    BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY,
-    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_TO_BOOK_REL_INVERSE,
 };
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
@@ -377,10 +377,9 @@ fn build_inverse_with_inline_schema_bundle(
 /// - We export the fixture’s transient pool into the test case session_state state exactly once at the end.
 #[fixture]
 pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
-
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
-            "Loader Incremental Fixture".to_string(),
+            "Loader Incremental Fixture",
             "1) Ensure DB starts with only the Space holon,\n\
          2) Load a HolonLoadSet containing a single empty HolonLoaderBundle and assert the\n\
             loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
@@ -398,8 +397,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
          7) Load a multi-bundle HolonLoadSet where two different bundles each contain a\n\
             LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
             the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
-            leaves the DB unchanged, and surfaces per-file provenance via error holons.\n"
-                .to_string(),
+            leaves the DB unchanged, and surfaces per-file provenance via error holons.\n",
         );
 
     // A) Ensure DB starts with only the Space holon.
@@ -465,7 +463,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64), None)?;
+    test_case
+        .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64), None)?;
 
     // E) Inverse LRR bundle: Person Authors Book → writes declared AuthoredBy(Book→Person).
     // Use a distinct book key to avoid colliding with the earlier Book instance.

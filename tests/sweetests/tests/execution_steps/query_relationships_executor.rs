@@ -12,14 +12,8 @@ pub async fn execute_query_relationships(
     step_token: TestReference,
     query_expression: QueryExpression,
     expected_status: ResponseStatusCode,
-    description: Option<String>,
+    description: String,
 ) {
-    let description = match description {
-        Some(dsc) => dsc,
-        None => "Querying Relationships".to_string(),
-    };
-    info!("--- TEST STEP: {description} ---");
-
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token

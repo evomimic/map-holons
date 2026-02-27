@@ -16,14 +16,8 @@ pub async fn execute_remove_properties(
     step_token: TestReference,
     properties: PropertyMap,
     expected_response: ResponseStatusCode,
-    description: Option<String>,
+    description: String,
 ) {
-    let description = match description {
-        Some(dsc) => dsc,
-        None => "Removing Properties from Holon".to_string(),
-    };
-    info!("--- TEST STEP: {description} ---");
-
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token

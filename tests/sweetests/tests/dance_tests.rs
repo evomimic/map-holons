@@ -59,7 +59,6 @@ use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
 use fixture_cases::stage_new_from_clone_fixture::*;
 use fixture_cases::stage_new_version_fixture::*;
-use tracing_subscriber::fmt::format;
 
 use self::execution_steps::execute_print_database;
 use holons_test::execution_state::TestExecutionState;
@@ -96,9 +95,9 @@ use holons_prelude::prelude::*;
 #[case::delete_holon(delete_holon_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
-// #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
+#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-// #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
@@ -115,8 +114,8 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     let test_context = init_test_context(&mut test_case).await;
     let mut test_execution_state = TestExecutionState::new(test_context);
 
-    info!(format!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {} TEST CASE WITH {} TEST STEPS ***************************", test_case.name, test_case.steps.len()));
-    info!(format!("\n   Test Case Description: {}", test_case.description));
+    info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {} TEST CASE WITH {} TEST STEPS ***************************", test_case.name, test_case.steps.len());
+    info!("\n   Test Case Description: {}", test_case.description);
 
     info!("Planned Steps:");
     for (i, step) in test_case.steps.iter().enumerate() {
@@ -347,5 +346,5 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
         }
     }
-    info!("\n{TEST_CLIENT_PREFIX} ------- END OF {name} TEST CASE  ---------------");
+    info!("\n{TEST_CLIENT_PREFIX} ------- END OF {} TEST CASE  ---------------", test_case.name);
 }

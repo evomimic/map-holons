@@ -1,7 +1,7 @@
+use holons_test::harness::helpers::ENSURE_DB_EMPTY;
+use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
-
-use holons_prelude::prelude::*;
 // use tracing::debug;
 
 use super::setup_book_author_steps_with_context;
@@ -13,10 +13,7 @@ use holons_test::harness::helpers::BOOK_KEY;
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
-        TestCaseInit::new(
-            "Simple StageNewVersion Testcase".to_string(),
-            "Tests stage_new_version dance".to_string(),
-        );
+        TestCaseInit::new("Simple StageNewVersion Testcase", "Tests stage_new_version dance");
     let mut version_count = MapInteger(1);
 
     // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
@@ -33,7 +30,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  ENSURE DATABASE COUNT -- Initial //
     test_case.add_ensure_database_count_step(
         fixture_holons.count_saved(),
-        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
+        Some(ENSURE_DB_EMPTY.to_string()),
     )?;
 
     //  COMMIT  // all Holons in staging_area
@@ -69,7 +66,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         "Description".to_property_name(),
         "This is a different description".to_base_value(),
     );
-    expected_clone_properties.insert("title".to_property_name(), "Changed".to_base_value());
+    expected_clone_properties.insert("Title".to_property_name(), "Changed".to_base_value());
 
     test_case.add_with_properties_step(
         &mut fixture_holons,
@@ -83,7 +80,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_commit_step(
         &mut fixture_holons,
         ResponseStatusCode::OK,
-        Some("With Properties -- first version cloned from book.".to_string()),
+        Some("Commit --- after staging new first version".to_string()),
     )?;
 
     //  ENSURE DATABASE COUNT //

@@ -1,6 +1,5 @@
 use super::create_test_dance_initiator;
-use crate::init_tracing;
-use crate::DancesTestCase;
+use crate::{DancesTestCase, init_tracing};
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::TransactionContext;

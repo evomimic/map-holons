@@ -17,14 +17,8 @@ pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
     step_token: TestReference,
     expected_status: ResponseStatusCode,
-    description: Option<String>,
+    description: String,
 ) {
-    let description = match description {
-        Some(dsc) => dsc,
-        None => "Abandon Staged Changes".to_string(),
-    };
-    info!("--- TEST STEP: {description} ---");
-
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token

@@ -31,14 +31,9 @@ pub fn map_core_schema_paths() -> Vec<PathBuf> {
 /// - One HolonType descriptor holon
 /// - One instance holon described by the type
 pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
-
-    let TestCaseInit {
-        mut test_case,
-        fixture_context,
-        ..
-    } = TestCaseInit::new(
-        "loader_client_minimal".to_string(),
-        "Core Schema JSON loader input via loader_client entrypoint".to_string(),
+    let TestCaseInit { mut test_case, fixture_context, .. } = TestCaseInit::new(
+        "loader_client_minimal",
+        "Core Schema JSON loader input via loader_client entrypoint",
     );
 
     let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
@@ -69,21 +64,18 @@ pub fn loader_client_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(7),
         MapInteger(182),
     )?;
-// test_case.add_load_holons_client_step(
-// content_set,
-// expect_staged: MapInteger(182),
-// expect_committed: MapInteger(182),
-// expect_links_created: MapInteger(1060),
-// expect_errors: MapInteger(0),
-// expect_total_bundles: MapInteger(7),
-// expect_total_loader_holons: MapInteger(182),
-// });
-
-
+    // test_case.add_load_holons_client_step(
+    // content_set,
+    // expect_staged: MapInteger(182),
+    // expect_committed: MapInteger(182),
+    // expect_links_created: MapInteger(1060),
+    // expect_errors: MapInteger(0),
+    // expect_total_bundles: MapInteger(7),
+    // expect_total_loader_holons: MapInteger(182),
+    // });
 
     // Finalize
-   test_case.finalize(&fixture_context)?;
-
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

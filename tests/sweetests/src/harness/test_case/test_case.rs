@@ -9,20 +9,12 @@
 //! - [`TestSessionState`], which captures transient holon state produced during
 //!   fixture setup and injects it into the test execution context.
 
-use crate::{init_fixture_context, DanceTestStep, FixtureBindings, FixtureHolons};
+use crate::{FixtureBindings, FixtureHolons, init_fixture_context};
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use std::sync::Arc;
 
-/// Public test case type that collects steps to be executed later.
-#[derive(Default, Clone, Debug)]
-pub struct DancesTestCase {
-    pub name: String,
-    pub description: String,
-    pub steps: Vec<DanceTestStep>,
-    pub test_session_state: TestSessionState,
-    pub is_finalized: bool,
-}
+use super::adders::DancesTestCase;
 
 /// TestCaseInit provides a structured, atomic initialization context for constructing a TestCase together with all required harness-managed fixture-time state.
 /// It answers the question: “What must exist, together, in order to author a valid TestCase?”
@@ -40,11 +32,11 @@ pub struct TestCaseInit {
 }
 
 impl TestCaseInit {
-    pub fn new(name: String, description: String) -> Self {
+    pub fn new<N: Into<String>, D: Into<String>>(name: N, description: D) -> Self {
         let context = init_fixture_context();
         let mut test_case = DancesTestCase::default();
-        test_case.name = name;
-        test_case.description = description;
+        test_case.name = name.into();
+        test_case.description = description.into();
 
         Self {
             test_case,
