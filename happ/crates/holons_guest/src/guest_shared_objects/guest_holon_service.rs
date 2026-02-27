@@ -80,11 +80,8 @@ impl GuestHolonService {
         let name: MapString = MapString(LOCAL_HOLON_SPACE_NAME.to_string());
         let description: MapString = MapString(LOCAL_HOLON_SPACE_DESCRIPTION.to_string());
 
-        // Obtain the externally visible TransientHolonBehavior service for creating a new holon.
-        let transient_behavior_service = context.get_transient_behavior_service();
-
         // Create new (empty) TransientHolon
-        let mut space_holon_reference = transient_behavior_service.create_empty(name.clone())?;
+        let mut space_holon_reference = context.mutation().new_holon(Some(name.clone()))?;
         space_holon_reference
             .with_property_value(
                 PropertyName(MapString("name".to_string())),
@@ -156,14 +153,7 @@ impl GuestHolonService {
 
         let local_id = holon.get_local_id()?;
 
-        // Reacquire Arc<TransactionContext> to mint a tx-bound SmartReference.
-        let context_arc = context
-            .space_manager()
-            .get_transaction_manager()
-            .get_transaction(&context.tx_id())?
-            .ok_or_else(|| HolonError::ServiceNotAvailable("TransactionContext".into()))?;
-
-        let handle = TransactionContextHandle::new(context_arc);
+        let handle = context.handle();
 
         Ok(HolonReference::Smart(SmartReference::new_from_id(handle, HolonId::Local(local_id))))
     }

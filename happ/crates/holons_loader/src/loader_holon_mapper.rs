@@ -133,14 +133,13 @@ impl LoaderHolonMapper {
 
         // ── Create the empty transient under a short write lock, then immediately release it.
         let mut target_transient: TransientReference = {
-            let transient_behavior = context.get_transient_behavior_service();
             debug!(
                 "Pass-1: staging instance from LoaderHolon temp_id={:?}, key_prop_raw={:?}, create_empty_key=\"{}\"",
                 loader_id,
                 key_value,
                 key.0,
             );
-            transient_behavior.create_empty(key.clone())?
+            context.mutation().new_holon(Some(key.clone()))?
         };
 
         // Apply each property explicitly (mutating the transient holon) — no service lock is held now.

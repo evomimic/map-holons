@@ -58,7 +58,7 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
 
     /// Creates a handle to this transaction context for holon references.
-    pub(crate) fn handle(self: &Arc<Self>) -> TransactionContextHandle {
+    pub fn handle(self: &Arc<Self>) -> TransactionContextHandle {
         TransactionContextHandle::new(Arc::clone(self))
     }
 
@@ -292,11 +292,6 @@ impl TransactionContext {
     // Core Execution Services (formerly trait methods)
     // ---------------------------------------------------------------------
 
-    /// Returns the cache access service.
-    pub(crate) fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.space_manager.get_cache_access()
-    }
-
     /// Returns the holon service.
     pub fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
         self.space_manager.get_holon_service()
@@ -329,7 +324,7 @@ impl TransactionContext {
         self.space_manager.set_space_holon_id(space_holon_id)
     }
 
-    /// Returns the transient collection state (used for IPC transport).
+    /// Returns the transient collection state (used for IPC transport?).
     pub fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
         self.space_manager.get_transient_state()
     }
@@ -339,7 +334,7 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
 
     /// Returns a strong reference to the space manager.
-    pub fn space_manager(&self) -> Arc<HolonSpaceManager> {
+    pub(crate) fn space_manager(&self) -> Arc<HolonSpaceManager> {
         Arc::clone(&self.space_manager)
     }
 
@@ -349,16 +344,18 @@ impl TransactionContext {
     }
 
     /// Provides access to the transaction-owned transient manager.
-    pub fn transient_manager(&self) -> Arc<TransientHolonManager> {
+    pub(crate) fn transient_manager(&self) -> Arc<TransientHolonManager> {
         Arc::clone(&self.transient_manager)
     }
 
     // Public accessors for staging/transient behaviors (transaction-scoped).
-    pub fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
+    pub(crate) fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
         Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
     }
 
-    pub fn get_transient_behavior_service(&self) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
+    pub(crate) fn get_transient_behavior_service(
+        &self,
+    ) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
         Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
     }
 
