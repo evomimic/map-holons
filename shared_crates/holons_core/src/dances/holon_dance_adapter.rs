@@ -206,7 +206,7 @@ pub fn get_holon_by_id_dance(
     let holon_service = context.get_holon_service();
 
     debug!("asking holon_service to get rc_holon");
-    let holon = holon_service.fetch_holon_internal(&holon_id)?;
+    let holon = holon_service.fetch_holon_internal(context, &holon_id)?;
 
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))

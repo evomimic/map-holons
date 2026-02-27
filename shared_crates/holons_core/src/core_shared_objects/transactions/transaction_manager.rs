@@ -197,7 +197,11 @@ mod tests {
             not_implemented()
         }
 
-        fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
+        fn fetch_holon_internal(
+            &self,
+            context: &Arc<TransactionContext>,
+            _id: &HolonId,
+        ) -> Result<Holon, HolonError> {
             not_implemented()
         }
 
@@ -285,30 +289,30 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn transaction_context_owns_pools() {
-    //     // Step 1: Open a default transaction.
-    //     let space_manager = build_space_manager();
-    //     let tm = space_manager.get_transaction_manager();
-    //     let transaction = tm
-    //         .open_default_transaction(Arc::clone(&space_manager))
-    //         .expect("default transaction should open");
-    //
-    //     // Step 2: Export staged holons from the transaction nursery.
-    //     let staged = transaction
-    //         .nursery()
-    //         .export_staged_holons()
-    //         .expect("staged export should succeed");
-    //
-    //     // Step 3: Export transient holons from the transaction manager.
-    //     let transient = transaction
-    //         .transient_manager()
-    //         .export_transient_holons()
-    //         .expect("transient export should succeed");
-    //
-    //     assert_eq!(staged, SerializableHolonPool::default());
-    //     assert_eq!(transient, SerializableHolonPool::default());
-    // }
+    #[test]
+    fn transaction_context_owns_pools() {
+        // Step 1: Open a default transaction.
+        let space_manager = build_space_manager();
+        let tm = space_manager.get_transaction_manager();
+        let transaction = tm
+            .open_default_transaction(Arc::clone(&space_manager))
+            .expect("default transaction should open");
+
+        // Step 2: Export staged holons from the transaction nursery.
+        let staged = transaction.export_staged_holons().expect("staged export should succeed");
+
+        // Step 3: Export transient holons from the transaction manager.
+        let transient =
+            transaction.export_transient_holons().expect("transient export should succeed");
+
+        assert_eq!(staged.len(), 0);
+        assert!(staged.holons_by_id().is_empty());
+        assert!(staged.keyed_index().is_empty());
+
+        assert_eq!(transient.len(), 0);
+        assert!(transient.holons_by_id().is_empty());
+        assert!(transient.keyed_index().is_empty());
+    }
 
     #[test]
     fn transaction_manager_lookup_returns_none_after_last_arc_dropped() {

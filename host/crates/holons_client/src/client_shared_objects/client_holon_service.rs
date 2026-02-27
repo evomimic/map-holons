@@ -120,9 +120,32 @@ impl HolonServiceApi for ClientHolonService {
         todo!()
     }
 
-    fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
-        // no context. not sure what to do here
-        todo!()
+    fn fetch_holon_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<Holon, HolonError> {
+        let request = holon_dance_builders::build_get_holon_by_id_dance_request(id.clone())?;
+        let initiator = context.get_dance_initiator()?;
+        let response =
+            run_future_synchronously(
+                async move { initiator.initiate_dance(context, request).await },
+            );
+
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "GetHolonById dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
+        match response.body {
+            ResponseBody::Holon(holon) => Ok(holon),
+            other => Err(HolonError::InvalidParameter(format!(
+                "GetHolonById: expected ResponseBody::Holon, got {:?}",
+                other
+            ))),
+        }
     }
 
     fn fetch_related_holons_internal(

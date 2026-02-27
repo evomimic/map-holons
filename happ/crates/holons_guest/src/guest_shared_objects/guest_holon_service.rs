@@ -284,7 +284,11 @@ impl HolonServiceApi for GuestHolonService {
 
     /// gets a specific HolonNode from the local persistent store based on the original ActionHash,
     /// then "inflates" the HolonNode into a Holon and returns it
-    fn fetch_holon_internal(&self, holon_id: &HolonId) -> Result<Holon, HolonError> {
+    fn fetch_holon_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        holon_id: &HolonId,
+    ) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
 
         // Retrieve the exact HolonNode for the specific ActionHash.

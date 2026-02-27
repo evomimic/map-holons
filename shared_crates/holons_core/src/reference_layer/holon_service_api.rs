@@ -40,7 +40,11 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError>;
 
-    fn fetch_holon_internal(&self, id: &HolonId) -> Result<Holon, HolonError>;
+    fn fetch_holon_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<Holon, HolonError>;
 
     fn fetch_related_holons_internal(
         &self,
