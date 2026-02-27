@@ -22,8 +22,7 @@
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
 use holons_core::{
-    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    ReadableHolon,
+    ReadableHolon, WritableHolon, core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference
 };
 
 /// Stable identity for a fixture snapshot across execution.
@@ -105,6 +104,7 @@ impl TestReference {
     pub fn expected_reference(&self) -> &TransientReference {
         &self.expected.snapshot
     }
+
 }
 
 /// Input to the execution step.

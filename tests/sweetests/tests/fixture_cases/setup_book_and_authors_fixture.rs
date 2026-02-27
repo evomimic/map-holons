@@ -2,7 +2,6 @@ use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, FixtureBindings, FixtureHolons};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-// use tracing::{debug, info};
 
 use holons_test::harness::helpers::{
     BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY,
@@ -27,14 +26,14 @@ pub fn setup_book_author_steps_with_context<'a>(
     bindings: &'a mut FixtureBindings,
 ) -> Result<&'a mut FixtureBindings, HolonError> {
     // Set relationship
-    bindings.set_relationship_name(
-        MapString("BOOK_TO_PERSON".to_string()),
-        BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name(),
-    );
+    let relationship_label = MapString("BOOK_TO_PERSON".to_string());
+    let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
+    bindings.set_relationship_name(relationship_label, relationship_name.clone());
 
     //  STAGE:  Book Holon  //
     //
     // Create fresh holon
+    let book_label = MapString("Book".to_string());
     let book_key = MapString(BOOK_KEY.to_string());
     let book_transient_reference = new_holon(&*fixture_context, Some(book_key.clone()))?;
 
@@ -49,20 +48,21 @@ pub fn setup_book_author_steps_with_context<'a>(
         book_properties,
         Some(book_key.clone()),
         ResponseStatusCode::OK,
-        Some("Creating book holon...".to_string()),
+        Some(format!("Creating {:?} holon...", book_label)),
     )?;
     // Stage & bind with label
     let book_staged_token = test_case.add_stage_holon_step(
         fixture_holons,
         book_transient_token,
         ResponseStatusCode::OK,
-        Some("Staging book holon...".to_string()),
+        Some(format!("Staging {:?} holon...", book_label)),
     )?;
-    bindings.insert_token(MapString("Book".to_string()), book_staged_token.clone());
+    bindings.insert_token(book_label.clone(), book_staged_token.clone());
 
     // //  STAGE:  Person 1 //
     //
     // Create
+    let person_1_label = MapString("Person1".to_string());
     let person_1_key = MapString(PERSON_1_KEY.to_string());
     let person_1_transient_reference = new_holon(&*fixture_context, Some(person_1_key.clone()))?;
 
@@ -76,20 +76,21 @@ pub fn setup_book_author_steps_with_context<'a>(
         person_1_properties,
         Some(person_1_key.clone()),
         ResponseStatusCode::OK,
-        Some("Creating person1 holon...".to_string()),
+        Some(format!("Creating {:?} holon...", person_1_label)),
     )?;
 
     let person_1_staged_token = test_case.add_stage_holon_step(
         fixture_holons,
         person_1_transient_token,
         ResponseStatusCode::OK,
-        Some("Staging person1 holon...".to_string()),
+        Some(format!("Staging {:?} holon...", person_1_label)),
     )?;
-    bindings.insert_token(MapString("Person1".to_string()), person_1_staged_token.clone());
+    bindings.insert_token(person_1_label.clone(), person_1_staged_token.clone());
 
     //  STAGE:  Person 2 //
     //
     // Create
+    let person_2_label = MapString("Person2".to_string());
     let person_2_key = MapString(PERSON_2_KEY.to_string());
     let person_2_transient_reference = new_holon(&*fixture_context, Some(person_2_key.clone()))?;
 
@@ -103,20 +104,21 @@ pub fn setup_book_author_steps_with_context<'a>(
         person_2_properties,
         Some(person_2_key.clone()),
         ResponseStatusCode::OK,
-        Some("Creating person2 holon...".to_string()),
+        Some(format!("Creating {:?} holon...", person_2_label.0)),
     )?;
 
     let person_2_staged_token = test_case.add_stage_holon_step(
         fixture_holons,
         person_2_transient_token,
         ResponseStatusCode::OK,
-        Some("Staging person2 holon...".to_string()),
+        Some(format!("Staging {:?} holon...", person_2_label)),
     )?;
-    bindings.insert_token(MapString("Person2".to_string()), person_2_staged_token.clone());
+    bindings.insert_token(person_2_label.clone(), person_2_staged_token.clone());
 
     //  STAGE:  Publisher //
     //
     // Create
+    let publisher_label = MapString("Publisher".to_string());
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
     let publisher_transient_reference = new_holon(&*fixture_context, Some(publisher_key.clone()))?;
 
@@ -133,38 +135,31 @@ pub fn setup_book_author_steps_with_context<'a>(
         publisher_properties,
         Some(publisher_key.clone()),
         ResponseStatusCode::OK,
-        Some("Creating publisher holon...".to_string()),
+        Some(format!("Creating {:?} holon...", publisher_label)),
     )?;
 
     let publisher_staged_token = test_case.add_stage_holon_step(
         fixture_holons,
         publisher_transient_token,
         ResponseStatusCode::OK,
-        Some("Staging book holon...".to_string()),
+        Some(format!("Staging {:?} holon...", publisher_label)),
     )?;
-    bindings.insert_token(MapString("Publisher".to_string()), publisher_staged_token.clone());
+    bindings.insert_token(publisher_label, publisher_staged_token.clone());
 
-    // //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
-    // let mut fixture_target_references: Vec<HolonReference> = Vec::new();
-    // fixture_target_references.push(HolonReference::Transient(person_1_transient_reference.clone()));
-    // fixture_target_references.push(HolonReference::Transient(person_2_transient_reference.clone()));
-
-    // book_transient_reference.add_related_holons(
-    //     &*fixture_context,
-    //     BOOK_TO_PERSON_RELATIONSHIP,
-    //     fixture_target_references.clone(),
-    // )?;
-
-    // let mut target_references: Vec<TestReference> = Vec::new();
-    // target_references.push(person_1_staged_token);
-    // target_references.push(person_2_staged_token);
-
-    // test_case.add_add_related_holons_step(
-    //     book_staged_token,
-    //     relationship_name.clone(),
-    //     target_references,
-    //     ResponseStatusCode::OK,
-    // )?;
+    //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
+    let book_mod_token = test_case.add_add_related_holons_step(
+        fixture_holons,
+        book_staged_token,
+        relationship_name,
+        vec![person_1_staged_token, person_2_staged_token],
+        ResponseStatusCode::OK,
+        Some(format!(
+            "Adding Relationships: {:?} -> {:?} -> [{:?}, {:?}] ",
+            book_label, BOOK_TO_PERSON_RELATIONSHIP, person_1_label, person_2_label
+        )),
+    )?;
+    // Update bindings to reflect the added relationships
+    bindings.insert_token(book_label, book_mod_token);
 
     Ok(bindings)
 }

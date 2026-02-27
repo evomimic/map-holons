@@ -1,5 +1,5 @@
 use holons_test::{
-    harness::prelude::TestExecutionState, ExecutionReference, ExecutionHandle, TestReference,
+    ExecutionHandle, ExecutionReference, ResolveBy, TestReference, harness::prelude::TestExecutionState
 };
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
@@ -11,7 +11,6 @@ use holons_prelude::prelude::*;
 /// be either StagedHolons or SavedHolons. In the latter case, the executor needs to resolve
 /// the TestReference's key into a HolonReference
 ///
-
 pub async fn execute_add_related_holons(
     state: &mut TestExecutionState,
     step_token: TestReference,
@@ -22,7 +21,7 @@ pub async fn execute_add_related_holons(
 ) {
     let description = match description {
         Some(dsc) => dsc,
-        None => "Add Related Holons".to_string()
+        None => "Add Related Holons".to_string(),
     };
     info!("--- TEST STEP: {description} ---");
 
@@ -30,24 +29,22 @@ pub async fn execute_add_related_holons(
 
     // 1. LOOKUP — get the input handle for the source token
     let source_reference: HolonReference =
-        state.resolve_source_reference(&context, &step_token)
-.unwrap();
+        state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
     let holons_to_add: Vec<HolonReference> =
-        state.resolve_source_references(&context, &holons).unwrap();
+        state.resolve_execution_references(&context, ResolveBy::Expected,&holons).unwrap();
 
     // 2. BUILD — dance request to add related holons
     let request = build_add_related_holons_dance_request(
         source_reference.clone(),
         relationship_name,
-        holons_to_add,
+        holons_to_add.clone(),
     )
     .expect("Failed to build add_related_holons request");
     debug!("Dance Request: {:#?}", request);
 
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request)
-.await;
+    let response = dance_initiator.initiate_dance(&context, request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -62,23 +59,15 @@ pub async fn execute_add_related_holons(
         // 5. ASSERT — execution-time content matches fixture expectation
         let response_holon_reference = match response.body {
             ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => panic!(
-                "expected ResponseBody::HolonReference, got {:?}",
-                other
-            ),
+            other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
         };
 
-        let execution_handle =
-            ExecutionHandle::from(response_holon_reference);
+        let execution_handle = ExecutionHandle::from(response_holon_reference);
 
         let execution_reference =
-            ExecutionReference::from_token_execution(
-                &step_token,
-                execution_handle,
-            );
+            ExecutionReference::from_token_execution(&step_token, execution_handle);
 
-        execution_reference.assert_essential_content_eq()
-;
+        execution_reference.assert_essential_content_eq();
         info!("Success! Updated holon's essential content matched expected");
 
         // 6. RECORD — make available for downstream resolution

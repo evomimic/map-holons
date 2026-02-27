@@ -95,7 +95,7 @@ impl SmartReference {
         let cache_access = self.get_cache_access();
 
         // Retrieve the holon from the cache
-        let rc_holon = cache_access.get_rc_holon(&self.holon_id)?;
+        let rc_holon = cache_access.get_rc_holon(&self.context_handle.context(), &self.holon_id)?;
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)

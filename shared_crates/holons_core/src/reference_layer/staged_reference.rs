@@ -94,7 +94,7 @@ impl StagedReference {
     /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
     ///
     /// # Returns
-    /// Rc<RefCell<Holon>>>
+    ///  Result<Arc<RwLock<Holon>>, HolonError>
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
@@ -111,7 +111,9 @@ impl StagedReference {
         _context: &Arc<TransactionContext>,
         check_state: StagedState,
     ) -> Result<bool, HolonError> {
+
         let rc_holon = self.get_rc_holon()?;
+
         let holon = rc_holon
             .read()
             .map_err(|e| {
@@ -354,7 +356,6 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-
         // Precompute keys before taking the holon write lock to avoid re-entrant locking on self-edges.
         let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
             .into_iter()
@@ -373,6 +374,7 @@ impl WritableHolonImpl for StagedReference {
         })?;
 
         holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
+
         Ok(self)
     }
 

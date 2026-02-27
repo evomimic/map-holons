@@ -36,13 +36,14 @@
 
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
-use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
-    reference_layer::{HolonServiceApi, HolonsContextBehavior},
-    HolonReference, RelationshipMap,
+    reference_layer::{HolonServiceApi, HolonsContextBehavior, SmartReference},
+    HolonCollectionApi, HolonReference, RelationshipMap,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
@@ -96,42 +97,122 @@ impl HolonServiceApi for ClientHolonService {
         }
     }
 
-    fn delete_holon_internal(&self, local_id: &LocalId) -> Result<(), HolonError> {
-        //let request = holon_dance_builders::build_delete_holon_dance_request(*local_id)?;
-        //let initiator = context.get_space_manager().get_dance_initiator()?;
-        // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        // no context. not sure what to do here
-        todo!()
+    fn delete_holon_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        local_id: &LocalId,
+    ) -> Result<(), HolonError> {
+        let request = holon_dance_builders::build_delete_holon_dance_request(local_id.clone())?;
+        let initiator = context.get_dance_initiator()?;
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
+
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "DeleteHolon dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
+        match response.body {
+            ResponseBody::None => Ok(()),
+            other => Err(HolonError::InvalidParameter(format!(
+                "DeleteHolon: expected ResponseBody::None, got {:?}",
+                other
+            ))),
+        }
     }
 
     fn fetch_all_related_holons_internal(
         &self,
-        context: &Arc<TransactionContext>,
-        source_id: &HolonId,
+        _context: &Arc<TransactionContext>,
+        _source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        //let request = holon_dance_builders::=((*source_id)?)?;
-        //let initiator = context.get_space_manager().get_dance_initiator()?;
-        // let ctx: &(dyn HolonsContextBehavior + Send + Sync) = context;
-        // let response = run_future_synchronously(initiator.initiate_dance(ctx, request));
-        //not sure how to do this one?
-
-        todo!()
+        Err(HolonError::NotImplemented(
+            "ClientHolonService::fetch_all_related_holons_internal requires a dedicated dance that is not implemented yet".to_string(),
+        ))
     }
 
-    fn fetch_holon_internal(&self, _id: &HolonId) -> Result<Holon, HolonError> {
-        // no context. not sure what to do here
-        todo!()
+    fn fetch_holon_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<Holon, HolonError> {
+        let request = holon_dance_builders::build_get_holon_by_id_dance_request(id.clone())?;
+        let initiator = context.get_dance_initiator()?;
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
+
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "GetHolonById dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
+        match response.body {
+            ResponseBody::Holon(holon) => Ok(holon),
+            other => Err(HolonError::InvalidParameter(format!(
+                "GetHolonById: expected ResponseBody::Holon, got {:?}",
+                other
+            ))),
+        }
     }
 
     fn fetch_related_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
-        _source_id: &HolonId,
-        _relationship_name: &RelationshipName,
+        source_id: &HolonId,
+        relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
-        // no context. not sure what to do here
-        todo!()
+        let context_handle = TransactionContextHandle::new(Arc::clone(context));
+        let source_reference =
+            HolonReference::Smart(SmartReference::new_from_id(context_handle, source_id.clone()));
+        let node_collection = NodeCollection {
+            members: vec![Node::new(source_reference, None)],
+            query_spec: None,
+        };
+        let query = QueryExpression::new(relationship_name.clone());
+        let request = holon_dance_builders::build_query_relationships_dance_request(
+            node_collection,
+            query,
+        )?;
+        let initiator = context.get_dance_initiator()?;
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
+
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "QueryRelationships dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
+        match response.body {
+            ResponseBody::NodeCollection(node_collection) => {
+                let mut result = HolonCollection::new_existing();
+                for node in node_collection.members {
+                    if let Some(relationships) = node.relationships {
+                        if let Some(related_nodes) = relationships.0.get(relationship_name) {
+                            let references = related_nodes
+                                .members
+                                .iter()
+                                .map(|related| related.source_holon.clone())
+                                .collect();
+                            result.add_references(references)?;
+                        }
+                    }
+                }
+                Ok(result)
+            }
+            other => Err(HolonError::InvalidParameter(format!(
+                "QueryRelationships: expected ResponseBody::NodeCollection, got {:?}",
+                other
+            ))),
+        }
     }
 
     fn get_all_holons_internal(
@@ -141,8 +222,6 @@ impl HolonServiceApi for ClientHolonService {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
 
         let initiator = context.get_dance_initiator()?;
-
-        let context_for_async = Arc::clone(context);
 
         let response = run_future_synchronously(async move {
             initiator.initiate_dance(context, request).await
@@ -176,8 +255,6 @@ impl HolonServiceApi for ClientHolonService {
         let initiator = context.get_dance_initiator()?;
 
         // 3) Bridge async → sync (ClientHolonService is synchronous)
-        let context_for_async = Arc::clone(context);
-
         let response = run_future_synchronously(async move {
             initiator.initiate_dance(context, request).await
         });
