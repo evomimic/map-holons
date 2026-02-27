@@ -106,20 +106,6 @@ impl MapRequest {
         let space = HolonSpace::default();
         Self { name, req_type, body, space }
     }
-    pub fn test_for_stage_new_holon() -> Self {
-        let name = "stage_new_holon".to_string();
-        let req_type = DanceType::Standalone;
-        let context = crate::init_client_context(None);
-        let transient_ref =
-            context.mutation().new_holon(Some(MapString("my_key".to_string()))).unwrap();
-        let locked_holon =
-            context.transient_manager().get_holon_by_id(&transient_ref.temporary_id()).unwrap();
-        let actual_holon = locked_holon.read().unwrap().clone();
-        let body = MapRequestBody::new_holon(actual_holon);
-        //holon.with_property_value(property_name, value)?;
-        let space = HolonSpace::default();
-        Self { name, req_type, body, space }
-    }
 }
 
 impl MapRequestWire {
