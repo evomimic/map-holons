@@ -36,7 +36,7 @@ fn read_integer_property(
 /// This function should **never** be used by production code; it is strictly
 /// a test/sweetest debugging aid for introspecting holons before descriptors
 /// exist or during early-bootstrapping scenarios.
-fn dump_essential(state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
+fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
     // Attempt to get essential content (properties, key, errors)
     let essential_content_result = holon_reference.essential_content();
 

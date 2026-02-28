@@ -1,248 +1,178 @@
-// use holons_core::{core_shared_objects::WritableRelationship, CollectionState};
-// use holons_test::{fixture_holons, DancesTestCase, FixtureHolons, TestReference};
-// use pretty_assertions::assert_eq;
-// use tracing::{error, info};
+use crate::fixture_cases::setup_book_author_steps_with_context;
+use holons_prelude::prelude::*;
+use holons_test::harness::helpers::PUBLISHED_BY;
+use holons_test::{DancesTestCase, TestCaseInit};
+use rstest::*;
+use std::collections::BTreeMap;
+use tracing::info;
+// TODO: enhance test capabilities, ie trying to remove related holons using invalid source and relationship name
 
-// use holons_prelude::prelude::*;
-// use rstest::*;
+/// For both Transient and Staged references:
+/// adds a new relationship, removes an existing relationship, then adds another relationship again.
+///
+#[fixture]
+pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
+    // Init
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
+        TestCaseInit::new(
+            "Simple Add / Remove Related Holon Testcase".to_string(),
+            "Tests the adding and removing of related Holons".to_string(),
+        );
+    // let _ = holochain_trace::test_run();
 
-// use crate::{
-//     fixture_cases::setup_book_author_steps_with_context,
-//     helpers::{
-//         BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY,
-//         PUBLISHER_KEY,
-//     },
-// };
+    // Ensure DB count //
+    test_case.add_ensure_database_count_step(
+        fixture_holons.count_saved(),
+        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
+    )?;
 
-// // TODO: enhance test capabilities, ie trying to remove related holons using invalid source and relationship name
+    // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
+    // from the book to the two persons
+    setup_book_author_steps_with_context(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        &mut fixture_bindings,
+    )?;
+    info!("fixture: book and author setup complete.");
 
-// /// For both Transient and Staged references:
-// /// adds a new relationship, removes an existing relationship, then adds another relationship again.
-// ///
-// ///
-// #[fixture]
-// pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
-//     // Init
-//     let mut test_case = DancesTestCase::new(
-//         "Simple Add / Remove Related Holon Testcase".to_string(),
-//         "1) Ensure DB starts empty,\n\
-//          2) Stage Book, Person, Publisher Holons, \n\
-//          3) Add two Persons to Book's AUTHORED_BY relationship\n\
-//          4) (disabled) Try to remove related holons using invalid source holon\n\
-//          5) (disabled) Try to remove related holons using invalid relationship name\n\
-//          6) Remove 1 related holon\n\
-//          7) Test remove all related holons including ignoring a previous one that was already removed\n\
-//          8) Commit,\n\
-//          9) QueryRelationships.\n".to_string(),
-//     );
+    let book_to_person_relationship =
+        fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
-//     // let _ = holochain_trace::test_run();
+    let book_staged_token =
+        fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
-//     let mut fixture_holons = FixtureHolons::new();
+    let person_1_staged_token =
+        fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label").clone();
 
-//     // Ensure DB count //
-//     test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
+    let publisher_staged_token =
+        fixture_bindings.get_token(&MapString("Publisher".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Publisher' label").clone();
 
-//     // // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
-//     // // from the book to the two persons
-//    // let fixture_tuple = setup_book_author_steps_with_context(
-//    //     &fixture_context,
-//    //     &mut test_case,
-//    //     &mut fixture_holons,
-//    // )?;
+    // === TRANSIENT === //
+    //
+    // Company -> HOST -> Website  //
+    //
+    let host_relationship = "HOST".to_relationship_name();
+    let company_key = MapString("COMPANY_KEY".to_string());
+    let website_key = MapString("WEBSITE_KEY".to_string());
+    // Create transient references
+    let company_transient_reference = new_holon(&fixture_context, Some(company_key.clone()))?;
+    let mut company_properties = BTreeMap::new();
+    company_properties
+        .insert("name".to_property_name(), "The Really Useful Information Company".to_base_value());
+    let website_transient_reference = new_holon(&fixture_context, Some(website_key.clone()))?;
+    let mut website_properties = BTreeMap::new();
+    website_properties.insert("url".to_property_name(), "itsyourworld.com".to_base_value());
+    // Mint
+    let company_step_token = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        company_transient_reference,
+        company_properties,
+        Some(company_key),
+        ResponseStatusCode::OK,
+        Some("Creating company holon... ".to_string()),
+    )?;
+    let website_step_token = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        website_transient_reference,
+        website_properties,
+        Some(website_key),
+        ResponseStatusCode::OK,
+        Some("Creating website holon... ".to_string()),
+    )?;
 
-//    // let relationship_name = fixture_tuple.0;
-//    // let fixture_bindings = fixture_tuple.1;
+    // -- ADD STEP -- //
+    let company_token_after_add = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        company_step_token.clone(),
+        host_relationship.clone(),
+        vec![website_step_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Adding Relationship (Transient):  Company -> HOST -> Website ".to_string()),
+    )?;
 
-//     // info!("fixture: book and author setup complete.");
+    // -- REMOVE STEP -- //
+    let company_token_after_remove = test_case.add_remove_related_holons_step(
+        &mut fixture_holons,
+        company_token_after_add,
+        host_relationship.clone(),
+        vec![website_step_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Removing Relationship (Transient):  Company -> HOST -> Website ".to_string()),
+    )?;
 
-//     // let book_transient_reference = fixture_holons.get_latest_by_key(&book_key).unwrap().transient();
+    // -- Again ADD STEP -- //
+    let again_relationship = "AGAIN".to_relationship_name();
+    let example_key = MapString("EXAMPLE_KEY".to_string());
+    // Create example
+    let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
+    let mut example_properties = BTreeMap::new();
+    example_properties.insert("example".to_property_name(), "Example Holon".to_base_value());
+    // Mint
+    let example_step_token = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        example_transient_reference,
+        example_properties,
+        Some(example_key),
+        ResponseStatusCode::OK,
+        Some("Creating example holon... ".to_string()),
+    )?;
+    // Executor step
+    test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        company_token_after_remove,
+        again_relationship.clone(),
+        vec![example_step_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Adding Relationship (Transient):  Company -> AGAIN -> Example ".to_string()),
+    )?;
+    //
+    // == //
 
-//     // === TRANSIENT === //  Company -> HOST -> Website  //
-//     let host_relationship = "HOST".to_relationship_name();
-//     let company_key = MapString("COMPANY_KEY".to_string());
-//     let website_key = MapString("WEBSITE_KEY".to_string());
-//     // Create transient references
-//     let company_transient_reference = new_holon(&*fixture_context, Some(company_key.clone()))?;
-//     let website_transient_reference = new_holon(&*fixture_context, Some(website_key.clone()))?;
-//     // -- ADD STEP -- //
-//     // Set expected
-//     let mut company_expected_content =
-//         company_transient_reference.essential_content(&*fixture_context)?.clone();
-//     company_expected_content
-//         .relationships
-//         .add_related_holons(
-//             &*fixture_context,
-//             CollectionState::Transient,
-//             host_relationship.clone(),
-//             vec![HolonReference::from(website_transient_reference.clone())],
-//         )
-//         .unwrap();
-//     // Mint transient source tokens
-//     let company_transient_token = fixture_holons.add_transient(
-//         &company_transient_reference,
-//         company_key.clone(),
-//         &company_expected_content,
-//     );
-//     let website_transient_token = fixture_holons.add_transient(
-//         &website_transient_reference,
-//         website_key.clone(),
-//         &website_transient_reference.essential_content(&*fixture_context)?,
-//     );
-//     // Add step
-//     test_case.add_add_related_holons_step(
-//         company_transient_token.clone(),
-//         host_relationship.clone(),
-//         vec![website_transient_token.clone()],
-//         ResponseStatusCode::OK,
-//     )?;
+    // === STAGED === //
+    //
+    // -- REMOVE STEP -- //
+    // Book -> AUTHORED_BY -> Person1  //
+    let book_token_after_remove = test_case.add_remove_related_holons_step(
+        &mut fixture_holons,
+        book_staged_token.clone(),
+        book_to_person_relationship.clone(),
+        vec![person_1_staged_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Removing Relationship (Staged):  Book -> AUTHORED_BY -> Person1 ".to_string()),
+    )?;
 
-//     // -- REMOVE STEP -- //
-//     // Set expected
-//     company_expected_content
-//         .relationships
-//         .remove_related_holons(
-//             &*fixture_context,
-//             &host_relationship,
-//             vec![HolonReference::from(website_transient_reference.clone())],
-//         )
-//         .unwrap();
-//     // Mint transient token with the expected_content
-//     let source_company_token = fixture_holons.add_transient(
-//         &company_transient_reference,
-//         company_key.clone(),
-//         &company_expected_content,
-//     );
-//     // Executor step
-//     test_case.add_remove_related_holons_step(
-//         source_company_token,
-//         host_relationship.clone(),
-//         vec![website_transient_token.clone()],
-//         ResponseStatusCode::OK,
-//     )?;
+    // -- ADD STEP -- //
+    // Book -> PUBLISHED_BY -> Publisher
+    let book_token_after_add = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        book_token_after_remove,
+        PUBLISHED_BY.to_relationship_name(),
+        vec![publisher_staged_token.clone()],
+        ResponseStatusCode::OK,
+        Some("Adding Relationship (Staged):  Book -> PUBLISHED_BY -> Publisher ".to_string()),
+    )?;
+    //
+    // == //
 
-//     // // -- Again ADD STEP -- //
-//     // let again_relationship = "AGAIN".to_relationship_name();
-//     // let example_key = MapString("EXAMPLE_KEY".to_string());
-//     // let example_transient_reference = new_holon(&*fixture_context, Some(example_key.clone()))?;
-//     // let example_transient_token = fixture_holons.add_transient(
-//     //     &example_transient_reference,
-//     //     example_key.clone(),
-//     //     &example_transient_reference.essential_content(&*fixture_context)?,
-//     // )?;
-//     // // Set expected
-//     // company_expected_content
-//     //     .relationships
-//     //     .add_related_holons(
-//     //         &*fixture_context,
-//     //         CollectionState::Transient,
-//     //         again_relationship.clone(),
-//     //         vec![HolonReference::from(example_transient_reference.clone())],
-//     //     )
-//     //     .unwrap();
-//     // // Mint another snapshot
-//     // let another_company_token = fixture_holons.add_transient(
-//     //     &company_transient_reference,
-//     //     company_key.clone(),
-//     //     &company_expected_content,
-//     // )?;
-//     // // Add step
-//     // test_case.add_add_related_holons_step(
-//     //     company_transient_token.clone(),
-//     //     again_relationship.clone(),
-//     //     vec![example_transient_token.clone()],
-//     //     ResponseStatusCode::OK,
-//     // )?;
+    //  COMMIT  //
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK, None)?;
 
-//     ////////
-//     //
-//     //
-//     //  Old code:  this needs to be adjusted to fit test harness or be dropped
-//     // PENDING: approach for:
-//     // Testing relationships Staged -> Staged
+    // ENSURE DB COUNT //
+    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
-//     // // Get book Staged token
-//     // let book_key = MapString(BOOK_KEY.to_string());
-//     // let book_staged_token = fixture_holons.get_latest_by_key(&book_key)?;
+    //  QUERY RELATIONSHIPS  //
+    let query_expression = QueryExpression::new(book_to_person_relationship.clone());
+    test_case.add_query_relationships_step(
+        &mut fixture_holons,
+        book_token_after_add,
+        query_expression,
+        ResponseStatusCode::OK,
+        None,
+    )?;
 
-//     // // Get its current authors
-//     // let authors_reference =
-//     //     book_holon_staged_reference.related_holons(&*fixture_context, &relationship_name)?;
+    // Finalize
+    test_case.finalize(&fixture_context)?;
 
-//     // // let authors =
-//     // //     book_staged_token.token_id().relationship_map.get(&relationship_name).expect("No collection found for relationship_name");
-
-//     // // debug!("authors retrieved for book: {:?}", authors_reference);
-//     // let person_1_option =
-//     //     authors_reference.read().unwrap().get_by_key(&MapString(PERSON_1_KEY.to_string()))?;
-//     // let person_2_option =
-//     //     authors_reference.read().unwrap().get_by_key(&MapString(PERSON_2_KEY.to_string()))?;
-//     // //
-
-//     // // REMOVE: both authors //
-
-//     // if let Some(person_1) = person_1_option {
-//     //     if let Some(person_2) = person_2_option {
-//     //         let mut remove_vector = Vec::new();
-//     //         remove_vector.push(person_1);
-//     //         remove_vector.push(person_2);
-//     //         // TestFixture
-//     //         book_holon_staged_reference.remove_related_holons(
-//     //             &*fixture_context,
-//     //             BOOK_TO_PERSON_RELATIONSHIP,
-//     //             remove_vector.clone(),
-//     //         )?;
-//     //         // Executor step
-//     //         test_case.add_remove_related_holons_step(
-//     //             &mut fixture_holons,
-//     //             book_staged_token,
-//     //             Some(book_key),
-//     //             relationship_name.clone(),
-//     //             remove_vector,
-//     //             ResponseStatusCode::OK,
-//     //         )?;
-//     //     } else {
-//     //         error!("Could not find {} in related holons for {}", PERSON_2_KEY, relationship_name);
-//     //     }
-//     // } else {
-//     //     error!("Could not find {} in related holons for {}", PERSON_1_KEY, relationship_name);
-//     // }
-//     // // */
-//     // // ADD: publisher //
-
-//     // let publisher =
-//     //     get_transient_holon_by_base_key(&*fixture_context, &MapString(PUBLISHER_KEY.to_string()))?;
-
-//     // book_holon_staged_reference.add_related_holons(
-//     //     &*fixture_context,
-//     //     "PUBLISHED_BY",
-//     //     vec![HolonReference::Transient(publisher.clone())],
-//     // )?;
-
-//     // test_case.add_add_related_holons_step(
-//     //     HolonReference::Staged(book_holon_staged_reference.clone()),
-//     //     "PUBLISHED_BY".to_relationship_name(),
-//     //     vec![TestReference::TransientHolon(publisher)],
-//     //     ResponseStatusCode::OK,
-//     // )?;
-
-//     // expected_count += staged_count(&*fixture_context).unwrap();
-
-//     // //  COMMIT  //
-//     // test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK)?;
-
-//     // test_case.add_ensure_database_count_step(MapInteger(fixture_holons.count_saved()))?;
-
-//     //  QUERY RELATIONSHIPS  //
-//     let query_expression = QueryExpression::new(host_relationship.clone());
-//     test_case.add_query_relationships_step(
-//         company_transient_token,
-//         query_expression,
-//         ResponseStatusCode::OK,
-//     )?;
-
-//     // Load test_session_state
-//     test_case.load_test_session_state(&*fixture_context);
-
-//     Ok(test_case)
-// }
+    Ok(test_case)
+}

@@ -26,6 +26,9 @@ pub struct EssentialHolonContent {
 
 // ==== TESTING PURPOSES ==== //
 
+// TODO: requires Descriptors to add a function for getting all definitional relationships
+
+/// Used to construct a relationship map for ONLY definitional relationships.
 #[derive(new, Clone, Debug, Eq, PartialEq, Default)]
 pub struct EssentialRelationshipMap {
     map: BTreeMap<RelationshipName, HolonCollection>,

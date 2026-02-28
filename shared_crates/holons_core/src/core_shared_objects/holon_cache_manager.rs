@@ -31,16 +31,20 @@ impl HolonCacheAccess for HolonCacheManager {
     /// - Otherwise, it fetches the Holon using the HolonService, adds it to the cache, and returns it.
     /// The behavior of this method is different on the client-side, where all Holons are cached
     /// in a single cache, and the guest-side where each space has its own cache.
-    fn get_rc_holon(&self, holon_id: &HolonId) -> Result<Arc<RwLock<Holon>>, HolonError> {
+    fn get_rc_holon(
+        &self,
+        context: &Arc<TransactionContext>,
+        holon_id: &HolonId,
+    ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Attempt to retrieve the holon from the cache
         if let Some(cached) = self.cache.get(holon_id) {
             debug!("Holon {:?} retrieved from cache.", holon_id);
             return Ok(cached.clone());
         }
-
+        use tracing::warn;
         // If not found, resolve it from the HolonService
-        debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
-        let holon = self.holon_service.fetch_holon_internal(holon_id)?;
+        warn!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
+        let holon = self.holon_service.fetch_holon_internal(context, holon_id)?;
         let arc_holon = Arc::new(RwLock::new(holon));
 
         // Insert the resolved holon into the cache

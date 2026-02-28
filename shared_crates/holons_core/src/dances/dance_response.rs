@@ -184,6 +184,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::CrossTransactionReference { .. } => ResponseStatusCode::Conflict,
             HolonError::DeletionNotAllowed(_) => ResponseStatusCode::Conflict,
             HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
+            HolonError::InvalidState(_) => ResponseStatusCode::Conflict,
             HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
             HolonError::InvalidTransactionTransition { .. } => ResponseStatusCode::Conflict,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,

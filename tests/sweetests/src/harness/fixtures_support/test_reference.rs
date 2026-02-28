@@ -21,9 +21,9 @@
 
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
+use std::fmt;
 use holons_core::{
-    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    ReadableHolon,
+    ReadableHolon, core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference
 };
 
 /// Stable identity for a fixture snapshot across execution.
@@ -49,6 +49,18 @@ pub enum TestHolonState {
     Saved,
     Abandoned,
     Deleted,
+}
+
+impl fmt::Display for TestHolonState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TestHolonState::Transient => write!(f, "Transient"),
+            TestHolonState::Staged => write!(f, "Staged"),
+            TestHolonState::Saved => write!(f, "Saved"),
+            TestHolonState::Abandoned => write!(f, "Abandoned"),
+            TestHolonState::Deleted => write!(f, "Deleted"),
+        }
+    }
 }
 
 /// An **immutable, opaque fixture token** that is safe to pass and reuse, as the sole artifact executors receive.
@@ -104,6 +116,20 @@ impl TestReference {
 
     pub fn expected_reference(&self) -> &TransientReference {
         &self.expected.snapshot
+    }
+
+}
+
+impl fmt::Display for TestReference {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TestReference(source:{}@{}, expected:{}@{})",
+            self.source.id(),
+            self.source.state(),
+            self.expected.id(),
+            self.expected.state()
+        )
     }
 }
 

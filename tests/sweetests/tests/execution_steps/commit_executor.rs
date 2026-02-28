@@ -10,10 +10,8 @@ use holons_prelude::prelude::*;
 pub async fn execute_commit(
     state: &mut TestExecutionState,
     expected_tokens: Vec<TestReference>, // list of expected tokens to resolve
-    expected_status: ResponseStatusCode,
+    expected_status: ResponseStatusCode
 ) {
-    info!("--- TEST STEP: Committing Staged Holons ---");
-
     let context = state.context();
 
     // 1. BUILD - dance request to commit

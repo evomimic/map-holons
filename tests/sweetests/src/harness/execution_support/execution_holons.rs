@@ -8,15 +8,16 @@
 //! ## Key points
 //! - **Record**: after a step realizes something, wrap it in a
 //!   `ExecutionReference` and store it under the expected_snapshot's `TemporaryId`.
-//! - **Lookup (inputs)**: executors use `resolve_source_reference(_vec)` to turn
+//! - **Lookup (inputs)**: executors use `resolve_execution_reference(_vec)` to turn
 //!   tokens into live `HolonReference`s *without* touching the Nursery or DHT.
 //! - **Invariant**: Saved ≙ Staged(Committed(LocalId)) is enforced during lookup.
 //! - **Append-only**: Overwrites are not allowed.
 
-use crate::harness::execution_support::ExecutionReference;
-use crate::harness::fixtures_support::{TestHolonState, TestReference};
-use crate::SnapshotId;
-use core_types::LocalId;
+use crate::harness::{
+    execution_support::ExecutionReference,
+    fixtures_support::{SnapshotId, TestHolonState, TestReference},
+};
+use core_types::{LocalId, TemporaryId};
 use holons_core::core_shared_objects::holon::StagedState;
 use holons_prelude::prelude::*;
 use std::collections::BTreeMap;
@@ -73,27 +74,42 @@ impl ExecutionHolons {
     /// Turn a fixture token into the **current** runtime `HolonReference` to use as executor input.
     ///
     /// Lookup strategy:
-    /// - `TestHolonState::Transient`  → return `HolonReference::Transient(token.token_id().clone())`.
+    /// - `TestHolonState::Transient`  → must find a recorded `TransientReference`.
     /// - `TestHolonState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `TestHolonState::Saved`      → must find a recorded `StagedReference` **committed**.
     /// - `TestHolonState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
     /// - `TestHolonState::Deleted`  → return Error
-    pub fn resolve_source_reference(
+    pub fn resolve_execution_reference(
         &self,
         context: &Arc<TransactionContext>,
+        resolution_type: ResolveBy,
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
-        let source = token.source_snapshot();
-        let id = source.id();
-        let state = source.state();
-
+        let SnapshotDeconstruction { id, state } =
+            SnapshotDeconstruction::new(resolution_type, token);
         match state {
             TestHolonState::Deleted => Err(HolonError::InvalidParameter(
                 "Holon marked as deleted, there is no associated resolved HolonReference"
                     .to_string(),
             )),
             TestHolonState::Transient => {
-                Ok(HolonReference::Transient(token.source_reference().clone()))
+                let resolved = self
+                    .by_snapshot_id
+                    .get(&id)
+                    .ok_or_else(|| HolonError::InvalidHolonReference(format!(
+                        "ExecutionHolons::lookup: no realization recorded for TemporaryId {:?} (expected {:?})",
+                        id,
+                        state
+                    )))?;
+                let holon_reference = &resolved.execution_handle.get_holon_reference()?;
+                if !holon_reference.is_transient() {
+                    return Err(HolonError::InvalidHolonReference(format!(
+                        "ExecutionHolons::lookup expected TRANSIENT but got {:?} ",
+                        holon_reference
+                    )));
+                }
+
+                Ok(holon_reference.clone())
             }
             state => {
                 let resolved = self
@@ -143,17 +159,52 @@ impl ExecutionHolons {
         }
     }
 
-    /// Batch variant of `resolve_source_reference`.
-    pub fn resolve_source_references(
+    /// Batch variant of `resolve_execution_reference`.
+    pub fn resolve_execution_references(
         &self,
         context: &Arc<TransactionContext>,
+        resolution_type: ResolveBy,
         tokens: &[TestReference],
     ) -> Result<Vec<HolonReference>, HolonError> {
         let mut references = Vec::new();
         for token in tokens {
-            let reference = self.resolve_source_reference(context, token)?;
+            let reference =
+                self.resolve_execution_reference(context, resolution_type.clone(), token)?;
             references.push(reference);
         }
         Ok(references)
+    }
+}
+
+// -- HELPERS -- //
+
+/// Helper type to determine which snapshot to resovle.
+#[derive(Clone)]
+pub enum ResolveBy {
+    Expected,
+    Source,
+}
+
+/// Helper type for desconstructing inner fields of a Snapshot.
+pub struct SnapshotDeconstruction {
+    pub id: TemporaryId,
+    pub state: TestHolonState,
+}
+impl SnapshotDeconstruction {
+    pub fn new(resolution_type: ResolveBy, token: &TestReference) -> Self {
+        match resolution_type {
+            ResolveBy::Source => {
+                let snapshot = token.source_snapshot();
+                let id = snapshot.id();
+                let state = snapshot.state();
+                Self { id, state }
+            }
+            ResolveBy::Expected => {
+                let snapshot = token.expected_snapshot();
+                let id = snapshot.id();
+                let state = snapshot.state();
+                Self { id, state }
+            }
+        }
     }
 }

@@ -40,9 +40,9 @@ use rstest::*;
 use std::sync::Arc;
 
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP,
-    BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY,
-    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_TO_BOOK_REL_INVERSE,
 };
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
@@ -377,10 +377,9 @@ fn build_inverse_with_inline_schema_bundle(
 /// - We export the fixture’s transient pool into the test case session_state state exactly once at the end.
 #[fixture]
 pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
-
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
-            "Loader Incremental Fixture".to_string(),
+            "Loader Incremental Fixture",
             "1) Ensure DB starts with only the Space holon,\n\
          2) Load a HolonLoadSet containing a single empty HolonLoaderBundle and assert the\n\
             loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
@@ -398,12 +397,11 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
          7) Load a multi-bundle HolonLoadSet where two different bundles each contain a\n\
             LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
             the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
-            leaves the DB unchanged, and surfaces per-file provenance via error holons.\n"
-                .to_string(),
+            leaves the DB unchanged, and surfaces per-file provenance via error holons.\n",
         );
 
     // A) Ensure DB starts with only the Space holon.
-    test_case.add_ensure_database_count_step(MapInteger(1))?;
+    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
     // B) Empty bundle → expect UnprocessableEntity and no DB change.
     let empty_bundle = build_empty_bundle(&fixture_context, "Bundle.Empty.1")?;
@@ -421,7 +419,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1), // total_bundles
         MapInteger(0), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1))?;
+    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
     // C) Nodes-only bundle → expect OK, N committed, 0 links created.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
@@ -441,7 +439,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64))?;
+    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
 
     // D) Declared relationship happy path (no type graph).
     let (declared_bundle, node_count, links_created) = build_declared_links_bundle(
@@ -465,7 +463,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64))?;
+    test_case
+        .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64), None)?;
 
     // E) Inverse LRR bundle: Person Authors Book → writes declared AuthoredBy(Book→Person).
     // Use a distinct book key to avoid colliding with the earlier Book instance.
@@ -496,7 +495,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // DB after inverse step:
     // 1 (space) + n_nodes (3) + node_count (2) + inv_nodes (6) = 12
     let post_inverse_db_count = 1 + n_nodes as i64 + node_count as i64 + inv_nodes as i64;
-    test_case.add_ensure_database_count_step(MapInteger(post_inverse_db_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(post_inverse_db_count), None)?;
 
     // F) Multi-bundle happy path:
     //
@@ -545,7 +544,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // Final DB count after multi-bundle happy path:
     // 12 (post-inverse) + 2 (multi-bundle Book + Person) = 14
     let post_multi_db_count = post_inverse_db_count + multi_bundle_nodes_total;
-    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
 
     // G) Multi-bundle duplicate-key failure:
     //
@@ -596,10 +595,10 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // DB must remain unchanged after duplicate-key failure.
-    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count))?;
+    test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
 
-    // Export the fixture’s transient pool into the test case’s session_state state.
-    test_case.load_test_session_state(&fixture_context);
+    // Finalize
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

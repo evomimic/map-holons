@@ -59,6 +59,11 @@ impl RelationshipMap {
         self.map.insert(relationship_name, collection);
     }
 
+    /// Gets the amount of relationships in map
+    pub fn count(&self) -> usize {
+        self.map.len()
+    }
+
     /// Iterates over all relationships in the `RelationshipMap`.
     /// Returns a vector of `(RelationshipName, Arc<RwLock<HolonCollection>>)` pairs for read-only access.
     pub fn iter(&self) -> Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)> {

@@ -401,7 +401,7 @@ impl WriteableHolonState for StagedHolon {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-
+        
         self.staged_relationships.add_related_holons(relationship_name, holons)?;
 
         Ok(self)

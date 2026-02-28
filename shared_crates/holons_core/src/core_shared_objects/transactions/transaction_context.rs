@@ -1,8 +1,11 @@
 //! Transaction-scoped execution context shell for staging and transient pools.
 
-use std::sync::{
-    atomic::{AtomicBool, AtomicU8, Ordering},
-    Arc, RwLock,
+use std::{
+    fmt,
+    sync::{
+        atomic::{AtomicBool, AtomicU8, Ordering},
+        Arc, RwLock,
+    },
 };
 
 use core_types::{HolonError, HolonId, TemporaryId};
@@ -23,7 +26,6 @@ use crate::reference_layer::{
 use crate::{SmartReference, TransientReference};
 
 /// Transaction-scoped execution context holding mutable transaction state.
-#[derive(Debug)]
 pub struct TransactionContext {
     tx_id: TxId,
     lifecycle_state: AtomicU8,
@@ -33,6 +35,15 @@ pub struct TransactionContext {
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
+}
+
+impl fmt::Debug for TransactionContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TransactionContext")
+            .field("tx_id", &self.tx_id)
+            .field("is_open", &self.is_open())
+            .finish()
+    }
 }
 
 impl TransactionContext {

@@ -16,6 +16,7 @@
 
 use std::sync::Arc;
 use tracing::{debug, info};
+use std::collections::BTreeMap;
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::TransientReference;
@@ -29,11 +30,12 @@ use crate::{
         DanceRequest,
     },
     load_holons,
-    query_layer::evaluate_query,
+    query_layer::{evaluate_query, Node, NodeCollection, QueryPathMap},
     reference_layer::{
         holon_operations_api::get_all_holons, holon_operations_api::new_holon,
         writable_holon::WritableHolon, HolonReference, HolonsContextBehavior, SmartReference,
     },
+    ReadableHolon,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};
@@ -213,7 +215,7 @@ pub fn get_holon_by_id_dance(
     let holon_service = context.get_holon_service();
 
     debug!("asking holon_service to get rc_holon");
-    let holon = holon_service.fetch_holon_internal(&holon_id)?;
+    let holon = holon_service.fetch_holon_internal(context, &holon_id)?;
 
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))
@@ -328,6 +330,65 @@ pub fn query_relationships_dance(
                 };
 
             let result_collection = evaluate_query(node_collection, relationship_name)?;
+            Ok(ResponseBody::NodeCollection(result_collection))
+        }
+        _ => Err(HolonError::InvalidParameter(
+            "Invalid DanceType: expected QueryMethod, didn't get one".to_string(),
+        )),
+    }
+}
+
+/// Fetch all relationships for each source node in the supplied query collection.
+///
+/// *DanceRequest:*
+/// - dance_name: "fetch_all_related_holons"
+/// - dance_type: QueryMethod(NodeCollection)
+/// - request_body: None
+///
+/// *ResponseBody:*
+/// - NodeCollection -- same source nodes with `relationships` populated for all relationship names.
+pub fn fetch_all_related_holons_dance(
+    _context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    info!("Entered fetch_all_related_holons_dance");
+
+    match request.dance_type {
+        DanceType::QueryMethod(node_collection) => {
+            if request.body != RequestBody::None {
+                return Err(HolonError::InvalidParameter(
+                    "Invalid RequestBody: expected None".to_string(),
+                ));
+            }
+
+            let mut result_collection = NodeCollection::new_empty();
+            result_collection.query_spec = node_collection.query_spec.clone();
+
+            for node in node_collection.members {
+                let relationship_map = node.source_holon.all_related_holons()?;
+                let mut path_map = QueryPathMap::new(BTreeMap::new());
+
+                for (relationship_name, collection_arc) in relationship_map.iter() {
+                    let collection = collection_arc.read().map_err(|e| {
+                        HolonError::FailedToAcquireLock(format!(
+                            "Failed to acquire read lock on holon collection: {}",
+                            e
+                        ))
+                    })?;
+
+                    let mut related_nodes = NodeCollection::new_empty();
+                    for reference in collection.get_members() {
+                        related_nodes.members.push(Node::new(reference.clone(), None));
+                    }
+
+                    path_map.0.insert(relationship_name, related_nodes);
+                }
+
+                result_collection
+                    .members
+                    .push(Node::new(node.source_holon.clone(), Some(path_map)));
+            }
+
             Ok(ResponseBody::NodeCollection(result_collection))
         }
         _ => Err(HolonError::InvalidParameter(

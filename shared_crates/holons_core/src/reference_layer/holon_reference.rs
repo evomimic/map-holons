@@ -16,6 +16,7 @@ use base_types::{BaseValue, MapString};
 use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
+use std::fmt;
 use std::sync::{Arc, RwLock};
 use type_names::CorePropertyTypeName;
 
@@ -267,6 +268,16 @@ impl From<TransientReference> for HolonReference {
 impl From<&TransientReference> for HolonReference {
     fn from(transient: &TransientReference) -> Self {
         HolonReference::Transient(transient.clone())
+    }
+}
+
+impl fmt::Display for HolonReference {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HolonReference::Transient(reference) => write!(f, "{}", reference),
+            HolonReference::Staged(reference) => write!(f, "{}", reference),
+            HolonReference::Smart(reference) => write!(f, "{}", reference),
+        }
     }
 }
 

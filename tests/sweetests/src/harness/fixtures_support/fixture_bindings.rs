@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 /// and relationships by assigned name.
 /// The set of "labels" constitutes the contract between the helper function and its consumers.
 /// Labels can be any text and don't necessarily have any relationship to a test Holons Key.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FixtureBindings {
     bindings: BTreeMap<MapString, TestReference>, // Label, Token
     relationship_name_map: BTreeMap<MapString, RelationshipName>,
