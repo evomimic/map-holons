@@ -109,8 +109,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         book_staged_token,
         ResponseStatusCode::OK,
         version_count.clone(),
-        Some(ResponseStatusCode::ServerError),
-        Some("Stage New Version --- third version, expecting ServerError for duplicate return of get_staged_holon_by_base_key".to_string())
+        Some(ResponseStatusCode::Conflict),
+        Some("Stage New Version --- third version, expecting Conflict for duplicate return of get_staged_holon_by_base_key".to_string())
     )?;
     version_count.0 += 1;
 

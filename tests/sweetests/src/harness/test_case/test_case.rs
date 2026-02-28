@@ -14,7 +14,17 @@ use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use std::sync::Arc;
 
-use super::adders::DancesTestCase;
+use super::test_steps::DanceTestStep;
+
+/// Public test case type that collects steps to be executed later.
+#[derive(Default, Clone, Debug)]
+pub struct DancesTestCase {
+    pub name: String,
+    pub description: String,
+    pub steps: Vec<DanceTestStep>,
+    pub test_session_state: TestSessionState,
+    pub(crate) is_finalized: bool,
+}
 
 /// TestCaseInit provides a structured, atomic initialization context for constructing a TestCase together with all required harness-managed fixture-time state.
 /// It answers the question: “What must exist, together, in order to author a valid TestCase?”

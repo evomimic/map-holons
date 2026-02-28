@@ -117,8 +117,23 @@ pub async fn execute_stage_new_version(
                 info!("Success! New version Holon matched expected content and relationships.");
             }
         }
-        Err(_e) => {
-            if let Some(_code) = &expected_duplicate_error {
+        Err(e) => {
+            if let Some(expected_code) = &expected_duplicate_error {
+                let actual_code = ResponseStatusCode::from(e.clone());
+                assert_eq!(
+                    actual_code, *expected_code,
+                    "Unexpected error status from get_staged_holon_by_base_key: {:?}",
+                    e
+                );
+
+                if *expected_code == ResponseStatusCode::Conflict {
+                    assert!(
+                        matches!(e, HolonError::DuplicateError(_, _)),
+                        "Expected DuplicateError from get_staged_holon_by_base_key, got {:?}",
+                        e
+                    );
+                }
+
                 debug!(
                     "Confirmed get_staged_holon_by_base_key returned a duplicate error {:?}",
                     expected_duplicate_error

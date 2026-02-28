@@ -110,6 +110,10 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // The heavy lifting for this test is in the test data set creation.
 
     let mut test_case: DancesTestCase = input.unwrap();
+    assert!(
+        test_case.is_finalized(),
+        "DancesTestCase must be finalized before execution. Call test_case.finalize(&fixture_context) in the fixture."
+    );
     // Initialize test context and execution state
     let test_context = init_test_context(&mut test_case).await;
     let mut test_execution_state = TestExecutionState::new(test_context);

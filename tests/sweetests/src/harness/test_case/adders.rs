@@ -51,15 +51,7 @@ use integrity_core_types::PropertyMap;
 use std::sync::Arc;
 use type_names::{CoreRelationshipTypeName::Predecessor, ToRelationshipName};
 
-/// Public test case type that collects steps to be executed later.
-#[derive(Default, Clone, Debug)]
-pub struct DancesTestCase {
-    pub name: String,
-    pub description: String,
-    pub steps: Vec<DanceTestStep>,
-    pub test_session_state: TestSessionState,
-    is_finalized: bool,
-}
+use super::test_case::DancesTestCase;
 
 /// - The source *token* is a TestReference that is *embedded as input* for the step. Executors will look it up at runtime
 ///   (Saved ≙ Staged(Committed(LocalId)) enforced at lookup time).
@@ -73,6 +65,11 @@ impl DancesTestCase {
             test_session_state: TestSessionState::default(),
             is_finalized: false,
         }
+    }
+
+    /// Returns whether this test case has been finalized for execution.
+    pub fn is_finalized(&self) -> bool {
+        self.is_finalized
     }
 
     /// Helper guard to prevent adding steps to a finalized TestCase.
