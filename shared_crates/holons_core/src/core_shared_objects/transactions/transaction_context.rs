@@ -3,10 +3,11 @@
 use std::{
     fmt,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
         Arc, RwLock,
     },
 };
+
 
 use core_types::{HolonError, HolonId, TemporaryId};
 
