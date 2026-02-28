@@ -50,6 +50,8 @@ pub enum HolonError {
     InvalidState(String),
     #[error("Invalid Transition, {0}")]
     InvalidTransition(String),
+    #[error("Invalid transaction lifecycle transition for tx {tx_id}: {from_state} -> {to_state}")]
+    InvalidTransactionTransition { tx_id: u64, from_state: String, to_state: String },
     #[error("Invalid Type, {0}")]
     InvalidType(String),
     /// Used to indicate that one of the supplied parameters is not resolvable or not appropriate for this function.
@@ -79,6 +81,12 @@ pub enum HolonError {
     ReferenceResolutionFailed { reference_kind: String, reference_id: String, reason: String },
     #[error("Service '{0}' is not available")]
     ServiceNotAvailable(String),
+    #[error("Transaction {tx_id} is already committed")]
+    TransactionAlreadyCommitted { tx_id: u64 },
+    #[error("Transaction {tx_id} is currently committing and cannot accept external mutations")]
+    TransactionCommitInProgress { tx_id: u64 },
+    #[error("Transaction {tx_id} is not open (current state: {state})")]
+    TransactionNotOpen { tx_id: u64, state: String },
     #[error("to {0}")]
     UnableToAddHolons(String),
     #[error("Unable to cast {0} into expected ValueType: {1}")]

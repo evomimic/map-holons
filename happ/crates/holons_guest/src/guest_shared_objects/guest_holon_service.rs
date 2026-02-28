@@ -20,7 +20,7 @@ use super::{fetch_links_to_all_holons, get_all_relationship_links};
 use crate::guest_shared_objects::{commit_functions, get_relationship_links};
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
 use crate::{create_local_path, get_holon_by_path, try_from_record};
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
@@ -35,6 +35,7 @@ use holons_core::{
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
+use type_names::CorePropertyTypeName::CommitRequestStatus;
 
 pub struct GuestHolonService {
     /// Holds the internal nursery access after registration
@@ -210,8 +211,22 @@ impl HolonServiceApi for GuestHolonService {
         // Step 2: Commit the staged holons
         let commit_response = commit_functions::commit(context, &staged_references)?;
 
-        // Step 3: Borrow mutably to clear the stage
-        let _ = internal_nursery.write().unwrap().clear_stage(); // Safe, no borrow conflict
+        // Step 3: Clear the stage only when commit status is explicitly Complete.
+        let commit_status = commit_response.property_value(CommitRequestStatus)?;
+        let is_complete = matches!(
+            commit_status,
+            Some(BaseValue::StringValue(ref value)) if value.0 == "Complete"
+        );
+
+        if is_complete {
+            let nursery_write = internal_nursery.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on internal NurseryAccess: {}",
+                    e
+                ))
+            })?;
+            nursery_write.clear_stage()?;
+        }
 
         // Step 4: Return the commit response
         Ok(commit_response)

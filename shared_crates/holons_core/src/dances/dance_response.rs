@@ -186,7 +186,11 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::DuplicateError(_, _) => ResponseStatusCode::Conflict,
             HolonError::InvalidState(_) => ResponseStatusCode::Conflict,
             HolonError::InvalidTransition(_) => ResponseStatusCode::ServerError,
+            HolonError::InvalidTransactionTransition { .. } => ResponseStatusCode::Conflict,
             HolonError::NotAccessible(_, _) => ResponseStatusCode::Conflict,
+            HolonError::TransactionAlreadyCommitted { .. } => ResponseStatusCode::Conflict,
+            HolonError::TransactionCommitInProgress { .. } => ResponseStatusCode::Conflict,
+            HolonError::TransactionNotOpen { .. } => ResponseStatusCode::Conflict,
 
             // 400-ish (client supplied invalid input / malformed request)
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,
