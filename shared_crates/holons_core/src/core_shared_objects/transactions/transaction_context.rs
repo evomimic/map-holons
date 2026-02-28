@@ -41,7 +41,7 @@ impl fmt::Debug for TransactionContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TransactionContext")
             .field("tx_id", &self.tx_id)
-            .field("is_open", &self.is_open.load(Ordering::Relaxed))
+            .field("is_open", &self.is_open())
             .finish()
     }
 }
