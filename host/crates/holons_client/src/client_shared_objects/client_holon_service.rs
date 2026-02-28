@@ -49,7 +49,7 @@ use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
@@ -126,12 +126,74 @@ impl HolonServiceApi for ClientHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        _context: &Arc<TransactionContext>,
-        _source_id: &HolonId,
+        context: &Arc<TransactionContext>,
+        source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        Err(HolonError::NotImplemented(
-            "ClientHolonService::fetch_all_related_holons_internal requires a dedicated dance that is not implemented yet".to_string(),
-        ))
+        let context_handle = TransactionContextHandle::new(Arc::clone(context));
+        let source_reference =
+            HolonReference::Smart(SmartReference::new_from_id(context_handle, source_id.clone()));
+        let node_collection = NodeCollection {
+            members: vec![Node::new(source_reference, None)],
+            query_spec: None,
+        };
+
+        let request =
+            holon_dance_builders::build_fetch_all_related_holons_dance_request(node_collection)?;
+        let initiator = context.get_dance_initiator()?;
+        let response = run_future_synchronously(async move {
+            initiator.initiate_dance(context, request).await
+        });
+
+        if response.status_code != ResponseStatusCode::OK {
+            return Err(HolonError::Misc(format!(
+                "FetchAllRelatedHolons dance failed: {:?} — {}",
+                response.status_code, response.description.0
+            )));
+        }
+
+        match response.body {
+            ResponseBody::NodeCollection(node_collection) => {
+                let mut result = RelationshipMap::new_empty();
+
+                for node in node_collection.members {
+                    if let Some(relationships) = node.relationships {
+                        for (relationship_name, related_nodes) in relationships.0 {
+                            let references = related_nodes
+                                .members
+                                .iter()
+                                .map(|related| related.source_holon.clone())
+                                .collect::<Vec<_>>();
+
+                            if let Some(existing_collection_arc) =
+                                result.get_collection_for_relationship(&relationship_name)
+                            {
+                                let mut existing_collection =
+                                    existing_collection_arc.write().map_err(|e| {
+                                        HolonError::FailedToAcquireLock(format!(
+                                            "Failed to acquire write lock on relationship collection: {}",
+                                            e
+                                        ))
+                                    })?;
+                                existing_collection.add_references(references)?;
+                            } else {
+                                let mut collection = HolonCollection::new_existing();
+                                collection.add_references(references)?;
+                                result.insert(
+                                    relationship_name,
+                                    Arc::new(RwLock::new(collection)),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                Ok(result)
+            }
+            other => Err(HolonError::InvalidParameter(format!(
+                "FetchAllRelatedHolons: expected ResponseBody::NodeCollection, got {:?}",
+                other
+            ))),
+        }
     }
 
     fn fetch_holon_internal(

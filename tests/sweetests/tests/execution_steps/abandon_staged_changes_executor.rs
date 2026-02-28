@@ -16,8 +16,7 @@ use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestR
 pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 

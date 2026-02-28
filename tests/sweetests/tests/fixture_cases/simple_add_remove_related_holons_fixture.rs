@@ -1,9 +1,6 @@
 use crate::fixture_cases::setup_book_author_steps_with_context;
-use holons_core::{core_shared_objects::WritableRelationship, CollectionState};
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::{
-    BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHED_BY, PUBLISHER_KEY,
-};
+use holons_test::harness::helpers::PUBLISHED_BY;
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;

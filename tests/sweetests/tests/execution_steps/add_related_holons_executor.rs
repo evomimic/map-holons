@@ -16,8 +16,7 @@ pub async fn execute_add_related_holons(
     step_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
 
     let context = state.context();

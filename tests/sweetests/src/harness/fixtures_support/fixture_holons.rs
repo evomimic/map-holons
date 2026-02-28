@@ -35,8 +35,6 @@ impl FixtureHolonId {
 ///  Mutable and internal to the harness.
 #[derive(new, Clone, Debug)]
 pub struct FixtureHolon {
-    // Stable (immutable) fixture-time identity
-    id: FixtureHolonId,
     /// Authoritative snapshot representing the fixture’s current expectation
     /// after the most recent step. Used for chaining and validation.
     head_snapshot: ExpectedSnapshot,
@@ -109,7 +107,7 @@ impl FixtureHolons {
         let snapshot_id = snapshot.id();
         // Create and insert FixtureHolon
         let fixture_holon_id = FixtureHolonId::new_from_id(snapshot_id.clone()); // unique id constructor
-        let holon = FixtureHolon::new(fixture_holon_id.clone(), snapshot.clone(), snapshot); // last live is the same for first creations
+        let holon = FixtureHolon::new(snapshot.clone(), snapshot); // last live is the same for first creations
         if self.holons.contains_key(&fixture_holon_id) {
             return Err(HolonError::Misc("Something went wrong in logic.. duplicate ids for fixture holons should never happen".to_string()));
         }

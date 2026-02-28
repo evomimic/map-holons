@@ -6,7 +6,6 @@ use holons_test::{
 };
 use pretty_assertions::assert_eq;
 use rstest::*;
-use std::collections::BTreeMap;
 use type_names::{CoreRelationshipTypeName::DescribedBy, ToRelationshipName};
 
 /// Execution steps are not needed in this fixture due to the direct calls on WriteableHolon functions.

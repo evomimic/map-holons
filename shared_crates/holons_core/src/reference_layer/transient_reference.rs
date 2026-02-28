@@ -151,7 +151,7 @@ impl TransientReference {
 
 impl fmt::Display for TransientReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TransientReference(id: {:?})", self.id)
+        write!(f, "TransientReference({})", self.reference_id_string())
     }
 }
 

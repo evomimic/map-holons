@@ -11,8 +11,7 @@ use tracing::{debug, info};
 pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 

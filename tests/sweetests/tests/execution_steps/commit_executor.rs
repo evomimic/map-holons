@@ -10,8 +10,7 @@ use holons_prelude::prelude::*;
 pub async fn execute_commit(
     state: &mut TestExecutionState,
     expected_tokens: Vec<TestReference>, // list of expected tokens to resolve
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 

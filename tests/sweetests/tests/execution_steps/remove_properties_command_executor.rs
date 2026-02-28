@@ -15,8 +15,7 @@ pub async fn execute_remove_properties(
     state: &mut TestExecutionState,
     step_token: TestReference,
     properties: PropertyMap,
-    expected_response: ResponseStatusCode,
-    description: String,
+    expected_response: ResponseStatusCode
 ) {
     let context = state.context();
 

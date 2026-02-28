@@ -10,8 +10,7 @@ pub async fn execute_new_holon(
     step_token: TestReference,
     properties: PropertyMap,
     key: Option<MapString>,
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 

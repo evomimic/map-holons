@@ -111,7 +111,10 @@ impl core::fmt::Display for DanceTestStep {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             DanceTestStep::AbandonStagedChanges { step_token, expected_status, description } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
+                )
             }
             DanceTestStep::AddRelatedHolons {
                 step_token,
@@ -120,16 +123,27 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_status: {expected_status:?}]",
+                    holons_to_add.len()
+                )
             }
             DanceTestStep::Commit { saved_tokens, expected_status, description } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [saved_tokens: {}, expected_status: {expected_status:?}]",
+                    saved_tokens.len()
+                )
             }
             DanceTestStep::DeleteHolon { step_token, expected_status, description } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
+                )
             }
             DanceTestStep::EnsureDatabaseCount { expected_count, description } => {
-                write!(f, "{description}")
+                write!(f, "{description} [expected_count: {}]", expected_count.0)
             }
             DanceTestStep::LoadHolons {
                 set: _,
@@ -171,23 +185,31 @@ impl core::fmt::Display for DanceTestStep {
             }
             DanceTestStep::NewHolon {
                 step_token,
-                properties: _properties,
+                properties,
                 key,
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, properties: {}, key: {:?}, expected_status: {expected_status:?}]",
+                    properties.len(),
+                    key
+                )
             }
             DanceTestStep::PrintDatabase => {
                 write!(f, "PrintDatabase")
             }
             DanceTestStep::QueryRelationships {
                 step_token,
-                query_expression,
+                query_expression: _query_expression,
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
+                )
             }
             DanceTestStep::RemoveProperties {
                 step_token,
@@ -195,7 +217,11 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, properties: {}, expected_status: {expected_status:?}]",
+                    properties.len()
+                )
             }
             DanceTestStep::RemoveRelatedHolons {
                 step_token,
@@ -204,19 +230,31 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_status: {expected_status:?}]",
+                    holons_to_remove.len()
+                )
             }
             DanceTestStep::StageHolon { step_token, expected_status, description } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
+                )
             }
             DanceTestStep::StageNewVersion {
                 step_token,
                 expected_status,
-                version_count: _version_count,
+                version_count,
                 expected_failure_code,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, version_count: {}, expected_status: {expected_status:?}, expected_failure: {:?}]",
+                    version_count.0,
+                    expected_failure_code
+                )
             }
             DanceTestStep::StageNewFromClone {
                 step_token,
@@ -224,7 +262,10 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, new_key: {new_key}, expected_status: {expected_status:?}]"
+                )
             }
             DanceTestStep::WithProperties {
                 step_token,
@@ -232,7 +273,11 @@ impl core::fmt::Display for DanceTestStep {
                 expected_status,
                 description,
             } => {
-                write!(f, "{description}")
+                write!(
+                    f,
+                    "{description} [token: {step_token}, properties: {}, expected_status: {expected_status:?}]",
+                    properties.len()
+                )
             }
         }
     }

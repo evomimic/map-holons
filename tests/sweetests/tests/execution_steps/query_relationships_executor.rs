@@ -1,6 +1,6 @@
 use holons_test::{ResolveBy, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
-use tracing::{debug, info};
+use tracing::debug;
 
 use holons_prelude::prelude::*;
 
@@ -11,8 +11,7 @@ pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
     step_token: TestReference,
     query_expression: QueryExpression,
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 

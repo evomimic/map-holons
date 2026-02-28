@@ -15,8 +15,7 @@ pub async fn execute_stage_new_version(
     step_token: TestReference,
     expected_response: ResponseStatusCode,
     version_count: MapInteger,
-    expected_duplicate_error: Option<ResponseStatusCode>,
-    description: String,
+    expected_duplicate_error: Option<ResponseStatusCode>
 ) {
     let context = state.context();
 

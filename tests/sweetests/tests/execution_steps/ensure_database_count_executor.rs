@@ -10,8 +10,7 @@ use holons_prelude::prelude::*;
 
 pub async fn execute_ensure_database_count(
     state: &mut TestExecutionState,
-    expected_count: MapInteger,
-    description: String,
+    expected_count: MapInteger
 ) {
     let context = state.context();
 

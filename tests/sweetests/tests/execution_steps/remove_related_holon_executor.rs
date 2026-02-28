@@ -26,8 +26,7 @@ pub async fn execute_remove_related_holons(
     step_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
-    expected_response: ResponseStatusCode,
-    description: String,
+    expected_response: ResponseStatusCode
 ) {
     let context = state.context();
 

@@ -17,8 +17,7 @@ pub async fn execute_stage_new_from_clone(
     state: &mut TestExecutionState,
     step_token: TestReference,
     new_key: MapString,
-    expected_status: ResponseStatusCode,
-    description: String,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 

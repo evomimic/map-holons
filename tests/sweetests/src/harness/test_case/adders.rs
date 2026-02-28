@@ -506,7 +506,7 @@ impl DancesTestCase {
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
         new_snapshot.add_related_holons(
             &Predecessor.to_relationship_name(),
-            vec![step_token.source_reference().into()],
+            vec![step_token.expected_reference().into()],
         )?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_status == ResponseStatusCode::OK {

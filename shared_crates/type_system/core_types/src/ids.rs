@@ -45,7 +45,9 @@ pub struct TemporaryId(pub Uuid);
 
 impl fmt::Display for TemporaryId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
+        let id = self.0.hyphenated().to_string();
+        let short = id.get(..8).unwrap_or(&id);
+        write!(f, "{short}")
     }
 }
 

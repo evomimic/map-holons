@@ -160,7 +160,7 @@ impl StagedReference {
 
 impl fmt::Display for StagedReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "StagedReference(id: {:?})", self.id)
+        write!(f, "StagedReference({})", self.reference_id_string())
     }
 }
 
