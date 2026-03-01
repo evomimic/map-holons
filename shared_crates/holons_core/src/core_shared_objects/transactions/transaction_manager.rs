@@ -33,12 +33,28 @@ impl TransactionManager {
         }
     }
 
-    /// Creates and registers the implicit default transaction for this space.
-    pub fn open_default_transaction(
+    /// Creates and registers a new transaction for this space.
+    pub fn open_new_transaction(
         &self,
         space_manager: Arc<HolonSpaceManager>,
     ) -> Result<Arc<TransactionContext>, HolonError> {
-        self.open_transaction(space_manager)
+        // Allocate a new transaction id.
+        let tx_id = self.id_generator.next_id();
+
+        // Build the transaction context with a STRONG space reference.
+        let context = TransactionContext::new(tx_id, space_manager);
+
+        // Register the transaction (weak only) while holding the lock briefly.
+        let mut guard = self.transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, Arc::downgrade(&context));
+        drop(guard);
+
+        Ok(context)
     }
 
     /// Creates and registers a transaction with a specific id.
@@ -123,29 +139,6 @@ impl TransactionManager {
         }
 
         Ok(upgraded)
-    }
-
-    fn open_transaction(
-        &self,
-        space_manager: Arc<HolonSpaceManager>,
-    ) -> Result<Arc<TransactionContext>, HolonError> {
-        // Allocate a new transaction id.
-        let tx_id = self.id_generator.next_id();
-
-        // Build the transaction context with a STRONG space reference.
-        let context = TransactionContext::new(tx_id, space_manager);
-
-        // Register the transaction (weak only) while holding the lock briefly.
-        let mut guard = self.transactions.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire write lock on transactions: {}",
-                e
-            ))
-        })?;
-        guard.insert(tx_id, Arc::downgrade(&context));
-        drop(guard);
-
-        Ok(context)
     }
 }
 
@@ -250,7 +243,7 @@ mod tests {
 
         // Step 2: Open the default transaction.
         let transaction = tm
-            .open_default_transaction(Arc::clone(&space_manager))
+            .open_new_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open");
 
         // Step 3: Look up the transaction by id.
@@ -272,8 +265,9 @@ mod tests {
 
         let mut ids = Vec::new();
         for _ in 0..5 {
-            let transaction =
-                tm.open_transaction(Arc::clone(&space_manager)).expect("transaction should open");
+            let transaction = tm
+                .open_new_transaction(Arc::clone(&space_manager))
+                .expect("transaction should open");
             ids.push(transaction.tx_id());
         }
 
@@ -295,7 +289,7 @@ mod tests {
         let space_manager = build_space_manager();
         let tm = space_manager.get_transaction_manager();
         let transaction = tm
-            .open_default_transaction(Arc::clone(&space_manager))
+            .open_new_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open");
 
         // Step 2: Export staged holons from the transaction nursery.
@@ -322,7 +316,7 @@ mod tests {
 
         let tx_id = {
             let transaction = tm
-                .open_default_transaction(Arc::clone(&space_manager))
+                .open_new_transaction(Arc::clone(&space_manager))
                 .expect("default transaction should open");
             transaction.tx_id()
         }; // transaction Arc dropped here (no other strong owners in this test)
@@ -339,7 +333,7 @@ mod tests {
         let tm = space_manager.get_transaction_manager();
 
         let transaction = tm
-            .open_default_transaction(Arc::clone(&space_manager))
+            .open_new_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open");
 
         // Step 2: Drop the original Arc; TC should still keep the space alive.
