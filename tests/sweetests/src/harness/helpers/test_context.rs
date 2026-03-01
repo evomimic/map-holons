@@ -37,7 +37,7 @@ pub fn init_fixture_context() -> Arc<TransactionContext> {
     // Step 4: Open the default transaction for this space.
     let transaction_context = space_manager
         .get_transaction_manager()
-        .open_default_transaction(Arc::clone(&space_manager))
+        .open_new_transaction(Arc::clone(&space_manager))
         .expect("failed to open default fixture transaction");
 
     transaction_context
@@ -71,7 +71,7 @@ pub async fn init_test_context(test_case: &mut DancesTestCase) -> Arc<Transactio
     // Step 4: Open the default transaction for this space.
     let transaction_context = space_manager
         .get_transaction_manager()
-        .open_default_transaction(Arc::clone(&space_manager))
+        .open_new_transaction(Arc::clone(&space_manager))
         .expect("failed to open default test transaction");
 
     // Step 5: Load transient holons from the test session_state state.
