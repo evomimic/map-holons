@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use core_types::{HolonError, HolonId, TemporaryId};
+use core_types::{HolonError, HolonId};
 
 use super::{
     HostCommitExecutionGuard, LookupFacade, MutationFacade, TransactionContextHandle,
@@ -19,7 +19,6 @@ use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
 use crate::core_shared_objects::{
     HolonCacheAccess, HolonPool, Nursery, TransientCollection, TransientHolonManager,
-    TransientManagerAccess,
 };
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::{
@@ -368,11 +367,6 @@ impl TransactionContext {
         Arc::clone(&self.nursery)
     }
 
-    /// Provides access to the transaction-owned transient manager.
-    pub(crate) fn transient_manager(&self) -> Arc<TransientHolonManager> {
-        Arc::clone(&self.transient_manager)
-    }
-
     // Public accessors for staging/transient behaviors (transaction-scoped).
     pub(crate) fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
         Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
@@ -419,18 +413,4 @@ impl TransactionContext {
         self.transient_manager.import_transient_holons(transient_holons)
     }
 
-    // ---------------------------------------------------------------------
-    // Reference Helpers
-    // ---------------------------------------------------------------------
-
-    /// This function converts a TemporaryId into a validated TransientReference.
-    /// Returns HolonError::HolonNotFound if id is not present in the holon pool.
-    pub(crate) fn transient_reference_for_id(
-        self: &Arc<Self>,
-        id: &TemporaryId,
-    ) -> Result<TransientReference, HolonError> {
-        // Validate id exists in this tx’s transient pool
-        self.transient_manager().get_holon_by_id(id)?;
-        Ok(TransientReference::from_temporary_id(self.handle(), id))
-    }
 }

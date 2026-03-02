@@ -1,10 +1,8 @@
 use crate::shared_types::holon_space::HolonSpace;
-use base_types::MapString;
 use core_types::{ContentSet, HolonError, HolonId, PropertyMap, RelationshipName};
 use holons_boundary::{
     DanceTypeWire, HolonReferenceWire, HolonWire, StagedReferenceWire, TransientReferenceWire,
 };
-use holons_core::core_shared_objects::TransientManagerAccess;
 use holons_core::{
     core_shared_objects::{transactions::TransactionContext, Holon},
     dances::DanceType,
