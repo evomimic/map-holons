@@ -1,10 +1,8 @@
 use crate::shared_types::holon_space::HolonSpace;
-use base_types::MapString;
 use core_types::{ContentSet, HolonError, HolonId, PropertyMap, RelationshipName};
 use holons_boundary::{
     DanceTypeWire, HolonReferenceWire, HolonWire, StagedReferenceWire, TransientReferenceWire,
 };
-use holons_core::core_shared_objects::TransientManagerAccess;
 use holons_core::{
     core_shared_objects::{transactions::TransactionContext, Holon},
     dances::DanceType,
@@ -103,22 +101,6 @@ impl MapRequest {
         let name = "get_all_holons".to_string();
         let req_type = DanceType::Standalone;
         let body = MapRequestBody::TransientReference(reference);
-        let space = HolonSpace::default();
-        Self { name, req_type, body, space }
-    }
-    pub fn test_for_stage_new_holon() -> Self {
-        let name = "stage_new_holon".to_string();
-        let req_type = DanceType::Standalone;
-        let context = crate::init_client_context(None);
-        let transient_ref = context
-            .get_transient_behavior_service()
-            .create_empty(MapString("my_key".to_string()))
-            .unwrap();
-        let locked_holon =
-            context.transient_manager().get_holon_by_id(&transient_ref.temporary_id()).unwrap();
-        let actual_holon = locked_holon.read().unwrap().clone();
-        let body = MapRequestBody::new_holon(actual_holon);
-        //holon.with_property_value(property_name, value)?;
         let space = HolonSpace::default();
         Self { name, req_type, body, space }
     }

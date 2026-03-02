@@ -33,12 +33,28 @@ impl TransactionManager {
         }
     }
 
-    /// Creates and registers the implicit default transaction for this space.
-    pub fn open_default_transaction(
+    /// Creates and registers a new transaction for this space.
+    pub fn open_new_transaction(
         &self,
         space_manager: Arc<HolonSpaceManager>,
     ) -> Result<Arc<TransactionContext>, HolonError> {
-        self.open_transaction(space_manager)
+        // Allocate a new transaction id.
+        let tx_id = self.id_generator.next_id();
+
+        // Build the transaction context with a STRONG space reference.
+        let context = TransactionContext::new(tx_id, space_manager);
+
+        // Register the transaction (weak only) while holding the lock briefly.
+        let mut guard = self.transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, Arc::downgrade(&context));
+        drop(guard);
+
+        Ok(context)
     }
 
     /// Creates and registers a transaction with a specific id.
@@ -124,29 +140,6 @@ impl TransactionManager {
 
         Ok(upgraded)
     }
-
-    fn open_transaction(
-        &self,
-        space_manager: Arc<HolonSpaceManager>,
-    ) -> Result<Arc<TransactionContext>, HolonError> {
-        // Allocate a new transaction id.
-        let tx_id = self.id_generator.next_id();
-
-        // Build the transaction context with a STRONG space reference.
-        let context = TransactionContext::new(tx_id, space_manager);
-
-        // Register the transaction (weak only) while holding the lock briefly.
-        let mut guard = self.transactions.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire write lock on transactions: {}",
-                e
-            ))
-        })?;
-        guard.insert(tx_id, Arc::downgrade(&context));
-        drop(guard);
-
-        Ok(context)
-    }
 }
 
 impl Default for TransactionManager {
@@ -161,15 +154,17 @@ mod tests {
     use crate::core_shared_objects::{
         Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
     };
-    use crate::reference_layer::{HolonServiceApi, HolonsContextBehavior, TransientReference};
+    use crate::reference_layer::{HolonServiceApi, TransientReference};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
     use std::any::Any;
     use std::collections::HashSet;
 
     #[derive(Debug)]
+    // Fail-fast test double: holon-service methods are intentionally out of scope
+    // for transaction-manager tests and should never be invoked here.
     struct TestHolonService;
 
-    fn not_implemented<T>() -> Result<T, HolonError> {
+    fn unreachable_in_transaction_manager_tests<T>() -> Result<T, HolonError> {
         Err(HolonError::NotImplemented("TestHolonService".to_string()))
     }
 
@@ -182,7 +177,7 @@ mod tests {
             &self,
             _context: &Arc<TransactionContext>,
         ) -> Result<TransientReference, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn delete_holon_internal(
@@ -190,7 +185,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _local_id: &LocalId,
         ) -> Result<(), HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn fetch_all_related_holons_internal(
@@ -198,7 +193,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _source_id: &HolonId,
         ) -> Result<RelationshipMap, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn fetch_holon_internal(
@@ -206,7 +201,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _id: &HolonId,
         ) -> Result<Holon, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn fetch_related_holons_internal(
@@ -215,14 +210,14 @@ mod tests {
             _source_id: &HolonId,
             _relationship_name: &RelationshipName,
         ) -> Result<HolonCollection, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn get_all_holons_internal(
             &self,
-            context: &Arc<TransactionContext>,
+            _context: &Arc<TransactionContext>,
         ) -> Result<HolonCollection, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn load_holons_internal(
@@ -230,7 +225,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _bundle: TransientReference,
         ) -> Result<TransientReference, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
     }
 
@@ -254,7 +249,7 @@ mod tests {
 
         // Step 2: Open the default transaction.
         let transaction = tm
-            .open_default_transaction(Arc::clone(&space_manager))
+            .open_new_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open");
 
         // Step 3: Look up the transaction by id.
@@ -276,8 +271,9 @@ mod tests {
 
         let mut ids = Vec::new();
         for _ in 0..5 {
-            let transaction =
-                tm.open_transaction(Arc::clone(&space_manager)).expect("transaction should open");
+            let transaction = tm
+                .open_new_transaction(Arc::clone(&space_manager))
+                .expect("transaction should open");
             ids.push(transaction.tx_id());
         }
 
@@ -293,30 +289,30 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn transaction_context_owns_pools() {
-    //     // Step 1: Open a default transaction.
-    //     let space_manager = build_space_manager();
-    //     let tm = space_manager.get_transaction_manager();
-    //     let transaction = tm
-    //         .open_default_transaction(Arc::clone(&space_manager))
-    //         .expect("default transaction should open");
-    //
-    //     // Step 2: Export staged holons from the transaction nursery.
-    //     let staged = transaction
-    //         .nursery()
-    //         .export_staged_holons()
-    //         .expect("staged export should succeed");
-    //
-    //     // Step 3: Export transient holons from the transaction manager.
-    //     let transient = transaction
-    //         .transient_manager()
-    //         .export_transient_holons()
-    //         .expect("transient export should succeed");
-    //
-    //     assert_eq!(staged, SerializableHolonPool::default());
-    //     assert_eq!(transient, SerializableHolonPool::default());
-    // }
+    #[test]
+    fn transaction_context_owns_pools() {
+        // Step 1: Open a default transaction.
+        let space_manager = build_space_manager();
+        let tm = space_manager.get_transaction_manager();
+        let transaction = tm
+            .open_new_transaction(Arc::clone(&space_manager))
+            .expect("default transaction should open");
+
+        // Step 2: Export staged holons from the transaction nursery.
+        let staged = transaction.export_staged_holons().expect("staged export should succeed");
+
+        // Step 3: Export transient holons from the transaction manager.
+        let transient =
+            transaction.export_transient_holons().expect("transient export should succeed");
+
+        assert_eq!(staged.len(), 0);
+        assert!(staged.holons_by_id().is_empty());
+        assert!(staged.keyed_index().is_empty());
+
+        assert_eq!(transient.len(), 0);
+        assert!(transient.holons_by_id().is_empty());
+        assert!(transient.keyed_index().is_empty());
+    }
 
     #[test]
     fn transaction_manager_lookup_returns_none_after_last_arc_dropped() {
@@ -326,7 +322,7 @@ mod tests {
 
         let tx_id = {
             let transaction = tm
-                .open_default_transaction(Arc::clone(&space_manager))
+                .open_new_transaction(Arc::clone(&space_manager))
                 .expect("default transaction should open");
             transaction.tx_id()
         }; // transaction Arc dropped here (no other strong owners in this test)
@@ -343,7 +339,7 @@ mod tests {
         let tm = space_manager.get_transaction_manager();
 
         let transaction = tm
-            .open_default_transaction(Arc::clone(&space_manager))
+            .open_new_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open");
 
         // Step 2: Drop the original Arc; TC should still keep the space alive.

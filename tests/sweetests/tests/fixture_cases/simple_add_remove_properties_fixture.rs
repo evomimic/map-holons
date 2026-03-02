@@ -39,7 +39,8 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
 
     // EXAMPLE (Transient) //
     let example_key = MapString("EXAMPLE_KEY".to_string());
-    let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
+    let example_transient_reference =
+        fixture_context.mutation().new_holon(Some(example_key.clone()))?;
     // Mint
     let mut example_properties = PropertyMap::new();
     let example_transient_token = test_case.add_new_holon_step(

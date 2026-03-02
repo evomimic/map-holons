@@ -32,8 +32,6 @@ pub async fn execute_stage_new_version(
     // 3. CALL - the dance
     let dance_initiator = context.get_dance_initiator().unwrap();
     let response = dance_initiator.initiate_dance(&context, request).await;
-    // let dance_initiator = context.get_dance_initiator().unwrap();
-    // let response = dance_initiator.initiate_dance(Arc::clone(&context), request).await;
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -78,7 +76,7 @@ pub async fn execute_stage_new_version(
 
     // 8. Verify base-key staging behavior
     let original_holon_key = source_reference.key().unwrap().unwrap();
-    let by_base = get_staged_holon_by_base_key(&context, &original_holon_key);
+    let by_base = context.lookup().get_staged_holon_by_base_key(&original_holon_key);
 
     match by_base {
         Ok(staged_reference) => {
@@ -100,12 +98,11 @@ pub async fn execute_stage_new_version(
                     "get_staged_holon_by_base_key did not match expected"
                 );
 
-                // 9. Verify versioned-key lookup
-                let by_version = get_staged_holon_by_versioned_key(
-                    &context,
-                    &staged_reference.versioned_key().unwrap(),
-                )
-                .unwrap();
+    // 9. Verify versioned-key lookup
+                let by_version = context
+                    .lookup()
+                    .get_staged_holon_by_versioned_key(&staged_reference.versioned_key().unwrap())
+                    .unwrap();
 
                 assert_eq!(
                     holon_reference,
@@ -138,8 +135,10 @@ pub async fn execute_stage_new_version(
                     expected_duplicate_error
                 );
                 // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
-                let staged_references =
-                    get_staged_holons_by_base_key(&context, &original_holon_key).unwrap();
+                let staged_references = context
+                    .lookup()
+                    .get_staged_holons_by_base_key(&original_holon_key)
+                    .unwrap();
                 let length = staged_references.len();
 
                 if length != version_count.0 as usize {
