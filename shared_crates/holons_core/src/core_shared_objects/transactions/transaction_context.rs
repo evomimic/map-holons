@@ -68,7 +68,7 @@ impl TransactionContext {
     // ---------------------------------------------------------------------
 
     /// Creates a handle to this transaction context for holon references.
-    pub fn handle(self: &Arc<Self>) -> TransactionContextHandle {
+    pub fn context_handle(self: &Arc<Self>) -> TransactionContextHandle {
         TransactionContextHandle::new(Arc::clone(self))
     }
 
@@ -338,7 +338,7 @@ impl TransactionContext {
             return Ok(None);
         };
 
-        let handle = self.handle();
+        let handle = self.context_handle();
 
         Ok(Some(HolonReference::Smart(SmartReference::new_from_id(handle, holon_id))))
     }

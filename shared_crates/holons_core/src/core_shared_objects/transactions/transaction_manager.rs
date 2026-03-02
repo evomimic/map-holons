@@ -160,9 +160,11 @@ mod tests {
     use std::collections::HashSet;
 
     #[derive(Debug)]
+    // Fail-fast test double: holon-service methods are intentionally out of scope
+    // for transaction-manager tests and should never be invoked here.
     struct TestHolonService;
 
-    fn not_implemented<T>() -> Result<T, HolonError> {
+    fn unreachable_in_transaction_manager_tests<T>() -> Result<T, HolonError> {
         Err(HolonError::NotImplemented("TestHolonService".to_string()))
     }
 
@@ -175,7 +177,7 @@ mod tests {
             &self,
             _context: &Arc<TransactionContext>,
         ) -> Result<TransientReference, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn delete_holon_internal(
@@ -183,7 +185,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _local_id: &LocalId,
         ) -> Result<(), HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn fetch_all_related_holons_internal(
@@ -191,7 +193,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _source_id: &HolonId,
         ) -> Result<RelationshipMap, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn fetch_holon_internal(
@@ -199,7 +201,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _id: &HolonId,
         ) -> Result<Holon, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn fetch_related_holons_internal(
@@ -208,14 +210,14 @@ mod tests {
             _source_id: &HolonId,
             _relationship_name: &RelationshipName,
         ) -> Result<HolonCollection, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn get_all_holons_internal(
             &self,
-            context: &Arc<TransactionContext>,
+            _context: &Arc<TransactionContext>,
         ) -> Result<HolonCollection, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
 
         fn load_holons_internal(
@@ -223,7 +225,7 @@ mod tests {
             _context: &Arc<TransactionContext>,
             _bundle: TransientReference,
         ) -> Result<TransientReference, HolonError> {
-            not_implemented()
+            unreachable_in_transaction_manager_tests()
         }
     }
 

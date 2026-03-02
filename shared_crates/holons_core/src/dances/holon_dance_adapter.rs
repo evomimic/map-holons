@@ -576,7 +576,7 @@ pub fn stage_new_version_dance(
 ) -> Result<ResponseBody, HolonError> {
     info!("----- Entered stage_new_version dance ==");
 
-    let transaction_handle = context.handle();
+    let transaction_handle = context.context_handle();
 
     // Extract the target persisted holon id from the dance type.
     let smart_reference = match request.dance_type {

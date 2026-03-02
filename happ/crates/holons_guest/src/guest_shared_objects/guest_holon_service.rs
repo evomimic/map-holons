@@ -153,7 +153,7 @@ impl GuestHolonService {
 
         let local_id = holon.get_local_id()?;
 
-        let handle = context.handle();
+        let handle = context.context_handle();
 
         Ok(HolonReference::Smart(SmartReference::new_from_id(handle, HolonId::Local(local_id))))
     }
