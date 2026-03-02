@@ -3,6 +3,7 @@ use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_KEY;
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
+use std::collections::BTreeMap;
 
 /// This function creates a set of simple (undescribed) holons
 ///

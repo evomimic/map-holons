@@ -20,18 +20,15 @@ use std::collections::BTreeMap;
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::TransientReference;
-use crate::{
-    dances::{
-        dance_request::{DanceType, RequestBody},
-        dance_response::ResponseBody,
-        DanceRequest,
-    },
-    query_layer::evaluate_query,
-    reference_layer::{writable_holon::WritableHolon, HolonReference, SmartReference},
-};
+use crate::{dances::{
+    dance_request::{DanceType, RequestBody},
+    dance_response::ResponseBody,
+    DanceRequest,
+}, query_layer::evaluate_query, reference_layer::{writable_holon::WritableHolon, HolonReference, SmartReference}, ReadableHolon};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};
 use type_names::CorePropertyTypeName;
+use crate::query_layer::{Node, NodeCollection, QueryPathMap};
 
 /// Abandon staged changes
 ///

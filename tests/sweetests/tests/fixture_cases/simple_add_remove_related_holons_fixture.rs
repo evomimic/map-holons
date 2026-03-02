@@ -56,11 +56,13 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let company_key = MapString("COMPANY_KEY".to_string());
     let website_key = MapString("WEBSITE_KEY".to_string());
     // Create transient references
-    let company_transient_reference = new_holon(&fixture_context, Some(company_key.clone()))?;
+    let company_transient_reference =
+        fixture_context.mutation().new_holon(Some(company_key.clone()))?;
     let mut company_properties = BTreeMap::new();
     company_properties
         .insert("name".to_property_name(), "The Really Useful Information Company".to_base_value());
-    let website_transient_reference = new_holon(&fixture_context, Some(website_key.clone()))?;
+    let website_transient_reference =
+        fixture_context.mutation().new_holon(Some(website_key.clone()))?;
     let mut website_properties = BTreeMap::new();
     website_properties.insert("url".to_property_name(), "itsyourworld.com".to_base_value());
     // Mint
@@ -105,7 +107,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     let again_relationship = "AGAIN".to_relationship_name();
     let example_key = MapString("EXAMPLE_KEY".to_string());
     // Create example
-    let example_transient_reference = new_holon(&fixture_context, Some(example_key.clone()))?;
+    let example_transient_reference =
+        fixture_context.mutation().new_holon(Some(example_key.clone()))?;
     let mut example_properties = BTreeMap::new();
     example_properties.insert("example".to_property_name(), "Example Holon".to_base_value());
     // Mint

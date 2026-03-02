@@ -151,7 +151,9 @@ impl MutationFacade {
     ///
     pub fn delete_holon(&self, local_id: LocalId) -> Result<(), HolonError> {
         self.context.ensure_open_for_mutation()?;
-        self.context.get_holon_service().delete_holon_internal(&local_id)
+        self.context
+            .get_holon_service()
+            .delete_holon_internal(&self.context, &local_id)
     }
 
     pub fn load_holons(

@@ -2,7 +2,7 @@ use crate::fixture_cases::setup_book_and_authors_fixture::*;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
-use holons_core::{dances::ResponseStatusCode, new_holon};
+use holons_core::dances::ResponseStatusCode;
 use holons_test::harness::helpers::BOOK_KEY;
 use holons_test::{DancesTestCase, TestCaseInit};
 use std::collections::BTreeMap;

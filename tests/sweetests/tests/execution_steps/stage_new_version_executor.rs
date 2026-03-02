@@ -76,7 +76,7 @@ pub async fn execute_stage_new_version(
 
     // 8. Verify base-key staging behavior
     let original_holon_key = source_reference.key().unwrap().unwrap();
-    let by_base = context.lookup().get_staged_holon_by_base_key(&original_holon_key).unwrap();
+    let by_base = context.lookup().get_staged_holon_by_base_key(&original_holon_key);
 
     match by_base {
         Ok(staged_reference) => {
@@ -99,10 +99,10 @@ pub async fn execute_stage_new_version(
                 );
 
     // 9. Verify versioned-key lookup
-    let by_version = context
-        .lookup()
-        .get_staged_holon_by_versioned_key(&staged_reference.versioned_key().unwrap())
-        .unwrap();
+                let by_version = context
+                    .lookup()
+                    .get_staged_holon_by_versioned_key(&staged_reference.versioned_key().unwrap())
+                    .unwrap();
 
                 assert_eq!(
                     holon_reference,
@@ -135,8 +135,10 @@ pub async fn execute_stage_new_version(
                     expected_duplicate_error
                 );
                 // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
-                let staged_references =
-                    get_staged_holons_by_base_key(&context, &original_holon_key).unwrap();
+                let staged_references = context
+                    .lookup()
+                    .get_staged_holons_by_base_key(&original_holon_key)
+                    .unwrap();
                 let length = staged_references.len();
 
                 if length != version_count.0 as usize {
