@@ -1,7 +1,7 @@
 use super::setup_book_author_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedTestResult, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -47,7 +47,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     let _abandoned_person_1 = test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
         person_1_staged_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("First Abandon --- abandoning person1 (H2)...".to_string()),
     )?;
 
@@ -89,14 +89,14 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         abandoned_holon_1_transient_reference,
         abandon1_properties,
         Some(abandoned_holon_1_key.clone()),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Creating example_abandon1 (H4)".to_string()),
     )?;
     // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_1_staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
         abandoned_holon_1_transient_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Staging example_abandon1 (H4)".to_string()),
     )?;
 
@@ -113,14 +113,14 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         abandoned_holon_2_transient_reference,
         abandon2_properties,
         Some(abandoned_holon_2_key.clone()),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Creating example_abandon2 (H5)".to_string()),
     )?;
     // Add a stage-holon step and capture its TestReference for later steps
     let abandoned_holon_2_staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
         abandoned_holon_2_transient_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Staging example_abandon2 (H5)".to_string()),
     )?;
 
@@ -128,7 +128,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
         abandoned_holon_1_staged_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Second Abandon --- abandoning example_abandon1 (H4)...".to_string()),
     )?;
 
@@ -136,7 +136,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     test_case.add_abandon_staged_changes_step(
         &mut fixture_holons,
         abandoned_holon_2_staged_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),
     )?;
 
@@ -160,7 +160,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // test_case.add_query_relationships_step(
     //     book_staged_token,
     //     query_expression,
-    //     ResponseStatusCode::OK,
+    //     ExpectedTestResult::Success,
     // )?;
 
     // Finalize
