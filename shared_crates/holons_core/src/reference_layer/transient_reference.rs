@@ -56,9 +56,6 @@ impl TransientReference {
 
     /// Retrieves a shared reference to the holon with interior mutability.
     ///
-    /// # Arguments
-    /// * `context` - A reference to an object implementing the `HolonsContextBehavior` trait.
-    ///
     /// # Returns
     /// Rc<RefCell<Holon>>>
     ///

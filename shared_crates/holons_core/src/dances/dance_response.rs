@@ -1,4 +1,4 @@
-use crate::core_shared_objects::{summarize_holons, Holon, ReadableHolonState};
+use crate::core_shared_objects::{holon::summarize_holons, Holon, ReadableHolonState};
 use crate::query_layer::NodeCollection;
 use crate::{HolonCollection, HolonReference};
 use base_types::MapString;

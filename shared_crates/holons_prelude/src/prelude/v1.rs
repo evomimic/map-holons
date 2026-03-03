@@ -50,11 +50,9 @@ pub use holons_core::dances::{
     DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode,
 };
 pub use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
-pub use holons_core::reference_layer::holon_operations_api::*;
 pub use holons_core::reference_layer::{
-    HolonCollectionApi, HolonReference, HolonSpaceBehavior, HolonStagingBehavior,
-    HolonsContextBehavior, ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior,
-    TransientReference, WritableHolon,
+    HolonCollectionApi, HolonReference, HolonSpaceBehavior, HolonStagingBehavior, ReadableHolon,
+    SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
 
 pub use type_names::{

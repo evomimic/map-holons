@@ -1,8 +1,8 @@
 use core_types::{HolonError, HolonId};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
-use crate::core_shared_objects::transient_collection::TransientCollection;
 use crate::core_shared_objects::transactions::TransactionManager;
+use crate::core_shared_objects::transient_collection::TransientCollection;
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::HolonServiceApi;
 use std::sync::{Arc, RwLock};
@@ -13,7 +13,7 @@ use std::sync::{Arc, RwLock};
 /// 3. **Transient collections** (temporary, non-transactional state)
 /// 4. The **TransactionManager** authority for creating transaction contexts.
 ///
-/// Transaction-scoped behavior is exposed via `HolonsContextBehavior`.
+/// Transaction-scoped behavior is exposed via `TransactionContext`.
 pub trait HolonSpaceBehavior {
     /// Provides access to the **cache service** for retrieving and storing holons.
     ///
