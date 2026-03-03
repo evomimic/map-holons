@@ -1,9 +1,9 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedTestResult, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 
-use holons_test::harness::helpers::{BOOK_KEY};
+use holons_test::harness::helpers::BOOK_KEY;
 
 /// Fixture for creating a DeleteHolon Testcase
 #[fixture]
@@ -33,24 +33,20 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         book_transient_reference,
         book_properties,
         Some(book_key.clone()),
-        ResponseStatusCode::OK,
-        Some("Creating book holon...".to_string())
+        ExpectedTestResult::Success,
+        Some("Creating book holon...".to_string()),
     )?;
 
     // Add a stage-holon step and capture its TestReference for later steps
     let staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
         book_step_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Staging book holon...".to_string()),
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(
-        &mut fixture_holons,
-        ResponseStatusCode::OK,
-        None,
-    )?;
+    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK, None)?;
 
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
@@ -58,7 +54,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_delete_holon_step(
         &mut fixture_holons,
         staged_token.clone(),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         None,
     )?;
 
@@ -66,8 +62,10 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_delete_holon_step(
         &mut fixture_holons,
         staged_token,
-        ResponseStatusCode::NotFound,
-        Some("Attempting invalid delete...".to_string())
+        ExpectedTestResult::Failure(HolonError::Misc(
+            "Holon should be deleted but was found".to_string(),
+        )),
+        Some("Attempting invalid delete...".to_string()),
     )?;
 
     // TODO: more robust handling of the implication of deletes on links needs to be implemented before this step will work
@@ -75,8 +73,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
 
     // Finalize
-   test_case.finalize(&fixture_context)?;
-
+    test_case.finalize(&fixture_context)?;
 
     Ok(test_case)
 }

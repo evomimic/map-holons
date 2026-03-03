@@ -1,7 +1,7 @@
 use crate::fixture_cases::setup_book_author_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::PUBLISHED_BY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedTestResult, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 use tracing::info;
@@ -69,7 +69,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         company_transient_reference,
         company_properties,
         Some(company_key),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Creating company holon... ".to_string()),
     )?;
     let website_step_token = test_case.add_new_holon_step(
@@ -77,7 +77,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         website_transient_reference,
         website_properties,
         Some(website_key),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Creating website holon... ".to_string()),
     )?;
 
@@ -87,7 +87,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         company_step_token.clone(),
         host_relationship.clone(),
         vec![website_step_token.clone()],
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Adding Relationship (Transient):  Company -> HOST -> Website ".to_string()),
     )?;
 
@@ -97,7 +97,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         company_token_after_add,
         host_relationship.clone(),
         vec![website_step_token.clone()],
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Removing Relationship (Transient):  Company -> HOST -> Website ".to_string()),
     )?;
 
@@ -114,7 +114,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         example_transient_reference,
         example_properties,
         Some(example_key),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Creating example holon... ".to_string()),
     )?;
     // Executor step
@@ -123,7 +123,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         company_token_after_remove,
         again_relationship.clone(),
         vec![example_step_token.clone()],
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Adding Relationship (Transient):  Company -> AGAIN -> Example ".to_string()),
     )?;
     //
@@ -138,7 +138,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_staged_token.clone(),
         book_to_person_relationship.clone(),
         vec![person_1_staged_token.clone()],
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Removing Relationship (Staged):  Book -> AUTHORED_BY -> Person1 ".to_string()),
     )?;
 
@@ -149,7 +149,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         book_token_after_remove,
         PUBLISHED_BY.to_relationship_name(),
         vec![publisher_staged_token.clone()],
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Adding Relationship (Staged):  Book -> PUBLISHED_BY -> Publisher ".to_string()),
     )?;
     //
@@ -167,7 +167,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         &mut fixture_holons,
         book_token_after_add,
         query_expression,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         None,
     )?;
 

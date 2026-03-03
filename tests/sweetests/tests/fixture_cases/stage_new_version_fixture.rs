@@ -1,5 +1,5 @@
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_prelude::prelude::*;
+use holons_test::{harness::helpers::ENSURE_DB_EMPTY, ExpectedTestResult};
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 // use tracing::debug;
@@ -53,7 +53,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let staged_clone = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token.clone(),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         version_count.clone(),
         None,
         Some("Stage New Version -- first clone from book.".to_string()),
@@ -72,7 +72,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_holons,
         staged_clone,
         expected_clone_properties.clone(),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("With Properties -- first version cloned from book.".to_string()),
     )?;
 
@@ -97,7 +97,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let _version_2_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token.clone(),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         version_count.clone(),
         None,
         Some("Stage New Version --- second version".to_string()),
@@ -107,7 +107,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let _version_3_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token,
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         version_count.clone(),
         Some(ResponseStatusCode::Conflict),
         Some("Stage New Version --- third version, expecting Conflict for duplicate return of get_staged_holon_by_base_key".to_string())
