@@ -30,8 +30,7 @@ pub async fn execute_abandon_staged_changes(
     debug!("Dance Request: {:#?}", request);
 
     // 3. CALL — use the context-owned call service
-    let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request).await;
+    let response = context.initiate_dance(request).await.expect("dance should succeed");
 
     // 4. VALIDATE - response status
     assert_eq!(

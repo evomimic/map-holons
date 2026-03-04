@@ -33,6 +33,15 @@ pub struct SmartReference {
     smart_property_values: Option<PropertyMap>,
 }
 
+/// Capability token allowing cache access only from this module.
+pub(crate) struct SmartRefAccessKey(());
+
+impl SmartRefAccessKey {
+    fn new() -> Self {
+        Self(())
+    }
+}
+
 impl SmartReference {
     // *************** CONSTRUCTORS ***************
 
@@ -87,7 +96,7 @@ impl SmartReference {
     // *************** UTILITY METHODS ***************
 
     fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.context_handle.context().cache_access_internal()
+        self.context_handle.context().cache_access(SmartRefAccessKey::new())
     }
 
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
@@ -155,8 +164,6 @@ impl fmt::Display for SmartReference {
 impl ReadableHolonImpl for SmartReference {
     fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
         self.is_accessible(AccessType::Clone)?;
-        let transient_behavior = self.context_handle.context().transient_manager_access_internal();
-
         let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
@@ -168,7 +175,9 @@ impl ReadableHolonImpl for SmartReference {
         // HolonCloneModel for SavedHolon will have 'None' for relationships, as populating its RelationshipMap
         // is deferred to the reference layer, because context is needed that is only available in reference layer.
         let mut cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(borrowed_holon.holon_clone_model())?;
+            self.context_handle
+                .context()
+                .new_transient_from_clone_model(borrowed_holon.holon_clone_model())?;
 
         let relationships = self.all_related_holons()?;
         let transient_relationships = relationships.clone_for_new_source()?;

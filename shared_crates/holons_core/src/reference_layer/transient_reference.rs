@@ -33,6 +33,15 @@ pub struct TransientReference {
     id: TemporaryId,
 }
 
+/// Capability token allowing transient manager access only from this module.
+pub(crate) struct TransientRefAccessKey(());
+
+impl TransientRefAccessKey {
+    fn new() -> Self {
+        Self(())
+    }
+}
+
 impl TransientReference {
     /// Creates a new `TransientReference` from a given TemporaryId without validation.
     ///
@@ -61,10 +70,13 @@ impl TransientReference {
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get TransientManagerAccess
-        let transient_behavior = self.context_handle.context().transient_manager_access_internal();
+        let transient_manager_access = self
+            .context_handle
+            .context()
+            .transient_manager_access(TransientRefAccessKey::new());
 
         // Retrieve the holon by its TemporaryId
-        let rc_holon = transient_behavior.get_holon_by_id(&self.id)?;
+        let rc_holon = transient_manager_access.get_holon_by_id(&self.id)?;
 
         Ok(rc_holon)
     }
@@ -163,10 +175,8 @@ impl ReadableHolonImpl for TransientReference {
         let holon_clone_model =
             self.read_holon_guard(&rc_holon, "clone_holon_impl")?.holon_clone_model();
 
-        let transient_behavior = self.context_handle.context().transient_manager_access_internal();
-
         let cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(holon_clone_model)?;
+            self.context_handle.context().new_transient_from_clone_model(holon_clone_model)?;
 
         Ok(cloned_holon_transient_reference)
     }

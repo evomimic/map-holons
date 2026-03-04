@@ -5,10 +5,9 @@
 //!
 //! 1. Parsing & validation of one or more loader import files into a
 //!    single `HolonLoadSet` via [`crate::parser`] and [`crate::builder`].
-//! 2. Invoking the guest-side Holon Loader dance by delegating to the
-//!    reference-layer helper `holons_core::reference_layer::load_holons`,
-//!    which in turn calls `HolonServiceApi::load_holons_internal` on the
-//!    client holon service.
+//! 2. Invoking terminal loader execution via `TransactionContext::load_holons_and_commit`,
+//!    which delegates to `HolonServiceApi::load_holons_internal` and applies
+//!    transaction lifecycle finalization semantics in context.
 //! 3. Returning a `TransientReference` to the resulting `HolonLoadResponse`
 //!    (or a `HolonError` if validation/parsing fails).
 //!
@@ -104,7 +103,7 @@ pub async fn load_holons_from_files(
     // builds the dance request, calls into the guest, and
     // returns a `TransientReference` to the `HolonLoadResponse` holon.
     debug!("[loader-client] invoking load_holons dance");
-    let response_reference = context.mutation().load_holons(load_set_transient)?;
+    let response_reference = context.load_holons_and_commit(load_set_transient)?;
     debug!("[loader-client] load_holons dance returned");
 
     Ok(response_reference)

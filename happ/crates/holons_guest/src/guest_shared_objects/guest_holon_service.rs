@@ -1,9 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
-use std::{
-    fmt,
-    sync::{Arc, RwLock},
-};
+use std::{fmt, sync::{Arc, RwLock}};
 
 use hdk::prelude::*;
 use holons_core::core_shared_objects::SavedHolon;
@@ -20,56 +17,27 @@ use super::{fetch_links_to_all_holons, get_all_relationship_links};
 use crate::guest_shared_objects::{commit_functions, get_relationship_links};
 use crate::persistence_layer::{create_holon_node, delete_holon_node, get_original_holon_node};
 use crate::{create_local_path, get_holon_by_path, try_from_record};
-use base_types::{BaseValue, MapString};
+use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
     core_shared_objects::{
-        nursery_access_internal::NurseryAccessInternal, transactions::TransactionContext, Holon,
-        HolonCollection,
+        transactions::TransactionContext, Holon, HolonCollection,
     },
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, SmartReference, WritableHolon,
     },
+    StagedReference,
 };
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
-use type_names::CorePropertyTypeName::CommitRequestStatus;
 
-pub struct GuestHolonService {
-    /// Holds the internal nursery access after registration
-    pub internal_nursery_access: RwLock<Option<Arc<RwLock<dyn NurseryAccessInternal>>>>,
-}
+pub struct GuestHolonService;
 
 impl GuestHolonService {
     pub fn new() -> Self {
-        GuestHolonService {
-            internal_nursery_access: RwLock::new(None), // Initially, no privileged access
-        }
-    }
-    /// ✅ HolonSpaceManager explicitly grants internal access at registration
-    pub fn register_internal_access(&self, access: Arc<RwLock<dyn NurseryAccessInternal>>) {
-        let mut guard = self
-            .internal_nursery_access
-            .write()
-            .expect("Failed to acquire write lock on internal nursery access");
-        *guard = Some(access);
-    }
-
-    /// Retrieves the stored internal access (set during registration)
-    pub fn get_internal_nursery_access(
-        &self,
-    ) -> Result<Arc<RwLock<dyn NurseryAccessInternal>>, HolonError> {
-        let guard = self.internal_nursery_access.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on internal nursery access: {}",
-                e
-            ))
-        })?;
-        guard.clone().ok_or(HolonError::Misc(
-            "GuestHolonService does not have internal nursery access.".to_string(),
-        ))
+        GuestHolonService
     }
 
     fn create_local_space_holon(
@@ -183,42 +151,11 @@ impl HolonServiceApi for GuestHolonService {
     fn commit_internal(
         &self,
         context: &Arc<TransactionContext>,
+        staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
-        // Get internal nursery access
-        let internal_nursery = self.get_internal_nursery_access()?;
-
-        // Step 1: Borrow the nursery immutably and clone its HolonPool reference
-        let staged_references = {
-            let nursery_read = internal_nursery.read().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on internal NurseryAccess: {}",
-                    e
-                ))
-            })?;
-            nursery_read.get_staged_references()?
-        }; // `nursery_read` is dropped immediately after this block
-
-        // Step 2: Commit the staged holons
+        // Commit the staged holons provided by TransactionContext.
         let commit_response = commit_functions::commit(context, &staged_references)?;
-
-        // Step 3: Clear the stage only when commit status is explicitly Complete.
-        let commit_status = commit_response.property_value(CommitRequestStatus)?;
-        let is_complete = matches!(
-            commit_status,
-            Some(BaseValue::StringValue(ref value)) if value.0 == "Complete"
-        );
-
-        if is_complete {
-            let nursery_write = internal_nursery.write().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire write lock on internal NurseryAccess: {}",
-                    e
-                ))
-            })?;
-            nursery_write.clear_stage()?;
-        }
-
-        // Step 4: Return the commit response
+        // Stage-clear policy is owned by TransactionContext.
         Ok(commit_response)
     }
 
@@ -359,13 +296,17 @@ impl HolonServiceApi for GuestHolonService {
         let mut controller = HolonLoaderController::new();
         controller.load_set(context, set)
     }
+
+    fn ensure_local_holon_space_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<HolonReference, HolonError> {
+        self.ensure_local_holon_space(context)
+    }
 }
 
-// ✅ Manually implement Debug (exclude internal_nursery_access)
 impl fmt::Debug for GuestHolonService {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GuestHolonService")
-            .field("internal_nursery_access", &"<hidden>") // ✅ Hide the trait object
-            .finish()
+        f.debug_struct("GuestHolonService").finish()
     }
 }

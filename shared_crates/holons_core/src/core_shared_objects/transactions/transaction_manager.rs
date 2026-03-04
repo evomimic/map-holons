@@ -154,7 +154,7 @@ mod tests {
     use crate::core_shared_objects::{
         Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
     };
-    use crate::reference_layer::{HolonServiceApi, TransientReference};
+    use crate::reference_layer::{HolonServiceApi, StagedReference, TransientReference};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
     use std::any::Any;
     use std::collections::HashSet;
@@ -176,6 +176,7 @@ mod tests {
         fn commit_internal(
             &self,
             _context: &Arc<TransactionContext>,
+            _staged_references: &[StagedReference],
         ) -> Result<TransientReference, HolonError> {
             unreachable_in_transaction_manager_tests()
         }
@@ -345,7 +346,9 @@ mod tests {
         // Step 2: Drop the original Arc; TC should still keep the space alive.
         drop(space_manager);
 
-        // Step 3: Accessing the space manager through TC should still work.
-        let _ = transaction.space_manager();
+        // Step 3: Accessing space-backed context state should still work.
+        let _ = transaction
+            .get_space_holon()
+            .expect("space-backed lookup should remain accessible");
     }
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hdk::prelude::*;
 
 use crate::dances_guest::dancer::dispatch_dance;
-use crate::{init_guest_context, GuestHolonService};
+use crate::init_guest_context;
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
@@ -125,13 +125,7 @@ fn initialize_context_from_session_state(
     let ensured_space_holon_id: HolonId = match local_space_holon_id {
         Some(id) => id,
         None => {
-            let holon_service = context.get_holon_service();
-            let guest_service = holon_service
-                .as_any()
-                .downcast_ref::<GuestHolonService>()
-                .ok_or_else(|| HolonError::DowncastFailure("GuestHolonService".to_string()))?;
-
-            let ensured_space_ref = guest_service.ensure_local_holon_space(&context)?;
+            let ensured_space_ref = context.ensure_local_holon_space()?;
             match ensured_space_ref {
                 holons_core::HolonReference::Smart(smart_ref) => smart_ref.get_id()?,
                 other => {
