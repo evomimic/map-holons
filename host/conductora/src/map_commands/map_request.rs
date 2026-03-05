@@ -17,18 +17,6 @@ pub async fn map_request(
     let context = receptor.transaction_context();
     let bound_request = map_request.bind(&context)?;
 
-    if bound_request.name == "load_holons" {
-        tracing::info!("[TAURI COMMAND] 'map_request' handling 'load_holons' request");
-        return receptor
-            .load_holons(bound_request)
-            .await
-            .map_err(|e| {
-                tracing::error!("Error in load_holons: {:?}", e);
-                HolonError::from(e)
-            })
-            .map(|response| MapResponseWire::from(&response));
-    }
-
     receptor
         .handle_map_request(bound_request)
         .await

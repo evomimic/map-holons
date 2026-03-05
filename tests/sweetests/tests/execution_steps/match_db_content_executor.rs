@@ -40,13 +40,7 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
             debug!("Dance Request: {:#?}", request);
 
             // 3. CALL — the dance
-            let dance_initiator = context.get_dance_initiator().unwrap();
-
-            // IMPORTANT: initiate_dance takes ownership of Arc<TransactionContext>,
-            // so clone the Arc instead of moving the one we keep for the whole test.
-            let cloned_context = Arc::clone(&context);
-
-            let response = dance_initiator.initiate_dance(&cloned_context, request).await;
+    let response = context.initiate_dance(request).await.expect("dance should succeed");
 
             // 4. VALIDATE - Ensure response contains the expected Holon
             if let ResponseBody::Holon(actual_holon) = response.body {

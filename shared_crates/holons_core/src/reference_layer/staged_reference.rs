@@ -34,6 +34,15 @@ pub struct StagedReference {
     id: TemporaryId, // the position of the holon with CommitManager's staged_holons vector
 }
 
+/// Capability token allowing nursery access only from this module.
+pub(crate) struct StagedRefAccessKey(());
+
+impl StagedRefAccessKey {
+    fn new() -> Self {
+        Self(())
+    }
+}
+
 impl StagedReference {
     /// Marks the underlying StagedHolon that is referenced as 'Abandoned'
     ///
@@ -98,7 +107,10 @@ impl StagedReference {
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
-        let nursery_access = self.context_handle.context().nursery_access_internal();
+        let nursery_access = self
+            .context_handle
+            .context()
+            .nursery_access(StagedRefAccessKey::new());
 
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_access.get_holon_by_id(&self.id)?;
@@ -178,10 +190,8 @@ impl ReadableHolonImpl for StagedReference {
             })?
             .holon_clone_model();
 
-        let transient_behavior = self.context_handle.context().transient_manager_access_internal();
-
         let cloned_holon_transient_reference =
-            transient_behavior.new_from_clone_model(holon_clone_model)?;
+            self.context_handle.context().new_transient_from_clone_model(holon_clone_model)?;
 
         Ok(cloned_holon_transient_reference)
     }

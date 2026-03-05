@@ -84,10 +84,6 @@ impl ReceptorBehavior for LocalReceptor {
     async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         self.client_handler.get_all_spaces().await
     }
-
-    async fn load_holons(&self, _request: MapRequest) -> Result<MapResponse, HolonError> {
-        todo!("Implement load_holons for local content_data");
-    }
 }
 
 //is still needed?

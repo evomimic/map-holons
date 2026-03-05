@@ -1,4 +1,4 @@
-use super::TransientReference;
+use super::{HolonReference, TransientReference};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::RelationshipMap;
@@ -6,6 +6,7 @@ use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
+use crate::StagedReference;
 
 /// The HolonServiceApi trait defines the public service interface for Holon operations
 /// in MAP. Its primary purpose is to provide a **shared abstraction** between client
@@ -29,6 +30,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn commit_internal(
         &self,
         context: &Arc<TransactionContext>,
+        staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError>;
 
     /// This function deletes the saved holon identified by  from the persistent store
@@ -70,4 +72,14 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         context: &Arc<TransactionContext>,
         bundle: TransientReference,
     ) -> Result<TransientReference, HolonError>;
+
+    /// Ensures a persisted local space holon exists and returns its reference.
+    ///
+    /// Default implementation is unsupported outside guest/runtime contexts.
+    fn ensure_local_holon_space_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+    ) -> Result<HolonReference, HolonError> {
+        Err(HolonError::NotImplemented("ensure_local_holon_space_internal".to_string()))
+    }
 }

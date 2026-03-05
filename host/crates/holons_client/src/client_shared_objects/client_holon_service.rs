@@ -43,7 +43,7 @@ use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
     reference_layer::{HolonServiceApi, SmartReference},
-    HolonCollectionApi, HolonReference, RelationshipMap,
+    HolonCollectionApi, HolonReference, RelationshipMap, StagedReference,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
@@ -64,17 +64,14 @@ impl HolonServiceApi for ClientHolonService {
     fn commit_internal(
         &self,
         context: &Arc<TransactionContext>,
+        _staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
         // Build commit dance request
         let request = holon_dance_builders::build_commit_dance_request()?;
 
         // Run the dance (sync → async → sync)
-        let initiator = context.get_dance_initiator()?;
-
         let response =
-            run_future_synchronously(
-                async move { initiator.initiate_dance(context, request).await },
-            );
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         // Any non-OK status is an error
         if response.status_code != ResponseStatusCode::OK {
@@ -104,10 +101,8 @@ impl HolonServiceApi for ClientHolonService {
         local_id: &LocalId,
     ) -> Result<(), HolonError> {
         let request = holon_dance_builders::build_delete_holon_dance_request(local_id.clone())?;
-        let initiator = context.get_dance_initiator()?;
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
@@ -140,10 +135,8 @@ impl HolonServiceApi for ClientHolonService {
 
         let request =
             holon_dance_builders::build_fetch_all_related_holons_dance_request(node_collection)?;
-        let initiator = context.get_dance_initiator()?;
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
@@ -203,10 +196,8 @@ impl HolonServiceApi for ClientHolonService {
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let request = holon_dance_builders::build_get_holon_by_id_dance_request(id.clone())?;
-        let initiator = context.get_dance_initiator()?;
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
@@ -242,10 +233,8 @@ impl HolonServiceApi for ClientHolonService {
             node_collection,
             query,
         )?;
-        let initiator = context.get_dance_initiator()?;
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
@@ -284,11 +273,8 @@ impl HolonServiceApi for ClientHolonService {
     ) -> Result<HolonCollection, HolonError> {
         let request = holon_dance_builders::build_get_all_holons_dance_request()?;
 
-        let initiator = context.get_dance_initiator()?;
-
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
@@ -314,15 +300,11 @@ impl HolonServiceApi for ClientHolonService {
         // 1) Build the dance request for the loader.
         let request = holon_dance_builders::build_load_holons_dance_request(set)?;
 
-        // 2) Get the DanceInitiator from the Space Manager.
-        let initiator = context.get_dance_initiator()?;
+        // 2) Bridge async → sync (ClientHolonService is synchronous)
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
-        // 3) Bridge async → sync (ClientHolonService is synchronous)
-        let response = run_future_synchronously(async move {
-            initiator.initiate_dance(context, request).await
-        });
-
-        // 4) Check the status
+        // 3) Check the status
         if response.status_code != ResponseStatusCode::OK {
             return Err(HolonError::Misc(format!(
                 "LoadHolons dance failed: {:?} — {}",
@@ -330,7 +312,7 @@ impl HolonServiceApi for ClientHolonService {
             )));
         }
 
-        // 5) Extract the returned holon
+        // 4) Extract the returned holon
         match response.body {
             ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
             ResponseBody::HolonReference(other) => Err(HolonError::InvalidParameter(format!(

@@ -29,14 +29,8 @@ pub async fn execute_delete_holon(
         .expect("Failed to build delete_holon request");
     debug!("Dance Request: {:#?}", request);
 
-    let dance_initiator = context.get_dance_initiator().unwrap();
-
     // 3. CALL - the dance
-    // Clone context and initiator for async call so they can still be used later
-    let cloned_context = context.clone();
-    let cloned_initiator = dance_initiator.clone();
-
-    let response = cloned_initiator.initiate_dance(&cloned_context, request).await;
+    let response = context.initiate_dance(request).await.expect("dance should succeed");
     debug!("Dance Response: {:#?}", response.clone());
 
     // 4. VALIDATE - response status
@@ -51,9 +45,7 @@ pub async fn execute_delete_holon(
         // Confirm that the Holon has been successfully deleted
         let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id))
             .expect("Failed to build get_holon_by_id request");
-
-        let dance_initiator = context.get_dance_initiator().unwrap();
-        let get_response = dance_initiator.initiate_dance(&context, get_request).await;
+        let get_response = context.initiate_dance(get_request).await.expect("dance should succeed");
         assert_eq!(
             get_response.status_code,
             ResponseStatusCode::NotFound,

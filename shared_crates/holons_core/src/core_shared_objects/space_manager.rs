@@ -4,7 +4,6 @@ use crate::core_shared_objects::cache_request_router::CacheRequestRouter;
 use crate::core_shared_objects::transactions::TransactionManager;
 use crate::core_shared_objects::{HolonCacheAccess, HolonCacheManager, ServiceRoutingPolicy};
 use crate::reference_layer::{HolonServiceApi, HolonSpaceBehavior};
-use crate::TransientCollection;
 
 use std::sync::{Arc, RwLock};
 
@@ -23,9 +22,6 @@ pub struct HolonSpaceManager {
 
     /// Optional id of the space holon (authoritative context for other holons).
     local_holon_space: RwLock<Option<HolonId>>,
-
-    /// An ephemeral collection of references to staged or non-staged holons for temporary operations.
-    transient_state: Arc<RwLock<TransientCollection>>,
 
     /// Per-space transaction manager for opening and tracking transactions.
     transaction_manager: Arc<TransactionManager>,
@@ -68,7 +64,6 @@ impl HolonSpaceManager {
             dance_initiator,
             holon_service,
             local_holon_space: RwLock::new(local_holon_space),
-            transient_state: Arc::new(RwLock::new(TransientCollection::new())),
             transaction_manager,
         }
     }
@@ -110,11 +105,6 @@ impl HolonSpaceBehavior for HolonSpaceManager {
         Ok(guard.clone())
     }
 
-    /// Retrieves a shared reference to the transient state.
-    fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
-        Arc::clone(&self.transient_state)
-    }
-
     /// Updates the local space holon reference.
     fn set_space_holon_id(&self, holon: HolonId) -> Result<(), HolonError> {
         let mut guard = self.local_holon_space.write().map_err(|e| {
@@ -143,7 +133,6 @@ impl Debug for HolonSpaceManager {
             .field("holon_service", &"<HolonServiceApi>")
             .field("local_holon_space", &self.local_holon_space)
             .field("cache_request_router", &"<CacheRequestRouter>")
-            .field("transient_state", &"<TransientCollection>")
             .field("transaction_manager", &"<TransactionManager>")
             .finish()
     }

@@ -19,8 +19,7 @@ pub async fn execute_new_holon(
     debug!("Dance Request: {:#?}", request);
 
     // 2. CALL - the dance
-    let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request).await;
+    let response = context.initiate_dance(request).await.expect("dance should succeed");
     info!("Dance Response: {}", response.summarize());
 
     // 3. VALIDATE - response status
