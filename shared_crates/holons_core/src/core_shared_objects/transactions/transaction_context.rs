@@ -26,7 +26,7 @@ use super::{
 
 /// Transaction-scoped operations used for lifecycle/access policy checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransactionOperation {
+pub(super) enum TransactionOperation {
     /// Create a new transient holon.
     CreateTransient,
     /// Stage/delete/load and other state mutation operations.
@@ -131,9 +131,12 @@ impl TransactionContext {
 
     /// Internal operation policy gate.
     ///
-    /// This is the authoritative transaction state/operation policy matrix.
-    /// All transaction-scoped execution paths should enforce lifecycle/access policy
-    /// through this method rather than per-call-site omission rules.
+    /// This is the authoritative mutation/commit ingress policy matrix.
+    /// All transaction-scoped mutation and commit ingress paths should enforce
+    /// lifecycle/access policy through this method rather than per-call-site
+    /// omission rules.
+    ///
+    /// Lookup/read-only execution paths are intentionally excluded from this gate.
     ///
     /// ## Lifecycle/Operation Matrix
     ///
@@ -148,7 +151,7 @@ impl TransactionContext {
     /// | `CommitExecution` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
     ///
     /// Any unknown/raw lifecycle value is rejected as `TransactionNotOpen`.
-    pub(crate) fn assert_allowed(&self, operation: TransactionOperation) -> Result<(), HolonError> {
+    pub(super) fn assert_allowed(&self, operation: TransactionOperation) -> Result<(), HolonError> {
         let raw_state = self.lifecycle_state.load(Ordering::Acquire);
 
         match operation {
@@ -348,6 +351,14 @@ impl TransactionContext {
         Ok(guard)
     }
 
+    /// Fail-fast admission check for host-side external mutation ingress.
+    ///
+    /// This is intended for ingress routers/dispatchers to validate mutation
+    /// policy before any request-building path that may perform side effects.
+    pub fn ensure_host_mutation_entry_allowed(&self) -> Result<(), HolonError> {
+        self.assert_allowed(TransactionOperation::HostMutationEntry)
+    }
+
     // ---------------------------------------------------------------------
     // Public Execution Facades
     // ---------------------------------------------------------------------
@@ -461,7 +472,7 @@ impl TransactionContext {
     }
 
     // ---------------------------------------------------------------------
-    // Manager Access (Temporary — to be tightened in Phase 6)
+    // Manager Access
     // ---------------------------------------------------------------------
 
     /// Returns a strong reference to the space manager.

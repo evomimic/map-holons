@@ -100,17 +100,49 @@ impl ReceptorBehavior for HolochainReceptor {
             return Ok(MapResponse::new_from_dance_response(request.space.id, dance_response));
         }
 
+        // Temporary Phase 1.4/1.5 bridge: load+commit is commit-like and
+        // should serialize at host ingress until CommandDispatcher owns this.
+        if request.name == "load_holons" {
+            let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
+
+            let content_set = match request.body {
+                MapRequestBody::LoadHolons(content_set) => content_set,
+                _ => {
+                    return Err(HolonError::InvalidParameter(
+                        "Expected LoadHolons body for load_holons request".into(),
+                    ))
+                }
+            };
+
+            let response_reference = load_holons_from_files(self.context.clone(), content_set).await?;
+            tracing::info!(
+                "HolochainReceptor: loaded holons with reference: {:?}",
+                response_reference
+            );
+
+            let dance_response = DanceResponse::new(
+                ResponseStatusCode::OK,
+                MapString("LoadHolons executed via TransactionContext".to_string()),
+                ResponseBody::HolonReference(HolonReference::Transient(response_reference)),
+                None,
+            );
+
+            return Ok(MapResponse::new_from_dance_response(request.space.id, dance_response));
+        }
+
         // Read/query requests remain available during host commit ingress and after
         // lifecycle reaches Committed so clients can inspect commit/load results.
         // External write/mutation requests (including transient creation) require
         // an open transaction and must be blocked during host commit ingress.
+        let is_read_only = Self::is_read_only_request(request.name.as_str());
+        if !is_read_only {
+            self.context.ensure_host_mutation_entry_allowed()?;
+        }
+
         let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
         let dance_response = self
             .context
-            .initiate_ingress_dance(
-                dance_request,
-                Self::is_read_only_request(request.name.as_str()),
-            )
+            .initiate_ingress_dance(dance_request, is_read_only)
             .await?;
 
         Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
@@ -120,28 +152,6 @@ impl ReceptorBehavior for HolochainReceptor {
     async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         // Call stubbed conductor client
         self.client_handler.get_all_spaces().await
-    }
-
-    //todo: integrate this into the map_request handling flow,  this is a PoC hack
-    async fn load_holons(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
-        // Temporary Phase 1.4/1.5 bridge: load+commit is commit-like and
-        // should serialize at host ingress until CommandDispatcher owns this.
-        let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
-
-        let result = if let MapRequestBody::LoadHolons(content_set) = request.body {
-            let reference = load_holons_from_files(self.context.clone(), content_set).await?;
-            tracing::info!("HolochainReceptor: loaded holons with reference: {:?}", reference);
-
-            let dance_request = ClientDanceBuilder::get_all_holons_dance()?;
-            let dance_response = self.context.initiate_dance(dance_request).await?;
-            Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
-        } else {
-            Err(HolonError::InvalidParameter(
-                "Expected LoadHolons body for load_holons request".into(),
-            ))
-        };
-
-        result
     }
 }
 
@@ -158,6 +168,17 @@ impl Debug for HolochainReceptor {
 #[cfg(test)]
 mod tests {
     use super::HolochainReceptor;
+    use base_types::{BaseValue, MapString};
+    use core_types::{PropertyMap, PropertyName};
+    use holons_client::{
+        dances_client::ClientDanceBuilder,
+        init_client_context,
+        shared_types::{
+            holon_space::HolonSpace,
+            map_request::{MapRequest, MapRequestBody},
+        },
+    };
+    use holons_core::dances::DanceType;
 
     #[test]
     fn commit_route_classification_is_exact() {
@@ -179,5 +200,51 @@ mod tests {
         assert!(!HolochainReceptor::is_read_only_request("create_new_holon"));
         assert!(!HolochainReceptor::is_read_only_request("stage_new_holon"));
         assert!(!HolochainReceptor::is_read_only_request("load_holons"));
+    }
+
+    #[test]
+    fn host_mutation_precheck_blocks_create_new_holon_before_builder_side_effects() {
+        let context = init_client_context(None);
+        let _guard = context.begin_host_commit_ingress_guard().expect("guard should acquire");
+
+        let before = context.lookup().transient_count().expect("count should succeed");
+
+        let mut props = PropertyMap::new();
+        props.insert(
+            PropertyName(MapString("key".to_string())),
+            BaseValue::StringValue(MapString("PRECHECK_BLOCK".to_string())),
+        );
+
+        let request = MapRequest {
+            name: "create_new_holon".to_string(),
+            req_type: DanceType::Standalone,
+            body: MapRequestBody::ParameterValues(props),
+            space: HolonSpace::default(),
+        };
+
+        let is_read_only = HolochainReceptor::is_read_only_request(request.name.as_str());
+        assert!(!is_read_only);
+
+        // New receptor ordering: precheck before request build.
+        let err = context
+            .ensure_host_mutation_entry_allowed()
+            .expect_err("host mutation precheck should reject during commit ingress");
+        let msg = format!("{err:?}");
+        assert!(
+            msg.contains("TransactionCommitInProgress"),
+            "expected TransactionCommitInProgress, got {msg}"
+        );
+
+        // Ensure request builder was not run and no transient was created as a side effect.
+        let after = context.lookup().transient_count().expect("count should succeed");
+        assert_eq!(before, after, "transient pool must remain unchanged");
+
+        // Sanity: builder remains side-effecting for create_new_holon if called directly.
+        let _ = ClientDanceBuilder::validate_and_execute(&context, &request);
+        let after_builder = context.lookup().transient_count().expect("count should succeed");
+        assert!(
+            after_builder > after,
+            "direct builder call should still create transient side effect"
+        );
     }
 }

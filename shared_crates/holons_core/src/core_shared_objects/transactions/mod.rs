@@ -37,7 +37,7 @@ pub use host_commit_execution_guard::HostCommitExecutionGuard;
 pub use lookup_facade::LookupFacade;
 pub use mutation_facade::MutationFacade;
 pub use transaction_behavior::TransactionBehavior;
-pub use transaction_context::{TransactionContext, TransactionOperation};
+pub use transaction_context::TransactionContext;
 pub use transaction_context_handle::TransactionContextHandle;
 pub use transaction_lifecycle_state::TransactionLifecycleState;
 pub use transaction_manager::TransactionManager;

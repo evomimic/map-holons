@@ -1,7 +1,8 @@
 use super::{
     HolonServiceApi, HolonStagingBehavior, TransactionContext, TransactionContextHandle,
-    TransactionOperation, TransientHolonBehavior,
+    TransientHolonBehavior,
 };
+use super::transaction_context::TransactionOperation;
 use crate::{HolonReference, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId};
