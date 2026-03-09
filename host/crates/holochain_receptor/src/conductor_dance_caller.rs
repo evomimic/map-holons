@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use core_types::HolonError;
-use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
+use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use std::fmt::Debug;
 
 /// Native-only interface for executing an internal dance envelope against a Holochain conductor.
@@ -24,6 +24,6 @@ pub trait ConductorDanceCaller: Debug + Send + Sync {
     /// Execute a single-shot envelope and return the envelope produced by the conductor.
     async fn conductor_dance_call(
         &self,
-        request: InternalDanceRequestEnvelope,
-    ) -> Result<InternalDanceResponseEnvelope, HolonError>;
+        request: DanceRequestEnvelope,
+    ) -> Result<DanceResponseEnvelope, HolonError>;
 }

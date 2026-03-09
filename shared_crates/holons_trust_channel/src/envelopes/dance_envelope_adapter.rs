@@ -1,7 +1,7 @@
 use core_types::HolonId;
 use holons_boundary::DanceRequestWire;
 use holons_boundary::HolonReferenceWire;
-use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
+use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::session_state::SerializableHolonPool;
 use holons_boundary::session_state::SessionStateWire;
 use holons_core::HolonError;
@@ -20,18 +20,18 @@ impl DanceEnvelopeAdapter {
     pub fn build_request_envelope(
         context: &Arc<TransactionContext>,
         request: DanceRequest,
-    ) -> Result<InternalDanceRequestEnvelope, HolonError> {
+    ) -> Result<DanceRequestEnvelope, HolonError> {
         let request_wire = DanceRequestWire::from(&request);
         let session = Some(Self::attach_session_state(context)?);
-        Ok(InternalDanceRequestEnvelope { request: request_wire, session })
+        Ok(DanceRequestEnvelope { request: request_wire, session })
     }
 
     /// Inbound: hydrate context from envelope session state, then bind response wire to runtime.
     pub fn bind_response_envelope(
         context: &Arc<TransactionContext>,
-        envelope: InternalDanceResponseEnvelope,
+        envelope: DanceResponseEnvelope,
     ) -> Result<DanceResponse, HolonError> {
-        let InternalDanceResponseEnvelope { response, session } = envelope;
+        let DanceResponseEnvelope { response, session } = envelope;
         let session_state = session.ok_or_else(|| HolonError::InvalidWireFormat {
             wire_type: "InternalDanceResponseEnvelope".to_string(),
             reason: "Missing SessionStateWire".to_string(),
