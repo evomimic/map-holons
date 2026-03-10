@@ -5195,6 +5195,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "map_commands"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_boundary",
+ "holons_core",
+ "integrity_core_types",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
