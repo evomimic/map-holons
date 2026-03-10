@@ -4,19 +4,18 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use holons_recovery::TransactionRecoveryStore;
 
 use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use core_types::HolonError;
 use holons_client::{
-    dances_client::ClientDanceBuilder,
-    init_client_context,
-    shared_types::{
+    client_context::ClientSession, dances_client::ClientDanceBuilder, init_client_context, shared_types::{
         base_receptor::{BaseReceptor, ReceptorBehavior},
         holon_space::{HolonSpace, SpaceInfo},
         map_request::{MapRequest, MapRequestBody},
         map_response::MapResponse,
-    },
+    }
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseStatusCode};
@@ -31,7 +30,7 @@ pub struct HolochainReceptor {
     receptor_id: Option<String>,
     receptor_type: String,
     properties: HashMap<String, String>,
-    context: Arc<TransactionContext>,
+    session: ClientSession,
     client_handler: Arc<HolochainConductorClient>,
     _home_space_holon: HolonSpace,
 }
@@ -58,8 +57,16 @@ impl HolochainReceptor {
         let trust_channel = TrustChannel::new(client_handler.clone());
         let initiator: Arc<dyn DanceInitiator + Send + Sync> = Arc::new(trust_channel);
 
+        // Downcast the stored snapshot store into our concrete recovery store
+        let session: ClientSession;
+        if let Some(snapshot_store_any) = base.snapshot_store.as_ref() {
+            let recovery_store = snapshot_store_any.clone().downcast::<TransactionRecoveryStore>().expect("Failed to deserialize TransactionRecoveryStore");    
+            session = init_client_context(Some(initiator), Some(recovery_store.clone()));
+        } else {
+            session = init_client_context(Some(initiator), None);
+        }
         // Build client context with dance initiator
-        let context = init_client_context(Some(initiator));
+        //let context = init_client_context(Some(initiator));
 
         // Default until we fully implement space discovery
         let _home_space_holon = HolonSpace::default();
@@ -68,7 +75,7 @@ impl HolochainReceptor {
             receptor_id: base.receptor_id.clone(),
             receptor_type: base.receptor_type.clone(),
             properties: base.properties.clone(),
-            context,
+            session,
             client_handler,
             _home_space_holon,
         }
@@ -78,7 +85,7 @@ impl HolochainReceptor {
 #[async_trait]
 impl ReceptorBehavior for HolochainReceptor {
     fn transaction_context(&self) -> Arc<TransactionContext> {
-        Arc::clone(&self.context)
+        Arc::clone(&self.session.context)
     }
 
     /// Core request → client dance pipeline
@@ -86,10 +93,10 @@ impl ReceptorBehavior for HolochainReceptor {
         // Temporary Phase 1.4/1.5 bridge: commit-like requests serialize host
         // ingress here. In Phase 2 this moves to CommandDispatcher.
         if Self::is_commit_dance_request(request.name.as_str()) {
-            let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
+            let _commit_guard = self.session.context.begin_host_commit_ingress_guard()?;
             // Preserve request-shape validation before routing to context-owned commit execution.
-            let _validated_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
-            let response_reference = self.context.commit()?;
+            let _validated_request = ClientDanceBuilder::validate_and_execute(&self.session.context, &request)?;
+            let response_reference = self.session.context.commit()?;
             let dance_response = DanceResponse::new(
                 ResponseStatusCode::OK,
                 MapString("Commit executed via TransactionContext".to_string()),
@@ -103,7 +110,7 @@ impl ReceptorBehavior for HolochainReceptor {
         // Temporary Phase 1.4/1.5 bridge: load+commit is commit-like and
         // should serialize at host ingress until CommandDispatcher owns this.
         if request.name == "load_holons" {
-            let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
+            let _commit_guard = self.session.context.begin_host_commit_ingress_guard()?;
 
             let content_set = match request.body {
                 MapRequestBody::LoadHolons(content_set) => content_set,
@@ -114,7 +121,7 @@ impl ReceptorBehavior for HolochainReceptor {
                 }
             };
 
-            let response_reference = load_holons_from_files(self.context.clone(), content_set).await?;
+            let response_reference = load_holons_from_files(self.session.context.clone(), content_set).await?;
             tracing::info!(
                 "HolochainReceptor: loaded holons with reference: {:?}",
                 response_reference
@@ -136,12 +143,15 @@ impl ReceptorBehavior for HolochainReceptor {
         // an open transaction and must be blocked during host commit ingress.
         let is_read_only = Self::is_read_only_request(request.name.as_str());
         if !is_read_only {
-            self.context.ensure_host_mutation_entry_allowed()?;
+            self.session.context.ensure_host_mutation_entry_allowed()?;
         }
-
-        let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
+        let dance_request = ClientDanceBuilder::validate_and_execute(&self.session.context, &request)?;
+        
+        //here depending on the command we create/undo/redo a snapshot checkpoint
+        //see tests below for examples
+        
         let dance_response = self
-            .context
+            .session.context
             .initiate_ingress_dance(dance_request, is_read_only)
             .await?;
 
@@ -155,6 +165,7 @@ impl ReceptorBehavior for HolochainReceptor {
     }
 }
 
+//to avoid logging serialized fields
 impl Debug for HolochainReceptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HolochainReceptor")
@@ -169,6 +180,8 @@ impl Debug for HolochainReceptor {
 mod tests {
     use super::HolochainReceptor;
     use base_types::{BaseValue, MapString};
+    use holons_recovery::TransactionRecoveryStore;
+    use std::{path::Path, sync::Arc};
     use core_types::{PropertyMap, PropertyName};
     use holons_client::{
         dances_client::ClientDanceBuilder,
@@ -179,6 +192,68 @@ mod tests {
         },
     };
     use holons_core::dances::DanceType;
+
+    /// Helper: open an in-memory recovery store (`:memory:` is a rusqlite built-in).
+    fn in_memory_store() -> Arc<TransactionRecoveryStore> {
+        Arc::new(TransactionRecoveryStore::new(Path::new(":memory:")).expect("in-memory store"))
+    }
+    /// Exercises the full session recovery API:
+    ///   persist (undoable) → undo → redo → list_undo_history → recover_last_snapshot → cleanup
+    /// Also verifies that `disable_undo = true` does NOT add an entry to the undo stack.
+    #[tokio::test]
+    async fn session_recovery_api_full_flow() {
+        let store = in_memory_store();
+        let session = init_client_context(None, Some(store));
+
+        // ── 1. Persist a normal, undoable command ──────────────────────────
+        session.persist("cmd-1", false).await;
+
+        let history = session.list_undo_history().await;
+        assert_eq!(history.len(), 1, "one undoable entry after first persist");
+
+        let last = session.recover_last_snapshot();
+        assert!(last.is_some(), "recover_last_snapshot should return Some after persist");
+
+        // ── 2. Undo brings stack to empty ─────────────────────────────────
+        let undone = session.undo().await;
+        assert!(undone.is_some(), "undo should return the snapshot that was undone");
+
+        let history_after_undo = session.list_undo_history().await;
+        assert_eq!(history_after_undo.len(), 0, "undo stack should be empty after undoing the only entry");
+
+        // ── 3. Redo restores the entry ────────────────────────────────────
+        let redone = session.redo().await;
+        assert!(redone.is_some(), "redo should return the snapshot that was redone");
+
+        let history_after_redo = session.list_undo_history().await;
+        assert_eq!(history_after_redo.len(), 1, "undo stack should be restored after redo");
+
+        // ── 4. persist with disable_undo = true ───────────────────────────
+        // A bulk/loader-style command: stored for crash recovery but NOT added
+        // to the undo stack, so the stack length should not change.
+        session.persist("bulk-op (no-undo)", true).await;
+
+        let history_after_no_undo = session.list_undo_history().await;
+        assert_eq!(
+            history_after_no_undo.len(), 1,
+            "disable_undo persist must not grow the undo stack"
+        );
+
+        // Undo still returns the previous undoable entry (not the no-undo checkpoint).
+        let undone2 = session.undo().await;
+        assert!(undone2.is_some(), "undo should still pop the earlier undoable entry");
+
+        // After popping that entry the stack is empty again.
+        let undo_empty = session.undo().await;
+        assert!(undo_empty.is_none(), "undo on an empty stack should return None");
+
+        // ── 5. cleanup ────────────────────────────────────────────────────
+        session.cleanup().await;
+        // After cleanup the store's session is gone — recover_last_snapshot returns None.
+        let after_cleanup = session.recover_last_snapshot();
+        assert!(after_cleanup.is_none(), "recover_last_snapshot should return None after cleanup");
+    }
+
 
     #[test]
     fn commit_route_classification_is_exact() {
@@ -204,7 +279,8 @@ mod tests {
 
     #[test]
     fn host_mutation_precheck_blocks_create_new_holon_before_builder_side_effects() {
-        let context = init_client_context(None);
+        let session = init_client_context(None,None);
+        let context = session.context.clone();
         let _guard = context.begin_host_commit_ingress_guard().expect("guard should acquire");
 
         let before = context.lookup().transient_count().expect("count should succeed");

@@ -34,12 +34,12 @@ impl ReceptorFactory {
     async fn create_receptor_from_base(&self, base: BaseReceptor) -> Result<Arc<dyn ReceptorBehavior>, Box<dyn std::error::Error>> {
         match base.receptor_type.as_str() {
             "local" => { //local should always be created first
-                tracing::info!("Creating LocalReceptor from base configuration");
+                tracing::info!("Creating LocalReceptor from base configuration {:?}", base);
                 let receptor = LocalReceptor::new(base)?;
                 Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }
             "holochain" => {
-                tracing::info!("Creating HolochainReceptor from base configuration");
+                tracing::info!("Creating HolochainReceptor from base configuration {:?}", base);
                 let receptor = HolochainReceptor::new(base);
                 Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }

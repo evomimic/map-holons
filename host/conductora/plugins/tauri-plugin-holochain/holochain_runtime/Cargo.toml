@@ -19,11 +19,11 @@ sbd-server = "0.1.0"
 tx5-signal = "0.3.3"
 
 # Lair dependencies
-lair_keystore_api = "0.6.0"
-lair_keystore = { version = "0.6.0" }
+lair_keystore_api = "=0.6.2"
+lair_keystore = { version = "=0.6.2" }
 
 # Holochain client
-holochain_client = "0.7.0"
+holochain_client = "0.7.1"
 
 # Other dependencies
 rustls = "0.23"
