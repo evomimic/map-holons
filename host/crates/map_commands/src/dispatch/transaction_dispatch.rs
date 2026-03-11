@@ -1,4 +1,5 @@
 use core_types::HolonError;
+use holons_core::reference_layer::HolonReference;
 
 use crate::domain::{MapResult, TransactionAction, TransactionCommand};
 
@@ -13,9 +14,9 @@ pub async fn dispatch_transaction(
 
     match command.action {
         TransactionAction::Commit => {
-            command.context.commit()?;
+            let transient_ref = command.context.commit()?;
             session.remove_transaction(&tx_id)?;
-            Ok(MapResult::Committed)
+            Ok(MapResult::CommitResponse(HolonReference::Transient(transient_ref)))
         }
         // Dances use the initiate_ingress_dance function
         _ => Err(HolonError::NotImplemented(format!("TransactionAction::{:?}", command.action))),

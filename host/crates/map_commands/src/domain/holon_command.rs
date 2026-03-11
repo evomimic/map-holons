@@ -28,11 +28,20 @@ pub enum HolonAction {
 /// Lifecycle validated via descriptor. Does not trigger snapshot persistence.
 #[derive(Debug)]
 pub enum ReadableHolonAction {
-    /// `ReadableHolon::property_value(name)` → `Option<PropertyValue>`
-    PropertyValue { name: PropertyName },
+    /// `ReadableHolon::clone_holon()` → `TransientReference`
+    CloneHolon,
 
-    /// `ReadableHolon::related_holons(name)` → `HolonCollection`
-    RelatedHolons { name: RelationshipName },
+    /// `ReadableHolon::essential_content()` → `EssentialHolonContent`
+    EssentialContent,
+
+    /// `ReadableHolon::summarize()` → `String`
+    Summarize,
+
+    /// `ReadableHolon::holon_id()` → `HolonId`
+    HolonId,
+
+    /// `ReadableHolon::predecessor()` → `Option<HolonReference>`
+    Predecessor,
 
     /// `ReadableHolon::key()` → `Option<MapString>`
     Key,
@@ -40,17 +49,14 @@ pub enum ReadableHolonAction {
     /// `ReadableHolon::versioned_key()` → `MapString`
     VersionedKey,
 
-    /// `ReadableHolon::into_model()` → `HolonNodeModel`
-    IntoModel,
-
     /// `ReadableHolon::all_related_holons()` → `RelationshipMap`
     AllRelatedHolons,
 
-    /// `ReadableHolon::essential_content()` → `EssentialHolonContent`
-    EssentialContent,
+    /// `ReadableHolon::property_value(name)` → `Option<PropertyValue>`
+    PropertyValue { name: PropertyName },
 
-    /// `ReadableHolon::summarize()` → `String`
-    Summarize,
+    /// `ReadableHolon::related_holons(name)` → `HolonCollection`
+    RelatedHolons { name: RelationshipName },
 }
 
 /// Mutating holon actions.
@@ -63,31 +69,20 @@ pub enum ReadableHolonAction {
 #[derive(Debug)]
 pub enum WritableHolonAction {
     /// `WritableHolon::with_property_value(name, value)`
-    WithPropertyValue {
-        name: PropertyName,
-        value: BaseValue,
-    },
+    WithPropertyValue { name: PropertyName, value: BaseValue },
 
     /// `WritableHolon::remove_property_value(name)`
     RemovePropertyValue { name: PropertyName },
 
     /// `WritableHolon::add_related_holons(name, holons)`
-    AddRelatedHolons {
-        name: RelationshipName,
-        holons: Vec<HolonReference>,
-    },
+    AddRelatedHolons { name: RelationshipName, holons: Vec<HolonReference> },
 
     /// `WritableHolon::remove_related_holons(name, holons)`
-    RemoveRelatedHolons {
-        name: RelationshipName,
-        holons: Vec<HolonReference>,
-    },
+    RemoveRelatedHolons { name: RelationshipName, holons: Vec<HolonReference> },
 
     /// `WritableHolon::with_descriptor(descriptor)`
     WithDescriptor { descriptor: HolonReference },
 
     /// `WritableHolon::with_predecessor(predecessor)`
-    WithPredecessor {
-        predecessor: Option<HolonReference>,
-    },
+    WithPredecessor { predecessor: Option<HolonReference> },
 }

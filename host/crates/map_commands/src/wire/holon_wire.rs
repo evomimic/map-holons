@@ -32,11 +32,20 @@ pub enum HolonActionWire {
 /// Mirrors `ReadableHolonAction` — each variant maps to a `ReadableHolon` trait method.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ReadableHolonActionWire {
-    /// `property_value(name)` → `Option<PropertyValue>`
-    PropertyValue { name: PropertyName },
+    /// `clone_holon()` → `TransientReference`
+    CloneHolon,
 
-    /// `related_holons(name)` → `HolonCollection`
-    RelatedHolons { name: RelationshipName },
+    /// `essential_content()` → `EssentialHolonContent`
+    EssentialContent,
+
+    /// `summarize()` → `String`
+    Summarize,
+
+    /// `holon_id()` → `HolonId`
+    HolonId,
+
+    /// `predecessor()` → `Option<HolonReference>`
+    Predecessor,
 
     /// `key()` → `Option<MapString>`
     Key,
@@ -44,17 +53,14 @@ pub enum ReadableHolonActionWire {
     /// `versioned_key()` → `MapString`
     VersionedKey,
 
-    /// `into_model()` → `HolonNodeModel`
-    IntoModel,
-
     /// `all_related_holons()` → `RelationshipMap`
     AllRelatedHolons,
 
-    /// `essential_content()` → `EssentialHolonContent`
-    EssentialContent,
+    /// `property_value(name)` → `Option<PropertyValue>`
+    PropertyValue { name: PropertyName },
 
-    /// `summarize()` → `String`
-    Summarize,
+    /// `related_holons(name)` → `HolonCollection`
+    RelatedHolons { name: RelationshipName },
 }
 
 /// Wire-level write (mutating) holon actions.
@@ -121,18 +127,20 @@ impl HolonActionWire {
 impl ReadableHolonActionWire {
     fn bind(self) -> ReadableHolonAction {
         match self {
+            ReadableHolonActionWire::CloneHolon => ReadableHolonAction::CloneHolon,
+            ReadableHolonActionWire::EssentialContent => ReadableHolonAction::EssentialContent,
+            ReadableHolonActionWire::Summarize => ReadableHolonAction::Summarize,
+            ReadableHolonActionWire::HolonId => ReadableHolonAction::HolonId,
+            ReadableHolonActionWire::Predecessor => ReadableHolonAction::Predecessor,
+            ReadableHolonActionWire::Key => ReadableHolonAction::Key,
+            ReadableHolonActionWire::VersionedKey => ReadableHolonAction::VersionedKey,
+            ReadableHolonActionWire::AllRelatedHolons => ReadableHolonAction::AllRelatedHolons,
             ReadableHolonActionWire::PropertyValue { name } => {
                 ReadableHolonAction::PropertyValue { name }
             }
             ReadableHolonActionWire::RelatedHolons { name } => {
                 ReadableHolonAction::RelatedHolons { name }
             }
-            ReadableHolonActionWire::Key => ReadableHolonAction::Key,
-            ReadableHolonActionWire::VersionedKey => ReadableHolonAction::VersionedKey,
-            ReadableHolonActionWire::IntoModel => ReadableHolonAction::IntoModel,
-            ReadableHolonActionWire::AllRelatedHolons => ReadableHolonAction::AllRelatedHolons,
-            ReadableHolonActionWire::EssentialContent => ReadableHolonAction::EssentialContent,
-            ReadableHolonActionWire::Summarize => ReadableHolonAction::Summarize,
         }
     }
 }

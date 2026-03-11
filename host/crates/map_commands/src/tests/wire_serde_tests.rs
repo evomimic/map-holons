@@ -136,8 +136,8 @@ fn roundtrip_holon_write_property() {
 // ── MapResultWire ───────────────────────────────────────────────────
 
 #[test]
-fn roundtrip_result_unit() {
-    assert_roundtrip(&MapResultWire::Unit);
+fn roundtrip_result_none() {
+    assert_roundtrip(&MapResultWire::None);
 }
 
 #[test]
@@ -148,6 +148,23 @@ fn roundtrip_result_transaction_created() {
 }
 
 #[test]
-fn roundtrip_result_committed() {
-    assert_roundtrip(&MapResultWire::Committed);
+fn roundtrip_result_commit_response() {
+    let tx_id = test_tx_id(1);
+    assert_roundtrip(&MapResultWire::CommitResponse(
+        holons_boundary::HolonReferenceWire::Smart(SmartReferenceWire::new(
+            tx_id,
+            test_holon_id(),
+            None,
+        )),
+    ));
+}
+
+#[test]
+fn roundtrip_result_string_value() {
+    assert_roundtrip(&MapResultWire::StringValue(MapString::from("my-key")));
+}
+
+#[test]
+fn roundtrip_result_holon_id() {
+    assert_roundtrip(&MapResultWire::HolonId(test_holon_id()));
 }
