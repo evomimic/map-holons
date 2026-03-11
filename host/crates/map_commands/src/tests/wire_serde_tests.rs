@@ -77,12 +77,12 @@ fn roundtrip_transaction_commit() {
 }
 
 #[test]
-fn roundtrip_transaction_create_transient() {
+fn roundtrip_transaction_mutation_new_holon() {
     let cmd = MapCommandWire::Transaction(TransactionCommandWire {
         tx_id: test_tx_id(2),
-        action: TransactionActionWire::CreateTransientHolon {
+        action: TransactionActionWire::Mutation(MutationActionWire::NewHolon {
             key: Some(MapString::from("my-key")),
-        },
+        }),
     });
     assert_roundtrip(&cmd);
 }
@@ -91,7 +91,7 @@ fn roundtrip_transaction_create_transient() {
 fn roundtrip_transaction_lookup_get_all() {
     let cmd = MapCommandWire::Transaction(TransactionCommandWire {
         tx_id: test_tx_id(3),
-        action: TransactionActionWire::Lookup(LookupQueryWire::GetAllHolons),
+        action: TransactionActionWire::Lookup(LookupActionWire::GetAllHolons),
     });
     assert_roundtrip(&cmd);
 }

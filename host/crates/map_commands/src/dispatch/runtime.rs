@@ -29,10 +29,7 @@ impl Runtime {
     /// 1. Bind wire command → domain command
     /// 2. Dispatch domain command
     /// 3. Convert domain result → wire result
-    pub async fn dispatch(
-        &self,
-        request: MapIpcRequest,
-    ) -> Result<MapIpcResponse, HolonError> {
+    pub async fn dispatch(&self, request: MapIpcRequest) -> Result<MapIpcResponse, HolonError> {
         let request_id = request.request_id;
 
         let result = self.dispatch_inner(request.command).await;
@@ -40,20 +37,14 @@ impl Runtime {
         // Convert domain result to wire, preserving errors
         let wire_result = match result {
             Ok(domain_result) => Ok(MapResultWire::from(domain_result)),
-            Err(e) => Err(e),
+            Err(error) => Err(error),
         };
 
-        Ok(MapIpcResponse {
-            request_id,
-            result: wire_result,
-        })
+        Ok(MapIpcResponse { request_id, result: wire_result })
     }
 
     /// Bind + dispatch (separated for cleaner error handling).
-    async fn dispatch_inner(
-        &self,
-        command_wire: MapCommandWire,
-    ) -> Result<MapResult, HolonError> {
+    async fn dispatch_inner(&self, command_wire: MapCommandWire) -> Result<MapResult, HolonError> {
         let command = self.bind(command_wire)?;
         self.dispatch_command(command).await
     }
@@ -74,10 +65,7 @@ impl Runtime {
     }
 
     /// Dispatches a bound domain command to scope-specific handlers.
-    async fn dispatch_command(
-        &self,
-        command: MapCommand,
-    ) -> Result<MapResult, HolonError> {
+    async fn dispatch_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
         match command {
             MapCommand::Space(cmd) => space_dispatch::dispatch_space(&self.session, cmd),
             MapCommand::Transaction(cmd) => {

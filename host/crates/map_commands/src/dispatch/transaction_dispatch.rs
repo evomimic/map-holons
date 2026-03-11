@@ -17,9 +17,7 @@ pub async fn dispatch_transaction(
             session.remove_transaction(&tx_id)?;
             Ok(MapResult::Committed)
         }
-        _ => Err(HolonError::NotImplemented(format!(
-            "TransactionAction::{:?}",
-            command.action
-        ))),
+        // Dances use the initiate_ingress_dance function
+        _ => Err(HolonError::NotImplemented(format!("TransactionAction::{:?}", command.action))),
     }
 }
