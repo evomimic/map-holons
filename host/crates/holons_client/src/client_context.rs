@@ -21,23 +21,27 @@ use std::sync::Arc;
 /// # Returns
 /// * An `Arc<TransactionContext>` backed by a `TransactionContext`.
 pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<TransactionContext> {
-    // Create the ClientHolonService.
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
-
-    // Create a new `HolonSpaceManager` wrapped in `Arc`.
-    let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-        initiator,     // Dance initiator for conductor calls
-        holon_service, // Service for holons
-        None,          // No local space holon initially
-        ServiceRoutingPolicy::Combined,
-    ));
+    let space_manager = init_client_runtime(initiator);
 
     // Open the default transaction for this space.
     // TransactionContext becomes the sole execution root and owns the space.
-    let transaction_context = space_manager
+    space_manager
         .get_transaction_manager()
         .open_new_transaction(Arc::clone(&space_manager))
-        .expect("failed to open default client transaction");
+        .expect("failed to open default client transaction")
+}
 
-    transaction_context
+/// Initializes a new client-side `HolonSpaceManager` without opening a transaction.
+///
+/// Same construction as `init_client_context()` but returns the space manager
+/// directly, leaving transaction lifecycle to the caller (e.g., `RuntimeSession`).
+pub fn init_client_runtime(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<HolonSpaceManager> {
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+
+    Arc::new(HolonSpaceManager::new_with_managers(
+        initiator,
+        holon_service,
+        None,
+        ServiceRoutingPolicy::Combined,
+    ))
 }

@@ -14,7 +14,7 @@ use super::{holon_dispatch, space_dispatch, transaction_dispatch};
 /// the sandwich model: wire → bind → domain dispatch → wire.
 ///
 /// Runtime is app-scoped and owns a `RuntimeSession` for transaction lifecycle.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Runtime {
     session: Arc<RuntimeSession>,
 }
