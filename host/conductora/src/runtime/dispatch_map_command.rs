@@ -27,7 +27,9 @@ pub async fn dispatch_map_command(
         .clone();
 
     let runtime = runtime.ok_or_else(|| {
-        HolonError::NotImplemented("Runtime not yet initialized".to_string())
+        HolonError::ServiceNotAvailable(
+            "MAP Commands Runtime not initialized".to_string(),
+        )
     })?;
 
     runtime.dispatch(request).await

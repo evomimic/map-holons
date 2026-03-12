@@ -219,12 +219,19 @@ impl AppBuilder {
             .try_state::<ConductorClientState>()
             .and_then(|state| state.read().ok()?.clone());
 
-        let initiator = client.map(|c| {
-            let trust_channel = TrustChannel::new(c);
-            Arc::new(trust_channel) as Arc<dyn holons_core::dances::DanceInitiator>
-        });
+        let Some(client) = client else {
+            tracing::warn!(
+                "[APP BUILDER] No conductor client available \
+                 — MAP Commands Runtime will not be initialized."
+            );
+            return;
+        };
 
-        let space_manager = init_client_runtime(initiator);
+        let trust_channel = TrustChannel::new(client);
+        let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
+            Arc::new(trust_channel);
+
+        let space_manager = init_client_runtime(Some(initiator));
         let session = Arc::new(RuntimeSession::new(space_manager));
         let runtime = Runtime::new(session);
 
