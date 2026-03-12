@@ -1,20 +1,20 @@
-use core_types::{HolonError};
+use crate::LocalClient;
+use async_trait::async_trait;
+use core_types::HolonError;
 use holons_client::client_context::ClientSession;
-use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorBehavior};
-use holons_client::{ClientHolonService, init_client_context};
+use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_client::shared_types::map_request::MapRequest;
 use holons_client::shared_types::map_response::MapResponse;
-use holons_core::HolonServiceApi;
+use holons_client::{init_client_context, ClientHolonService};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
+use holons_core::HolonServiceApi;
 use holons_recovery::TransactionRecoveryStore;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::fmt;
 use std::fmt::Debug;
-use async_trait::async_trait;
-use crate::{LocalClient};
+use std::sync::Arc;
 
 pub const ROOT_SPACE_HOLON_PATH: &str = "root_holon_space";
 pub const ROOT_HOLON_SPACE_NAME: &str = "RootHolonSpace";
@@ -34,24 +34,26 @@ pub struct LocalReceptor {
 impl LocalReceptor {
     /// Create a new LocalReceptor, returning Result to handle downcast failures
     pub fn new(base: BaseReceptor) -> Result<Self, HolonError> {
-
         // Downcast the stored snapshot store into our concrete recovery store
         let session: ClientSession;
         if let Some(snapshot_store_any) = base.snapshot_store.as_ref() {
-            let recovery_store = snapshot_store_any.clone().downcast::<TransactionRecoveryStore>().expect("Failed to deserialize TransactionRecoveryStore");    
+            let recovery_store = snapshot_store_any
+                .clone()
+                .downcast::<TransactionRecoveryStore>()
+                .expect("Failed to deserialize TransactionRecoveryStore");
             session = init_client_context(None, Some(recovery_store.clone()));
         } else {
             session = init_client_context(None, None);
         }
-        
+
         //ENSURE ROOT HOLON EXISTS OR CREATE IT
         let client = LocalClient::new();
-       // let holon = client.fetch_or_create_root_holon(context.as_ref())?;
-       // let root_space = client.convert_to_holonspace(holon)?;
+        // let holon = client.fetch_or_create_root_holon(context.as_ref())?;
+        // let root_space = client.convert_to_holonspace(holon)?;
         let client_handler = Arc::new(client);
 
         let _holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
-        
+
         Ok(Self {
             _receptor_id: base.receptor_id.clone(),
             _receptor_type: base.receptor_type.clone(),
@@ -59,7 +61,7 @@ impl LocalReceptor {
             session,
             client_handler,
             _holon_service,
-           _root_space: HolonSpace::default(), //root_space,
+            _root_space: HolonSpace::default(), //root_space,
         })
     }
 }
@@ -72,7 +74,7 @@ impl ReceptorBehavior for LocalReceptor {
 
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         tracing::warn!("LocalReceptor: handling request: {:?}", self.session.context);
-        
+
         //TODO: implement actual handling logic here with the HolonServiceApi
 
         let mocked_response = MapResponse {

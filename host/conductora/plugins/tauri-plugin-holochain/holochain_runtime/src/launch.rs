@@ -30,10 +30,7 @@ pub(crate) async fn launch_holochain_runtime(
 ) -> crate::error::Result<HolochainRuntime> {
     let t_total = std::time::Instant::now();
     tracing::info!("[LAUNCH] Starting holochain runtime (dev_mode={})", config.dev_mode);
-    if rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .is_err()
-    {
+    if rustls::crypto::aws_lc_rs::default_provider().install_default().is_err() {
         tracing::error!("could not set crypto provider for tls");
     }
 
@@ -50,7 +47,9 @@ pub(crate) async fn launch_holochain_runtime(
         // Dev mode: skip the WAN signal check entirely (avoids 1-5s TCP handshake/timeout).
         // Spin up an instant loopback signal server instead — the conductor needs *some*
         // signal URL in its network config, but it never actually needs to reach the internet.
-        tracing::info!("[LAUNCH] DEV MODE: skipping WAN signal check, starting local loopback signal server");
+        tracing::info!(
+            "[LAUNCH] DEV MODE: skipping WAN signal check, starting local loopback signal server"
+        );
         let loopback = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
         let port = portpicker::pick_unused_port().expect("No ports free");
         let signal_handle = run_local_signal_service(loopback.to_string(), port).await?;
@@ -104,10 +103,7 @@ pub(crate) async fn launch_holochain_runtime(
         clean_dev_conductor_state(&dev_dir);
 
         // DangerTestKeystore is set in the config; no lair process needed.
-        Conductor::builder()
-            .config(conductor_config)
-            .build()
-            .await?
+        Conductor::builder().config(conductor_config).build().await?
     } else {
         tracing::info!("[LAUNCH] Spawning lair keystore (in-proc)...");
         let t0 = std::time::Instant::now();
@@ -117,20 +113,13 @@ pub(crate) async fn launch_holochain_runtime(
                 .map_err(|err| crate::Error::LairError(err))?;
         tracing::info!("[LAUNCH] Lair keystore ready in {:.1}s", t0.elapsed().as_secs_f64());
 
-        let seed_already_exists = keystore
-            .lair_client()
-            .get_entry(DEVICE_SEED_LAIR_KEYSTORE_TAG.into())
-            .await
-            .is_ok();
+        let seed_already_exists =
+            keystore.lair_client().get_entry(DEVICE_SEED_LAIR_KEYSTORE_TAG.into()).await.is_ok();
 
         if !seed_already_exists {
             keystore
                 .lair_client()
-                .new_seed(
-                    DEVICE_SEED_LAIR_KEYSTORE_TAG.into(),
-                    None,
-                    true,
-                )
+                .new_seed(DEVICE_SEED_LAIR_KEYSTORE_TAG.into(), None, true)
                 .await
                 .map_err(|err| crate::Error::LairError(err))?;
         }
@@ -155,7 +144,10 @@ pub(crate) async fn launch_holochain_runtime(
 
     // *lock = Some(info.clone());
 
-    tracing::info!("[LAUNCH] Total launch_holochain_runtime: {:.1}s", t_total.elapsed().as_secs_f64());
+    tracing::info!(
+        "[LAUNCH] Total launch_holochain_runtime: {:.1}s",
+        t_total.elapsed().as_secs_f64()
+    );
     Ok(HolochainRuntime {
         filesystem,
         apps_websockets_auths: Arc::new(Mutex::new(Vec::new())),
@@ -192,8 +184,8 @@ fn get_local_ip_address() -> std::net::IpAddr {
 }
 
 fn try_connect_method() -> Result<std::net::IpAddr, Box<dyn std::error::Error>> {
-    use std::net::{UdpSocket}; //SocketAddr
-    
+    use std::net::UdpSocket; //SocketAddr
+
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.connect("1.1.1.1:80")?; // Cloudflare DNS
     Ok(socket.local_addr()?.ip())
@@ -288,13 +280,19 @@ fn clean_dev_conductor_state(conductor_dir: &std::path::Path) {
                                 continue; // keep
                             }
                             let p = db_entry.path();
-                            if p.is_dir() { let _ = std::fs::remove_dir_all(&p); }
-                            else { let _ = std::fs::remove_file(&p); }
+                            if p.is_dir() {
+                                let _ = std::fs::remove_dir_all(&p);
+                            } else {
+                                let _ = std::fs::remove_file(&p);
+                            }
                         }
                     }
                 } else {
-                    if path.is_dir() { let _ = std::fs::remove_dir_all(&path); }
-                    else { let _ = std::fs::remove_file(&path); }
+                    if path.is_dir() {
+                        let _ = std::fs::remove_dir_all(&path);
+                    } else {
+                        let _ = std::fs::remove_file(&path);
+                    }
                 }
             }
         }

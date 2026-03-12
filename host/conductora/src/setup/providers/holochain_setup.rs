@@ -1,13 +1,13 @@
 use crate::config::providers::holochain::*;
 use crate::config::StorageProvider;
 use crate::setup::common_setup::{create_snapshot_store, serialize_props};
-use std::sync::{Arc, Mutex};
 use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
 use crate::setup::window_setup::ProviderWindowSetup;
 use async_trait::async_trait;
 use holochain_client::{AdminWebsocket, AppInfo, AppWebsocket};
 use holochain_receptor::HolochainConductorClient;
 use holons_client::shared_types::base_receptor::BaseReceptor;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager, Theme};
 use tauri_plugin_holochain::AgentPubKey;
 use tauri_plugin_holochain::{AppBundle, HolochainExt};
@@ -37,11 +37,17 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("Failed to load happ bundle: {}", e));
             }
         };
-        tracing::info!("[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s", t_setup.elapsed().as_secs_f64());
+        tracing::info!(
+            "[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s",
+            t_setup.elapsed().as_secs_f64()
+        );
 
         let t_admin = std::time::Instant::now();
         let admin_ws = handle.holochain()?.admin_websocket().await?;
-        tracing::info!("[HOLOCHAIN SETUP] Admin websocket obtained in {:.1}s", t_admin.elapsed().as_secs_f64());
+        tracing::info!(
+            "[HOLOCHAIN SETUP] Admin websocket obtained in {:.1}s",
+            t_admin.elapsed().as_secs_f64()
+        );
 
         let installed_apps = admin_ws
             .list_apps(None)
@@ -59,40 +65,40 @@ impl HolochainSetup {
             // Dev mode: conductor state (except wasm.db) was wiped before the
             // conductor started (see clean_dev_conductor_state in launch.rs), so
             // there is no stale app record.  Install fresh with an ephemeral key.
-            Self::handle_new_app_installation(
-                &handle,
-                &admin_ws,
-                happ,
-                app_id.clone(),
-                true,
-            )
-            .await?;
+            Self::handle_new_app_installation(&handle, &admin_ws, happ, app_id.clone(), true)
+                .await?;
         } else if Self::is_app_installed(&installed_apps, app_id.clone()) {
             Self::handle_existing_app(&handle, happ, app_id.clone()).await?;
         } else {
-            Self::handle_new_app_installation(
-                &handle,
-                &admin_ws,
-                happ,
-                app_id.clone(),
-                false,
-            )
-            .await?;
+            Self::handle_new_app_installation(&handle, &admin_ws, happ, app_id.clone(), false)
+                .await?;
         }
-        tracing::info!("[HOLOCHAIN SETUP] App install/update done in {:.1}s", t_install.elapsed().as_secs_f64());
+        tracing::info!(
+            "[HOLOCHAIN SETUP] App install/update done in {:.1}s",
+            t_install.elapsed().as_secs_f64()
+        );
 
         let t_appws = std::time::Instant::now();
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
-        tracing::info!("[HOLOCHAIN SETUP] App websocket obtained in {:.1}s", t_appws.elapsed().as_secs_f64());
+        tracing::info!(
+            "[HOLOCHAIN SETUP] App websocket obtained in {:.1}s",
+            t_appws.elapsed().as_secs_f64()
+        );
 
         // After successful setup, build and register the base receptor
         let t_receptor = std::time::Instant::now();
         let receptor_cfg: BaseReceptor =
             Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
         Self::register_receptor(&handle, receptor_cfg).await?;
-        tracing::info!("[HOLOCHAIN SETUP] Base receptor built in {:.1}s", t_receptor.elapsed().as_secs_f64());
+        tracing::info!(
+            "[HOLOCHAIN SETUP] Base receptor built in {:.1}s",
+            t_receptor.elapsed().as_secs_f64()
+        );
 
-        tracing::info!("[HOLOCHAIN SETUP] Total setup time: {:.1}s", t_setup.elapsed().as_secs_f64());
+        tracing::info!(
+            "[HOLOCHAIN SETUP] Total setup time: {:.1}s",
+            t_setup.elapsed().as_secs_f64()
+        );
         Ok(())
     }
 

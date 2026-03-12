@@ -10,12 +10,15 @@ use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use core_types::HolonError;
 use holons_client::{
-    client_context::ClientSession, dances_client::ClientDanceBuilder, init_client_context, shared_types::{
+    client_context::ClientSession,
+    dances_client::ClientDanceBuilder,
+    init_client_context,
+    shared_types::{
         base_receptor::{BaseReceptor, ReceptorBehavior},
         holon_space::{HolonSpace, SpaceInfo},
         map_request::{MapRequest, MapRequestBody},
         map_response::MapResponse,
-    }
+    },
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseStatusCode};
@@ -60,7 +63,10 @@ impl HolochainReceptor {
         // Downcast the stored snapshot store into our concrete recovery store
         let session: ClientSession;
         if let Some(snapshot_store_any) = base.snapshot_store.as_ref() {
-            let recovery_store = snapshot_store_any.clone().downcast::<TransactionRecoveryStore>().expect("Failed to deserialize TransactionRecoveryStore");    
+            let recovery_store = snapshot_store_any
+                .clone()
+                .downcast::<TransactionRecoveryStore>()
+                .expect("Failed to deserialize TransactionRecoveryStore");
             session = init_client_context(Some(initiator), Some(recovery_store.clone()));
         } else {
             session = init_client_context(Some(initiator), None);
@@ -95,7 +101,8 @@ impl ReceptorBehavior for HolochainReceptor {
         if Self::is_commit_dance_request(request.name.as_str()) {
             let _commit_guard = self.session.context.begin_host_commit_ingress_guard()?;
             // Preserve request-shape validation before routing to context-owned commit execution.
-            let _validated_request = ClientDanceBuilder::validate_and_execute(&self.session.context, &request)?;
+            let _validated_request =
+                ClientDanceBuilder::validate_and_execute(&self.session.context, &request)?;
             let response_reference = self.session.context.commit()?;
             let dance_response = DanceResponse::new(
                 ResponseStatusCode::OK,
@@ -121,7 +128,8 @@ impl ReceptorBehavior for HolochainReceptor {
                 }
             };
 
-            let response_reference = load_holons_from_files(self.session.context.clone(), content_set).await?;
+            let response_reference =
+                load_holons_from_files(self.session.context.clone(), content_set).await?;
             tracing::info!(
                 "HolochainReceptor: loaded holons with reference: {:?}",
                 response_reference
@@ -145,15 +153,14 @@ impl ReceptorBehavior for HolochainReceptor {
         if !is_read_only {
             self.session.context.ensure_host_mutation_entry_allowed()?;
         }
-        let dance_request = ClientDanceBuilder::validate_and_execute(&self.session.context, &request)?;
-        
+        let dance_request =
+            ClientDanceBuilder::validate_and_execute(&self.session.context, &request)?;
+
         //here depending on the command we create/undo/redo a snapshot checkpoint
         //see tests below for examples
-        
-        let dance_response = self
-            .session.context
-            .initiate_ingress_dance(dance_request, is_read_only)
-            .await?;
+
+        let dance_response =
+            self.session.context.initiate_ingress_dance(dance_request, is_read_only).await?;
 
         Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
     }
@@ -180,8 +187,6 @@ impl Debug for HolochainReceptor {
 mod tests {
     use super::HolochainReceptor;
     use base_types::{BaseValue, MapString};
-    use holons_recovery::TransactionRecoveryStore;
-    use std::{path::Path, sync::Arc};
     use core_types::{PropertyMap, PropertyName};
     use holons_client::{
         dances_client::ClientDanceBuilder,
@@ -192,6 +197,8 @@ mod tests {
         },
     };
     use holons_core::dances::DanceType;
+    use holons_recovery::TransactionRecoveryStore;
+    use std::{path::Path, sync::Arc};
 
     /// Helper: open an in-memory recovery store (`:memory:` is a rusqlite built-in).
     fn in_memory_store() -> Arc<TransactionRecoveryStore> {
@@ -219,7 +226,11 @@ mod tests {
         assert!(undone.is_some(), "undo should return the snapshot that was undone");
 
         let history_after_undo = session.list_undo_history().await;
-        assert_eq!(history_after_undo.len(), 0, "undo stack should be empty after undoing the only entry");
+        assert_eq!(
+            history_after_undo.len(),
+            0,
+            "undo stack should be empty after undoing the only entry"
+        );
 
         // ── 3. Redo restores the entry ────────────────────────────────────
         let redone = session.redo().await;
@@ -235,7 +246,8 @@ mod tests {
 
         let history_after_no_undo = session.list_undo_history().await;
         assert_eq!(
-            history_after_no_undo.len(), 1,
+            history_after_no_undo.len(),
+            1,
             "disable_undo persist must not grow the undo stack"
         );
 
@@ -253,7 +265,6 @@ mod tests {
         let after_cleanup = session.recover_last_snapshot();
         assert!(after_cleanup.is_none(), "recover_last_snapshot should return None after cleanup");
     }
-
 
     #[test]
     fn commit_route_classification_is_exact() {
@@ -279,7 +290,7 @@ mod tests {
 
     #[test]
     fn host_mutation_precheck_blocks_create_new_holon_before_builder_side_effects() {
-        let session = init_client_context(None,None);
+        let session = init_client_context(None, None);
         let context = session.context.clone();
         let _guard = context.begin_host_commit_ingress_guard().expect("guard should acquire");
 

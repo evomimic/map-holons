@@ -6,8 +6,8 @@
 //!
 //! The schema is embedded as a string constant and applied on `new()`.
 
-use std::{path::Path, sync::Arc};
 use std::sync::Mutex;
+use std::{path::Path, sync::Arc};
 
 use rusqlite::{params, Connection};
 use serde_json;
@@ -16,7 +16,7 @@ use uuid::Uuid;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 
-use super::transaction_snapshot::{TransactionSnapshot, now_ms};
+use super::transaction_snapshot::{now_ms, TransactionSnapshot};
 
 // ---------------------------------------------------------------------------
 // Store
@@ -113,9 +113,8 @@ impl TransactionRecoveryStore {
 
         // Use conn.transaction() so that any error automatically rolls back,
         // preventing a dangling open transaction on the next call.
-        let tx = guard
-            .transaction()
-            .map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
+        let tx =
+            guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
 
         if !disable_undo {
             // New undoable command invalidates all redo history.
@@ -158,14 +157,7 @@ impl TransactionRecoveryStore {
                     (checkpoint_id, tx_id, stack_kind, stack_pos,
                      snapshot_blob, snapshot_hash, description, disable_undo, created_at_ms)
                  VALUES (?1, ?2, 'undo', -1, ?3, ?4, ?5, 1, ?6)",
-                params![
-                    checkpoint_id,
-                    tx_id,
-                    snapshot_blob,
-                    snapshot.hash,
-                    description,
-                    now,
-                ],
+                params![checkpoint_id, tx_id, snapshot_blob, snapshot.hash, description, now,],
             )
             .map_err(|e| HolonError::Misc(format!("Insert no-undo checkpoint: {e}")))?;
         } else {
@@ -188,8 +180,7 @@ impl TransactionRecoveryStore {
             .map_err(|e| HolonError::Misc(format!("Insert checkpoint: {e}")))?;
         }
 
-        tx.commit()
-            .map_err(|e| HolonError::Misc(format!("Commit transaction: {e}")))?;
+        tx.commit().map_err(|e| HolonError::Misc(format!("Commit transaction: {e}")))?;
 
         tracing::debug!("[RECOVERY STORE] Persisted checkpoint '{description}' for tx={tx_id}");
         Ok(())
@@ -218,9 +209,8 @@ impl TransactionRecoveryStore {
         let redo_pos = redo_stack.len() as i64;
         redo_stack.push(checkpoint_id.clone());
 
-        let tx = guard
-            .transaction()
-            .map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
+        let tx =
+            guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
 
         tx.execute(
             "UPDATE recovery_checkpoint
@@ -232,10 +222,11 @@ impl TransactionRecoveryStore {
 
         self.save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
 
-        tx.commit()
-            .map_err(|e| HolonError::Misc(format!("Undo commit: {e}")))?;
+        tx.commit().map_err(|e| HolonError::Misc(format!("Undo commit: {e}")))?;
 
-        tracing::info!("[RECOVERY STORE] Undo: restored checkpoint '{checkpoint_id}' for tx={tx_id}");
+        tracing::info!(
+            "[RECOVERY STORE] Undo: restored checkpoint '{checkpoint_id}' for tx={tx_id}"
+        );
         Ok(Some(snapshot))
     }
 
@@ -261,9 +252,8 @@ impl TransactionRecoveryStore {
         let undo_pos = undo_stack.len() as i64;
         undo_stack.push(checkpoint_id.clone());
 
-        let tx = guard
-            .transaction()
-            .map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
+        let tx =
+            guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
 
         tx.execute(
             "UPDATE recovery_checkpoint
@@ -275,10 +265,11 @@ impl TransactionRecoveryStore {
 
         self.save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
 
-        tx.commit()
-            .map_err(|e| HolonError::Misc(format!("Redo commit: {e}")))?;
+        tx.commit().map_err(|e| HolonError::Misc(format!("Redo commit: {e}")))?;
 
-        tracing::info!("[RECOVERY STORE] Redo: restored checkpoint '{checkpoint_id}' for tx={tx_id}");
+        tracing::info!(
+            "[RECOVERY STORE] Redo: restored checkpoint '{checkpoint_id}' for tx={tx_id}"
+        );
         Ok(Some(snapshot))
     }
 
@@ -313,7 +304,9 @@ impl TransactionRecoveryStore {
             e
         })?;
 
-        tracing::info!("[RECOVERY STORE] Recovered snapshot for tx={tx_id} from checkpoint='{checkpoint_id}'");
+        tracing::info!(
+            "[RECOVERY STORE] Recovered snapshot for tx={tx_id} from checkpoint='{checkpoint_id}'"
+        );
         Ok(Some(snapshot))
     }
 
@@ -327,10 +320,7 @@ impl TransactionRecoveryStore {
     pub fn cleanup(&self, tx_id: &str) -> Result<(), HolonError> {
         let conn = self.lock()?;
         let deleted = conn
-            .execute(
-                "DELETE FROM recovery_session WHERE tx_id = ?1",
-                params![tx_id],
-            )
+            .execute("DELETE FROM recovery_session WHERE tx_id = ?1", params![tx_id])
             .map_err(|e| HolonError::Misc(format!("Cleanup failed for tx={tx_id}: {e}")))?;
 
         tracing::info!(
@@ -384,9 +374,7 @@ impl TransactionRecoveryStore {
     // -----------------------------------------------------------------------
 
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, Connection>, HolonError> {
-        self.conn
-            .lock()
-            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))
+        self.conn.lock().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))
     }
 
     fn load_stacks(

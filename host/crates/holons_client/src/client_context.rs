@@ -6,8 +6,8 @@ use holons_core::core_shared_objects::ServiceRoutingPolicy;
 
 use holons_core::dances::DanceInitiator;
 use holons_core::reference_layer::HolonServiceApi;
-use holons_recovery::TransactionRecoveryStore;
 use holons_recovery::transaction_snapshot::TransactionSnapshot;
+use holons_recovery::TransactionRecoveryStore;
 
 use std::sync::Arc;
 
@@ -40,20 +40,14 @@ impl ClientSession {
         let Some(store) = &self.recovery_store else { return None };
         let store = Arc::clone(store);
         let tx_id = self.context.tx_id().value().to_string();
-        tokio::task::spawn_blocking(move || store.undo(&tx_id).ok().flatten())
-            .await
-            .ok()
-            .flatten()
+        tokio::task::spawn_blocking(move || store.undo(&tx_id).ok().flatten()).await.ok().flatten()
     }
 
     pub async fn redo(&self) -> Option<TransactionSnapshot> {
         let Some(store) = &self.recovery_store else { return None };
         let store = Arc::clone(store);
         let tx_id = self.context.tx_id().value().to_string();
-        tokio::task::spawn_blocking(move || store.redo(&tx_id).ok().flatten())
-            .await
-            .ok()
-            .flatten()
+        tokio::task::spawn_blocking(move || store.redo(&tx_id).ok().flatten()).await.ok().flatten()
     }
 
     pub async fn list_undo_history(&self) -> Vec<String> {
@@ -80,8 +74,6 @@ impl ClientSession {
     }
 }
 
-
-
 /// Initializes a new client-side context with a fresh `HolonSpaceManager` and
 /// an implicit default transaction.
 ///
@@ -95,7 +87,7 @@ impl ClientSession {
 /// * A `ClientSession` backed by a `TransactionContext` and optional `TransactionRecoveryStore`.
 pub fn init_client_context(
     initiator: Option<Arc<dyn DanceInitiator>>,
-    recovery_store: Option<Arc<TransactionRecoveryStore>>
+    recovery_store: Option<Arc<TransactionRecoveryStore>>,
 ) -> ClientSession {
     // Create the ClientHolonService.
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);

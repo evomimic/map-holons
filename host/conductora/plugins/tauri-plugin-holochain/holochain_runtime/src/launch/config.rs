@@ -39,9 +39,7 @@ pub fn conductor_config(
         config.danger_generate_throwaway_device_seed = true;
     } else {
         config.data_root_path = Some(fs.conductor_dir().into());
-        config.keystore = KeystoreConfig::LairServerInProc {
-            lair_root: Some(lair_root),
-        };
+        config.keystore = KeystoreConfig::LairServerInProc { lair_root: Some(lair_root) };
         config.device_seed_lair_tag = Some(DEVICE_SEED_LAIR_KEYSTORE_TAG.into());
     }
 
@@ -94,10 +92,7 @@ pub fn conductor_config(
     let allowed_origins = AllowedOrigins::Any;
 
     config.admin_interfaces = Some(vec![AdminInterfaceConfig {
-        driver: InterfaceDriver::Websocket {
-            port: admin_port,
-            allowed_origins,
-        },
+        driver: InterfaceDriver::Websocket { port: admin_port, allowed_origins },
     }]);
 
     config
