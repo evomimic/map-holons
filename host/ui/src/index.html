@@ -24,6 +24,7 @@
   <div id="loading-overlay" class="fixed top-0 left-0 w-full h-full bg-black flex flex-col justify-center items-center z-50 transition-opacity duration-500 ease-in-out">
     <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
     <p class="text-gray-700 text-lg mb-4">Loading network storage options...</p>
+    <p class="text-gray-500 text-xl font-mono mb-4">Loading: <span id="load-timer">0 ms</span></p>
     <div class="icon-carousel relative h-12 w-12">
       <!-- IPFS Icon -->
       <div class="carousel-item absolute">
@@ -40,5 +41,37 @@
     </div>
   </div>
   <app-root></app-root>
+  <script>
+    (function () {
+      var start = performance.now();
+      var el = document.getElementById('load-timer');
+      var rafId;
+
+      function tick() {
+        var ms = Math.round(performance.now() - start);
+        if (el) el.textContent = ms.toLocaleString() + ' ms';
+        rafId = requestAnimationFrame(tick);
+      }
+      rafId = requestAnimationFrame(tick);
+
+      // Stop the timer and show final time once the overlay is hidden/removed
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) {
+        new MutationObserver(function (mutations, obs) {
+          var hidden =
+            overlay.style.display === 'none' ||
+            overlay.style.opacity === '0' ||
+            overlay.classList.contains('hidden') ||
+            !document.body.contains(overlay);
+          if (hidden) {
+            cancelAnimationFrame(rafId);
+            var final = Math.round(performance.now() - start);
+            if (el) el.textContent = final.toLocaleString() + ' ms ✓';
+            obs.disconnect();
+          }
+        }).observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['style', 'class'] });
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -1,16 +1,14 @@
-
-use holons_receptor::factory::ReceptorFactory;
+use core_types::HolonError;
 use holons_client::shared_types::map_request::MapRequestWire;
 use holons_client::shared_types::map_response::MapResponseWire;
+use holons_receptor::factory::ReceptorFactory;
 use tauri::{command, State};
-use core_types::HolonError;
 
 #[command]
 pub async fn map_request(
     map_request: MapRequestWire,
     receptor_factory: State<'_, ReceptorFactory>,
 ) -> Result<MapResponseWire, HolonError> {
-
     tracing::debug!("[TAURI COMMAND] 'map_request' command invoked for space: {:?}", map_request);
     // a map_request is currently using "holochain" receptor type only
     let receptor = receptor_factory.get_receptor_by_type("holochain");
@@ -27,11 +25,8 @@ pub async fn map_request(
         .map(|response| MapResponseWire::from(&response))
 }
 
-
-
-
 // WORK IN PROGRESS: Refactor to move logic out of command function for easier testing
-/* 
+/*
 pub(crate) async fn map_request_impl(
     map_request: MapRequest,
     receptor_factory: &ReceptorFactory,
@@ -90,7 +85,7 @@ mod tests {
         let map_request = MapRequest::test_for_stage_new_holon();
         let state: tauri::State<'_, ReceptorFactory> = app.state();
 
-        
+
         // 3. Call your tauri::command directly
         let result = crate::commands::map_request(map_request, state).await;
 

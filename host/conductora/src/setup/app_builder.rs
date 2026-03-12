@@ -1,16 +1,22 @@
 use crate::{
-    map_commands as commands,
     config::{
-        app_config::load_storage_config, providers::holochain::holochain_plugin, storage_config::{StorageConfig, StorageProvider}
+        app_config::load_storage_config,
+        providers::holochain::holochain_plugin,
+        storage_config::{StorageConfig, StorageProvider},
     },
+    map_commands as commands,
     setup::{
-        holochain_setup::{HolochainSetup, HolochainWindowSetup}, local_setup::LocalSetup, window_setup::DefaultWindowSetup},
+        holochain_setup::{HolochainSetup, HolochainWindowSetup},
+        local_setup::LocalSetup,
+        window_setup::DefaultWindowSetup,
+    },
 };
 
-use crate::setup::window_setup::ProviderWindowSetup;
 use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
+use crate::setup::window_setup::ProviderWindowSetup;
+use futures::future::join_all;
 use holons_receptor::ReceptorFactory;
-use tauri::{AppHandle, Manager, Listener};
+use tauri::{AppHandle, Listener, Manager};
 
 pub struct AppBuilder;
 
@@ -18,8 +24,11 @@ impl AppBuilder {
     /// Build and configure the Tauri application
     pub fn build() -> tauri::Builder<tauri::Wry> {
         tracing::debug!("[APP BUILDER] Setting up Tauri application.");
-        // Load storage config once and store in state
-        let storage_cfg = load_storage_config();
+        // Load storage config — abort immediately if unavailable
+        let storage_cfg = load_storage_config().unwrap_or_else(|e| {
+            tracing::error!("[APP BUILDER] Cannot start: {}", e);
+            std::process::exit(1);
+        });
         // Base builder without setup
         let base = tauri::Builder::default()
             .manage(storage_cfg.clone())
@@ -41,15 +50,16 @@ impl AppBuilder {
 
     /// Setup handler for application initialization
     fn setup_handler(app: &mut tauri::App<tauri::Wry>) -> Result<(), Box<dyn std::error::Error>> {
-        tracing::debug!("[APP BUILDER] Tauri setup closure executing.");
-
         let handle = app.handle().clone();
         let storage_cfg = app.state::<StorageConfig>().inner().clone();
-        tracing::debug!("[APP BUILDER] Storage config: {:#?}", storage_cfg);
 
         let enabled_providers = Self::get_enabled_provider_types(&storage_cfg);
+        tracing::debug!("[APP BUILDER] setting up providers: {:#?}", enabled_providers);
+
         if enabled_providers.contains(&"holochain") {
-            tracing::debug!("[APP BUILDER] Holochain provider detected, waiting for setup completion.");
+            tracing::debug!(
+                "[APP BUILDER] Holochain provider detected, waiting for setup completion."
+            );
             app.handle().listen("holochain://setup-completed", move |_event| {
                 tracing::debug!("[APP BUILDER] Received 'holochain://setup-completed' event.");
                 let handle = handle.clone();
@@ -68,11 +78,8 @@ impl AppBuilder {
         Ok(())
     }
 
-
     /// Run the complete setup: provider setup → load receptors → create window
     async fn run_complete_setup(handle: &AppHandle, storage_cfg: &StorageConfig) {
-        tracing::debug!("[APP BUILDER] Running complete setup.");
-
         // Run provider-specific setup routines
         if let Err(e) = Self::apply_setups(handle).await {
             tracing::error!("[APP BUILDER] Provider setup failed: {}", e);
@@ -110,7 +117,10 @@ impl AppBuilder {
         mut builder: tauri::Builder<tauri::Wry>,
         storage_cfg: &StorageConfig,
     ) -> tauri::Builder<tauri::Wry> {
-        tracing::debug!("[APP BUILDER] Loading provider plugins: {:?}", storage_cfg.get_enabled_providers());
+        tracing::debug!(
+            "[APP BUILDER] Loading provider plugins: {:?}",
+            storage_cfg.get_enabled_providers()
+        );
 
         builder = builder.plugin(tauri_plugin_fs::init());
 
@@ -120,17 +130,15 @@ impl AppBuilder {
                     //tracing::info!("[APP BUILDER] Loading Local storage plugins");
                     // Local storage
                 }
-                "holochain" => {
-                    match holochain_plugin(provider.clone()) {
-                        Ok(plugin) => {
-                            tracing::info!("[APP BUILDER] Loaded Holochain plugin");
-                            builder = builder.plugin(plugin);
-                        }
-                        Err(e) => {
-                            tracing::error!("[APP BUILDER] Failed to load Holochain plugin: {}", e);
-                        }
+                "holochain" => match holochain_plugin(provider.clone()) {
+                    Ok(plugin) => {
+                        tracing::info!("[APP BUILDER] Loaded Holochain plugin");
+                        builder = builder.plugin(plugin);
                     }
-                }
+                    Err(e) => {
+                        tracing::error!("[APP BUILDER] Failed to load Holochain plugin: {}", e);
+                    }
+                },
 
                 "ipfs" => {
                     //tracing::info!("[APP BUILDER] Loading IPFS plugin");
@@ -144,30 +152,53 @@ impl AppBuilder {
         builder
     }
 
-    /// Run provider-specific setup routines for each enabled provider
+    /// Run provider-specific setup routines for all enabled providers concurrently.
     async fn apply_setups(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        let storage_cfg = handle.try_state::<StorageConfig>()
-            .ok_or("Missing StorageConfig in state")?;
+        let storage_cfg =
+            handle.try_state::<StorageConfig>().ok_or("Missing StorageConfig in state")?;
 
-        for (_name, provider) in storage_cfg.get_enabled_providers() {
-            match provider.provider_type() {
-                "local" => {
-                    tracing::info!("[APP BUILDER] Running Local storage setup");
-                    LocalSetup::setup(handle.clone(), provider).await?;
+        let tasks: Vec<_> = storage_cfg
+            .get_enabled_providers()
+            .into_iter()
+            .filter_map(|(name, provider)| {
+                let handle = handle.clone();
+                let name = name.clone();
+                let provider = provider.clone();
+                match provider.provider_type() {
+                    "local" => {
+                        tracing::info!("[APP BUILDER] Running Local storage setup for '{}'", name);
+                        Some(tauri::async_runtime::spawn(async move {
+                            LocalSetup::setup(handle, &name, &provider)
+                                .await
+                                .map_err(|e| format!("local/{}: {}", name, e))
+                        }))
+                    }
+                    "holochain" => {
+                        tracing::info!("[APP BUILDER] Running Holochain setup for '{}'", name);
+                        Some(tauri::async_runtime::spawn(async move {
+                            HolochainSetup::setup(handle, &name, &provider)
+                                .await
+                                .map_err(|e| format!("holochain/{}: {}", name, e))
+                        }))
+                    }
+                    "ipfs" => None, // not yet implemented
+                    provider_type => {
+                        tracing::warn!("[APP BUILDER] Unknown provider type: {}", provider_type);
+                        None
+                    }
                 }
-                "holochain" => {
-                    tracing::info!("[APP BUILDER] Running Holochain setup");
-                    HolochainSetup::setup(handle.clone(), provider).await?;
-                }
-                "ipfs" => {
-                    //tracing::info!("[APP BUILDER] Running IPFS setup");
-                    // IpfsSetup::setup(handle.clone()).await?;
-                }
-                provider_type => {
-                    tracing::warn!("[APP BUILDER] Unknown provider type for setup: {}", provider_type);
-                }
-            }
+            })
+            .collect();
+
+        // All tasks are now running concurrently; await each and surface any error
+        let results = join_all(tasks).await;
+        for result in results {
+            // Outer Err = task panicked; inner Err = setup failed
+            result
+                .map_err(|e| anyhow::anyhow!("Provider setup task panicked: {}", e))?
+                .map_err(|e| anyhow::anyhow!(e))?;
         }
+
         Ok(())
     }
 
@@ -201,11 +232,7 @@ impl AppBuilder {
 
     /// Helper function to get enabled provider types
     fn get_enabled_provider_types(storage_cfg: &StorageConfig) -> Vec<&str> {
-        storage_cfg
-            .get_enabled_providers()
-            .iter()
-            .map(|(_, p)| p.provider_type())
-            .collect()
+        storage_cfg.get_enabled_providers().iter().map(|(_, p)| p.provider_type()).collect()
     }
     fn get_provider_config(
         storage_cfg: &StorageConfig,
@@ -216,7 +243,4 @@ impl AppBuilder {
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("{} provider not found in config", provider_type))
     }
-
-
-
 }

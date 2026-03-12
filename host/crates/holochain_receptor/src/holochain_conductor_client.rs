@@ -11,9 +11,9 @@ use holochain_client::{
     AdminWebsocket, AgentPubKey, AppInfo, AppWebsocket, CellInfo, ExternIO, SerializedBytes,
     ZomeCallTarget,
 };
-use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
 use holons_boundary::{DanceResponseWire, ResponseBodyWire};
+use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_core::dances::ResponseStatusCode;
 use holons_trust_channel::DanceEnvelopeTransport;
 
@@ -51,7 +51,10 @@ impl HolochainConductorClient {
             Ok(Some(app_info)) => {
                 // Successfully retrieved AppInfo, now convert it.
                 let space_info = convert_to_space_info(app_info)?;
-                tracing::info!("[ReceptorService] Successfully retrieved space info.");
+                tracing::info!(
+                    "[ReceptorService] Successfully retrieved space info: {:?}",
+                    space_info
+                );
                 Ok(space_info)
             }
             Ok(None) => {

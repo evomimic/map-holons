@@ -10,9 +10,7 @@ pub struct ReceptorConfigRegistry {
 impl ReceptorConfigRegistry {
     /// Create an empty registry
     pub fn new() -> Self {
-        Self {
-            configs: Mutex::new(Vec::new())
-        }
+        Self { configs: Mutex::new(Vec::new()) }
     }
 
     /// Register a receptor config
@@ -27,15 +25,13 @@ impl ReceptorConfigRegistry {
         configs
     }
 
-        /// Ensure the local receptor is first in the vector for priority processing
+    /// Ensure the local receptor is first in the vector for priority processing
     fn ensure_local_receptor_first(configs: &mut Vec<BaseReceptor>) {
         if configs.is_empty() {
             return;
         }
         // Find the index of the local receptor
-        let local_index = configs.iter().position(|config| {
-            config.receptor_type == "local"
-        });
+        let local_index = configs.iter().position(|config| config.receptor_type == "local");
 
         // If found and not already first, move it to the front
         if let Some(index) = local_index {
@@ -44,7 +40,7 @@ impl ReceptorConfigRegistry {
                 configs.insert(0, local_config);
             }
         } else {
-            tracing::error!("[REGISTRY] No local receptor found in configs");
+            tracing::warn!("[REGISTRY] No local receptor found in configs");
         }
     }
 }
