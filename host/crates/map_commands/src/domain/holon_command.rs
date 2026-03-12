@@ -49,9 +49,6 @@ pub enum ReadableHolonAction {
     /// `ReadableHolon::versioned_key()` → `MapString`
     VersionedKey,
 
-    /// `ReadableHolon::all_related_holons()` → `RelationshipMap`
-    AllRelatedHolons,
-
     /// `ReadableHolon::property_value(name)` → `Option<PropertyValue>`
     PropertyValue { name: PropertyName },
 
