@@ -80,9 +80,9 @@ fn roundtrip_transaction_commit() {
 fn roundtrip_transaction_mutation_new_holon() {
     let cmd = MapCommandWire::Transaction(TransactionCommandWire {
         tx_id: test_tx_id(2),
-        action: TransactionActionWire::Mutation(MutationActionWire::NewHolon {
+        action: TransactionActionWire::NewHolon {
             key: Some(MapString::from("my-key")),
-        }),
+        },
     });
     assert_roundtrip(&cmd);
 }
@@ -91,7 +91,7 @@ fn roundtrip_transaction_mutation_new_holon() {
 fn roundtrip_transaction_lookup_get_all() {
     let cmd = MapCommandWire::Transaction(TransactionCommandWire {
         tx_id: test_tx_id(3),
-        action: TransactionActionWire::Lookup(LookupActionWire::GetAllHolons),
+        action: TransactionActionWire::GetAllHolons,
     });
     assert_roundtrip(&cmd);
 }

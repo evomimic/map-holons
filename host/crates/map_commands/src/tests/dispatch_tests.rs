@@ -170,7 +170,7 @@ async fn unimplemented_command_returns_not_implemented() {
         request_id: RequestId::new(2),
         command: MapCommandWire::Transaction(TransactionCommandWire {
             tx_id,
-            action: TransactionActionWire::Lookup(LookupActionWire::GetAllHolons),
+            action: TransactionActionWire::GetAllHolons,
         }),
     };
 

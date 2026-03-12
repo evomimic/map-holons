@@ -9,9 +9,7 @@ use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::query_layer::QueryExpression;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{
-    LookupAction, MutationAction, TransactionAction, TransactionCommand,
-};
+use crate::domain::{TransactionAction, TransactionCommand};
 
 /// Transaction-scoped wire command.
 ///
@@ -24,8 +22,8 @@ pub struct TransactionCommandWire {
 
 /// Wire-level transaction actions.
 ///
-/// All spec variants are defined upfront. Unimplemented variants return
-/// `NotImplemented` at dispatch time.
+/// Flat enum per the MAP Commands spec. Policy classification is enforced by
+/// `CommandDescriptor` at runtime, not by enum structure.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TransactionActionWire {
     /// Commits the transaction.
@@ -37,21 +35,11 @@ pub enum TransactionActionWire {
     /// Executes a dance request within this transaction.
     Dance(DanceRequestWire),
 
-    /// Executes a lookup action within this transaction.
-    Lookup(LookupActionWire),
-
-    /// Executes a mutation action within this transaction.
-    Mutation(MutationActionWire),
-
     /// Executes a query expression within this transaction.
     Query(QueryExpression),
-}
 
-/// Wire-level lookup actions.
-///
-/// Mirrors `LookupAction` — each variant maps to a `LookupFacade` method.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum LookupActionWire {
+    // ── Lookup actions ───────────────────────────────────────────────
+
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
@@ -75,13 +63,9 @@ pub enum LookupActionWire {
 
     /// `transient_count()` → `i64`
     TransientCount,
-}
 
-/// Wire-level mutation actions.
-///
-/// Mirrors `MutationAction` — each variant maps to a `MutationFacade` method.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum MutationActionWire {
+    // ── Mutation actions ─────────────────────────────────────────────
+
     /// `new_holon(key)` → `TransientReference`
     NewHolon { key: Option<MapString> },
 
@@ -135,70 +119,53 @@ impl TransactionActionWire {
             TransactionActionWire::Dance(request_wire) => {
                 Ok(TransactionAction::Dance(request_wire.bind(context)?))
             }
-            TransactionActionWire::Lookup(lookup_wire) => {
-                Ok(TransactionAction::Lookup(lookup_wire.bind()))
-            }
-            TransactionActionWire::Mutation(mutation_wire) => {
-                Ok(TransactionAction::Mutation(mutation_wire.bind(context)?))
-            }
             TransactionActionWire::Query(query) => Ok(TransactionAction::Query(query)),
-        }
-    }
-}
 
-impl LookupActionWire {
-    fn bind(self) -> LookupAction {
-        match self {
-            LookupActionWire::GetAllHolons => LookupAction::GetAllHolons,
-            LookupActionWire::GetStagedHolonByBaseKey { key } => {
-                LookupAction::GetStagedHolonByBaseKey { key }
+            // Lookup actions — no context binding needed
+            TransactionActionWire::GetAllHolons => Ok(TransactionAction::GetAllHolons),
+            TransactionActionWire::GetStagedHolonByBaseKey { key } => {
+                Ok(TransactionAction::GetStagedHolonByBaseKey { key })
             }
-            LookupActionWire::GetStagedHolonsByBaseKey { key } => {
-                LookupAction::GetStagedHolonsByBaseKey { key }
+            TransactionActionWire::GetStagedHolonsByBaseKey { key } => {
+                Ok(TransactionAction::GetStagedHolonsByBaseKey { key })
             }
-            LookupActionWire::GetStagedHolonByVersionedKey { key } => {
-                LookupAction::GetStagedHolonByVersionedKey { key }
+            TransactionActionWire::GetStagedHolonByVersionedKey { key } => {
+                Ok(TransactionAction::GetStagedHolonByVersionedKey { key })
             }
-            LookupActionWire::GetTransientHolonByBaseKey { key } => {
-                LookupAction::GetTransientHolonByBaseKey { key }
+            TransactionActionWire::GetTransientHolonByBaseKey { key } => {
+                Ok(TransactionAction::GetTransientHolonByBaseKey { key })
             }
-            LookupActionWire::GetTransientHolonByVersionedKey { key } => {
-                LookupAction::GetTransientHolonByVersionedKey { key }
+            TransactionActionWire::GetTransientHolonByVersionedKey { key } => {
+                Ok(TransactionAction::GetTransientHolonByVersionedKey { key })
             }
-            LookupActionWire::StagedCount => LookupAction::StagedCount,
-            LookupActionWire::TransientCount => LookupAction::TransientCount,
-        }
-    }
-}
+            TransactionActionWire::StagedCount => Ok(TransactionAction::StagedCount),
+            TransactionActionWire::TransientCount => Ok(TransactionAction::TransientCount),
 
-impl MutationActionWire {
-    fn bind(
-        self,
-        context: &Arc<TransactionContext>,
-    ) -> Result<MutationAction, HolonError> {
-        match self {
-            MutationActionWire::NewHolon { key } => Ok(MutationAction::NewHolon { key }),
-            MutationActionWire::StageNewHolon { source } => {
-                Ok(MutationAction::StageNewHolon {
+            // Mutation actions — some require context binding
+            TransactionActionWire::NewHolon { key } => {
+                Ok(TransactionAction::NewHolon { key })
+            }
+            TransactionActionWire::StageNewHolon { source } => {
+                Ok(TransactionAction::StageNewHolon {
                     source: source.bind(context)?,
                 })
             }
-            MutationActionWire::StageNewFromClone { original, new_key } => {
-                Ok(MutationAction::StageNewFromClone {
+            TransactionActionWire::StageNewFromClone { original, new_key } => {
+                Ok(TransactionAction::StageNewFromClone {
                     original: original.bind(context)?,
                     new_key,
                 })
             }
-            MutationActionWire::StageNewVersion { current_version } => {
-                Ok(MutationAction::StageNewVersion {
+            TransactionActionWire::StageNewVersion { current_version } => {
+                Ok(TransactionAction::StageNewVersion {
                     current_version: current_version.bind(context)?,
                 })
             }
-            MutationActionWire::StageNewVersionFromId { holon_id } => {
-                Ok(MutationAction::StageNewVersionFromId { holon_id })
+            TransactionActionWire::StageNewVersionFromId { holon_id } => {
+                Ok(TransactionAction::StageNewVersionFromId { holon_id })
             }
-            MutationActionWire::DeleteHolon { local_id } => {
-                Ok(MutationAction::DeleteHolon { local_id })
+            TransactionActionWire::DeleteHolon { local_id } => {
+                Ok(TransactionAction::DeleteHolon { local_id })
             }
         }
     }
