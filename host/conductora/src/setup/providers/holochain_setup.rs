@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
+
 use crate::config::providers::holochain::*;
-use crate::config::{StorageProvider};
-//use crate::APP_ID;
+use crate::config::StorageProvider;
 use holons_client::shared_types::base_receptor::BaseReceptor;
 use tauri::{AppHandle, Manager, Theme};
 use holochain_client::{AdminWebsocket, AppWebsocket, AppInfo};
@@ -11,6 +11,11 @@ use tauri_plugin_holochain::{HolochainExt, AppBundle};
 use async_trait::async_trait;
 use crate::setup::window_setup::ProviderWindowSetup;
 use tauri_plugin_holochain::AgentPubKey;
+
+/// Tauri-managed state that holds the conductor client created during
+/// Holochain setup. The Runtime retrieves it to construct its own
+/// `TrustChannel` → `DanceInitiator` → `HolonSpaceManager`.
+pub type ConductorClientState = RwLock<Option<Arc<HolochainConductorClient>>>;
 
 
 pub struct HolochainSetup;
@@ -51,8 +56,14 @@ impl HolochainSetup {
         tracing::debug!("[HOLOCHAIN SETUP] App websocket obtained.");
 
         // After successful setup, build and register the receptor
-        let receptor_cfg: BaseReceptor = Self::build_receptor(app_ws, admin_ws, hc_cfg).await?;
+        let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, hc_cfg).await?;
         Self::register_receptor(&handle, receptor_cfg).await?;
+
+        // Store the conductor client for Runtime construction
+        if let Some(state) = handle.try_state::<ConductorClientState>() {
+            let mut guard = state.write().expect("ConductorClientState lock poisoned");
+            *guard = Some(client);
+        }
 
         Ok(())
     }
@@ -120,16 +131,15 @@ impl HolochainSetup {
     async fn build_receptor(
         app_ws: AppWebsocket,
         admin_ws: AdminWebsocket,
-        hc_cfg: &HolochainConfig
-    ) -> anyhow::Result<BaseReceptor> {
-            
+        hc_cfg: &HolochainConfig,
+    ) -> anyhow::Result<(BaseReceptor, Arc<HolochainConductorClient>)> {
             let agent = app_ws.my_pub_key.clone();
             let cell_details = hc_cfg.cell_details.as_ref().ok_or_else(|| anyhow::anyhow!("cell_details missing in HolochainConfig"))?;
             if cell_details.is_empty() {
                 return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
             }
             let client = Self::setup_holochain_client(app_ws.clone(), admin_ws.clone(), cell_details[0].clone(), agent).await;
-            
+
             // Dynamically collect all properties from HolochainConfig
             let props = match serde_json::to_value(hc_cfg)? {
                 serde_json::Value::Object(map) => {
@@ -149,12 +159,14 @@ impl HolochainSetup {
                 _ => std::collections::HashMap::new(),
             };
 
-            return Ok(BaseReceptor {
+            let receptor = BaseReceptor {
                 receptor_id: None,
                 receptor_type: "holochain".to_string(),
-                client_handler: Some(client),
+                client_handler: Some(client.clone() as Arc<dyn std::any::Any + Send + Sync>),
                 properties: props,
-            });
+            };
+
+            Ok((receptor, client))
         }
 
         /// Initialize the receptor factory with websockets and load configuration

@@ -11,9 +11,9 @@ use holochain_client::{
     AdminWebsocket, AgentPubKey, AppInfo, AppWebsocket, CellInfo, ExternIO, SerializedBytes,
     ZomeCallTarget,
 };
-use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
-use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
+use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::{DanceResponseWire, ResponseBodyWire};
+use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_core::dances::ResponseStatusCode;
 use holons_trust_channel::DanceEnvelopeTransport;
 
@@ -75,8 +75,8 @@ impl HolochainConductorClient {
 impl DanceEnvelopeTransport for HolochainConductorClient {
     async fn initiate_dance_envelope(
         &self,
-        envelope: InternalDanceRequestEnvelope,
-    ) -> Result<InternalDanceResponseEnvelope, HolonError> {
+        envelope: DanceRequestEnvelope,
+    ) -> Result<DanceResponseEnvelope, HolonError> {
         self.conductor_dance_call(envelope).await
     }
 }
@@ -86,8 +86,8 @@ impl DanceEnvelopeTransport for HolochainConductorClient {
 impl ConductorDanceCaller for HolochainConductorClient {
     async fn conductor_dance_call(
         &self,
-        request: InternalDanceRequestEnvelope,
-    ) -> Result<InternalDanceResponseEnvelope, HolonError> {
+        request: DanceRequestEnvelope,
+    ) -> Result<DanceResponseEnvelope, HolonError> {
         // --- Serialize request ---
         let payload: ExternIO = match ExternIO::encode(request) {
             Ok(p) => p,
@@ -123,7 +123,7 @@ impl ConductorDanceCaller for HolochainConductorClient {
             return Err(HolonError::ConductorError("Zome call failed".into()));
         };
 
-        match ExternIO::decode::<InternalDanceResponseEnvelope>(&extern_io) {
+        match ExternIO::decode::<DanceResponseEnvelope>(&extern_io) {
             Ok(decoded) => Ok(decoded),
             Err(e) => Err(HolonError::ConductorError(format!(
                 "Failed to decode dance envelope response: {:?}",
@@ -135,14 +135,14 @@ impl ConductorDanceCaller for HolochainConductorClient {
 
 /// Minimal helper for consistent error formatting.
 #[allow(dead_code)]
-fn server_error_response_wire(msg: String) -> InternalDanceResponseEnvelope {
+fn server_error_response_wire(msg: String) -> DanceResponseEnvelope {
     let response = DanceResponseWire {
         status_code: ResponseStatusCode::ServerError,
         description: MapString(msg),
         body: ResponseBodyWire::None,
         descriptor: None,
     };
-    InternalDanceResponseEnvelope { response, session: None }
+    DanceResponseEnvelope { response, session: None }
 }
 
 // NOTE: I have had to put this back to make the UI work - needs to be refactored properly later

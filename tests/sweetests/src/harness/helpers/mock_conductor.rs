@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use holochain::prelude::AgentPubKey;
 use holochain::sweettest::{SweetAgents, SweetCell, SweetConductor, SweetDnaFile};
+use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_core::dances::DanceInitiator;
 use holons_core::HolonError;
-use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
 use holons_trust_channel::{DanceEnvelopeTransport, TrustChannel};
 use std::sync::Arc;
 use tracing::info;
@@ -23,11 +23,11 @@ pub struct MockConductorConfig {
 impl DanceEnvelopeTransport for MockConductorConfig {
     async fn initiate_dance_envelope(
         &self,
-        envelope: InternalDanceRequestEnvelope,
-    ) -> Result<InternalDanceResponseEnvelope, HolonError> {
+        envelope: DanceRequestEnvelope,
+    ) -> Result<DanceResponseEnvelope, HolonError> {
         let result = self
             .conductor
-            .call_fallible::<InternalDanceRequestEnvelope, InternalDanceResponseEnvelope>(
+            .call_fallible::<DanceRequestEnvelope, DanceResponseEnvelope>(
                 &self.cell.zome("holons"),
                 "dance_adapter",
                 envelope,
