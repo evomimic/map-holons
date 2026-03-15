@@ -1,11 +1,7 @@
 use std::path::PathBuf;
-// use map_commands::{StorageConfig, StorageProvider};
 use serde::{Deserialize, Serialize};
 use tauri_plugin_holochain::{vec_to_locked, AppBundle, HolochainPluginConfig, NetworkConfig};
 use crate::config::{StorageConfig, StorageProvider};
-//use crate::config::app_config::APP_ID;
-// use tauri_plugin_holochain::{HolochainPluginConfig, vec_to_locked, NetworkConfig, AppBundle};
-//use tauri_plugin_holochain::HolochainExt;
 
 pub type CellDetails = Vec<CellDetail>;
 
@@ -26,6 +22,7 @@ pub struct HolochainConfig {
     pub app_id: String,
     pub cell_details: Option<CellDetails>,
     pub happ_path: Option<String>, // Path to .happ file if not embedded
+    pub dev_mode: Option<bool>,
     pub enabled: bool,
 }
 
@@ -41,6 +38,7 @@ impl Default for HolochainConfig {
             app_id: "map_holons".to_string(),
             cell_details: None,
             happ_path: None,
+            dev_mode: Some(true),
             enabled: true,
         }
     }
@@ -49,12 +47,16 @@ impl Default for HolochainConfig {
     /// Configure Holochain plugin
 pub fn holochain_plugin(provider: StorageProvider) ->  Result<impl tauri::plugin::Plugin<tauri::Wry>, anyhow::Error> {
     let StorageProvider::Holochain(hc_cfg) = provider else {
-            return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
+        return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
     };
-    Ok(tauri_plugin_holochain::async_init(
-    vec_to_locked(vec![]),
-    HolochainPluginConfig::new(holochain_dir(&hc_cfg), network_config_from_storage_config(&hc_cfg))
-    ))
+    let mut plugin_config = HolochainPluginConfig::new(
+        holochain_dir(&hc_cfg),
+        network_config_from_storage_config(&hc_cfg),
+    );
+    if hc_cfg.dev_mode == Some(true) {
+        plugin_config = plugin_config.dev_mode();
+    }
+    Ok(tauri_plugin_holochain::async_init(vec_to_locked(vec![]), plugin_config))
 }
 
 /// Load and validate the happ bundle from filesystem

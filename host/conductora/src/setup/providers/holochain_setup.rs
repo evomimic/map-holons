@@ -23,11 +23,13 @@ pub struct HolochainSetup;
 impl HolochainSetup {
     /// Main setup function for Holochain integration
     pub async fn setup(handle: AppHandle, provider: &StorageProvider) -> anyhow::Result<()> {
-        tracing::debug!("[HOLOCHAIN SETUP] Starting Holochain setup.");
+        let t_setup = std::time::Instant::now();
+        tracing::info!("[HOLOCHAIN SETUP] Starting Holochain setup.");
         let StorageProvider::Holochain(hc_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
         let app_id = &hc_cfg.app_id;
+        let dev_mode = hc_cfg.dev_mode == Some(true);
 
         // Load and validate happ bundle early
         let happ = match load_happ_bundle(hc_cfg) {
@@ -37,27 +39,60 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("Failed to load happ bundle: {}", e));
             }
         };
-        
+        tracing::info!("[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s", t_setup.elapsed().as_secs_f64());
+
+        let t_admin = std::time::Instant::now();
         let admin_ws = handle.holochain()?.admin_websocket().await?;
-        tracing::debug!("[HOLOCHAIN SETUP] Admin websocket obtained.");
+        tracing::info!("[HOLOCHAIN SETUP] Admin websocket obtained in {:.1}s", t_admin.elapsed().as_secs_f64());
 
         let installed_apps = admin_ws
             .list_apps(None)
             .await
             .map_err(|err| tauri_plugin_holochain::Error::ConductorApiError(err))?;
 
-        if Self::is_app_installed(&installed_apps, app_id.clone()) {
+        let t_install = std::time::Instant::now();
+        if dev_mode && Self::is_app_installed(&installed_apps, app_id.clone()) {
+            // Dev mode but app is already installed (wipe didn't clear it, e.g. first-ever run
+            // or wipe failed). Skip update_app_if_necessary — the bundle store record
+            // may not exist for the dev conductor dir, causing a spurious "app not found" error.
+            // The existing running app is sufficient for dev purposes.
+            tracing::warn!("[HOLOCHAIN SETUP] Dev mode: app '{}' already installed (wipe may have been skipped on this run). Skipping update check.", app_id);
+        } else if dev_mode {
+            // Dev mode: conductor state (except wasm.db) was wiped before the
+            // conductor started (see clean_dev_conductor_state in launch.rs), so
+            // there is no stale app record.  Install fresh with an ephemeral key.
+            Self::handle_new_app_installation(
+                &handle,
+                &admin_ws,
+                happ,
+                app_id.clone(),
+                true,
+            )
+            .await?;
+        } else if Self::is_app_installed(&installed_apps, app_id.clone()) {
             Self::handle_existing_app(&handle, happ, app_id.clone()).await?;
         } else {
-            Self::handle_new_app_installation(&handle, happ, app_id.clone()).await?;
+            Self::handle_new_app_installation(
+                &handle,
+                &admin_ws,
+                happ,
+                app_id.clone(),
+                false,
+            )
+            .await?;
         }
-
+        tracing::info!("[HOLOCHAIN SETUP] App install/update done in {:.1}s", t_install.elapsed().as_secs_f64());
+        let t_appws = std::time::Instant::now();
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
-        tracing::debug!("[HOLOCHAIN SETUP] App websocket obtained.");
+        tracing::info!("[HOLOCHAIN SETUP] App websocket obtained in {:.1}s", t_appws.elapsed().as_secs_f64());
 
         // After successful setup, build and register the receptor
+        let t_receptor = std::time::Instant::now();
         let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, hc_cfg).await?;
         Self::register_receptor(&handle, receptor_cfg).await?;
+        tracing::info!("[HOLOCHAIN SETUP] Base receptor built in {:.1}s", t_receptor.elapsed().as_secs_f64());
+        tracing::info!("[HOLOCHAIN SETUP] Total setup time: {:.1}s", t_setup.elapsed().as_secs_f64());
+
 
         // Store the conductor client for Runtime construction
         if let Some(state) = handle.try_state::<ConductorClientState>() {
@@ -108,22 +143,27 @@ impl HolochainSetup {
     /// Handle new app installation
     async fn handle_new_app_installation(
         handle: &AppHandle,
+        admin_ws: &AdminWebsocket,
         happ: AppBundle,
-        app_id:String
+        app_id:String,
+        dev_mode: bool
     ) -> anyhow::Result<()> {
-        tracing::info!("[HOLOCHAIN SETUP] App '{}' not found. Installing...", app_id.clone());
-        
-        let appinfo = handle
-            .holochain()?
-            .install_app(
-                app_id,
-                happ,
-                None,
-                None,
-                None,
-            )
-            .await?;
-        
+                tracing::info!("[HOLOCHAIN SETUP] App '{}' not found. Installing...", app_id);
+
+        // In dev mode DangerTestKeystore has no device_seed_lair_tag, so holochain
+        // cannot auto-derive an agent key. Generate one explicitly.
+        let agent_key: Option<AgentPubKey> = if dev_mode {
+            let key = admin_ws
+                .generate_agent_pub_key()
+                .await
+                .map_err(|e| anyhow::anyhow!("generate_agent_pub_key failed: {e}"))?;
+            tracing::debug!("[HOLOCHAIN SETUP] Dev mode: generated ephemeral agent key {:?}", key);
+            Some(key)
+        } else {
+            None // production: conductor derives key from device_seed_lair_tag
+        };
+
+        let appinfo = handle.holochain()?.install_app(app_id, happ, None, agent_key, None).await?;
         tracing::debug!("[HOLOCHAIN SETUP] App installed: {:?}", appinfo);
         Ok(())
     }
