@@ -5,17 +5,11 @@ use serde::{Deserialize, Serialize};
 use super::MapCommandWire;
 use super::MapResultWire;
 
-/// Opaque request identifier(uuid?) assigned by the TypeScript client.
+/// Opaque request identifier assigned by the TypeScript client.
 ///
 /// Echoed back in MapIpcResponse so the client can correlate responses.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RequestId(pub MapInteger);
-
-impl std::hash::Hash for RequestId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0 .0.hash(state);
-    }
-}
 
 impl RequestId {
     pub fn new(id: i64) -> Self {
@@ -28,7 +22,7 @@ impl RequestId {
 }
 
 /// Identifies a user gesture for undo/redo grouping.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GestureId(pub MapString);
 
 /// Per-request options controlling dispatch behavior.
@@ -42,12 +36,6 @@ pub struct RequestOptions {
     pub snapshot_after: bool,
 }
 
-impl Default for RequestOptions {
-    fn default() -> Self {
-        Self { gesture_id: None, gesture_label: None, snapshot_after: false }
-    }
-}
-
 /// Canonical IPC request envelope for MAP Commands.
 ///
 /// This is the only inbound type accepted by `dispatch_map_command`.
@@ -56,7 +44,6 @@ impl Default for RequestOptions {
 pub struct MapIpcRequest {
     pub request_id: RequestId,
     pub command: MapCommandWire,
-    #[serde(default)]
     pub options: RequestOptions,
 }
 

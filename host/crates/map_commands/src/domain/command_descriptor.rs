@@ -19,7 +19,7 @@ impl CommandDescriptor {
     pub const fn read_only() -> Self {
         Self {
             mutation: MutationClassification::ReadOnly,
-            requires_open_tx: true,
+            requires_open_tx: false,
             requires_commit_guard: false,
         }
     }

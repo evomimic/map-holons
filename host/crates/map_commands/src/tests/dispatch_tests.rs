@@ -104,6 +104,10 @@ fn build_test_space_manager() -> Arc<HolonSpaceManager> {
     ))
 }
 
+fn test_options() -> RequestOptions {
+    RequestOptions { gesture_id: None, gesture_label: None, snapshot_after: false }
+}
+
 fn build_test_runtime() -> Runtime {
     let space_manager = build_test_space_manager();
     let session = Arc::new(RuntimeSession::new(space_manager));
@@ -115,7 +119,7 @@ async fn begin_tx(runtime: &Runtime) -> TxId {
     let request = MapIpcRequest {
         request_id: RequestId::new(0),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match response.result {
@@ -133,7 +137,7 @@ async fn begin_transaction_returns_valid_tx_id() {
     let request = MapIpcRequest {
         request_id: RequestId::new(1),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
 
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
@@ -156,7 +160,7 @@ async fn begin_transaction_ids_are_unique() {
         let request = MapIpcRequest {
             request_id: RequestId::new(i),
             command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
-            options: RequestOptions::default(),
+            options: test_options(),
         };
         let response = runtime.dispatch(request).await.expect("dispatch should succeed");
         match response.result {
@@ -185,7 +189,7 @@ async fn invalid_tx_id_returns_error() {
             tx_id: bad_tx_id,
             action: TransactionActionWire::Commit,
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
 
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
@@ -210,7 +214,7 @@ async fn staged_count_returns_zero_for_new_tx() {
             tx_id,
             action: TransactionActionWire::StagedCount,
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match response.result {
@@ -230,7 +234,7 @@ async fn transient_count_returns_zero_for_new_tx() {
             tx_id,
             action: TransactionActionWire::TransientCount,
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match response.result {
@@ -255,7 +259,7 @@ async fn new_holon_then_staged_count() {
                 key: Some(MapString::from("test-key")),
             },
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match &response.result {
@@ -270,7 +274,7 @@ async fn new_holon_then_staged_count() {
             tx_id,
             action: TransactionActionWire::TransientCount,
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match response.result {
@@ -293,7 +297,7 @@ async fn new_holon_stage_then_staged_count() {
                 key: Some(MapString::from("stage-test")),
             },
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     let transient_wire = match response.result {
@@ -315,7 +319,7 @@ async fn new_holon_stage_then_staged_count() {
                 source: transient_ref_wire,
             },
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match &response.result {
@@ -330,7 +334,7 @@ async fn new_holon_stage_then_staged_count() {
             tx_id,
             action: TransactionActionWire::StagedCount,
         }),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
     match response.result {
@@ -373,6 +377,11 @@ fn holon_action_descriptors() {
     assert_eq!(
         HolonAction::Read(ReadableHolonAction::Key).descriptor(),
         CommandDescriptor::read_only()
+    );
+    assert_eq!(
+        HolonAction::Read(ReadableHolonAction::CloneHolon).descriptor(),
+        CommandDescriptor::mutating(),
+        "CloneHolon creates a transient — mutating despite being a ReadableHolonAction"
     );
     assert_eq!(
         HolonAction::Write(WritableHolonAction::WithPropertyValue {

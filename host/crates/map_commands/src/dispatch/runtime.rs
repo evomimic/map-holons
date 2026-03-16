@@ -65,7 +65,7 @@ impl Runtime {
         // Extract context for lifecycle checks (Transaction and Holon commands have one)
         let context = match &command {
             MapCommand::Transaction(cmd) => Some(Arc::clone(&cmd.context)),
-            MapCommand::Holon(_) => None, // Holon refs are self-resolving; no separate context
+            MapCommand::Holon(cmd) => Some(Arc::clone(&cmd.context)),
             MapCommand::Space(_) => None,
         };
 

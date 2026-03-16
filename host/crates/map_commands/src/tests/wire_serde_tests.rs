@@ -14,6 +14,10 @@ fn test_holon_id() -> core_types::HolonId {
     core_types::HolonId::Local(integrity_core_types::LocalId(vec![0u8; 39]))
 }
 
+fn test_options() -> RequestOptions {
+    RequestOptions { gesture_id: None, gesture_label: None, snapshot_after: false }
+}
+
 /// Helper: serialize to JSON and deserialize back, asserting roundtrip equality.
 fn assert_roundtrip<T>(value: &T)
 where
@@ -31,7 +35,7 @@ fn roundtrip_ipc_request_space_command() {
     let request = MapIpcRequest {
         request_id: RequestId::new(42),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     assert_roundtrip(&request);
 }
@@ -65,7 +69,7 @@ fn roundtrip_request_options_default() {
     let request = MapIpcRequest {
         request_id: RequestId::new(1),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
-        options: RequestOptions::default(),
+        options: test_options(),
     };
     assert_roundtrip(&request);
 }
@@ -82,18 +86,6 @@ fn roundtrip_request_options_with_gesture() {
         },
     };
     assert_roundtrip(&request);
-}
-
-#[test]
-fn ipc_request_deserializes_without_options_field() {
-    // Verify #[serde(default)] works: old clients omitting `options` still deserialize
-    let json = serde_json::json!({
-        "request_id": 5,
-        "command": { "Space": "BeginTransaction" }
-    });
-    let request: MapIpcRequest = serde_json::from_value(json).expect("deserialize");
-    assert_eq!(request.options.snapshot_after, false);
-    assert!(request.options.gesture_id.is_none());
 }
 
 // ── SpaceCommandWire ────────────────────────────────────────────────
