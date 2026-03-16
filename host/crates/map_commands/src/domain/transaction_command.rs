@@ -7,6 +7,8 @@ use holons_core::dances::DanceRequest;
 use holons_core::query_layer::QueryExpression;
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
+use super::{CommandDescriptor, MutationClassification};
+
 /// Transaction-scoped domain command.
 ///
 /// The `context` field holds a strong reference to the bound transaction.
@@ -83,4 +85,37 @@ pub enum TransactionAction {
 
     /// `delete_holon(local_id)` → `()`
     DeleteHolon { local_id: LocalId },
+}
+
+impl TransactionAction {
+    pub fn descriptor(&self) -> CommandDescriptor {
+        match self {
+            TransactionAction::Commit => CommandDescriptor::mutating_with_guard(),
+            TransactionAction::LoadHolons { .. } => CommandDescriptor::mutating_with_guard(),
+            TransactionAction::Dance(_) => CommandDescriptor {
+                mutation: MutationClassification::RuntimeDetected,
+                requires_open_tx: true,
+                requires_commit_guard: false,
+            },
+            TransactionAction::Query(_) => CommandDescriptor::read_only(),
+
+            // Lookups
+            TransactionAction::GetAllHolons
+            | TransactionAction::GetStagedHolonByBaseKey { .. }
+            | TransactionAction::GetStagedHolonsByBaseKey { .. }
+            | TransactionAction::GetStagedHolonByVersionedKey { .. }
+            | TransactionAction::GetTransientHolonByBaseKey { .. }
+            | TransactionAction::GetTransientHolonByVersionedKey { .. }
+            | TransactionAction::StagedCount
+            | TransactionAction::TransientCount => CommandDescriptor::read_only(),
+
+            // Mutations
+            TransactionAction::NewHolon { .. }
+            | TransactionAction::StageNewHolon { .. }
+            | TransactionAction::StageNewFromClone { .. }
+            | TransactionAction::StageNewVersion { .. }
+            | TransactionAction::StageNewVersionFromId { .. }
+            | TransactionAction::DeleteHolon { .. } => CommandDescriptor::mutating(),
+        }
+    }
 }

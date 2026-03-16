@@ -1,4 +1,4 @@
-use base_types::{BaseValue, MapString};
+use base_types::BaseValue;
 use core_types::HolonId;
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
@@ -13,32 +13,26 @@ use holons_core::reference_layer::HolonReference;
 /// converted to `MapResultWire` before crossing the IPC boundary.
 #[derive(Debug)]
 pub enum MapResult {
-    /// Command completed with no return value.
+    /// Command completed with no return value (also used for "not found").
     None,
 
     /// Returns a new transaction id (from BeginTransaction).
     TransactionCreated { tx_id: TxId },
 
-    /// Returns a committed transaction result.
-    CommitResponse(HolonReference),
-
     /// Returns a holon reference.
-    HolonReference(HolonReference),
+    Reference(HolonReference),
 
     /// Returns a collection of holon references.
-    HolonReferences(Vec<HolonReference>),
+    References(Vec<HolonReference>),
 
     /// Returns an indexed collection of holons.
-    HolonCollection(HolonCollection),
+    Collection(HolonCollection),
 
     /// Returns a node collection (query result).
     NodeCollection(NodeCollection),
 
-    /// Returns a single property value.
-    PropertyValue(Option<BaseValue>),
-
-    /// Returns a string value (e.g. from `versioned key()`).
-    StringValue(MapString),
+    /// Universal scalar return — covers MapString, MapInteger, MapBoolean, PropertyValue.
+    Value(BaseValue),
 
     /// Returns a holon id.
     HolonId(HolonId),

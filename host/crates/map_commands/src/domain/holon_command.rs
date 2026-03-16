@@ -2,6 +2,8 @@ use base_types::BaseValue;
 use core_types::{PropertyName, RelationshipName};
 use holons_core::reference_layer::HolonReference;
 
+use super::CommandDescriptor;
+
 /// Holon-scoped domain command.
 ///
 /// Targets a specific holon via a bound runtime reference.
@@ -18,6 +20,15 @@ pub struct HolonCommand {
 pub enum HolonAction {
     Read(ReadableHolonAction),
     Write(WritableHolonAction),
+}
+
+impl HolonAction {
+    pub fn descriptor(&self) -> CommandDescriptor {
+        match self {
+            HolonAction::Read(_) => CommandDescriptor::read_only(),
+            HolonAction::Write(_) => CommandDescriptor::mutating(),
+        }
+    }
 }
 
 /// Non-mutating holon actions.

@@ -31,6 +31,7 @@ fn roundtrip_ipc_request_space_command() {
     let request = MapIpcRequest {
         request_id: RequestId::new(42),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: RequestOptions::default(),
     };
     assert_roundtrip(&request);
 }
@@ -55,6 +56,44 @@ fn roundtrip_ipc_response_error() {
         )),
     };
     assert_roundtrip(&response);
+}
+
+// ── RequestOptions ──────────────────────────────────────────────────
+
+#[test]
+fn roundtrip_request_options_default() {
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: RequestOptions::default(),
+    };
+    assert_roundtrip(&request);
+}
+
+#[test]
+fn roundtrip_request_options_with_gesture() {
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: RequestOptions {
+            gesture_id: Some(GestureId(MapString::from("g-42"))),
+            gesture_label: Some("Create holon".to_string()),
+            snapshot_after: true,
+        },
+    };
+    assert_roundtrip(&request);
+}
+
+#[test]
+fn ipc_request_deserializes_without_options_field() {
+    // Verify #[serde(default)] works: old clients omitting `options` still deserialize
+    let json = serde_json::json!({
+        "request_id": 5,
+        "command": { "Space": "BeginTransaction" }
+    });
+    let request: MapIpcRequest = serde_json::from_value(json).expect("deserialize");
+    assert_eq!(request.options.snapshot_after, false);
+    assert!(request.options.gesture_id.is_none());
 }
 
 // ── SpaceCommandWire ────────────────────────────────────────────────
@@ -148,9 +187,9 @@ fn roundtrip_result_transaction_created() {
 }
 
 #[test]
-fn roundtrip_result_commit_response() {
+fn roundtrip_result_reference() {
     let tx_id = test_tx_id(1);
-    assert_roundtrip(&MapResultWire::CommitResponse(
+    assert_roundtrip(&MapResultWire::Reference(
         holons_boundary::HolonReferenceWire::Smart(SmartReferenceWire::new(
             tx_id,
             test_holon_id(),
@@ -160,8 +199,10 @@ fn roundtrip_result_commit_response() {
 }
 
 #[test]
-fn roundtrip_result_string_value() {
-    assert_roundtrip(&MapResultWire::StringValue(MapString::from("my-key")));
+fn roundtrip_result_value_string() {
+    assert_roundtrip(&MapResultWire::Value(BaseValue::StringValue(
+        MapString::from("my-key"),
+    )));
 }
 
 #[test]

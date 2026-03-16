@@ -1,7 +1,8 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use core_types::{HolonError, HolonId, LocalId, RelationshipName};
+use base_types::{BaseValue, MapInteger, MapString};
+use core_types::{HolonError, HolonId, LocalId, PropertyName, RelationshipName};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::{
@@ -9,7 +10,13 @@ use holons_core::core_shared_objects::{
 };
 use holons_core::reference_layer::{HolonServiceApi, StagedReference, TransientReference};
 
+use holons_core::core_shared_objects::transactions::TxId;
+
 use crate::dispatch::{Runtime, RuntimeSession};
+use crate::domain::{
+    CommandDescriptor, HolonAction, MutationClassification, ReadableHolonAction, SpaceCommand,
+    TransactionAction, WritableHolonAction,
+};
 use crate::wire::*;
 
 // ── Test double ─────────────────────────────────────────────────────
@@ -103,6 +110,20 @@ fn build_test_runtime() -> Runtime {
     Runtime::new(session)
 }
 
+/// Helper: begin a transaction and return the tx_id.
+async fn begin_tx(runtime: &Runtime) -> TxId {
+    let request = MapIpcRequest {
+        request_id: RequestId::new(0),
+        command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match response.result {
+        Ok(MapResultWire::TransactionCreated { tx_id }) => tx_id,
+        other => panic!("expected TransactionCreated, got {:?}", other),
+    }
+}
+
 // ── Dispatch tests ──────────────────────────────────────────────────
 
 #[tokio::test]
@@ -112,6 +133,7 @@ async fn begin_transaction_returns_valid_tx_id() {
     let request = MapIpcRequest {
         request_id: RequestId::new(1),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: RequestOptions::default(),
     };
 
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
@@ -134,6 +156,7 @@ async fn begin_transaction_ids_are_unique() {
         let request = MapIpcRequest {
             request_id: RequestId::new(i),
             command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+            options: RequestOptions::default(),
         };
         let response = runtime.dispatch(request).await.expect("dispatch should succeed");
         match response.result {
@@ -151,38 +174,6 @@ async fn begin_transaction_ids_are_unique() {
 }
 
 #[tokio::test]
-async fn unimplemented_command_returns_not_implemented() {
-    let runtime = build_test_runtime();
-
-    // First open a transaction so we have a valid tx_id
-    let begin_req = MapIpcRequest {
-        request_id: RequestId::new(1),
-        command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
-    };
-    let begin_resp = runtime.dispatch(begin_req).await.expect("dispatch should succeed");
-    let tx_id = match begin_resp.result {
-        Ok(MapResultWire::TransactionCreated { tx_id }) => tx_id,
-        other => panic!("expected TransactionCreated, got {:?}", other),
-    };
-
-    // Try an unimplemented transaction command
-    let request = MapIpcRequest {
-        request_id: RequestId::new(2),
-        command: MapCommandWire::Transaction(TransactionCommandWire {
-            tx_id,
-            action: TransactionActionWire::GetAllHolons,
-        }),
-    };
-
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
-    assert_eq!(response.request_id, RequestId::new(2));
-    match response.result {
-        Err(HolonError::NotImplemented(_)) => {} // expected
-        other => panic!("expected NotImplemented error, got {:?}", other),
-    }
-}
-
-#[tokio::test]
 async fn invalid_tx_id_returns_error() {
     let runtime = build_test_runtime();
 
@@ -194,6 +185,7 @@ async fn invalid_tx_id_returns_error() {
             tx_id: bad_tx_id,
             action: TransactionActionWire::Commit,
         }),
+        options: RequestOptions::default(),
     };
 
     let response = runtime.dispatch(request).await.expect("dispatch should succeed");
@@ -203,4 +195,191 @@ async fn invalid_tx_id_returns_error() {
         }
         other => panic!("expected InvalidParameter error, got {:?}", other),
     }
+}
+
+// ── Transaction lookup dispatch ─────────────────────────────────────
+
+#[tokio::test]
+async fn staged_count_returns_zero_for_new_tx() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::StagedCount,
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match response.result {
+        Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(0)))) => {}
+        other => panic!("expected Value(IntegerValue(0)), got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn transient_count_returns_zero_for_new_tx() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::TransientCount,
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match response.result {
+        Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(0)))) => {}
+        other => panic!("expected Value(IntegerValue(0)), got {:?}", other),
+    }
+}
+
+// ── Transaction mutation dispatch ───────────────────────────────────
+
+#[tokio::test]
+async fn new_holon_then_staged_count() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+
+    // NewHolon creates a transient
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::NewHolon {
+                key: Some(MapString::from("test-key")),
+            },
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match &response.result {
+        Ok(MapResultWire::Reference(_)) => {}
+        other => panic!("expected Reference, got {:?}", other),
+    }
+
+    // Transient count should be 1
+    let request = MapIpcRequest {
+        request_id: RequestId::new(2),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::TransientCount,
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match response.result {
+        Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(1)))) => {}
+        other => panic!("expected Value(IntegerValue(1)), got {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn new_holon_stage_then_staged_count() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+
+    // NewHolon → get transient ref wire
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::NewHolon {
+                key: Some(MapString::from("stage-test")),
+            },
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let transient_wire = match response.result {
+        Ok(MapResultWire::Reference(r)) => r,
+        other => panic!("expected Reference, got {:?}", other),
+    };
+
+    // StageNewHolon needs a TransientReferenceWire
+    let transient_ref_wire = match transient_wire {
+        holons_boundary::HolonReferenceWire::Transient(t) => t,
+        other => panic!("expected Transient wire ref, got {:?}", other),
+    };
+
+    let request = MapIpcRequest {
+        request_id: RequestId::new(2),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::StageNewHolon {
+                source: transient_ref_wire,
+            },
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match &response.result {
+        Ok(MapResultWire::Reference(_)) => {}
+        other => panic!("expected Reference (staged), got {:?}", other),
+    }
+
+    // StagedCount should be 1
+    let request = MapIpcRequest {
+        request_id: RequestId::new(3),
+        command: MapCommandWire::Transaction(TransactionCommandWire {
+            tx_id,
+            action: TransactionActionWire::StagedCount,
+        }),
+        options: RequestOptions::default(),
+    };
+    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    match response.result {
+        Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(1)))) => {}
+        other => panic!("expected Value(IntegerValue(1)), got {:?}", other),
+    }
+}
+
+// ── CommandDescriptor classification tests ──────────────────────────
+
+#[test]
+fn space_begin_transaction_descriptor() {
+    let desc = SpaceCommand::BeginTransaction.descriptor();
+    assert_eq!(desc.mutation, MutationClassification::Mutating);
+    assert!(!desc.requires_open_tx);
+    assert!(!desc.requires_commit_guard);
+}
+
+#[test]
+fn transaction_action_descriptors() {
+    assert_eq!(TransactionAction::Commit.descriptor(), CommandDescriptor::mutating_with_guard());
+    assert_eq!(TransactionAction::StagedCount.descriptor(), CommandDescriptor::read_only());
+    assert_eq!(TransactionAction::TransientCount.descriptor(), CommandDescriptor::read_only());
+    assert_eq!(TransactionAction::GetAllHolons.descriptor(), CommandDescriptor::read_only());
+    assert_eq!(
+        TransactionAction::NewHolon { key: None }.descriptor(),
+        CommandDescriptor::mutating()
+    );
+    assert_eq!(
+        TransactionAction::DeleteHolon {
+            local_id: LocalId(vec![]),
+        }
+        .descriptor(),
+        CommandDescriptor::mutating()
+    );
+}
+
+#[test]
+fn holon_action_descriptors() {
+    assert_eq!(
+        HolonAction::Read(ReadableHolonAction::Key).descriptor(),
+        CommandDescriptor::read_only()
+    );
+    assert_eq!(
+        HolonAction::Write(WritableHolonAction::WithPropertyValue {
+            name: PropertyName(MapString::from("x")),
+            value: BaseValue::StringValue(MapString::from("v")),
+        })
+        .descriptor(),
+        CommandDescriptor::mutating()
+    );
 }

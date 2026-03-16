@@ -1,22 +1,50 @@
+use base_types::{MapInteger, MapString};
 use core_types::HolonError;
 use serde::{Deserialize, Serialize};
 
 use super::MapCommandWire;
 use super::MapResultWire;
 
-/// Opaque request identifier assigned by the TypeScript client.
+/// Opaque request identifier(uuid?) assigned by the TypeScript client.
 ///
 /// Echoed back in MapIpcResponse so the client can correlate responses.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
-pub struct RequestId(u64);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RequestId(pub MapInteger);
+
+impl std::hash::Hash for RequestId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0 .0.hash(state);
+    }
+}
 
 impl RequestId {
-    pub fn new(id: u64) -> Self {
-        Self(id)
+    pub fn new(id: i64) -> Self {
+        Self(MapInteger(id))
     }
 
-    pub fn value(&self) -> u64 {
-        self.0
+    pub fn value(&self) -> i64 {
+        self.0 .0
+    }
+}
+
+/// Identifies a user gesture for undo/redo grouping.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GestureId(pub MapString);
+
+/// Per-request options controlling dispatch behavior.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RequestOptions {
+    /// Groups this command into a gesture for undo/redo.
+    pub gesture_id: Option<GestureId>,
+    /// Human-readable label for the gesture (shown in undo UI).
+    pub gesture_label: Option<String>,
+    /// When true, snapshot pool state after mutation (no-op until Phase 2.3).
+    pub snapshot_after: bool,
+}
+
+impl Default for RequestOptions {
+    fn default() -> Self {
+        Self { gesture_id: None, gesture_label: None, snapshot_after: false }
     }
 }
 
@@ -28,6 +56,8 @@ impl RequestId {
 pub struct MapIpcRequest {
     pub request_id: RequestId,
     pub command: MapCommandWire,
+    #[serde(default)]
+    pub options: RequestOptions,
 }
 
 /// Canonical IPC response envelope for MAP Commands.
