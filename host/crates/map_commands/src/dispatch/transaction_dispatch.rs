@@ -8,17 +8,15 @@ use super::runtime_session::RuntimeSession;
 
 /// Dispatches transaction-scoped commands.
 pub async fn dispatch_transaction(
-    session: &RuntimeSession,
+    _session: &RuntimeSession, // may be needed for removing a transaction on commit or abort
     command: TransactionCommand,
 ) -> Result<MapResult, HolonError> {
     let context = &command.context;
-    let tx_id = context.tx_id();
 
     match command.action {
         // ── Commit ───────────────────────────────────────────────────
         TransactionAction::Commit => {
             let transient_ref = context.commit()?;
-            session.remove_transaction(&tx_id)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient_ref)))
         }
 
@@ -27,15 +25,14 @@ pub async fn dispatch_transaction(
             let response = context.initiate_ingress_dance(request, false).await?;
             Ok(MapResult::DanceResponse(response))
         }
-        TransactionAction::Query(_) => Err(HolonError::NotImplemented(
-            "TransactionAction::Query".to_string(),
-        )),
+        TransactionAction::Query(_) => {
+            Err(HolonError::NotImplemented("TransactionAction::Query".to_string()))
+        }
         TransactionAction::LoadHolons { bundle } => {
             // LoadHolons requires a TransientReference; extract from the bound HolonReference
             match bundle {
                 HolonReference::Transient(transient_ref) => {
                     let result = context.load_holons_and_commit(transient_ref)?;
-                    session.remove_transaction(&tx_id)?;
                     Ok(MapResult::Reference(HolonReference::Transient(result)))
                 }
                 other => Err(HolonError::InvalidParameter(format!(
@@ -56,9 +53,7 @@ pub async fn dispatch_transaction(
         }
         TransactionAction::GetStagedHolonsByBaseKey { key } => {
             let staged_refs = context.lookup().get_staged_holons_by_base_key(&key)?;
-            Ok(MapResult::References(
-                staged_refs.into_iter().map(HolonReference::Staged).collect(),
-            ))
+            Ok(MapResult::References(staged_refs.into_iter().map(HolonReference::Staged).collect()))
         }
         TransactionAction::GetStagedHolonByVersionedKey { key } => {
             let staged = context.lookup().get_staged_holon_by_versioned_key(&key)?;
@@ -69,8 +64,7 @@ pub async fn dispatch_transaction(
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
         TransactionAction::GetTransientHolonByVersionedKey { key } => {
-            let transient =
-                context.lookup().get_transient_holon_by_versioned_key(&key)?;
+            let transient = context.lookup().get_transient_holon_by_versioned_key(&key)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
         TransactionAction::StagedCount => {
