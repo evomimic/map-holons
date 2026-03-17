@@ -69,6 +69,18 @@ impl Runtime {
             MapCommand::Space(_) => None,
         };
 
+        // Open-transaction check: reject commands that require an open transaction
+        if descriptor.requires_open_tx {
+            if let Some(ref ctx) = context {
+                if !ctx.is_open() {
+                    return Err(HolonError::TransactionNotOpen {
+                        tx_id: ctx.tx_id().value(),
+                        state: format!("{:?}", ctx.lifecycle_state()),
+                    });
+                }
+            }
+        }
+
         // Commit guard: hold across dispatch for commit-guarded commands
         let _commit_guard = if descriptor.requires_commit_guard {
             if let Some(ref ctx) = context {
