@@ -2,11 +2,9 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use crate::config::providers::holochain::*;
 use crate::config::StorageProvider;
-use holons_client::shared_types::base_receptor::BaseReceptor;
 use tauri::{AppHandle, Manager, Theme};
 use holochain_client::{AdminWebsocket, AppWebsocket, AppInfo};
 use holochain_receptor::HolochainConductorClient;
-use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
 use tauri_plugin_holochain::{HolochainExt, AppBundle};
 use async_trait::async_trait;
 use crate::setup::window_setup::ProviderWindowSetup;
@@ -55,9 +53,8 @@ impl HolochainSetup {
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
         tracing::debug!("[HOLOCHAIN SETUP] App websocket obtained.");
 
-        // After successful setup, build and register the receptor
-        let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, hc_cfg).await?;
-        Self::register_receptor(&handle, receptor_cfg).await?;
+        // Build the conductor client for Runtime construction
+        let client = Self::build_conductor_client(app_ws, admin_ws, hc_cfg).await?;
 
         // Store the conductor client for Runtime construction
         if let Some(state) = handle.try_state::<ConductorClientState>() {
@@ -128,60 +125,20 @@ impl HolochainSetup {
         Ok(())
     }
 
-    async fn build_receptor(
+    async fn build_conductor_client(
         app_ws: AppWebsocket,
         admin_ws: AdminWebsocket,
         hc_cfg: &HolochainConfig,
-    ) -> anyhow::Result<(BaseReceptor, Arc<HolochainConductorClient>)> {
+    ) -> anyhow::Result<Arc<HolochainConductorClient>> {
             let agent = app_ws.my_pub_key.clone();
             let cell_details = hc_cfg.cell_details.as_ref().ok_or_else(|| anyhow::anyhow!("cell_details missing in HolochainConfig"))?;
             if cell_details.is_empty() {
                 return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
             }
             let client = Self::setup_holochain_client(app_ws.clone(), admin_ws.clone(), cell_details[0].clone(), agent).await;
-
-            // Dynamically collect all properties from HolochainConfig
-            let props = match serde_json::to_value(hc_cfg)? {
-                serde_json::Value::Object(map) => {
-                    map.into_iter()
-                        .map(|(k, v)| {
-                            let value_str = match v {
-                                serde_json::Value::String(s) => s,
-                                serde_json::Value::Number(n) => n.to_string(),
-                                serde_json::Value::Bool(b) => b.to_string(),
-                                serde_json::Value::Null => String::new(),
-                                _ => v.to_string(),
-                            };
-                            (k, value_str)
-                        })
-                        .collect::<std::collections::HashMap<String, String>>()
-                }
-                _ => std::collections::HashMap::new(),
-            };
-
-            let receptor = BaseReceptor {
-                receptor_id: None,
-                receptor_type: "holochain".to_string(),
-                client_handler: Some(client.clone() as Arc<dyn std::any::Any + Send + Sync>),
-                properties: props,
-            };
-
-            Ok((receptor, client))
+            Ok(client)
         }
 
-        /// Initialize the receptor factory with websockets and load configuration
-        /// Register the built receptor config into the application state
-        async fn register_receptor(
-            handle: &AppHandle,
-            receptor_cfg: BaseReceptor,
-        ) -> anyhow::Result<()> {
-            // Get the registry from app state and register the new config
-            let registry = handle.state::<ReceptorConfigRegistry>();
-            registry.register(receptor_cfg);
-            Ok(())
-        }
-
-        //TODO: this should be done by the receptor setup code (basereceptor properties) and include ROLENAME, ZOMENAME etc
         pub async fn setup_holochain_client(
             app_ws: AppWebsocket,
             admin_ws: AdminWebsocket,
