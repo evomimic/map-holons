@@ -21,10 +21,9 @@ pub async fn dispatch_transaction(
         }
 
         // ── Dance / Query / LoadHolons ───────────────────────────────
-        TransactionAction::Dance(request) => {
-            let response = context.initiate_ingress_dance(request, false).await?;
-            Ok(MapResult::DanceResponse(response))
-        }
+        TransactionAction::Dance(_) => Err(HolonError::NotImplemented(
+            "TransactionAction::Dance: extension dances pending API refactor".to_string(),
+        )),
         TransactionAction::Query(_) => {
             Err(HolonError::NotImplemented("TransactionAction::Query".to_string()))
         }

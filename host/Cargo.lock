@@ -3485,11 +3485,9 @@ dependencies = [
  "holons_boundary",
  "holons_client",
  "holons_core",
- "holons_loader_client",
  "holons_trust_channel",
  "serde_bytes",
  "tracing",
- "type_names",
 ]
 
 [[package]]
@@ -3881,7 +3879,6 @@ dependencies = [
 name = "holons_client"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "base_types",
  "core_types",
  "futures-executor",

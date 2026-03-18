@@ -7,15 +7,13 @@ use crate::{
         app_config::load_storage_config, providers::holochain::holochain_plugin, storage_config::{StorageConfig, StorageProvider}
     },
     setup::{
-        holochain_setup::{ConductorClientState, HolochainSetup, HolochainWindowSetup}, local_setup::LocalSetup, window_setup::DefaultWindowSetup},
+        holochain_setup::{ConductorClientState, HolochainSetup, HolochainWindowSetup}, window_setup::DefaultWindowSetup},
 };
 
 use crate::setup::window_setup::ProviderWindowSetup;
-use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
 use holons_client::init_client_runtime;
 use holons_trust_channel::TrustChannel;
 use map_commands::dispatch::{Runtime, RuntimeSession};
-use holons_receptor::ReceptorFactory;
 use tauri::{AppHandle, Manager, Listener};
 
 pub struct AppBuilder;
@@ -29,16 +27,10 @@ impl AppBuilder {
         // Base builder without setup
         let base = tauri::Builder::default()
             .manage(storage_cfg.clone())
-            .manage(ReceptorFactory::new())
-            .manage(ReceptorConfigRegistry::new())
             .manage::<ConductorClientState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .invoke_handler(tauri::generate_handler![
-                commands::root_space,
-                //commands::load_holons,
                 commands::serde_test,
-                commands::map_request,
-                commands::all_spaces,
                 commands::is_service_ready,
                 runtime::dispatch_map_command::dispatch_map_command,
             ]);
@@ -87,12 +79,6 @@ impl AppBuilder {
             tracing::error!("[APP BUILDER] Provider setup failed: {}", e);
         }
 
-        // Load receptor configs into factory
-        if let Err(e) = Self::load_receptor_configs(handle).await {
-            tracing::error!("[APP BUILDER] Failed to load receptor configs: {}", e);
-            return;
-        }
-
         // Construct the MAP Commands Runtime (if conductor client is available)
         Self::initialize_runtime(handle);
 
@@ -103,18 +89,6 @@ impl AppBuilder {
         }
 
         tracing::info!("[APP BUILDER] Setup completed successfully.");
-    }
-
-    /// Load receptor configs from registry into factory
-    async fn load_receptor_configs(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        if let Some(registry) = handle.try_state::<ReceptorConfigRegistry>() {
-            let configs = registry.all();
-            if let Some(factory) = handle.try_state::<ReceptorFactory>() {
-                factory.load_from_configs(configs).await?;
-                tracing::debug!("[APP BUILDER] ReceptorFactory loaded from configs.");
-            }
-        }
-        Ok(())
     }
 
     /// Apply provider-specific plugins based on the storage configuration
@@ -163,10 +137,6 @@ impl AppBuilder {
 
         for (_name, provider) in storage_cfg.get_enabled_providers() {
             match provider.provider_type() {
-                "local" => {
-                    tracing::info!("[APP BUILDER] Running Local storage setup");
-                    LocalSetup::setup(handle.clone(), provider).await?;
-                }
                 "holochain" => {
                     tracing::info!("[APP BUILDER] Running Holochain setup");
                     HolochainSetup::setup(handle.clone(), provider).await?;

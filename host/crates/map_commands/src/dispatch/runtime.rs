@@ -73,9 +73,8 @@ impl Runtime {
         if descriptor.requires_open_tx {
             if let Some(ref ctx) = context {
                 if !ctx.is_open() {
-                    return Err(HolonError::TransactionNotOpen {
+                    return Err(HolonError::TransactionAlreadyCommitted {
                         tx_id: ctx.tx_id().value(),
-                        state: format!("{:?}", ctx.lifecycle_state()),
                     });
                 }
             }
@@ -102,6 +101,7 @@ impl Runtime {
         }
 
         self.dispatch_command(command).await
+        // Note: commit guard is automatically released at the end of this function's scope
     }
 
     /// Binds a wire command to its domain equivalent.

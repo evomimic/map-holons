@@ -1,7 +1,7 @@
 //! Top-level entrypoint for the host-side Holons Loader Client.
 //!
-//! This module is called from the native receptor layer
-//! (`ReceptorFactory::load_holons(...)`) and orchestrates:
+//! This module is called from `TransactionAction::LoadHolons` dispatch
+//! (in the `map_commands` crate) and orchestrates:
 //!
 //! 1. Parsing & validation of one or more loader import files into a
 //!    single `HolonLoadSet` via [`crate::parser`] and [`crate::builder`].
@@ -26,7 +26,7 @@ use tracing::debug;
 
 /// Primary entry point for the host-side Holon Loader.
 ///
-/// This function is intended to be called from `ReceptorFactory::load_holons(...)`.
+/// This function is called from `TransactionAction::LoadHolons` dispatch.
 ///
 /// High-level behavior:
 /// - If no input files are provided, returns `HolonError::InvalidParameter`.
