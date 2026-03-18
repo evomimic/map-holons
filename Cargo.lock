@@ -2956,10 +2956,12 @@ dependencies = [
  "holon_dance_builders",
  "holons_boundary",
  "holons_core",
+ "holons_recovery",
  "integrity_core_types",
  "serde",
  "serde_bytes",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3053,6 +3055,23 @@ dependencies = [
  "holons_core",
  "integrity_core_types",
  "type_names",
+]
+
+[[package]]
+name = "holons_recovery"
+version = "0.1.0"
+dependencies = [
+ "core_types",
+ "futures-executor",
+ "holons_boundary",
+ "holons_core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -1,8 +1,7 @@
-//use std::sync::Arc;
-
+use std::sync::Arc;
 use crate::config::providers::local::LocalConfig;
 use crate::config::StorageProvider;
-use crate::setup::common_setup::{register_receptor, serialize_props};
+use crate::setup::common_setup::{create_snapshot_store, register_receptor, serialize_props};
 use holons_client::shared_types::base_receptor::BaseReceptor;
 use tauri::{AppHandle};
 
@@ -25,23 +24,23 @@ impl LocalSetup {
 
     /// Build the receptor configuration for Local storage
     async fn build_receptor(
-        _handle: &AppHandle,
-        _name: &str,
+        handle: &AppHandle,
+        name: &str,
         local_config: &LocalConfig,
     ) -> anyhow::Result<BaseReceptor> {
         tracing::debug!("[LOCAL SETUP] Building Local storage receptor.");
 
-    //    let _snapshot_store: Option<Arc<dyn std::any::Any + Send + Sync>> =
-    //        create_snapshot_store(handle, local_config, name)
-     //           .await?
-     //           .map(|s| s as Arc<dyn std::any::Any + Send + Sync>);
+        let snapshot_store: Option<Arc<dyn std::any::Any + Send + Sync>> =
+            create_snapshot_store(handle, local_config, name)
+                .await?
+                .map(|s| s as Arc<dyn std::any::Any + Send + Sync>);
         let props = serialize_props(local_config);
 
         Ok(BaseReceptor {
             receptor_id: None,
             receptor_type: "local".to_string(),
             client_handler: None,
-           // snapshot_store,
+            snapshot_store,
             properties: props,
         })
     }

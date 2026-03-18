@@ -40,6 +40,7 @@ holons_receptor = { path = "../crates/holons_receptor" }
 holochain_receptor = { path = "../crates/holochain_receptor" }
 holons_core = { workspace = true }
 holons_trust_channel = { path = "../../shared_crates/holons_trust_channel" }
+holons_recovery = { path = "../crates/holons_recovery" }
 map_commands = { path = "../crates/map_commands" }
 core_types = { path = "../../shared_crates/type_system/core_types" }
 

@@ -1,8 +1,8 @@
 use crate::{config::ProviderConfig, setup::receptor_config_registry::ReceptorConfigRegistry};
-//use core_types::HolonError;
+use core_types::HolonError;
 use holons_client::shared_types::base_receptor::BaseReceptor;
-//use holons_recovery::TransactionRecoveryStore;
-//use std::sync::Arc;
+use holons_recovery::TransactionRecoveryStore;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 
 /// Create a snapshot recovery store for any provider config type that implements `ProviderConfig`.
@@ -14,7 +14,7 @@ use tauri::{AppHandle, Manager};
 /// The database is placed at: `{app_data_dir}/storage/{name}/snapshots.db`
 ///
 /// Blocking I/O (dir creation + SQLite open) is offloaded via `spawn_blocking`.
-/*pub async fn create_snapshot_store<C: ProviderConfig>(
+pub async fn create_snapshot_store<C: ProviderConfig>(
     handle: &AppHandle,
     config: &C,
     name: &str,
@@ -49,7 +49,7 @@ use tauri::{AppHandle, Manager};
         .map_err(|e| HolonError::Misc(format!("spawn_blocking panicked: {}", e)))??;
 
     Ok(Some(Arc::new(store)))
-}*/
+}
 
 pub fn serialize_props<C: ProviderConfig>(config: &C) -> std::collections::HashMap<String, String> {
     match serde_json::to_value(config) {

@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use crate::setup::common_setup::{register_receptor, serialize_props}; //create_snapshot_store
+use crate::setup::common_setup::{create_snapshot_store, register_receptor, serialize_props};
 use crate::{config::providers::holochain::*};
 use crate::config::StorageProvider;
 use crate::runtime::RuntimeInitiatorState;
@@ -19,7 +19,7 @@ impl HolochainSetup {
     /// Main setup function for Holochain integration
        pub async fn setup(
         handle: AppHandle,
-        _name: &str,
+        name: &str,
         provider: &StorageProvider,
     ) -> anyhow::Result<()> {
         let t_setup = std::time::Instant::now();
@@ -87,7 +87,7 @@ impl HolochainSetup {
 
         // After successful setup, build and register the receptor
         let t_receptor = std::time::Instant::now();
-        let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, hc_cfg).await?;
+        let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
         register_receptor(&handle, receptor_cfg).await?;
         tracing::info!("[HOLOCHAIN SETUP] Base receptor built in {:.1}s", t_receptor.elapsed().as_secs_f64());
         tracing::info!("[HOLOCHAIN SETUP] Total setup time: {:.1}s", t_setup.elapsed().as_secs_f64());
@@ -176,6 +176,8 @@ impl HolochainSetup {
     async fn build_receptor(
         app_ws: AppWebsocket,
         admin_ws: AdminWebsocket,
+        handle: &AppHandle,
+        name: &str,
         hc_cfg: &HolochainConfig,
     ) -> anyhow::Result<(BaseReceptor, Arc<HolochainConductorClient>)> {
             let agent = app_ws.my_pub_key.clone();
@@ -184,12 +186,17 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
             }
             let client = Self::setup_holochain_client(app_ws.clone(), admin_ws.clone(), cell_details[0].clone(), agent).await;
+            let snapshot_store: Option<Arc<dyn std::any::Any + Send + Sync>> =
+            create_snapshot_store(handle, hc_cfg, name)
+                .await?
+                .map(|s| s as Arc<dyn std::any::Any + Send + Sync>);
             let props = serialize_props(hc_cfg);
 
             let receptor = BaseReceptor {
                 receptor_id: None,
                 receptor_type: "holochain".to_string(),
                 client_handler: Some(client.clone() as Arc<dyn std::any::Any + Send + Sync>),
+                snapshot_store,
                 properties: props,
             };
 

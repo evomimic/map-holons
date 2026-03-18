@@ -51,7 +51,7 @@ impl HolochainConductorClient {
             Ok(Some(app_info)) => {
                 // Successfully retrieved AppInfo, now convert it.
                 let space_info = convert_to_space_info(app_info)?;
-                tracing::info!("[ReceptorService] Successfully retrieved space info.");
+                tracing::info!("[ReceptorService] Successfully retrieved space info: {:?}", space_info);
                 Ok(space_info)
             }
             Ok(None) => {

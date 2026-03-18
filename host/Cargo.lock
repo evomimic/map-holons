@@ -16,6 +16,7 @@ dependencies = [
  "holons_client",
  "holons_core",
  "holons_receptor",
+ "holons_recovery",
  "holons_trust_channel",
  "map_commands",
  "serde",
@@ -3488,8 +3489,10 @@ dependencies = [
  "holons_client",
  "holons_core",
  "holons_loader_client",
+ "holons_recovery",
  "holons_trust_channel",
  "serde_bytes",
+ "tokio",
  "tracing",
  "type_names",
 ]
@@ -3890,10 +3893,12 @@ dependencies = [
  "holon_dance_builders",
  "holons_boundary",
  "holons_core",
+ "holons_recovery",
  "integrity_core_types",
  "serde",
  "serde_bytes",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3948,10 +3953,28 @@ dependencies = [
  "holochain_receptor",
  "holons_client",
  "holons_core",
+ "holons_recovery",
  "serde_bytes",
  "serde_json",
  "sha2",
  "tracing",
+]
+
+[[package]]
+name = "holons_recovery"
+version = "0.1.0"
+dependencies = [
+ "core_types",
+ "futures-executor",
+ "holons_boundary",
+ "holons_core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tracing",
+ "uuid 1.18.1",
 ]
 
 [[package]]
