@@ -8,7 +8,6 @@ use holons_client::shared_types::map_response::MapResponse;
 use holons_core::HolonServiceApi;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
-use holons_recovery::TransactionRecoveryStore;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt;
@@ -35,14 +34,12 @@ impl LocalReceptor {
     /// Create a new LocalReceptor, returning Result to handle downcast failures
     pub fn new(base: BaseReceptor) -> Result<Self, HolonError> {
 
-        // Downcast the stored snapshot store into our concrete recovery store
-        let session: ClientSession;
-        if let Some(snapshot_store_any) = base.snapshot_store.as_ref() {
-            let recovery_store = snapshot_store_any.clone().downcast::<TransactionRecoveryStore>().expect("Failed to deserialize TransactionRecoveryStore");    
-            session = init_client_context(None, Some(recovery_store.clone()));
+        // Build client context with dance initiator and recovery store if provided
+        let session = if let Some(recovery_store) = base.snapshot_store.as_ref() {
+            init_client_context(None, Some(Arc::clone(recovery_store)))
         } else {
-            session = init_client_context(None, None);
-        }
+            init_client_context(None, None)
+        };
         
         //ENSURE ROOT HOLON EXISTS OR CREATE IT
         let client = LocalClient::new();

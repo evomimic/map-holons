@@ -1,7 +1,7 @@
 use crate::{config::ProviderConfig, setup::receptor_config_registry::ReceptorConfigRegistry};
 use core_types::HolonError;
 use holons_client::shared_types::base_receptor::BaseReceptor;
-use holons_recovery::TransactionRecoveryStore;
+use holons_recovery::{TransactionRecoveryStore, RecoveryStore};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 

@@ -4,6 +4,7 @@ use crate::{config::providers::holochain::*};
 use crate::config::StorageProvider;
 use crate::runtime::RuntimeInitiatorState;
 use holons_client::shared_types::base_receptor::BaseReceptor;
+use holons_recovery::RecoveryStore;
 use holons_trust_channel::TrustChannel;
 use tauri::{AppHandle, Manager, Theme};
 use holochain_client::{AdminWebsocket, AppWebsocket, AppInfo};
@@ -186,10 +187,10 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
             }
             let client = Self::setup_holochain_client(app_ws.clone(), admin_ws.clone(), cell_details[0].clone(), agent).await;
-            let snapshot_store: Option<Arc<dyn std::any::Any + Send + Sync>> =
+            let snapshot_store: Option<Arc<dyn RecoveryStore>> =
             create_snapshot_store(handle, hc_cfg, name)
                 .await?
-                .map(|s| s as Arc<dyn std::any::Any + Send + Sync>);
+                .map(|s| s as Arc<dyn RecoveryStore>);
             let props = serialize_props(hc_cfg);
 
             let receptor = BaseReceptor {

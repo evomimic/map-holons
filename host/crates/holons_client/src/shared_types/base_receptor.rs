@@ -3,6 +3,7 @@ use core_types::{HolonError};
 use std::{any::Any, fmt, sync::Arc};
 use crate::{shared_types::{holon_space::SpaceInfo, map_request::MapRequest, map_response::MapResponse}};
 use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_recovery::RecoveryStore;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +21,7 @@ pub struct BaseReceptor {
     #[serde(skip, default)]
     pub client_handler: Option<Arc<dyn Any + Send + Sync>>,
     #[serde(skip, default)]
-    pub snapshot_store: Option<Arc<dyn Any + Send + Sync>>,
+    pub snapshot_store: Option<Arc<dyn RecoveryStore>>,
     pub properties: HashMap<String, String>,
 }
 

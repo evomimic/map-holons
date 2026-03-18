@@ -4,8 +4,6 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use holons_recovery::TransactionRecoveryStore;
-
 use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use core_types::HolonError;
@@ -57,15 +55,12 @@ impl HolochainReceptor {
         let trust_channel = TrustChannel::new(client_handler.clone());
         let initiator: Arc<dyn DanceInitiator + Send + Sync> = Arc::new(trust_channel);
 
-        // Build client context with dance initiator
-         // Downcast the stored snapshot store into our concrete recovery store
-        let session: ClientSession;
-        if let Some(snapshot_store_any) = base.snapshot_store.as_ref() {
-            let recovery_store = snapshot_store_any.clone().downcast::<TransactionRecoveryStore>().expect("Failed to deserialize TransactionRecoveryStore");    
-            session = init_client_context(Some(initiator), Some(recovery_store.clone()));
+        // Build client context with dance initiator and recovery store if provided
+        let session = if let Some(recovery_store) = base.snapshot_store.as_ref() {
+            init_client_context(Some(initiator), Some(Arc::clone(recovery_store)))
         } else {
-            session = init_client_context(Some(initiator), None);
-        }
+            init_client_context(Some(initiator), None)
+        };
 
         // Default until we fully implement space discovery
         let _home_space_holon = HolonSpace::default();
@@ -186,6 +181,7 @@ mod tests {
     };
     use holons_core::dances::DanceType;
     use holons_recovery::TransactionRecoveryStore;
+    use holons_recovery::RecoveryStore;
     use std::{path::Path, sync::Arc};
 
 

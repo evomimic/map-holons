@@ -3,6 +3,7 @@ use crate::config::providers::local::LocalConfig;
 use crate::config::StorageProvider;
 use crate::setup::common_setup::{create_snapshot_store, register_receptor, serialize_props};
 use holons_client::shared_types::base_receptor::BaseReceptor;
+use holons_recovery::RecoveryStore;
 use tauri::{AppHandle};
 
 pub struct LocalSetup;
@@ -30,10 +31,10 @@ impl LocalSetup {
     ) -> anyhow::Result<BaseReceptor> {
         tracing::debug!("[LOCAL SETUP] Building Local storage receptor.");
 
-        let snapshot_store: Option<Arc<dyn std::any::Any + Send + Sync>> =
+        let snapshot_store: Option<Arc<dyn RecoveryStore>> =
             create_snapshot_store(handle, local_config, name)
                 .await?
-                .map(|s| s as Arc<dyn std::any::Any + Send + Sync>);
+                .map(|s| s as Arc<dyn RecoveryStore>);
         let props = serialize_props(local_config);
 
         Ok(BaseReceptor {

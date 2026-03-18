@@ -15,30 +15,13 @@ use uuid::Uuid;
 
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
+use crate::RecoveryStore;
 
 use super::transaction_snapshot::{TransactionSnapshot, now_ms};
 
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
-
-pub struct TransactionRecoveryStore {
-    conn: Mutex<Connection>,
-}
-
-impl TransactionRecoveryStore {
-    /// Open (or create) the SQLite recovery store at `path`.
-    /// Applies the embedded schema — idempotent, safe to call on existing DBs.
-    pub fn new(path: &Path) -> Result<Self, HolonError> {
-        let conn = Connection::open(path)
-            .map_err(|e| HolonError::Misc(format!("SQLite open failed at {path:?}: {e}")))?;
-
-        conn.execute_batch(Self::SCHEMA_SQL)
-            .map_err(|e| HolonError::Misc(format!("Schema init failed: {e}")))?;
-
-        tracing::debug!("[RECOVERY STORE] Ready at {path:?}");
-        Ok(Self { conn: Mutex::new(conn) })
-    }
 
     // -----------------------------------------------------------------------
     // Embedded schema — self-contained, no external migration files
@@ -80,6 +63,25 @@ impl TransactionRecoveryStore {
             ON recovery_checkpoint(tx_id, created_at_ms);
     ";
 
+
+pub struct TransactionRecoveryStore {
+    conn: Mutex<Connection>,
+}
+
+impl RecoveryStore for TransactionRecoveryStore {
+    /// Open (or create) the SQLite recovery store at `path`.
+    /// Applies the embedded schema — idempotent, safe to call on existing DBs.
+    fn new(path: &Path) -> Result<Self, HolonError> {
+        let conn = Connection::open(path)
+            .map_err(|e| HolonError::Misc(format!("SQLite open failed at {path:?}: {e}")))?;
+
+        conn.execute_batch(SCHEMA_SQL)
+            .map_err(|e| HolonError::Misc(format!("Schema init failed: {e}")))?;
+
+        tracing::debug!("[RECOVERY STORE] Ready at {path:?}");
+        Ok(Self { conn: Mutex::new(conn) })
+    }
+
     // -----------------------------------------------------------------------
     // Persist — called after every successful command
     // -----------------------------------------------------------------------
@@ -92,7 +94,7 @@ impl TransactionRecoveryStore {
     /// - If `disable_undo` is true: updates the latest recoverable state
     ///   without adding to the undo stack.
     /// - All writes are in a single SQLite transaction (atomic).
-    pub fn persist(
+    fn persist(
         &self,
         context: &Arc<TransactionContext>,
         description: &str,
@@ -106,10 +108,10 @@ impl TransactionRecoveryStore {
         let snapshot_blob = serde_json::to_vec(&snapshot)
             .map_err(|e| HolonError::Misc(format!("Serialize snapshot: {e}")))?;
 
-        let mut guard = self.lock()?;
+        let mut guard = lock(self)?;
 
         // Load stacks before opening the write transaction (read-only query).
-        let (mut undo_stack, mut redo_stack) = self.load_stacks(&guard, &tx_id)?;
+        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, &tx_id)?;
 
         // Use conn.transaction() so that any error automatically rolls back,
         // preventing a dangling open transaction on the next call.
@@ -202,10 +204,10 @@ impl TransactionRecoveryStore {
     /// Pop the top of the undo stack and return the snapshot to restore.
     /// Moves the popped checkpoint to the redo stack.
     /// Returns `None` if nothing to undo.
-    pub fn undo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
-        let mut guard = self.lock()?;
+    fn undo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let mut guard = lock(self)?;
         let now = now_ms();
-        let (mut undo_stack, mut redo_stack) = self.load_stacks(&guard, tx_id)?;
+        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, tx_id)?;
 
         let Some(popped_id) = undo_stack.pop() else {
             tracing::debug!("[RECOVERY STORE] Nothing to undo for tx={tx_id}");
@@ -214,7 +216,7 @@ impl TransactionRecoveryStore {
 
         let restore_id = undo_stack.last().cloned();
         let snapshot = match restore_id.as_ref() {
-            Some(id) => Some(self.load_snapshot(&guard, id)?),
+            Some(id) => Some(load_snapshot(&guard, id)?),
             None => None,
         };
 
@@ -234,7 +236,7 @@ impl TransactionRecoveryStore {
         )
         .map_err(|e| HolonError::Misc(format!("Undo: move to redo: {e}")))?;
 
-        self.save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
+        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
 
         tx.commit()
             .map_err(|e| HolonError::Misc(format!("Undo commit: {e}")))?;
@@ -258,17 +260,17 @@ impl TransactionRecoveryStore {
     /// Pop the top of the redo stack and return the snapshot to restore.
     /// Moves the checkpoint back to the undo stack.
     /// Returns `None` if nothing to redo.
-    pub fn redo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
-        let mut guard = self.lock()?;
+    fn redo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let mut guard = lock(self)?;
         let now = now_ms();
-        let (mut undo_stack, mut redo_stack) = self.load_stacks(&guard, tx_id)?;
+        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, tx_id)?;
 
         let Some(checkpoint_id) = redo_stack.pop() else {
             tracing::debug!("[RECOVERY STORE] Nothing to redo for tx={tx_id}");
             return Ok(None);
         };
 
-        let snapshot = self.load_snapshot(&guard, &checkpoint_id)?;
+        let snapshot = load_snapshot(&guard, &checkpoint_id)?;
 
         let undo_pos = undo_stack.len() as i64;
         undo_stack.push(checkpoint_id.clone());
@@ -285,7 +287,7 @@ impl TransactionRecoveryStore {
         )
         .map_err(|e| HolonError::Misc(format!("Redo: move to undo: {e}")))?;
 
-        self.save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
+        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
 
         tx.commit()
             .map_err(|e| HolonError::Misc(format!("Redo commit: {e}")))?;
@@ -301,8 +303,8 @@ impl TransactionRecoveryStore {
     /// Recover the latest consistent snapshot on app startup.
     /// Returns `None` if no recovery data exists for this tx_id.
     /// Verifies the snapshot hash before returning — corrupt snapshots are discarded.
-    pub fn recover_latest(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
-        let conn = self.lock()?;
+    fn recover_latest(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let conn = lock(self)?;
 
         let latest_id: Option<String> = conn
             .query_row(
@@ -317,7 +319,7 @@ impl TransactionRecoveryStore {
             return Ok(None);
         };
 
-        let snapshot = self.load_snapshot(&conn, &checkpoint_id)?;
+        let snapshot = load_snapshot(&conn, &checkpoint_id)?;
 
         // Integrity check before handing back to caller
         snapshot.verify_integrity().map_err(|e| {
@@ -336,8 +338,8 @@ impl TransactionRecoveryStore {
     /// Delete ALL recovery state for this transaction (session row + all checkpoints).
     /// The FK ON DELETE CASCADE removes checkpoint rows automatically.
     /// Call on successful commit or explicit rollback.
-    pub fn cleanup(&self, tx_id: &str) -> Result<(), HolonError> {
-        let conn = self.lock()?;
+    fn cleanup(&self, tx_id: &str) -> Result<(), HolonError> {
+        let conn = lock(self)?;
         let deleted = conn
             .execute(
                 "DELETE FROM recovery_session WHERE tx_id = ?1",
@@ -356,23 +358,23 @@ impl TransactionRecoveryStore {
     // -----------------------------------------------------------------------
 
     /// Returns `true` if there is at least one undoable checkpoint.
-    pub fn can_undo(&self, tx_id: &str) -> Result<bool, HolonError> {
-        let conn = self.lock()?;
-        let (undo_stack, _) = self.load_stacks(&conn, tx_id)?;
+    fn can_undo(&self, tx_id: &str) -> Result<bool, HolonError> {
+        let conn = lock(self)?;
+        let (undo_stack, _) = load_stacks(&conn, tx_id)?;
         Ok(!undo_stack.is_empty())
     }
 
     /// Returns `true` if there is at least one redoable checkpoint.
-    pub fn can_redo(&self, tx_id: &str) -> Result<bool, HolonError> {
-        let conn = self.lock()?;
-        let (_, redo_stack) = self.load_stacks(&conn, tx_id)?;
+    fn can_redo(&self, tx_id: &str) -> Result<bool, HolonError> {
+        let conn = lock(self)?;
+        let (_, redo_stack) = load_stacks(&conn, tx_id)?;
         Ok(!redo_stack.is_empty())
     }
 
     /// Returns the descriptions of all undo checkpoints (oldest first).
     /// Useful for building an undo history list in the UI.
-    pub fn undo_history(&self, tx_id: &str) -> Result<Vec<String>, HolonError> {
-        let conn = self.lock()?;
+    fn undo_history(&self, tx_id: &str) -> Result<Vec<String>, HolonError> {
+        let conn = lock(self)?;
         let mut stmt = conn
             .prepare(
                 "SELECT description FROM recovery_checkpoint
@@ -391,18 +393,19 @@ impl TransactionRecoveryStore {
         Ok(descriptions)
     }
 
-    // -----------------------------------------------------------------------
+}
+
+// -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
 
-    fn lock(&self) -> Result<std::sync::MutexGuard<'_, Connection>, HolonError> {
-        self.conn
+    fn lock(store:&TransactionRecoveryStore) -> Result<std::sync::MutexGuard<'_, Connection>, HolonError> {
+        store.conn
             .lock()
             .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))
     }
 
     fn load_stacks(
-        &self,
         conn: &Connection,
         tx_id: &str,
     ) -> Result<(Vec<String>, Vec<String>), HolonError> {
@@ -426,7 +429,6 @@ impl TransactionRecoveryStore {
     }
 
     fn save_stacks(
-        &self,
         conn: &Connection,
         tx_id: &str,
         undo_stack: &[String],
@@ -452,7 +454,6 @@ impl TransactionRecoveryStore {
     }
 
     fn load_snapshot(
-        &self,
         conn: &Connection,
         checkpoint_id: &str,
     ) -> Result<TransactionSnapshot, HolonError> {
@@ -467,4 +468,3 @@ impl TransactionRecoveryStore {
         serde_json::from_slice(&blob)
             .map_err(|e| HolonError::Misc(format!("Deserialize snapshot '{checkpoint_id}': {e}")))
     }
-}

@@ -6,8 +6,8 @@ use holons_core::core_shared_objects::ServiceRoutingPolicy;
 
 use holons_core::dances::DanceInitiator;
 use holons_core::reference_layer::HolonServiceApi;
-use holons_recovery::TransactionRecoveryStore;
 use holons_recovery::transaction_snapshot::TransactionSnapshot;
+use holons_recovery::RecoveryStore;
 
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ use std::sync::Arc;
 pub struct ClientSession {
     pub context: Arc<TransactionContext>,
     /// `None` = no recovery for this receptor. `Some` = persist after every command.
-    pub recovery_store: Option<Arc<TransactionRecoveryStore>>,
+    pub recovery_store: Option<Arc<dyn RecoveryStore>>,
 }
 
 impl ClientSession {
@@ -88,13 +88,13 @@ impl ClientSession {
 /// - A space manager configured with client-specific routing policies.
 /// - An implicit transaction opened via the per-space `TransactionManager`.
 /// - Injects the optional `DanceInitiator` for conductor calls.
-/// - Injects the optional `TransactionRecoveryStore` for recovery operations.
+/// - Injects the optional `RecoveryStore` for recovery operations.
 ///
 /// # Returns
-/// * A `ClientSession` backed by a `TransactionContext` and optional `TransactionRecoveryStore`.
+/// * A `ClientSession` backed by a `TransactionContext` and optional `RecoveryStore`.
 pub fn init_client_context(
     initiator: Option<Arc<dyn DanceInitiator>>,
-    recovery_store: Option<Arc<TransactionRecoveryStore>>
+    recovery_store: Option<Arc<dyn RecoveryStore>>
 ) -> ClientSession {    
     
     let space_manager = init_client_runtime(initiator);
