@@ -1,4 +1,5 @@
 use core_types::{HolonError};
+use holons_client::client_context::ClientSession;
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorBehavior};
 use holons_client::{ClientHolonService, init_client_context};
@@ -8,8 +9,9 @@ use holons_core::HolonServiceApi;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use std::collections::HashMap;
-use std::fmt;
 use std::sync::Arc;
+use std::fmt;
+use std::fmt::Debug;
 use async_trait::async_trait;
 use crate::{LocalClient};
 
@@ -18,10 +20,10 @@ pub const ROOT_HOLON_SPACE_NAME: &str = "RootHolonSpace";
 pub const ROOT_HOLON_SPACE_DESCRIPTION: &str = "Default Root Holon Space";
 
 pub struct LocalReceptor {
-    receptor_id: Option<String>,
-    receptor_type: String,
-    properties: HashMap<String, String>,
-    context: Arc<TransactionContext>,
+    _receptor_id: Option<String>,
+    _receptor_type: String,
+    _properties: HashMap<String, String>,
+    session: ClientSession,
     client_handler: Arc<LocalClient>,
     _holon_service: Arc<dyn HolonServiceApi>,
     _root_space: HolonSpace,
@@ -30,9 +32,14 @@ pub struct LocalReceptor {
 /// Implementation of LocalReceptor - local host level - no dancing
 impl LocalReceptor {
     /// Create a new LocalReceptor, returning Result to handle downcast failures
-    pub fn new(base_receptor: BaseReceptor) -> Result<Self, HolonError> {
+    pub fn new(base: BaseReceptor) -> Result<Self, HolonError> {
 
-        let context = init_client_context(None);
+        // Build client context with dance initiator and recovery store if provided
+        let session = if let Some(recovery_store) = base.snapshot_store.as_ref() {
+            init_client_context(None, Some(Arc::clone(recovery_store)))
+        } else {
+            init_client_context(None, None)
+        };
         
         //ENSURE ROOT HOLON EXISTS OR CREATE IT
         let client = LocalClient::new();
@@ -43,10 +50,10 @@ impl LocalReceptor {
         let _holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
         
         Ok(Self {
-            receptor_id: base_receptor.receptor_id.clone(),
-            receptor_type: base_receptor.receptor_type.clone(),
-            properties: base_receptor.properties.clone(),
-            context,
+            _receptor_id: base.receptor_id.clone(),
+            _receptor_type: base.receptor_type.clone(),
+            _properties: base.properties.clone(),
+            session,
             client_handler,
             _holon_service,
            _root_space: HolonSpace::default(), //root_space,
@@ -57,11 +64,11 @@ impl LocalReceptor {
 #[async_trait]
 impl ReceptorBehavior for LocalReceptor {
     fn transaction_context(&self) -> Arc<TransactionContext> {
-        Arc::clone(&self.context)
+        Arc::clone(&self.session.context)
     }
 
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
-        tracing::warn!("LocalReceptor: handling request: {:?}", self.context);
+        tracing::warn!("LocalReceptor: handling request: {:?}", self.session.context);
         
         //TODO: implement actual handling logic here with the HolonServiceApi
 
@@ -86,15 +93,12 @@ impl ReceptorBehavior for LocalReceptor {
     }
 }
 
-//is still needed?
-impl fmt::Debug for LocalReceptor {
+impl Debug for LocalReceptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LocalReceptor")
-            .field("receptor_id", &self.receptor_id)
-            .field("receptor_type", &self.receptor_type)
-            .field("properties", &self.properties)
-            .field("context", &"ClientHolonsContext")
-           // .field("root_space", &self.root_space)
+            .field("receptor_id", &self._receptor_id)
+            .field("receptor_type", &self._receptor_type)
+            .field("properties", &self._properties)
             .finish()
     }
 }

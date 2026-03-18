@@ -17,5 +17,6 @@ hex = "0.4"
 holons_client = { path = "../holons_client" }
 holons_core = { path = "../../../shared_crates/holons_core" }
 holochain_receptor = { path = "../holochain_receptor" }
+holons_recovery = { path = "../holons_recovery" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
 

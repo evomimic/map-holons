@@ -6,6 +6,7 @@ members = [
     "crates/holochain_receptor",
     "crates/holons_receptor",
     "crates/holons_loader_client",
+    "crates/holons_recovery",
     "conductora/plugins/tauri-plugin-holochain"
 , "crates/map_commands"]
 
@@ -44,4 +45,5 @@ holons_client = { path = "crates/holons_client" }
 holons_receptor = { path = "crates/holons_receptor" }
 holochain_receptor = { path = "crates/holochain_receptor" }
 holons_loader_client = { path = "crates/holons_loader_client" }
+holons_recovery = { path = "crates/holons_recovery" }
 tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
