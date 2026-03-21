@@ -33,7 +33,10 @@ pub async fn execute_stage_new_holon(
     match expected_result {
         ExpectedTestResult::Success => {
             // Attempt the API call, confirm successful result
-            stage_new_holon(&context, transient_reference).map_or_else(
+            context
+                .mutation()
+                .stage_new_holon(transient_reference)
+                .map_or_else(
                 |e| panic!("Expected stage_new_holon to be successful, got {:?}", e),
                 |staged_reference| {
                     info!("Success! stage_new_holon succeded as expected.");
@@ -52,7 +55,7 @@ pub async fn execute_stage_new_holon(
         }
         ExpectedTestResult::Failure(expected_error) => {
             // Attempt the API call, panic if the result does not match expected.
-            let result = stage_new_holon(&context, transient_reference);
+            let result = context.mutation().stage_new_holon(transient_reference);
             match result {
                 Ok(_) => {
                     panic!("Expected stage_new_holon to error: {:?}, got Ok", expected_error)

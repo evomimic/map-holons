@@ -33,7 +33,10 @@ pub async fn execute_stage_new_version(
     match expected_result {
         ExpectedTestResult::Success => {
             // Attempt API call, confirm successful result
-            stage_new_version(&context, smart_reference.clone()).map_or_else(
+            context
+                .mutation()
+                .stage_new_version(smart_reference.clone())
+                .map_or_else(
                 |e| panic!("Expected stage_new_version to be successful, got {:?}", e),
                 |staged_reference| {
                     info!("Success! stage_new_version succeded as expected.");
@@ -59,7 +62,7 @@ pub async fn execute_stage_new_version(
 
             // 6. Verify base-key staging behavior
             let original_holon_key = source_reference.key().unwrap().unwrap();
-            let by_base = get_staged_holon_by_base_key(&context, &original_holon_key);
+            let by_base = context.lookup().get_staged_holon_by_base_key(&original_holon_key);
 
             match by_base {
                 Ok(staged_reference) => {
@@ -83,11 +86,12 @@ pub async fn execute_stage_new_version(
                         );
 
                         // 7. Verify versioned-key lookup
-                        let by_version = get_staged_holon_by_versioned_key(
-                            &context,
-                            &staged_reference.versioned_key().unwrap(),
-                        )
-                        .unwrap();
+                        let by_version = context
+                            .lookup()
+                            .get_staged_holon_by_versioned_key(
+                                &staged_reference.versioned_key().unwrap(),
+                            )
+                            .unwrap();
 
                         assert_eq!(
                             holon_reference,
@@ -120,8 +124,10 @@ pub async fn execute_stage_new_version(
                     expected_duplicate_error
                 );
                         // Confirm that get_staged_holons_by_base_key returns two staged references for the two versions.
-                        let staged_references =
-                            get_staged_holons_by_base_key(&context, &original_holon_key).unwrap();
+                        let staged_references = context
+                            .lookup()
+                            .get_staged_holons_by_base_key(&original_holon_key)
+                            .unwrap();
                         let length = staged_references.len();
 
                         if length != version_count.0 as usize {
@@ -148,7 +154,7 @@ pub async fn execute_stage_new_version(
         }
         ExpectedTestResult::Failure(expected_error) => {
             // Attempt API call, panic if the result does not match expected.
-            let result = stage_new_version(&context, smart_reference);
+            let result = context.mutation().stage_new_version(smart_reference);
             match result {
                 Ok(_) => {
                     panic!("Expected stage_new_version to error: {:?}, got Ok", expected_error)

@@ -1,6 +1,5 @@
 use base_types::MapString;
 use holons_core::HolonReference;
-use holons_prelude::prelude::*;
 use holons_test::{
     ExecutionHandle, ExecutionReference, ExpectedTestResult, ResolveBy, TestExecutionState,
     TestReference,
@@ -27,7 +26,10 @@ pub async fn execute_stage_new_from_clone(
     match expected_result {
         ExpectedTestResult::Success => {
             // Attempt API call, confirm successful result
-            stage_new_from_clone(&context, source_reference, new_key).map_or_else(
+            context
+                .mutation()
+                .stage_new_from_clone(source_reference, new_key)
+                .map_or_else(
                 |e| panic!("Expected stage_new_from_clone to be successful, got {:?}", e),
                 |staged_reference| {
                     info!("Success! stage_new_from_clone succeded as expected.");
@@ -46,7 +48,9 @@ pub async fn execute_stage_new_from_clone(
         }
         ExpectedTestResult::Failure(expected_error) => {
             // Attempt API call, panic if the result does not match expected.
-            let result = stage_new_from_clone(&context, source_reference, new_key);
+            let result = context
+                .mutation()
+                .stage_new_from_clone(source_reference, new_key);
             match result {
                 Ok(_) => {
                     panic!("Expected stage_new_from_clone to error: {:?}, got Ok", expected_error)

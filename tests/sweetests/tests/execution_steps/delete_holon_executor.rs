@@ -33,7 +33,7 @@ pub async fn execute_delete_holon(
     match expected_result {
         ExpectedTestResult::Success => {
             // Attempt delete, confirm successful result
-            let result = delete_holon(&context, local_id);
+            let result = context.mutation().delete_holon(local_id);
             if let Err(e) = result {
                 panic!("Expected delete_holon to be successful, got {:?}", e);
             } else {
@@ -49,7 +49,7 @@ pub async fn execute_delete_holon(
         }
         ExpectedTestResult::Failure(expected_error) => {
             // Attempt delete, panic if the result does not match expected.
-            delete_holon(&context, local_id).map_or_else(
+            context.mutation().delete_holon(local_id).map_or_else(
                 |e| {
                     // Compare only variant type, ignore inner string
                     if discriminant(&e) != discriminant(&expected_error) {

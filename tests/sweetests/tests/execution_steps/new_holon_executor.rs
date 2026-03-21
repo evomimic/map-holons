@@ -24,7 +24,9 @@ pub async fn execute_new_holon(
     match expected_result {
         ExpectedTestResult::Success => {
             // Attempt create, confirm successful result
-            let mut transient_reference = new_holon(&context, key)
+            let mut transient_reference = context
+                .mutation()
+                .new_holon(key)
                 .unwrap_or_else(|e| {
                     panic!("Expected new_holon to successfully create a TransientReference, got error: {:#?}", e)
                 });
@@ -48,7 +50,7 @@ pub async fn execute_new_holon(
         }
         ExpectedTestResult::Failure(expected_error) => {
             // Attempt create, panic if the result does not match expected.
-            let result = new_holon(&context, key);
+            let result = context.mutation().new_holon(key);
             match result {
                 Ok(_) => {
                     panic!("Expected new_holon to error: {:?}, got Ok", expected_error)
