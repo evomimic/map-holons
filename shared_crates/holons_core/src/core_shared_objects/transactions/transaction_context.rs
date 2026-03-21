@@ -8,20 +8,19 @@ use std::{
     },
 };
 
-use base_types::BaseValue;
-use core_types::{HolonError, HolonId};
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
 use crate::reference_layer::ReadableHolon;
+use base_types::BaseValue;
+use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
 
 use super::{
-    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess,
-    HolonCloneModel, HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
+    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess, HolonCloneModel,
+    HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
     HolonStagingBehavior, HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery,
-    NurseryAccess,
-    NurseryAccessInternal, SmartReference, TransactionContextHandle, TransactionLifecycleState,
-    TransientHolonBehavior, TransientHolonManager, TransientManagerAccess,
-    TransientReference, TxId,
+    NurseryAccess, NurseryAccessInternal, SmartReference, TransactionContextHandle,
+    TransactionLifecycleState, TransientHolonBehavior, TransientHolonManager,
+    TransientManagerAccess, TransientReference, TxId,
 };
 
 /// Transaction-scoped operations used for lifecycle/access policy checks.
@@ -543,8 +542,8 @@ impl TransactionContext {
         &self,
         load_response_reference: &TransientReference,
     ) -> Result<bool, HolonError> {
-        let status_value =
-            load_response_reference.property_value(CorePropertyTypeName::LoadCommitStatus.as_property_name())?;
+        let status_value = load_response_reference
+            .property_value(CorePropertyTypeName::LoadCommitStatus.as_property_name())?;
 
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
@@ -582,15 +581,12 @@ impl TransactionContext {
     pub fn import_transient_holons(&self, transient_holons: HolonPool) -> Result<(), HolonError> {
         self.transient_manager.import_transient_holons(transient_holons)
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core_shared_objects::{
-        HolonCollection, RelationshipMap, ServiceRoutingPolicy,
-    };
+    use crate::core_shared_objects::{HolonCollection, RelationshipMap, ServiceRoutingPolicy};
     use crate::reference_layer::{HolonServiceApi, StagedReference};
     use core_types::{HolonError, LocalId, RelationshipName};
     use std::any::Any;

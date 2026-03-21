@@ -8,7 +8,7 @@ use super::runtime_session::RuntimeSession;
 
 /// Dispatches transaction-scoped commands.
 pub async fn dispatch_transaction(
-    _session: &RuntimeSession, // may be needed for removing a transaction on commit or abort
+    session: &RuntimeSession,
     command: TransactionCommand,
 ) -> Result<MapResult, HolonError> {
     let context = &command.context;
@@ -16,7 +16,7 @@ pub async fn dispatch_transaction(
     match command.action {
         // ── Commit ───────────────────────────────────────────────────
         TransactionAction::Commit => {
-            let transient_ref = context.commit()?;
+            let transient_ref = session.commit_transaction(&command.context.tx_id())?;
             Ok(MapResult::Reference(HolonReference::Transient(transient_ref)))
         }
 
