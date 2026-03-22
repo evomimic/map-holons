@@ -1,6 +1,7 @@
 use holons_prelude::prelude::*;
 use holons_test::{
-    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
+    ExecutionHandle, ExecutionReference, ExpectedTestResult, ResolveBy, TestExecutionState,
+    TestReference,
 };
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
@@ -11,7 +12,7 @@ use tracing::{debug, info};
 pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_status: ResponseStatusCode
+    expected_result: ExpectedTestResult,
 ) {
     let context = state.context();
 
@@ -33,33 +34,47 @@ pub async fn execute_delete_holon(
     let response = context.initiate_dance(request).await.expect("dance should succeed");
     debug!("Dance Response: {:#?}", response.clone());
 
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "delete_holon request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! Confirmed DanceResponse matched expected {:?}...", expected_status);
+    let execution_handle = match expected_result {
+        ExpectedTestResult::Success => {
+            assert_eq!(
+                response.status_code,
+                ResponseStatusCode::OK,
+                "delete_holon request returned unexpected status: {}",
+                response.description
+            );
+            info!("Success! Confirmed DanceResponse matched expected OK...");
 
-    if response.status_code == ResponseStatusCode::OK {
-        // Confirm that the Holon has been successfully deleted
-        let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id))
-            .expect("Failed to build get_holon_by_id request");
-        let get_response = context.initiate_dance(get_request).await.expect("dance should succeed");
-        assert_eq!(
-            get_response.status_code,
-            ResponseStatusCode::NotFound,
-            "Holon should be deleted but was found"
-        );
-        info!("Confirmed Holon deletion!");
-    }
+            // Confirm that the Holon has been successfully deleted
+            let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id))
+                .expect("Failed to build get_holon_by_id request");
+            let get_response = context
+                .initiate_dance(get_request)
+                .await
+                .expect("dance should succeed");
+            assert_eq!(
+                get_response.status_code,
+                ResponseStatusCode::NotFound,
+                "Holon should be deleted but was found"
+            );
+            info!("Confirmed Holon deletion!");
 
-    // 5. RECORD — Register an ExecutionHolon reflecting the execution outcome
+            ExecutionHandle::Deleted
+        }
+        ExpectedTestResult::Failure(expected_error) => {
+            let expected_status = ResponseStatusCode::from(expected_error.clone());
+            assert_eq!(
+                response.status_code,
+                expected_status,
+                "delete_holon request returned unexpected status: {}",
+                response.description
+            );
+            info!(
+                "Success! Confirmed DanceResponse matched expected {:?}...",
+                expected_status
+            );
 
-    let execution_handle = if response.status_code == ResponseStatusCode::OK {
-        ExecutionHandle::Deleted
-    } else {
-        ExecutionHandle::from(source_reference)
+            ExecutionHandle::from(source_reference)
+        }
     };
 
     let execution_reference =

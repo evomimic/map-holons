@@ -62,8 +62,8 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_delete_holon_step(
         &mut fixture_holons,
         staged_token,
-        ExpectedTestResult::Failure(HolonError::Misc(
-            "Holon should be deleted but was found".to_string(),
+        ExpectedTestResult::Failure(HolonError::HolonNotFound(
+            "for id".to_string(),
         )),
         Some("Attempting invalid delete...".to_string()),
     )?;
