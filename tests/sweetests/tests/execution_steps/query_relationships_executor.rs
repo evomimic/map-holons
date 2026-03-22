@@ -1,4 +1,4 @@
-use holons_test::{ResolveBy, TestExecutionState, TestReference};
+use holons_test::{ExpectedTestResult, ResolveBy, TestExecutionState, TestReference};
 use pretty_assertions::assert_eq;
 use tracing::debug;
 
@@ -11,7 +11,7 @@ pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
     step_token: TestReference,
     query_expression: QueryExpression,
-    expected_status: ResponseStatusCode
+    expected_result: ExpectedTestResult,
 ) {
     let context = state.context();
 
@@ -31,7 +31,10 @@ pub async fn execute_query_relationships(
     let response = context.initiate_dance(request).await.expect("dance should succeed");
     debug!("Dance Response: {:#?}", response.clone());
 
-    // 4. VALIDATE - response status
+    let expected_status = match expected_result {
+        ExpectedTestResult::Success => ResponseStatusCode::OK,
+        ExpectedTestResult::Failure(expected_error) => ResponseStatusCode::from(expected_error),
+    };
     assert_eq!(
         response.status_code, expected_status,
         "query_relationships request returned unexpected status: {}",
