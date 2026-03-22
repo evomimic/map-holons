@@ -1,8 +1,8 @@
 // Module declarations
 mod map_commands;
 mod config;
+mod runtime;
 mod setup;
-//mod utils;
 
 // Re-exports for clean API
 //pub use config::APP_ID;

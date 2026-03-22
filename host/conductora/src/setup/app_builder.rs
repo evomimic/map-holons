@@ -1,14 +1,20 @@
+use std::sync::{Arc, RwLock};
+
 use crate::{
     map_commands as commands,
+    runtime,
     config::{
         app_config::load_storage_config, providers::holochain::holochain_plugin, storage_config::{StorageConfig, StorageProvider}
     },
     setup::{
-        holochain_setup::{HolochainSetup, HolochainWindowSetup}, local_setup::LocalSetup, window_setup::DefaultWindowSetup},
+        holochain_setup::{ConductorClientState, HolochainSetup, HolochainWindowSetup}, local_setup::LocalSetup, window_setup::DefaultWindowSetup},
 };
 
 use crate::setup::window_setup::ProviderWindowSetup;
 use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
+use holons_client::init_client_runtime;
+use holons_trust_channel::TrustChannel;
+use map_commands::dispatch::{Runtime, RuntimeSession};
 use holons_receptor::ReceptorFactory;
 use tauri::{AppHandle, Manager, Listener};
 
@@ -25,6 +31,8 @@ impl AppBuilder {
             .manage(storage_cfg.clone())
             .manage(ReceptorFactory::new())
             .manage(ReceptorConfigRegistry::new())
+            .manage::<ConductorClientState>(RwLock::new(None))
+            .manage::<runtime::RuntimeState>(RwLock::new(None))
             .invoke_handler(tauri::generate_handler![
                 commands::root_space,
                 //commands::load_holons,
@@ -32,6 +40,7 @@ impl AppBuilder {
                 commands::map_request,
                 commands::all_spaces,
                 commands::is_service_ready,
+                runtime::dispatch_map_command::dispatch_map_command,
             ]);
         // First apply provider-specific plugins
         let with_plugins = Self::apply_plugins(base, &storage_cfg);
@@ -83,6 +92,9 @@ impl AppBuilder {
             tracing::error!("[APP BUILDER] Failed to load receptor configs: {}", e);
             return;
         }
+
+        // Construct the MAP Commands Runtime (if conductor client is available)
+        Self::initialize_runtime(handle);
 
         // Create main window
         if let Err(e) = Self::create_window(handle, storage_cfg).await {
@@ -197,6 +209,37 @@ impl AppBuilder {
         }
 
         Ok(())
+    }
+
+    /// Constructs the MAP Commands Runtime from the conductor client stored
+    /// during Holochain setup. If no conductor client is available (e.g., no
+    /// Holochain provider enabled), the Runtime remains `None`.
+    fn initialize_runtime(handle: &AppHandle) {
+        let client = handle
+            .try_state::<ConductorClientState>()
+            .and_then(|state| state.read().ok()?.clone());
+
+        let Some(client) = client else {
+            tracing::warn!(
+                "[APP BUILDER] No conductor client available \
+                 — MAP Commands Runtime will not be initialized."
+            );
+            return;
+        };
+
+        let trust_channel = TrustChannel::new(client);
+        let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
+            Arc::new(trust_channel);
+
+        let space_manager = init_client_runtime(Some(initiator));
+        let session = Arc::new(RuntimeSession::new(space_manager));
+        let runtime = Runtime::new(session);
+
+        if let Some(state) = handle.try_state::<runtime::RuntimeState>() {
+            let mut guard = state.write().expect("RuntimeState lock poisoned");
+            *guard = Some(runtime);
+            tracing::info!("[APP BUILDER] MAP Commands Runtime initialized.");
+        }
     }
 
     /// Helper function to get enabled provider types

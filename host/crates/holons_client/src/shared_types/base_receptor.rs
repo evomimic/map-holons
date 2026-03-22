@@ -11,7 +11,6 @@ pub trait ReceptorBehavior: Debug + Send + Sync {
     fn transaction_context(&self) -> Arc<TransactionContext>;
     async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError>;
     async fn get_space_info(&self) -> Result<SpaceInfo, HolonError>;
-    async fn load_holons(&self, request:MapRequest) -> Result<MapResponse, HolonError>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

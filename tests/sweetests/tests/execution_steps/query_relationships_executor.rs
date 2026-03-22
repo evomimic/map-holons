@@ -1,21 +1,17 @@
-use holons_test::{ExpectedTestResult, ResolveBy, TestExecutionState, TestReference};
+use holons_test::{ResolveBy, TestExecutionState, TestReference};
+use pretty_assertions::assert_eq;
+use tracing::debug;
 
 use holons_prelude::prelude::*;
-use tracing::{
-    // debug,
-    info,
-};
 
 // TODO: need to match on expected content
 
-/// This executor tests the ability to fetch relationships for a holon.
-/// It calls the `related_holons' getter for the supplied HolonReference.
-/// 
+/// This function builds and dances a `query_relationships` DanceRequest for the supplied source TestReference and QueryExpression.
 pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
     step_token: TestReference,
     query_expression: QueryExpression,
-    expected_result: ExpectedTestResult,
+    expected_status: ResponseStatusCode
 ) {
     let context = state.context();
 
@@ -23,46 +19,24 @@ pub async fn execute_query_relationships(
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // 2. MATCH EXPECTED - confirm actual against expected result
-    match expected_result {
-        ExpectedTestResult::Success => {
-            // Attempt query, confirm successful result
-            let result = source_reference.related_holons(&query_expression.relationship_name);
+    let node_collection =
+        NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
 
-            if let Err(e) = result {
-                panic!(
-                    "Expected related_holons to successfully fetch relationships , got {:?}",
-                    e
-                );
-            }
-            // Proceed with these steps only if a successful result is expected and achieved
-            else {
-                info!(
-                    "Success! related_holons fetched {:?} successfully as expected.",
-                    query_expression
-                );
-            }
-        }
-        ExpectedTestResult::Failure(expected_error) => {
-            // Attempt query, panic if the result does not match expected.
-            let result = source_reference.related_holons(&query_expression.relationship_name);
-            match result {
-                Ok(_) => {
-                    panic!("Expected related_holons to error: {:?}, got Ok", expected_error)
-                }
-                Err(e) => {
-                    if e != expected_error {
-                        panic!(
-                            "Expected related_holons to error with: {:?}, but got {:?}",
-                            expected_error, e
-                        );
-                    } else {
-                        info!("Success! related_holons failed as expected.");
-                    }
-                }
-            }
-        }
-    }
+    // 2. BUILD - the query_relationships DanceRequest
+    let request = build_query_relationships_dance_request(node_collection, query_expression)
+        .expect("Failed to build query_relationships request");
+    debug!("Dance Request: {:#?}", request);
+
+    // 3. CALL - the dance
+    let response = context.initiate_dance(request).await.expect("dance should succeed");
+    debug!("Dance Response: {:#?}", response.clone());
+
+    // 4. VALIDATE - response status
+    assert_eq!(
+        response.status_code, expected_status,
+        "query_relationships request returned unexpected status: {}",
+        response.description
+    );
 
     // TODO:  Match on response.body node collection expected vs actual
 }

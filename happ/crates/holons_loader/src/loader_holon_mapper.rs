@@ -111,7 +111,6 @@ impl LoaderHolonMapper {
     ) -> Result<(StagedReference, MapString), HolonError> {
         // Produce a detached TransientReference so we can access raw properties
         let loader_transient = loader.clone_holon()?;
-        loader_transient.is_accessible(AccessType::Read)?;
 
         // Read the LoaderHolon's current property map (owned snapshot)
         let properties: PropertyMap = loader_transient.get_raw_property_map(context)?;

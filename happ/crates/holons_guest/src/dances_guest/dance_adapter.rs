@@ -3,11 +3,11 @@ use std::sync::Arc;
 use hdk::prelude::*;
 
 use crate::dances_guest::dancer::dispatch_dance;
-use crate::{init_guest_context, GuestHolonService};
+use crate::init_guest_context;
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId};
-use holons_boundary::envelopes::{InternalDanceRequestEnvelope, InternalDanceResponseEnvelope};
+use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::session_state::{SerializableHolonPool, SessionStateWire};
 use holons_boundary::{DanceRequestWire, DanceResponseWire, HolonReferenceWire, ResponseBodyWire};
 use holons_core::{
@@ -18,10 +18,8 @@ use holons_core::{
 ///
 /// This function is responsible for ingress binding, runtime dispatch, and egress projection.
 #[hdk_extern]
-pub fn dance_adapter(
-    envelope: InternalDanceRequestEnvelope,
-) -> ExternResult<InternalDanceResponseEnvelope> {
-    let InternalDanceRequestEnvelope { request, session } = envelope;
+pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
+    let DanceRequestEnvelope { request, session } = envelope;
     let dance_name = request.dance_name.clone();
 
     info!("\n\n\n***********************  Entered dance_adapter() with {}", request.summarize());
@@ -35,7 +33,7 @@ pub fn dance_adapter(
             descriptor: None,
         };
 
-        return Ok(InternalDanceResponseEnvelope { response: response_wire, session });
+        return Ok(DanceResponseEnvelope { response: response_wire, session });
     }
 
     // ---- context hydration ----
@@ -72,21 +70,19 @@ pub fn dance_adapter(
 
     info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);
 
-    Ok(InternalDanceResponseEnvelope { response: response_wire, session: response_session })
+    Ok(DanceResponseEnvelope { response: response_wire, session: response_session })
 }
 
 /// Backward-compatible extern name until host config is fully switched.
 #[hdk_extern]
-pub fn dance(
-    envelope: InternalDanceRequestEnvelope,
-) -> ExternResult<InternalDanceResponseEnvelope> {
+pub fn dance(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
     dance_adapter(envelope)
 }
 
 fn create_error_response_envelope(
     error: HolonError,
     session: Option<SessionStateWire>,
-) -> InternalDanceResponseEnvelope {
+) -> DanceResponseEnvelope {
     let error_message = format!("Dance adapter failure: {}", error);
 
     let response_wire = DanceResponseWire {
@@ -96,7 +92,7 @@ fn create_error_response_envelope(
         descriptor: None,
     };
 
-    InternalDanceResponseEnvelope { response: response_wire, session }
+    DanceResponseEnvelope { response: response_wire, session }
 }
 
 fn initialize_context_from_session_state(
@@ -125,13 +121,7 @@ fn initialize_context_from_session_state(
     let ensured_space_holon_id: HolonId = match local_space_holon_id {
         Some(id) => id,
         None => {
-            let holon_service = context.get_holon_service();
-            let guest_service = holon_service
-                .as_any()
-                .downcast_ref::<GuestHolonService>()
-                .ok_or_else(|| HolonError::DowncastFailure("GuestHolonService".to_string()))?;
-
-            let ensured_space_ref = guest_service.ensure_local_holon_space(&context)?;
+            let ensured_space_ref = context.ensure_local_holon_space()?;
             match ensured_space_ref {
                 holons_core::HolonReference::Smart(smart_ref) => smart_ref.get_id()?,
                 other => {

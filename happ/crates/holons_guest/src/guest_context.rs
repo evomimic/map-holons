@@ -9,7 +9,7 @@ use holons_core::{
     },
     HolonServiceApi,
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tracing::{
     info,
     // warn,
@@ -21,7 +21,6 @@ use tracing::{
 /// - A `GuestHolonService` as the persistence and retrieval layer.
 /// - A space manager configured with **guest-specific routing policies**.
 /// - An implicit transaction opened via the per-space `TransactionManager`.
-/// - Internal nursery access, required for commit operations.
 ///
 /// This function also ensures that a HolonSpace Holon exists in the local DHT.
 ///
@@ -48,12 +47,9 @@ pub fn init_guest_context(
 ) -> Result<Arc<TransactionContext>, HolonError> {
     info!("\n ========== Initializing GUEST CONTEXT ============");
 
-    // Step 1: Create the GuestHolonService (keep a concrete handle for registration).
-    let guest_holon_service_concrete = Arc::new(GuestHolonService::new());
-
-    // Step 1b: Also expose it as the HolonServiceApi trait object for the space manager.
+    // Step 1: Create the GuestHolonService and expose it as HolonServiceApi.
     let guest_holon_service: Arc<dyn HolonServiceApi + Send + Sync> =
-        guest_holon_service_concrete.clone();
+        Arc::new(GuestHolonService::new());
 
     // Step 2: Create the HolonSpaceManager with guest routing policy.
     //
@@ -78,12 +74,6 @@ pub fn init_guest_context(
     transaction_context.import_staged_holons(bound_staged_holons)?;
     transaction_context.import_transient_holons(bound_transient_holons)?;
 
-    // Step 5: Register internal nursery access for commit.
-    let nursery_for_internal_access = transaction_context.nursery();
-    guest_holon_service_concrete.register_internal_access(Arc::new(RwLock::new(
-        nursery_for_internal_access.as_ref().clone(),
-    )));
-
-    // Step 6: Return the transaction context directly.
+    // Step 5: Return the transaction context directly.
     Ok(transaction_context)
 }

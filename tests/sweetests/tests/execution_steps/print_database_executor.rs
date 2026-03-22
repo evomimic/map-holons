@@ -19,9 +19,7 @@ pub async fn execute_print_database(state: &mut TestExecutionState) {
     debug!("Dance Request: {:#?}", request);
 
     // 2. CALL - the dance
-    let dance_initiator = context.get_dance_initiator().unwrap();
-    let response = dance_initiator.initiate_dance(&context, request)
-.await;
+    let response = context.initiate_dance(request).await.expect("dance should succeed");
     debug!("Dance Response: {:#?}", response.clone());
 
     // 3. VALIDATE - verify response contains Holons

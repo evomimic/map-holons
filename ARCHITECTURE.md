@@ -35,7 +35,7 @@ There is no “mixed” execution context. Boundaries are strict by design.
 | hApp (WASM)       | `happ/`        | Everything compiled into a Holochain App                            |
 | Host (Native)     | `host/`        | Everything running natively (CLI, Conductura, HX/UI, orchestration) |
 | Coordination      | root workspace | IDE support + dependency version coordination only                  |
-| Test              | `test/`        | Sweettest, Tryorama, fixtures, executors                            |
+| Test              | `tests/`       | Sweettest, Tryorama, fixtures, executors                            |
 
 **Important:**  
 The root workspace is *never* a build target. Builds must always be run from `happ/` or `host/`.
@@ -181,9 +181,9 @@ This makes MSRV changes **explicit, auditable, and reversible**.
 
 ---
 
-## 7. Conductura’s Role in the Architecture
+## 7. Conductora’s Role in the Architecture
 
-Conductura is a **host-side command and integration subsystem**.
+Conductora is a **host-side command and integration subsystem**.
 
 It currently provides:
 - Command dispatch and mapping
@@ -198,7 +198,7 @@ Conductura never runs inside WASM and should always be treated as host infrastru
 
 ## 8. Tests as a First-Class Architectural Layer
 
-The `test/` directory mirrors real execution contexts rather than bypassing them.
+The `tests/` directory mirrors real execution contexts rather than bypassing them.
 
 It includes:
 - Sweettest and Tryorama

@@ -4,28 +4,38 @@ use std::{
     fmt,
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
-        Arc, RwLock,
+        Arc,
     },
 };
 
+use base_types::BaseValue;
 use core_types::{HolonError, HolonId};
+use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
+use crate::reference_layer::ReadableHolon;
+use type_names::CorePropertyTypeName;
 
 use super::{
-    HostCommitExecutionGuard, LookupFacade, MutationFacade, TransactionContextHandle,
-    TransactionLifecycleState, TxId,
+    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess,
+    HolonCloneModel, HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
+    HolonStagingBehavior, HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery,
+    NurseryAccess,
+    NurseryAccessInternal, SmartReference, TransactionContextHandle, TransactionLifecycleState,
+    TransientHolonBehavior, TransientHolonManager, TransientManagerAccess,
+    TransientReference, TxId,
 };
-use crate::core_shared_objects::nursery_access_internal::NurseryAccessInternal;
-use crate::core_shared_objects::space_manager::HolonSpaceManager;
-use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
-use crate::core_shared_objects::{
-    HolonCacheAccess, HolonPool, Nursery, TransientCollection, TransientHolonManager,
-};
-use crate::dances::dance_initiator::DanceInitiator;
-use crate::reference_layer::{
-    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
-    TransientHolonBehavior,
-};
-use crate::{SmartReference, TransientReference};
+
+/// Transaction-scoped operations used for lifecycle/access policy checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum TransactionOperation {
+    /// Create a new transient holon.
+    CreateTransient,
+    /// Stage/delete/load and other state mutation operations.
+    MutateState,
+    /// Commit execution within an already-open transaction.
+    CommitExecution,
+    /// Host-side external mutation ingress entry.
+    HostMutationEntry,
+}
 
 /// Transaction-scoped execution context holding mutable transaction state.
 pub struct TransactionContext {
@@ -102,7 +112,7 @@ impl TransactionContext {
     }
 
     /// Applies the `Open -> Committed` lifecycle transition.
-    pub fn transition_to_committed(&self) -> Result<(), HolonError> {
+    fn transition_to_committed(&self) -> Result<(), HolonError> {
         if self.try_transition_to_committed() {
             return Ok(());
         }
@@ -119,35 +129,79 @@ impl TransactionContext {
         })
     }
 
-    /// Ensures commit execution can proceed from the current lifecycle state.
-    fn ensure_open_for_commit_execution(&self) -> Result<(), HolonError> {
-        match self.lifecycle_state() {
-            TransactionLifecycleState::Open => Ok(()),
-            TransactionLifecycleState::Committed => {
-                Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() })
-            }
-        }
-    }
-
-    /// Ensures non-creation mutation execution can proceed from the current lifecycle state.
+    /// Internal operation policy gate.
     ///
-    /// This check is intended for transaction-scoped mutation operations such as staging,
-    /// deleting, and loading holons. `new_holon` is intentionally exempt.
-    pub(crate) fn ensure_open_for_mutation(&self) -> Result<(), HolonError> {
+    /// This is the authoritative mutation/commit ingress policy matrix.
+    /// All transaction-scoped mutation and commit ingress paths should enforce
+    /// lifecycle/access policy through this method rather than per-call-site
+    /// omission rules.
+    ///
+    /// Lookup/read-only execution paths are intentionally excluded from this gate.
+    ///
+    /// ## Lifecycle/Operation Matrix
+    ///
+    /// `host_commit_in_progress` only affects host-ingress mutation admission.
+    /// It does not block commit execution itself.
+    ///
+    /// | Operation | `Open` + no host commit ingress | `Open` + host commit ingress | `Committed` |
+    /// | --- | --- | --- | --- |
+    /// | `CreateTransient` | Allowed | Allowed | Allowed |
+    /// | `MutateState` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
+    /// | `HostMutationEntry` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
+    /// | `CommitExecution` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
+    ///
+    /// Any unknown/raw lifecycle value is rejected as `TransactionNotOpen`.
+    pub(super) fn assert_allowed(&self, operation: TransactionOperation) -> Result<(), HolonError> {
         let raw_state = self.lifecycle_state.load(Ordering::Acquire);
 
-        if raw_state == TransactionLifecycleState::Open.as_u8() {
-            return Ok(());
-        }
+        match operation {
+            TransactionOperation::CreateTransient => {
+                if raw_state == TransactionLifecycleState::Open.as_u8()
+                    || raw_state == TransactionLifecycleState::Committed.as_u8()
+                {
+                    return Ok(());
+                }
+                Err(HolonError::TransactionNotOpen {
+                    tx_id: self.tx_id.value(),
+                    state: format!("Unknown({raw_state})"),
+                })
+            }
+            TransactionOperation::MutateState | TransactionOperation::HostMutationEntry => {
+                if raw_state != TransactionLifecycleState::Open.as_u8() {
+                    if raw_state == TransactionLifecycleState::Committed.as_u8() {
+                        return Err(HolonError::TransactionAlreadyCommitted {
+                            tx_id: self.tx_id.value(),
+                        });
+                    }
+                    return Err(HolonError::TransactionNotOpen {
+                        tx_id: self.tx_id.value(),
+                        state: format!("Unknown({raw_state})"),
+                    });
+                }
 
-        if raw_state == TransactionLifecycleState::Committed.as_u8() {
-            return Err(HolonError::TransactionAlreadyCommitted { tx_id: self.tx_id.value() });
-        }
+                if self.is_host_commit_in_progress() {
+                    return Err(HolonError::TransactionCommitInProgress {
+                        tx_id: self.tx_id.value(),
+                    });
+                }
 
-        Err(HolonError::TransactionNotOpen {
-            tx_id: self.tx_id.value(),
-            state: format!("Unknown({raw_state})"),
-        })
+                Ok(())
+            }
+            TransactionOperation::CommitExecution => {
+                if raw_state == TransactionLifecycleState::Open.as_u8() {
+                    return Ok(());
+                }
+                if raw_state == TransactionLifecycleState::Committed.as_u8() {
+                    return Err(HolonError::TransactionAlreadyCommitted {
+                        tx_id: self.tx_id.value(),
+                    });
+                }
+                Err(HolonError::TransactionNotOpen {
+                    tx_id: self.tx_id.value(),
+                    state: format!("Unknown({raw_state})"),
+                })
+            }
+        }
     }
 
     /// Commits the state of all staged holons and their relationships to the DHT.
@@ -208,10 +262,51 @@ impl TransactionContext {
     /// - Returns a `HolonError` if the commit operation encounters a system-level issue.
     ///
     pub fn commit(self: &Arc<Self>) -> Result<TransientReference, HolonError> {
-        self.ensure_open_for_commit_execution()?;
-        let commit_response = self.get_holon_service().commit_internal(self)?;
+        self.assert_allowed(TransactionOperation::CommitExecution)?;
+        let staged_references = self.nursery.get_staged_references()?;
+        let commit_response = self.get_holon_service().commit_internal(self, &staged_references)?;
+        if self.should_transition_from_commit_response(&commit_response)? {
+            self.nursery.clear_stage()?;
+            self.transition_to_committed()?;
+        }
 
         Ok(commit_response)
+    }
+
+    /// Loads holons from a loader bundle and applies terminal lifecycle semantics.
+    ///
+    /// This operation is commit-like by design: when the returned load response indicates
+    /// `LoadCommitStatus = Complete`, this transaction transitions to `Committed`.
+    pub fn load_holons_and_commit(
+        self: &Arc<Self>,
+        bundle: TransientReference,
+    ) -> Result<TransientReference, HolonError> {
+        self.assert_allowed(TransactionOperation::CommitExecution)?;
+        let load_response = self.get_holon_service().load_holons_internal(self, bundle)?;
+        if self.should_transition_from_load_response(&load_response)? {
+            self.transition_to_committed_if_needed()?;
+        }
+        Ok(load_response)
+    }
+
+    pub(crate) fn fetch_holon_internal(
+        self: &Arc<Self>,
+        id: &HolonId,
+    ) -> Result<Holon, HolonError> {
+        self.get_holon_service().fetch_holon_internal(self, id)
+    }
+
+    pub(crate) fn new_transient_from_clone_model(
+        &self,
+        holon_clone_model: HolonCloneModel,
+    ) -> Result<TransientReference, HolonError> {
+        let transient_service =
+            Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>;
+        transient_service.new_from_clone_model(holon_clone_model)
+    }
+
+    pub fn ensure_local_holon_space(self: &Arc<Self>) -> Result<HolonReference, HolonError> {
+        self.get_holon_service().ensure_local_holon_space_internal(self)
     }
 
     // ---------------------------------------------------------------------
@@ -224,27 +319,8 @@ impl TransactionContext {
     /// `Open` and no host commit ingress is currently in progress.
     ///
     /// Read/query entrypoints are governed separately and are not blocked here.
-    pub fn ensure_open_for_host_mutation_entry(&self) -> Result<(), HolonError> {
-        self.ensure_open_for_mutation()?;
-
-        if self.is_host_commit_in_progress() {
-            return Err(HolonError::TransactionCommitInProgress { tx_id: self.tx_id.value() });
-        }
-
-        Ok(())
-    }
-
-    /// Enforces lifecycle constraints for host-side commit execution.
-    ///
-    /// Intended to run while host commit ingress guard is held, so this check
-    /// validates lifecycle state only. Commit ingress concurrency is enforced by
-    /// `begin_host_commit_ingress_guard()`.
-    pub fn ensure_commit_allowed(&self) -> Result<(), HolonError> {
-        self.ensure_open_for_commit_execution()
-    }
-
     /// Returns whether host ingress currently holds the commit guard for this transaction.
-    pub fn is_host_commit_in_progress(&self) -> bool {
+    fn is_host_commit_in_progress(&self) -> bool {
         self.host_commit_in_progress.load(Ordering::Acquire)
     }
 
@@ -270,7 +346,17 @@ impl TransactionContext {
     pub fn begin_host_commit_ingress_guard(
         &self,
     ) -> Result<HostCommitExecutionGuard<'_>, HolonError> {
-        HostCommitExecutionGuard::acquire(self)
+        let guard = HostCommitExecutionGuard::acquire(self)?;
+        self.assert_allowed(TransactionOperation::CommitExecution)?;
+        Ok(guard)
+    }
+
+    /// Fail-fast admission check for host-side external mutation ingress.
+    ///
+    /// This is intended for ingress routers/dispatchers to validate mutation
+    /// policy before any request-building path that may perform side effects.
+    pub fn ensure_host_mutation_entry_allowed(&self) -> Result<(), HolonError> {
+        self.assert_allowed(TransactionOperation::HostMutationEntry)
     }
 
     // ---------------------------------------------------------------------
@@ -304,25 +390,62 @@ impl TransactionContext {
     /// Cloning `Arc` is inexpensive, but avoiding repeated clones in tight
     /// loops improves clarity and avoids unnecessary churn.
     pub fn mutation(self: &Arc<Self>) -> MutationFacade {
-        MutationFacade { context: Arc::clone(self) }
+        MutationFacade {
+            context: Arc::clone(self),
+            holon_service: self.get_holon_service(),
+            staging_service: self.get_staging_service(),
+            transient_service: Arc::clone(&self.transient_manager)
+                as Arc<dyn TransientHolonBehavior + Send + Sync>,
+        }
     }
 
     /// Returns a facade grouping all indexed lookup operations.
     pub fn lookup(self: &Arc<Self>) -> LookupFacade {
-        LookupFacade { context: Arc::clone(self) }
+        LookupFacade {
+            context: Arc::clone(self),
+            holon_service: self.get_holon_service(),
+            staging_service: self.get_staging_service(),
+            transient_service: Arc::clone(&self.transient_manager)
+                as Arc<dyn TransientHolonBehavior + Send + Sync>,
+        }
+    }
+
+    /// Initiates a dance request through the configured space-scoped initiator.
+    pub async fn initiate_dance(
+        self: &Arc<Self>,
+        request: DanceRequest,
+    ) -> Result<DanceResponse, HolonError> {
+        let initiator = self.get_dance_initiator()?;
+        Ok(initiator.initiate_dance(self, request).await)
+    }
+
+    /// Initiates a dance request originating from host ingress.
+    ///
+    /// For non-read-only ingress requests, this method enforces host mutation
+    /// entry policy before dispatching the dance.
+    pub async fn initiate_ingress_dance(
+        self: &Arc<Self>,
+        request: DanceRequest,
+        is_read_only: bool,
+    ) -> Result<DanceResponse, HolonError> {
+        if !is_read_only {
+            self.assert_allowed(TransactionOperation::HostMutationEntry)?;
+        }
+
+        self.initiate_dance(request).await
     }
 
     // ---------------------------------------------------------------------
-    // Core Execution Services (formerly trait methods)
+    // Runtime Execution Services (formerly trait methods)
     // ---------------------------------------------------------------------
 
     /// Returns the holon service.
-    pub fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
+    fn get_holon_service(&self) -> Arc<dyn HolonServiceApi + Send + Sync> {
         self.space_manager.get_holon_service()
     }
 
     /// Returns the dance initiator.
-    pub fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {
+    fn get_dance_initiator(&self) -> Result<Arc<dyn DanceInitiator>, HolonError> {
         self.space_manager.get_dance_initiator()
     }
 
@@ -348,49 +471,96 @@ impl TransactionContext {
         self.space_manager.set_space_holon_id(space_holon_id)
     }
 
-    /// Returns the transient collection state (used for IPC transport?).
-    pub fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>> {
-        self.space_manager.get_transient_state()
-    }
-
     // ---------------------------------------------------------------------
-    // Manager Access (Temporary — to be tightened in Phase 6)
+    // Manager Access
     // ---------------------------------------------------------------------
 
     /// Returns a strong reference to the space manager.
-    pub(crate) fn space_manager(&self) -> Arc<HolonSpaceManager> {
+    fn space_manager(&self) -> Arc<HolonSpaceManager> {
         Arc::clone(&self.space_manager)
     }
 
-    /// Provides access to the transaction-owned nursery.
-    pub fn nursery(&self) -> Arc<Nursery> {
-        Arc::clone(&self.nursery)
-    }
-
     // Public accessors for staging/transient behaviors (transaction-scoped).
-    pub(crate) fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
+    fn get_staging_service(&self) -> Arc<dyn HolonStagingBehavior + Send + Sync> {
         Arc::clone(&self.nursery) as Arc<dyn HolonStagingBehavior + Send + Sync>
     }
 
-    pub(crate) fn get_transient_behavior_service(
+    pub(crate) fn transient_manager_access(
         &self,
-    ) -> Arc<dyn TransientHolonBehavior + Send + Sync> {
-        Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>
+        _key: crate::reference_layer::transient_reference::TransientRefAccessKey,
+    ) -> Arc<dyn TransientManagerAccess + Send + Sync> {
+        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccess + Send + Sync>
+    }
+
+    pub(crate) fn nursery_access(
+        &self,
+        _key: crate::reference_layer::staged_reference::StagedRefAccessKey,
+    ) -> Arc<dyn NurseryAccess + Send + Sync> {
+        Arc::clone(&self.nursery) as Arc<dyn NurseryAccess + Send + Sync>
+    }
+
+    pub(crate) fn cache_access(
+        &self,
+        _key: crate::reference_layer::smart_reference::SmartRefAccessKey,
+    ) -> Arc<dyn HolonCacheAccess + Send + Sync> {
+        self.space_manager().get_cache_access()
     }
 
     // Internal privileged accessors for reference resolution.
-    pub(crate) fn nursery_access_internal(&self) -> Arc<dyn NurseryAccessInternal + Send + Sync> {
-        Arc::clone(&self.nursery) as Arc<dyn NurseryAccessInternal + Send + Sync>
+    fn transition_to_committed_if_needed(&self) -> Result<(), HolonError> {
+        match self.transition_to_committed() {
+            Ok(()) => Ok(()),
+            Err(HolonError::TransactionAlreadyCommitted { .. }) => Ok(()),
+            Err(err) => Err(err),
+        }
     }
 
-    pub(crate) fn transient_manager_access_internal(
+    fn should_transition_from_commit_response(
         &self,
-    ) -> Arc<dyn TransientManagerAccessInternal + Send + Sync> {
-        Arc::clone(&self.transient_manager) as Arc<dyn TransientManagerAccessInternal + Send + Sync>
+        commit_response_reference: &TransientReference,
+    ) -> Result<bool, HolonError> {
+        let status_value = commit_response_reference
+            .property_value(CorePropertyTypeName::CommitRequestStatus.as_property_name())?;
+
+        match status_value {
+            Some(BaseValue::StringValue(status)) => match status.0.as_str() {
+                "Complete" => Ok(true),
+                "Incomplete" => Ok(false),
+                other => Err(HolonError::InvalidParameter(format!(
+                    "Unexpected CommitRequestStatus value on CommitResponse: {}",
+                    other
+                ))),
+            },
+            Some(other) => Err(HolonError::InvalidType(format!(
+                "CommitRequestStatus on CommitResponse must be a StringValue, found {:?}",
+                other
+            ))),
+            None => Ok(false),
+        }
     }
 
-    pub(crate) fn cache_access_internal(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.space_manager().get_cache_access()
+    fn should_transition_from_load_response(
+        &self,
+        load_response_reference: &TransientReference,
+    ) -> Result<bool, HolonError> {
+        let status_value =
+            load_response_reference.property_value(CorePropertyTypeName::LoadCommitStatus.as_property_name())?;
+
+        match status_value {
+            Some(BaseValue::StringValue(status)) => match status.0.as_str() {
+                "Complete" => Ok(true),
+                "Incomplete" | "Skipped" => Ok(false),
+                other => Err(HolonError::InvalidParameter(format!(
+                    "Unexpected LoadCommitStatus value on HolonLoadResponse: {}",
+                    other
+                ))),
+            },
+            Some(other) => Err(HolonError::InvalidType(format!(
+                "LoadCommitStatus on HolonLoadResponse must be a StringValue, found {:?}",
+                other
+            ))),
+            None => Ok(false),
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -413,4 +583,212 @@ impl TransactionContext {
         self.transient_manager.import_transient_holons(transient_holons)
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core_shared_objects::{
+        HolonCollection, RelationshipMap, ServiceRoutingPolicy,
+    };
+    use crate::reference_layer::{HolonServiceApi, StagedReference};
+    use core_types::{HolonError, LocalId, RelationshipName};
+    use std::any::Any;
+
+    #[derive(Debug)]
+    struct TestHolonService;
+
+    fn unreachable_in_transaction_context_tests<T>() -> Result<T, HolonError> {
+        Err(HolonError::NotImplemented("TestHolonService".to_string()))
+    }
+
+    impl HolonServiceApi for TestHolonService {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn commit_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _staged_references: &[StagedReference],
+        ) -> Result<TransientReference, HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+
+        fn delete_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _local_id: &LocalId,
+        ) -> Result<(), HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+
+        fn fetch_all_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+        ) -> Result<RelationshipMap, HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+
+        fn fetch_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _id: &HolonId,
+        ) -> Result<Holon, HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+
+        fn fetch_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+            _relationship_name: &RelationshipName,
+        ) -> Result<HolonCollection, HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+
+        fn get_all_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+        ) -> Result<HolonCollection, HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+
+        fn load_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _bundle: TransientReference,
+        ) -> Result<TransientReference, HolonError> {
+            unreachable_in_transaction_context_tests()
+        }
+    }
+
+    fn build_context() -> Arc<TransactionContext> {
+        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
+        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            holon_service,
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+
+        space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&space_manager))
+            .expect("default transaction should open")
+    }
+
+    #[test]
+    fn commit_execution_guard_sets_and_releases_flag() {
+        let context = build_context();
+        assert!(!context.is_host_commit_in_progress());
+
+        {
+            let _guard = context
+                .begin_host_commit_ingress_guard()
+                .expect("guard acquisition should succeed");
+            assert!(context.is_host_commit_in_progress());
+        }
+
+        assert!(!context.is_host_commit_in_progress());
+    }
+
+    #[test]
+    fn commit_execution_guard_rejects_reentrant_acquire() {
+        let context = build_context();
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("first acquisition should succeed");
+
+        let err = context
+            .begin_host_commit_ingress_guard()
+            .expect_err("second acquisition while held should fail");
+
+        assert!(matches!(err, HolonError::TransactionCommitInProgress { .. }));
+    }
+
+    #[test]
+    fn commit_execution_guard_releases_on_early_error_path() {
+        let context = build_context();
+
+        let result: Result<(), HolonError> = (|| {
+            let _guard = context.begin_host_commit_ingress_guard()?;
+            Err(HolonError::InvalidParameter("synthetic failure".into()))
+        })();
+
+        assert!(matches!(result, Err(HolonError::InvalidParameter(_))));
+        assert!(
+            !context.is_host_commit_in_progress(),
+            "guard must be released even when scope exits through error"
+        );
+    }
+
+    #[test]
+    fn external_mutation_rejected_while_host_commit_ingress_active() {
+        let context = build_context();
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("guard acquisition should succeed");
+
+        assert!(
+            context.assert_allowed(TransactionOperation::HostMutationEntry).is_err(),
+            "external mutation should be rejected while commit ingress is active"
+        );
+    }
+
+    #[test]
+    fn external_mutation_rejected_after_transaction_committed() {
+        let context = build_context();
+        context.transition_to_committed().expect("open transaction should transition to committed");
+
+        assert!(
+            context.assert_allowed(TransactionOperation::HostMutationEntry).is_err(),
+            "external mutation should be rejected after committed"
+        );
+    }
+
+    #[test]
+    fn commit_execution_is_allowed_during_host_commit_ingress_when_open() {
+        let context = build_context();
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("guard acquisition should succeed");
+
+        assert!(
+            context.assert_allowed(TransactionOperation::CommitExecution).is_ok(),
+            "commit lifecycle check should succeed while open, even under ingress guard"
+        );
+    }
+
+    #[test]
+    fn commit_execution_is_rejected_after_transaction_committed() {
+        let context = build_context();
+        context.transition_to_committed().expect("open transaction should transition to committed");
+
+        assert!(
+            context.assert_allowed(TransactionOperation::CommitExecution).is_err(),
+            "commit lifecycle check should reject committed transaction"
+        );
+    }
+
+    #[test]
+    fn create_transient_is_allowed_during_host_commit_ingress_when_open() {
+        let context = build_context();
+        let _guard =
+            context.begin_host_commit_ingress_guard().expect("guard acquisition should succeed");
+
+        assert!(
+            context.assert_allowed(TransactionOperation::CreateTransient).is_ok(),
+            "transient creation should remain allowed during host commit ingress"
+        );
+    }
+
+    #[test]
+    fn create_transient_is_allowed_after_transaction_committed() {
+        let context = build_context();
+        context.transition_to_committed().expect("open transaction should transition to committed");
+
+        assert!(
+            context.assert_allowed(TransactionOperation::CreateTransient).is_ok(),
+            "transient creation should remain allowed after committed lifecycle state"
+        );
+    }
 }

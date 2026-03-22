@@ -200,11 +200,8 @@ pub fn get_holon_by_id_dance(
             ))
         }
     };
-    debug!("getting holon_service from context");
-    let holon_service = context.get_holon_service();
-
-    debug!("asking holon_service to get rc_holon");
-    let holon = holon_service.fetch_holon_internal(context, &holon_id)?;
+    debug!("asking transaction context to fetch holon");
+    let holon = context.fetch_holon_internal(&holon_id)?;
 
     let holon = holon.clone();
     Ok(ResponseBody::Holon(holon))
@@ -250,8 +247,8 @@ pub fn load_holons_dance(
         }
     };
 
-    // Delegate to the public ops API (which calls the *_internal service impl)
-    let response_reference = context.mutation().load_holons(load_set_reference)?;
+    // Terminal load path: context owns lifecycle transition on successful completion.
+    let response_reference = context.load_holons_and_commit(load_set_reference)?;
 
     // Wrap transient response holon
     Ok(ResponseBody::HolonReference(HolonReference::Transient(response_reference)))

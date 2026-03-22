@@ -2,10 +2,9 @@ use core_types::{HolonError, HolonId};
 
 use crate::core_shared_objects::cache_access::HolonCacheAccess;
 use crate::core_shared_objects::transactions::TransactionManager;
-use crate::core_shared_objects::transient_collection::TransientCollection;
 use crate::dances::dance_initiator::DanceInitiator;
 use crate::reference_layer::HolonServiceApi;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 /// Defines the core behavior of a **Holon Space**, providing:
 /// 1. **Space-scoped services** (Cache, HolonService, DanceInitiator)
@@ -51,20 +50,6 @@ pub trait HolonSpaceBehavior {
     /// - Returns `Err(HolonError::FailedToAcquireLock(_))` if the internal lock
     ///   cannot be acquired, indicating possible corruption or poisoning.
     fn get_space_holon_id(&self) -> Result<Option<HolonId>, HolonError>;
-
-    /// Provides access to a **transient state collection**, initializing it if necessary.
-    ///
-    /// The transient state:
-    /// - Stores temporary collections of holons that do **not require persistence**.
-    /// - Can be used to hold query results, temporary groupings, or working sets.
-    ///
-    /// # Behavior
-    /// - If the transient state has **not been initialized**, it is created automatically.
-    ///
-    /// # Returns
-    /// - An `Arc<RwLock<TransientCollection>>` for managing transient holon
-    ///   collections in a thread-safe context.
-    fn get_transient_state(&self) -> Arc<RwLock<TransientCollection>>;
 
     /// Updates the local space holon id.
     ///

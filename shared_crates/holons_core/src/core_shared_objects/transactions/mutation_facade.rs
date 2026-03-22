@@ -1,13 +1,20 @@
-use super::{TransactionContext, TransactionContextHandle};
+use super::{
+    HolonServiceApi, HolonStagingBehavior, TransactionContext, TransactionContextHandle,
+    TransientHolonBehavior,
+};
+use super::transaction_context::TransactionOperation;
 use crate::{HolonReference, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId};
 use std::sync::Arc;
 
 /// Semantic facade for transaction-scoped mutation operations.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MutationFacade {
     pub(crate) context: Arc<TransactionContext>,
+    pub(crate) holon_service: Arc<dyn HolonServiceApi + Send + Sync>,
+    pub(crate) staging_service: Arc<dyn HolonStagingBehavior + Send + Sync>,
+    pub(crate) transient_service: Arc<dyn TransientHolonBehavior + Send + Sync>,
 }
 
 impl MutationFacade {
@@ -15,12 +22,10 @@ impl MutationFacade {
     /// If `key` is `Some`, sets it at creation; if `None`, creates without a key.
     /// Returns a TransientReference to the newly created holon.
     pub fn new_holon(&self, key: Option<MapString>) -> Result<TransientReference, HolonError> {
-        // Acquire transient service
-        let borrowed_service = self.context.get_transient_behavior_service();
-
+        self.context.assert_allowed(TransactionOperation::CreateTransient)?;
         let reference = match key {
-            Some(key_string) => borrowed_service.create_empty(key_string)?,
-            None => borrowed_service.create_empty_without_key()?,
+            Some(key_string) => self.transient_service.create_empty(key_string)?,
+            None => self.transient_service.create_empty_without_key()?,
         };
 
         Ok(reference)
@@ -46,9 +51,8 @@ impl MutationFacade {
         &self,
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
-        self.context.ensure_open_for_mutation()?;
-        let staged_reference =
-            self.context.get_staging_service().stage_new_holon(transient_reference)?;
+        self.context.assert_allowed(TransactionOperation::MutateState)?;
+        let staged_reference = self.staging_service.stage_new_holon(transient_reference)?;
 
         Ok(staged_reference)
     }
@@ -78,13 +82,13 @@ impl MutationFacade {
         original_holon: HolonReference,
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
-        self.context.ensure_open_for_mutation()?;
+        self.context.assert_allowed(TransactionOperation::MutateState)?;
         if original_holon.is_transient() {
             return Err(HolonError::InvalidHolonReference(
                 "Must use stage_new_holon for staging from a TransientReference".to_string(),
             ));
         }
-        self.context.get_staging_service().stage_new_from_clone(original_holon, new_key)
+        self.staging_service.stage_new_from_clone(original_holon, new_key)
     }
 
     /// Stages a new holon as a version of the current holon.
@@ -108,8 +112,8 @@ impl MutationFacade {
         &self,
         current_version: SmartReference,
     ) -> Result<StagedReference, HolonError> {
-        self.context.ensure_open_for_mutation()?;
-        self.context.get_staging_service().stage_new_version(current_version)
+        self.context.assert_allowed(TransactionOperation::MutateState)?;
+        self.staging_service.stage_new_version(current_version)
     }
 
     pub fn stage_new_version_from_id(
@@ -150,17 +154,8 @@ impl MutationFacade {
     /// - Returns a `HolonError` if the specified holon cannot be found or deleted.
     ///
     pub fn delete_holon(&self, local_id: LocalId) -> Result<(), HolonError> {
-        self.context.ensure_open_for_mutation()?;
-        self.context
-            .get_holon_service()
-            .delete_holon_internal(&self.context, &local_id)
+        self.context.assert_allowed(TransactionOperation::MutateState)?;
+        self.holon_service.delete_holon_internal(&self.context, &local_id)
     }
 
-    pub fn load_holons(
-        &self,
-        bundle: TransientReference,
-    ) -> Result<TransientReference, HolonError> {
-        self.context.ensure_open_for_mutation()?;
-        self.context.get_holon_service().load_holons_internal(&self.context, bundle)
-    }
 }
