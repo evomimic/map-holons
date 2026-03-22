@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use core_types::HolonError;
+use tracing::info;
 
-use crate::domain::{MapCommand, MapResult};
+use crate::domain::{MapCommand, MapResult, MutationClassification};
 use crate::wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
 
 use super::runtime_session::RuntimeSession;
@@ -27,10 +28,22 @@ impl Runtime {
     /// Single IPC dispatch entrypoint (the full sandwich).
     ///
     /// 1. Bind wire command → domain command
-    /// 2. Dispatch domain command
-    /// 3. Convert domain result → wire result
+    /// 2. Enforce lifecycle via CommandDescriptor
+    /// 3. Dispatch domain command
+    /// 4. Convert domain result → wire result
     pub async fn dispatch(&self, request: MapIpcRequest) -> Result<MapIpcResponse, HolonError> {
         let request_id = request.request_id;
+
+        // Log gesture context if present
+        if let Some(ref gesture_id) = request.options.gesture_id {
+            let label = request.options.gesture_label.as_deref().unwrap_or("<no label>");
+            info!(
+                "dispatch request_id={} gesture_id={:?} label={}",
+                request_id.value(),
+                gesture_id.0,
+                label
+            );
+        }
 
         let result = self.dispatch_inner(request.command).await;
 
@@ -43,9 +56,51 @@ impl Runtime {
         Ok(MapIpcResponse { request_id, result: wire_result })
     }
 
-    /// Bind + dispatch (separated for cleaner error handling).
+    /// Bind + lifecycle enforcement + dispatch.
     async fn dispatch_inner(&self, command_wire: MapCommandWire) -> Result<MapResult, HolonError> {
         let command = self.bind(command_wire)?;
+
+        let descriptor = command.descriptor();
+
+        // Extract context for lifecycle checks (Transaction and Holon commands have one)
+        let context = match &command {
+            MapCommand::Transaction(cmd) => Some(Arc::clone(&cmd.context)),
+            MapCommand::Holon(cmd) => Some(Arc::clone(&cmd.context)),
+            MapCommand::Space(_) => None,
+        };
+
+        // Open-transaction check: reject commands that require an open transaction
+        if descriptor.requires_open_tx {
+            if let Some(ref ctx) = context {
+                if !ctx.is_open() {
+                    return Err(HolonError::TransactionNotOpen {
+                        tx_id: ctx.tx_id().value(),
+                        state: format!("{:?}", ctx.lifecycle_state()),
+                    });
+                }
+            }
+        }
+
+        // Commit guard: hold across dispatch for commit-guarded commands
+        let _commit_guard = if descriptor.requires_commit_guard {
+            if let Some(ref ctx) = context {
+                Some(ctx.begin_host_commit_ingress_guard()?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Mutation entry check: for non-commit-guarded mutating commands
+        if !descriptor.requires_commit_guard
+            && descriptor.mutation == MutationClassification::Mutating
+        {
+            if let Some(ref ctx) = context {
+                ctx.ensure_host_mutation_entry_allowed()?;
+            }
+        }
+
         self.dispatch_command(command).await
     }
 
