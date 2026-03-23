@@ -1,14 +1,21 @@
+use std::sync::Arc;
+
 use base_types::BaseValue;
 use core_types::{PropertyName, RelationshipName};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::HolonReference;
+
+use super::CommandDescriptor;
 
 /// Holon-scoped domain command.
 ///
 /// Targets a specific holon via a bound runtime reference.
-/// Dispatch stops at `HolonReference` — action does not include
-/// `tx_id` or `TransactionContext` (references are self-resolving).
+/// The `context` field enables dispatch-level lifecycle enforcement
+/// (e.g. mutation entry checks). References are still self-resolving
+/// for their own operations.
 #[derive(Debug)]
 pub struct HolonCommand {
+    pub context: Arc<TransactionContext>,
     pub target: HolonReference,
     pub action: HolonAction,
 }
@@ -18,6 +25,18 @@ pub struct HolonCommand {
 pub enum HolonAction {
     Read(ReadableHolonAction),
     Write(WritableHolonAction),
+}
+
+impl HolonAction {
+    pub fn descriptor(&self) -> CommandDescriptor {
+        match self {
+            HolonAction::Read(ReadableHolonAction::CloneHolon) => {
+                CommandDescriptor::mutating()
+            }
+            HolonAction::Read(_) => CommandDescriptor::holon_read_only(),
+            HolonAction::Write(_) => CommandDescriptor::mutating(),
+        }
+    }
 }
 
 /// Non-mutating holon actions.

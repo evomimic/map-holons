@@ -1,0 +1,13 @@
+[package]
+name = "map_commands_wire"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+map_commands_contract = { workspace = true }
+holons_core = { workspace = true }
+holons_boundary = { workspace = true }
+base_types = { workspace = true }
+core_types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

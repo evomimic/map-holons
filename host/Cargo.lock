@@ -16,7 +16,9 @@ dependencies = [
  "holons_core",
  "holons_receptor",
  "holons_trust_channel",
- "map_commands",
+ "map_commands_contract",
+ "map_commands_runtime",
+ "map_commands_wire",
  "serde",
  "serde_json",
  "tauri",
@@ -5198,17 +5200,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "map_commands"
+name = "map_commands_contract"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+]
+
+[[package]]
+name = "map_commands_runtime"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "map_commands_contract",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "map_commands_wire"
 version = "0.1.0"
 dependencies = [
  "base_types",
  "core_types",
  "holons_boundary",
  "holons_core",
- "integrity_core_types",
+ "map_commands_contract",
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]

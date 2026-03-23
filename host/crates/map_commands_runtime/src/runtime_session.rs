@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use core_types::HolonError;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
+use holons_core::TransientReference;
 
 /// Transaction ownership layer for MAP Commands.
 ///
@@ -16,11 +17,16 @@ use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 pub struct RuntimeSession {
     space_manager: Arc<HolonSpaceManager>,
     active_transactions: RwLock<HashMap<TxId, Arc<TransactionContext>>>,
+    archived_transactions: RwLock<HashMap<TxId, Arc<TransactionContext>>>,
 }
 
 impl RuntimeSession {
     pub fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
-        Self { space_manager, active_transactions: RwLock::new(HashMap::new()) }
+        Self {
+            space_manager,
+            active_transactions: RwLock::new(HashMap::new()),
+            archived_transactions: RwLock::new(HashMap::new()),
+        }
     }
 
     /// Opens a new transaction via the space's TransactionManager and stores
@@ -44,34 +50,69 @@ impl RuntimeSession {
         Ok(tx_id)
     }
 
-    /// Looks up an active transaction by TxId.
+    /// Looks up a transaction by TxId, checking active first, then archived.
     ///
-    /// Returns an error if the transaction is not found (expired or never created).
+    /// Returns an error if the transaction is not found in either pool.
     pub fn get_transaction(&self, tx_id: &TxId) -> Result<Arc<TransactionContext>, HolonError> {
-        let guard = self.active_transactions.read().map_err(|e| {
+        let active_guard = self.active_transactions.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on active_transactions: {}",
                 e
             ))
         })?;
 
-        guard.get(tx_id).cloned().ok_or_else(|| {
+        if let Some(ctx) = active_guard.get(tx_id).cloned() {
+            return Ok(ctx);
+        }
+        drop(active_guard);
+
+        let archived_guard = self.archived_transactions.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on archived_transactions: {}",
+                e
+            ))
+        })?;
+
+        archived_guard.get(tx_id).cloned().ok_or_else(|| {
             HolonError::InvalidParameter(format!(
-                "No active transaction for tx_id={}",
+                "No transaction found for tx_id={}",
                 tx_id.value()
             ))
         })
     }
 
+    pub fn commit_transaction(&self, tx_id: &TxId) -> Result<TransientReference, HolonError> {
+        let context = self.get_transaction(tx_id)?;
+
+        // Call commit on the TransactionContext, which performs the actual commit
+        let response = context.commit()?;
+
+        // Move from active to archived
+        self.archive_transaction(tx_id)?;
+
+        Ok(response)
+    }
+
     /// Removes a transaction from active ownership (e.g., after commit or abandon).
-    pub fn remove_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {
-        let mut guard = self.active_transactions.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire write lock on active_transactions: {}",
-                e
-            ))
-        })?;
-        guard.remove(tx_id);
+    pub fn archive_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {
+        {
+            let mut active_guard = self.active_transactions.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on active_transactions: {}",
+                    e
+                ))
+            })?;
+            let mut archived_guard = self.archived_transactions.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on archived_transactions: {}",
+                    e
+                ))
+            })?;
+
+            if let Some(context) = active_guard.remove(tx_id) {
+                archived_guard.insert(*tx_id, context);
+            }
+        }
         Ok(())
     }
 

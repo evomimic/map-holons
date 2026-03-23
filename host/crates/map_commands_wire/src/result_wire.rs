@@ -1,4 +1,4 @@
-use base_types::{BaseValue, MapString};
+use base_types::BaseValue;
 use core_types::HolonId;
 use holons_boundary::{
     DanceResponseWire, HolonCollectionWire, HolonReferenceWire, NodeCollectionWire,
@@ -7,7 +7,7 @@ use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::MapResult;
+use map_commands_contract::MapResult;
 
 /// Serializable result variants for MAP Command responses.
 ///
@@ -21,26 +21,20 @@ pub enum MapResultWire {
     /// Returns a new transaction id (from BeginTransaction).
     TransactionCreated { tx_id: TxId },
 
-    /// Returns a committed transaction result.
-    CommitResponse(HolonReferenceWire),
-
     /// Returns a holon reference.
-    HolonReference(HolonReferenceWire),
+    Reference(HolonReferenceWire),
 
     /// Returns a collection of holon references.
-    HolonReferences(Vec<HolonReferenceWire>),
+    References(Vec<HolonReferenceWire>),
 
     /// Returns an indexed collection of holons.
-    HolonCollection(HolonCollectionWire),
+    Collection(HolonCollectionWire),
 
     /// Returns a node collection (query result).
     NodeCollection(NodeCollectionWire),
 
-    /// Returns a single property value.
-    PropertyValue(Option<BaseValue>),
-
-    /// Returns a string value (e.g. from `versioned_key()`).
-    StringValue(MapString),
+    /// Universal scalar return.
+    Value(BaseValue),
 
     /// Returns a holon id.
     HolonId(HolonId),
@@ -59,25 +53,21 @@ impl From<MapResult> for MapResultWire {
             MapResult::TransactionCreated { tx_id } => {
                 MapResultWire::TransactionCreated { tx_id }
             }
-            MapResult::CommitResponse(r) => {
-                MapResultWire::CommitResponse(HolonReferenceWire::from(&r))
+            MapResult::Reference(r) => {
+                MapResultWire::Reference(HolonReferenceWire::from(&r))
             }
-            MapResult::HolonReference(r) => {
-                MapResultWire::HolonReference(HolonReferenceWire::from(&r))
-            }
-            MapResult::HolonReferences(refs) => {
-                MapResultWire::HolonReferences(
+            MapResult::References(refs) => {
+                MapResultWire::References(
                     refs.iter().map(HolonReferenceWire::from).collect(),
                 )
             }
-            MapResult::HolonCollection(c) => {
-                MapResultWire::HolonCollection(HolonCollectionWire::from(&c))
+            MapResult::Collection(c) => {
+                MapResultWire::Collection(HolonCollectionWire::from(&c))
             }
             MapResult::NodeCollection(n) => {
                 MapResultWire::NodeCollection(NodeCollectionWire::from(&n))
             }
-            MapResult::PropertyValue(v) => MapResultWire::PropertyValue(v),
-            MapResult::StringValue(s) => MapResultWire::StringValue(s),
+            MapResult::Value(v) => MapResultWire::Value(v),
             MapResult::HolonId(id) => MapResultWire::HolonId(id),
             MapResult::EssentialContent(c) => MapResultWire::EssentialContent(c),
             MapResult::DanceResponse(r) => {

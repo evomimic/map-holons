@@ -9,7 +9,7 @@ use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::query_layer::QueryExpression;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{TransactionAction, TransactionCommand};
+use map_commands_contract::{TransactionAction, TransactionCommand};
 
 /// Transaction-scoped wire command.
 ///

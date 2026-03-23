@@ -7,7 +7,7 @@ members = [
     "crates/holons_receptor",
     "crates/holons_loader_client",
     "conductora/plugins/tauri-plugin-holochain"
-, "crates/map_commands"]
+, "crates/map_commands_contract", "crates/map_commands_wire", "crates/map_commands_runtime"]
 
 [workspace.dependencies]
 
@@ -45,3 +45,6 @@ holons_receptor = { path = "crates/holons_receptor" }
 holochain_receptor = { path = "crates/holochain_receptor" }
 holons_loader_client = { path = "crates/holons_loader_client" }
 tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
+map_commands_contract = { path = "crates/map_commands_contract" }
+map_commands_wire = { path = "crates/map_commands_wire" }
+map_commands_runtime = { path = "crates/map_commands_runtime" }

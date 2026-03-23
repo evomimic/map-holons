@@ -1,16 +1,14 @@
 [package]
-name = "map_commands"
+name = "map_commands_runtime"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+map_commands_contract = { workspace = true }
 holons_core = { workspace = true }
-holons_boundary = { workspace = true }
-core_types = { workspace = true }
 base_types = { workspace = true }
-integrity_core_types = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+core_types = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
+serde_json = { workspace = true }

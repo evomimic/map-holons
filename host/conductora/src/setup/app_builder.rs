@@ -14,7 +14,7 @@ use crate::setup::window_setup::ProviderWindowSetup;
 use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
 use holons_client::init_client_runtime;
 use holons_trust_channel::TrustChannel;
-use map_commands::dispatch::{Runtime, RuntimeSession};
+use map_commands_runtime::{Runtime, RuntimeSession};
 use holons_receptor::ReceptorFactory;
 use tauri::{AppHandle, Manager, Listener};
 

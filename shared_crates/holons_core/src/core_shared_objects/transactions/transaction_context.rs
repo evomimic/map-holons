@@ -8,20 +8,19 @@ use std::{
     },
 };
 
-use base_types::BaseValue;
-use core_types::{HolonError, HolonId};
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
 use crate::reference_layer::ReadableHolon;
+use base_types::BaseValue;
+use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
 
 use super::{
-    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess,
-    HolonCloneModel, HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
+    DanceInitiator, DanceRequest, DanceResponse, Holon, HolonCacheAccess, HolonCloneModel,
+    HolonPool, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonSpaceManager,
     HolonStagingBehavior, HostCommitExecutionGuard, LookupFacade, MutationFacade, Nursery,
-    NurseryAccess,
-    NurseryAccessInternal, SmartReference, TransactionContextHandle, TransactionLifecycleState,
-    TransientHolonBehavior, TransientHolonManager, TransientManagerAccess,
-    TransientReference, TxId,
+    NurseryAccess, NurseryAccessInternal, SmartReference, TransactionContextHandle,
+    TransactionLifecycleState, TransientHolonBehavior, TransientHolonManager,
+    TransientManagerAccess, TransientReference, TxId,
 };
 
 /// Transaction-scoped operations used for lifecycle/access policy checks.
@@ -29,6 +28,8 @@ use super::{
 pub(super) enum TransactionOperation {
     /// Create a new transient holon.
     CreateTransient,
+    /// Read-only lookup operations (LookupFacade).
+    ReadState,
     /// Stage/delete/load and other state mutation operations.
     MutateState,
     /// Commit execution within an already-open transaction.
@@ -131,21 +132,19 @@ impl TransactionContext {
 
     /// Internal operation policy gate.
     ///
-    /// This is the authoritative mutation/commit ingress policy matrix.
-    /// All transaction-scoped mutation and commit ingress paths should enforce
-    /// lifecycle/access policy through this method rather than per-call-site
-    /// omission rules.
-    ///
-    /// Lookup/read-only execution paths are intentionally excluded from this gate.
+    /// This is the authoritative lifecycle/access policy matrix.
+    /// All transaction-scoped operations should enforce lifecycle/access policy
+    /// through this method rather than per-call-site omission rules.
     ///
     /// ## Lifecycle/Operation Matrix
     ///
     /// `host_commit_in_progress` only affects host-ingress mutation admission.
-    /// It does not block commit execution itself.
+    /// It does not block commit execution or read-only operations.
     ///
     /// | Operation | `Open` + no host commit ingress | `Open` + host commit ingress | `Committed` |
     /// | --- | --- | --- | --- |
     /// | `CreateTransient` | Allowed | Allowed | Allowed |
+    /// | `ReadState` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
     /// | `MutateState` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
     /// | `HostMutationEntry` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
     /// | `CommitExecution` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
@@ -160,6 +159,20 @@ impl TransactionContext {
                     || raw_state == TransactionLifecycleState::Committed.as_u8()
                 {
                     return Ok(());
+                }
+                Err(HolonError::TransactionNotOpen {
+                    tx_id: self.tx_id.value(),
+                    state: format!("Unknown({raw_state})"),
+                })
+            }
+            TransactionOperation::ReadState | TransactionOperation::CommitExecution => {
+                if raw_state == TransactionLifecycleState::Open.as_u8() {
+                    return Ok(());
+                }
+                if raw_state == TransactionLifecycleState::Committed.as_u8() {
+                    return Err(HolonError::TransactionAlreadyCommitted {
+                        tx_id: self.tx_id.value(),
+                    });
                 }
                 Err(HolonError::TransactionNotOpen {
                     tx_id: self.tx_id.value(),
@@ -186,20 +199,6 @@ impl TransactionContext {
                 }
 
                 Ok(())
-            }
-            TransactionOperation::CommitExecution => {
-                if raw_state == TransactionLifecycleState::Open.as_u8() {
-                    return Ok(());
-                }
-                if raw_state == TransactionLifecycleState::Committed.as_u8() {
-                    return Err(HolonError::TransactionAlreadyCommitted {
-                        tx_id: self.tx_id.value(),
-                    });
-                }
-                Err(HolonError::TransactionNotOpen {
-                    tx_id: self.tx_id.value(),
-                    state: format!("Unknown({raw_state})"),
-                })
             }
         }
     }
@@ -266,7 +265,6 @@ impl TransactionContext {
         let staged_references = self.nursery.get_staged_references()?;
         let commit_response = self.get_holon_service().commit_internal(self, &staged_references)?;
         if self.should_transition_from_commit_response(&commit_response)? {
-            self.nursery.clear_stage()?;
             self.transition_to_committed()?;
         }
 
@@ -543,8 +541,8 @@ impl TransactionContext {
         &self,
         load_response_reference: &TransientReference,
     ) -> Result<bool, HolonError> {
-        let status_value =
-            load_response_reference.property_value(CorePropertyTypeName::LoadCommitStatus.as_property_name())?;
+        let status_value = load_response_reference
+            .property_value(CorePropertyTypeName::LoadCommitStatus.as_property_name())?;
 
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
@@ -582,15 +580,12 @@ impl TransactionContext {
     pub fn import_transient_holons(&self, transient_holons: HolonPool) -> Result<(), HolonError> {
         self.transient_manager.import_transient_holons(transient_holons)
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core_shared_objects::{
-        HolonCollection, RelationshipMap, ServiceRoutingPolicy,
-    };
+    use crate::core_shared_objects::{HolonCollection, RelationshipMap, ServiceRoutingPolicy};
     use crate::reference_layer::{HolonServiceApi, StagedReference};
     use core_types::{HolonError, LocalId, RelationshipName};
     use std::any::Any;
