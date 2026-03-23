@@ -3,16 +3,18 @@ use std::sync::Arc;
 use core_types::HolonError;
 use tracing::info;
 
+use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
+
 use crate::domain::{MapCommand, MapResult, MutationClassification};
 use crate::wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
 
 use super::runtime_session::RuntimeSession;
-use super::{holon_dispatch, space_dispatch, transaction_dispatch};
+use super::{holon_handler, space_handler, transaction_handler};
 
 /// The MAP Commands execution boundary.
 ///
-/// All MAP command execution flows through `Runtime::dispatch`. It implements
-/// the sandwich model: wire → bind → domain dispatch → wire.
+/// All MAP command execution flows through `Runtime::handle_ipc`. It implements
+/// the sandwich model: wire → bind → enforce policy → route to handler → wire.
 ///
 /// Runtime is app-scoped and owns a `RuntimeSession` for transaction lifecycle.
 #[derive(Debug, Clone)]
@@ -25,27 +27,27 @@ impl Runtime {
         Self { session }
     }
 
-    /// Single IPC dispatch entrypoint (the full sandwich).
+    /// Single IPC entrypoint (the full sandwich).
     ///
     /// 1. Bind wire command → domain command
     /// 2. Enforce lifecycle via CommandDescriptor
-    /// 3. Dispatch domain command
+    /// 3. Route to scope-specific handler
     /// 4. Convert domain result → wire result
-    pub async fn dispatch(&self, request: MapIpcRequest) -> Result<MapIpcResponse, HolonError> {
+    pub async fn handle_ipc(&self, request: MapIpcRequest) -> Result<MapIpcResponse, HolonError> {
         let request_id = request.request_id;
 
         // Log gesture context if present
         if let Some(ref gesture_id) = request.options.gesture_id {
             let label = request.options.gesture_label.as_deref().unwrap_or("<no label>");
             info!(
-                "dispatch request_id={} gesture_id={:?} label={}",
+                "handle_ipc request_id={} gesture_id={:?} label={}",
                 request_id.value(),
                 gesture_id.0,
                 label
             );
         }
 
-        let result = self.dispatch_inner(request.command).await;
+        let result = self.execute_bound_command(request.command).await;
 
         // Convert domain result to wire, preserving errors
         let wire_result = match result {
@@ -56,8 +58,11 @@ impl Runtime {
         Ok(MapIpcResponse { request_id, result: wire_result })
     }
 
-    /// Bind + lifecycle enforcement + dispatch.
-    async fn dispatch_inner(&self, command_wire: MapCommandWire) -> Result<MapResult, HolonError> {
+    /// Bind + lifecycle enforcement + route to handler.
+    async fn execute_bound_command(
+        &self,
+        command_wire: MapCommandWire,
+    ) -> Result<MapResult, HolonError> {
         let command = self.bind(command_wire)?;
 
         let descriptor = command.descriptor();
@@ -73,15 +78,21 @@ impl Runtime {
         if descriptor.requires_open_tx {
             if let Some(ref ctx) = context {
                 if !ctx.is_open() {
-                    return Err(HolonError::TransactionNotOpen {
-                        tx_id: ctx.tx_id().value(),
-                        state: format!("{:?}", ctx.lifecycle_state()),
-                    });
+                    let tx_id = ctx.tx_id().value();
+                    return match ctx.lifecycle_state() {
+                        TransactionLifecycleState::Committed => {
+                            Err(HolonError::TransactionAlreadyCommitted { tx_id })
+                        }
+                        other => Err(HolonError::TransactionNotOpen {
+                            tx_id,
+                            state: format!("{:?}", other),
+                        }),
+                    };
                 }
             }
         }
 
-        // Commit guard: hold across dispatch for commit-guarded commands
+        // Commit guard: hold across handler execution for commit-guarded commands
         let _commit_guard = if descriptor.requires_commit_guard {
             if let Some(ref ctx) = context {
                 Some(ctx.begin_host_commit_ingress_guard()?)
@@ -101,7 +112,7 @@ impl Runtime {
             }
         }
 
-        self.dispatch_command(command).await
+        self.route_command(command).await
     }
 
     /// Binds a wire command to its domain equivalent.
@@ -119,14 +130,14 @@ impl Runtime {
         }
     }
 
-    /// Dispatches a bound domain command to scope-specific handlers.
-    async fn dispatch_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
+    /// Routes a bound domain command to its scope-specific handler.
+    async fn route_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
         match command {
-            MapCommand::Space(cmd) => space_dispatch::dispatch_space(&self.session, cmd),
+            MapCommand::Space(cmd) => space_handler::handle_space(&self.session, cmd),
             MapCommand::Transaction(cmd) => {
-                transaction_dispatch::dispatch_transaction(&self.session, cmd).await
+                transaction_handler::handle_transaction(&self.session, cmd).await
             }
-            MapCommand::Holon(cmd) => holon_dispatch::dispatch_holon(cmd).await,
+            MapCommand::Holon(cmd) => holon_handler::handle_holon(cmd).await,
         }
     }
 }

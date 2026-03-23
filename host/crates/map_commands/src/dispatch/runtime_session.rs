@@ -50,20 +50,32 @@ impl RuntimeSession {
         Ok(tx_id)
     }
 
-    /// Looks up an active transaction by TxId.
+    /// Looks up a transaction by TxId, checking active first, then archived.
     ///
-    /// Returns an error if the transaction is not found (expired or never created).
+    /// Returns an error if the transaction is not found in either pool.
     pub fn get_transaction(&self, tx_id: &TxId) -> Result<Arc<TransactionContext>, HolonError> {
-        let guard = self.active_transactions.read().map_err(|e| {
+        let active_guard = self.active_transactions.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire read lock on active_transactions: {}",
                 e
             ))
         })?;
 
-        guard.get(tx_id).cloned().ok_or_else(|| {
+        if let Some(ctx) = active_guard.get(tx_id).cloned() {
+            return Ok(ctx);
+        }
+        drop(active_guard);
+
+        let archived_guard = self.archived_transactions.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on archived_transactions: {}",
+                e
+            ))
+        })?;
+
+        archived_guard.get(tx_id).cloned().ok_or_else(|| {
             HolonError::InvalidParameter(format!(
-                "No active transaction for tx_id={}",
+                "No transaction found for tx_id={}",
                 tx_id.value()
             ))
         })

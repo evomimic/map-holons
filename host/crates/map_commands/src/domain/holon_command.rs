@@ -33,7 +33,7 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::CloneHolon) => {
                 CommandDescriptor::mutating()
             }
-            HolonAction::Read(_) => CommandDescriptor::read_only(),
+            HolonAction::Read(_) => CommandDescriptor::holon_read_only(),
             HolonAction::Write(_) => CommandDescriptor::mutating(),
         }
     }

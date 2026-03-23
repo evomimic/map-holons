@@ -32,5 +32,5 @@ pub async fn dispatch_map_command(
         )
     })?;
 
-    runtime.dispatch(request).await
+    runtime.handle_ipc(request).await
 }

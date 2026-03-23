@@ -4,15 +4,15 @@ use holons_core::reference_layer::{HolonReference, ReadableHolon, WritableHolon}
 
 use crate::domain::{HolonAction, HolonCommand, MapResult, ReadableHolonAction, WritableHolonAction};
 
-/// Dispatches holon-scoped commands.
-pub async fn dispatch_holon(command: HolonCommand) -> Result<MapResult, HolonError> {
+/// Handles holon-scoped commands.
+pub async fn handle_holon(command: HolonCommand) -> Result<MapResult, HolonError> {
     match command.action {
-        HolonAction::Read(action) => dispatch_read(command.target, action),
-        HolonAction::Write(action) => dispatch_write(command.target, action),
+        HolonAction::Read(action) => handle_read(command.target, action),
+        HolonAction::Write(action) => handle_write(command.target, action),
     }
 }
 
-fn dispatch_read(
+fn handle_read(
     target: HolonReference,
     action: ReadableHolonAction,
 ) -> Result<MapResult, HolonError> {
@@ -65,7 +65,7 @@ fn dispatch_read(
     }
 }
 
-fn dispatch_write(
+fn handle_write(
     mut target: HolonReference,
     action: WritableHolonAction,
 ) -> Result<MapResult, HolonError> {

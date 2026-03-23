@@ -1,3 +1,4 @@
+use super::transaction_context::TransactionOperation;
 use super::{HolonServiceApi, HolonStagingBehavior, TransactionContext, TransientHolonBehavior};
 use crate::{HolonCollection, StagedReference, TransientReference};
 use base_types::MapString;
@@ -15,6 +16,7 @@ pub struct LookupFacade {
 
 impl LookupFacade {
     pub fn get_all_holons(&self) -> Result<HolonCollection, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.holon_service.get_all_holons_internal(&self.context)
     }
 
@@ -24,6 +26,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.staging_service.get_staged_holon_by_base_key(key)
     }
 
@@ -33,6 +36,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<Vec<StagedReference>, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.staging_service.get_staged_holons_by_base_key(key)
     }
 
@@ -41,6 +45,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<StagedReference, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.staging_service.get_staged_holon_by_versioned_key(key)
     }
 
@@ -50,6 +55,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.transient_service.get_transient_holon_by_base_key(key)
     }
 
@@ -58,6 +64,7 @@ impl LookupFacade {
         &self,
         key: &MapString,
     ) -> Result<TransientReference, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.transient_service.get_transient_holon_by_versioned_key(key)
     }
 
@@ -65,11 +72,13 @@ impl LookupFacade {
 
     // Gets total count of Staged Holons present in the Nursery
     pub fn staged_count(&self) -> Result<i64, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.staging_service.staged_count()
     }
 
     // Gets total count of Transient Holons present in the TransientHolonManager
     pub fn transient_count(&self) -> Result<i64, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.transient_service.transient_count()
     }
 }

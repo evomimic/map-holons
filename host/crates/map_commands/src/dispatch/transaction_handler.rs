@@ -6,8 +6,8 @@ use crate::domain::{MapResult, TransactionAction, TransactionCommand};
 
 use super::runtime_session::RuntimeSession;
 
-/// Dispatches transaction-scoped commands.
-pub async fn dispatch_transaction(
+/// Handles transaction-scoped commands.
+pub async fn handle_transaction(
     session: &RuntimeSession,
     command: TransactionCommand,
 ) -> Result<MapResult, HolonError> {

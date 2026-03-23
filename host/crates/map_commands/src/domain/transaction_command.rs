@@ -97,7 +97,7 @@ impl TransactionAction {
                 requires_open_tx: true,
                 requires_commit_guard: false,
             },
-            TransactionAction::Query(_) => CommandDescriptor::read_only(),
+            TransactionAction::Query(_) => CommandDescriptor::transaction_read_only(),
 
             // Lookups
             TransactionAction::GetAllHolons
@@ -107,7 +107,7 @@ impl TransactionAction {
             | TransactionAction::GetTransientHolonByBaseKey { .. }
             | TransactionAction::GetTransientHolonByVersionedKey { .. }
             | TransactionAction::StagedCount
-            | TransactionAction::TransientCount => CommandDescriptor::read_only(),
+            | TransactionAction::TransientCount => CommandDescriptor::transaction_read_only(),
 
             // Mutations
             TransactionAction::NewHolon { .. }

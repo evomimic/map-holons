@@ -121,14 +121,14 @@ async fn begin_tx(runtime: &Runtime) -> TxId {
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match response.result {
         Ok(MapResultWire::TransactionCreated { tx_id }) => tx_id,
         other => panic!("expected TransactionCreated, got {:?}", other),
     }
 }
 
-// ── Dispatch tests ──────────────────────────────────────────────────
+// ── Handler tests ───────────────────────────────────────────────────
 
 #[tokio::test]
 async fn begin_transaction_returns_valid_tx_id() {
@@ -140,7 +140,7 @@ async fn begin_transaction_returns_valid_tx_id() {
         options: test_options(),
     };
 
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
 
     assert_eq!(response.request_id, RequestId::new(1));
     match response.result {
@@ -162,7 +162,7 @@ async fn begin_transaction_ids_are_unique() {
             command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
             options: test_options(),
         };
-        let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+        let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
         match response.result {
             Ok(MapResultWire::TransactionCreated { tx_id }) => tx_ids.push(tx_id),
             other => panic!("expected TransactionCreated, got {:?}", other),
@@ -192,7 +192,7 @@ async fn invalid_tx_id_returns_error() {
         options: test_options(),
     };
 
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match response.result {
         Err(HolonError::InvalidParameter(msg)) => {
             assert!(msg.contains("999"), "error should mention the tx_id");
@@ -201,7 +201,7 @@ async fn invalid_tx_id_returns_error() {
     }
 }
 
-// ── Transaction lookup dispatch ─────────────────────────────────────
+// ── Transaction lookup handler ─────────────────────────────────────
 
 #[tokio::test]
 async fn staged_count_returns_zero_for_new_tx() {
@@ -216,7 +216,7 @@ async fn staged_count_returns_zero_for_new_tx() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match response.result {
         Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(0)))) => {}
         other => panic!("expected Value(IntegerValue(0)), got {:?}", other),
@@ -236,14 +236,14 @@ async fn transient_count_returns_zero_for_new_tx() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match response.result {
         Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(0)))) => {}
         other => panic!("expected Value(IntegerValue(0)), got {:?}", other),
     }
 }
 
-// ── Transaction mutation dispatch ───────────────────────────────────
+// ── Transaction mutation handler ───────────────────────────────────
 
 #[tokio::test]
 async fn new_holon_then_staged_count() {
@@ -261,7 +261,7 @@ async fn new_holon_then_staged_count() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match &response.result {
         Ok(MapResultWire::Reference(_)) => {}
         other => panic!("expected Reference, got {:?}", other),
@@ -276,7 +276,7 @@ async fn new_holon_then_staged_count() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match response.result {
         Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(1)))) => {}
         other => panic!("expected Value(IntegerValue(1)), got {:?}", other),
@@ -299,7 +299,7 @@ async fn new_holon_stage_then_staged_count() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     let transient_wire = match response.result {
         Ok(MapResultWire::Reference(r)) => r,
         other => panic!("expected Reference, got {:?}", other),
@@ -321,7 +321,7 @@ async fn new_holon_stage_then_staged_count() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match &response.result {
         Ok(MapResultWire::Reference(_)) => {}
         other => panic!("expected Reference (staged), got {:?}", other),
@@ -336,7 +336,7 @@ async fn new_holon_stage_then_staged_count() {
         }),
         options: test_options(),
     };
-    let response = runtime.dispatch(request).await.expect("dispatch should succeed");
+    let response = runtime.handle_ipc(request).await.expect("handle_ipc should succeed");
     match response.result {
         Ok(MapResultWire::Value(BaseValue::IntegerValue(MapInteger(1)))) => {}
         other => panic!("expected Value(IntegerValue(1)), got {:?}", other),
@@ -356,9 +356,18 @@ fn space_begin_transaction_descriptor() {
 #[test]
 fn transaction_action_descriptors() {
     assert_eq!(TransactionAction::Commit.descriptor(), CommandDescriptor::mutating_with_guard());
-    assert_eq!(TransactionAction::StagedCount.descriptor(), CommandDescriptor::read_only());
-    assert_eq!(TransactionAction::TransientCount.descriptor(), CommandDescriptor::read_only());
-    assert_eq!(TransactionAction::GetAllHolons.descriptor(), CommandDescriptor::read_only());
+    assert_eq!(
+        TransactionAction::StagedCount.descriptor(),
+        CommandDescriptor::transaction_read_only()
+    );
+    assert_eq!(
+        TransactionAction::TransientCount.descriptor(),
+        CommandDescriptor::transaction_read_only()
+    );
+    assert_eq!(
+        TransactionAction::GetAllHolons.descriptor(),
+        CommandDescriptor::transaction_read_only()
+    );
     assert_eq!(
         TransactionAction::NewHolon { key: None }.descriptor(),
         CommandDescriptor::mutating()
@@ -376,7 +385,7 @@ fn transaction_action_descriptors() {
 fn holon_action_descriptors() {
     assert_eq!(
         HolonAction::Read(ReadableHolonAction::Key).descriptor(),
-        CommandDescriptor::read_only()
+        CommandDescriptor::holon_read_only()
     );
     assert_eq!(
         HolonAction::Read(ReadableHolonAction::CloneHolon).descriptor(),
@@ -392,3 +401,4 @@ fn holon_action_descriptors() {
         CommandDescriptor::mutating()
     );
 }
+

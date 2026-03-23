@@ -28,6 +28,8 @@ use super::{
 pub(super) enum TransactionOperation {
     /// Create a new transient holon.
     CreateTransient,
+    /// Read-only lookup operations (LookupFacade).
+    ReadState,
     /// Stage/delete/load and other state mutation operations.
     MutateState,
     /// Commit execution within an already-open transaction.
@@ -130,21 +132,19 @@ impl TransactionContext {
 
     /// Internal operation policy gate.
     ///
-    /// This is the authoritative mutation/commit ingress policy matrix.
-    /// All transaction-scoped mutation and commit ingress paths should enforce
-    /// lifecycle/access policy through this method rather than per-call-site
-    /// omission rules.
-    ///
-    /// Lookup/read-only execution paths are intentionally excluded from this gate.
+    /// This is the authoritative lifecycle/access policy matrix.
+    /// All transaction-scoped operations should enforce lifecycle/access policy
+    /// through this method rather than per-call-site omission rules.
     ///
     /// ## Lifecycle/Operation Matrix
     ///
     /// `host_commit_in_progress` only affects host-ingress mutation admission.
-    /// It does not block commit execution itself.
+    /// It does not block commit execution or read-only operations.
     ///
     /// | Operation | `Open` + no host commit ingress | `Open` + host commit ingress | `Committed` |
     /// | --- | --- | --- | --- |
     /// | `CreateTransient` | Allowed | Allowed | Allowed |
+    /// | `ReadState` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
     /// | `MutateState` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
     /// | `HostMutationEntry` | Allowed | Rejected (`TransactionCommitInProgress`) | Rejected (`TransactionAlreadyCommitted`) |
     /// | `CommitExecution` | Allowed | Allowed | Rejected (`TransactionAlreadyCommitted`) |
@@ -159,6 +159,20 @@ impl TransactionContext {
                     || raw_state == TransactionLifecycleState::Committed.as_u8()
                 {
                     return Ok(());
+                }
+                Err(HolonError::TransactionNotOpen {
+                    tx_id: self.tx_id.value(),
+                    state: format!("Unknown({raw_state})"),
+                })
+            }
+            TransactionOperation::ReadState | TransactionOperation::CommitExecution => {
+                if raw_state == TransactionLifecycleState::Open.as_u8() {
+                    return Ok(());
+                }
+                if raw_state == TransactionLifecycleState::Committed.as_u8() {
+                    return Err(HolonError::TransactionAlreadyCommitted {
+                        tx_id: self.tx_id.value(),
+                    });
                 }
                 Err(HolonError::TransactionNotOpen {
                     tx_id: self.tx_id.value(),
@@ -185,20 +199,6 @@ impl TransactionContext {
                 }
 
                 Ok(())
-            }
-            TransactionOperation::CommitExecution => {
-                if raw_state == TransactionLifecycleState::Open.as_u8() {
-                    return Ok(());
-                }
-                if raw_state == TransactionLifecycleState::Committed.as_u8() {
-                    return Err(HolonError::TransactionAlreadyCommitted {
-                        tx_id: self.tx_id.value(),
-                    });
-                }
-                Err(HolonError::TransactionNotOpen {
-                    tx_id: self.tx_id.value(),
-                    state: format!("Unknown({raw_state})"),
-                })
             }
         }
     }
@@ -265,7 +265,6 @@ impl TransactionContext {
         let staged_references = self.nursery.get_staged_references()?;
         let commit_response = self.get_holon_service().commit_internal(self, &staged_references)?;
         if self.should_transition_from_commit_response(&commit_response)? {
-            self.nursery.clear_stage()?;
             self.transition_to_committed()?;
         }
 

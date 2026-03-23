@@ -16,7 +16,23 @@ pub struct CommandDescriptor {
 }
 
 impl CommandDescriptor {
-    pub const fn read_only() -> Self {
+    /// Read-only descriptor for transaction-scoped commands.
+    ///
+    /// All transaction commands require an open transaction — even lookups —
+    /// because a committed transaction must reject all further operations.
+    pub const fn transaction_read_only() -> Self {
+        Self {
+            mutation: MutationClassification::ReadOnly,
+            requires_open_tx: true,
+            requires_commit_guard: false,
+        }
+    }
+
+    /// Read-only descriptor for holon-scoped commands.
+    ///
+    /// Holon reads do not require an open transaction because references from
+    /// committed transactions remain alive and accessible.
+    pub const fn holon_read_only() -> Self {
         Self {
             mutation: MutationClassification::ReadOnly,
             requires_open_tx: false,

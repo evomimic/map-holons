@@ -4,8 +4,8 @@ use crate::domain::{MapResult, SpaceCommand};
 
 use super::runtime_session::RuntimeSession;
 
-/// Dispatches space-scoped commands.
-pub fn dispatch_space(
+/// Handles space-scoped commands.
+pub fn handle_space(
     session: &RuntimeSession,
     command: SpaceCommand,
 ) -> Result<MapResult, HolonError> {

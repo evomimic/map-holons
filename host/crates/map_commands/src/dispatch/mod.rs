@@ -1,8 +1,8 @@
-mod holon_dispatch;
+mod holon_handler;
 mod runtime;
 mod runtime_session;
-mod space_dispatch;
-mod transaction_dispatch;
+mod space_handler;
+mod transaction_handler;
 
 pub use runtime::Runtime;
 pub use runtime_session::RuntimeSession;
