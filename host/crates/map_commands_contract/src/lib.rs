@@ -11,3 +11,6 @@ pub use map_command::*;
 pub use map_result::*;
 pub use space_command::*;
 pub use transaction_command::*;
+
+#[cfg(test)]
+mod tests;

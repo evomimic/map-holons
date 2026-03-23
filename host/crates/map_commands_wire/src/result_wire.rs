@@ -7,7 +7,7 @@ use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::MapResult;
+use map_commands_contract::MapResult;
 
 /// Serializable result variants for MAP Command responses.
 ///

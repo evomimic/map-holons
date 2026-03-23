@@ -1,6 +1,6 @@
 use core_types::HolonError;
 
-use crate::domain::{MapResult, SpaceCommand};
+use map_commands_contract::{MapResult, SpaceCommand};
 
 use super::runtime_session::RuntimeSession;
 

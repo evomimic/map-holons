@@ -6,7 +6,7 @@ use holons_boundary::HolonReferenceWire;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{HolonAction, HolonCommand, ReadableHolonAction, WritableHolonAction};
+use map_commands_contract::{HolonAction, HolonCommand, ReadableHolonAction, WritableHolonAction};
 
 /// Holon-scoped wire command.
 ///

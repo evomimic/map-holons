@@ -1,22 +1,22 @@
 use std::sync::Arc;
 
 use core_types::HolonError;
-use tracing::info;
 
 use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
 
-use crate::domain::{MapCommand, MapResult, MutationClassification};
-use crate::wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
+use map_commands_contract::{MapCommand, MapResult, MutationClassification};
 
 use super::runtime_session::RuntimeSession;
 use super::{holon_handler, space_handler, transaction_handler};
 
 /// The MAP Commands execution boundary.
 ///
-/// All MAP command execution flows through `Runtime::handle_ipc`. It implements
-/// the sandwich model: wire → bind → enforce policy → route to handler → wire.
+/// All MAP command execution flows through `Runtime::execute_command`. It
+/// enforces lifecycle policy via `CommandDescriptor` and routes to
+/// scope-specific handlers.
 ///
-/// Runtime is app-scoped and owns a `RuntimeSession` for transaction lifecycle.
+/// Wire binding (IPC envelope → domain command) is handled by the caller
+/// (Conductora) before reaching this layer.
 #[derive(Debug, Clone)]
 pub struct Runtime {
     session: Arc<RuntimeSession>,
@@ -27,44 +27,16 @@ impl Runtime {
         Self { session }
     }
 
-    /// Single IPC entrypoint (the full sandwich).
-    ///
-    /// 1. Bind wire command → domain command
-    /// 2. Enforce lifecycle via CommandDescriptor
-    /// 3. Route to scope-specific handler
-    /// 4. Convert domain result → wire result
-    pub async fn handle_ipc(&self, request: MapIpcRequest) -> Result<MapIpcResponse, HolonError> {
-        let request_id = request.request_id;
-
-        // Log gesture context if present
-        if let Some(ref gesture_id) = request.options.gesture_id {
-            let label = request.options.gesture_label.as_deref().unwrap_or("<no label>");
-            info!(
-                "handle_ipc request_id={} gesture_id={:?} label={}",
-                request_id.value(),
-                gesture_id.0,
-                label
-            );
-        }
-
-        let result = self.execute_bound_command(request.command).await;
-
-        // Convert domain result to wire, preserving errors
-        let wire_result = match result {
-            Ok(domain_result) => Ok(MapResultWire::from(domain_result)),
-            Err(error) => Err(error),
-        };
-
-        Ok(MapIpcResponse { request_id, result: wire_result })
+    /// Returns a reference to the session for transaction lookups during binding.
+    pub fn session(&self) -> &Arc<RuntimeSession> {
+        &self.session
     }
 
-    /// Bind + lifecycle enforcement + route to handler.
-    async fn execute_bound_command(
+    /// Enforce lifecycle policy and route a bound domain command to its handler.
+    pub async fn execute_command(
         &self,
-        command_wire: MapCommandWire,
+        command: MapCommand,
     ) -> Result<MapResult, HolonError> {
-        let command = self.bind(command_wire)?;
-
         let descriptor = command.descriptor();
 
         // Extract context for lifecycle checks (Transaction and Holon commands have one)
@@ -113,21 +85,6 @@ impl Runtime {
         }
 
         self.route_command(command).await
-    }
-
-    /// Binds a wire command to its domain equivalent.
-    fn bind(&self, command: MapCommandWire) -> Result<MapCommand, HolonError> {
-        match command {
-            MapCommandWire::Space(wire) => Ok(MapCommand::Space(wire.bind())),
-            MapCommandWire::Transaction(wire) => {
-                let context = self.session.get_transaction(&wire.tx_id)?;
-                Ok(MapCommand::Transaction(wire.bind(context)?))
-            }
-            MapCommandWire::Holon(wire) => {
-                let context = self.session.get_transaction(&wire.tx_id)?;
-                Ok(MapCommand::Holon(wire.bind(&context)?))
-            }
-        }
     }
 
     /// Routes a bound domain command to its scope-specific handler.

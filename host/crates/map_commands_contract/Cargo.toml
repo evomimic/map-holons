@@ -1,0 +1,9 @@
+[package]
+name = "map_commands_contract"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+holons_core = { workspace = true }
+base_types = { workspace = true }
+core_types = { workspace = true }

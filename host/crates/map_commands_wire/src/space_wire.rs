@@ -1,4 +1,4 @@
-use crate::domain::SpaceCommand;
+use map_commands_contract::SpaceCommand;
 use serde::{Deserialize, Serialize};
 
 /// Space-scoped wire commands.

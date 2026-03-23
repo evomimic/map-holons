@@ -2,7 +2,7 @@ use base_types::{BaseValue, MapInteger};
 use core_types::HolonError;
 use holons_core::reference_layer::HolonReference;
 
-use crate::domain::{MapResult, TransactionAction, TransactionCommand};
+use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
 use super::runtime_session::RuntimeSession;
 
