@@ -92,7 +92,7 @@ impl HolonCommandWire {
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<HolonCommand, HolonError> {
         let target = self.target.bind(context)?;
         let action = self.action.bind(context)?;
-        Ok(HolonCommand { target, action })
+        Ok(HolonCommand { context: Arc::clone(context), target, action })
     }
 }
 

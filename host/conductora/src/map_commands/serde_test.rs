@@ -1,6 +1,5 @@
-
-use holons_client::shared_types::map_request::MapRequestWire;
-use tauri::{command };
+use map_commands::wire::MapIpcRequest;
+use tauri::command;
 
 #[command]
 pub async fn serde_test(
@@ -21,8 +20,7 @@ pub async fn serde_test(
         }
     }
 
-    //HERE add the type you want to check against in the from_str<>
-    match serde_json::from_str::<MapRequestWire>(&request_json) {
+    match serde_json::from_str::<MapIpcRequest>(&request_json) {
         Ok(request) => {
             tracing::info!("[TEST] Successfully parsed: {:?}", request);
             Ok("Parsed successfully".to_string())
@@ -57,10 +55,10 @@ pub async fn serde_test(
                     .nth(1)
                     .and_then(|s| s.split('`').next())
                     .unwrap_or("unknown");
-                format!("\n🔍 Missing field: `{}`", field_name)
+                format!("\nMissing field: `{}`", field_name)
             } else if error_string.contains("invalid type") {
                 format!(
-                    "\n🔍 Type mismatch - check field types match between TypeScript and Rust"
+                    "\nType mismatch - check field types match between TypeScript and Rust"
                 )
             } else {
                 String::new()
@@ -68,9 +66,9 @@ pub async fn serde_test(
 
             let error_msg = format!(
                 "Parse error at position {} (line {}, column {}):\n\
-                 📋 Error: {}\n\
-                 🏷️  Type: {}{}\n\
-                 📍 Context around column {}:\n{}",
+                 Error: {}\n\
+                 Type: {}{}\n\
+                 Context around column {}:\n{}",
                 column, line, column, e, classification, path_hint, column, error_snippet
             );
 
@@ -82,5 +80,5 @@ pub async fn serde_test(
             Err(short_error)
         }
     }
-    
+
 }

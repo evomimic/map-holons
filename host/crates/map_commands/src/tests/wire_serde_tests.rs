@@ -14,6 +14,10 @@ fn test_holon_id() -> core_types::HolonId {
     core_types::HolonId::Local(integrity_core_types::LocalId(vec![0u8; 39]))
 }
 
+fn test_options() -> RequestOptions {
+    RequestOptions { gesture_id: None, gesture_label: None, snapshot_after: false }
+}
+
 /// Helper: serialize to JSON and deserialize back, asserting roundtrip equality.
 fn assert_roundtrip<T>(value: &T)
 where
@@ -31,6 +35,7 @@ fn roundtrip_ipc_request_space_command() {
     let request = MapIpcRequest {
         request_id: RequestId::new(42),
         command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: test_options(),
     };
     assert_roundtrip(&request);
 }
@@ -55,6 +60,32 @@ fn roundtrip_ipc_response_error() {
         )),
     };
     assert_roundtrip(&response);
+}
+
+// ── RequestOptions ──────────────────────────────────────────────────
+
+#[test]
+fn roundtrip_request_options_default() {
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: test_options(),
+    };
+    assert_roundtrip(&request);
+}
+
+#[test]
+fn roundtrip_request_options_with_gesture() {
+    let request = MapIpcRequest {
+        request_id: RequestId::new(1),
+        command: MapCommandWire::Space(SpaceCommandWire::BeginTransaction),
+        options: RequestOptions {
+            gesture_id: Some(GestureId(MapString::from("g-42"))),
+            gesture_label: Some("Create holon".to_string()),
+            snapshot_after: true,
+        },
+    };
+    assert_roundtrip(&request);
 }
 
 // ── SpaceCommandWire ────────────────────────────────────────────────
@@ -148,9 +179,9 @@ fn roundtrip_result_transaction_created() {
 }
 
 #[test]
-fn roundtrip_result_commit_response() {
+fn roundtrip_result_reference() {
     let tx_id = test_tx_id(1);
-    assert_roundtrip(&MapResultWire::CommitResponse(
+    assert_roundtrip(&MapResultWire::Reference(
         holons_boundary::HolonReferenceWire::Smart(SmartReferenceWire::new(
             tx_id,
             test_holon_id(),
@@ -160,8 +191,10 @@ fn roundtrip_result_commit_response() {
 }
 
 #[test]
-fn roundtrip_result_string_value() {
-    assert_roundtrip(&MapResultWire::StringValue(MapString::from("my-key")));
+fn roundtrip_result_value_string() {
+    assert_roundtrip(&MapResultWire::Value(BaseValue::StringValue(
+        MapString::from("my-key"),
+    )));
 }
 
 #[test]
