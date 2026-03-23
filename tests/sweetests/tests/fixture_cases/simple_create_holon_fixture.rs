@@ -1,7 +1,7 @@
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_KEY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedTestResult, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -35,14 +35,14 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
         book_transient_reference,
         properties,
         Some(book_key),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Creating book holon... ".to_string()),
     )?;
 
     test_case.add_stage_holon_step(
         &mut fixture_holons,
         book_step_token.clone(),
-        ResponseStatusCode::OK,
+        ExpectedTestResult::Success,
         Some("Staging book holon...".to_string()),
     )?;
 

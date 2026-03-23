@@ -1,61 +1,71 @@
 use holons_prelude::prelude::*;
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
+use holons_test::{
+    ExecutionHandle, ExecutionReference, ExpectedTestResult, TestExecutionState, TestReference,
+};
 use integrity_core_types::PropertyMap;
-use pretty_assertions::assert_eq;
-use tracing::{debug, info};
+use tracing::{
+    // debug,
+    info,
+};
 
-/// This function creates a new holon with an optional key. It builds and dances a `new_holon` DanceRequest.
+/// This executor tests the ability to create a new holon with an optional key. 
+/// It calls the `new_holon` API.
+/// 
 pub async fn execute_new_holon(
     state: &mut TestExecutionState,
     step_token: TestReference,
     properties: PropertyMap,
     key: Option<MapString>,
-    expected_status: ResponseStatusCode
+    expected_result: ExpectedTestResult,
 ) {
     let context = state.context();
 
-    // 1. BUILD - the stage_new_holon DanceRequest
-    let request = build_new_holon_dance_request(key);
-    debug!("Dance Request: {:#?}", request);
+    // 1. MATCH EXPECTED - confirm actual against expected result
+    match expected_result {
+        ExpectedTestResult::Success => {
+            // Attempt create, confirm successful result
+            let mut transient_reference = context
+                .mutation()
+                .new_holon(key)
+                .unwrap_or_else(|e| {
+                    panic!("Expected new_holon to successfully create a TransientReference, got error: {:#?}", e)
+                });
 
-    // 2. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    info!("Dance Response: {}", response.summarize());
-
-    // 3. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "new_holon request failed: {}",
-        response.description
-    );
-    if response.status_code == ResponseStatusCode::OK {
-        // 4. RECORD — Register an ExecutionHolon so that this token becomes resolvable during test execution.
-        let mut response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("expected ResponseBody::HolonReference, got {:?}", other);
+            for (name, value) in properties {
+                transient_reference.with_property_value(name.clone(), value).unwrap_or_else(
+                    |error| panic!("failed to set property {:?} on holon: {}", name, error),
+                );
             }
-        };
+            info!("Success! new_holon successfully created as expected.");
 
-        // Apply property mutations returned by the dance
-        for (name, value) in properties {
-            response_holon_reference.with_property_value(name.clone(), value).unwrap_or_else(
-                |error| panic!("failed to set property {:?} on response holon: {}", name, error),
-            );
+            // 2. ASSERT — essential content matches expected
+            let execution_handle = ExecutionHandle::from(HolonReference::from(transient_reference));
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
+            info!("Success! Holon's essential content matched expected");
+
+            // 3. RECORD — make this execution result available downstream
+            state.record(&step_token, execution_reference).unwrap();
         }
-
-        // Build execution handle from runtime result
-        let execution_handle = ExecutionHandle::from(response_holon_reference);
-
-        // Canonical construction: token + execution outcome
-        let execution_reference =
-            ExecutionReference::from_token_execution(&step_token, execution_handle);
-
-        // Validate expected vs execution-time content
-        execution_reference.assert_essential_content_eq();
-        info!("Success! Holon's essential content matched expected");
-
-        // Record for downstream resolution
-        state.record(&step_token, execution_reference).unwrap();
+        ExpectedTestResult::Failure(expected_error) => {
+            // Attempt create, panic if the result does not match expected.
+            let result = context.mutation().new_holon(key);
+            match result {
+                Ok(_) => {
+                    panic!("Expected new_holon to error: {:?}, got Ok", expected_error)
+                }
+                Err(e) => {
+                    if e != expected_error {
+                        panic!(
+                            "Expected new_holon to error with: {:?}, but got {:?}",
+                            expected_error, e
+                        );
+                    } else {
+                        info!("Success! new_holon failed as expected.");
+                    }
+                }
+            }
+        }
     }
 }

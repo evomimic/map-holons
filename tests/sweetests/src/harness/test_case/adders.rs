@@ -38,8 +38,8 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 use crate::{
-    harness::fixtures_support::TestReference, DanceTestStep, ExpectedSnapshot, FixtureHolons,
-    SourceSnapshot, TestHolonState, TestSessionState,
+    harness::fixtures_support::TestReference, DanceTestStep, ExpectedSnapshot, ExpectedTestResult,
+    FixtureHolons, SourceSnapshot, TestHolonState, TestSessionState,
 };
 use core_types::ContentSet;
 use holons_boundary::SerializableHolonPool;
@@ -201,7 +201,7 @@ impl DancesTestCase {
         &mut self,
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -210,7 +210,7 @@ impl DancesTestCase {
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let new_snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Abandoned);
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
@@ -220,7 +220,7 @@ impl DancesTestCase {
         // Add execution step
         self.steps.push(DanceTestStep::AbandonStagedChanges {
             step_token: new_step_token.clone(),
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -232,7 +232,7 @@ impl DancesTestCase {
         &mut self,
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
@@ -241,7 +241,7 @@ impl DancesTestCase {
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let new_snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Deleted);
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
@@ -251,7 +251,7 @@ impl DancesTestCase {
         // Add execution step
         self.steps.push(DanceTestStep::DeleteHolon {
             step_token: new_step_token.clone(),
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -281,7 +281,7 @@ impl DancesTestCase {
         source_reference: TransientReference,
         properties: PropertyMap,
         key: Option<MapString>,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -300,7 +300,7 @@ impl DancesTestCase {
             step_token: new_token.clone(),
             properties,
             key,
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -314,7 +314,7 @@ impl DancesTestCase {
         step_token: TestReference,
         relationship_name: RelationshipName,
         holons_to_add: Vec<TestReference>,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -330,7 +330,7 @@ impl DancesTestCase {
         new_snapshot.add_related_holons(&relationship_name, references_to_add)?;
         // Set Expected
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
@@ -341,7 +341,7 @@ impl DancesTestCase {
             step_token: new_token.clone(),
             relationship_name,
             holons_to_add,
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -354,7 +354,7 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
         properties: PropertyMap,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -366,7 +366,7 @@ impl DancesTestCase {
             new_snapshot.remove_property_value(property)?;
         }
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
@@ -376,7 +376,7 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::RemoveProperties {
             step_token: new_token.clone(),
             properties: properties.clone(),
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -390,7 +390,7 @@ impl DancesTestCase {
         step_token: TestReference,
         relationship_name: RelationshipName,
         holons_to_remove: Vec<TestReference>,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -406,7 +406,7 @@ impl DancesTestCase {
         new_snapshot.remove_related_holons(&relationship_name, references_to_remove)?;
         // Set Expected
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
         }
@@ -417,7 +417,7 @@ impl DancesTestCase {
             step_token: new_token.clone(),
             relationship_name,
             holons_to_remove,
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -429,7 +429,7 @@ impl DancesTestCase {
         &mut self,
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -438,7 +438,7 @@ impl DancesTestCase {
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Create new FixtureHolon
             fixture_holons.create_fixture_holon(expected.clone())?;
         }
@@ -448,7 +448,7 @@ impl DancesTestCase {
         // Add execution step
         self.steps.push(DanceTestStep::StageHolon {
             step_token: new_token.clone(),
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -461,7 +461,7 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
         new_key: MapString, // Passing the key is necessary for the dance  // TODO: Future changes will make this an Option
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -471,7 +471,7 @@ impl DancesTestCase {
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
         new_snapshot.with_property_value("Key", new_key.clone())?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Create new FixtureHolon
             fixture_holons.create_fixture_holon(expected.clone())?;
         }
@@ -482,7 +482,7 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::StageNewFromClone {
             step_token: new_token.clone(),
             new_key: new_key.clone(),
-            expected_status: expected_status.clone(),
+            expected_result: expected_result.clone(),
             description,
         });
 
@@ -494,7 +494,7 @@ impl DancesTestCase {
         &mut self,
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         version_count: MapInteger,
         expected_failure_code: Option<ResponseStatusCode>,
         description: Option<String>,
@@ -509,7 +509,7 @@ impl DancesTestCase {
             vec![step_token.expected_reference().into()],
         )?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
-        if expected_status == ResponseStatusCode::OK {
+        if expected_result.is_ok() {
             // Create new FixtureHolon
             fixture_holons.create_fixture_holon(expected.clone())?;
         }
@@ -520,7 +520,7 @@ impl DancesTestCase {
         // Add execution step
         self.steps.push(DanceTestStep::StageNewVersion {
             step_token: new_token.clone(),
-            expected_status: expected_status.clone(),
+            expected_result: expected_result.clone(),
             version_count,
             expected_failure_code,
             description,
@@ -535,7 +535,7 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
         properties: PropertyMap,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
@@ -556,7 +556,7 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::WithProperties {
             step_token: new_token.clone(),
             properties: properties.clone(),
-            expected_status,
+            expected_result,
             description,
         });
 
@@ -568,7 +568,7 @@ impl DancesTestCase {
         fixture_holons: &mut FixtureHolons,
         step_token: TestReference,
         query_expression: QueryExpression,
-        expected_status: ResponseStatusCode,
+        expected_result: ExpectedTestResult,
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
@@ -584,7 +584,7 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::QueryRelationships {
             step_token: new_token,
             query_expression,
-            expected_status,
+            expected_result,
             description,
         });
 

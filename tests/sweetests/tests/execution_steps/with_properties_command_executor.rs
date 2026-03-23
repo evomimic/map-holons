@@ -1,68 +1,78 @@
 use holons_test::{
-    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
+    ExecutionHandle, ExecutionReference, ExpectedTestResult, ResolveBy, TestExecutionState,
+    TestReference,
 };
-use pretty_assertions::assert_eq;
-use tracing::{debug, info};
+use tracing::{
+    // debug,
+    info,
+};
 
 use holons_prelude::prelude::*;
 
-/// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
-/// To pass this test, all the following must be true:
-/// 1) with_properties dance returns with a Success
-/// 2) the returned HolonReference refers to a Holon's essential_content that matches the expected
+/// This executor tests the ability to add properties to a holon.
+/// It calls the `with_properties` mutation for the supplied HolonReference.
 ///
-
 pub async fn execute_with_properties(
     state: &mut TestExecutionState,
     step_token: TestReference,
     properties: PropertyMap,
-    expected_response: ResponseStatusCode
+    expected_result: ExpectedTestResult,
 ) {
     let context = state.context();
 
     // 1. LOOKUP — get the input handle for the source token
-    let source_reference: HolonReference =
+    let mut source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // 2. BUILD — with_properties DanceRequest
+    // 2. MATCH EXPECTED - confirm actual against expected result
+    match expected_result {
+        ExpectedTestResult::Success => {
+            // Attempt mutation, capturing the first error (if any)
+            let with_properties_result = properties.into_iter().try_for_each(|(name, value)| {
+                source_reference.with_property_value(name, value).map(|_| ()) // discard &mut Self, keep only success/failure
+            });
+            if let Err(e) = with_properties_result {
+                panic!("Expected successful with_properties mutation, got {:?}", e);
+            }
+            // Proceed with these steps only if a successful result is expected and achieved
+            else {
+                info!(
+                    "Success! with_properties mutation on source_reference succeeded as expected."
+                );
+                // 3. ASSERT — essential content matches expected
+                let execution_handle = ExecutionHandle::from(source_reference.clone());
+                let execution_reference =
+                    ExecutionReference::from_token_execution(&step_token, execution_handle);
 
-    let request = build_with_properties_dance_request(source_reference.clone(), properties.clone())
-        .expect("Failed to build with_properties request");
+                execution_reference.assert_essential_content_eq();
+                info!("Success! Updated holon's essential content matched expected");
 
-    debug!("Dance Request: {:#?}", request);
-
-    // 3. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
-
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_response,
-        "with_properties request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! with_properties DanceResponse matched expected");
-
-    if response.status_code != ResponseStatusCode::OK {
-        return;
+                // 4. RECORD — make this execution result available downstream
+                state.record(&step_token, execution_reference).unwrap();
+            }
+        }
+        ExpectedTestResult::Failure(expected_error) => {
+            // Attempt mutation, panic if the first call does not match expected.
+            for (name, value) in properties {
+                let result = source_reference.with_property_value(name, value);
+                match result {
+                    Ok(_) => {
+                        panic!("Expected with_properties to error: {:?}, got Ok", expected_error)
+                    }
+                    Err(e) => {
+                        if e != expected_error {
+                            panic!(
+                                "Expected with_properties to error with: {:?}, but got {:?}",
+                                expected_error, e
+                            );
+                        } else {
+                            info!("Success! with_properties failed as expected.");
+                            // Loop should not continue as only the first result matters, any mismatch should have panicked.
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
-
-    // Success only after this point
-
-    // 5. ASSERT — essential content matches expected
-    let response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
-    };
-
-    let execution_handle = ExecutionHandle::from(response_holon_reference);
-
-    let execution_reference =
-        ExecutionReference::from_token_execution(&step_token, execution_handle);
-
-    execution_reference.assert_essential_content_eq();
-    info!("Success! Updated holon's essential content matched expected");
-
-    // 6. RECORD — make this execution result available downstream
-    state.record(&step_token, execution_reference).unwrap();
 }
