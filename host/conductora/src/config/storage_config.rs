@@ -6,7 +6,8 @@ use crate::config::providers::holochain::HolochainConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageConfig {
-    pub default_storage: String,
+    #[serde(default)]
+    pub default_storage: Option<String>,
     pub storage_providers: HashMap<String, StorageProvider>,
 }
 
@@ -54,8 +55,26 @@ impl StorageConfig {
     pub fn default() -> Self {
         let mut storage_providers = HashMap::new();
 
-        // Default Holochain provider
-        storage_providers.insert("holochain".to_string(), StorageProvider::Holochain(HolochainConfig::default()));
+        // Default Holochain profiles (mode-selected via HC_DEV_MODE)
+        let mut dev_holochain = HolochainConfig::default();
+        dev_holochain.network_seed = Some("dev_seed1234".to_string());
+        dev_holochain.bootstrap_url = Some("http://0.0.0.0:8888".to_string());
+        dev_holochain.signal_url = None;
+        dev_holochain.enabled = false;
+        storage_providers.insert(
+            "holochain_dev".to_string(),
+            StorageProvider::Holochain(dev_holochain),
+        );
+
+        let mut prod_holochain = HolochainConfig::default();
+        prod_holochain.network_seed = Some("prod_seed1234".to_string());
+        prod_holochain.bootstrap_url = Some("https://bootstrap.holo.host".to_string());
+        prod_holochain.signal_url = Some("wss://sbd.holo.host".to_string());
+        prod_holochain.enabled = false;
+        storage_providers.insert(
+            "holochain_production".to_string(),
+            StorageProvider::Holochain(prod_holochain),
+        );
 
         // Default IPFS provider
         storage_providers.insert(
@@ -85,14 +104,15 @@ impl StorageConfig {
         );
 
         Self {
-            default_storage: "holochain".to_string(),
+            default_storage: None,
             storage_providers,
         }
     }
 
-    /// Get a storage provider by its name
-    pub fn get_provider(&self, name: &str) -> Option<&StorageProvider> {
-        self.storage_providers.get(name)
+    pub fn get_enabled_provider_by_type(&self, provider_type: &str) -> Option<&StorageProvider> {
+        self.storage_providers
+            .values()
+            .find(|provider| provider.is_enabled() && provider.provider_type() == provider_type)
     }
 
     /// Get all enabled storage providers
@@ -105,9 +125,14 @@ impl StorageConfig {
 
     /// Validate the configuration
     pub fn _validate(&self) -> Result<(), String> {
-        // Check if default storage exists
-        if !self.storage_providers.contains_key(&self.default_storage) {
-            return Err(format!("Default storage '{}' not found in providers", self.default_storage));
+        // Check default storage only when provided.
+        if let Some(default_storage) = &self.default_storage {
+            if !self.storage_providers.contains_key(default_storage) {
+                return Err(format!(
+                    "Default storage '{}' not found in providers",
+                    default_storage
+                ));
+            }
         }
 
         // At least one provider must be enabled
@@ -116,6 +141,48 @@ impl StorageConfig {
         } else {
             Err("At least one storage provider must be enabled".to_string())
         }
+    }
+
+    /// Select the active holochain profile based on startup mode.
+    ///
+    /// `dev_mode=true` -> `holochain_dev`
+    /// `dev_mode=false` -> `holochain_production`
+    ///
+    /// Fails fast when the required profile is missing or has the wrong type.
+    pub fn select_holochain_profile(&mut self, dev_mode: bool) -> Result<(), String> {
+        let selected_key = if dev_mode {
+            "holochain_dev"
+        } else {
+            "holochain_production"
+        };
+
+        let selected_provider = self
+            .storage_providers
+            .get(selected_key)
+            .ok_or_else(|| {
+                format!(
+                    "Missing required profile '{}'. \
+                     Ensure storage.json defines both 'holochain_dev' and 'holochain_production'.",
+                    selected_key
+                )
+            })?;
+
+        if !matches!(selected_provider, StorageProvider::Holochain(_)) {
+            return Err(format!(
+                "Profile '{}' must be type='holochain' to match HC_DEV_MODE selection.",
+                selected_key
+            ));
+        }
+
+        // Keep both profiles in config, but activate only the selected one.
+        for (name, provider) in self.storage_providers.iter_mut() {
+            if let StorageProvider::Holochain(cfg) = provider {
+                cfg.enabled = name == selected_key;
+            }
+        }
+
+        self.default_storage = None;
+        Ok(())
     }
 }
 

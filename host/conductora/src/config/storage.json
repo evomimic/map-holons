@@ -1,13 +1,10 @@
 {
-  "default_storage": "holochain",
   "storage_providers": {
-    "holochain": {
+    "holochain_dev": {
       "type": "holochain",
-      "network_seed": "myseed1234",
+      "network_seed": "dev_seed1234",
       "bootstrap_url": "http://0.0.0.0:8888",
-      "bootstrap_url_production": "https://bootstrap.holo.host",
-      "signal_url": "http://0.0.0.0:8080",
-      "signal_url_production": "wss://sbd.holo.host",
+      "signal_url": null,
       "proxy_url": null,
       "target_arc_factor": 1,
       "app_id": "map_holons",
@@ -17,27 +14,32 @@
         "zome_function": "dance"
       }],
       "happ_path": "happ/workdir/map-holons.happ",
-      "enabled": true
+      "enabled": false
     },
-    "ipfs_main": {
+    "holochain_production": {
+      "type": "holochain",
+      "network_seed": "prod_seed1234",
+      "bootstrap_url": "https://bootstrap.holo.host",
+      "signal_url": "wss://sbd.holo.host",
+      "proxy_url": null,
+      "target_arc_factor": 1,
+      "app_id": "map_holons",
+      "cell_details": [ {
+        "role_name": "map_holons",
+        "zome_name": "holons",
+        "zome_function": "dance"
+      }],
+      "happ_path": "happ/workdir/map-holons.happ",
+      "enabled": false
+    },
+    "ipfs": {
       "type": "ipfs",
       "api_url": "http://127.0.0.1:5001",
       "gateway_url": "http://127.0.0.1:8080",
       "repo_path": null,
       "swarm_key": null,
       "bootstrap_peers": [
-        "/ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",
-        "/ip4/104.236.179.241/tcp/4001/p2p/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM"
       ],
-      "enabled": true
-    },
-    "ipfs_dev": {
-      "type": "ipfs",
-      "api_url": "http://127.0.0.1:5002",
-      "gateway_url": "http://127.0.0.1:8081",
-      "repo_path": "./dev-ipfs-repo",
-      "swarm_key": "/key/swarm/psk/1.0.0/\n/base16/\ndev1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-      "bootstrap_peers": [],
       "enabled": false
     },
     "local_cache": {
@@ -46,7 +48,8 @@
       "max_size_mb": 1024,
       "compression": true,
       "encryption": false,
-      "enabled": true
+      "snapshot_recovery": true,
+      "enabled": false
     },
     "local_secure": {
       "type": "local",
@@ -54,6 +57,7 @@
       "max_size_mb": 512,
       "compression": true,
       "encryption": true,
+      "snapshot_recovery": false,
       "enabled": false
     }
   }

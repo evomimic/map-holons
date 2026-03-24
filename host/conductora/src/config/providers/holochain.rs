@@ -1,11 +1,7 @@
 use std::path::PathBuf;
-// use map_commands::{StorageConfig, StorageProvider};
 use serde::{Deserialize, Serialize};
 use tauri_plugin_holochain::{vec_to_locked, AppBundle, HolochainPluginConfig, NetworkConfig};
 use crate::config::{StorageConfig, StorageProvider};
-//use crate::config::app_config::APP_ID;
-// use tauri_plugin_holochain::{HolochainPluginConfig, vec_to_locked, NetworkConfig, AppBundle};
-//use tauri_plugin_holochain::HolochainExt;
 
 pub type CellDetails = Vec<CellDetail>;
 
@@ -47,14 +43,20 @@ impl Default for HolochainConfig {
 }
 
     /// Configure Holochain plugin
-pub fn holochain_plugin(provider: StorageProvider) ->  Result<impl tauri::plugin::Plugin<tauri::Wry>, anyhow::Error> {
+pub fn holochain_plugin(provider: StorageProvider, provider_name: &str) ->  Result<impl tauri::plugin::Plugin<tauri::Wry>, anyhow::Error> {
     let StorageProvider::Holochain(hc_cfg) = provider else {
-            return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
+        return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
     };
-    Ok(tauri_plugin_holochain::async_init(
-    vec_to_locked(vec![]),
-    HolochainPluginConfig::new(holochain_dir(&hc_cfg), network_config_from_storage_config(&hc_cfg))
-    ))
+    let mut plugin_config = HolochainPluginConfig::new(
+        holochain_dir(&hc_cfg),
+        network_config_from_storage_config(&hc_cfg),
+    )
+    .signal_url_configured(hc_cfg.signal_url.is_some());
+    if crate::config::app_config::hc_dev_mode_enabled() {
+        let dir = dev_conductor_dir(provider_name, &hc_cfg.app_id);
+        plugin_config = plugin_config.dev_mode().dev_data_root(dir);
+    }
+    Ok(tauri_plugin_holochain::async_init(vec_to_locked(vec![]), plugin_config))
 }
 
 /// Load and validate the happ bundle from filesystem
@@ -170,4 +172,22 @@ pub fn holochain_dir(hc_cfg: &HolochainConfig) -> PathBuf {
         .expect("Could not get app root")
         .join("holochain")
     }
+}
+
+// Generate a deterministic dev conductor directory path based on provider name, app id, and network seed.
+// this serves as the data_root for a conductor in dev mode, 
+// allowing us to preserve the WASM cache across restarts while still having a unique directory per provider/app/seed.
+pub fn dev_conductor_dir(provider_name: &str, app_id: &str) -> std::path::PathBuf {
+    let workspace = std::env::current_dir()
+        .ok()
+        .and_then(|p| p.canonicalize().ok())
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let input = format!("{provider_name}:{app_id}:{}", workspace.display());
+
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    input.hash(&mut h);
+    let key = format!("{:016x}", h.finish());
+
+    std::path::PathBuf::from("/tmp/conductora_dev").join(key)
 }
