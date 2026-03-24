@@ -1,22 +1,26 @@
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    map_commands as commands,
-    runtime,
     config::{
-        app_config::load_storage_config, providers::holochain::holochain_plugin, storage_config::{StorageConfig, StorageProvider}
+        app_config::load_storage_config,
+        providers::holochain::holochain_plugin,
+        storage_config::{StorageConfig, StorageProvider},
     },
+    map_commands as commands, runtime,
     setup::{
-        holochain_setup::{ConductorClientState, HolochainSetup, HolochainWindowSetup}, local_setup::LocalSetup, window_setup::DefaultWindowSetup},
+        holochain_setup::{ConductorClientState, HolochainSetup, HolochainWindowSetup},
+        local_setup::LocalSetup,
+        window_setup::DefaultWindowSetup,
+    },
 };
 
-use crate::setup::window_setup::ProviderWindowSetup;
 use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
+use crate::setup::window_setup::ProviderWindowSetup;
 use holons_client::init_client_runtime;
+use holons_receptor::ReceptorFactory;
 use holons_trust_channel::TrustChannel;
 use map_commands_runtime::{Runtime, RuntimeSession};
-use holons_receptor::ReceptorFactory;
-use tauri::{AppHandle, Manager, Listener};
+use tauri::{AppHandle, Listener, Manager};
 
 pub struct AppBuilder;
 
@@ -58,7 +62,9 @@ impl AppBuilder {
 
         let enabled_providers = Self::get_enabled_provider_types(&storage_cfg);
         if enabled_providers.contains(&"holochain") {
-            tracing::debug!("[APP BUILDER] Holochain provider detected, waiting for setup completion.");
+            tracing::debug!(
+                "[APP BUILDER] Holochain provider detected, waiting for setup completion."
+            );
             app.handle().listen("holochain://setup-completed", move |_event| {
                 tracing::debug!("[APP BUILDER] Received 'holochain://setup-completed' event.");
                 let handle = handle.clone();
@@ -76,7 +82,6 @@ impl AppBuilder {
 
         Ok(())
     }
-
 
     /// Run the complete setup: provider setup → load receptors → create window
     async fn run_complete_setup(handle: &AppHandle, storage_cfg: &StorageConfig) {
@@ -122,7 +127,10 @@ impl AppBuilder {
         mut builder: tauri::Builder<tauri::Wry>,
         storage_cfg: &StorageConfig,
     ) -> tauri::Builder<tauri::Wry> {
-        tracing::debug!("[APP BUILDER] Loading provider plugins: {:?}", storage_cfg.get_enabled_providers());
+        tracing::debug!(
+            "[APP BUILDER] Loading provider plugins: {:?}",
+            storage_cfg.get_enabled_providers()
+        );
 
         builder = builder.plugin(tauri_plugin_fs::init());
 
@@ -132,17 +140,15 @@ impl AppBuilder {
                     //tracing::info!("[APP BUILDER] Loading Local storage plugins");
                     // Local storage
                 }
-                "holochain" => {
-                    match holochain_plugin(provider.clone()) {
-                        Ok(plugin) => {
-                            tracing::info!("[APP BUILDER] Loaded Holochain plugin");
-                            builder = builder.plugin(plugin);
-                        }
-                        Err(e) => {
-                            tracing::error!("[APP BUILDER] Failed to load Holochain plugin: {}", e);
-                        }
+                "holochain" => match holochain_plugin(provider.clone()) {
+                    Ok(plugin) => {
+                        tracing::info!("[APP BUILDER] Loaded Holochain plugin");
+                        builder = builder.plugin(plugin);
                     }
-                }
+                    Err(e) => {
+                        tracing::error!("[APP BUILDER] Failed to load Holochain plugin: {}", e);
+                    }
+                },
 
                 "ipfs" => {
                     //tracing::info!("[APP BUILDER] Loading IPFS plugin");
@@ -158,8 +164,8 @@ impl AppBuilder {
 
     /// Run provider-specific setup routines for each enabled provider
     async fn apply_setups(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        let storage_cfg = handle.try_state::<StorageConfig>()
-            .ok_or("Missing StorageConfig in state")?;
+        let storage_cfg =
+            handle.try_state::<StorageConfig>().ok_or("Missing StorageConfig in state")?;
 
         for (_name, provider) in storage_cfg.get_enabled_providers() {
             match provider.provider_type() {
@@ -176,7 +182,10 @@ impl AppBuilder {
                     // IpfsSetup::setup(handle.clone()).await?;
                 }
                 provider_type => {
-                    tracing::warn!("[APP BUILDER] Unknown provider type for setup: {}", provider_type);
+                    tracing::warn!(
+                        "[APP BUILDER] Unknown provider type for setup: {}",
+                        provider_type
+                    );
                 }
             }
         }
@@ -215,9 +224,8 @@ impl AppBuilder {
     /// during Holochain setup. If no conductor client is available (e.g., no
     /// Holochain provider enabled), the Runtime remains `None`.
     fn initialize_runtime(handle: &AppHandle) {
-        let client = handle
-            .try_state::<ConductorClientState>()
-            .and_then(|state| state.read().ok()?.clone());
+        let client =
+            handle.try_state::<ConductorClientState>().and_then(|state| state.read().ok()?.clone());
 
         let Some(client) = client else {
             tracing::warn!(
@@ -228,8 +236,7 @@ impl AppBuilder {
         };
 
         let trust_channel = TrustChannel::new(client);
-        let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
-            Arc::new(trust_channel);
+        let initiator: Arc<dyn holons_core::dances::DanceInitiator> = Arc::new(trust_channel);
 
         let space_manager = init_client_runtime(Some(initiator));
         let session = Arc::new(RuntimeSession::new(space_manager));
@@ -244,11 +251,7 @@ impl AppBuilder {
 
     /// Helper function to get enabled provider types
     fn get_enabled_provider_types(storage_cfg: &StorageConfig) -> Vec<&str> {
-        storage_cfg
-            .get_enabled_providers()
-            .iter()
-            .map(|(_, p)| p.provider_type())
-            .collect()
+        storage_cfg.get_enabled_providers().iter().map(|(_, p)| p.provider_type()).collect()
     }
     fn get_provider_config(
         storage_cfg: &StorageConfig,
@@ -259,7 +262,4 @@ impl AppBuilder {
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("{} provider not found in config", provider_type))
     }
-
-
-
 }
