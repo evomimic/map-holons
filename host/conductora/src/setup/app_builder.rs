@@ -192,7 +192,7 @@ impl AppBuilder {
 
         let enabled_providers = Self::get_enabled_provider_types(storage_cfg); // ← Use helper
         if enabled_providers.contains(&"holochain") {
-            let hc_provider = Self::get_provider_config(storage_cfg, "holochain")?;
+            let hc_provider = Self::get_enabled_provider_by_type(storage_cfg, "holochain")?;
             let h_cfg = match hc_provider {
                 StorageProvider::Holochain(cfg) => cfg,
                 _ => return Err(anyhow::anyhow!("Invalid storage provider config for Holochain")),
@@ -250,14 +250,14 @@ impl AppBuilder {
             .map(|(_, p)| p.provider_type())
             .collect()
     }
-    fn get_provider_config(
+    fn get_enabled_provider_by_type(
         storage_cfg: &StorageConfig,
         provider_type: &str,
     ) -> anyhow::Result<StorageProvider> {
         storage_cfg
-            .get_provider(provider_type)
+            .get_enabled_provider_by_type(provider_type)
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("{} provider not found in config", provider_type))
+            .ok_or_else(|| anyhow::anyhow!("enabled {} provider not found in config", provider_type))
     }
 
 

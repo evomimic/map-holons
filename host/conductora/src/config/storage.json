@@ -1,5 +1,4 @@
 {
-  "default_storage": "holochain_dev",
   "storage_providers": {
     "holochain_dev": {
       "type": "holochain",
@@ -15,7 +14,7 @@
         "zome_function": "dance"
       }],
       "happ_path": "happ/workdir/map-holons.happ",
-      "enabled": true
+      "enabled": false
     },
     "holochain_production": {
       "type": "holochain",
