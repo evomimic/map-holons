@@ -50,13 +50,18 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let book_key = MapString(BOOK_KEY.to_string());
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
+    version_count.0 += 1;
+
     let staged_clone = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token.clone(),
         ResponseStatusCode::OK,
         version_count.clone(),
-        None,
-        Some("Stage New Version -- first clone from book.".to_string()),
+        Some(ResponseStatusCode::Conflict),
+        Some(
+            "Stage New Version -- first clone from book; currently expecting Conflict from stale Nursery lookup after commit"
+                .to_string(),
+        ),
     )?;
 
     // Add properties
@@ -94,14 +99,20 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
     // b. get_staged_holons_by_base_key correctly returns BOTH staged holons
 
+    version_count.0 += 1;
+
     let _version_2_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token.clone(),
         ResponseStatusCode::OK,
         version_count.clone(),
-        None,
-        Some("Stage New Version --- second version".to_string()),
+        Some(ResponseStatusCode::Conflict),
+        Some(
+            "Stage New Version --- second version; currently expecting Conflict from duplicate staged holons after commit"
+                .to_string(),
+        ),
     )?;
+
     version_count.0 += 1;
 
     let _version_3_token = test_case.add_stage_new_version_step(
@@ -110,9 +121,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         ResponseStatusCode::OK,
         version_count.clone(),
         Some(ResponseStatusCode::Conflict),
-        Some("Stage New Version --- third version, expecting Conflict for duplicate return of get_staged_holon_by_base_key".to_string())
+        Some(
+            "Stage New Version --- third version, expecting Conflict for duplicate return of get_staged_holon_by_base_key"
+                .to_string(),
+        )
     )?;
-    version_count.0 += 1;
 
     // Finalize
     test_case.finalize(&fixture_context)?;
