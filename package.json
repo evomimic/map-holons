@@ -9,11 +9,12 @@
   ],
   "scripts": {
     "start": "npm run build:happ && npm run start:warn",
-    "start:info": "RUST_LOG=host:info WASM_LOG=info npm run start:warn",
-    "start:info:all": "RUST_LOG=info WASM_LOG=info npm run start:warn",
+    "start:info": "npm run build:happ && RUST_LOG=host:info WASM_LOG=info npm run start:warn",
+    "start:info:all": "npm run build:happ && RUST_LOG=info WASM_LOG=info npm run start:warn",
     "start:debug": "npm run build:happ && RUST_LOG=host:debug WASM_LOG=debug npm run start:warn",
     "start:debug:all": "npm run build:happ && RUST_LOG=debug WASM_LOG=debug npm run start:warn",
-    "start:warn": "npm run start -w host", 
+    "start:fast": "RUST_LOG=host:info WASM_LOG=info npm run start:warn",
+    "start:warn": "HC_DEV_MODE=1 npm run start -w host", 
 
     "build": "npm run build:happ && npm run build:host",
     "build:host": "npm run build -w host",

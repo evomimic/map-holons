@@ -126,14 +126,14 @@ impl AppBuilder {
 
         builder = builder.plugin(tauri_plugin_fs::init());
 
-        for (_name, provider) in storage_cfg.get_enabled_providers() {
+        for (cfg_name, provider) in storage_cfg.get_enabled_providers() {
             match provider.provider_type() {
                 "local" => {
                     //tracing::info!("[APP BUILDER] Loading Local storage plugins");
                     // Local storage
                 }
                 "holochain" => {
-                    match holochain_plugin(provider.clone()) {
+                    match holochain_plugin(provider.clone(), cfg_name) {
                         Ok(plugin) => {
                             tracing::info!("[APP BUILDER] Loaded Holochain plugin");
                             builder = builder.plugin(plugin);

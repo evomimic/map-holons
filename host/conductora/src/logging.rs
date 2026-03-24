@@ -78,7 +78,7 @@ const HOLOCHAIN_NOISY_CRATES: &[(&str, &str)] = &[
     ("kitsune2_dht", "error"),     // DHT internals
     ("tx5", "warn"),               // WebRTC / signal transport
     ("sbd_client", "warn"),        // SBD signal client
-    ("holochain_runtime", "warn"), // Tauri plugin runtime wrapper
+    ("holochain_runtime", "info"), // Tauri plugin runtime wrapper
     ("lair_keystore", "warn"),     // Lair key-management daemon
     ("tracing", "warn"),           // tracing framework internals
 ];

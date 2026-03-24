@@ -22,7 +22,7 @@ export const appConfig: ApplicationConfig = {
         }
         if (!result) {
           attempts++;
-          const delay = Math.min(1000 * 1.5 ** attempts, 30000);
+          const delay = Math.min(1000 * 1.2 ** attempts, 30000);
           console.log(`SDK initialization failed. Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }

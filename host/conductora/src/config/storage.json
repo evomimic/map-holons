@@ -3,9 +3,9 @@
   "storage_providers": {
     "holochain_dev": {
       "type": "holochain",
-      "network_seed": "myseed1234",
+      "network_seed": "dev_seed1234",
       "bootstrap_url": "http://0.0.0.0:8888",
-      "signal_url": "wss://0.0.0.0:8080",
+      "signal_url": null,
       "proxy_url": null,
       "target_arc_factor": 1,
       "app_id": "map_holons",
@@ -15,12 +15,11 @@
         "zome_function": "dance"
       }],
       "happ_path": "happ/workdir/map-holons.happ",
-      "dev_mode": true,
       "enabled": true
     },
     "holochain_production": {
       "type": "holochain",
-      "network_seed": "myseed1234",
+      "network_seed": "prod_seed1234",
       "bootstrap_url": "https://bootstrap.holo.host",
       "signal_url": "wss://sbd.holo.host",
       "proxy_url": null,
@@ -32,7 +31,6 @@
         "zome_function": "dance"
       }],
       "happ_path": "happ/workdir/map-holons.happ",
-      "dev_mode": false,
       "enabled": false
     },
     "ipfs": {

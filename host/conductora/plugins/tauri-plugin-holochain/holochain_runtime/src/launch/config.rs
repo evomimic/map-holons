@@ -16,8 +16,11 @@ pub fn conductor_config(
     mut network_config: NetworkConfig,
     local_signal_url: Option<Url2>,
     dev_mode: bool,
+    dev_data_root: Option<std::path::PathBuf>
 ) -> ConductorConfig {
     let mut config = ConductorConfig::default();
+    const DEV_SIGNAL_PLACEHOLDER_URL: &str = "ws://127.0.0.1:1";
+    const DEV_BOOTSTRAP_PLACEHOLDER_URL: &str = "http://127.0.0.1:1";
 
     if dev_mode {
         // Use a FIXED persistent dev directory across restarts.
@@ -27,12 +30,13 @@ pub fn conductor_config(
         //   /tmp/nix-shell.1TXdRd/ that changes on every new shell invocation.
         //   Using temp_dir() would give a different path each run, losing the
         //   WASM compile cache.  /tmp is always available on macOS/Linux.
-        let dev_dir = std::path::PathBuf::from("/tmp/conductora_dev");
-        tracing::warn!(
+        let dev_dir = dev_data_root
+        .expect("dev_mode=true requires dev_data_root");
+        tracing::info!(
             "[LAUNCH] DEV MODE: using persistent dev conductor dir {:?} (WASM cache preserved)",
             dev_dir
         );
-        config.data_root_path = Some(dev_dir.into());
+        config.data_root_path = Some(dev_dir.to_path_buf().into());
 
         // In-memory keystore — no lair process, no argon2 KDF, no device seed.
         config.keystore = KeystoreConfig::DangerTestKeystore;
@@ -46,14 +50,32 @@ pub fn conductor_config(
     config.dpki = DpkiConfig::disabled();
 
     if dev_mode {
-        // Dev mode: use loopback signal server (started before conductor).
-        // Leave bootstrap_url at the default WAN value — kitsune2's bootstrap
-        // client uses a non-blocking background retry loop so it never stalls
-        // conductor startup even when the server is unreachable.
         if let Some(local_signal_url) = local_signal_url {
+            tracing::info!(
+                "[LAUNCH] DEV MODE: overriding network signal_url with local runtime URL {}",
+                local_signal_url.as_str()
+            );
             network_config.signal_url = local_signal_url;
+        } else {
+            let local_only_signal = Url2::parse(DEV_SIGNAL_PLACEHOLDER_URL);
+            tracing::warn!(
+                "[LAUNCH] DEV MODE: no local signal override provided; forcing local-only signal_url {}",
+                local_only_signal.as_str()
+            );
+            network_config.signal_url = local_only_signal;
         }
-        // Fast gossip + allow plain-text signalling over loopback.
+        let local_only_bootstrap = Url2::parse(DEV_BOOTSTRAP_PLACEHOLDER_URL);
+        tracing::info!(
+            "[LAUNCH] DEV MODE: forcing local-only bootstrap_url {}",
+            local_only_bootstrap.as_str()
+        );
+        network_config.bootstrap_url = local_only_bootstrap;
+        network_config.target_arc_factor = 0;
+        tracing::info!(
+            "[LAUNCH] DEV MODE: target_arc_factor set to 0 (leech mode, minimal network participation)"
+        );
+
+        // Dev-mode networking defaults: fast local behavior.
         let advanced_config = serde_json::json!({
             "tx5Transport": {
                 "signalAllowPlainText": true,
@@ -66,7 +88,16 @@ pub fn conductor_config(
         network_config.advanced = Some(advanced_config);
     } else {
         if let Some(local_signal_url) = local_signal_url {
+            tracing::info!(
+                "[LAUNCH] Normal mode: overriding network signal_url with local runtime URL {}",
+                local_signal_url.as_str()
+            );
             network_config.signal_url = local_signal_url;
+        } else {
+            tracing::info!(
+                "[LAUNCH] Normal mode: no local signal override provided; using configured/default signal_url {}",
+                network_config.signal_url.as_str()
+            );
         }
         if network_config.advanced.is_none() {
             let advanced_config = serde_json::json!({

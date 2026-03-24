@@ -44,7 +44,7 @@ impl ReceptorConfigRegistry {
                 configs.insert(0, local_config);
             }
         } else {
-            tracing::error!("[REGISTRY] No local receptor found in configs");
+            tracing::warn!("[REGISTRY] No local receptor found in configs");
         }
     }
 }
