@@ -41,9 +41,6 @@ impl Dancer {
     fn new() -> Self {
         let mut dispatch_table = HashMap::new();
         // Register functions into the dispatch table
-        dispatch_table
-            .insert("abandon_staged_changes", abandon_staged_changes_dance as DanceFunction);
-        dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
         dispatch_table.insert(
@@ -53,16 +50,7 @@ impl Dancer {
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
-        dispatch_table.insert("new_holon", new_holon_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
-        dispatch_table.insert("remove_properties", remove_properties_dance as DanceFunction);
-        dispatch_table
-            .insert("remove_related_holons", remove_related_holons_dance as DanceFunction);
-        dispatch_table.insert("stage_new_from_clone", stage_new_from_clone_dance as DanceFunction);
-        dispatch_table.insert("stage_new_holon", stage_new_holon_dance as DanceFunction);
-        dispatch_table.insert("stage_new_version", stage_new_version_dance as DanceFunction);
-        dispatch_table.insert("with_properties", with_properties_dance as DanceFunction);
-
         // Add more functions (in alphabetical order) as needed
 
         Dancer { dispatch_table }
