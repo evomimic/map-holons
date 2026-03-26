@@ -28,6 +28,17 @@ impl TransientHolonWire {
             self.original_id,
         ))
     }
+
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<TransientHolon, HolonError> {
+        Ok(TransientHolon::from_parts(
+            self.version,
+            self.holon_state,
+            self.validation_state,
+            self.property_map,
+            self.transient_relationships.rebind(context)?,
+            self.original_id,
+        ))
+    }
 }
 
 impl From<&TransientHolon> for TransientHolonWire {

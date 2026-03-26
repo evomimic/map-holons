@@ -1,3 +1,4 @@
+use core_types::TemporaryId;
 use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
@@ -137,7 +138,7 @@ fn dump_error_holons_from_response(
 /// then assert each response property on the returned response holon.
 pub async fn execute_load_holons(
     test_state: &mut TestExecutionState,
-    load_set_reference: TransientReference,
+    load_set_id: TemporaryId,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
@@ -148,13 +149,11 @@ pub async fn execute_load_holons(
     info!("--- TEST STEP: Load Holons ---");
     let context = test_state.context();
 
-    // Rebind the fixture-created TransientReference to the current context.
-    // The DanceTestStep stores the original TransientReference from fixture setup,
-    // which carries the fixture context's handle. We need to look up the same
-    // transient holon in the runtime's transient manager via its TemporaryId.
+    // Reconstruct the load-set reference inside the active transaction using the
+    // fixture-time TemporaryId. The active transaction has already been seeded
+    // with the fixture transient pool by the harness.
     let context_handle = TransactionContextHandle::new(context.clone());
-    let rebound_set_reference =
-        TransientReference::from_temporary_id(context_handle, &load_set_reference.temporary_id());
+    let rebound_set_reference = TransientReference::from_temporary_id(context_handle, &load_set_id);
 
     // Dispatch via TransactionAction::LoadHolons
     let command = MapCommand::Transaction(TransactionCommand {

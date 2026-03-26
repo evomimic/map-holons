@@ -115,8 +115,10 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         "DancesTestCase must be finalized before execution. Call test_case.finalize(&fixture_context) in the fixture."
     );
     // Initialize runtime and execution state
+    let fixture_transient_holons = test_case.test_session_state.get_transient_holons().clone();
     let (runtime, tx_id) = init_test_runtime(&mut test_case).await;
-    let mut test_execution_state = TestExecutionState::new(runtime, tx_id);
+    let mut test_execution_state =
+        TestExecutionState::new(runtime, tx_id, fixture_transient_holons);
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {} TEST CASE WITH {} TEST STEPS ***************************", test_case.name, test_case.steps.len());
     info!("\n   Test Case Description: {}", test_case.description);
@@ -167,7 +169,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 execute_ensure_database_count(&mut test_execution_state, expected_count).await
             }
             DanceTestStep::LoadHolons {
-                set,
+                set_id,
                 expect_staged,
                 expect_committed,
                 expect_links_created,
@@ -177,7 +179,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             } => {
                 execute_load_holons(
                     &mut test_execution_state,
-                    set,
+                    set_id,
                     expect_staged,
                     expect_committed,
                     expect_links_created,

@@ -25,6 +25,20 @@ impl HolonReferenceWire {
             HolonReferenceWire::Smart(smart) => smart.bind(context).map(HolonReference::Smart),
         }
     }
+
+    /// Rebinds a wire reference enum to the supplied transaction context,
+    /// ignoring any original tx_id embedded in the wire payload.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonReference, HolonError> {
+        match self {
+            HolonReferenceWire::Transient(transient) => {
+                transient.rebind(context).map(HolonReference::Transient)
+            }
+            HolonReferenceWire::Staged(staged) => {
+                staged.rebind(context).map(HolonReference::Staged)
+            }
+            HolonReferenceWire::Smart(smart) => smart.rebind(context).map(HolonReference::Smart),
+        }
+    }
 }
 
 impl From<HolonReference> for HolonReferenceWire {

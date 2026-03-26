@@ -17,7 +17,7 @@ pub async fn execute_begin_transaction(
                 "begin_transaction succeeded but expected {:?}",
                 expected_error
             );
-            state.set_active_tx_id(tx_id);
+            state.activate_transaction(tx_id).expect("failed to activate new transaction");
             info!("New transaction started: {:?}", tx_id);
         }
         Err(e) => {

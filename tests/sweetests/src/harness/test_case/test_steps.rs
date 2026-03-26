@@ -3,7 +3,7 @@
 //!   corresponding to one or more MAP dances or assertions.
 
 use crate::harness::fixtures_support::TestReference;
-use core_types::ContentSet;
+use core_types::{ContentSet, TemporaryId};
 use holons_prelude::prelude::*;
 use integrity_core_types::HolonErrorKind;
 
@@ -41,7 +41,7 @@ pub enum DanceTestStep {
         description: String,
     },
     LoadHolons {
-        set: TransientReference,
+        set_id: TemporaryId,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,
@@ -148,7 +148,7 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description} [expected_count: {}]", expected_count.0)
             }
             DanceTestStep::LoadHolons {
-                set: _,
+                set_id: _,
                 expect_staged,
                 expect_committed,
                 expect_links_created,

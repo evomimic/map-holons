@@ -33,6 +33,19 @@ impl SerializableHolonPool {
 
         Ok(HolonPool::from_parts(holons, self.keyed_index))
     }
+
+    /// Rebinds a wire pool to the supplied transaction, ignoring any original
+    /// tx_id embedded in nested references.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonPool, HolonError> {
+        let mut holons: BTreeMap<TemporaryId, Arc<RwLock<Holon>>> = BTreeMap::new();
+
+        for (id, holon_wire) in self.holons {
+            let holon_runtime = holon_wire.rebind(context)?;
+            holons.insert(id, Arc::new(RwLock::new(holon_runtime)));
+        }
+
+        Ok(HolonPool::from_parts(holons, self.keyed_index))
+    }
 }
 
 impl From<&HolonPool> for SerializableHolonPool {

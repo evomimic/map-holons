@@ -32,6 +32,19 @@ impl StagedHolonWire {
             self.errors,
         ))
     }
+
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<StagedHolon, HolonError> {
+        Ok(StagedHolon::from_parts(
+            self.version,
+            self.holon_state,
+            self.staged_state,
+            self.validation_state,
+            self.property_map,
+            self.staged_relationships.rebind(context)?,
+            self.original_id,
+            self.errors,
+        ))
+    }
 }
 
 impl From<&StagedHolon> for StagedHolonWire {

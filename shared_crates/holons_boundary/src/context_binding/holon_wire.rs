@@ -21,6 +21,14 @@ impl HolonWire {
             HolonWire::Saved(holon) => Holon::Saved(holon),
         })
     }
+
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<Holon, HolonError> {
+        Ok(match self {
+            HolonWire::Transient(holon) => Holon::Transient(holon.rebind(context)?),
+            HolonWire::Staged(holon) => Holon::Staged(holon.rebind(context)?),
+            HolonWire::Saved(holon) => Holon::Saved(holon),
+        })
+    }
 }
 
 impl From<&Holon> for HolonWire {

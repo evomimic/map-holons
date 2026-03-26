@@ -26,6 +26,13 @@ impl TransientReferenceWire {
         let context_handle = TransactionContextHandle::bind(self.tx_id(), context)?;
         Ok(TransientReference::from_temporary_id(context_handle, &self.id))
     }
+
+    /// Rebinds a wire reference to the supplied transaction context, ignoring the
+    /// original tx_id and preserving only the referenced TemporaryId.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<TransientReference, HolonError> {
+        let context_handle = TransactionContextHandle::new(Arc::clone(context));
+        Ok(TransientReference::from_temporary_id(context_handle, &self.id))
+    }
 }
 
 impl From<&TransientReference> for TransientReferenceWire {

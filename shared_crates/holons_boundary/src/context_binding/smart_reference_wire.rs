@@ -38,6 +38,20 @@ impl SmartReferenceWire {
             None => Ok(SmartReference::new_from_id(context_handle, self.holon_id)),
         }
     }
+
+    /// Rebinds a wire reference to the supplied transaction context, ignoring the
+    /// original tx_id and preserving the referenced HolonId and cached smart props.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<SmartReference, HolonError> {
+        let context_handle = TransactionContextHandle::new(Arc::clone(context));
+        match self.smart_property_values {
+            Some(property_values) => Ok(SmartReference::new_with_properties(
+                context_handle,
+                self.holon_id,
+                property_values,
+            )),
+            None => Ok(SmartReference::new_from_id(context_handle, self.holon_id)),
+        }
+    }
 }
 
 impl From<&SmartReference> for SmartReferenceWire {

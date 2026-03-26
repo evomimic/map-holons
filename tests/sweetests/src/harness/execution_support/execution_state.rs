@@ -18,6 +18,7 @@ use crate::harness::{
     execution_support::{ExecutionHolons, ExecutionReference, ResolveBy},
     fixtures_support::TestReference,
 };
+use holons_boundary::SerializableHolonPool;
 use holons_prelude::prelude::*;
 
 use holons_core::core_shared_objects::transactions::TxId;
@@ -29,15 +30,21 @@ use tracing::debug;
 pub struct TestExecutionState {
     runtime: Runtime,
     active_tx_id: TxId,
+    fixture_transient_holons: SerializableHolonPool,
     // Registry of realized references keyed by source token's `TemporaryId`.
     execution_holons: ExecutionHolons,
 }
 
 impl TestExecutionState {
-    pub fn new(runtime: Runtime, tx_id: TxId) -> Self {
+    pub fn new(
+        runtime: Runtime,
+        tx_id: TxId,
+        fixture_transient_holons: SerializableHolonPool,
+    ) -> Self {
         TestExecutionState {
             runtime,
             active_tx_id: tx_id,
+            fixture_transient_holons,
             execution_holons: ExecutionHolons::default(),
         }
     }
@@ -67,6 +74,26 @@ impl TestExecutionState {
         self.active_tx_id = tx_id;
     }
 
+    /// Makes a newly opened transaction active and imports fixture transients into it.
+    pub fn activate_transaction(&mut self, tx_id: TxId) -> Result<(), HolonError> {
+        let context = self.runtime.session().get_transaction(&tx_id)?;
+        self.import_fixture_transient_holons(&context)?;
+        self.active_tx_id = tx_id;
+        Ok(())
+    }
+
+    fn import_fixture_transient_holons(
+        &self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<(), HolonError> {
+        if self.fixture_transient_holons.holons.is_empty() {
+            return Ok(());
+        }
+
+        let bound_transient_holons = self.fixture_transient_holons.clone().rebind(context)?;
+        context.import_transient_holons(bound_transient_holons)
+    }
+
     /// Returns an open transaction context for assertion-style helper steps.
     /// This allows for db inspection after commit, bypassing transaction lifecycle checks.
     ///
@@ -91,7 +118,9 @@ impl TestExecutionState {
 
         match result {
             MapResult::TransactionCreated { tx_id } => {
-                self.runtime.session().get_transaction(&tx_id)
+                let context = self.runtime.session().get_transaction(&tx_id)?;
+                self.import_fixture_transient_holons(&context)?;
+                Ok(context)
             }
             other => Err(HolonError::InvalidParameter(format!(
                 "{step_name}: expected TransactionCreated, got {:?}",

@@ -184,7 +184,7 @@ impl DancesTestCase {
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::LoadHolons {
-            set,
+            set_id: set.temporary_id(),
             expect_staged,
             expect_committed,
             expect_links_created,
@@ -225,6 +225,7 @@ impl DancesTestCase {
         if expected_error.is_none() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+            fixture_holons.remove_relationship_targets_for_staged_holons(step_token.expected_reference())?;
         }
         // Mint
         let new_step_token = fixture_holons.mint_test_reference(new_source, expected);
