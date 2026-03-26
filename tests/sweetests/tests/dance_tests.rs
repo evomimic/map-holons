@@ -41,12 +41,12 @@ use execution_steps::load_holons_executor::execute_load_holons;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::new_holon_executor::execute_new_holon;
 use execution_steps::query_relationships_executor::execute_query_relationships;
-use execution_steps::remove_properties_command_executor::execute_remove_properties;
+use execution_steps::remove_properties_executor::execute_remove_properties;
 use execution_steps::remove_related_holon_executor::execute_remove_related_holons;
 use execution_steps::stage_new_from_clone_executor::execute_stage_new_from_clone;
 use execution_steps::stage_new_holon_executor::execute_stage_new_holon;
 use execution_steps::stage_new_version_executor::execute_stage_new_version;
-use execution_steps::with_properties_command_executor::execute_with_properties;
+use execution_steps::with_properties_executor::execute_with_properties;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
